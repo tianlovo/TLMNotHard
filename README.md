@@ -25,11 +25,11 @@
 python scripts/verify_bytecode.py <构建出的模组JAR路径>
 ```
 
-默认按 Git 标签和提交生成版本，正式版前保留 indev 标签；无标签的临时构建可以按官方方式设置 VERSION 环境变量，验证记录仍需绑定实际源码提交与产物 SHA-256
+默认按 Git 标签和提交生成版本，正式版前保持 indev；只在小阶段完成或达到里程碑时打 tag，普通提交不单独打 tag；临时构建可以按官方方式设置 VERSION 环境变量，验证记录绑定实际源码提交与产物 SHA-256
 
 从上游移植的文件保留其包名、来源及适用许可，新增独立适配文件使用 `com.tianluoqaq.tlmnh` 根包名
 
-上游代码、模型、贴图与声音的许可分别处理，已引入的实体代码见 [上游移植记录](SOURCE_PROVENANCE.md)，目前没有导入模型、贴图和声音
+上游代码、模型、贴图与声音的许可分别处理，已引入的实体代码见 [上游移植记录](SOURCE_PROVENANCE.md)，内置模型资源及署名见 [第三方来源与许可](THIRD_PARTY_NOTICES.md)；资源静态检查通过不代表渲染、动画和声音已可用
 
 维护者：tianlovo，联系邮箱：tianluoqaq@gmail.com
 

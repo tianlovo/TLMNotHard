@@ -1,12 +1,13 @@
 entity.tlmnh.maid.name=女仆
 container.tlmnh.maid=女仆
-commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|persist-create|persist-check|spawn [玩家]>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|model-test|persist-create|persist-check|spawn [玩家]>
 commands.tlmnhdev.passed=女仆状态往返检查通过，尚未验证玩法和多人同步
 commands.tlmnhdev.persist_created=已建立女仆保存夹具，请正常保存、重启服务器后执行 persist-check
 commands.tlmnhdev.persist_passed=女仆保存夹具检查通过，重启证据仍需结合两次服务器进程记录
 commands.tlmnhdev.container_passed=女仆容器守恒与权限检查通过，客户端交易仍需验证
 commands.tlmnhdev.spawned=已在玩家附近生成并绑定一只测试女仆
 commands.tlmnhdev.interaction_passed=蛋糕驯服、绑定和坐姿交互检查通过，实际客户端点击仍需验证
+commands.tlmnhdev.model_passed=内置模型 ID 与存档白名单检查通过，渲染和动画仍待验证
 gui.tlmnh.hands=主手 / 副手
 gui.tlmnh.armor=护甲（靴子至头盔）
 gui.tlmnh.backpack=女仆背包

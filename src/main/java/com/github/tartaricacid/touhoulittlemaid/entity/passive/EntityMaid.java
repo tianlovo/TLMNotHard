@@ -22,6 +22,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原实体的核心状态移植，渲染、交互和行为由独立适配模块接入 */
@@ -145,7 +146,7 @@ public class EntityMaid extends EntityTameable {
     }
 
     public void setModelId(String modelId) {
-        if (modelId == null || modelId.length() > 256 || !modelId.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) {
+        if (!BuiltinModelCatalog.contains(modelId)) {
             modelId = DEFAULT_MODEL_ID;
         }
         dataWatcher.updateObject(DATA_MODEL, modelId);

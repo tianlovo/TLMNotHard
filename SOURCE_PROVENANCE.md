@@ -9,4 +9,4 @@
 
 新增的背包视图、注册和测试命令位于 com.tianluoqaq.tlmnh，属于本移植工程的独立适配文件，没有复制其他研究候选的实现
 
-当前没有导入模型、贴图和声音；本记录不代表其资产许可已完成核对，也不表示实体核心状态已经覆盖完整玩法
+内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染、动画和声音播放仍在后续实现范围

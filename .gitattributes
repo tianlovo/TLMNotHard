@@ -10,3 +10,12 @@
 gradlew text eol=lf
 *.bat text eol=crlf
 
+# 固定上游资产保留 Git blob 原字节，避免换行转换使来源摘要失效
+src/main/resources/assets/authors_and_credits/** -text
+src/main/resources/assets/geckolib/** -text
+src/main/resources/assets/minecraft_15th/** -text
+src/main/resources/assets/touhou_little_maid/** -text
+src/main/resources/assets/touhou_little_maid_old/** -text
+src/main/resources/assets/touhou_little_maid_seihou/** -text
+licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt -text
+

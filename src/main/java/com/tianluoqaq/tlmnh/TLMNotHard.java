@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
 
@@ -43,6 +44,7 @@ public final class TLMNotHard {
     public void preInit(FMLPreInitializationEvent event) {
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
+        BuiltinModelCatalog.load();
         ModEntities.register(this);
     }
 
