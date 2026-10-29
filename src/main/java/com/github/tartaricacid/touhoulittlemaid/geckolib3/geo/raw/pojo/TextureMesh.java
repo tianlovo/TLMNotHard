@@ -1,0 +1,63 @@
+/*
+ * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
+ * Original: src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/raw/pojo/TextureMesh.java
+ * MIT, see licenses/TouhouLittleMaid-MIT.txt and licenses/GeckoLib-MIT.txt
+ * Adaptation: Java 8 API, Forge 1.7.10, explicit Gson adapters and legacy matrices
+ */
+package com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo;
+
+import com.google.gson.annotations.SerializedName;
+
+public class TextureMesh {
+
+    @SerializedName("local_pivot")
+    private double[] localPivot;
+    @SerializedName("position")
+    private double[] position;
+    @SerializedName("rotation")
+    private double[] rotation;
+    @SerializedName("scale")
+    private double[] scale;
+    @SerializedName("texture")
+    private String texture;
+
+    public double[] getLocalPivot() {
+        return localPivot;
+    }
+
+    public void setLocalPivot(double[] value) {
+        this.localPivot = value;
+    }
+
+    public double[] getPosition() {
+        return position;
+    }
+
+    public void setPosition(double[] value) {
+        this.position = value;
+    }
+
+    public double[] getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(double[] value) {
+        this.rotation = value;
+    }
+
+    public double[] getScale() {
+        return scale;
+    }
+
+    public void setScale(double[] value) {
+        this.scale = value;
+    }
+
+    public String getTexture() {
+        return texture;
+    }
+
+    public void setTexture(String value) {
+        this.texture = value;
+    }
+}

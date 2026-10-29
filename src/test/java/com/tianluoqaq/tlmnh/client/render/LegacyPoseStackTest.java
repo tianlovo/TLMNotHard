@@ -100,4 +100,24 @@ public class LegacyPoseStackTest {
         assertEquals(expected.y, actual.y, EPSILON);
         assertEquals(expected.z, actual.z, EPSILON);
     }
+
+    @Test
+    public void repeatedSmallUniformScalesDoNotEraseNormals() {
+        var stack = new LegacyPoseStack();
+        for (int i = 0; i < 40; i++) stack.scale(0.1F, 0.1F, 0.1F);
+        assertVector(
+            new Vector3f(0, 1, 0),
+            new Vector3f(0, 1, 0).mul(
+                stack.last()
+                    .normal())
+                .normalize());
+        var tiny = new LegacyPoseStack();
+        tiny.scale(1.0E-30F, 1.0E-30F, 1.0E-30F);
+        assertVector(
+            new Vector3f(1, 0, 0),
+            new Vector3f(1, 0, 0).mul(
+                tiny.last()
+                    .normal())
+                .normalize());
+    }
 }

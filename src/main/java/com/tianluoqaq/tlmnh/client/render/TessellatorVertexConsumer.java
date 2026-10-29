@@ -42,11 +42,11 @@ public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
     public void vertex(float x, float y, float z, float red, float green, float blue, float alpha, float u, float v,
         int overlay, int lightmap, float normalX, float normalY, float normalZ) {
         if (!active) throw new IllegalStateException("TLMNH vertex outside model batch");
-        float length = (float) Math.sqrt(normalX * normalX + normalY * normalY + normalZ * normalZ);
-        if (length > 0.0F) {
-            normalX /= length;
-            normalY /= length;
-            normalZ /= length;
+        double length = Math.sqrt((double) normalX * normalX + (double) normalY * normalY + (double) normalZ * normalZ);
+        if (length > 0.0) {
+            normalX = (float) (normalX / length);
+            normalY = (float) (normalY / length);
+            normalZ = (float) (normalZ / length);
         }
         tessellator.setColorRGBA_F(red * color.get(0), green * color.get(1), blue * color.get(2), alpha * color.get(3));
         tessellator.setBrightness(lightmap);

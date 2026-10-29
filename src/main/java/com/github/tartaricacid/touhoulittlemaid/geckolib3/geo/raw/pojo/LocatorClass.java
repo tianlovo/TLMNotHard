@@ -1,0 +1,43 @@
+/*
+ * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
+ * Original: src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/raw/pojo/LocatorClass.java
+ * MIT, see licenses/TouhouLittleMaid-MIT.txt and licenses/GeckoLib-MIT.txt
+ * Adaptation: Java 8 API, Forge 1.7.10, explicit Gson adapters and legacy matrices
+ */
+package com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo;
+
+import com.google.gson.annotations.SerializedName;
+
+public class LocatorClass {
+
+    @SerializedName("ignore_inherited_scale")
+    private Boolean ignoreInheritedScale;
+    @SerializedName("offset")
+    private double[] offset;
+    @SerializedName("rotation")
+    private double[] rotation;
+
+    public Boolean getIgnoreInheritedScale() {
+        return ignoreInheritedScale;
+    }
+
+    public void setIgnoreInheritedScale(Boolean value) {
+        this.ignoreInheritedScale = value;
+    }
+
+    public double[] getOffset() {
+        return offset;
+    }
+
+    public void setOffset(double[] value) {
+        this.offset = value;
+    }
+
+    public double[] getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(double[] value) {
+        this.rotation = value;
+    }
+}

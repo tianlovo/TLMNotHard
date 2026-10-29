@@ -1,0 +1,43 @@
+/*
+ * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
+ * Original: src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/raw/pojo/MinecraftGeometry.java
+ * MIT, see licenses/TouhouLittleMaid-MIT.txt and licenses/GeckoLib-MIT.txt
+ * Adaptation: Java 8 API, Forge 1.7.10, explicit Gson adapters and legacy matrices
+ */
+package com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo;
+
+import com.google.gson.annotations.SerializedName;
+
+public class MinecraftGeometry {
+
+    @SerializedName("bones")
+    private Bone[] bones;
+    @SerializedName("cape")
+    private String cape;
+    @SerializedName("description")
+    private ModelProperties modelProperties;
+
+    public Bone[] getBones() {
+        return bones;
+    }
+
+    public void setBones(Bone[] value) {
+        this.bones = value;
+    }
+
+    public String getCape() {
+        return cape;
+    }
+
+    public void setCape(String value) {
+        this.cape = value;
+    }
+
+    public ModelProperties getProperties() {
+        return modelProperties;
+    }
+
+    public void setProperties(ModelProperties value) {
+        this.modelProperties = value;
+    }
+}

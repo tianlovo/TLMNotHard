@@ -70,6 +70,8 @@ CommonProxy 只创建服务端容器，客户端类型位于 ClientProxy 和 Gui
 
 ## 维护边界
 
+普通功能提交不打 tag，只在完成小阶段或里程碑时创建标签；日常构建用源码提交号、显式开发版本与 JAR SHA-256 追踪
+
 内置模型资源使用 `scripts/import_builtin_assets.py --upstream <固定 TLM 克隆路径>` 静态核对，显式添加 `--write` 才导入；脚本要求固定提交且相关上游文件没有修改，保留原字节与原始作者说明，生成模型装饰 ID 和逐文件来源摘要，不导入椅子或 LLM 设置
 
 使用 `python scripts/verify_builtin_assets.py [候选JAR]` 核对源码或打包后资源摘要及引用；`tlmnhdev model-test` 在服务端检查 254 个装饰 ID 的 NBT 往返、酒狐 19 个 Gecko 基础条目与 2 个 Bedrock 基础条目合计 35 个选择，以及未知模型回退；上述检查均不能替代客户端渲染和动画验收
@@ -77,6 +79,10 @@ CommonProxy 只创建服务端容器，客户端类型位于 ClientProxy 和 Gui
 `build` 包含 Java 25 上运行的 JUnit 几何测试，测试源码仍通过 Jabel 编译为 Java 8 字节码；可用 `./gradlew.bat test --tests '*BedrockGeometryTest'` 单独检查 Bedrock 几何，`LegacyPoseStackTest` 检查矩阵与法线变换
 
 几何测试直接向内存顶点接收器输出，覆盖全部 205 份非 Gecko 内置几何，包含两款 Bedrock 酒狐；不会创建 GL 上下文，不能据此宣称游戏内渲染或 Gecko 动画完成；JOML 仅打包 Java 数学类并重定位，字节码检查仍扫描它们
+
+`GeckoGeometryTest` 覆盖 26 份内置 Gecko 几何与独立骨骼姿态，检查酒狐 19 个基础条目和 33 个 Gecko 选择的几何输入、镜像、逐面 UV、隐藏控制、定位骨骼、快照及异常矩阵清理；这里的 AnimatedGeoModel 是可变姿态实例，关键帧、Molang 和女仆状态控制器尚未接入
+
+模板默认测试类路径使用 Gson 2.2.4，`testRc2ClientGson` 以 RC2 客户端的 Gson 2.10.1 再运行两条几何路径；两组测试都使用 Java 25，均由 `check` / `build` 执行，兼容性测试依赖不会打包进模组，也不会替换整包的 Gson
 
 上游来源与许可见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [移植记录](SOURCE_PROVENANCE.md)，复制原文件时保留包名，独立适配文件使用 com.tianluoqaq.tlmnh
 

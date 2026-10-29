@@ -43,7 +43,16 @@ public final class LegacyPoseStack {
         last().pose.scale(x, y, z);
         // 余子式与逆转置只差正系数，提交时归一化；单轴归零仍保留平面法线
         float orientation = (x < 0.0F ^ y < 0.0F ^ z < 0.0F) ? -1.0F : 1.0F;
-        last().normal.scale(orientation * y * z, orientation * x * z, orientation * x * y);
+        double nx = orientation * (double) y * z;
+        double ny = orientation * (double) x * z;
+        double nz = orientation * (double) x * y;
+        double largest = Math.max(Math.abs(nx), Math.max(Math.abs(ny), Math.abs(nz)));
+        // 去掉公因子，避免连续均匀缩放让法线下溢
+        if (largest > 0.0) {
+            last().normal.scale((float) (nx / largest), (float) (ny / largest), (float) (nz / largest));
+        } else {
+            last().normal.zero();
+        }
     }
 
     public static final class Pose {
