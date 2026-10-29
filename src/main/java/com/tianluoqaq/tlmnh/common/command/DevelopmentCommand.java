@@ -13,6 +13,7 @@ import net.minecraft.util.ChatComponentTranslation;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 
@@ -38,6 +39,16 @@ public final class DevelopmentCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         if (args.length == 1 && "state-test".equals(args[0])) {
             testState(sender);
+            return;
+        }
+        if (args.length == 1 && "persist-create".equals(args[0])) {
+            MaidPersistenceProbe.create(sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.persist_created"));
+            return;
+        }
+        if (args.length == 1 && "persist-check".equals(args[0])) {
+            MaidPersistenceProbe.verify(sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.persist_passed"));
             return;
         }
         throw new WrongUsageException(getCommandUsage(sender));
