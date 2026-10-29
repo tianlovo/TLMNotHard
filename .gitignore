@@ -1,0 +1,14 @@
+/repo/
+/cache/
+/publish/
+/dist/
+**/.gradle/
+**/build/
+**/run/
+**/.idea/
+**/.vscode/
+**/__pycache__/
+*.log
+*.class
+*.jar
+
