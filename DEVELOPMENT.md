@@ -74,6 +74,10 @@ CommonProxy 只创建服务端容器，客户端类型位于 ClientProxy 和 Gui
 
 使用 `python scripts/verify_builtin_assets.py [候选JAR]` 核对源码或打包后资源摘要及引用；`tlmnhdev model-test` 在服务端检查 254 个装饰 ID 的 NBT 往返、酒狐 19 个 Gecko 基础条目与 2 个 Bedrock 基础条目合计 35 个选择，以及未知模型回退；上述检查均不能替代客户端渲染和动画验收
 
+`build` 包含 Java 25 上运行的 JUnit 几何测试，测试源码仍通过 Jabel 编译为 Java 8 字节码；可用 `./gradlew.bat test --tests '*BedrockGeometryTest'` 单独检查 Bedrock 几何，`LegacyPoseStackTest` 检查矩阵与法线变换
+
+几何测试直接向内存顶点接收器输出，覆盖全部 205 份非 Gecko 内置几何，包含两款 Bedrock 酒狐；不会创建 GL 上下文，不能据此宣称游戏内渲染或 Gecko 动画完成；JOML 仅打包 Java 数学类并重定位，字节码检查仍扫描它们
+
 上游来源与许可见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [移植记录](SOURCE_PROVENANCE.md)，复制原文件时保留包名，独立适配文件使用 com.tianluoqaq.tlmnh
 
 修改存档、槽位、实体 ID 或网络字段需要记录迁移方式；公共侧不得引用客户端渲染类，所有主人操作仍由服务端复核权限和当前状态
