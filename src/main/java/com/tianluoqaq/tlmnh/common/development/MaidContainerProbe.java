@@ -14,6 +14,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 在实际模组环境中检查容器移动守恒和逐次权限，临时物品只存在于夹具 */
 public final class MaidContainerProbe {
@@ -43,6 +44,25 @@ public final class MaidContainerProbe {
             var container = new ContainerMaid(owner.inventory, maid);
             require(container.canInteractWith(owner), "owner access");
             require(!container.canInteractWith(stranger), "non-owner access");
+            var proxy = new CommonProxy();
+            require(
+                proxy.getServerGuiElement(
+                    CommonProxy.GUI_MAID,
+                    owner,
+                    world,
+                    maid.getEntityId(),
+                    0,
+                    0) instanceof ContainerMaid,
+                "server GUI owner routing");
+            require(
+                proxy.getServerGuiElement(CommonProxy.GUI_MAID, stranger, world, maid.getEntityId(), 0, 0) == null,
+                "server GUI non-owner denial");
+            require(
+                proxy.getServerGuiElement(127, owner, world, maid.getEntityId(), 0, 0) == null,
+                "unknown GUI denial");
+            require(
+                proxy.getClientGuiElement(CommonProxy.GUI_MAID, owner, world, maid.getEntityId(), 0, 0) == null,
+                "common side has no client GUI");
             inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 63));
             inventory.setInventorySlotContents(1, new ItemStack(Items.arrow, 64));
             for (int slot = 2; slot < MaidInventory.BACKPACK_SIZE; slot++)

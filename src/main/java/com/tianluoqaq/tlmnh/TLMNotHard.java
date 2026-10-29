@@ -4,12 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
 
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import cpw.mods.fml.common.network.NetworkRegistry;
 
 /**
  * TLMNotHard 的公共启动入口，禁止在这里加载客户端渲染类型
@@ -24,6 +27,14 @@ public final class TLMNotHard {
     public static final String MOD_ID = "tlmnh";
     public static final String MOD_NAME = "Touhou Little Maid (Not Hard)";
     public static final Logger LOG = LogManager.getLogger(MOD_ID);
+
+    @Mod.Instance(MOD_ID)
+    public static TLMNotHard INSTANCE;
+
+    @SidedProxy(
+        clientSide = "com.tianluoqaq.tlmnh.client.proxy.ClientProxy",
+        serverSide = "com.tianluoqaq.tlmnh.common.proxy.CommonProxy")
+    public static CommonProxy PROXY;
 
     /**
      * 记录实际两端环境，后续注册和配置仍由各自的职责模块负责
@@ -40,6 +51,7 @@ public final class TLMNotHard {
      */
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
+        NetworkRegistry.INSTANCE.registerGuiHandler(this, PROXY);
         LOG.info("TLMNH_BOOTSTRAP_READY side={} version={} bytecodeTarget=8", event.getSide(), Tags.VERSION);
     }
 

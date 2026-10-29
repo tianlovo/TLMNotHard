@@ -15,6 +15,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -39,6 +40,21 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "interaction-test".equals(args[0])) {
+            MaidInteractionProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
+            return;
+        }
+        if ((args.length == 1 || args.length == 2) && "spawn".equals(args[0])) {
+            var player = args.length == 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+            var maid = new EntityMaid(player.worldObj);
+            maid.bindTo(player.getUniqueID());
+            maid.setPosition(player.posX + 1.5D, player.posY, player.posZ);
+            if (!player.worldObj.spawnEntityInWorld(maid))
+                throw new IllegalStateException("TLMNH development maid spawn rejected");
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.spawned"));
+            return;
+        }
         if (args.length == 1 && "container-test".equals(args[0])) {
             MaidContainerProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.container_passed"));

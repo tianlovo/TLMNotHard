@@ -12,14 +12,17 @@ import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityTameable;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原实体的核心状态移植，渲染、交互和行为由独立适配模块接入 */
 public class EntityMaid extends EntityTameable {
@@ -88,6 +91,38 @@ public class EntityMaid extends EntityTameable {
 
     public MaidInventory getMaidInventory() {
         return inventory;
+    }
+
+    @Override
+    public boolean interact(EntityPlayer player) {
+        if (player instanceof FakePlayer || !isEntityAlive()
+            || !player.isEntityAlive()
+            || player.worldObj != worldObj
+            || getDistanceSqToEntity(player) > 64.0D) return false;
+        var held = player.getCurrentEquippedItem();
+        if (!isTamed() && held != null && held.getItem() == Items.cake) {
+            if (!worldObj.isRemote && bindTo(player.getUniqueID())) {
+                if (!player.capabilities.isCreativeMode && --held.stackSize == 0)
+                    player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
+                getNavigator().clearPathEntity();
+                setAttackTarget(null);
+                worldObj.setEntityState(this, (byte) 7);
+            }
+            return true;
+        }
+        if (!isOwner(player)) return false;
+        if (!worldObj.isRemote) {
+            if (player.isSneaking() && held == null) {
+                if (ridingEntity == null) {
+                    setSitting(!isSitting());
+                    getNavigator().clearPathEntity();
+                    setAttackTarget(null);
+                }
+            } else {
+                player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, worldObj, getEntityId(), 0, 0);
+            }
+        }
+        return true;
     }
 
     public boolean isOwner(EntityPlayer player) {
