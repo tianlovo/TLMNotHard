@@ -1,0 +1,23 @@
+{
+  "modListVersion": 2,
+  "modList": [
+    {
+      "modid": "${modId}",
+      "name": "${modName}",
+      "description": "indev：车万女仆 GTNH 移植版，当前工程正在开发，尚无正式版本 / TLM port for GTNH, currently in development",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "url": "https://github.com/tianlovo/TLMNotHard",
+      "updateUrl": "",
+      "authorList": ["tianlovo"],
+      "credits": "Touhou Little Maid upstream contributors; GTNH ExampleMod contributors",
+      "logoFile": "",
+      "screenshots": [],
+      "parent": "",
+      "requiredMods": [],
+      "dependencies": [],
+      "dependants": [],
+      "useDependencyInformation": false
+    }
+  ]
+}

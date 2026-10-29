@@ -1,6 +1,6 @@
 # Touhou Little Maid (Not Hard)
 
-**indev — 正在开发，尚无正式版本；本次初始化提交尚不包含可运行模组**
+**indev — 正在开发，尚无正式版本；当前工程入口尚不能作为女仆玩法版本使用**
 
 将 Touhou Little Maid 的 Minecraft 1.20.1 版本移植到 GTNH 2.9.0 RC2，首版保留女仆本体、陪伴、战斗和生活行为，支持客户端与独立服务端
 
@@ -16,7 +16,16 @@
 - 不更换主人，不移植其他内容模组联动；维护仓和 CropsNH 育种保留为未来扩展方向
 - 简体中文优先，英文为副语言
 
-`src/` 当前仅作目录占位，没有模组源码；后续开始实现时再引入模板构建文件和移植内容
+当前已接入固定官方构建模板、公共启动入口和 Java 8 字节码检查，女仆实体、模型和玩法仍待后续实现；不将空入口加载成功视为首版功能完成
+
+构建使用 JDK 25 启动 Gradle，Jabel 编译器使用本机 JDK 17，输出 Java 8 字节码；项目 Wrapper 固定 Gradle 9.7.1，GTNHGradle 固定 2.0.33，Blowdryer 固定 0.2.2
+
+```powershell
+./gradlew.bat build
+python scripts/verify_bytecode.py <构建出的模组JAR路径>
+```
+
+默认按 Git 标签和提交生成版本，正式版前保留 indev 标签；无标签的临时构建可以按官方方式设置 VERSION 环境变量，验证记录仍需绑定实际源码提交与产物 SHA-256
 
 从上游移植的文件保留其包名、来源及适用许可，新增独立适配文件使用 `com.tianluoqaq.tlmnh` 根包名
 
@@ -24,5 +33,5 @@
 
 维护者：tianlovo，联系邮箱：tianluoqaq@gmail.com
 
-English: An indev port of Touhou Little Maid from Minecraft 1.20.1 to GTNH 2.9.0 RC2, with improved behaviour AI and dedicated-server support. No playable build yet. Modern Java syntax, Java 8 bytecode, Java 25 runtime
+English: An indev port of Touhou Little Maid from Minecraft 1.20.1 to GTNH 2.9.0 RC2, with improved behaviour AI and dedicated-server support. The bootstrap is under development; maid gameplay is not implemented yet. Modern Java syntax, Java 8 bytecode, Java 25 runtime
 
