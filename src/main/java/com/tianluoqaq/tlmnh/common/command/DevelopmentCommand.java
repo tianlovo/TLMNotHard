@@ -9,10 +9,12 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.world.WorldServer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -37,6 +39,11 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "container-test".equals(args[0])) {
+            MaidContainerProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.container_passed"));
+            return;
+        }
         if (args.length == 1 && "state-test".equals(args[0])) {
             testState(sender);
             return;

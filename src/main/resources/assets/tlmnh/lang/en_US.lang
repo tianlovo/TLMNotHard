@@ -1,6 +1,7 @@
 entity.tlmnh.maid.name=Maid
 container.tlmnh.maid=Maid
-commands.tlmnhdev.usage=/tlmnhdev <state-test|persist-create|persist-check>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|persist-create|persist-check>
 commands.tlmnhdev.passed=Maid state round-trip passed; gameplay and multiplayer sync remain untested
 commands.tlmnhdev.persist_created=Maid fixture created; save and restart the server, then run persist-check
 commands.tlmnhdev.persist_passed=Maid persistence check passed; verify the restart against both server process records
+commands.tlmnhdev.container_passed=Maid container conservation and permission checks passed; client transactions remain untested

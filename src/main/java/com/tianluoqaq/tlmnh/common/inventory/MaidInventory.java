@@ -2,7 +2,6 @@ package com.tianluoqaq.tlmnh.common.inventory;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -97,7 +96,9 @@ public final class MaidInventory implements IInventory {
 
     @Override
     public boolean isUseableByPlayer(EntityPlayer player) {
-        return maid.isEntityAlive() && maid.isOwner(player)
+        return maid.isEntityAlive() && player != null
+            && player.isEntityAlive()
+            && maid.isOwner(player)
             && player.worldObj == maid.worldObj
             && player.getDistanceSqToEntity(maid) <= 64.0D;
     }
@@ -113,7 +114,8 @@ public final class MaidInventory implements IInventory {
         checkSlot(slot);
         if (stack == null) return false;
         if (slot < ARMOR_START) return true;
-        return stack.getItem() instanceof ItemArmor armor && armor.armorType == 3 - (slot - ARMOR_START);
+        return stack.getItem()
+            .isValidArmor(stack, 3 - (slot - ARMOR_START), maid);
     }
 
     public NBTTagList writeBackpack() {
