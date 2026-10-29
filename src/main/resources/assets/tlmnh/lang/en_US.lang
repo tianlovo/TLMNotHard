@@ -1,0 +1,4 @@
+entity.tlmnh.maid.name=Maid
+container.tlmnh.maid=Maid
+commands.tlmnhdev.usage=/tlmnhdev state-test
+commands.tlmnhdev.passed=Maid state round-trip passed; gameplay and multiplayer sync remain untested

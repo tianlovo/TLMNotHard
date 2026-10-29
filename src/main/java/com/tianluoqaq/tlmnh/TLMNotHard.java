@@ -3,9 +3,13 @@ package com.tianluoqaq.tlmnh;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
+import com.tianluoqaq.tlmnh.common.registry.ModEntities;
+
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
 /**
  * TLMNotHard 的公共启动入口，禁止在这里加载客户端渲染类型
@@ -28,6 +32,7 @@ public final class TLMNotHard {
     public void preInit(FMLPreInitializationEvent event) {
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
+        ModEntities.register(this);
     }
 
     /**
@@ -36,5 +41,12 @@ public final class TLMNotHard {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         LOG.info("TLMNH_BOOTSTRAP_READY side={} version={} bytecodeTarget=8", event.getSide(), Tags.VERSION);
+    }
+
+    @Mod.EventHandler
+    public void serverStarting(FMLServerStartingEvent event) {
+        if (Boolean.getBoolean("tlmnh.devCommands")) {
+            event.registerServerCommand(new DevelopmentCommand());
+        }
     }
 }

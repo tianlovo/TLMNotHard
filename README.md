@@ -16,7 +16,7 @@
 - 不更换主人，不移植其他内容模组联动；维护仓和 CropsNH 育种保留为未来扩展方向
 - 简体中文优先，英文为副语言
 
-当前已接入固定官方构建模板、公共启动入口和 Java 8 字节码检查，女仆实体、模型和玩法仍待后续实现；不将空入口加载成功视为首版功能完成
+构建入口已通过 RC2 客户端和独立服务端的 Java 25 加载，最终类为 Java 8 字节码；当前正在实现女仆实体状态、六格背包、双手与存档，模型和完整玩法尚未可用
 
 构建使用 JDK 25 启动 Gradle，Jabel 编译器使用本机 JDK 17，输出 Java 8 字节码；项目 Wrapper 固定 Gradle 9.7.1，GTNHGradle 固定 2.0.33，Blowdryer 固定 0.2.2
 
@@ -29,9 +29,9 @@ python scripts/verify_bytecode.py <构建出的模组JAR路径>
 
 从上游移植的文件保留其包名、来源及适用许可，新增独立适配文件使用 `com.tianluoqaq.tlmnh` 根包名
 
-上游代码、模型、贴图与声音的许可分别处理，本仓库目前没有引入这些内容
+上游代码、模型、贴图与声音的许可分别处理，已引入的实体代码见 [上游移植记录](SOURCE_PROVENANCE.md)，目前没有导入模型、贴图和声音
 
 维护者：tianlovo，联系邮箱：tianluoqaq@gmail.com
 
-English: An indev port of Touhou Little Maid from Minecraft 1.20.1 to GTNH 2.9.0 RC2, with improved behaviour AI and dedicated-server support. The bootstrap is under development; maid gameplay is not implemented yet. Modern Java syntax, Java 8 bytecode, Java 25 runtime
+English: An indev port of Touhou Little Maid from Minecraft 1.20.1 to GTNH 2.9.0 RC2, with improved behaviour AI and dedicated-server support. The bootstrap loads on both sides; entity persistence is under development and maid gameplay is not ready. Modern Java syntax, Java 8 bytecode, Java 25 runtime
 

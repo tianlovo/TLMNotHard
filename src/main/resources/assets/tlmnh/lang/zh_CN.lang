@@ -1,0 +1,4 @@
+entity.tlmnh.maid.name=女仆
+container.tlmnh.maid=女仆
+commands.tlmnhdev.usage=/tlmnhdev state-test
+commands.tlmnhdev.passed=女仆状态往返检查通过，尚未验证玩法和多人同步
