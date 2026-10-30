@@ -238,8 +238,17 @@ public final class GeometryReferenceProbe {
         for (var entry : manifest.getAsJsonObject("compiledClasses").entrySet()) {
             var type = Class.forName(entry.getKey(), false, GeometryReferenceProbe.class.getClassLoader());
             var value = (Map<String, Object>) agent.getMethod("identity", Class.class).invoke(null, type);
-            require(entry.getValue().getAsString().equals(value.get("sha256")), "Geometry defined bytes differ: " + entry.getKey());
-            actual.add(entry.getKey(), GSON.toJsonTree(value));
+            String resourceSha;
+            try (var stream = type.getResourceAsStream('/' + entry.getKey().replace('.', '/') + ".class")) {
+                require(stream != null, "Geometry loaded-class resource is missing: " + entry.getKey());
+                resourceSha = sha(stream.readAllBytes());
+            }
+            require(entry.getValue().getAsString().equals(resourceSha), "Geometry class resource differs from compiled manifest: " + entry.getKey());
+            require(value.get("sha256") instanceof String definitionSha && definitionSha.matches("[0-9a-f]{64}"),
+                "Geometry first-definition digest is unavailable: " + entry.getKey());
+            var evidence = GSON.toJsonTree(value).getAsJsonObject();
+            evidence.addProperty("resourceSha256", resourceSha);
+            actual.add(entry.getKey(), evidence);
         }
         var result = new JsonObject();
         result.add("build", manifest);
@@ -249,7 +258,7 @@ public final class GeometryReferenceProbe {
         result.addProperty("baseReferenceRuntimeVerified", false);
         result.addProperty("baseReferenceBuildIdentityAnchored", true);
         result.add("runtimeJava", javaIdentity);
-        result.addProperty("scope", "selected geometry definitions only; not entire classpath identity");
+        result.addProperty("scope", "selected compiled class resources and independently observed transformed first definitions; no loader-transformation or whole-classpath equivalence claim");
         return result;
     }
 

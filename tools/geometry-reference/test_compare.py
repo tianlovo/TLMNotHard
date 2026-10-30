@@ -15,6 +15,8 @@ def identity(reference):
              "contractSha256": subject.CONTRACT_SHA, "agentSha256": "b" * 64,
              "compiledClasses": {name: "a" * 64 for name in names}}
     if reference:
+        for definition in definitions.values():
+            definition["resourceSha256"] = "a" * 64
         build.update(upstreamCommit=subject.CONTRACT["upstreamCommit"], baseReferenceBuildIdentitySha256="c" * 64,
                      baseReferenceBuildIdentity={"schema": "reference-build-identity-v1", "status": "LOCK_VERIFIED", "upstreamCommit": subject.CONTRACT["upstreamCommit"], "java": {"synthetic": True}})
     result = {"build": build, "actualFirstDefinitions": definitions, "buildManifestSha256": "d" * 64,
@@ -50,6 +52,48 @@ def fixture(reference, backend="gecko"):
 
 
 class CompareTests(unittest.TestCase):
+    def test_original_transformed_definition_is_recorded_separately_from_bound_resource(self):
+        reference = fixture(True)
+        definition = next(iter(reference["identity"]["actualFirstDefinitions"].values()))
+        definition["sha256"] = "9" * 64
+        result = subject.compare(reference, fixture(False))
+        self.assertTrue(result["matched"])
+        self.assertEqual("9" * 64, definition["sha256"])
+        self.assertEqual("a" * 64, definition["resourceSha256"])
+
+    def test_original_changed_or_missing_class_resource_is_rejected(self):
+        for missing in (True, False):
+            with self.subTest(missing=missing):
+                reference = fixture(True)
+                definition = next(iter(reference["identity"]["actualFirstDefinitions"].values()))
+                if missing:
+                    del definition["resourceSha256"]
+                else:
+                    definition["resourceSha256"] = "0" * 64
+                self.assertEqual("INCONCLUSIVE", subject.compare(reference, fixture(False))["verdict"])
+
+    def test_duplicate_definition_rejected_on_both_sides(self):
+        for reference_side in (True, False):
+            with self.subTest(reference=reference_side):
+                reference, port = fixture(True), fixture(False)
+                definition = next(iter((reference if reference_side else port)["identity"]["actualFirstDefinitions"].values()))
+                definition["count"] = 2
+                self.assertEqual("INCONCLUSIVE", subject.compare(reference, port)["verdict"])
+
+    def test_port_defined_bytes_remain_strictly_bound_to_compilation(self):
+        port = fixture(False)
+        definition = next(iter(port["identity"]["actualFirstDefinitions"].values()))
+        definition["resourceSha256"] = "a" * 64
+        definition["sha256"] = "9" * 64
+        self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_missing_definition_digest_loader_or_wrong_stage_rejected(self):
+        for field, bad in (("sha256", "UNAVAILABLE"), ("loaderClass", ""), ("loaderClass", 1), ("stage", "resource-only")):
+            with self.subTest(field=field, bad=bad):
+                reference = fixture(True)
+                next(iter(reference["identity"]["actualFirstDefinitions"].values()))[field] = bad
+                self.assertEqual("INCONCLUSIVE", subject.compare(reference, fixture(False))["verdict"])
+
     def test_asset_pins_match_existing_fixed_upstream_provenance(self):
         project = Path(__file__).resolve().parents[2]
         provenance = json.loads((project / "src/main/resources/assets/tlmnh/builtin-assets-provenance.json").read_text(encoding="utf-8"))

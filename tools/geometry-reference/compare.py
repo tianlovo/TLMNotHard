@@ -134,9 +134,15 @@ def validate_identity(report, reference):
     require(required <= set(compiled) and set(actual) == set(compiled), "Incomplete selected definitions")
     for name, expected in compiled.items():
         definition = actual[name]
-        require(digest(expected) and definition["sha256"] == expected, "Defined bytes differ: " + name)
+        require(digest(expected) and digest(definition["sha256"]), "Missing compiled/definition digest: " + name)
+        if reference:
+            require(digest(definition["resourceSha256"]) and definition["resourceSha256"] == expected,
+                    "Original class resource differs from compiled manifest: " + name)
+        else:
+            require(definition["sha256"] == expected, "Defined production bytes differ: " + name)
         require(type(definition["count"]) is int and definition["count"] == 1
-                and definition["stage"] == STAGE and bool(definition["loaderClass"]), "Unreviewed definition: " + name)
+                and definition["stage"] == STAGE and isinstance(definition["loaderClass"], str)
+                and bool(definition["loaderClass"]), "Unreviewed definition: " + name)
     if reference:
         require(identity["baseReferenceRuntimeVerified"] is False and identity["baseReferenceBuildIdentityAnchored"] is True,
                 "Geometry must not claim animation-v1 runtime identity")
