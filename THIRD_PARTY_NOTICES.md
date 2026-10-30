@@ -10,6 +10,7 @@
 | EntityMaid、MaidSchedule 的核心状态与 ID | TartaricAcid/TouhouLittleMaid，8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6 | MIT，原文见 licenses/TouhouLittleMaid-MIT.txt，保留原包名；改动见 SOURCE_PROVENANCE.md |
 | simplebedrockmodel 的模型 POJO、几何构造与顶点生成 | 同一 TLM 提交的 com/github/tartaricacid/simplebedrockmodel/client/bedrock | MIT，保留原包名与来源头；1.7.10 适配见 SOURCE_PROVENANCE.md |
 | TLM 内置 Bedrock 动画、骨骼包装与注册表 | 同一 TLM 提交的 api/animation、client/animation/inner 与 client/animation/script | MIT，保留原文件包名，改动与保留范围见 SOURCE_PROVENANCE.md |
+| TLM 内嵌 Molang 的词法、解析与表达式求值核心 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/molang | 原 Molang 引擎为 MIT，Copyright (c) 2021-2023 Unnamed Team，原文见 licenses/UnnamedTeam-Molang-MIT.txt；保留各文件原许可头及 TLM 包名，未接入游戏查询和 Gecko 控制器 |
 | TLM 内嵌 GeckoLib 3 的模型解析、网格与骨骼实例 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/geckolib3；GeckoLib 原许可核对提交 4533673f89c2f1301ba0676ab7240ed20fb7f784 | MIT，同时保留 licenses/GeckoLib-MIT.txt 的 Copyright (c) 2021 GeckoThePecko、上游文件中的 Bernie G. 作者头与 TLM 许可；当前只接几何和骨骼，不包含动画控制器运行 |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
