@@ -98,16 +98,16 @@ public class GeckoControllerTest {
     }
 
     @Test
-    public void loopPreservesOvershootAndCompletesPreviousTimeline() {
+    public void loopRestartsAtObservedBoundaryLikeOriginalAndCompletesPreviousTimeline() {
         var fixture = fixture(timedPosition());
         fixture.layer("main", 0, new AnimationBuilder().loop("test"));
         fixture.tick(0);
         fixture.tick(0);
         fixture.tick(25);
-        assertEquals(5, fixture.bone.getPositionX(), EPSILON);
+        assertEquals(0, fixture.bone.getPositionX(), EPSILON);
         assertEquals(3, fixture.value("v.events"), EPSILON);
         fixture.tick(30);
-        assertEquals(10, fixture.bone.getPositionX(), EPSILON);
+        assertEquals(5, fixture.bone.getPositionX(), EPSILON);
         assertEquals(3, fixture.value("v.events"), EPSILON);
     }
 
@@ -180,13 +180,21 @@ public class GeckoControllerTest {
     }
 
     @Test
-    public void timelineAtZeroRunsOnFirstFrameEvenWithZeroTransition() {
+    public void zeroLengthTransitionKeepsOriginalStartupFrameBeforeSchedulingInstructions() {
         var fixture = fixture(timedPosition());
-        fixture.layer("main", 0, new AnimationBuilder().playOnce("test"));
+        var layer = fixture.layer("main", 0, new AnimationBuilder().playOnce("test"));
         fixture.tick(0);
+        assertEquals(AnimationState.TRANSITIONING, layer.controller.getAnimationState());
+        assertEquals(0, fixture.value("v.events"), EPSILON);
+        fixture.tick(1);
+        assertEquals(AnimationState.RUNNING, layer.controller.getAnimationState());
+        assertEquals(1, layer.controller.tickOffset, EPSILON);
+        assertEquals(0, fixture.bone.getPositionX(), EPSILON);
         assertEquals(1, fixture.value("v.events"), EPSILON);
-        fixture.tick(0);
+        fixture.tick(1);
         assertEquals(1, fixture.value("v.events"), EPSILON);
+        fixture.tick(2);
+        assertEquals(1, fixture.bone.getPositionX(), EPSILON);
     }
 
     @Test
@@ -198,6 +206,7 @@ public class GeckoControllerTest {
             0,
             new AnimationBuilder().playOnce("test")
                 .loop("next"));
+        fixture.tick(0);
         fixture.tick(0);
         fixture.tick(21);
         assertEquals(20, fixture.bone.getPositionX(), EPSILON);
@@ -214,14 +223,17 @@ public class GeckoControllerTest {
         var fixture = fixture(timedPosition());
         var layer = fixture.layer("main", 0, new AnimationBuilder().playOnce("test"));
         fixture.tick(0);
+        fixture.tick(0);
         fixture.tick(21);
         layer.playing = false;
         fixture.tick(22);
         layer.playing = true;
         fixture.tick(23);
         assertEquals(0, fixture.bone.getPositionX(), EPSILON);
+        assertEquals(2, fixture.value("v.events"), EPSILON);
+        fixture.tick(24);
         assertEquals(3, fixture.value("v.events"), EPSILON);
-        fixture.tick(28);
+        fixture.tick(29);
         assertEquals(5, fixture.bone.getPositionX(), EPSILON);
     }
 
@@ -230,14 +242,17 @@ public class GeckoControllerTest {
         var fixture = fixture(timedPosition());
         fixture.layer("main", 0, new AnimationBuilder().playAndHold("test"));
         fixture.tick(0);
+        fixture.tick(0);
         fixture.tick(10);
         assertEquals(10, fixture.bone.getPositionX(), EPSILON);
         var replacement = newBone();
         fixture.processor.registerModelRenderer(Collections.singletonMap("root", replacement));
         fixture.tick(50);
         assertEquals(0, replacement.getPositionX(), EPSILON);
+        assertEquals(0, fixture.value("v.events"), EPSILON);
+        fixture.tick(51);
         assertEquals(1, fixture.value("v.events"), EPSILON);
-        fixture.tick(55);
+        fixture.tick(56);
         assertEquals(5, replacement.getPositionX(), EPSILON);
         assertEquals(10, fixture.bone.getPositionX(), EPSILON);
     }
@@ -251,10 +266,12 @@ public class GeckoControllerTest {
         var secondary = fixture.layer("parallel_0", 0, new AnimationBuilder().loop("second"));
         secondary.playing = false;
         fixture.tick(0);
+        fixture.tick(1);
         fixture.tick(5);
         secondary.playing = true;
         fixture.tick(10);
-        fixture.tick(15);
+        fixture.tick(11);
+        fixture.tick(16);
         assertEquals(15, fixture.bone.getPositionX(), EPSILON);
         assertEquals(Math.toRadians(5), fixture.bone.getRotationZ(), EPSILON);
     }

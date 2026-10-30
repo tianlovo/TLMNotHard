@@ -173,12 +173,12 @@ GeckoAnimationTest 严格解析56份文件、1645个片段与13824条表达式�
 | core/AnimationState.java、PlayState.java；core/builder/AnimationBuilder.java、RawAnimation.java；core/manager/AnimationData.java | 保留控制器状态、片段队列与循环覆盖；拒绝非有限复位时长 |
 | core/event/predicate/AnimationEvent.java；core/event/KeyframeEvent.java、SoundKeyframeEvent.java、ParticleKeyFrameEvent.java | 保留动画事件数据及监听器接口，不加载高版本实体类型；声音和粒子关键帧尚未播放 |
 | core/keyframe/AnimationPoint.java、KeyFramePoint.java、TransitionPoint.java、AnimationPointQueue.java、BoneAnimationQueue.java | 保留控制器独立时间、关键帧与过渡采样及骨骼队列 |
-| core/controller/AnimationController.java | 保留谓词、过渡和片段队列；修正零时长过渡未执行首帧指令、结束时丢失端点及末尾指令、保持模式提前停止的问题；循环保留跨帧余量，停止后重新激活会重播片段 |
+| core/controller/AnimationController.java | 保留谓词、过渡和片段队列；按原版实际轨迹保留首次过渡处理，循环从实际边界帧重新计时；端点、末尾指令、保持模式和停止后重播的其余适配仍待更多原版状态对照 |
 | core/processor/AnimationProcessor.java；core/util/RateLimiter.java | 注入实例私有变量存储，使用固定60Hz指令调度；保留主层覆盖与parallel旋转累加顺序；无动画通道从最后姿态连续复位，重复绘制同一时刻不改变复位结果；无效或倒退的调度时间不污染限流状态 |
 
 已有 BoneTopLevelSnapshot 增加各通道最后动画姿态，使用 double 保存复位时刻；新增独立接口 GeckoAnimationTarget 位于本工程包名，控制器只读取动画定义与状态，不保留世界或实体
 
-GeckoControllerTest的15项纯数据检查覆盖过渡、单次与保持模式、循环余量、首尾指令、顺序叠加、复位、实例及控制器时间隔离、片段排队、停止后重播和几何重载；这些检查不包括实际画面，不能据此认定酒狐动画可用
+GeckoControllerTest的15项纯数据检查覆盖过渡、单次与保持模式、原版循环边界计时、首尾指令、顺序叠加、复位、实例及控制器时间隔离、片段排队、停止后重播和几何重载；这些检查不包括实际画面，不能据此认定酒狐动画可用
 
 ## Gecko 核心动作与实体播放
 
@@ -211,3 +211,7 @@ AnimationManager和GeoReplacedEntityRenderer提供显式时钟、选片与位移
 Windows参考checkout的JSON换行可与固定Git字节不同，工具只允许可复算的LF/CRLF变体，移植版仍保留Git原字节
 
 CPU回放使用实际移植类、独立模型与输入快照，Java25运行，遵守工程Java8输出目标；当前仅两个空手待机夹具，不能据此宣称全部模型、动作或GPU画面通过；操作与实验限制见工具DESIGN.md
+
+原版受控轨迹纠正了先前仅凭单元检查作出的两项动画时序假设：零时长过渡首次处理仍为TRANSITIONING，循环不保留跨帧越界余量
+恢复这两项上游规则后，汉服酒狐115骨骼与Bedrock酒狐126骨骼各30步逐值一致，Gecko适用控制器状态与时钟也一致
+比较基线和数值容差未改；该结果仅覆盖已审查的空手待机合同，仍需更多状态与实际渲染检查

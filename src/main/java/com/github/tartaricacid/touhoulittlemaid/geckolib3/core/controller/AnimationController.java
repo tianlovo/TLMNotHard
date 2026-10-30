@@ -264,6 +264,8 @@ public class AnimationController<T extends GeckoAnimationTarget> {
 
         // 处理过渡到其他动画（或仅开始一个动画）
         if (this.animationState == AnimationState.TRANSITIONING) {
+            // 原版首次绘制保留过渡态，零时长层也在下一次处理时进入运行态
+            boolean startedThisFrame = this.justStartedTransition;
             // 刚开始过渡，所以将当前动画设置为第一个
             if (this.justStartedTransition) {
                 this.justStartedTransition = false;
@@ -282,7 +284,7 @@ public class AnimationController<T extends GeckoAnimationTarget> {
                 }
             }
             if (this.currentAnimation != null) {
-                if (adjustedTick >= this.transitionLengthTicks) {
+                if (!startedThisFrame && adjustedTick >= this.transitionLengthTicks) {
                     this.animationState = AnimationState.RUNNING;
                     this.tickOffset = tick;
                     processCurrentAnimation(context, evaluator, 0, tick, crashWhenCantFindBone, scheduledUpdate);
@@ -380,9 +382,9 @@ public class AnimationController<T extends GeckoAnimationTarget> {
                 }
             } else {
                 // 重置 tick，以便下一个动画从刻度 0 开始
+                this.shouldResetTick = true;
+                tick = adjustTick(actualTick);
                 resetEventKeyFrames(true, evaluator);
-                tick = this.currentAnimation.animationLength > 0 ? tick % this.currentAnimation.animationLength : 0;
-                this.tickOffset = this.animationSpeed > 0 ? actualTick - tick / this.animationSpeed : actualTick;
             }
         }
         context.setAnimTime(tick / 20.0f);
