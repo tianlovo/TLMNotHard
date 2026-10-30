@@ -1,0 +1,23 @@
+{
+  "schema": "animation-baseline-catalog-v1",
+  "baselines": {
+    "tlm1201-core-v1": {
+      "directory": "tlm1201-core-v1",
+      "manifestSha256": "7751fbe0750c33d531298ae417aba60071441ed69344676cd957d3b4cb972fee",
+      "scope": "six controlled CPU fixtures only; no full rendering or gameplay acceptance",
+      "approvalEvidence": {
+        "sourceCommit": "21ad7fb862c03e68c17a999dd1f1a0478708cad6",
+        "independentCleanClone": true,
+        "gradleOffline": true,
+        "warmDependencyCacheRequired": true,
+        "originalSamplesRechecked": 18,
+        "positiveCases": 6,
+        "actualJavaNegativeCases": 7,
+        "productionSourcesVerified": true
+      },
+      "renderingVerified": false,
+      "behaviourBenchmarkVerified": false,
+      "approvedForBulk": false
+    }
+  }
+}
