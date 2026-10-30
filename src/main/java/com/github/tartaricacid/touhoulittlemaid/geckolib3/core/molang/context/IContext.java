@@ -12,6 +12,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.Animat
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IForeignVariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IScopedVariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.ITempVariableStorage;
+import com.tianluoqaq.tlmnh.client.render.molang.MolangModelResources;
 
 public interface IContext<TEntity> {
 
@@ -20,6 +21,8 @@ public interface IContext<TEntity> {
     Random random();
 
     AnimationControllerContext animationControllerContext();
+
+    MolangModelResources modelResources();
 
     <TChild> IContext<TChild> createChild(TChild child);
 

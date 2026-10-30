@@ -8,6 +8,7 @@ package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.value;
 
 import java.util.List;
 
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.context.IContext;
 import com.github.tartaricacid.touhoulittlemaid.molang.parser.ast.Expression;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
 
@@ -21,6 +22,8 @@ public class MolangValue implements IValue {
 
     @Override
     public Object evalUnsafe(ExpressionEvaluator<?> evaluator) throws Exception {
+        if (evaluator.entity() instanceof IContext<?>context) context.tempStorage()
+            .clearTemp();
         Object lastResult = 0d;
 
         for (Expression expression : expressions) {

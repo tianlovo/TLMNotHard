@@ -6,19 +6,14 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin;
 
-import java.util.function.Function;
-
-import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.binding.ContextBinding;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin.query.ItemMaxDurability;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin.query.ItemNameAny;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin.query.ItemRemainingDurability;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin.query.Position;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.builtin.query.PositionDelta;
-import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.context.IContext;
-import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.variable.LambdaVariable;
-import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;
+import com.tianluoqaq.tlmnh.client.render.molang.MolangFrameBinding;
 
-public class QueryBinding extends ContextBinding {
+public class QueryBinding extends MolangFrameBinding {
 
     public static final QueryBinding INSTANCE = new QueryBinding();
 
@@ -47,13 +42,4 @@ public class QueryBinding extends ContextBinding {
         frameVar("max_health", frame -> frame.maxHealth);
     }
 
-    private void frameVar(String name, Function<MolangQueryFrame, Object> evaluator) {
-        constValue(name, new LambdaVariable<MolangQueryFrame>(ctx -> evaluator.apply(ctx.entity())) {
-
-            @Override
-            protected boolean validateContext(IContext<?> context) {
-                return context.entity() instanceof MolangQueryFrame;
-            }
-        });
-    }
 }

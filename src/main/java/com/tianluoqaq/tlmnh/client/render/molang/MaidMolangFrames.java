@@ -6,6 +6,7 @@ import net.minecraft.item.ItemStack;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.MathHelper;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame.Slot;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -34,6 +35,16 @@ public final class MaidMolangFrames {
         frame.inWaterOrRain = maid.isWet();
         frame.jumping = maid.ridingEntity == null && !maid.onGround && !frame.inWater;
         frame.sneaking = maid.onGround && maid.isSneaking();
+        frame.begging = maid.hasPose(MaidPose.BEGGING);
+        frame.sitting = maid.isSitting();
+        frame.foodLevel = maid.getHunger();
+        double blink = (seekTicks + Math.abs(
+            maid.getUniqueID()
+                .getLeastSignificantBits() % 10))
+            % 90;
+        frame.closeEyes = maid.hasPose(MaidPose.SLEEPING) || (85 < blink && blink < 90);
+        frame.viewYaw = (float) (maid.prevRotationYaw
+            + MathHelper.wrapDegrees(maid.rotationYaw - maid.prevRotationYaw) * frame.partialTick);
         frame.previousX = maid.prevPosX;
         frame.previousY = maid.prevPosY;
         frame.previousZ = maid.prevPosZ;
@@ -46,6 +57,8 @@ public final class MaidMolangFrames {
         equipment(frame, Slot.CHEST, maid.getEquipmentInSlot(3));
         equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(2));
         equipment(frame, Slot.FEET, maid.getEquipmentInSlot(1));
+        var chest = frame.equipment(Slot.CHEST);
+        frame.hasElytra = chest != null && "etfuturum:elytra".equals(chest.itemId);
         return frame;
     }
 

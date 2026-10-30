@@ -23,6 +23,7 @@ public class VariableStorage implements ITempVariableStorage, IScopedVariableSto
 
     public VariableStorage() {}
 
+    @Override
     public void clearTemp() {
         Arrays.fill(stackFrame, null);
     }

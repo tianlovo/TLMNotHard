@@ -45,6 +45,15 @@ public class MolangParser {
         }
     }
 
+    /** 内置动画加载必须报告错误，不能将缺少绑定或语法错误悄悄替换成零 */
+    public IValue parseExpressionRequired(String molangExpression) {
+        try {
+            return parseExpressionUnsafe(molangExpression);
+        } catch (ParseException exception) {
+            throw new IllegalArgumentException("Invalid animation expression: " + molangExpression, exception);
+        }
+    }
+
     @SuppressWarnings("unused")
     public IValue getConstant(double value) {
         return new DoubleValue(value);

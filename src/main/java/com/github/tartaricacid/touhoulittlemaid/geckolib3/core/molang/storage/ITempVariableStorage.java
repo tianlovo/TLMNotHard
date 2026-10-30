@@ -9,6 +9,8 @@ package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage;
 
 public interface ITempVariableStorage {
 
+    void clearTemp();
+
     Object getTemp(int address);
 
     void setTemp(int address, Object value);

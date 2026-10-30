@@ -41,7 +41,7 @@ GeckoLib 许可来源为 [固定提交的 LICENSE](https://github.com/bernie-g/g
 
 Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
 
-动画控制器和关键帧时间轴尚未接入；Molang 表达式及数学与变量层见后文，几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
+动画控制器尚未接入；关键帧解析、采样和 Molang 绑定见后文，几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
 
 ## 实体渲染适配
 
@@ -75,7 +75,7 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 
 适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
 
-`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量和帧查询见后文，Gecko 文件解析和时间轴尚未接入，不能将表达式测试当作 Gecko 模型动画完成
+`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量、帧查询和 Gecko 文件解析见后文，动画播放控制器尚未接入，不能将表达式测试当作 Gecko 模型动画完成
 
 ## Molang 数学与变量绑定
 
@@ -110,5 +110,27 @@ QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到�
 物品槽名保留不区分大小写，省略命名空间时使用 minecraft，满足酒狐原资源的 `Mainhand` 与 `bow` 写法；RC2 旧注册 ID 允许大小写并保持原字节，不将 IC2 等旧物品误判为高版本非法 ID；实际取帧不会因旧 ID 字符差异中断
 
 `MolangQueryTest` 使用实际主绑定检查查询单位、头部轴、独立控制器时间、多实例与更新帧、世界边界的 double 插值、主副手隔离、旧物品 ID、耐久度、临时地址清理和参数错误；这些 CPU 测试不代表实体取帧、完整动画或实际画面验收完成
+
+## Gecko 关键帧与内置动画查询
+
+以下18个原文件来自同一固定 TLM 提交，保留 geckolib3 原包名、已有 Gecko 作者头以及 TLM 和 GeckoLib 的 MIT 许可
+
+| 相对 geckolib3/ 的路径 | 适配 |
+| --- | --- |
+| core/builder/Animation.java、ILoopType.java；file/AnimationFile.java | 保留动画元数据和循环类型，fastutil 改用 JDK，record 改为普通类 |
+| core/keyframe/BoneAnimation.java、event/EventKeyFrame.java、bone/ 下8个文件 | 保留线性、Catmull–Rom、前后值、角度符号和过渡关键帧，集合改用 JDK |
+| core/event/InstructionKeyFrameExecutor.java | 保留按时间执行、剩余指令和每循环重置 |
+| core/util/MathUtil.java、util/AnimationUtils.java | 保留插值和时间单位，角度常量改用 Math；移除本阶段不用的高版本渲染器查找 |
+| util/json/JsonAnimationUtils.java、JsonKeyFrameUtils.java | 保留动画与关键帧格式，兼容 Gson 2.2.4；所有表达式使用严格解析，不能用零吞掉加载错误；未写 animation_length 时按最后一段的起点加时长计算，修正上游只读取段起点导致时长过短的问题 |
+
+新增独立文件 BuiltinGeckoAnimations 和 GeckoKeyframes 位于本工程包名；加载器按清单顺序合并动画、共享解析定义并在重载时失效，错误包含文件与片段名称；采样器定位区间并限制进度，处理零时长、首帧延迟和前后值跳变；MolangValue 在每个独立程序求值前清理 temp，避免不同坐标表达式重用临时地址
+
+另有10个原文件来自 `client/animation/gecko/molang/`：TLMBinding、YSMBinding、PhysicsManager、MoveInputVariable、SecondOrderFunction、BoneParamFunction、BoneRotation、Vec3fStruct、IPhysics 与 SecondOrder，均保留上游包名与 MIT 来源，SecondOrder 的 MicroCraft 作者信息保留
+
+这里的 ysm 是 TLM 内嵌动画查询命名空间，酒狐等原资源直接依赖它；只适配当前内置资源使用的头部、装备、饥饿、闭眼、移动方向、骨骼旋转和二阶物理，不加载外部 YSM 模组或模型；女仆背包物品不在首版范围，因此 has_backpack 由实际无装备状态输入；RC2 的鞘翅查询识别胸甲槽的 etfuturum:elytra
+
+独立 MolangModelResources 随模型实例保存骨骼和物理状态，子上下文共享该实例资源，不保留游戏实体；普通二阶模拟保留上游公式，零频率按直接跟随处理，重复或倒退时间不推进，非有限参数不污染状态，长时间未绘制时最多追算一秒
+
+GeckoAnimationTest 严格解析55份文件、1548个片段与13585条表达式，结合41个 Gecko 选择的各自骨骼执行145605次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、临时变量、指令、重载和错误清理；MolangModelQueryTest 检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些都是 CPU 检查，尚不包含播放策略、切换过渡或实际画面验收
 
 内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现

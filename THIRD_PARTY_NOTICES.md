@@ -14,6 +14,8 @@
 | Molang 数学、变量绑定、存储、值包装和插值辅助 | 同一 TLM 提交的 geckolib3/core/molang 与 util/ 下48个原文件 | MIT，保留 TLM 原包名及逐文件来源头，Java8 与纯数据上下文适配见 SOURCE_PROVENANCE.md；不将它们与 Unnamed Team 原引擎的来源混淆 |
 | Molang 主绑定、解析包装和帧查询 | 同一 TLM 提交的 geckolib3/core/molang 下8个原文件与 core/controller/AnimationControllerContext.java | MIT，保留原包名；游戏对象查询改接 RC2 的纯数据帧，实际控制器与时间轴继续实现，详见 SOURCE_PROVENANCE.md |
 | TLM 内嵌 GeckoLib 3 的模型解析、网格与骨骼实例 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/geckolib3；GeckoLib 原许可核对提交 4533673f89c2f1301ba0676ab7240ed20fb7f784 | MIT，同时保留 licenses/GeckoLib-MIT.txt 的 Copyright (c) 2021 GeckoThePecko、上游文件中的 Bernie G. 作者头与 TLM 许可；当前只接几何和骨骼，不包含动画控制器运行 |
+| Gecko 关键帧、插值、动画文件和时间轴指令 | 同一 TLM 提交的 geckolib3 下18个原文件 | MIT，保留 Gecko 作者头、原包名和两份许可，集合、严格表达式解析及默认长度修正见 SOURCE_PROVENANCE.md |
+| TLM 内置动画的 tlm/ysm 查询、骨骼结构体与二阶物理 | 同一 TLM 提交的 client/animation/gecko/molang 下10个原文件 | MIT，保留原包名及 SecondOrder 的 MicroCraft 作者信息；只接内置资源所需查询，不集成外部 YSM 模组，边界适配见 SOURCE_PROVENANCE.md |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
 

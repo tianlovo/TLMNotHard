@@ -13,6 +13,9 @@ public final class MolangQueryFrame {
     private final Map<Slot, Equipment> equipment = new EnumMap<>(Slot.class);
     public double lifetime, bodyYaw, netHeadYaw, headPitch, health, maxHealth, groundSpeed, verticalSpeed, yawSpeed;
     public boolean inWater, inWaterOrRain, jumping, sneaking;
+    public boolean begging, sitting, hasBackpack, closeEyes, hasElytra;
+    public double foodLevel = 20;
+    public float viewYaw;
     public double previousX, previousY, previousZ, x, y, z, partialTick;
 
     public double position(int axis) {

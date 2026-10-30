@@ -20,18 +20,21 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     private final Random random;
     private final IForeignVariableStorage foreignStorage;
     private final AnimationControllerContext animationControllerContext;
+    private final MolangModelResources modelResources;
 
     public MolangAnimationContext(TEntity entity, VariableStorage storage, Random random) {
-        this(entity, storage, random, storage, new AnimationControllerContext());
+        this(entity, storage, random, storage, new AnimationControllerContext(), new MolangModelResources());
     }
 
     private MolangAnimationContext(TEntity entity, VariableStorage storage, Random random,
-        IForeignVariableStorage foreignStorage, AnimationControllerContext animationControllerContext) {
+        IForeignVariableStorage foreignStorage, AnimationControllerContext animationControllerContext,
+        MolangModelResources modelResources) {
         this.entity = Objects.requireNonNull(entity, "entity");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.random = Objects.requireNonNull(random, "random");
         this.foreignStorage = foreignStorage;
         this.animationControllerContext = animationControllerContext;
+        this.modelResources = modelResources;
     }
 
     public void updateEntity(TEntity entity) {
@@ -62,12 +65,23 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     public <TChild> IContext<TChild> createChild(TChild child) {
         IForeignVariableStorage foreign = child == entity ? foreignStorage
             : child instanceof IForeignVariableStorage ? (IForeignVariableStorage) child : null;
-        return new MolangAnimationContext<>(child, storage, random, foreign, animationControllerContext);
+        return new MolangAnimationContext<>(
+            child,
+            storage,
+            random,
+            foreign,
+            animationControllerContext,
+            modelResources);
     }
 
     @Override
     public AnimationControllerContext animationControllerContext() {
         return animationControllerContext;
+    }
+
+    @Override
+    public MolangModelResources modelResources() {
+        return modelResources;
     }
 
     @Override
