@@ -151,6 +151,51 @@ public class MaidFollowControllerTest {
     }
 
     @Test
+    public void cooldownPreservesTheActualFailureReason() {
+        for (var failure : new PathResult[] { PathResult.UNLOADED, PathResult.UNREACHABLE, PathResult.NOT_NAVIGABLE,
+            PathResult.ADAPTER_UNSUPPORTED }) {
+            var actor = new TestActor();
+            actor.result = failure;
+            var controller = new MaidFollowController(actor, 0);
+            controller.tick();
+            run(controller, 39);
+            assertEquals(Status.PATH_COOLDOWN, controller.getStatus());
+            assertEquals(failure, controller.getLastPathResult());
+            assertEquals(1, controller.getPathRequests());
+        }
+    }
+
+    @Test
+    public void successfulRetryReplacesAnOlderFailureDiagnosis() {
+        var actor = new TestActor();
+        actor.result = PathResult.UNLOADED;
+        var controller = new MaidFollowController(actor, 0);
+        run(controller, 40);
+        assertEquals(PathResult.UNLOADED, controller.getLastPathResult());
+        actor.result = PathResult.STARTED;
+        controller.tick();
+        assertEquals(Status.FOLLOWING, controller.getStatus());
+        assertEquals(PathResult.STARTED, controller.getLastPathResult());
+        run(controller, 5);
+        assertEquals(PathResult.STARTED, controller.getLastPathResult());
+        assertEquals(2, controller.getPathRequests());
+    }
+
+    @Test
+    public void missingAdapterIsExplicitlyRejectedAndRetryRemainsBounded() {
+        var actor = new TestActor();
+        actor.result = PathResult.ADAPTER_UNSUPPORTED;
+        var controller = new MaidFollowController(actor, 0);
+        controller.tick();
+        assertEquals(Status.ADAPTER_UNSUPPORTED, controller.getStatus());
+        assertFalse(actor.path);
+        run(controller, 159);
+        assertEquals(PathResult.ADAPTER_UNSUPPORTED, controller.getLastPathResult());
+        assertEquals(4, controller.getPathRequests());
+        assertEquals(4, controller.getPathFailures());
+    }
+
+    @Test
     public void cancellationDoesNotResetTheNavigationBudget() {
         var actor = new TestActor();
         var controller = new MaidFollowController(actor, 0);

@@ -10,6 +10,8 @@ import net.minecraft.world.WorldServer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
+import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
@@ -47,6 +49,10 @@ public final class MaidBrainProbe {
                     || navigation == Status.PATH_UNAVAILABLE
                     || navigation == Status.DESTINATION_UNLOADED,
                 "navigation result");
+            var attempt = brain.getLastPathAttempt();
+            require(attempt != null && attempt.options.supported, "native adapter unavailable");
+            require(attempt.searchRange == Math.min(attempt.nativeRange, 16.0F), "bounded actual search range");
+            require(attempt.options.canSwim && Boolean.TRUE.equals(attempt.navigable), "actual grounded native gate");
             maid.setSitting(true);
             brain.updateTask();
             require(
@@ -83,16 +89,56 @@ public final class MaidBrainProbe {
             require(follow.getStatus() == Status.SUSPENDED && brain.isSuspended(), "explicit suspension");
             brain.setSuspended(false);
             require(!brain.isSuspended(), "suspension release");
+            verifyNativeNavigation(maid, owner, attempt);
             TLMNotHard.LOG.info(
-                "TLMNH_BRAIN_ADAPTER_TEST_PASS owner=checked stop=sit,carry,sleep,busy,suspend resources=preserved navigation={} requests={} actual_movement=unverified benchmark=unverified",
+                "TLMNH_BRAIN_ADAPTER_TEST_PASS owner=checked stop=sit,carry,sleep,busy,suspend resources=preserved navigation={} requests={} native_flags=checked native_gate=checked native_range={} bounded_range={} actual_movement=unverified benchmark=unverified",
                 navigation,
-                follow.getPathRequests());
+                follow.getPathRequests(),
+                attempt.nativeRange,
+                attempt.searchRange);
         } finally {
             brain.resetTask();
             maid.mountEntity(null);
             world.playerEntities.remove(owner);
             maid.setDead();
             owner.setDead();
+        }
+    }
+
+    private static void verifyNativeNavigation(EntityMaid maid, EntityPlayerMP owner,
+        MaidBoundedPathPlanner.Attempt original) {
+        var navigator = maid.getNavigator();
+        var planner = new MaidBoundedPathPlanner();
+        try {
+            navigator.setCanSwim(false);
+            navigator.setEnterDoors(false);
+            navigator.setBreakDoors(true);
+            navigator.setAvoidsWater(true);
+            maid.onGround = false;
+            require(
+                planner.request(maid, owner.posX, owner.boundingBox.minY, owner.posZ, 1.0D) == PathResult.NOT_NAVIGABLE,
+                "native airborne gate must refuse navigation");
+            var grounded = planner.getLastAttempt();
+            require(
+                grounded.options.supported && !grounded.options.canSwim
+                    && !grounded.options.enterDoors
+                    && grounded.breakDoors
+                    && grounded.avoidWater
+                    && Boolean.FALSE.equals(grounded.navigable),
+                "native flags must be reread after setters");
+            maid.onGround = true;
+            planner.request(maid, owner.posX, owner.boundingBox.minY, owner.posZ, 1.0D);
+            require(
+                Boolean.TRUE.equals(planner.getLastAttempt().navigable),
+                "native grounded gate must allow planning");
+            require(navigator.getPathSearchRange() == original.nativeRange, "follow range must remain unchanged");
+        } finally {
+            navigator.clearPathEntity();
+            navigator.setCanSwim(original.options.canSwim);
+            navigator.setEnterDoors(original.options.enterDoors);
+            navigator.setBreakDoors(original.breakDoors);
+            navigator.setAvoidsWater(original.avoidWater);
+            maid.onGround = true;
         }
     }
 

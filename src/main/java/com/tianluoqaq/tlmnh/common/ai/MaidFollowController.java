@@ -24,6 +24,8 @@ public final class MaidFollowController {
         PATH_COOLDOWN,
         PATH_UNAVAILABLE,
         DESTINATION_UNLOADED,
+        NOT_NAVIGABLE,
+        ADAPTER_UNSUPPORTED,
         STUCK,
         SITTING,
         RIDING,
@@ -40,7 +42,9 @@ public final class MaidFollowController {
     public enum PathResult {
         STARTED,
         UNREACHABLE,
-        UNLOADED
+        UNLOADED,
+        NOT_NAVIGABLE,
+        ADAPTER_UNSUPPORTED
     }
 
     /** 所有调用都来自实体所属世界的服务端线程，不在后台访问世界 */
@@ -84,6 +88,7 @@ public final class MaidFollowController {
     private double progressX, progressY, progressZ, failedX, failedY, failedZ;
     private boolean following;
     private Status status = Status.IDLE;
+    private PathResult lastPathResult;
 
     public MaidFollowController(Actor actor, int phase) {
         this.actor = Objects.requireNonNull(actor, "actor");
@@ -140,6 +145,7 @@ public final class MaidFollowController {
         pathRequests++;
         nextPathRequest = tick + PATH_INTERVAL;
         var result = actor.requestPath();
+        lastPathResult = result;
         if (result == PathResult.STARTED) {
             failureUntil = 0;
             status = Status.FOLLOWING;
@@ -147,7 +153,10 @@ public final class MaidFollowController {
             pathFailures++;
             rememberFailure();
             actor.stopNavigation();
-            status = result == PathResult.UNLOADED ? Status.DESTINATION_UNLOADED : Status.PATH_UNAVAILABLE;
+            if (result == PathResult.UNLOADED) status = Status.DESTINATION_UNLOADED;
+            else if (result == PathResult.NOT_NAVIGABLE) status = Status.NOT_NAVIGABLE;
+            else if (result == PathResult.ADAPTER_UNSUPPORTED) status = Status.ADAPTER_UNSUPPORTED;
+            else status = Status.PATH_UNAVAILABLE;
         }
     }
 
@@ -193,6 +202,10 @@ public final class MaidFollowController {
 
     public Status getStatus() {
         return status;
+    }
+
+    public PathResult getLastPathResult() {
+        return lastPathResult;
     }
 
     public long getTicks() {

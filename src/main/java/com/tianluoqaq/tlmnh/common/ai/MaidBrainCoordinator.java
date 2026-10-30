@@ -4,7 +4,6 @@ import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.pathfinding.PathEntity;
-import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -17,6 +16,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     private final EntityMaid maid;
     private final MaidFollowController follow;
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private boolean suspended;
 
     public MaidBrainCoordinator(EntityMaid maid) {
@@ -47,6 +47,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidFollowController getFollowController() {
         return follow;
+    }
+
+    public MaidBoundedPathPlanner.Attempt getLastPathAttempt() {
+        return planner.getLastAttempt();
     }
 
     /** 供受控场景暂时让出行为，恢复后重新感知，不持久化为玩家玩法状态 */
@@ -167,24 +171,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             double fraction = distance > 16 ? 16 / distance : 1;
             double x = maid.posX + dx * fraction, y = maid.posY + dy * fraction, z = maid.posZ + dz * fraction;
-            float range = maid.getNavigator()
-                .getPathSearchRange();
-            if (!Float.isFinite(range) || range < 0 || range > 64) return PathResult.UNREACHABLE;
-            // World.getEntityPathToXYZ 会为实际搜索半径加 8，再由 ChunkCache 逐区块取缓存
-            // 在调用前检查完整缓存范围，不能仅检查目标端点
-            int padding = (int) (range + 8.0F);
-            int originX = MathHelper.floor_double(maid.posX), originZ = MathHelper.floor_double(maid.posZ);
-            var chunks = maid.worldObj.getChunkProvider();
-            for (int chunkX = (originX - padding) >> 4; chunkX <= (originX + padding) >> 4; chunkX++) {
-                for (int chunkZ = (originZ - padding) >> 4; chunkZ <= (originZ + padding) >> 4; chunkZ++) {
-                    if (!chunks.chunkExists(chunkX, chunkZ)) return PathResult.UNLOADED;
-                }
-            }
-            if (!maid.worldObj
-                .blockExists(MathHelper.floor_double(x), MathHelper.floor_double(y), MathHelper.floor_double(z)))
-                return PathResult.UNLOADED;
-            if (!maid.getNavigator()
-                .tryMoveToXYZ(x, y, z, 1.0D)) return PathResult.UNREACHABLE;
+            var result = planner.request(maid, x, y, z, 1.0D);
+            if (result != PathResult.STARTED) return result;
             ownedPath = maid.getNavigator()
                 .getPath();
             return PathResult.STARTED;

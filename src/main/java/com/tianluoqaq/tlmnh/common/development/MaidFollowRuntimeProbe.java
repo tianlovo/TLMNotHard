@@ -324,6 +324,23 @@ public final class MaidFollowRuntimeProbe {
             maid.getBrainCoordinator()
                 .getFollowController()
                 .getPathFailures());
+        var lastPath = maid.getBrainCoordinator()
+            .getFollowController()
+            .getLastPathResult();
+        frame.addProperty("lastPathResult", lastPath == null ? null : lastPath.name());
+        var attempt = maid.getBrainCoordinator()
+            .getLastPathAttempt();
+        if (attempt != null) {
+            finiteNumber(frame, "nativeSearchRange", attempt.nativeRange);
+            finiteNumber(frame, "boundedSearchRange", attempt.searchRange);
+            frame.addProperty("nativeOptionsSupported", attempt.options.supported);
+            frame.addProperty("nativeCanNavigate", attempt.navigable);
+            frame.addProperty("nativeCanSwim", attempt.options.canSwim);
+            frame.addProperty("nativeEnterDoors", attempt.options.enterDoors);
+            frame.addProperty("nativeBreakDoors", attempt.breakDoors);
+            frame.addProperty("nativeAvoidWater", attempt.avoidWater);
+            frame.addProperty("lastPathDiagnostic", attempt.diagnostic);
+        }
         frame.addProperty(
             "noPath",
             maid.getNavigator()

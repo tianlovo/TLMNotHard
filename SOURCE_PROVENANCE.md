@@ -25,6 +25,11 @@
 取消只释放仍属于自己的路径，不清外部攻击和使用物品状态；导航前检查原版ChunkCache所需的已加载区范围
 该预检会在加载边缘保守停步；单元检查和适配器夹具不能替代真实移动、多人同步或原版benchmark
 
+实际小视距测试暴露出感知距离64与导航缓存范围耦合会阻止短距离跟随
+新增`MaidBoundedPathPlanner`将单次原版PathFinder预算限制为16，缓存预检使用同一预算加8，保留原Navigator执行路径
+原生`canNavigate`及私有门、水选项通过缓存的Forge反射接口只读获取，MCP/SRG名称均核对固定1.7.10映射；适配失败显式拒绝
+没有改动实体感知属性、服务器视距或强制加载区块；冷却继续保留最后一次路径结果与诊断，实际移动仍须由自然tick证明
+
 ## Bedrock 几何
 
 以下 16 个原文件均来自上述固定提交，位于 `com/github/tartaricacid/simplebedrockmodel/client/bedrock/`，保留原包名、原说明和代码许可头
