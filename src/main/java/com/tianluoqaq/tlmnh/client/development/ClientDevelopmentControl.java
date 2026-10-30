@@ -9,6 +9,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Queue;
 
 import net.minecraft.client.Minecraft;
@@ -45,7 +47,9 @@ public final class ClientDevelopmentControl {
     private final Minecraft minecraft;
     private final Path controls, responses;
     private final Queue<Capture> captures = new ArrayDeque<>();
+    private final Map<String, ResponseWrite> pendingWrites = new LinkedHashMap<>();
     private Boolean previousPauseOnLostFocus;
+    private boolean shutdownAfterWrites;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
@@ -64,6 +68,7 @@ public final class ClientDevelopmentControl {
     @SubscribeEvent
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        flushResponses();
         if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
         var submission = RenderSubmissionProbe.poll();
         if (submission != null) {
@@ -88,6 +93,7 @@ public final class ClientDevelopmentControl {
         } catch (IOException error) {
             TLMNotHard.LOG.error("Cannot read client development requests", error);
         }
+        if (shutdownAfterWrites && pendingWrites.isEmpty()) minecraft.shutdown();
     }
 
     private void handle(Path path) throws IOException {
@@ -207,7 +213,7 @@ public final class ClientDevelopmentControl {
                     break;
                 case SHUTDOWN:
                     restorePauseSetting();
-                    minecraft.shutdown();
+                    shutdownAfterWrites = true;
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown client development command");
@@ -288,12 +294,50 @@ public final class ClientDevelopmentControl {
     }
 
     private void writeResponse(String name, JsonObject response) throws IOException {
-        var temporary = responses.resolve(name + ".tmp");
-        Files.write(
-            temporary,
-            GSON.toJson(response)
-                .getBytes(StandardCharsets.UTF_8));
-        Files.move(temporary, responses.resolve(name), StandardCopyOption.REPLACE_EXISTING);
+        if (!pendingWrites.containsKey(name) && pendingWrites.size() >= 32)
+            throw new IOException("Development response queue full");
+        // 同一请求的最终结果覆盖尚未写出的pending，短暂共享冲突不丢弃结果
+        pendingWrites.put(
+            name,
+            new ResponseWrite(
+                GSON.toJson(response)
+                    .getBytes(StandardCharsets.UTF_8)));
+        flushResponses();
+    }
+
+    private void flushResponses() {
+        var iterator = pendingWrites.entrySet()
+            .iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            var pending = entry.getValue();
+            try {
+                var temporary = responses.resolve(entry.getKey() + ".tmp");
+                Files.write(temporary, pending.bytes);
+                Files.move(temporary, responses.resolve(entry.getKey()), StandardCopyOption.REPLACE_EXISTING);
+                iterator.remove();
+            } catch (IOException error) {
+                if (System.nanoTime() > pending.deadline) {
+                    TLMNotHard.LOG.error("Development response retry expired: {}", entry.getKey(), error);
+                    iterator.remove();
+                } else if (!pending.reported) {
+                    TLMNotHard.LOG
+                        .warn("Retrying development response after temporary I/O failure: {}", entry.getKey());
+                    pending.reported = true;
+                }
+            }
+        }
+    }
+
+    private static final class ResponseWrite {
+
+        private final byte[] bytes;
+        private final long deadline = System.nanoTime() + 20_000_000_000L;
+        private boolean reported;
+
+        private ResponseWrite(byte[] bytes) {
+            this.bytes = bytes;
+        }
     }
 
     private static final class Capture {
