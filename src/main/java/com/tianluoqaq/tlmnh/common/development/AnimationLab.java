@@ -11,6 +11,7 @@ import net.minecraft.world.Teleporter;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -81,6 +82,7 @@ public final class AnimationLab {
 
     public static void prepare() {
         var world = world();
+        for (int x = -1; x <= 0; x++) for (int z = -1; z <= 0; z++) loadChunk(world, x, z);
         for (int x = -RADIUS; x <= RADIUS; x++) for (int z = -RADIUS; z <= RADIUS; z++) {
             int color = ((x + z) & 1) == 0 ? 7 : 8;
             if (x == 0) color = 13;
@@ -199,8 +201,10 @@ public final class AnimationLab {
     public static void verifyWorld() {
         prepare();
         var world = world();
-        for (int x : new int[] { -32, 32 }) for (int z : new int[] { -32, 32 })
+        for (int x : new int[] { -32, 32 }) for (int z : new int[] { -32, 32 }) {
+            loadChunk(world, x >> 4, z >> 4);
             for (int y = 0; y < 256; y++) require(world.isAirBlock(x, y, z), "Lab must be void outside the platform");
+        }
         for (int x = -RADIUS; x <= RADIUS; x++) for (int z = -RADIUS; z <= RADIUS; z++)
             require(world.getBlock(x, FLOOR, z) == Blocks.wool, "Missing lab platform block");
         var slime = new EntitySlime(world);
@@ -266,5 +270,11 @@ public final class AnimationLab {
 
     private static void require(boolean condition, String message) {
         if (!condition) throw new IllegalStateException(message);
+    }
+
+    private static void loadChunk(WorldServer world, int x, int z) {
+        var chunk = world.getChunkProvider()
+            .loadChunk(x, z);
+        require(chunk != null && !(chunk instanceof EmptyChunk), "Animation lab chunk was not loaded");
     }
 }
