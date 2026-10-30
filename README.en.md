@@ -94,13 +94,13 @@ Completed checks and unfinished work are recorded separately. A successful build
 | --- | --- |
 | Build and loading | Java 25 builds and Java 8 bytecode checks pass; the entry point has RC2 loading records on both sides |
 | Entity basics | Core state, six inventory slots, both hands, restart persistence and permissions have server fixture checks |
-| Basic interaction | Taming, sitting, saddle carry, golden apples, potions, milk and 12-XP bottle exchange have actual server fixture checks; name tags and full network-click acceptance remain pending |
+| Basic interaction | Taming, sitting, saddle carry, golden apples, potions, milk, 12-XP bottle exchange and name tags have actual server fixture checks; the naming screen is connected, while actual client submission and full network-click acceptance remain pending |
 | Models and animation | Built-in geometry, Bedrock poses and core Gecko playback are connected; CPU checks pass, in-game visuals await review |
 | Built-in selection | Search, pages, wine-fox filtering and extra textures are connected; all 254 entries are reachable and 35 wine-fox selections have client/server roundtrip checks in RC2 |
-| Animation regression | Controlled idle and 72-step in-place walking transitions match upstream CPU replay for two models; submission-bridge faults are detected, while full GPU imaging remains unverified |
+| Animation regression | Controlled idle, 72-step in-place walking transitions and head turns match upstream CPU replay for two models; actual RC2 head-angle binding passes positive and fault cases, while GPU imaging and portable baselines remain unverified |
 | Unfinished | Remaining action layers and visual review, equipment layers, life and combat AI, player interactions |
 | Acceptance pending | Wine-fox and other model visuals, animation transitions, Angelica compatibility, multiplayer and gameplay |
-| Behaviour AI and aiming | A single follow coordinator and sit/carry cancellation have natural-tick checks; full perception and arbitration, combat/life behaviours, aiming and upstream benchmarks remain unfinished |
+| Behaviour AI and aiming | A single follow coordinator and sit/carry cancellation have natural-tick checks; melee-core and actual arrow-physics fixtures pass, but aiming is not connected to ranged behaviour, and complete combat/life behaviours and upstream benchmarks remain unfinished |
 
 Asset hashes, CPU geometry and pose checks do not replace in-game rendering and animation acceptance.
 A true-air void platform and spectator observer run in RC2;
