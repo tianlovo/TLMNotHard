@@ -55,11 +55,16 @@ def ensure_lab():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep-client", action="store_true")
+    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle"), default="idle")
     args = parser.parse_args()
+    frame_count = 72 if args.scenario == "idle_walk_idle" else 30
+    report_path = REPORT if args.scenario == "idle" else EVIDENCE / "aa-idle-walk-idle-experiment.json"
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     report = {"scope": "feasibility: original controlled A/A only", "models": [], "passed": False,
               "full_capture_contract_passed": False, "ab_equivalence_executed": False,
-              "e2e_fault_injection_executed": False, "equivalence_verified": False}
+              "e2e_fault_injection_executed": False, "equivalence_verified": False,
+              "scenario": args.scenario, "frame_count": frame_count, "approved_for_bulk": False,
+              "rendering_verified": False}
     try:
         ensure_lab()
         spec = importlib.util.spec_from_file_location("compare_aa", PROBE / "compare_aa.py")
@@ -71,7 +76,8 @@ def main():
             report["models"].append(case)
             for index in range(3):
                 clear_and_reload()
-                result = control("sample_case", "--model", model, "--frames", "30", "--seed", "424242")
+                result = control("sample_case", "--model", model, "--frames", str(frame_count),
+                                 "--seed", "424242", "--scenario", args.scenario)
                 path = Path(result["capture"]["path"])
                 raw = path.read_bytes()
                 sample = json.loads(raw)
@@ -81,10 +87,23 @@ def main():
                 samples.append(sample)
                 case["samples"].append({"file": path.relative_to(RUNTIME).as_posix(),
                                         "sha256": hashlib.sha256(raw).hexdigest(),
-                                        "bones": result["capture"]["bone_counts"], "frames": 30})
+                                        "bones": result["capture"]["bone_counts"], "frames": frame_count})
                 print(json.dumps({"model": model, "sample": index + 1, "captured": True}), flush=True)
             case["comparisons"] = [comparator.compare(samples[0], value) for value in samples[1:]]
             case["passed"] = all(value["status"] == "PASS_REPEATABILITY" for value in case["comparisons"])
+            frames = samples[0]["frames"]
+            case["changing_bones"] = sorted({name for frame in frames[1:] for name, pose in frame["bones"].items()
+                                             if pose != frames[0]["bones"][name]})
+            if not case["changing_bones"]:
+                raise ValueError("Original animation sample was entirely frozen")
+            if args.scenario == "idle_walk_idle":
+                case["navigation_benchmark"] = False
+                if frames[0]["backend"] == "gecko":
+                    clips = [next(layer["clip"] for layer in frame["controllers"] if layer["name"] == "main")
+                             for frame in frames]
+                    case["main_clip_checkpoints"] = {str(index): clips[index] for index in (23, 24, 26, 47, 48, 50, 71)}
+                    if [clips[index] for index in (23, 47, 71)] != ["idle", "walk", "idle"]:
+                        raise ValueError("Original main controller did not perform the requested transitions")
         report["passed"] = all(case["passed"] for case in report["models"])
     except Exception as error:
         report["error"] = str(error)
@@ -95,7 +114,10 @@ def main():
                 report["shutdown_requested"] = True
         except Exception as error:
             report["shutdown_error"] = str(error)
-        REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        archive = EVIDENCE / "aa-runs" / (str(time.time_ns()) + "-" + args.scenario + ".json")
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        archive.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        report_path.write_text(archive.read_text(encoding="utf-8"), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, allow_nan=False), flush=True)
     return 0 if report["passed"] else 1
 

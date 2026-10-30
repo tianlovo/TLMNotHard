@@ -1,5 +1,6 @@
 """回放两个已通过原版重复检查的空手待机样本，并验证错误与缺输入会失败"""
 
+import argparse
 import hashlib
 import json
 import os
@@ -38,14 +39,19 @@ def replay(reference, output, log, fault="none"):
 
 
 def main():
-    aa = json.loads((EVIDENCE / "aa-experiment.json").read_text(encoding="utf-8"))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle"), default="idle")
+    args = parser.parse_args()
+    aa_name = "aa-experiment.json" if args.scenario == "idle" else "aa-idle-walk-idle-experiment.json"
+    report_name = "ab-experiment.json" if args.scenario == "idle" else "ab-idle-walk-idle-experiment.json"
+    aa = json.loads((EVIDENCE / aa_name).read_text(encoding="utf-8"))
     if not aa["passed"]:
         raise ValueError("Original repeatability must pass before replay")
     run = EVIDENCE / "replays" / str(time.time_ns())
     run.mkdir(parents=True)
-    report = {"scope": "two controlled empty-idle CPU fixtures and negative controls", "passed": False,
+    report = {"scope": "two controlled empty-equipment CPU fixtures and negative controls", "passed": False,
               "equivalence_verified": False, "rendering_verified": False, "approved_for_bulk": False,
-              "cases": [], "source_before": source_state()}
+              "scenario": args.scenario, "aa_report": aa_name, "cases": [], "source_before": source_state()}
     try:
         sources = {}
         for index, case in enumerate(aa["models"]):
@@ -93,7 +99,7 @@ def main():
     report["evidence_directory"] = run.relative_to(EVIDENCE).as_posix()
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     (run / "experiment.json").write_text(text, encoding="utf-8")
-    (EVIDENCE / "ab-experiment.json").write_text(text, encoding="utf-8")
+    (EVIDENCE / report_name).write_text(text, encoding="utf-8")
     print(json.dumps({"passed": report["passed"], "error": report.get("error"),
                       "actual_port_fault_detected": report.get("actual_port_fault_detected"),
                       "incomplete_input_rejected": report.get("incomplete_input_rejected")}), flush=True)

@@ -88,10 +88,15 @@ public final class ReferenceObservationProbe {
                     var report = new JsonObject();
                     report.addProperty("schema", "observation-v0");
                     report.addProperty("upstreamCommit", System.getProperty("tlmnh.upstreamCommit"));
+                    report.addProperty("sourceIdentity", "configured-commit-label-not-runtime-class-verification");
                     report.addProperty("entityUuid", active.entity.toString());
                     report.addProperty("allInputsCaptured", false);
                     report.addProperty("equivalenceVerified", false);
-                    report.addProperty("inputMode", active.controlled ? "controlled-idle-v0" : "live-observation");
+                    report.addProperty("inputMode", active.controlled ? ReferenceScenario.inputMode(active.scenario) : "live-observation");
+                    if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
+                        report.addProperty("scenario", active.scenario);
+                        report.addProperty("fixture", "in-place-kinematic-animation-not-navigation");
+                    }
                     report.addProperty("seed", active.seed);
                     report.addProperty("resourceGeneration", resourceGeneration);
                     report.addProperty("faultInjection", active.fault);
@@ -171,6 +176,8 @@ public final class ReferenceObservationProbe {
                         throw new IllegalStateException("Clear the scene and reload resources before each controlled case");
                     int count = request.get("frames").getAsInt();
                     if (count < 1 || count > 240 || request.get("frames").getAsDouble() != count) throw new IllegalArgumentException("Invalid frame count");
+                    String scenario = request.has("scenario") ? request.get("scenario").getAsString() : ReferenceScenario.IDLE;
+                    ReferenceScenario.validate(scenario, count);
                     long seed = request.get("seed").getAsBigDecimal().longValueExact();
                     String fault = request.has("fault") ? request.get("fault").getAsString() : "none";
                     if (!Set.of("none", "head_offset", "clock_offset", "wrong_clip").contains(fault))
@@ -180,6 +187,7 @@ public final class ReferenceObservationProbe {
                     ReferenceScene.spawn(request, entity, () -> {
                         active = new Capture(name, entity, count, true, seed);
                         active.expectedModel = request.get("model").getAsString();
+                        active.scenario = scenario;
                         active.fault = fault;
                         active.assets = assets;
                     });
@@ -206,6 +214,16 @@ public final class ReferenceObservationProbe {
             if (active.controlled && (maid.tickCount != active.frames.size() || event.getPartialTick() != 0
                 || !maid.onGround() || maid.getXRot() != 0 || maid.yHeadRot != maid.yBodyRot))
                 throw new IllegalStateException("Controlled renderer inputs were not applied");
+            if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
+                int step = active.frames.size();
+                if (maid.walkAnimation.speed(0) != ReferenceScenario.amount(step)
+                    || maid.walkAnimation.position(0) != ReferenceScenario.limb(step)
+                    || maid.getDeltaMovement().x != ReferenceScenario.motionX(step)
+                    || maid.getDeltaMovement().y != 0 || maid.getDeltaMovement().z != 0
+                    || maid.getX() - maid.xo != ReferenceScenario.motionX(step)
+                    || maid.getY() != maid.yo || maid.getZ() != maid.zo)
+                    throw new IllegalStateException("Controlled kinematic inputs were not applied at step " + step);
+            }
             var frame = new JsonObject();
             frame.addProperty("phase", "render-post");
             frame.addProperty("tick", maid.tickCount);
@@ -222,6 +240,8 @@ public final class ReferenceObservationProbe {
                 if (active.inputs == null || active.inputTick != maid.tickCount)
                     throw new IllegalStateException("Actual animation inputs were not captured for this step");
                 frame.add("inputs", active.inputs);
+                if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario))
+                    frame.addProperty("setupAnimInvoked", true);
             }
             var bones = new JsonObject();
             if (event.getRenderer() instanceof GeckoEntityMaidRenderer<?>) {
@@ -243,6 +263,10 @@ public final class ReferenceObservationProbe {
                         throw new IllegalStateException("Missing original animation phase snapshot");
                     frame.add("coreBones", active.core);
                     frame.add("headBones", active.head);
+                    if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
+                        if (active.engineUpdated == null) throw new IllegalStateException("Missing actual original update result");
+                        frame.addProperty("engineUpdated", active.engineUpdated);
+                    }
                 }
                 var controllers = new JsonArray();
                 for (var controller : animatable.getAnimationData().getAnimationControllers()) {
@@ -299,7 +323,8 @@ public final class ReferenceObservationProbe {
             || !maid.isTame() || !maid.getModelId().equals(active.expectedModel)) return ReferenceFrameScope.skip(partialTick);
         try {
             active.inputs = active.core = active.head = null;
-            var scope = ReferenceFrameScope.controlled(maid, active.frames.size(), active.seed, !active.seeded);
+            active.engineUpdated = null;
+            var scope = ReferenceFrameScope.controlled(maid, active.frames.size(), active.seed, !active.seeded, active.scenario);
             active.seeded = true;
             return scope;
         } catch (RuntimeException error) {
@@ -318,7 +343,7 @@ public final class ReferenceObservationProbe {
             && entity.getUUID().equals(active.entity) && entity instanceof EntityMaid maid && ReferenceScene.isCurrent(maid);
     }
 
-    public static void geckoPhase(Entity entity, AnimatedGeoModel model, AnimationContext<?> context, String phase) {
+    public static void geckoPhase(Entity entity, AnimatedGeoModel model, AnimationContext<?> context, String phase, boolean updated) {
         if (!matchesCapture(entity)) return;
         try {
             var snapshot = new JsonObject();
@@ -327,10 +352,15 @@ public final class ReferenceObservationProbe {
                 var event = context.animationEvent();
                 active.inputs = ReferenceReplayInputs.capture((EntityMaid) entity, event.getLimbSwing(),
                     event.getLimbSwingAmount(), entity.tickCount + event.getPartialTick(),
-                    context.data().netHeadYaw, context.data().headPitch, event.getPartialTick(), context);
+                    context.data().netHeadYaw, context.data().headPitch, event.getPartialTick(), context, active.scenario);
                 active.inputTick = entity.tickCount;
+                active.engineUpdated = updated;
                 active.core = snapshot;
-            } else if (phase.equals("head")) active.head = snapshot;
+            } else if (phase.equals("head")) {
+                if (active.engineUpdated == null || active.engineUpdated != updated)
+                    throw new IllegalStateException("Original core/head update result changed within one draw");
+                active.head = snapshot;
+            }
             else throw new IllegalArgumentException("Unknown original animation phase: " + phase);
         } catch (RuntimeException error) {
             active.failure = error.toString();
@@ -341,7 +371,7 @@ public final class ReferenceObservationProbe {
         if (!matchesCapture(entity)) return;
         try {
             active.inputs = ReferenceReplayInputs.capture((EntityMaid) entity, limb, amount, age, yaw, pitch,
-                age - entity.tickCount, null);
+                age - entity.tickCount, null, active.scenario);
             active.inputTick = entity.tickCount;
         } catch (RuntimeException error) {
             active.failure = error.toString();
@@ -403,7 +433,9 @@ public final class ReferenceObservationProbe {
         boolean seeded;
         String failure;
         String expectedModel;
+        String scenario = ReferenceScenario.IDLE;
         String fault = "none";
+        Boolean engineUpdated;
         JsonObject inputs, core, head, assets;
         int inputTick = -1;
 

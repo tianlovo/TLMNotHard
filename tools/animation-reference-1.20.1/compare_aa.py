@@ -5,13 +5,18 @@ import json
 import math
 from pathlib import Path
 
+from scenario_contract import IDLE_MODE, WALK_MODE, validate_walk_frame
+
 
 def validate(value):
-    if value.get("schema") != "observation-v0" or value.get("inputMode") != "controlled-idle-v0":
+    mode = value.get("inputMode")
+    if value.get("schema") != "observation-v0" or mode not in (IDLE_MODE, WALK_MODE):
         raise ValueError("Only controlled original observations are supported by this experiment")
     frames = value.get("frames", [])
     if not frames:
         raise ValueError("Empty controlled observation")
+    if mode == WALK_MODE and len(frames) != 72:
+        raise ValueError("Controlled walk fixture requires exactly 72 steps")
     for index, frame in enumerate(frames):
         if frame["tick"] != index or frame["partialTick"] != 0 or not frame["onGround"]:
             raise ValueError("Controlled time or ground input contract was not satisfied")
@@ -21,6 +26,8 @@ def validate(value):
             raise ValueError("Original animation clock did not follow the requested steps")
         if frame["phase"] != "render-post" or not frame["bones"]:
             raise ValueError("Incomplete rendered observation")
+        if mode == WALK_MODE:
+            validate_walk_frame(frame, index)
 
 
 def compare(reference, candidate):

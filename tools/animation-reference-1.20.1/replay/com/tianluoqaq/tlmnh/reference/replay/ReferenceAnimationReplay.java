@@ -45,11 +45,14 @@ public final class ReferenceAnimationReplay {
         if (input.equals(output)) throw new IllegalArgumentException("Cannot overwrite the original capture");
         var reference = new JsonParser().parse(new String(Files.readAllBytes(input), StandardCharsets.UTF_8)).getAsJsonObject();
         require("observation-v0".equals(reference.get("schema").getAsString()), "Unsupported capture schema");
-        require("controlled-idle-v0".equals(reference.get("inputMode").getAsString()), "Only controlled idle is supported");
+        String inputMode = reference.get("inputMode").getAsString();
+        boolean walkingFixture = "controlled-idle-walk-idle-v1".equals(inputMode);
+        require(walkingFixture || "controlled-idle-v0".equals(inputMode), "Unreviewed controlled fixture");
         require(BASE.equals(reference.get("upstreamCommit").getAsString()), "Unexpected upstream source");
         require("none".equals(reference.get("faultInjection").getAsString()), "Faulted reference is not a baseline");
         var frames = reference.getAsJsonArray("frames");
         require(frames.size() > 1 && frames.size() <= 240, "Invalid frame count");
+        require(!walkingFixture || frames.size() == 72, "Walk fixture requires exactly 72 steps");
         String id = frames.get(0).getAsJsonObject().get("modelChoice").getAsString();
         require(MODELS.contains(id), "Unreviewed model fixture");
         BuiltinModelCatalog.load();
@@ -62,7 +65,8 @@ public final class ReferenceAnimationReplay {
             ? new BuiltinGeckoPlayer(model.getGecko(), animations.load(choice), reference.get("seed").getAsLong()) : null;
         var result = new JsonObject();
         result.addProperty("schema", "port-replay-v0");
-        result.addProperty("scope", "controlled empty idle CPU replay only");
+        result.addProperty("scope", "controlled empty-equipment CPU replay only; no navigation or GPU acceptance");
+        result.addProperty("inputMode", inputMode);
         result.addProperty("referenceSha256", sha256(Files.readAllBytes(input)));
         result.addProperty("upstreamCommit", BASE);
         result.addProperty("modelChoice", id);
@@ -94,12 +98,13 @@ public final class ReferenceAnimationReplay {
             require(id.equals(original.get("modelChoice").getAsString()) && !original.get("fallback").getAsBoolean(), "Model fallback or switch");
             require(original.get("tick").getAsInt() == index, "Unexpected reference step");
             var inputs = original.getAsJsonObject("inputs");
-            require(inputs != null && "controlled-empty-idle-v1".equals(inputs.get("contract").getAsString()), "Missing reviewed inputs");
+            String contract = walkingFixture ? "controlled-empty-idle-walk-idle-v1" : "controlled-empty-idle-v1";
+            require(inputs != null && contract.equals(inputs.get("contract").getAsString()), "Missing reviewed inputs");
             var stateJson = inputs.getAsJsonObject("state");
             shape(MaidAnimationState.class, stateJson);
             var state = GSON.fromJson(stateJson, MaidAnimationState.class);
             require(state.uuid.toString().equals(reference.get("entityUuid").getAsString()), "Wrong entity identity");
-            idle(state);
+            emptyGroundActor(state);
             require(inputs.getAsJsonObject("equipment").entrySet().size() == 6, "Missing equipment slots");
             for (var slot : inputs.getAsJsonObject("equipment").entrySet())
                 require("empty".equals(slot.getValue().getAsString()), "Only empty equipment is reviewed");
@@ -107,7 +112,11 @@ public final class ReferenceAnimationReplay {
             float limb = number(render, "limbSwing"), amount = number(render, "limbSwingAmount");
             float age = number(render, "ageInTicks"), yaw = number(render, "netHeadYaw"), pitch = number(render, "headPitch");
             float partial = number(render, "partialTick");
-            require(age == index && partial == 0 && amount == 0 && yaw == 0 && pitch == 0, "Unreviewed render inputs");
+            boolean walking = walkingFixture && index >= 24 && index < 48;
+            float expectedAmount = walking ? 0.25F : 0;
+            require(age == index && partial == 0 && amount == expectedAmount && yaw == 0 && pitch == 0, "Unreviewed render inputs");
+            if (walkingFixture)
+                require(limb == Math.min(Math.max(index - 24, 0), 24) * 0.25F, "Unexpected walk phase");
             var frame = new JsonObject();
             frame.addProperty("tick", index);
             frame.addProperty("backend", choice.isGecko() ? "gecko" : "bedrock");
@@ -126,6 +135,12 @@ public final class ReferenceAnimationReplay {
                 var query = GSON.fromJson(queryJson, MolangQueryFrame.class);
                 require(queryJson.getAsJsonObject("equipment").entrySet().size() == 0, "Nonempty query equipment");
                 require(query.lifetime == index / 20.0, "Reference lifetime disagrees with step");
+                if (walkingFixture) {
+                    require(query.groundSpeed == (walking ? 1.25 : 0), "Unexpected walk speed query");
+                    require(query.x - query.previousX == (walking ? 0.0625 : 0)
+                        && query.y == query.previousY && query.z == query.previousZ
+                        && query.verticalSpeed == 0, "Unexpected synthetic walk displacement");
+                }
                 frame.add("consumedQuery", GSON.toJsonTree(query));
                 player.advanceClock(age, false);
                 require(player.apply(state, query, limb, amount, partial, false), "Port skipped animation update");
@@ -167,7 +182,7 @@ public final class ReferenceAnimationReplay {
         require(object.entrySet().size() == count, "Unexpected captured fields: " + type.getSimpleName());
     }
 
-    private static void idle(MaidAnimationState state) {
+    private static void emptyGroundActor(MaidAnimationState state) {
         require(state.onGround && !state.sleeping && !state.sitting && !state.passenger && !state.begging
             && !state.usingItem && !state.usingOffhand && !state.swingLeft && !state.aimingBow && !state.mainHandPresent
             && !state.helmet && !state.chestPlate && !state.leggings && !state.boots && !state.hurt && !state.sprinting

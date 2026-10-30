@@ -19,16 +19,16 @@ index d4fd504..e1cbdda 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
-index a9323e3..6a008d4 100644
+index a9323e3..50e11c8 100644
 --- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
 +++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
 @@ -94,7 +94,9 @@ public class GeckoMaidEntity<T extends Mob> extends AnimatableEntity<T> implemen
              var update = super.setCustomAnimations(context, event);
              AnimatedGeoModel currentModel = this.getCurrentModel();
              if (currentModel != null) {
-+                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "core");
++                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "core", update);
                  this.updateHead(data, currentModel, update);
-+                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "head");
++                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "head", update);
                  HardcodedAnimationManger.playGeckoMaidAnimation(maid, currentModel, event.getLimbSwing(), event.getLimbSwingAmount(),
                          maid.asEntity().tickCount + event.getPartialTick(), data.netHeadYaw, data.headPitch);
  

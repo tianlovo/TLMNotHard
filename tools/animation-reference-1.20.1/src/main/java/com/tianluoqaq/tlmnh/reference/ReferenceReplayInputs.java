@@ -26,7 +26,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.variable.C
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-/** 从实际调用读取输入；只为两个空手待机夹具提供有界合同，不填造未知状态 */
+/** 从实际调用读取输入；只为空手动画夹具提供有界合同，不填造未知状态 */
 public final class ReferenceReplayInputs {
     private ReferenceReplayInputs() {}
 
@@ -77,9 +77,9 @@ public final class ReferenceReplayInputs {
     }
 
     public static JsonObject capture(EntityMaid maid, float limb, float amount, float age, float yaw, float pitch,
-                                     float partial, AnimationContext<?> context) {
+                                     float partial, AnimationContext<?> context, String scenario) {
         var result = new JsonObject();
-        result.addProperty("contract", "controlled-empty-idle-v1");
+        result.addProperty("contract", ReferenceScenario.contract(scenario));
         var render = new JsonObject();
         render.addProperty("limbSwing", limb);
         render.addProperty("limbSwingAmount", amount);

@@ -10,9 +10,9 @@ from pathlib import Path
 
 from compare_aa import validate
 from reference_environment import EVIDENCE, GIT, UPSTREAM
+from scenario_contract import WALK_MODE, IDLE_CONTRACT, WALK_CONTRACT
 
 BASE = "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
-CONTRACT = "controlled-empty-idle-v1"
 BEDROCK_ANIMATIONS = [
     "head/default", "head/beg", "head/music_shake", "arm/default", "arm/swing",
     "leg/default", "sit/default", "head/blink", "tail/default", "sit/skirt_rotation",
@@ -105,7 +105,7 @@ def dependencies(reference, asset_bytes):
         if entry["animation"] != expected:
             raise ValueError("Unreviewed Bedrock animation list")
         return {"kind": "reviewed Bedrock functions", "animations": expected,
-                "inputs": ["state", "render"], "scope": "empty equipment, no life/movement actions"}
+                "inputs": ["state", "render"], "scope": "reviewed grounded empty-equipment animation inputs; no gameplay movement proof"}
     merged = {}
     for location in entry["animation"]:
         merged.update(json.loads(asset_bytes[location])["animations"])
@@ -131,12 +131,13 @@ def dependencies(reference, asset_bytes):
 
 
 def compare(reference, replay, digest, aa):
-    report = {"scope": "two reviewed empty-idle fixtures; local bones and controllers on CPU",
+    report = {"scope": "two reviewed empty-equipment fixtures; local bones and controllers on CPU",
               "status": "INCONCLUSIVE", "equivalence_verified": False, "rendering_verified": False,
               "approved_for_bulk": False, "tolerance": 0,
               "tolerance_scope": "raw exact diagnostics; no cross-platform error budget calibrated"}
     try:
         validate(reference)
+        contract = WALK_CONTRACT if reference["inputMode"] == WALK_MODE else IDLE_CONTRACT
         if reference["upstreamCommit"] != BASE or reference["faultInjection"] != "none":
             raise ValueError("Wrong or faulted original baseline")
         if replay["schema"] != "port-replay-v0" or replay["referenceSha256"] != digest or replay["upstreamCommit"] != BASE:
@@ -157,7 +158,7 @@ def compare(reference, replay, digest, aa):
         original, candidate = [], []
         projections = set()
         for index, (left, right) in enumerate(zip(original_frames, port_frames)):
-            if left["inputs"]["contract"] != CONTRACT or right["tick"] != index or right["backend"] != left["backend"]:
+            if left["inputs"]["contract"] != contract or right["tick"] != index or right["backend"] != left["backend"]:
                 raise ValueError("Unreviewed input contract or skipped step")
             for field, consumed in (("state", "consumedState"), ("render", "consumedRender")):
                 if differences(left["inputs"][field], right[consumed], "inputs." + field)["count"]:
