@@ -1,4 +1,4 @@
-"""回放两个已通过原版重复检查的空手待机样本，并验证错误与缺输入会失败"""
+"""回放两个已通过原版重复检查的空手动画样本，并验证错误与缺输入会失败"""
 
 import argparse
 import hashlib
@@ -40,10 +40,10 @@ def replay(reference, output, log, fault="none"):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle"), default="idle")
+    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle", "head_turn"), default="idle")
     args = parser.parse_args()
-    aa_name = "aa-experiment.json" if args.scenario == "idle" else "aa-idle-walk-idle-experiment.json"
-    report_name = "ab-experiment.json" if args.scenario == "idle" else "ab-idle-walk-idle-experiment.json"
+    aa_name = "aa-experiment.json" if args.scenario == "idle" else "aa-" + args.scenario.replace("_", "-") + "-experiment.json"
+    report_name = "ab-experiment.json" if args.scenario == "idle" else "ab-" + args.scenario.replace("_", "-") + "-experiment.json"
     aa = json.loads((EVIDENCE / aa_name).read_text(encoding="utf-8"))
     if not aa["passed"]:
         raise ValueError("Original repeatability must pass before replay")

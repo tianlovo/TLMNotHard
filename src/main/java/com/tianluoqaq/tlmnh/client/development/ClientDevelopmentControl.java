@@ -50,6 +50,8 @@ public final class ClientDevelopmentControl {
     private final Map<String, ResponseWrite> pendingWrites = new LinkedHashMap<>();
     private Boolean previousPauseOnLostFocus;
     private boolean shutdownAfterWrites;
+    private boolean submissionPending;
+    private HeadBindingProbe.Result unwrittenHeadBinding;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
@@ -69,9 +71,12 @@ public final class ClientDevelopmentControl {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         flushResponses();
+        HeadBindingProbe.tickEnd();
+        flushHeadBinding();
         if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
         var submission = RenderSubmissionProbe.poll();
         if (submission != null) {
+            submissionPending = false;
             submission.report.addProperty("version", Tags.VERSION);
             submission.report.addProperty("request", submission.request);
             submission.report.addProperty("command", "RENDER_PROBE");
@@ -93,7 +98,8 @@ public final class ClientDevelopmentControl {
         } catch (IOException error) {
             TLMNotHard.LOG.error("Cannot read client development requests", error);
         }
-        if (shutdownAfterWrites && pendingWrites.isEmpty()) minecraft.shutdown();
+        flushHeadBinding();
+        if (shutdownAfterWrites && pendingWrites.isEmpty() && unwrittenHeadBinding == null) minecraft.shutdown();
     }
 
     private void handle(Path path) throws IOException {
@@ -108,6 +114,10 @@ public final class ClientDevelopmentControl {
                 new JsonParser().parse(new String(Files.readAllBytes(path), StandardCharsets.UTF_8))
                     .getAsJsonObject());
             response.addProperty("command", request.command.name());
+            if ((HeadBindingProbe.isPending() || unwrittenHeadBinding != null)
+                && request.command != ClientDevelopmentRequest.Command.STATUS
+                && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
+                throw new IllegalStateException("Finish the active head binding probe before another operation");
             switch (request.command) {
                 case STATUS:
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
@@ -119,6 +129,9 @@ public final class ClientDevelopmentControl {
                                 .getSimpleName());
                     response.addProperty("width", minecraft.displayWidth);
                     response.addProperty("height", minecraft.displayHeight);
+                    response.addProperty(
+                        "headBindingPending",
+                        HeadBindingProbe.isPending() || unwrittenHeadBinding != null);
                     if (minecraft.thePlayer != null) {
                         var player = minecraft.thePlayer;
                         response.addProperty("dimension", player.dimension);
@@ -205,6 +218,12 @@ public final class ClientDevelopmentControl {
                     break;
                 case RENDER_PROBE:
                     RenderSubmissionProbe.arm(name, request.model, request.fault);
+                    submissionPending = true;
+                    response.addProperty("status", "pending-render");
+                    break;
+                case HEAD_BINDING_PROBE:
+                    if (submissionPending) throw new IllegalStateException("Finish the active submission probe first");
+                    HeadBindingProbe.arm(name, request.model, request.yaw, request.pitch, request.fault);
                     response.addProperty("status", "pending-render");
                     break;
                 case MODELS_UI:
@@ -212,6 +231,7 @@ public final class ClientDevelopmentControl {
                     for (var entry : observed.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case SHUTDOWN:
+                    HeadBindingProbe.cancel("Client shutdown requested during capture");
                     restorePauseSetting();
                     shutdownAfterWrites = true;
                     break;
@@ -290,6 +310,21 @@ public final class ClientDevelopmentControl {
         if (previousPauseOnLostFocus != null) {
             minecraft.gameSettings.pauseOnLostFocus = previousPauseOnLostFocus;
             previousPauseOnLostFocus = null;
+        }
+    }
+
+    private void flushHeadBinding() {
+        if (unwrittenHeadBinding == null) unwrittenHeadBinding = HeadBindingProbe.poll();
+        var result = unwrittenHeadBinding;
+        if (result == null) return;
+        result.report.addProperty("version", Tags.VERSION);
+        result.report.addProperty("request", result.request);
+        result.report.addProperty("command", "HEAD_BINDING_PROBE");
+        try {
+            writeResponse(result.request, result.report);
+            unwrittenHeadBinding = null;
+        } catch (IOException error) {
+            TLMNotHard.LOG.error("Cannot save head binding response", error);
         }
     }
 

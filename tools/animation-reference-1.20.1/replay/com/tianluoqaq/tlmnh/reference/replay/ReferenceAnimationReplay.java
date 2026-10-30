@@ -47,12 +47,13 @@ public final class ReferenceAnimationReplay {
         require("observation-v0".equals(reference.get("schema").getAsString()), "Unsupported capture schema");
         String inputMode = reference.get("inputMode").getAsString();
         boolean walkingFixture = "controlled-idle-walk-idle-v1".equals(inputMode);
-        require(walkingFixture || "controlled-idle-v0".equals(inputMode), "Unreviewed controlled fixture");
+        boolean headFixture = "controlled-head-turn-v1".equals(inputMode);
+        require(walkingFixture || headFixture || "controlled-idle-v0".equals(inputMode), "Unreviewed controlled fixture");
         require(BASE.equals(reference.get("upstreamCommit").getAsString()), "Unexpected upstream source");
         require("none".equals(reference.get("faultInjection").getAsString()), "Faulted reference is not a baseline");
         var frames = reference.getAsJsonArray("frames");
         require(frames.size() > 1 && frames.size() <= 240, "Invalid frame count");
-        require(!walkingFixture || frames.size() == 72, "Walk fixture requires exactly 72 steps");
+        require(!(walkingFixture || headFixture) || frames.size() == 72, "Sequenced fixture requires exactly 72 steps");
         String id = frames.get(0).getAsJsonObject().get("modelChoice").getAsString();
         require(MODELS.contains(id), "Unreviewed model fixture");
         BuiltinModelCatalog.load();
@@ -63,6 +64,9 @@ public final class ReferenceAnimationReplay {
         var animations = new BuiltinGeckoAnimations(ReferenceAnimationReplay::resource);
         var player = choice.isGecko()
             ? new BuiltinGeckoPlayer(model.getGecko(), animations.load(choice), reference.get("seed").getAsLong()) : null;
+        var observedModel = headFixture && choice.isGecko() ? models.create(choice) : null;
+        var observedPlayer = observedModel == null ? null
+            : new BuiltinGeckoPlayer(observedModel.getGecko(), animations.load(choice), reference.get("seed").getAsLong());
         var result = new JsonObject();
         result.addProperty("schema", "port-replay-v0");
         result.addProperty("scope", "controlled empty-equipment CPU replay only; no navigation or GPU acceptance");
@@ -74,6 +78,7 @@ public final class ReferenceAnimationReplay {
         result.addProperty("javaRuntime", System.getProperty("java.runtime.version"));
         result.addProperty("renderingVerified", false);
         result.addProperty("equivalenceVerified", false);
+        if (headFixture) result.addProperty("phaseSampling", "Gecko core observer, actual apply-return head and final; Bedrock final only");
         var assets = new JsonObject();
         for (var location : choice.getAnimations()) asset(assets, location);
         asset(assets, choice.getGeometry());
@@ -98,7 +103,8 @@ public final class ReferenceAnimationReplay {
             require(id.equals(original.get("modelChoice").getAsString()) && !original.get("fallback").getAsBoolean(), "Model fallback or switch");
             require(original.get("tick").getAsInt() == index, "Unexpected reference step");
             var inputs = original.getAsJsonObject("inputs");
-            String contract = walkingFixture ? "controlled-empty-idle-walk-idle-v1" : "controlled-empty-idle-v1";
+            String contract = headFixture ? "controlled-empty-head-turn-v1"
+                : walkingFixture ? "controlled-empty-idle-walk-idle-v1" : "controlled-empty-idle-v1";
             require(inputs != null && contract.equals(inputs.get("contract").getAsString()), "Missing reviewed inputs");
             var stateJson = inputs.getAsJsonObject("state");
             shape(MaidAnimationState.class, stateJson);
@@ -114,9 +120,22 @@ public final class ReferenceAnimationReplay {
             float partial = number(render, "partialTick");
             boolean walking = walkingFixture && index >= 24 && index < 48;
             float expectedAmount = walking ? 0.25F : 0;
-            require(age == index && partial == 0 && amount == expectedAmount && yaw == 0 && pitch == 0, "Unreviewed render inputs");
+            float entityYaw = headFixture ? headYaw(index) : 0;
+            float entityPitch = headFixture ? headPitch(index) : 0;
+            float renderSign = choice.isGecko() ? -1 : 1;
+            require(age == index && partial == 0 && amount == expectedAmount
+                && yaw == renderSign * entityYaw && pitch == renderSign * entityPitch, "Unreviewed render inputs");
             if (walkingFixture)
                 require(limb == Math.min(Math.max(index - 24, 0), 24) * 0.25F, "Unexpected walk phase");
+            if (headFixture) {
+                require(limb == 0 && original.get("limbPosition").getAsFloat() == 0
+                    && original.get("limbSpeed").getAsFloat() == 0, "Stationary head fixture walked");
+                require(original.get("setupAnimInvoked").getAsBoolean(), "Missing actual head animation input hook");
+                require(number(original, "headPitch") == entityPitch && number(original, "previousHeadPitch") == entityPitch
+                    && number(original, "netHeadYaw") == entityYaw && number(original, "bodyYaw") == 180
+                    && number(original, "previousBodyYaw") == 180 && number(original, "headYaw") == 180 + entityYaw
+                    && number(original, "previousHeadYaw") == 180 + entityYaw, "Unexpected original entity head angles");
+            }
             var frame = new JsonObject();
             frame.addProperty("tick", index);
             frame.addProperty("backend", choice.isGecko() ? "gecko" : "bedrock");
@@ -141,21 +160,36 @@ public final class ReferenceAnimationReplay {
                         && query.y == query.previousY && query.z == query.previousZ
                         && query.verticalSpeed == 0, "Unexpected synthetic walk displacement");
                 }
+                if (headFixture) {
+                    require(original.get("engineUpdated").getAsBoolean(), "Original skipped a head fixture update");
+                    require(query.bodyYaw == -180 && query.netHeadYaw == -entityYaw && query.headPitch == -entityPitch
+                        && query.yawSpeed == 0, "Unexpected actual original angular query convention");
+                    require(query.groundSpeed == 0 && query.verticalSpeed == 0 && query.x == query.previousX
+                        && query.y == query.previousY && query.z == query.previousZ, "Head fixture moved");
+                }
                 frame.add("consumedQuery", GSON.toJsonTree(query));
                 player.advanceClock(age, false);
                 require(player.apply(state, query, limb, amount, partial, false), "Port skipped animation update");
                 frame.addProperty("seekTicks", player.getSeekTicks());
-                var controllers = new JsonArray();
-                for (var controller : player.getAnimationData().getAnimationControllers()) {
-                    var layer = new JsonObject();
-                    layer.addProperty("name", controller.getName());
-                    layer.addProperty("state", controller.getAnimationState().name());
-                    layer.addProperty("clip", controller.getCurrentAnimation() == null ? null : controller.getCurrentAnimation().animationName);
-                    layer.addProperty("tickOffset", controller.tickOffset);
-                    layer.addProperty("speed", controller.animationSpeed);
-                    controllers.add(layer);
-                }
+                var controllers = controllers(player);
                 frame.add("controllers", controllers);
+                if (headFixture) {
+                    final JsonObject[] core = new JsonObject[1];
+                    var observedState = GSON.fromJson(stateJson, MaidAnimationState.class);
+                    var observedQuery = GSON.fromJson(queryJson, MolangQueryFrame.class);
+                    observedPlayer.advanceClock(age, false);
+                    require(observedPlayer.apply(observedState, observedQuery, limb, amount, partial, false, actual -> {
+                        require(actual == observedModel.getGecko() && core[0] == null, "Unexpected core observer call");
+                        core[0] = bones(observedModel);
+                    }), "Observed port skipped animation update");
+                    var head = bones(model);
+                    require(core[0] != null && head.equals(bones(observedModel))
+                        && controllers.equals(controllers(observedPlayer))
+                        && player.getSeekTicks() == observedPlayer.getSeekTicks(), "Core observer changed actual replay results");
+                    frame.add("coreBones", core[0]);
+                    frame.add("headBones", head);
+                    frame.addProperty("engineUpdated", true);
+                }
             } else model.setupPose(state, limb, amount, age, yaw, pitch);
             if ("head_offset".equals(fault)) {
                 require(model.getGecko() != null && model.getGecko().head() != null, "Fault requires a Gecko head");
@@ -166,9 +200,32 @@ public final class ReferenceAnimationReplay {
             replayed.add(frame);
         }
         result.add("frames", replayed);
+        if (headFixture && player != null) result.addProperty("stageObserverNeutral", true);
         Files.createDirectories(output.getParent());
         Files.write(output, (GSON.toJson(result) + "\n").getBytes(StandardCharsets.UTF_8));
         System.out.println("TLMNH_REFERENCE_REPLAY_CAPTURED model=" + id + " frames=" + replayed.size() + " equivalence=false rendering=false");
+    }
+
+    private static float headYaw(int step) {
+        return step >= 18 && step < 36 ? 30 : step >= 36 && step < 54 ? -45 : 0;
+    }
+
+    private static float headPitch(int step) {
+        return step >= 18 && step < 36 ? 15 : step >= 36 && step < 54 ? -20 : 0;
+    }
+
+    private static JsonArray controllers(BuiltinGeckoPlayer player) {
+        var controllers = new JsonArray();
+        for (var controller : player.getAnimationData().getAnimationControllers()) {
+            var layer = new JsonObject();
+            layer.addProperty("name", controller.getName());
+            layer.addProperty("state", controller.getAnimationState().name());
+            layer.addProperty("clip", controller.getCurrentAnimation() == null ? null : controller.getCurrentAnimation().animationName);
+            layer.addProperty("tickOffset", controller.tickOffset);
+            layer.addProperty("speed", controller.animationSpeed);
+            controllers.add(layer);
+        }
+        return controllers;
     }
 
     private static void shape(Class<?> type, JsonObject object) {

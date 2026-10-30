@@ -5,22 +5,22 @@ import json
 import math
 from pathlib import Path
 
-from scenario_contract import IDLE_MODE, WALK_MODE, validate_walk_frame
+from scenario_contract import IDLE_MODE, WALK_MODE, HEAD_MODE, validate_walk_frame, validate_head_frame
 
 
 def validate(value):
     mode = value.get("inputMode")
-    if value.get("schema") != "observation-v0" or mode not in (IDLE_MODE, WALK_MODE):
+    if value.get("schema") != "observation-v0" or mode not in (IDLE_MODE, WALK_MODE, HEAD_MODE):
         raise ValueError("Only controlled original observations are supported by this experiment")
     frames = value.get("frames", [])
     if not frames:
         raise ValueError("Empty controlled observation")
-    if mode == WALK_MODE and len(frames) != 72:
-        raise ValueError("Controlled walk fixture requires exactly 72 steps")
+    if mode in (WALK_MODE, HEAD_MODE) and len(frames) != 72:
+        raise ValueError("Controlled sequence requires exactly 72 steps")
     for index, frame in enumerate(frames):
         if frame["tick"] != index or frame["partialTick"] != 0 or not frame["onGround"]:
             raise ValueError("Controlled time or ground input contract was not satisfied")
-        if frame["headPitch"] != 0 or frame["netHeadYaw"] != 0 or frame["fallback"]:
+        if frame["fallback"] or mode != HEAD_MODE and (frame["headPitch"] != 0 or frame["netHeadYaw"] != 0):
             raise ValueError("Controlled view input or model contract was not satisfied")
         if frame["backend"] == "gecko" and frame["seekTicks"] != index:
             raise ValueError("Original animation clock did not follow the requested steps")
@@ -28,6 +28,8 @@ def validate(value):
             raise ValueError("Incomplete rendered observation")
         if mode == WALK_MODE:
             validate_walk_frame(frame, index)
+        elif mode == HEAD_MODE:
+            validate_head_frame(frame, index)
 
 
 def compare(reference, candidate):

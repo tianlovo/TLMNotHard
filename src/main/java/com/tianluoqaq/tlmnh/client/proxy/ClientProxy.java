@@ -12,10 +12,12 @@ import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
+import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
@@ -28,6 +30,7 @@ public final class ClientProxy extends CommonProxy {
 
     @Override
     public void init() {
+        super.init();
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
         var models = new BuiltinMaidModels(
@@ -52,6 +55,7 @@ public final class ClientProxy extends CommonProxy {
         int unusedZ) {
         var container = getServerGuiElement(id, player, world, entityId, unusedY, unusedZ);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
+        if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         return container instanceof ContainerMaidModels modelContainer ? new GuiMaidModels(modelContainer) : null;
     }
 }

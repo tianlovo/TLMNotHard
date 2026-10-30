@@ -4,9 +4,12 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
+import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 
 import cpw.mods.fml.common.network.IGuiHandler;
 
@@ -15,17 +18,29 @@ public class CommonProxy implements IGuiHandler {
 
     public static final int GUI_MAID = 0;
     public static final int GUI_MAID_MODELS = 1;
+    public static final int GUI_MAID_NAMING = 2;
 
-    public void init() {}
+    public void init() {
+        MaidNamingNetwork.init();
+    }
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {
-        if ((id != GUI_MAID && id != GUI_MAID_MODELS) || world == null || player == null || world != player.worldObj)
-            return null;
+        if ((id != GUI_MAID && id != GUI_MAID_MODELS && id != GUI_MAID_NAMING) || world == null
+            || player == null
+            || world != player.worldObj) return null;
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
+        if (id == GUI_MAID_NAMING) {
+            long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
+            if (session == 0 || !MaidInteractions.canInteract(maid, player)
+                || !MaidInteractions.isMainHand(player)
+                || player.inventory.getItemStack() != null
+                || !ContainerMaidNaming.isUnwrittenTag(player.getCurrentEquippedItem())) return null;
+            return new ContainerMaidNaming(player.inventory, maid, session);
+        }
         if (id == GUI_MAID_MODELS)
             return player.inventory.getItemStack() == null ? new ContainerMaidModels(player.inventory, maid) : null;
         return new ContainerMaid(player.inventory, maid);

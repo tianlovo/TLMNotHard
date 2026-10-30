@@ -93,9 +93,10 @@ public final class ReferenceObservationProbe {
                     report.addProperty("allInputsCaptured", false);
                     report.addProperty("equivalenceVerified", false);
                     report.addProperty("inputMode", active.controlled ? ReferenceScenario.inputMode(active.scenario) : "live-observation");
-                    if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
+                    if (ReferenceScenario.sequenced(active.scenario)) {
                         report.addProperty("scenario", active.scenario);
-                        report.addProperty("fixture", "in-place-kinematic-animation-not-navigation");
+                        report.addProperty("fixture", ReferenceScenario.HEAD_TURN.equals(active.scenario)
+                            ? "stationary-head-input-animation-not-navigation" : "in-place-kinematic-animation-not-navigation");
                     }
                     report.addProperty("seed", active.seed);
                     report.addProperty("resourceGeneration", resourceGeneration);
@@ -212,7 +213,8 @@ public final class ReferenceObservationProbe {
             || !(event.getEntity() instanceof EntityMaid maid) || !maid.getUUID().equals(active.entity)) return;
         try {
             if (active.controlled && (maid.tickCount != active.frames.size() || event.getPartialTick() != 0
-                || !maid.onGround() || maid.getXRot() != 0 || maid.yHeadRot != maid.yBodyRot))
+                || !maid.onGround() || maid.getXRot() != ReferenceScenario.headPitch(active.scenario, active.frames.size())
+                || maid.yHeadRot - maid.yBodyRot != ReferenceScenario.headYaw(active.scenario, active.frames.size())))
                 throw new IllegalStateException("Controlled renderer inputs were not applied");
             if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
                 int step = active.frames.size();
@@ -224,6 +226,13 @@ public final class ReferenceObservationProbe {
                     || maid.getY() != maid.yo || maid.getZ() != maid.zo)
                     throw new IllegalStateException("Controlled kinematic inputs were not applied at step " + step);
             }
+            if (ReferenceScenario.HEAD_TURN.equals(active.scenario)
+                && (maid.walkAnimation.speed(0) != 0 || maid.walkAnimation.position(0) != 0
+                || maid.getDeltaMovement().lengthSqr() != 0 || maid.getX() != maid.xo
+                || maid.getY() != maid.yo || maid.getZ() != maid.zo || maid.yBodyRot != 180
+                || maid.yBodyRotO != 180 || maid.getYRot() != 180 || maid.yRotO != 180
+                || maid.yHeadRotO != maid.yHeadRot || maid.xRotO != maid.getXRot()))
+                throw new IllegalStateException("Controlled stationary head inputs were not applied");
             var frame = new JsonObject();
             frame.addProperty("phase", "render-post");
             frame.addProperty("tick", maid.tickCount);
@@ -235,12 +244,19 @@ public final class ReferenceObservationProbe {
             frame.addProperty("onGround", maid.onGround());
             frame.addProperty("headPitch", maid.getXRot());
             frame.addProperty("netHeadYaw", maid.yHeadRot - maid.yBodyRot);
+            if (ReferenceScenario.HEAD_TURN.equals(active.scenario)) {
+                frame.addProperty("bodyYaw", maid.yBodyRot);
+                frame.addProperty("previousBodyYaw", maid.yBodyRotO);
+                frame.addProperty("headYaw", maid.yHeadRot);
+                frame.addProperty("previousHeadYaw", maid.yHeadRotO);
+                frame.addProperty("previousHeadPitch", maid.xRotO);
+            }
             frame.add("position", vector(maid.getX(), maid.getY(), maid.getZ()));
             if (active.controlled) {
                 if (active.inputs == null || active.inputTick != maid.tickCount)
                     throw new IllegalStateException("Actual animation inputs were not captured for this step");
                 frame.add("inputs", active.inputs);
-                if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario))
+                if (ReferenceScenario.sequenced(active.scenario))
                     frame.addProperty("setupAnimInvoked", true);
             }
             var bones = new JsonObject();
@@ -263,7 +279,7 @@ public final class ReferenceObservationProbe {
                         throw new IllegalStateException("Missing original animation phase snapshot");
                     frame.add("coreBones", active.core);
                     frame.add("headBones", active.head);
-                    if (ReferenceScenario.IDLE_WALK_IDLE.equals(active.scenario)) {
+                    if (ReferenceScenario.sequenced(active.scenario)) {
                         if (active.engineUpdated == null) throw new IllegalStateException("Missing actual original update result");
                         frame.addProperty("engineUpdated", active.engineUpdated);
                     }

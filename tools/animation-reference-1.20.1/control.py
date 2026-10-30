@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--entity")
     parser.add_argument("--frames", type=int, default=30)
     parser.add_argument("--seed", type=int, default=424242)
-    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle"), default="idle")
+    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle", "head_turn"), default="idle")
     parser.add_argument("--fault", choices=("none", "head_offset", "clock_offset", "wrong_clip"), default="none")
     parser.add_argument("--timeout", type=float, default=30)
     args = parser.parse_args()

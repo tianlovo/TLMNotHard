@@ -9,6 +9,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
+import com.tianluoqaq.tlmnh.client.development.HeadBindingProbe;
 import com.tianluoqaq.tlmnh.client.development.RenderSubmissionProbe;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
@@ -75,14 +76,23 @@ public final class BuiltinMaidModel extends ModelBase {
         float headPitch, float scale) {
         float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
         if (entity instanceof EntityMaid maid) {
-            var state = MaidAnimationState.capture(maid, partialTick);
-            if (geckoPlayer == null) setupPose(state, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-            else {
-                boolean paused = Minecraft.getMinecraft()
-                    .isGamePaused();
-                double seekTicks = geckoPlayer.advanceClock(ageInTicks, paused);
-                var frame = MaidMolangFrames.capture(maid, partialTick, seekTicks, netHeadYaw, headPitch);
-                geckoPlayer.apply(state, frame, limbSwing, limbSwingAmount, partialTick, paused);
+            try {
+                var state = MaidAnimationState.capture(maid, partialTick);
+                if (geckoPlayer == null) {
+                    setupPose(state, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                    HeadBindingProbe.afterBedrock(this, maid, netHeadYaw, headPitch, partialTick);
+                } else {
+                    boolean paused = Minecraft.getMinecraft()
+                        .isGamePaused();
+                    double seekTicks = geckoPlayer.advanceClock(ageInTicks, paused);
+                    var frame = MaidMolangFrames.capture(maid, partialTick, seekTicks, netHeadYaw, headPitch);
+                    HeadBindingProbe.beforePlayer(this, maid, frame, netHeadYaw, headPitch);
+                    boolean applied = geckoPlayer.apply(state, frame, limbSwing, limbSwingAmount, partialTick, paused);
+                    HeadBindingProbe.afterPlayer(this, maid, frame, netHeadYaw, headPitch, partialTick, applied);
+                }
+            } catch (RuntimeException error) {
+                HeadBindingProbe.failed(maid, error);
+                throw error;
             }
         }
         var consumer = TessellatorVertexConsumer.INSTANCE;

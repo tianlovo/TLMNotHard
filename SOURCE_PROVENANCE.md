@@ -247,3 +247,27 @@ RenderSubmissionProbe在显式开发模式下采一次真实本体批次，比�
 另读实际默认纹理单元绑定、draw调用与恢复状态，可显式注入UV偏移、错误绑定或丢顶点；数据不经保存后修改
 预期流与实际流共用几何算法，故仅检查提交桥和绑定，不构成上游几何或完整GPU成像的独立证明
 开发GUI入口复用真实按钮发送路径，只观察客户端副本，服务端接受仍须通过后续同步或服务端检查核对
+
+## 命名、近战基础与箭物理实验
+
+新增命名窗口、命名协议、规则和容器均位于com.tianluoqaq.tlmnh，服务端重新核对窗口、nonce、实体身份、主人、距离与命名牌；
+EntityMaid阻止拒绝的命名交互继续进入原生ItemNameTag兜底，已写名牌保留主人直接命名路径
+参考固定上游UseNameTagEvent、原版Player交互和1.7.10 EntityPlayer.interactWith、ItemNameTag的完整调用顺序
+
+近战由同一MaidBrainCoordinator仲裁跟随与追击，新增目标筛选、受限控制器和原生攻击适配器；
+参考固定上游IAttackTask、TaskAttack、MaidMeleeAttack及1.7.10 EntityMob.attackEntityAsMob的伤害、附魔和击退管线，成功命中才调用Item.hitEntity
+此批是近战基础，没有实现完整生活竞争、弓箭发射或原版行为benchmark，不能据此宣称智能程度提升
+
+新增common/combat纯数据箭轨迹与拦截求解器，按1.7.10 EntityArrow.onUpdate的实际顺序先移动、再乘阻力、最后扣重力；
+空气0.99F、水中0.8F、重力0.05F保留原浮点常量的有效值，使用离散分段求交，尚未接入女仆远程行为
+MaidArrowPhysicsProbe用于核对RC2运行时实际箭实体，固定介质自由飞行与点拦截不代表碰撞命中率或其他维度物理
+
+## 非零头转向和真实输入绑定实验
+
+原版head_turn合同保留同一上游版本，用实际实体字段驱动四段共72步转向，两模型各独立重建三次；
+Gecko原版GeoReplacedEntityRenderer对相对yaw作wrap/clamp后将yaw、pitch取负，Bedrock常规render参数保留正号
+移植版MaidMolangFrames按该路径转换，独立HeadBindingProbe检查真实RC2实体、原生render参数与播放器实际消费的query
+
+BuiltinGeckoPlayer增加可选只读核心姿态观察点，默认路径不复制姿态；回放另以同输入的新播放器检查观察前后输出一致
+Gecko分别比较核心、头部、最终层，Bedrock只报告实际可观测的最终姿态；不把不同阶段强制判为相等
+故障从真正播放器消费输入前注入，不改写保存后的JSON；这些有界检查仍不能证明GPU像素和全部动作已经正确

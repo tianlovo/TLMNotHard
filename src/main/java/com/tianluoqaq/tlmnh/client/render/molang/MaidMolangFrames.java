@@ -30,8 +30,9 @@ public final class MaidMolangFrames {
         var frame = new MolangQueryFrame();
         frame.partialTick = Math.max(0, Math.min(1, partialTick));
         frame.lifetime = seekTicks / 20.0;
-        frame.netHeadYaw = netHeadYaw;
-        frame.headPitch = headPitch;
+        // ModelBase给出实体角度；上游Gecko renderer会先wrap/clamp相对yaw，再将两轴取负
+        frame.netHeadYaw = -Math.max(-85F, Math.min(85F, MathHelper.wrapDegrees(netHeadYaw)));
+        frame.headPitch = -headPitch;
         frame.bodyYaw = MathHelper.wrapDegrees(
             maid.prevRenderYawOffset + (maid.renderYawOffset - maid.prevRenderYawOffset) * frame.partialTick);
         frame.health = maid.getHealth();

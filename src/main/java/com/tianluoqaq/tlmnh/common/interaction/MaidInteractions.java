@@ -1,11 +1,14 @@
 /*
  * Copyright (c) 2019-2025 tartaric_acid, for the code part
  * Adapted from TouhouLittleMaid, commit 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
- * Original: event/maid/{SaddleMaidEvent,ApplyGoldenAppleEvent,ApplyPotionEffectEvent,GetExpBottleEvent}.java
+ * Original:
+ * event/maid/{SaddleMaidEvent,ApplyGoldenAppleEvent,ApplyPotionEffectEvent,GetExpBottleEvent,UseNameTagEvent}.java
  * MIT, see licenses/TouhouLittleMaid-MIT.txt
  * Adaptation: server authority, RC2 hands, native 1.7.10 riding and item conservation
  */
 package com.tianluoqaq.tlmnh.common.interaction;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -16,10 +19,13 @@ import net.minecraft.item.ItemPotion;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.ChatComponentTranslation;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原版主人交互的RC2适配，客户端只判断操作是否被接收 */
 public final class MaidInteractions {
@@ -49,6 +55,31 @@ public final class MaidInteractions {
             || !isMainHand(player)
             || held == null
             || held.stackSize <= 0) return false;
+        if (held.getItem() == Items.name_tag) {
+            if (!maid.worldObj.isRemote) {
+                if (held.hasDisplayName()) {
+                    var used = player.capabilities.isCreativeMode ? held.copy() : held;
+                    used.interactWithEntity(player, maid);
+                    if (used.stackSize <= 0 && !player.capabilities.isCreativeMode)
+                        player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
+                } else if (player.inventory.getItemStack() == null) {
+                    long session;
+                    do session = ThreadLocalRandom.current()
+                        .nextLong();
+                    while (session == 0);
+                    player.openGui(
+                        TLMNotHard.INSTANCE,
+                        CommonProxy.GUI_MAID_NAMING,
+                        maid.worldObj,
+                        maid.getEntityId(),
+                        (int) (session >>> 32),
+                        (int) session);
+                } else {
+                    player.addChatMessage(new ChatComponentTranslation("gui.tlmnh.naming.put_down_item"));
+                }
+            }
+            return true;
+        }
         if (held.getItem() == Items.saddle) {
             if (!maid.worldObj.isRemote) toggleCarry(maid, player);
             return true;

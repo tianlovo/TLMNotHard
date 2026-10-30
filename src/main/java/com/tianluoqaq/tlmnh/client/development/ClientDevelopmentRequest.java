@@ -72,6 +72,18 @@ public final class ClientDevelopmentRequest {
             if (!Arrays.asList("none", "uv_offset", "wrong_texture", "drop_geometry")
                 .contains(fault)) throw new IllegalArgumentException("Unknown render probe fault");
         }
+        if (command == Command.HEAD_BINDING_PROBE) {
+            model = text(json, "model");
+            if (!Arrays.asList("geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid")
+                .contains(model)) throw new IllegalArgumentException("Unreviewed head binding model");
+            yaw = json.has("headYaw") ? number(json, "headYaw", -85, 85) : 30;
+            pitch = json.has("headPitch") ? number(json, "headPitch", -90, 90) : 15;
+            fault = json.has("fault") ? text(json, "fault") : "native";
+            if (!Arrays.asList("native", "legacy_sign")
+                .contains(fault)) throw new IllegalArgumentException("Unknown head binding fault");
+            if (fault.equals("legacy_sign") && !model.equals("geckolib:winefox_hanfu"))
+                throw new IllegalArgumentException("Legacy head sign fault requires Gecko");
+        }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
             if (!Arrays.asList("status", "open", "select", "back", "next", "previous", "winefox", "all")
@@ -111,6 +123,7 @@ public final class ClientDevelopmentRequest {
         LOOK,
         SCREENSHOT,
         RENDER_PROBE,
+        HEAD_BINDING_PROBE,
         MODELS_UI,
         MODELS_UI_CAPTURE,
         RELOAD,

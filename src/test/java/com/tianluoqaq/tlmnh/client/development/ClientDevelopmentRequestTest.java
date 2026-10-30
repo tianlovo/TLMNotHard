@@ -107,6 +107,31 @@ public class ClientDevelopmentRequestTest {
     }
 
     @Test
+    public void headBindingProbeKeepsBackendFaultsAndAnglesExplicit() {
+        var defaults = parse("{\"command\":\"head_binding_probe\",\"model\":\"geckolib:winefox_hanfu\"}");
+        assertEquals(Command.HEAD_BINDING_PROBE, defaults.command);
+        assertEquals(30, defaults.yaw, 0);
+        assertEquals(15, defaults.pitch, 0);
+        assertEquals("native", defaults.fault);
+        var fault = parse(
+            "{\"command\":\"head_binding_probe\",\"model\":\"geckolib:winefox_hanfu\","
+                + "\"headYaw\":-45,\"headPitch\":-20,\"fault\":\"legacy_sign\"}");
+        assertEquals(-45, fault.yaw, 0);
+        assertEquals(-20, fault.pitch, 0);
+        assertEquals("legacy_sign", fault.fault);
+        for (String suffix : new String[] { ",\"headYaw\":85.01", ",\"headYaw\":-85.01", ",\"headPitch\":90.01",
+            ",\"headPitch\":-90.01", ",\"headYaw\":\"30\"", ",\"headPitch\":null", ",\"fault\":\"none\"" })
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> parse("{\"command\":\"head_binding_probe\",\"model\":\"geckolib:winefox_hanfu\"" + suffix + "}"));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> parse(
+                "{\"command\":\"head_binding_probe\",\"model\":\"authors_and_credits:wine_fox_maid\",\"fault\":\"legacy_sign\"}"));
+        assertThrows(IllegalArgumentException.class, () -> parse("{\"command\":\"head_binding_probe\"}"));
+    }
+
+    @Test
     public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
         for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);

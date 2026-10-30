@@ -55,22 +55,25 @@ public final class ReferenceFrameScope implements AutoCloseable {
                 throw new IllegalStateException("Original animation RNG could not be initialized", error);
             }
         }
-        boolean kinematic = ReferenceScenario.IDLE_WALK_IDLE.equals(scenario);
+        boolean walking = ReferenceScenario.IDLE_WALK_IDLE.equals(scenario);
+        boolean kinematic = ReferenceScenario.sequenced(scenario);
         var scope = new ReferenceFrameScope(maid, 0, true, kinematic);
         maid.tickCount = tick;
         maid.setOnGround(true);
         maid.setYRot(180);
         maid.yRotO = maid.yBodyRot = maid.yBodyRotO = maid.yHeadRot = maid.yHeadRotO = 180;
-        maid.setXRot(0);
-        maid.xRotO = 0;
+        maid.yHeadRot = maid.yHeadRotO = 180 + ReferenceScenario.headYaw(scenario, tick);
+        maid.setXRot(ReferenceScenario.headPitch(scenario, tick));
+        maid.xRotO = maid.getXRot();
         if (kinematic) {
-            double movement = ReferenceScenario.motionX(tick);
+            double movement = walking ? ReferenceScenario.motionX(tick) : 0;
             maid.setDeltaMovement(movement, 0, 0);
             maid.xo = maid.getX() - movement;
             maid.yo = maid.getY();
             maid.zo = maid.getZ();
-            float amount = ReferenceScenario.amount(tick);
-            setWalk(maid.walkAnimation, amount, amount, ReferenceScenario.limb(tick) + amount);
+            float amount = walking ? ReferenceScenario.amount(tick) : 0;
+            float limb = walking ? ReferenceScenario.limb(tick) : 0;
+            setWalk(maid.walkAnimation, amount, amount, limb + amount);
         }
         return scope;
     }

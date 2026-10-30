@@ -16,11 +16,14 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidArrowPhysicsProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -90,6 +93,21 @@ public final class DevelopmentCommand extends CommandBase {
         if (args.length == 1 && "brain-test".equals(args[0])) {
             MaidBrainProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
+            return;
+        }
+        if (args.length == 1 && "naming-test".equals(args[0])) {
+            MaidNamingProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.naming_passed"));
+            return;
+        }
+        if (args.length == 1 && "combat-core-test".equals(args[0])) {
+            MaidCombatProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.combat_core_passed"));
+            return;
+        }
+        if (args.length == 1 && "arrow-physics-test".equals(args[0])) {
+            MaidArrowPhysicsProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.arrow_physics_passed"));
             return;
         }
         if (args.length == 2 && "follow-runtime-test".equals(args[0])) {

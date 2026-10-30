@@ -7,6 +7,7 @@ package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
 import java.util.UUID;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -20,6 +21,7 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
+import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
@@ -104,6 +106,11 @@ public class EntityMaid extends EntityTameable {
         return brain;
     }
 
+    @Override
+    public boolean attackEntityAsMob(Entity target) {
+        return MaidMeleeAttack.attack(this, target);
+    }
+
     public boolean hasPose(MaidPose pose) {
         return (dataWatcher.getWatchableObjectByte(DATA_POSE) & pose.getMask()) != 0;
     }
@@ -116,8 +123,10 @@ public class EntityMaid extends EntityTameable {
 
     @Override
     public boolean interact(EntityPlayer player) {
-        if (!MaidInteractions.canInteract(this, player)) return false;
-        var held = player.getCurrentEquippedItem();
+        var held = player == null ? null : player.getCurrentEquippedItem();
+        boolean nameTag = held != null && held.getItem() == Items.name_tag;
+        // 返回未处理会进入ItemNameTag原生分支，拒绝时也要阻止它绕过女仆权限
+        if (!MaidInteractions.canInteract(this, player)) return nameTag;
         if (!isTamed() && held != null && held.stackSize > 0 && held.getItem() == Items.cake) {
             if (!worldObj.isRemote && bindTo(player.getUniqueID())) {
                 if (!player.capabilities.isCreativeMode && --held.stackSize == 0)
@@ -128,9 +137,9 @@ public class EntityMaid extends EntityTameable {
             }
             return true;
         }
-        if (!isOwner(player)) return false;
+        if (!isOwner(player)) return nameTag;
         // 上游主人交互仅使用主手；Backhand 仍可从实际副手槽进行野生驯服
-        if (!MaidInteractions.isMainHand(player)) return false;
+        if (!MaidInteractions.isMainHand(player)) return nameTag;
         if (MaidInteractions.interactOwned(this, player, held)) return true;
         if (!worldObj.isRemote) {
             if (player.isSneaking() && held == null) {

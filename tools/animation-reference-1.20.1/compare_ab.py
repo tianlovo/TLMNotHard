@@ -10,7 +10,7 @@ from pathlib import Path
 
 from compare_aa import validate
 from reference_environment import EVIDENCE, GIT, UPSTREAM
-from scenario_contract import WALK_MODE, IDLE_CONTRACT, WALK_CONTRACT
+from scenario_contract import WALK_MODE, HEAD_MODE, IDLE_CONTRACT, WALK_CONTRACT, HEAD_CONTRACT
 
 BASE = "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
 BEDROCK_ANIMATIONS = [
@@ -137,7 +137,8 @@ def compare(reference, replay, digest, aa):
               "tolerance_scope": "raw exact diagnostics; no cross-platform error budget calibrated"}
     try:
         validate(reference)
-        contract = WALK_CONTRACT if reference["inputMode"] == WALK_MODE else IDLE_CONTRACT
+        head_fixture = reference["inputMode"] == HEAD_MODE
+        contract = HEAD_CONTRACT if head_fixture else WALK_CONTRACT if reference["inputMode"] == WALK_MODE else IDLE_CONTRACT
         if reference["upstreamCommit"] != BASE or reference["faultInjection"] != "none":
             raise ValueError("Wrong or faulted original baseline")
         if replay["schema"] != "port-replay-v0" or replay["referenceSha256"] != digest or replay["upstreamCommit"] != BASE:
@@ -167,8 +168,13 @@ def compare(reference, replay, digest, aa):
             if left["backend"] == "gecko":
                 if differences(left["inputs"]["query"], right["consumedQuery"], "inputs.query")["count"]:
                     raise ValueError("Consumed query inputs differ")
-                if left["coreBones"] != left["headBones"] or left["headBones"] != left["bones"]:
+                if not head_fixture and (left["coreBones"] != left["headBones"] or left["headBones"] != left["bones"]):
                     raise ValueError("Extra original animation phases were active outside this idle contract")
+                if head_fixture:
+                    if replay["stageObserverNeutral"] is not True or right["engineUpdated"] is not True:
+                        raise ValueError("Missing actual or neutral Gecko phase sampling")
+                    a.update(coreBones=left["coreBones"], headBones=left["headBones"])
+                    b.update(coreBones=right["coreBones"], headBones=right["headBones"])
                 layers = []
                 port_names = {layer["name"] for layer in right["controllers"]}
                 for layer in left["controllers"]:
@@ -185,6 +191,13 @@ def compare(reference, replay, digest, aa):
         report["conditional_layer_projection"] = sorted(projections)
         report["input_steps_consumed"] = len(original_frames)
         report["input_and_asset_contract_passed"] = True
+        if head_fixture:
+            report["phase_scope"] = "Gecko core, head and final compared independently; Bedrock final only"
+            report["bone_phases"] = {}
+            for phase in ("coreBones", "headBones", "bones"):
+                if phase in original[0]:
+                    report["bone_phases"][phase] = differences([frame[phase] for frame in original],
+                                                               [frame[phase] for frame in candidate], "frames." + phase)
         report["comparison"] = differences(original, candidate, "frames")
         report["comparison"].pop("maximum_absolute_numeric_delta")
         report["bone_channels"] = {}

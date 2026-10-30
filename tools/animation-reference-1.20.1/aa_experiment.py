@@ -55,10 +55,10 @@ def ensure_lab():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep-client", action="store_true")
-    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle"), default="idle")
+    parser.add_argument("--scenario", choices=("idle", "idle_walk_idle", "head_turn"), default="idle")
     args = parser.parse_args()
-    frame_count = 72 if args.scenario == "idle_walk_idle" else 30
-    report_path = REPORT if args.scenario == "idle" else EVIDENCE / "aa-idle-walk-idle-experiment.json"
+    frame_count = 30 if args.scenario == "idle" else 72
+    report_path = REPORT if args.scenario == "idle" else EVIDENCE / ("aa-" + args.scenario.replace("_", "-") + "-experiment.json")
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     report = {"scope": "feasibility: original controlled A/A only", "models": [], "passed": False,
               "full_capture_contract_passed": False, "ab_equivalence_executed": False,
@@ -104,6 +104,22 @@ def main():
                     case["main_clip_checkpoints"] = {str(index): clips[index] for index in (23, 24, 26, 47, 48, 50, 71)}
                     if [clips[index] for index in (23, 47, 71)] != ["idle", "walk", "idle"]:
                         raise ValueError("Original main controller did not perform the requested transitions")
+            elif args.scenario == "head_turn":
+                case["navigation_benchmark"] = False
+                case["angle_units"] = "entity/render/query degrees; local bone XYZ radians"
+                case["head_checkpoints"] = {str(index): {"entity_yaw": frames[index]["netHeadYaw"],
+                    "entity_pitch": frames[index]["headPitch"], "render": frames[index]["inputs"]["render"]}
+                    for index in (0, 17, 18, 35, 36, 53, 54, 71)}
+                if frames[0]["backend"] == "gecko":
+                    clips = [next(layer["clip"] for layer in frame["controllers"] if layer["name"] == "main")
+                             for frame in frames]
+                    if any(clip != "idle" for clip in clips):
+                        raise ValueError("Stationary head fixture left the original idle predicate")
+                    case["phase_scope"] = "actual core/head/final snapshots, not required equal"
+                    case["head_stage_changed_steps"] = [index for index, frame in enumerate(frames)
+                        if frame["coreBones"] != frame["headBones"]]
+                else:
+                    case["phase_scope"] = "actual Bedrock final pose only; no distinct Gecko-style head stage"
         report["passed"] = all(case["passed"] for case in report["models"])
     except Exception as error:
         report["error"] = str(error)

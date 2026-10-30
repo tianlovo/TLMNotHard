@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.function.Consumer;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.AnimationState;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.PlayState;
@@ -89,6 +90,12 @@ public final class BuiltinGeckoPlayer implements GeckoAnimationTarget {
 
     public boolean apply(MaidAnimationState state, MolangQueryFrame frame, float limbSwing, float limbSwingAmount,
         float partialTick, boolean paused) {
+        return apply(state, frame, limbSwing, limbSwingAmount, partialTick, paused, null);
+    }
+
+    /** 可选观测器只读取核心姿态，普通绘制不创建快照；不得从回调修改模型 */
+    public boolean apply(MaidAnimationState state, MolangQueryFrame frame, float limbSwing, float limbSwingAmount,
+        float partialTick, boolean paused, Consumer<AnimatedGeoModel> coreObserver) {
         if (paused && applied) return false;
         this.state = Objects.requireNonNull(state, "state");
         this.frame = Objects.requireNonNull(frame, "frame");
@@ -110,6 +117,7 @@ public final class BuiltinGeckoPlayer implements GeckoAnimationTarget {
             Collections.emptyList());
         event.animationTick = clock.ticks();
         processor.tickAnimation(clock.ticks(), event, context);
+        if (coreObserver != null) coreObserver.accept(model);
         if (model.head() != null) {
             var head = model.head();
             head.setRotationX(head.getRotationX() + (float) Math.toRadians(frame.headPitch));
