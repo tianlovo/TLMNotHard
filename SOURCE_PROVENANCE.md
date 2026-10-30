@@ -75,7 +75,7 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 
 适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
 
-`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学与变量绑定见下节，动画查询、Gecko 文件解析和时间轴尚未接入，不能将表达式测试当作 Gecko 模型动画完成
+`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量和帧查询见后文，Gecko 文件解析和时间轴尚未接入，不能将表达式测试当作 Gecko 模型动画完成
 
 ## Molang 数学与变量绑定
 
@@ -95,6 +95,20 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 
 整数随机函数的正常范围保持下界包含、上界排除；等端点返回该值，避免上游 nextInt(0)；宽度使用 long，避免跨整数范围溢出；die_roll 和 die_roll_integer 单次最多1024次，避免表达式占用渲染线程过久，普通次数仍保留上游取整差异
 
-`MolangBindingTest` 覆盖全部数学入口及别名、固定随机种子与多实例交错、反向和等端点范围、public 变量可见性、temp 清理、模型初始化、提前 return 和旋转符号；当前仍不包含游戏查询、时间轴或实际画面验收
+`MolangBindingTest` 覆盖全部数学入口及别名、固定随机种子与多实例交错、反向和等端点范围、public 变量可见性、temp 清理、模型初始化、提前 return 和旋转符号
+
+## Molang 帧查询与主绑定
+
+新增移植9个原文件：`core/molang/MolangParser.java`、`binding/PrimaryBinding.java`、`builtin/QueryBinding.java`、`builtin/query/` 下的 Position、PositionDelta、ItemNameAny、ItemMaxDurability、ItemRemainingDurability，以及 `core/controller/AnimationControllerContext.java`，相对路径均位于 geckolib3 下，来自同一固定 TLM 提交并保留原包名与 MIT 来源头
+
+PrimaryBinding 保留 math、query/q、variable/v、context/c、temp/t、loop 和 for_each，集合改用 JDK；解析包装在成功或失败后都释放临时变量地址；运行时继续由各动画实例独立保存变量和控制器 anim_time
+
+QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到纯数据帧，不导入高版本实体能力、物品标签或其他模组专用查询；保留固定上游的头部轴名称、每秒速度单位、位置插值和 position_delta 的部分 tick 语义；未实现的查询不注册占位结果
+
+独立文件 `MolangQueryFrame`、`MolangQueryFunction` 和 `MaidMolangFrames` 位于本工程包名；取帧从 RC2 实际实体的主手、副手、护甲、生命、位置及水中状态读取，动画寿命由调用方的时间轴传入；纯数据不保存实体或世界引用，避免渲染缓存保活已卸载女仆
+
+物品槽名保留不区分大小写，省略命名空间时使用 minecraft，满足酒狐原资源的 `Mainhand` 与 `bow` 写法；RC2 旧注册 ID 允许大小写并保持原字节，不将 IC2 等旧物品误判为高版本非法 ID；实际取帧不会因旧 ID 字符差异中断
+
+`MolangQueryTest` 使用实际主绑定检查查询单位、头部轴、独立控制器时间、多实例与更新帧、世界边界的 double 插值、主副手隔离、旧物品 ID、耐久度、临时地址清理和参数错误；这些 CPU 测试不代表实体取帧、完整动画或实际画面验收完成
 
 内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现

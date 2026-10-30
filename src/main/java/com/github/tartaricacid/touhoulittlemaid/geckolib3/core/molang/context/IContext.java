@@ -8,6 +8,7 @@ package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.context;
 
 import java.util.Random;
 
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationControllerContext;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IForeignVariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IScopedVariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.ITempVariableStorage;
@@ -17,6 +18,8 @@ public interface IContext<TEntity> {
     TEntity entity();
 
     Random random();
+
+    AnimationControllerContext animationControllerContext();
 
     <TChild> IContext<TChild> createChild(TChild child);
 

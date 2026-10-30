@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.client.render.molang;
 import java.util.Objects;
 import java.util.Random;
 
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationControllerContext;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.context.IContext;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IForeignVariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.IScopedVariableStorage;
@@ -18,17 +19,19 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     private final VariableStorage storage;
     private final Random random;
     private final IForeignVariableStorage foreignStorage;
+    private final AnimationControllerContext animationControllerContext;
 
     public MolangAnimationContext(TEntity entity, VariableStorage storage, Random random) {
-        this(entity, storage, random, storage);
+        this(entity, storage, random, storage, new AnimationControllerContext());
     }
 
     private MolangAnimationContext(TEntity entity, VariableStorage storage, Random random,
-        IForeignVariableStorage foreignStorage) {
+        IForeignVariableStorage foreignStorage, AnimationControllerContext animationControllerContext) {
         this.entity = Objects.requireNonNull(entity, "entity");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.random = Objects.requireNonNull(random, "random");
         this.foreignStorage = foreignStorage;
+        this.animationControllerContext = animationControllerContext;
     }
 
     public void updateEntity(TEntity entity) {
@@ -59,7 +62,12 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     public <TChild> IContext<TChild> createChild(TChild child) {
         IForeignVariableStorage foreign = child == entity ? foreignStorage
             : child instanceof IForeignVariableStorage ? (IForeignVariableStorage) child : null;
-        return new MolangAnimationContext<>(child, storage, random, foreign);
+        return new MolangAnimationContext<>(child, storage, random, foreign, animationControllerContext);
+    }
+
+    @Override
+    public AnimationControllerContext animationControllerContext() {
+        return animationControllerContext;
     }
 
     @Override
