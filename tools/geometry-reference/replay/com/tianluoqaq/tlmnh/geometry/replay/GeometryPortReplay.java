@@ -65,7 +65,7 @@ public final class GeometryPortReplay {
         var samples = new JsonArray();
         for (int repetition = 0; repetition < 3; repetition++) {
             // New manager forces the production parser to run again, not just a mutable-pose clone
-            var model = new BuiltinMaidModels(location -> verifiedResource(location, resource(choice.getGeometry()),
+            var model = new BuiltinMaidModels(location -> verifiedResource(location, choice.getGeometry(),
                 contract.getAsJsonObject("models").getAsJsonObject(id).get("geometrySha256").getAsString())).create(choice);
             var before = choice.isGecko() ? GeometrySnapshots.gecko(model.getGecko())
                 : GeometrySnapshots.bedrock(model.getBedrock().getModelMap());
