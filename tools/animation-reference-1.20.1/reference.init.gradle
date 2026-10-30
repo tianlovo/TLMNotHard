@@ -1,0 +1,62 @@
+// This script only configures the separately checked out upstream reference build
+// The GTNH build never applies it or compiles these probe sources
+import groovy.json.JsonOutput
+
+def probePath = System.getenv('TLMNH_REFERENCE_PROBE')
+def runtimePath = System.getenv('TLMNH_REFERENCE_HOME')
+if (!probePath || !runtimePath) {
+    throw new GradleException('Reference probe and runtime locations must be supplied by the local launcher')
+}
+def probeRoot = new File(probePath).canonicalFile
+def runtimeRoot = new File(runtimePath).canonicalFile
+def portRoot = new File(probeRoot, '../..').canonicalFile
+if (runtimeRoot.toPath().startsWith(portRoot.toPath())) {
+    throw new GradleException('Reference runtime and private evidence must remain outside the source checkout')
+}
+
+gradle.beforeProject { upstream ->
+    upstream.repositories.maven {
+        name = 'TLMNHParchmentMirror'
+        url = 'https://maven.neoforged.net/releases'
+        content { includeGroup 'org.parchmentmc.data' }
+    }
+    upstream.afterEvaluate {
+        if (upstream != upstream.rootProject) return
+        if (!upstream.plugins.hasPlugin('net.minecraftforge.gradle')) {
+            throw new GradleException('Expected the upstream ForgeGradle build')
+        }
+        // Keep optional integration APIs available to javac, but out of the reference game
+        def optionalGroups = ['libs', 'curse.maven', 'maven.modrinth', 'dev.latvian.mods',
+            'dev.architectury', 'dev.emi', 'net.createmod.ponder', 'vazkii.patchouli', 'mezz.jei'] as Set
+        def implementation = upstream.configurations.getByName('implementation')
+        def compileOnly = upstream.configurations.getByName('compileOnly')
+        implementation.dependencies.findAll { optionalGroups.contains(it.group) }.toList().each { dependency ->
+            implementation.dependencies.remove(dependency)
+            compileOnly.dependencies.add(dependency)
+        }
+        def runtimeOnly = upstream.configurations.getByName('runtimeOnly')
+        runtimeOnly.dependencies.findAll { optionalGroups.contains(it.group) }.toList().each {
+            runtimeOnly.dependencies.remove(it)
+        }
+        upstream.sourceSets.main.java.srcDir(new File(probeRoot, 'src/main/java'))
+        upstream.sourceSets.main.resources.srcDir(new File(probeRoot, 'src/main/resources'))
+        upstream.minecraft.runs.client {
+            workingDirectory new File(runtimeRoot, 'client')
+            property 'tlmnh.referenceProbe', 'true'
+            property 'tlmnh.upstreamCommit', '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6'
+            args '--username', 'TLMNHReference'
+        }
+        upstream.tasks.register('tlmnhReferenceRuntimeInventory') {
+            doLast {
+                runtimeRoot.mkdirs()
+                def output = new File(runtimeRoot, 'prepared-classpath.json')
+                output.text = JsonOutput.prettyPrint(JsonOutput.toJson([
+                    upstream: '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6',
+                    runtime: upstream.configurations.runtimeClasspath.files.collect { it.canonicalPath }.sort(),
+                    optionalApisMovedToCompileOnly: true,
+                    actualLoadedModListVerified: false
+                ])) + '\n'
+            }
+        }
+    }
+}
