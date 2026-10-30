@@ -89,8 +89,12 @@ public final class MaidLifeProbe {
             var nativeMetadata = new java.util.ArrayList<Integer>();
             while (world.getBlock(x, y + 1, z) == Blocks.cake && nativePortions < 16) {
                 nativeMetadata.add(world.getBlockMetadata(x, y + 1, z));
+                var hunger = new NBTTagCompound();
                 owner.getFoodStats()
-                    .setFoodLevel(0);
+                    .writeNBT(hunger);
+                hunger.setInteger("foodLevel", 0);
+                owner.getFoodStats()
+                    .readNBT(hunger);
                 Blocks.cake.onBlockActivated(world, x, y + 1, z, owner, 1, 0.5F, 0.5F, 0.5F);
                 nativePortions++;
             }

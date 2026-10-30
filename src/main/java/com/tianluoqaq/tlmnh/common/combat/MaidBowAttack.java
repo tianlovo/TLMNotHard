@@ -205,7 +205,9 @@ public final class MaidBowAttack {
             }
             var from = vec(state.position);
             var to = vec(end);
-            if (maid.worldObj.func_147447_a(from, to, false, true, false) != null) return Status.BLOCKED;
+            // 原生射线会原地推进起点；实体碰撞仍须检查完整tick线段
+            if (maid.worldObj.func_147447_a(vec(state.position), vec(end), false, true, false) != null)
+                return Status.BLOCKED;
             var bounds = AxisAlignedBB
                 .getBoundingBox(
                     Math.min(from.xCoord, to.xCoord),

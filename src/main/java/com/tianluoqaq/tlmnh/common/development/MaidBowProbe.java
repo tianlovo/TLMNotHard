@@ -137,7 +137,7 @@ public final class MaidBowProbe {
             draw(attack, blocked, 130, 0);
             require(
                 !attack.fire(blocked) && attack.getStatus() == MaidBowAttack.Status.BLOCKED,
-                "Friend in actual trajectory must prevent release");
+                "Friend in actual trajectory must prevent release: " + attack.getStatus());
             require(
                 bow.getItemDamage() == wearBefore && maid.getMaidInventory()
                     .getStackInSlot(0).stackSize == arrowsBefore,
@@ -194,6 +194,8 @@ public final class MaidBowProbe {
             maid.getBrainCoordinator()
                 .setSuspended(true);
             for (var arrow : arrows) world.removeEntity(arrow);
+            for (Object value : new ArrayList<>(world.loadedEntityList))
+                if (value instanceof EntityArrow arrow && arrow.shootingEntity == maid) world.removeEntity(arrow);
             for (var target : targets) world.removeEntity(target);
             world.removeEntity(ally);
             world.playerEntities.remove(owner);
