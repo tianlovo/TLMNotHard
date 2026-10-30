@@ -96,12 +96,15 @@ Completed checks and unfinished work are recorded separately. A successful build
 | Entity basics | Core state, six inventory slots, both hands, restart persistence and permissions have server fixture checks |
 | Basic interaction | Owner GUI and basic taming entry points are present; actual client clicks await acceptance |
 | Models and animation | Built-in geometry, Bedrock poses and core Gecko playback are connected; CPU checks pass, in-game visuals await review |
-| Unfinished | Remaining action layers and visual review, complete built-in model switching, equipment layers, life and combat AI, player interactions |
+| Built-in selection | Search, pages, wine-fox filtering and extra textures are connected; all 254 entries are reachable and 35 wine-fox selections have client/server roundtrip checks in RC2 |
+| Animation regression | Two controlled empty-idle fixtures match upstream replay exactly; actual submission-bridge UV, binding and dropped-geometry faults are detected, while full GPU imaging remains unverified |
+| Unfinished | Remaining action layers and visual review, equipment layers, life and combat AI, player interactions |
 | Acceptance pending | Wine-fox and other model visuals, animation transitions, Angelica compatibility, multiplayer and gameplay |
 | Behaviour AI and aiming | Research and architecture exist; implementation, upstream benchmarks and arrow-physics tests are pending |
 
 Asset hashes, CPU geometry and pose checks do not replace in-game rendering and animation acceptance.
-A void world for looping model animations is planned for visual acceptance and has not been implemented.
+A true-air void platform and spectator observer run in RC2;
+model animation cycles, pause controls and the full visual matrix remain pending.
 See [Development notes](DEVELOPMENT.md) and [Source provenance](SOURCE_PROVENANCE.md) for implementation details and origins.
 
 ## Maintainers
