@@ -217,12 +217,19 @@ public final class MaidCoreInteractionProbe {
         f.owner.theItemInWorldManager.setGameType(spectator);
         f.owner.setSneaking(true);
         f.hand(new ItemStack(Items.golden_apple));
-        require(!f.maid.interact(f.owner) && f.held().stackSize == 1, "spectator feeding denied");
+        require(f.owner.inventory.currentItem == 0 && f.held() == null, "EFR spectator hides the selected hand");
+        require(!f.maid.interact(f.owner), "spectator feeding denied");
+        var apple = f.owner.inventory.getStackInSlot(0);
+        require(
+            apple != null && apple.getItem() == Items.golden_apple && apple.stackSize == 1,
+            "spectator apple conserved");
         f.hand(new ItemStack(Items.saddle));
         require(!f.maid.interact(f.owner) && f.maid.ridingEntity == null, "spectator carry denied");
         var wild = f.newMaid();
         f.hand(new ItemStack(Items.cake));
-        require(!wild.interact(f.owner) && !wild.isTamed() && f.held().stackSize == 1, "spectator tame denied");
+        require(!wild.interact(f.owner) && !wild.isTamed(), "spectator tame denied");
+        var cake = f.owner.inventory.getStackInSlot(0);
+        require(cake != null && cake.getItem() == Items.cake && cake.stackSize == 1, "spectator cake conserved");
         f.owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
         f.owner.setSneaking(false);
         var fake = new FakePlayer(f.world, new GameProfile(UUID.randomUUID(), "[TLMNH-Fake]"));
