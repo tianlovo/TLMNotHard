@@ -137,6 +137,8 @@ public final class AnimationLab {
             maid.setModelId(model);
         } else maid.setModelId(model);
         // 复用存档中的展台女仆时也恢复夹具输入，避免历史位置和朝向污染下一例
+        maid.getBrainCoordinator()
+            .setSuspended(true);
         maid.setSitting(true);
         maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
         maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
@@ -165,6 +167,14 @@ public final class AnimationLab {
         require(MaidContainerAccess.canInteract(player, player, maid), "Owner lab maid must be in reach");
         require(player.inventory.getItemStack() == null, "Empty cursor required for GUI fixture");
         player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, player.worldObj, maid.getEntityId(), 0, 0);
+    }
+
+    public static EntityMaid ownedSceneMaid(EntityPlayerMP player) {
+        verifyObserver(player);
+        var maid = sceneMaid(world());
+        require(maid != null && MaidContainerAccess.canInteract(player, player, maid), "Owned scene maid required");
+        require(player.inventory.getItemStack() == null, "Empty cursor required for runtime fixture");
+        return maid;
     }
 
     public static void leave(EntityPlayerMP player) {
@@ -282,6 +292,7 @@ public final class AnimationLab {
         if (event.phase == TickEvent.Phase.START && !event.player.worldObj.isRemote
             && isLab(event.player.worldObj)
             && event.player instanceof EntityPlayerMP player
+            && !MaidFollowRuntimeProbe.isActivePlayer(player)
             && player.theItemInWorldManager.getGameType()
                 .getID() != 3)
             player.setGameType(spectator());

@@ -16,7 +16,10 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -77,6 +80,21 @@ public final class DevelopmentCommand extends CommandBase {
         if (args.length == 1 && "interaction-test".equals(args[0])) {
             MaidInteractionProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
+            return;
+        }
+        if (args.length == 1 && "core-interactions-test".equals(args[0])) {
+            MaidCoreInteractionProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.core_interactions_passed"));
+            return;
+        }
+        if (args.length == 1 && "brain-test".equals(args[0])) {
+            MaidBrainProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
+            return;
+        }
+        if (args.length == 2 && "follow-runtime-test".equals(args[0])) {
+            MaidFollowRuntimeProbe.start(getPlayer(sender, args[1]));
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.follow_runtime_started"));
             return;
         }
         if (args.length >= 1 && args.length <= 3 && "spawn".equals(args[0])) {

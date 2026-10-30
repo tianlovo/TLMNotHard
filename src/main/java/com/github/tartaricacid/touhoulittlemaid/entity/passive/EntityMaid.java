@@ -16,12 +16,13 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
@@ -48,6 +49,7 @@ public class EntityMaid extends EntityTameable {
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidInventory inventory = new MaidInventory(this);
+    private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private ItemStack offhand;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
 
@@ -56,6 +58,7 @@ public class EntityMaid extends EntityTameable {
         setSize(0.6F, 1.5F);
         func_110163_bv();
         getNavigator().setCanSwim(true);
+        tasks.addTask(0, brain);
     }
 
     @Override
@@ -97,6 +100,10 @@ public class EntityMaid extends EntityTameable {
         return inventory;
     }
 
+    public MaidBrainCoordinator getBrainCoordinator() {
+        return brain;
+    }
+
     public boolean hasPose(MaidPose pose) {
         return (dataWatcher.getWatchableObjectByte(DATA_POSE) & pose.getMask()) != 0;
     }
@@ -109,12 +116,9 @@ public class EntityMaid extends EntityTameable {
 
     @Override
     public boolean interact(EntityPlayer player) {
-        if (player instanceof FakePlayer || !isEntityAlive()
-            || !player.isEntityAlive()
-            || player.worldObj != worldObj
-            || getDistanceSqToEntity(player) > 64.0D) return false;
+        if (!MaidInteractions.canInteract(this, player)) return false;
         var held = player.getCurrentEquippedItem();
-        if (!isTamed() && held != null && held.getItem() == Items.cake) {
+        if (!isTamed() && held != null && held.stackSize > 0 && held.getItem() == Items.cake) {
             if (!worldObj.isRemote && bindTo(player.getUniqueID())) {
                 if (!player.capabilities.isCreativeMode && --held.stackSize == 0)
                     player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
@@ -125,6 +129,9 @@ public class EntityMaid extends EntityTameable {
             return true;
         }
         if (!isOwner(player)) return false;
+        // 上游主人交互仅使用主手；Backhand 仍可从实际副手槽进行野生驯服
+        if (!MaidInteractions.isMainHand(player)) return false;
+        if (MaidInteractions.interactOwned(this, player, held)) return true;
         if (!worldObj.isRemote) {
             if (player.isSneaking() && held == null) {
                 if (ridingEntity == null) {

@@ -1,6 +1,6 @@
 entity.tlmnh.maid.name=Maid
 container.tlmnh.maid=Maid
-commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|model-test|persist-create|persist-check|spawn [player] [model-id]|lab-world-test|lab-enter [player] [model-id]|lab-exit [player]|lab-observer-test player|lab-open-gui player>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|core-interactions-test|brain-test|follow-runtime-test <player>|model-test|persist-create|persist-check|spawn [player] [model-id]|lab-world-test|lab-enter [player] [model-id]|lab-exit [player]|lab-observer-test player|lab-open-gui player>
 commands.tlmnhdev.passed=Maid state round-trip passed; gameplay and multiplayer sync remain untested
 commands.tlmnhdev.persist_created=Maid fixture created; save and restart the server, then run persist-check
 commands.tlmnhdev.persist_passed=Maid persistence check passed; verify the restart against both server process records
@@ -43,3 +43,6 @@ gui.tlmnh.models.back=Back to maid
 gui.tlmnh.models.page=%s / %s (%s models)
 gui.tlmnh.models.empty=No matching models
 gui.tlmnh.models.put_down_item=Put down the item on your cursor first
+commands.tlmnhdev.core_interactions_passed=Maid core interaction checks passed
+commands.tlmnhdev.brain_passed=Maid follow baseline checks passed
+commands.tlmnhdev.follow_runtime_started=Maid follow runtime test started

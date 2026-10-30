@@ -5,10 +5,25 @@
 
 | 工程路径，均位于 src/main/java/ | 上游同路径 | 移植与改动 |
 | --- | --- | --- |
-| com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid.java | 是 | 将 TamableAnimal 和 SynchedEntityData 转为 1.7.10 EntityTameable 与 DataWatcher，保留默认模型 ID、任务 ID、日程、经验、饥饿、好感和 NBT 键；装备交给原版实体存储，副手单独保存与同步，基础背包开放六格；接入蛋糕首次驯服、主人界面与潜行空手坐姿，行为与其余交互仍待接入 |
+| com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid.java | 是 | 将 TamableAnimal 和 SynchedEntityData 转为 1.7.10 EntityTameable 与 DataWatcher，保留默认模型 ID、任务 ID、日程、经验、饥饿、好感和 NBT 键；装备交给原版实体存储，副手单独保存与同步，基础背包开放六格；接入蛋糕首次驯服、主人界面、潜行空手坐姿、独立交互适配器与单一跟随任务入口，完整生活和战斗仍待接入 |
 | com/github/tartaricacid/touhoulittlemaid/entity/ai/brain/MaidSchedule.java | 是 | 保留 DAY、NIGHT、ALL，移除高版本专用 EntityDataSerializer，由实体字节字段同步 |
 
 新增的背包视图、注册和测试命令位于 com.tianluoqaq.tlmnh，属于本移植工程的独立适配文件，没有复制其他研究候选的实现
+
+## 核心交互与首批跟随
+
+`com.tianluoqaq.tlmnh.common.interaction.MaidInteractions`参考同一固定TLM提交的四个MIT事件：
+`SaddleMaidEvent`、`ApplyGoldenAppleEvent`、`ApplyPotionEffectEvent`、`GetExpBottleEvent`，保留版权、原路径和来源头
+适配内容为1.7.10原生乘骑、服务端权限、药效及容器守恒；牛奶使用Forge治愈接口，保留不可治愈的自定义效果
+金苹果药效核对MC1.20.1实际食品定义，不直接沿用1.7.10附魔金苹果数值
+创造消耗同时核对1.20.1的Player交互恢复和Forge补丁：食品、饮品保留，兑换扣女仆经验但保留创造玻璃瓶
+主人操作保留上游主手优先，RC2 Backhand已有当前槽切换和重复包抑制；副手蛋糕驯服仍可使用
+
+`com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator`与`MaidFollowController`为新增实现，
+参考已读取的原版主人跟随约束和1.7.10原生任务、导航、移动及注视接口，没有复制其他行为框架
+首批只有主人跟随、硬约束中断、感知/寻路预算、失败退避和卡住恢复，尚未实现完整战斗或生活仲裁
+取消只释放仍属于自己的路径，不清外部攻击和使用物品状态；导航前检查原版ChunkCache所需的已加载区范围
+该预检会在加载边缘保守停步；单元检查和适配器夹具不能替代真实移动、多人同步或原版benchmark
 
 ## Bedrock 几何
 
