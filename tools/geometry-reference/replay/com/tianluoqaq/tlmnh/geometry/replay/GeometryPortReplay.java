@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.geometry.replay;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -64,7 +65,8 @@ public final class GeometryPortReplay {
         var samples = new JsonArray();
         for (int repetition = 0; repetition < 3; repetition++) {
             // New manager forces the production parser to run again, not just a mutable-pose clone
-            var model = new BuiltinMaidModels(GeometryPortReplay::resource).create(choice);
+            var model = new BuiltinMaidModels(location -> verifiedResource(location, resource(choice.getGeometry()),
+                contract.getAsJsonObject("models").getAsJsonObject(id).get("geometrySha256").getAsString())).create(choice);
             var before = choice.isGecko() ? GeometrySnapshots.gecko(model.getGecko())
                 : GeometrySnapshots.bedrock(model.getBedrock().getModelMap());
             var sink = new Sink("uv_shift".equals(fault));
@@ -132,6 +134,17 @@ public final class GeometryPortReplay {
         var value = GeometryPortReplay.class.getResourceAsStream("/assets/" + location.getResourceDomain() + "/" + location.getResourcePath());
         if (value == null) throw new java.io.IOException("Missing production asset: " + location);
         return value;
+    }
+    private static InputStream verifiedResource(ResourceLocation location, ResourceLocation geometry, String approvedSha)
+        throws java.io.IOException {
+        if (!location.equals(geometry)) return resource(location);
+        byte[] actual = bytes(resource(location));
+        try {
+            require(sha(actual).equals(approvedSha), "Actual production parser geometry differs from approved bytes");
+        } catch (Exception failure) {
+            throw new java.io.IOException("Cannot verify the production parser input", failure);
+        }
+        return new ByteArrayInputStream(actual);
     }
     private static byte[] resourceBytes(String name) throws Exception {
         try (var input = GeometryPortReplay.class.getResourceAsStream(name)) {

@@ -115,8 +115,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         nextDangerScan = decisionTick + 10;
         visibleDanger = false;
         int inspected = 0;
-        for (Object value : maid.worldObj
-            .getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8))) {
+        for (Object value : maid.worldObj.getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8))) {
             if (++inspected > 32) break;
             if (value instanceof EntityLivingBase entity && entity instanceof IMob
                 && entity.isEntityAlive()

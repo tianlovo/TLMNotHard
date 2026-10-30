@@ -218,6 +218,9 @@ public final class GeometryReferenceProbe {
         var originalAgent = Class.forName("com.tianluoqaq.tlmnh.reference.identity.ReferenceIdentityAgent", false, ClassLoader.getSystemClassLoader());
         var originalStartup = (Map<String, Object>) originalAgent.getMethod("startup").invoke(null);
         String baseDigest = manifest.get("baseReferenceBuildIdentitySha256").getAsString();
+        var actualBase = JsonParser.parseString(Files.readString(
+            Path.of(System.getProperty("tlmnh.reference.buildIdentity")), StandardCharsets.UTF_8)).getAsJsonObject();
+        require(base.equals(actualBase), "Embedded original build provenance differs from the actual file");
         require(baseDigest.equals(originalStartup.get("buildIdentitySha256"))
             && baseDigest.equals(sha(Files.readAllBytes(Path.of(System.getProperty("tlmnh.reference.buildIdentity")))))
             && base.getAsJsonObject("identityAgent").get("sha256").getAsString().equals(originalStartup.get("agentSha256")),
