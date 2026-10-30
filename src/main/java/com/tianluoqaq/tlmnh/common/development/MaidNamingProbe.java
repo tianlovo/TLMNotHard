@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.development;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,6 +14,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.EnumConnectionState;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.PacketBuffer;
@@ -29,7 +31,10 @@ import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 
+import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.util.ReferenceCountUtil;
 
 /** 真实服务端开窗、名称请求编解码、权限和原生同步数据夹具，不代替客户端输入测试 */
 public final class MaidNamingProbe {
@@ -265,6 +270,7 @@ public final class MaidNamingProbe {
         private final EntityPlayerMP owner, stranger;
         private final EntityMaid maid;
         private final Set<Entity> originalEntities = new HashSet<>();
+        private final List<EmbeddedChannel> connections = new ArrayList<>();
 
         private Fixture(WorldServer world) {
             this.world = world;
@@ -300,23 +306,73 @@ public final class MaidNamingProbe {
 
         @Override
         public void close() {
-            owner.inventory.setItemStack(null);
-            if (owner.openContainer != owner.inventoryContainer) owner.closeScreen();
-            world.removeEntity(maid);
-            for (Object entity : new ArrayList<>(world.loadedEntityList)) {
-                if (entity instanceof EntityItem item && !originalEntities.contains(item)) world.removeEntity(item);
+            Throwable failure = null;
+            try {
+                try {
+                    owner.inventory.setItemStack(null);
+                    if (owner.openContainer != owner.inventoryContainer) owner.closeScreen();
+                } catch (RuntimeException | Error error) {
+                    failure = error;
+                }
+                try {
+                    world.removeEntity(maid);
+                    for (Object entity : new ArrayList<>(world.loadedEntityList)) {
+                        if (entity instanceof EntityItem item && !originalEntities.contains(item))
+                            world.removeEntity(item);
+                    }
+                    for (int slot = 0; slot < owner.inventory.mainInventory.length; slot++)
+                        owner.inventory.setInventorySlotContents(slot, null);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+            } finally {
+                // 窗口或实体清理失败也不能跳过任一内存channel，保留首个异常
+                for (var connection : connections) {
+                    try {
+                        connection.finish();
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                    try {
+                        Object message;
+                        while ((message = connection.readOutbound()) != null) ReferenceCountUtil.release(message);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                    try {
+                        Object message;
+                        while ((message = connection.readInbound()) != null) ReferenceCountUtil.release(message);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                }
+                connections.clear();
             }
-            for (int slot = 0; slot < owner.inventory.mainInventory.length; slot++)
-                owner.inventory.setInventorySlotContents(slot, null);
+            if (failure instanceof RuntimeException error) throw error;
+            if (failure instanceof Error error) throw error;
         }
 
-        private static EntityPlayerMP player(WorldServer world, String name) {
+        private static Throwable remember(Throwable first, Throwable next) {
+            if (first == null) return next;
+            if (first != next) first.addSuppressed(next);
+            return first;
+        }
+
+        private EntityPlayerMP player(WorldServer world, String name) {
             var player = new EntityPlayerMP(
                 MinecraftServer.getServer(),
                 world,
                 new GameProfile(UUID.randomUUID(), name),
                 new ItemInWorldManager(world));
-            new NetHandlerPlayServer(MinecraftServer.getServer(), new NetworkManager(false), player);
+            var manager = new NetworkManager(false);
+            // openGui的FML PLAYER路由需要实际channel；没有dispatcher时明确不投递给客户端
+            var connection = new EmbeddedChannel(manager);
+            connections.add(connection);
+            manager.setConnectionState(EnumConnectionState.PLAY);
+            require(
+                manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
+                "isolated memory channel without a real FML connection");
+            new NetHandlerPlayServer(MinecraftServer.getServer(), manager, player);
             player.theItemInWorldManager.setGameType(GameType.SURVIVAL);
             return player;
         }
