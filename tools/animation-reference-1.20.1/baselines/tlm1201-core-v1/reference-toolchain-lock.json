@@ -1,0 +1,480 @@
+{
+  "gradleVersion": "8.14.3",
+  "java": {
+    "runtimeVersion": "17.0.20+8-LTS",
+    "vendor": "Azul Systems, Inc.",
+    "vmName": "OpenJDK 64-Bit Server VM"
+  },
+  "buildscriptArtifacts": [
+    {
+      "group": "com.google.code.findbugs",
+      "name": "jsr305",
+      "version": "3.0.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "jsr305-3.0.2.jar",
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
+    },
+    {
+      "group": "com.google.code.gson",
+      "name": "gson",
+      "version": "2.10.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "gson-2.10.1.jar",
+      "sha256": "4241c14a7727c34feea6507ec801318a3d4a90f070e4525681079fb94ee4c593"
+    },
+    {
+      "group": "com.google.errorprone",
+      "name": "error_prone_annotations",
+      "version": "2.11.0",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "error_prone_annotations-2.11.0.jar",
+      "sha256": "721cb91842b46fa056847d104d5225c8b8e1e8b62263b993051e1e5a0137b7ec"
+    },
+    {
+      "group": "com.google.guava",
+      "name": "failureaccess",
+      "version": "1.0.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "failureaccess-1.0.1.jar",
+      "sha256": "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26"
+    },
+    {
+      "group": "com.google.guava",
+      "name": "guava",
+      "version": "31.1-jre",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "guava-31.1-jre.jar",
+      "sha256": "a42edc9cab792e39fe39bb94f3fca655ed157ff87a8af78e1d6ba5b07c4a00ab"
+    },
+    {
+      "group": "com.google.guava",
+      "name": "listenablefuture",
+      "version": "9999.0-empty-to-avoid-conflict-with-guava",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+      "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
+    },
+    {
+      "group": "com.google.j2objc",
+      "name": "j2objc-annotations",
+      "version": "1.3",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "j2objc-annotations-1.3.jar",
+      "sha256": "21af30c92267bd6122c0e0b4d20cccb6641a37eaf956c6540ec471d584e64a7b"
+    },
+    {
+      "group": "com.machinezoo.noexception",
+      "name": "noexception",
+      "version": "1.7.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "noexception-1.7.1.jar",
+      "sha256": "3d70aaea3904918587a21bdf99ab6ade9ab1dd0eaf6119344ba513f60f575816"
+    },
+    {
+      "group": "commons-codec",
+      "name": "commons-codec",
+      "version": "1.11",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "commons-codec-1.11.jar",
+      "sha256": "e599d5318e97aa48f42136a2927e6dfa4e8881dff0e6c8e3109ddbbff51d7b7d"
+    },
+    {
+      "group": "commons-io",
+      "name": "commons-io",
+      "version": "2.11.0",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "commons-io-2.11.0.jar",
+      "sha256": "961b2f6d87dbacc5d54abf45ab7a6e2495f89b75598962d8c723cea9bc210908"
+    },
+    {
+      "group": "commons-logging",
+      "name": "commons-logging",
+      "version": "1.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "commons-logging-1.2.jar",
+      "sha256": "daddea1ea0be0f56978ab3006b8ac92834afeefbd9b7e4e6316fca57df0fa636"
+    },
+    {
+      "group": "de.siegmar",
+      "name": "fastcsv",
+      "version": "2.2.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "fastcsv-2.2.1.jar",
+      "sha256": "8a2ffdeff6a8134befef3fa9aa0e7d4506626826434d6bc45d0c3d7b6330c0f7"
+    },
+    {
+      "group": "gradle.plugin.com.github.johnrengelman",
+      "name": "shadow",
+      "version": "7.1.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "shadow-7.1.2.jar",
+      "sha256": "bf705cc2ea5c0180aa870a0fa80b39bf13a14d27128e1eb3a4b674be34f58e90"
+    },
+    {
+      "group": "it.unimi.dsi",
+      "name": "fastutil",
+      "version": "8.3.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "fastutil-8.3.1.jar",
+      "sha256": "1ee5da1ebfdc86ab9574be3cc290769f319df901ae95932a118889b7c63636b9"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "DiffPatch",
+      "version": "2.0.12",
+      "classifier": "all",
+      "extension": "jar",
+      "fileName": "DiffPatch-2.0.12-all.jar",
+      "sha256": "3749059d529d69534b068679d9c1bd4b40ef4f974a189ff1bb8931215d7ce10a"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "JarJarMetadata",
+      "version": "0.3.19",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "JarJarMetadata-0.3.19.jar",
+      "sha256": "6141c710b5b7b673bd544740a31339f0754d7a794cc46b952b7ef7897b7ce265"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "JarJarSelector",
+      "version": "0.3.19",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "JarJarSelector-0.3.19.jar",
+      "sha256": "f7acfbafc9a715ee7d7ce2d539815b3ebccebc5064e0a7252c4a6a1c71d1e740"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "artifactural",
+      "version": "3.0.21",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "artifactural-3.0.21.jar",
+      "sha256": "e0948101562515212e4f7bd0c7d0789f240e6a01372ff432817e38f48cb34a50"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "srgutils",
+      "version": "0.6.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "srgutils-0.6.2.jar",
+      "sha256": "f10b366cdc4df20de8a50511f49fded5ea0fe8f7a476ff984a12f65a1602533e"
+    },
+    {
+      "group": "net.minecraftforge",
+      "name": "unsafe",
+      "version": "0.2.0",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "unsafe-0.2.0.jar",
+      "sha256": "946937e182ab3b518b5b88264f367e1f35ac12bc83abed220490c60c717be239"
+    },
+    {
+      "group": "net.minecraftforge.gradle",
+      "name": "ForgeGradle",
+      "version": "6.0.54",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "ForgeGradle-6.0.54.jar",
+      "sha256": "1d54a97a225ed5180300e8070a1c818597d98ec45a11fedecb425254b7982da2"
+    },
+    {
+      "group": "net.sf.jopt-simple",
+      "name": "jopt-simple",
+      "version": "5.0.4",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "jopt-simple-5.0.4.jar",
+      "sha256": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28"
+    },
+    {
+      "group": "org.apache.ant",
+      "name": "ant",
+      "version": "1.10.11",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "ant-1.10.11.jar",
+      "sha256": "88c0b89bbbaae01e0d9fcae93be792f5abbe3409106f8eee858fdf365dbc0754"
+    },
+    {
+      "group": "org.apache.ant",
+      "name": "ant-launcher",
+      "version": "1.10.11",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "ant-launcher-1.10.11.jar",
+      "sha256": "dab530df7a980b5ac8fd7e8d208243ae0d3ebd6de09b1aa2ce756360cc2ed256"
+    },
+    {
+      "group": "org.apache.commons",
+      "name": "commons-compress",
+      "version": "1.18",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "commons-compress-1.18.jar",
+      "sha256": "5f2df1e467825e4cac5996d44890c4201c000b43c0b23cffc0782d28a0beb9b0"
+    },
+    {
+      "group": "org.apache.commons",
+      "name": "commons-lang3",
+      "version": "3.9",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "commons-lang3-3.9.jar",
+      "sha256": "de2e1dcdcf3ef917a8ce858661a06726a9a944f28e33ad7f9e08bea44dc3c230"
+    },
+    {
+      "group": "org.apache.httpcomponents",
+      "name": "httpclient",
+      "version": "4.5.14",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "httpclient-4.5.14.jar",
+      "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6"
+    },
+    {
+      "group": "org.apache.httpcomponents",
+      "name": "httpcore",
+      "version": "4.4.16",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "httpcore-4.4.16.jar",
+      "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f"
+    },
+    {
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-api",
+      "version": "2.17.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "log4j-api-2.17.1.jar",
+      "sha256": "b0d8a4c8ab4fb8b1888d0095822703b0e6d4793c419550203da9e69196161de4"
+    },
+    {
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-core",
+      "version": "2.17.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "log4j-core-2.17.1.jar",
+      "sha256": "c967f223487980b9364e94a7c7f9a8a01fd3ee7c19bdbf0b0f9f8cb8511f3d41"
+    },
+    {
+      "group": "org.apache.maven",
+      "name": "maven-artifact",
+      "version": "3.9.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "maven-artifact-3.9.1.jar",
+      "sha256": "1b673d76cf8777344c6350d588533ea394dd93fe9a1b2bff319d96cb0dde74f2"
+    },
+    {
+      "group": "org.checkerframework",
+      "name": "checker-qual",
+      "version": "3.13.0",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "checker-qual-3.13.0.jar",
+      "sha256": "3ea0dcd73b4d6cb2fb34bd7ed4dad6db327a01ebad7db05eb7894076b3d64491"
+    },
+    {
+      "group": "org.codehaus.plexus",
+      "name": "plexus-utils",
+      "version": "3.5.1",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "plexus-utils-3.5.1.jar",
+      "sha256": "86e0255d4c879c61b4833ed7f13124e8bb679df47debb127326e7db7dd49a07b"
+    },
+    {
+      "group": "org.jdom",
+      "name": "jdom2",
+      "version": "2.0.6",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "jdom2-2.0.6.jar",
+      "sha256": "1345f11ba606d15603d6740551a8c21947c0215640770ec67271fe78bea97cf5"
+    },
+    {
+      "group": "org.ow2.asm",
+      "name": "asm",
+      "version": "9.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "asm-9.2.jar",
+      "sha256": "b9d4fe4d71938df38839f0eca42aaaa64cf8b313d678da036f0cb3ca199b47f5"
+    },
+    {
+      "group": "org.ow2.asm",
+      "name": "asm-analysis",
+      "version": "9.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "asm-analysis-9.2.jar",
+      "sha256": "878fbe521731c072d14d2d65b983b1beae6ad06fda0007b6a8bae81f73f433c4"
+    },
+    {
+      "group": "org.ow2.asm",
+      "name": "asm-commons",
+      "version": "9.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "asm-commons-9.2.jar",
+      "sha256": "be4ce53138a238bb522cd781cf91f3ba5ce2f6ca93ec62d46a162a127225e0a6"
+    },
+    {
+      "group": "org.ow2.asm",
+      "name": "asm-tree",
+      "version": "9.2",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "asm-tree-9.2.jar",
+      "sha256": "aabf9bd23091a4ebfc109c1f3ee7cf3e4b89f6ba2d3f51c5243f16b3cffae011"
+    },
+    {
+      "group": "org.parchmentmc",
+      "name": "feather",
+      "version": "0.6.5",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "feather-0.6.5.jar",
+      "sha256": "5e328391fbc6728cceb0878be40433b1a55aac248594260fcf0bb10f2631333e"
+    },
+    {
+      "group": "org.parchmentmc",
+      "name": "librarian",
+      "version": "1.2.0.7-dev-SNAPSHOT",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "librarian-1.2.0.7-dev-SNAPSHOT.jar",
+      "sha256": "111df769f5227dab1ad150201e10efe6d440d647680c47facfcfe2b4010a6af2"
+    },
+    {
+      "group": "org.parchmentmc.feather",
+      "name": "io-gson",
+      "version": "0.6.5",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "io-gson-0.6.5.jar",
+      "sha256": "0a9292ab2cab1f9d8143ada277d83c8f3cbeb26fab69287110be02821a911c4f"
+    },
+    {
+      "group": "org.slf4j",
+      "name": "slf4j-api",
+      "version": "1.7.30",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "slf4j-api-1.7.30.jar",
+      "sha256": "cdba07964d1bb40a0761485c6b1e8c2f8fd9eb1d19c53928ac0d7f9510105c57"
+    },
+    {
+      "group": "org.slf4j",
+      "name": "slf4j-simple",
+      "version": "1.7.30",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "slf4j-simple-1.7.30.jar",
+      "sha256": "8b9279cbff6b9f88594efae3cf02039b6995030eec023ed43928748c41670fee"
+    },
+    {
+      "group": "org.spongepowered",
+      "name": "mixingradle",
+      "version": "0.7-SNAPSHOT",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "mixingradle-0.7-SNAPSHOT.jar",
+      "sha256": "61d4dd3a40eeaf126ac9c5ffdea74c284dfcb34a38baa256f7c99d023a0a04a9"
+    },
+    {
+      "group": "org.tukaani",
+      "name": "xz",
+      "version": "1.8",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "xz-1.8.jar",
+      "sha256": "8c7964b36fe3f0cbe644b04fcbff84e491ce81917db2f5bfa0cba8e9548aff5d"
+    },
+    {
+      "group": "org.vafer",
+      "name": "jdependency",
+      "version": "2.7.0",
+      "classifier": "",
+      "extension": "jar",
+      "fileName": "jdependency-2.7.0.jar",
+      "sha256": "d63efd5746ff408943a7dd7ef85ae9f09aa7fb63bb2b16911427ce6c45b59fd0"
+    }
+  ],
+  "plugins": [
+    {
+      "id": "com.github.johnrengelman.shadow",
+      "instanceClass": "com.github.jengelman.gradle.plugins.shadow.ShadowPlugin",
+      "implementationClass": "com.github.jengelman.gradle.plugins.shadow.ShadowPlugin",
+      "implementationResourceSha256": "5f052f7ac917b7511bb930a4b235db7f144d583faf2cbee745699841805923c2",
+      "resourceScope": "loader-resource-not-post-transform-definition",
+      "codeSource": {
+        "kind": "jar",
+        "fileName": "shadow-7.1.2.jar",
+        "sha256": "bf705cc2ea5c0180aa870a0fa80b39bf13a14d27128e1eb3a4b674be34f58e90"
+      },
+      "rawArtifactModule": "gradle.plugin.com.github.johnrengelman:shadow"
+    },
+    {
+      "id": "net.minecraftforge.gradle",
+      "instanceClass": "net.minecraftforge.gradle.userdev.UserDevPlugin",
+      "implementationClass": "net.minecraftforge.gradle.userdev.UserDevPlugin",
+      "implementationResourceSha256": "94a497a2a65149b9305ea6969cf0acb013660c2538a013b4bea763006ea867bf",
+      "resourceScope": "loader-resource-not-post-transform-definition",
+      "codeSource": {
+        "kind": "jar",
+        "fileName": "ForgeGradle-6.0.54.jar",
+        "sha256": "1d54a97a225ed5180300e8070a1c818597d98ec45a11fedecb425254b7982da2"
+      },
+      "rawArtifactModule": "net.minecraftforge.gradle:ForgeGradle"
+    },
+    {
+      "id": "org.parchmentmc.librarian.forgegradle",
+      "instanceClass": "org.parchmentmc.librarian.forgegradle.LibrarianForgeGradlePlugin",
+      "implementationClass": "org.parchmentmc.librarian.forgegradle.LibrarianForgeGradlePlugin",
+      "implementationResourceSha256": "7a4034605d56f32047bea4ae5307305a6df2da298812977453ac5eec59edb8aa",
+      "resourceScope": "loader-resource-not-post-transform-definition",
+      "codeSource": {
+        "kind": "jar",
+        "fileName": "librarian-1.2.0.7-dev-SNAPSHOT.jar",
+        "sha256": "111df769f5227dab1ad150201e10efe6d440d647680c47facfcfe2b4010a6af2"
+      },
+      "rawArtifactModule": "org.parchmentmc:librarian"
+    },
+    {
+      "id": "org.spongepowered.mixin",
+      "instanceClass": "org.spongepowered.asm.gradle.plugins.MixinGradlePlugin",
+      "implementationClass": "org.spongepowered.asm.gradle.plugins.MixinGradlePlugin",
+      "implementationResourceSha256": "52d70b5b5e3bf8feda5f96117a2a0835bfb62ab0f80229a72ac3e1f3572103db",
+      "resourceScope": "loader-resource-not-post-transform-definition",
+      "codeSource": {
+        "kind": "jar",
+        "fileName": "mixingradle-0.7-SNAPSHOT.jar",
+        "sha256": "61d4dd3a40eeaf126ac9c5ffdea74c284dfcb34a38baa256f7c99d023a0a04a9"
+      },
+      "rawArtifactModule": "org.spongepowered:mixingradle"
+    }
+  ],
+  "schema": "reference-toolchain-lock-v1",
+  "status": "APPROVED"
+}

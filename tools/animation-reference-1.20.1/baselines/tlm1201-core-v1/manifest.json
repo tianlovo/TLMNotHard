@@ -1,0 +1,781 @@
+{
+  "approvedForBulk": false,
+  "assetLicense": "See THIRD_PARTY_NOTICES.md and unchanged model metadata credits",
+  "assets": {
+    "authors_and_credits:maid_model.json": "assets/cb4a1739a4bf842dcc52be6323858930340e5bbdfe0281193266a6d388e90587.bin",
+    "authors_and_credits:models/entity/wine_fox_maid.json": "assets/eab9975a5d172630aef5e775005a3bf1b19d2942bce1335d26b809400eed0c17.bin",
+    "authors_and_credits:textures/entity/wine_fox_maid.png": "assets/660c2e6631f5e0afb0e0e803b2444b489fcad1a574c65d0c8448382b9b0bbb5b.bin",
+    "geckolib:animation/winefox_hanfu.animation.json": "assets/7060b32e034407d745fbe95193192910c8362c3f66480ef0c42d9d41e4026569.bin",
+    "geckolib:maid_model.json": "assets/66750c6ca4b67697232c2ffcd902f8c66c667e6afc6c3142e463c64481a09311.bin",
+    "geckolib:models/entity/winefox_hanfu.json": "assets/6dd80215c0873cc04cac4bd33d14cdfd1016e8bcd2c883bb5b76005a327a9f89.bin",
+    "geckolib:textures/entity/winefox_hanfu.png": "assets/f7f78e3cf56be2588b27287842178ad4e8c45257a002ae13765df4b1bcd24d2b.bin",
+    "touhou_little_maid:animation/maid.animation.json": "assets/7bcc3cd427d975ea2919787ddff230e93a5202d382f7ffb08b4a4c00c1b78b61.bin"
+  },
+  "cases": [
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 30,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 30,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 30,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 30,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "geckolib:winefox_hanfu",
+      "samples": [
+        {
+          "file": "captures/idle-0-0.json.gz",
+          "sha256": "3a33fb4046f3aae519abd0ce5f587cc2172ab7b999e7512be347be7dff99ee1e"
+        },
+        {
+          "file": "captures/idle-0-1.json.gz",
+          "sha256": "66ec27228f60dee28abdc487ec72e6c4d6537e2e9c5bf67ebdfe64a14bd1c546"
+        },
+        {
+          "file": "captures/idle-0-2.json.gz",
+          "sha256": "be7c3260abf803dbca0a9406ccd561ebe62174e6caa175f4087c208abe07b21a"
+        }
+      ],
+      "scenario": "idle",
+      "sourceAaSha256": "f92bbcb39d32a420c14c5106e588b155a804f05a6093bbb1748683e2ab642122"
+    },
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 30,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 30,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 30,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 30,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "authors_and_credits:wine_fox_maid",
+      "samples": [
+        {
+          "file": "captures/idle-1-0.json.gz",
+          "sha256": "cddea14db8308fe83033114aa95e9641b4bd2605e9c8748c00900e1b4096f835"
+        },
+        {
+          "file": "captures/idle-1-1.json.gz",
+          "sha256": "61bbb577756a16c37bc9059bed14007e843a3fed139a0b64dc291cafba156ba3"
+        },
+        {
+          "file": "captures/idle-1-2.json.gz",
+          "sha256": "f052b4b01ae8f6e82526e75c76e5015c59990d33b084f3a5d09434e5a805cc77"
+        }
+      ],
+      "scenario": "idle",
+      "sourceAaSha256": "f92bbcb39d32a420c14c5106e588b155a804f05a6093bbb1748683e2ab642122"
+    },
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "geckolib:winefox_hanfu",
+      "samples": [
+        {
+          "file": "captures/idle_walk_idle-0-0.json.gz",
+          "sha256": "29a439375742cc1ea05391bff6eed6519ae8fe8793a263a1991a408eabb19e28"
+        },
+        {
+          "file": "captures/idle_walk_idle-0-1.json.gz",
+          "sha256": "382bb336eb6afd4990fc2af67edfbb39c2a89b283157fabc0e23521cf5b1a966"
+        },
+        {
+          "file": "captures/idle_walk_idle-0-2.json.gz",
+          "sha256": "ee8aa6431e329cd3e4b94173fe03cee2743eec58a1172722c1a8a02e435530fa"
+        }
+      ],
+      "scenario": "idle_walk_idle",
+      "sourceAaSha256": "a057df77d95a3970815c7fd6ca44e8cba26ed06d0ab0a13bd2dcd8a4118158bd"
+    },
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "authors_and_credits:wine_fox_maid",
+      "samples": [
+        {
+          "file": "captures/idle_walk_idle-1-0.json.gz",
+          "sha256": "8a9db44b172666429c5f78d227ebd73157ac4a03224b4d1781fa9c924ce0a6bb"
+        },
+        {
+          "file": "captures/idle_walk_idle-1-1.json.gz",
+          "sha256": "4777bdd20fab3c0c221da589deef8af79e329bffcb1baa3e57e91d4b543030d1"
+        },
+        {
+          "file": "captures/idle_walk_idle-1-2.json.gz",
+          "sha256": "7f9eeb0701020c3f73db8ce91cd92a88437861024ade55600ba48b0e9746d24a"
+        }
+      ],
+      "scenario": "idle_walk_idle",
+      "sourceAaSha256": "a057df77d95a3970815c7fd6ca44e8cba26ed06d0ab0a13bd2dcd8a4118158bd"
+    },
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "geckolib:winefox_hanfu",
+      "samples": [
+        {
+          "file": "captures/head_turn-0-0.json.gz",
+          "sha256": "ec14eddc7ca73917d0280f1def6fdcb2912121e9543df1964435a229aaa4f441"
+        },
+        {
+          "file": "captures/head_turn-0-1.json.gz",
+          "sha256": "acf10e7f70e0307a761d47c8942fb26d3e6bb0c0f21ffa4840914d2d9b75e5d9"
+        },
+        {
+          "file": "captures/head_turn-0-2.json.gz",
+          "sha256": "31535be0eead3b8f81790c4ad6753b86fd687dc0de26b7b51c6cf6740d4e3011"
+        }
+      ],
+      "scenario": "head_turn",
+      "sourceAaSha256": "26530f716fd1a3181aba5176a0ec0cdbb9e5618d80b6db5566f5e03543c44e95"
+    },
+    {
+      "comparisons": [
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        },
+        {
+          "candidate_frames": 72,
+          "differences": 0,
+          "equivalence_verified": false,
+          "first_divergence": null,
+          "maximum_absolute_numeric_delta": 0.0,
+          "reference_frames": 72,
+          "rendering_verified": false,
+          "scope": "original controlled observation repeatability only",
+          "status": "PASS_REPEATABILITY",
+          "tolerance": 0,
+          "tolerance_scope": "raw same-runtime repetition, not a cross-version tolerance"
+        }
+      ],
+      "model": "authors_and_credits:wine_fox_maid",
+      "samples": [
+        {
+          "file": "captures/head_turn-1-0.json.gz",
+          "sha256": "664c20d9e13558972d183d4fb17d4c5936ec6152542d28a9cd6fc67ec6977bcd"
+        },
+        {
+          "file": "captures/head_turn-1-1.json.gz",
+          "sha256": "1a4cdd4ff57dcdef34d5ec7704e95db9e0392154e78350a5dc525335ba922b95"
+        },
+        {
+          "file": "captures/head_turn-1-2.json.gz",
+          "sha256": "19a84e80b06367bf30eddca7c5b1ef0297e6baf35a27979130d5de3a01f2262a"
+        }
+      ],
+      "scenario": "head_turn",
+      "sourceAaSha256": "26530f716fd1a3181aba5176a0ec0cdbb9e5618d80b6db5566f5e03543c44e95"
+    }
+  ],
+  "files": [
+    {
+      "bytes": 44741,
+      "kind": "build_identity",
+      "path": "reference-build-identity.json",
+      "sha256": "cd1534bee46da6445c6571108d791591301bf786be2c466774fd15c307700447"
+    },
+    {
+      "bytes": 16326,
+      "kind": "toolchain_lock",
+      "path": "reference-toolchain-lock.json",
+      "sha256": "977d320c909354fe46ddb0a0f862bd7c9712020c48c24cf8cc8d13f5b6e4e950"
+    },
+    {
+      "bytes": 55880,
+      "kind": "capture",
+      "path": "captures/idle-0-0.json.gz",
+      "rawBytes": 2125935,
+      "rawSha256": "3a33fb4046f3aae519abd0ce5f587cc2172ab7b999e7512be347be7dff99ee1e",
+      "sha256": "263599e5928c093e6c8c25a43a51de1077eec30883dcad350faaf8be064966f9"
+    },
+    {
+      "bytes": 55881,
+      "kind": "capture",
+      "path": "captures/idle-0-1.json.gz",
+      "rawBytes": 2125935,
+      "rawSha256": "66ec27228f60dee28abdc487ec72e6c4d6537e2e9c5bf67ebdfe64a14bd1c546",
+      "sha256": "31a47bceecd1e37a556bc321e31f9aad96a6aa147963e3787081e64b9b29ff3d"
+    },
+    {
+      "bytes": 55882,
+      "kind": "capture",
+      "path": "captures/idle-0-2.json.gz",
+      "rawBytes": 2125935,
+      "rawSha256": "be7c3260abf803dbca0a9406ccd561ebe62174e6caa175f4087c208abe07b21a",
+      "sha256": "06f5243b633843a8570566791a22fb1369df4305a7abdfc91e74dcc21e3f8ffc"
+    },
+    {
+      "bytes": 11968,
+      "kind": "capture",
+      "path": "captures/idle-1-0.json.gz",
+      "rawBytes": 775663,
+      "rawSha256": "cddea14db8308fe83033114aa95e9641b4bd2605e9c8748c00900e1b4096f835",
+      "sha256": "ab8ccfbfec2161e644f4e1b79d998ff1320584a25591768883540cfe14fd01bb"
+    },
+    {
+      "bytes": 11969,
+      "kind": "capture",
+      "path": "captures/idle-1-1.json.gz",
+      "rawBytes": 775663,
+      "rawSha256": "61bbb577756a16c37bc9059bed14007e843a3fed139a0b64dc291cafba156ba3",
+      "sha256": "06b66ba9b88365ca511a44017f912103949871547e23c902bb2d7d89023f00be"
+    },
+    {
+      "bytes": 11969,
+      "kind": "capture",
+      "path": "captures/idle-1-2.json.gz",
+      "rawBytes": 775663,
+      "rawSha256": "f052b4b01ae8f6e82526e75c76e5015c59990d33b084f3a5d09434e5a805cc77",
+      "sha256": "9680ce3d87861196f9640a9ff2c26a22e0ef127eae604d7e01513cab246176f0"
+    },
+    {
+      "bytes": 138899,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-0-0.json.gz",
+      "rawBytes": 5127404,
+      "rawSha256": "29a439375742cc1ea05391bff6eed6519ae8fe8793a263a1991a408eabb19e28",
+      "sha256": "96723c8500781806bdfe2d19173a0b1d86a29d924122dc61bc6c2ab170e5ec8f"
+    },
+    {
+      "bytes": 138899,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-0-1.json.gz",
+      "rawBytes": 5127404,
+      "rawSha256": "382bb336eb6afd4990fc2af67edfbb39c2a89b283157fabc0e23521cf5b1a966",
+      "sha256": "942a3130e71ea1a949a7cf704786d99003f407222a3542ba9753671bf4255c1a"
+    },
+    {
+      "bytes": 138899,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-0-2.json.gz",
+      "rawBytes": 5127404,
+      "rawSha256": "ee8aa6431e329cd3e4b94173fe03cee2743eec58a1172722c1a8a02e435530fa",
+      "sha256": "03508cb7798d8e890d942db98a21c27fa64c734e9d3d1435012b809334aa8fc8"
+    },
+    {
+      "bytes": 22945,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-1-0.json.gz",
+      "rawBytes": 1850386,
+      "rawSha256": "8a9db44b172666429c5f78d227ebd73157ac4a03224b4d1781fa9c924ce0a6bb",
+      "sha256": "c7997654740a56a84d34abf5e30f0f96e82afaa1d3524e72e84f24b38f95cd6f"
+    },
+    {
+      "bytes": 22945,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-1-1.json.gz",
+      "rawBytes": 1850386,
+      "rawSha256": "4777bdd20fab3c0c221da589deef8af79e329bffcb1baa3e57e91d4b543030d1",
+      "sha256": "4f5f0cd20a15d0e8a3f66fb25b556d3cf50ee72b01632e3990daad9b4ab36a9c"
+    },
+    {
+      "bytes": 22945,
+      "kind": "capture",
+      "path": "captures/idle_walk_idle-1-2.json.gz",
+      "rawBytes": 1850386,
+      "rawSha256": "7f9eeb0701020c3f73db8ce91cd92a88437861024ade55600ba48b0e9746d24a",
+      "sha256": "e31ccacbf51f3ac961e35fddc180330795eb263841bdc8c442be2034dd9f3f78"
+    },
+    {
+      "bytes": 130964,
+      "kind": "capture",
+      "path": "captures/head_turn-0-0.json.gz",
+      "rawBytes": 5114867,
+      "rawSha256": "ec14eddc7ca73917d0280f1def6fdcb2912121e9543df1964435a229aaa4f441",
+      "sha256": "7b2853c13e8bb8936aba2d9938d6b03b1c31a0d6c267de054e10142f941fe908"
+    },
+    {
+      "bytes": 130964,
+      "kind": "capture",
+      "path": "captures/head_turn-0-1.json.gz",
+      "rawBytes": 5114867,
+      "rawSha256": "acf10e7f70e0307a761d47c8942fb26d3e6bb0c0f21ffa4840914d2d9b75e5d9",
+      "sha256": "a2e9e34dae2eb4e45914b85cd0a76aad46f99b9f97f1d613b284494a2baea6a1"
+    },
+    {
+      "bytes": 130964,
+      "kind": "capture",
+      "path": "captures/head_turn-0-2.json.gz",
+      "rawBytes": 5114867,
+      "rawSha256": "31535be0eead3b8f81790c4ad6753b86fd687dc0de26b7b51c6cf6740d4e3011",
+      "sha256": "bfd19c27417e9924122924e58bdad0b3876c4585a84a00879b841f0b76913acb"
+    },
+    {
+      "bytes": 22107,
+      "kind": "capture",
+      "path": "captures/head_turn-1-0.json.gz",
+      "rawBytes": 1857287,
+      "rawSha256": "664c20d9e13558972d183d4fb17d4c5936ec6152542d28a9cd6fc67ec6977bcd",
+      "sha256": "d5ac5d7c6daca751dadb59516241b13e1e7a4c36ea5f284261fb9a8d17345af6"
+    },
+    {
+      "bytes": 22106,
+      "kind": "capture",
+      "path": "captures/head_turn-1-1.json.gz",
+      "rawBytes": 1857287,
+      "rawSha256": "1a4cdd4ff57dcdef34d5ec7704e95db9e0392154e78350a5dc525335ba922b95",
+      "sha256": "33dfbf32cad2ad779ac2919a14f13779b99f55550b61b0d77e200d9d8ea85a82"
+    },
+    {
+      "bytes": 22106,
+      "kind": "capture",
+      "path": "captures/head_turn-1-2.json.gz",
+      "rawBytes": 1857287,
+      "rawSha256": "19a84e80b06367bf30eddca7c5b1ef0297e6baf35a27979130d5de3a01f2262a",
+      "sha256": "9b6f7aec14eda3fe762645b56f221e7a80bb4e6ad4a90fd63de77f57e849377e"
+    },
+    {
+      "bytes": 9133,
+      "kind": "canonical_asset",
+      "path": "assets/cb4a1739a4bf842dcc52be6323858930340e5bbdfe0281193266a6d388e90587.bin",
+      "sha256": "cb4a1739a4bf842dcc52be6323858930340e5bbdfe0281193266a6d388e90587"
+    },
+    {
+      "bytes": 24407,
+      "kind": "canonical_asset",
+      "path": "assets/eab9975a5d172630aef5e775005a3bf1b19d2942bce1335d26b809400eed0c17.bin",
+      "sha256": "eab9975a5d172630aef5e775005a3bf1b19d2942bce1335d26b809400eed0c17"
+    },
+    {
+      "bytes": 4862,
+      "kind": "canonical_asset",
+      "path": "assets/660c2e6631f5e0afb0e0e803b2444b489fcad1a574c65d0c8448382b9b0bbb5b.bin",
+      "sha256": "660c2e6631f5e0afb0e0e803b2444b489fcad1a574c65d0c8448382b9b0bbb5b"
+    },
+    {
+      "bytes": 193446,
+      "kind": "canonical_asset",
+      "path": "assets/7060b32e034407d745fbe95193192910c8362c3f66480ef0c42d9d41e4026569.bin",
+      "sha256": "7060b32e034407d745fbe95193192910c8362c3f66480ef0c42d9d41e4026569"
+    },
+    {
+      "bytes": 9905,
+      "kind": "canonical_asset",
+      "path": "assets/66750c6ca4b67697232c2ffcd902f8c66c667e6afc6c3142e463c64481a09311.bin",
+      "sha256": "66750c6ca4b67697232c2ffcd902f8c66c667e6afc6c3142e463c64481a09311"
+    },
+    {
+      "bytes": 255700,
+      "kind": "canonical_asset",
+      "path": "assets/6dd80215c0873cc04cac4bd33d14cdfd1016e8bcd2c883bb5b76005a327a9f89.bin",
+      "sha256": "6dd80215c0873cc04cac4bd33d14cdfd1016e8bcd2c883bb5b76005a327a9f89"
+    },
+    {
+      "bytes": 10930,
+      "kind": "canonical_asset",
+      "path": "assets/f7f78e3cf56be2588b27287842178ad4e8c45257a002ae13765df4b1bcd24d2b.bin",
+      "sha256": "f7f78e3cf56be2588b27287842178ad4e8c45257a002ae13765df4b1bcd24d2b"
+    },
+    {
+      "bytes": 355795,
+      "kind": "canonical_asset",
+      "path": "assets/7bcc3cd427d975ea2919787ddff230e93a5202d382f7ffb08b4a4c00c1b78b61.bin",
+      "sha256": "7bcc3cd427d975ea2919787ddff230e93a5202d382f7ffb08b4a4c00c1b78b61"
+    }
+  ],
+  "id": "tlm1201-core-v1",
+  "producerTools": {
+    "files": {
+      "aa_experiment.py": "6518b46e4790204b92c43986cfc1e8a877be1492991438968874cfc13c07daa3",
+      "ab_experiment.py": "87d0b3c7adee7fa3dcd77c39e4612151a9c07521d9de9749d5ac49e68ce4d1a1",
+      "baseline_bundle.py": "a1f093ea9555d16e487a52aebfffcd90a38e6348090806b8d03002e011907ee9",
+      "bundle_regression.py": "09c3324399e8f3e3418319d789a3eefdb253252267daa65afe3ca400ddb6f21b",
+      "compare_aa.py": "33d57ba4b493ae2ae52cc7ca9e44641992e1c6d5abe1a2e496d1d3c9cd171194",
+      "compare_ab.py": "eb95481f7eb68af6422596d08b14d1368aa440d552868f51d4a37b3bab0a79c1",
+      "control.py": "e46a7aa9cba743ae6fb5a5d86eb6a2062c7b06bd11b9d5ac9290c227dd4efdf8",
+      "fault_experiment.py": "123a35de425b486baa20487940221a8161002cd82fafc397cb70908602042eca",
+      "identity-agent-test/com/tianluoqaq/tlmnh/reference/identitytest/ReferenceIdentityAgentFixture.java": "149475ac0d87b67f4e5a0ac5f126fad597a508e36e5fa26cea27c3c0ab2325f6",
+      "identity-agent/com/tianluoqaq/tlmnh/reference/identity/ReferenceIdentityAgent.java": "9ddf85615236d40293a603a1cd577c2faa9cf10f8f1b3b8b17893caf43d83847",
+      "identity-classes.json": "f5153053d8077c375f4fe86c1683a3527044e2aaff80e2bb70b9bc41b3c0497e",
+      "reference.init.gradle": "bb91c687ccde62798f3f602a3001065d581e2ec925dae18e8ef66a471e604f0c",
+      "reference_environment.py": "03be043361d0e76bf83f5698d4fceb4405a010b4b23dfe1949cf990962c6ec97",
+      "replay.init.gradle": "f0fba71d13821126de2a314dedcce90737f60690ed967bdc9bf1aaf6f15547f9",
+      "replay/com/tianluoqaq/tlmnh/reference/replay/ReferenceAnimationReplay.java": "3121c9151dc186404840e0ea458a4e356a7db9f41fa277fb203496bfe178afd3",
+      "scenario_contract.py": "dc78949808ad4364e11670ebb7d4edaec11919e0a132b56b7d752fb6279ed8fb",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceFrameScope.java": "be40697aba1b0e82d8eabe9bfecd3c220adf2b21a055629c61fb21bc59d3f1ba",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceObservationProbe.java": "8cb7117fd34d582a8ea8d75c6e9defef6278d3f8e546b11510e4e2a76e4c43ea",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceReplayInputs.java": "9691f0067725e4bfbfd82b543252f541188ccb6a09e4aa40b43a27ffd2879ba8",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceRuntimeIdentity.java": "cc2e3d3fa1186b29728c159729b2fcf9de5d3692bf2d2611ce9f6d2b4ddc337f",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceScenario.java": "6217969e896cd519447f7186482ca15dacedb12b47d6031ad917ba80b33062c6",
+      "src/main/java/com/tianluoqaq/tlmnh/reference/ReferenceScene.java": "9d0c1fac22a3c1bd1a3ac90a2376c8d8493b77c42218a997ae774fb1581b7cbe",
+      "test_baseline_bundle.py": "afa98214cc3b51fe81ef18f28c7e284f5c8d6a536ae4996acda7d2e4ebe8ad38",
+      "test_head_turn_contract.py": "2dc3130ff20f378ba9936d2fd44715e58a0460c6577819a6c338fd1c4a4a8d2d",
+      "upstream-probe.patch": "f7f4e1f29b43f0129ad0da5c2e961f52550d267ad88ab0d955ce82cd31a9f55d"
+    },
+    "gitCommit": "278221e38f5fc3e48bc919fb5094996ab8d20c88",
+    "scope": "producer sources at export; consumer sources recorded separately per run"
+  },
+  "referenceBuildIdentity": "reference-build-identity.json",
+  "referenceToolchainLock": "reference-toolchain-lock.json",
+  "renderingVerified": false,
+  "runtimeIdentity": {
+    "agentSha256": "684183172dfc1ad85d35a1bda3cb97e72ce40084a7a080a14733c00033d0ab1d",
+    "buildIdentitySha256": "cd1534bee46da6445c6571108d791591301bf786be2c466774fd15c307700447",
+    "captureScope": "selected-first-defined-classes; not whole-classpath-equivalence",
+    "classes": {
+      "com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "2d03990807e51f49e9dd66a5fa603fc0e1953ac66024d5881ec6f0083e9d9096",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "597af1a88fbdfb7dee1740dc66d590dbffaf2cd33ee3e37cdf80ea755246f297"
+      },
+      "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "40c6fa7248052603012ee05b09d19ae8f1872c900c48b63f6abd7559e4417910",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "3505ec1f5aff55d29cb28683b661a08a455a6b0aea2f02d7e4ec6409bbe1746c"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.animation.CustomJsAnimationManger": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "472b52fb3002a8d65b686c283dc332de35f945dc2d937fc6da4a6dd07e5c7a1d",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "975628156a98b04efd27cbedca326dd05652d36904db47a733963a5c17d9d9fc"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.animation.HardcodedAnimationManger": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "c375e6768ce307cad1996cdec767373770b9076ac91dd8b6b1b467b3eca7aa48",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "c375e6768ce307cad1996cdec767373770b9076ac91dd8b6b1b467b3eca7aa48"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.AnimationManager": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "15f7186cf0acb09a12dc0b3bfa9079793eba0acf5f9b1aeccc2fc2fa4fcd5705",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "15f7186cf0acb09a12dc0b3bfa9079793eba0acf5f9b1aeccc2fc2fa4fcd5705"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.entity.GeckoMaidEntity": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "141f24fe3aada123e91e135e32bf8e10dc01237c5808138905b764ae8b696ff5",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "141f24fe3aada123e91e135e32bf8e10dc01237c5808138905b764ae8b696ff5"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "b41612cf5c7745c743014d933b203b697cc23235bc540152b67c6b81aae4f1d1",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "c41263b5a4ac486f1c18335a0fc6b53b650f6b9a2201b9ef649147e6ff26cf58"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityMaidRenderer": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "5d752c8ae3cfb0c69d0bcf27ae245f6042cc59399c84fc564149e2dd72c3c596",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "6b7edcb94f2f494fcf868209442e186908637e81371b53bbeca69ad356ea04eb"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.GeckoEntityMaidRenderer": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "ff652364da4df42d976b4b1ca290012884c5a8107d8f9274a1eee7b456fca0b2",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "ff652364da4df42d976b4b1ca290012884c5a8107d8f9274a1eee7b456fca0b2"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "dacb9a4af92d5c060388a69f5301f7d138438add15e91d28c1d68c61af03025f",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "dacb9a4af92d5c060388a69f5301f7d138438add15e91d28c1d68c61af03025f"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.AnimatableEntity": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "1631853f971e0adb2c787b2a738bb8ff3ca62b391229d56929cde60ccd97a597",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "1631853f971e0adb2c787b2a738bb8ff3ca62b391229d56929cde60ccd97a597"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "832ba34623a1e79a387012ca71f32c8e1e26358bcc29006d5abd7d27d82fd58e",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "832ba34623a1e79a387012ca71f32c8e1e26358bcc29006d5abd7d27d82fd58e"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor.AnimationProcessor": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "205eb0c53c8bea1ad830d87156cfc9f88cc2fd1d3a743e59c4e0b18004029ab5",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "205eb0c53c8bea1ad830d87156cfc9f88cc2fd1d3a743e59c4e0b18004029ab5"
+      },
+      "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.GeoReplacedEntityRenderer": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "a9db39f3848a9977b2514d8735021bd1cda19e8602dd2e7a51aaaa50208c6330",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "a9db39f3848a9977b2514d8735021bd1cda19e8602dd2e7a51aaaa50208c6330"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceFrameScope": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "dd44b13e2616adcacfe103be8c555da2ceb819729b40d146f1d9c51d3f55ebeb",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "dd44b13e2616adcacfe103be8c555da2ceb819729b40d146f1d9c51d3f55ebeb"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "fca06ee12711e58a036603c04d16b186de7c47bbd8237537c0229a53678aa87c",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "fca06ee12711e58a036603c04d16b186de7c47bbd8237537c0229a53678aa87c"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceReplayInputs": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "9969574d8b37418ed21fb7235eb4325e9952064386cd7ecf5ef1896ec12ffe49",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "9969574d8b37418ed21fb7235eb4325e9952064386cd7ecf5ef1896ec12ffe49"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceRuntimeIdentity": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "1382fd00004968b23f08a168b8eb44aba05009153a3821f87c865545b6377aa5",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "1382fd00004968b23f08a168b8eb44aba05009153a3821f87c865545b6377aa5"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceScenario": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "f0983fa39bd3456db5cd77f7f2f9a0f763ef7a93b5e9fd1ee555135fd6e6d69d",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "f0983fa39bd3456db5cd77f7f2f9a0f763ef7a93b5e9fd1ee555135fd6e6d69d"
+      },
+      "com.tianluoqaq.tlmnh.reference.ReferenceScene": {
+        "codeSource": {
+          "kind": "modular",
+          "protocol": "union"
+        },
+        "definitionCount": 1,
+        "definitionSha256": "df4ad60a4a0ad586dcc01c1e62a8e8d965490488fbc24dfa354122752a61842c",
+        "definitionStage": "premain-transformer-input-after-defining-loader-transformations",
+        "loaderClass": "cpw.mods.modlauncher.TransformingClassLoader",
+        "resourceSha256": "df4ad60a4a0ad586dcc01c1e62a8e8d965490488fbc24dfa354122752a61842c"
+      }
+    },
+    "definitionObserver": "premain input after defining-loader transformations; sole startup agent; attach disabled",
+    "identityClassesSha256": "f5153053d8077c375f4fe86c1683a3527044e2aaff80e2bb70b9bc41b3c0497e",
+    "java": {
+      "runtimeVersion": "17.0.20+8-LTS",
+      "vendor": "Azul Systems, Inc.",
+      "vmName": "OpenJDK 64-Bit Server VM"
+    },
+    "patchSha256": "f7f4e1f29b43f0129ad0da5c2e961f52550d267ad88ab0d955ce82cd31a9f55d",
+    "probeSourcesSha256": "5d35bcd76e9309f7069a686e36b103aa75f7fcd0c2e5f6ccf718d6b114241627",
+    "schema": "reference-runtime-identity-v1",
+    "status": "VERIFIED",
+    "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
+  },
+  "schema": "animation-baseline-bundle-v1",
+  "scope": "two reviewed controlled models and three CPU input contracts; not GPU or gameplay acceptance",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
+}
