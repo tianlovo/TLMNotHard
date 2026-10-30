@@ -13,6 +13,8 @@ public class CommonProxy implements IGuiHandler {
 
     public static final int GUI_MAID = 0;
 
+    public void init() {}
+
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {

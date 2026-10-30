@@ -81,14 +81,15 @@ public class BedrockPart {
 
             if (!this.cubes.isEmpty() || !this.children.isEmpty()) {
                 poseStack.pushPose();
-                this.translateAndRotateAndScale(poseStack);
-                this.compile(poseStack.last(), consumer, cubePackedLight, overlay, red, green, blue, alpha);
-
-                for (BedrockPart part : this.children) {
-                    part.render(poseStack, consumer, cubePackedLight, overlay, red, green, blue, alpha);
+                try {
+                    this.translateAndRotateAndScale(poseStack);
+                    this.compile(poseStack.last(), consumer, cubePackedLight, overlay, red, green, blue, alpha);
+                    for (BedrockPart part : this.children) {
+                        part.render(poseStack, consumer, cubePackedLight, overlay, red, green, blue, alpha);
+                    }
+                } finally {
+                    poseStack.popPose();
                 }
-
-                poseStack.popPose();
             }
         }
     }

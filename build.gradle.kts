@@ -14,6 +14,8 @@ tasks.named<Jar>("shadowJar") {
 
 tasks.withType<Test>().configureEach {
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+    workingDir = layout.buildDirectory.dir("test-runtime/$name").get().asFile
+    doFirst { workingDir.mkdirs() }
 }
 
 val gsonRc2Client = configurations.create("gsonRc2Client") {
@@ -29,7 +31,7 @@ val testRc2ClientGson = tasks.register<Test>("testRc2ClientGson") {
     group = "verification"
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath.filter { !it.name.startsWith("gson-") } + gsonRc2Client
-    include("**/BedrockGeometryTest.class", "**/GeckoGeometryTest.class")
+    include("**/BedrockGeometryTest.class", "**/GeckoGeometryTest.class", "**/BuiltinMaidModelsTest.class")
     useJUnit()
 }
 tasks.named("check") {

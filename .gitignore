@@ -2,6 +2,7 @@
 /cache/
 /publish/
 /dist/
+/logs/
 **/.gradle/
 **/build/
 **/run/
