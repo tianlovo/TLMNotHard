@@ -12,6 +12,8 @@ import java.util.Comparator;
 import java.util.Queue;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.util.ScreenShotHelper;
 
 import org.lwjgl.opengl.GL11;
@@ -23,6 +25,7 @@ import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
 
+import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
@@ -95,6 +98,26 @@ public final class ClientDevelopmentControl {
                                 .getSimpleName());
                     response.addProperty("width", minecraft.displayWidth);
                     response.addProperty("height", minecraft.displayHeight);
+                    if (minecraft.thePlayer != null) {
+                        var player = minecraft.thePlayer;
+                        response.addProperty("dimension", player.dimension);
+                        response.addProperty("x", player.posX);
+                        response.addProperty("y", player.posY);
+                        response.addProperty("z", player.posZ);
+                        response.addProperty("yaw", player.rotationYaw);
+                        response.addProperty("pitch", player.rotationPitch);
+                    }
+                    break;
+                case CONNECT_LOCAL:
+                    if (minecraft.theWorld != null || minecraft.thePlayer != null)
+                        throw new IllegalStateException("Disconnect before starting a local test connection");
+                    var handler = FMLClientHandler.instance();
+                    handler.setupServerList();
+                    handler.connectToServer(
+                        new GuiMainMenu(),
+                        new ServerData("TLMNH local test", "127.0.0.1:" + request.port));
+                    response.addProperty("server", "127.0.0.1:" + request.port);
+                    response.addProperty("connection", "requested");
                     break;
                 case LOOK:
                     if (minecraft.thePlayer == null) throw new IllegalStateException("Player not loaded");

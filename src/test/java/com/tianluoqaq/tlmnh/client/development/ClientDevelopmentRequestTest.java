@@ -25,6 +25,22 @@ public class ClientDevelopmentRequestTest {
     }
 
     @Test
+    public void localConnectionsRequireAnIntegerUnprivilegedPort() {
+        var request = new JsonObject();
+        request.addProperty("command", "connect_local");
+        for (int port : new int[] { 1024, 25585, 65535 }) {
+            request.addProperty("port", port);
+            assertEquals(port, ClientDevelopmentRequest.parse(request).port);
+        }
+        for (double invalid : new double[] { 0, 1023, 65536, 25585.5, Double.NaN, Double.POSITIVE_INFINITY }) {
+            request.addProperty("port", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
+        assertThrows(IllegalArgumentException.class, () -> parse("{\"command\":\"connect_local\"}"));
+        assertThrows(IllegalArgumentException.class, () -> parse("{\"command\":\"connect_local\",\"port\":\"25585\"}"));
+    }
+
+    @Test
     public void screenshotNamesCannotEscapeTheScreenshotDirectory() {
         var request = new JsonObject();
         request.addProperty("command", "screenshot");

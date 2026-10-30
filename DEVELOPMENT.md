@@ -127,12 +127,15 @@ CommonProxy 创建服务端容器，其初始化入口不引用客户端类型�
 | 请求 JSON | 作用 |
 | --- | --- |
 | `{"command":"status"}` | 查询世界、玩家、当前界面及窗口尺寸 |
+| `{"command":"connect_local","port":25585}` | 从主菜单调用 Forge 常规连接入口加入本地测试服，只接受127.0.0.1和1024至65535的整数端口 |
 | `{"command":"look","yaw":180,"pitch":10}` | 设置当前玩家相机方向，yaw 限定为−360至360，pitch 为−90至90 |
 | `{"command":"screenshot","name":"winefox-idle-01.png"}` | 在下一次 RenderTick.END 用原版截图接口保存游戏画面，结果记录相对路径 |
 | `{"command":"reload"}` | 在游戏主线程重新加载资源 |
 | `{"command":"shutdown"}` | 调用 Minecraft 正常退出流程 |
 
 截图仅接受受限 ASCII 文件名和小写 .png 后缀，不能带目录或覆盖已有文件；队列最多8张，读取后恢复截图接口改动的纹理绑定与像素对齐状态；请求不支持任意代码、聊天或服务端命令
+
+connect_local 返回 complete 仅表示已请求连接，仍须用 status 核对 worldLoaded、playerPresent 与实际维度；已加载世界时拒绝再次连接，不自动断开现有会话；本地启动器的自动加入入口在客户端开始运行后发送该请求，不再传递 Minecraft 的 --server 参数
 
 这套入口用于专用测试实例的实际渲染检查；协议单测不能证明 GL 截图可用，普通世界截图也不能代替虚空展台、完整动作循环或多人同步验收；生成的请求、结果与图片不提交到源码仓库
 
