@@ -7,6 +7,7 @@
 *.kts text eol=lf
 *.properties text eol=lf
 *.py text eol=lf
+*.patch text eol=lf whitespace=-blank-at-eol
 gradlew text eol=lf
 *.bat text eol=crlf
 

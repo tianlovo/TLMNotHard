@@ -1,0 +1,64 @@
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/animation/gecko/AnimationManager.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/animation/gecko/AnimationManager.java
+index d4fd504..e1cbdda 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/animation/gecko/AnimationManager.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/animation/gecko/AnimationManager.java
+@@ -96,7 +96,7 @@ public final class AnimationManager {
+             }
+             for (AnimationState state : data[i]) {
+                 if (state.getPredicate().test(maid, event)) {
+-                    String animationName = state.getAnimationName();
++                    String animationName = com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.mainAnimationName(maid.asEntity(), state.getAnimationName());
+                     ILoopType loopType = state.getLoopType();
+                     PlayState gunMainAnimation = GunClientUtil.playGunMainAnimation(maid, event, animationName, loopType);
+                     return Objects.requireNonNullElseGet(gunMainAnimation, () -> playAnimation(event, animationName, loopType));
+@@ -426,4 +426,4 @@ public final class AnimationManager {
+         }
+         return !maid.asEntity().isUsingItem() || maid.asEntity().getUsedItemHand() != hand;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java
+index 26724b1..65540cd 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java
+@@ -95,6 +95,14 @@ public class EntityMaidRenderer extends MobRenderer<Mob, BedrockModel<Mob>> {
+ 
+     @Override
+     public void render(Mob entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferIn, int packedLightIn) {
++        try (var frame = com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.beginFrame(entity, partialTicks)) {
++            if (frame.shouldRender()) {
++                renderReferenceFrame(entity, entityYaw, frame.partialTick(), poseStack, bufferIn, packedLightIn);
++            }
++        }
++    }
++
++    private void renderReferenceFrame(Mob entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferIn, int packedLightIn) {
+         IMaid maid = IMaid.convert(entity);
+         if (maid == null) {
+             return;
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java
+index 3e906d4..bc3058a 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java
+@@ -58,7 +58,7 @@ public abstract class AnimatableEntity<E extends Entity> {
+             return false;
+         }
+         Minecraft mc = Minecraft.getInstance();
+-        double currentTick = getCurrentTick(animationEvent);
++        double currentTick = com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.animationTick(this.entity, getCurrentTick(animationEvent));
+ 
+         if (this.manager.startTick == -1) {
+             this.manager.startTick = currentTick;
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/GeoReplacedEntityRenderer.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/GeoReplacedEntityRenderer.java
+index b432b05..d60bdc6 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/GeoReplacedEntityRenderer.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/GeoReplacedEntityRenderer.java
+@@ -193,6 +193,7 @@ public abstract class GeoReplacedEntityRenderer<T extends LivingEntity, E extend
+         AnimationContext<?> ctx = new AnimationContext<>(entity, this.currentAnimatable, predicate, entityModelData);
+         animatable.setCustomAnimations(ctx, predicate);
+         AnimatedGeoModel model = animatable.getCurrentModel();
++        com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.afterAnimation(entity, model);
+         if (model != null) {
+             poseStack.translate(0, 0.01f, 0);
+             RenderSystem.setShaderTexture(0, getTextureLocation(entity));

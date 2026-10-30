@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
@@ -31,7 +32,7 @@ import com.google.gson.JsonObject;
 final class ReferenceScene {
     private static final String WORLD = "TLMNH-Reference-Lab";
     private static final String MARKER = "TLMNHReferenceScene";
-    private static volatile State state = new State("idle", null, null);
+    private static volatile State state = new State("idle", null, -1, null);
 
     private ReferenceScene() {}
 
@@ -40,8 +41,51 @@ final class ReferenceScene {
         var result = new JsonObject();
         result.addProperty("status", current.status());
         result.addProperty("entityUuid", current.entity() == null ? null : current.entity().toString());
+        result.addProperty("entityId", current.entityId());
         result.addProperty("error", current.error());
         return result;
+    }
+
+    static boolean isCurrent(EntityMaid maid) {
+        var current = state;
+        return "ready".equals(current.status()) && maid.getUUID().equals(current.entity()) && maid.getId() == current.entityId();
+    }
+
+    static String failure(UUID entity) {
+        var current = state;
+        return "failed".equals(current.status()) && entity.equals(current.entity()) ? current.error() : null;
+    }
+
+    static JsonObject openLab() {
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.level != null || minecraft.getSingleplayerServer() != null) throw new IllegalStateException("Close the current world first");
+        if (!Files.isRegularFile(minecraft.gameDirectory.toPath().resolve("saves").resolve(WORLD).resolve("level.dat")))
+            throw new IllegalStateException("Reference world does not exist");
+        minecraft.options.pauseOnLostFocus = false;
+        minecraft.createWorldOpenFlows().loadLevel(new TitleScreen(), WORLD);
+        var response = new JsonObject();
+        response.addProperty("world", "opening-requested");
+        response.addProperty("ready", false);
+        return response;
+    }
+
+    static JsonObject clear() {
+        var minecraft = Minecraft.getInstance();
+        var server = minecraft.getSingleplayerServer();
+        if (server == null || !WORLD.equals(server.getWorldData().getLevelName())) throw new IllegalStateException("Reference lab required");
+        state = new State("clearing", null, -1, null);
+        server.execute(() -> {
+            try {
+                for (var maid : server.overworld().getEntities(EntityTypeTest.forClass(EntityMaid.class), entity -> entity.getTags().contains(MARKER))) maid.discard();
+                state = new State("idle", null, -1, null);
+            } catch (RuntimeException error) {
+                state = new State("failed", null, -1, error.toString());
+            }
+        });
+        var response = new JsonObject();
+        response.addProperty("scene", "clear-requested");
+        response.addProperty("ready", false);
+        return response;
     }
 
     static JsonObject createLab() {
@@ -64,6 +108,10 @@ final class ReferenceScene {
     }
 
     static JsonObject spawn(JsonObject request) {
+        return spawn(request, UUID.randomUUID(), () -> {});
+    }
+
+    static JsonObject spawn(JsonObject request, UUID entity, Runnable beforeSpawn) {
         var minecraft = Minecraft.getInstance();
         var server = minecraft.getSingleplayerServer();
         if (server == null || minecraft.player == null || minecraft.level == null) throw new IllegalStateException("Integrated reference lab is not ready");
@@ -71,10 +119,10 @@ final class ReferenceScene {
         String model = request.get("model").getAsString();
         if (CustomPackLoader.MAID_MODELS.getInfo(model).isEmpty()) throw new IllegalArgumentException("Unknown original builtin model");
         UUID owner = minecraft.player.getUUID();
-        UUID entity = UUID.randomUUID();
-        state = new State("queued", entity, null);
+        state = new State("queued", entity, -1, null);
         minecraft.options.pauseOnLostFocus = false;
         minecraft.setScreen(null);
+        beforeSpawn.run();
         server.execute(() -> {
             try {
                 var level = server.overworld();
@@ -114,10 +162,10 @@ final class ReferenceScene {
                 player.setHealth(player.getMaxHealth());
                 player.teleportTo(level, 0.5, 65, -4.5, 0, 10);
                 if (!player.isSpectator()) throw new IllegalStateException("Reference observer is not a spectator");
-                state = new State("ready", entity, null);
+                state = new State("ready", entity, maid.getId(), null);
                 TouhouLittleMaid.LOGGER.info("TLMNH_REFERENCE_SCENE_READY entity={} model={} void=true mode=spectator", entity, model);
             } catch (RuntimeException error) {
-                state = new State("failed", entity, error.toString());
+                state = new State("failed", entity, -1, error.toString());
                 TouhouLittleMaid.LOGGER.error("TLMNH_REFERENCE_SCENE_FAILED entity={}", entity, error);
             }
         });
@@ -128,5 +176,5 @@ final class ReferenceScene {
         return response;
     }
 
-    private record State(String status, UUID entity, String error) {}
+    private record State(String status, UUID entity, int entityId, String error) {}
 }

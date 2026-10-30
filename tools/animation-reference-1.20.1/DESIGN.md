@@ -5,7 +5,8 @@ GTNH模组仍以Minecraft1.7.10为目标，此目录的Java17探针不加入其�
 
 小样本已在实际原版客户端采到两条路径的数据：汉服酒狐115根骨骼、Bedrock酒狐126根骨骼，各30帧，均无模型回退
 实际加载清单仅有Minecraft、Forge与上游TLM，采集阶段上游源码保持不变
-这只证明观测入口可用，A/A复现、A/B重放和故障检出尚无结果，不能作为动画等价性通过
+受控原版A/A已通过：两种模型各重建三次、每次30步，四组逐字段对照均无差异
+实际执行路径中的位移、时钟和动作选择故障也已自动检出；移植版A/B、完整输入与GPU检查仍未完成
 
 ## 选型与限制
 
@@ -28,15 +29,43 @@ GTNH模组仍以Minecraft1.7.10为目标，此目录的Java17探针不加入其�
 | Java | 17，与上游工具链一致 |
 | Gradle | 8.14.3，与上游wrapper一致 |
 | 映射 | Parchment 2023.08.20-1.20.1，保持上游版本 |
-| 运行模组 | Minecraft、Forge、上游TLM；实际清单仍需运行时核对 |
+| 运行模组 | 已核对实际ModList，仅Minecraft、Forge、上游TLM |
 
-使用独立的上游源码checkout，原始源码保持不变，探针通过额外源码目录加入参考构建
+使用独立的上游源码checkout，探针通过额外源码目录加入参考构建
+首次只读采集没有改动上游源码；受控实验另应用upstream-probe.patch，提供临时测试输入作用域和显式故障开关
+默认none不注入故障，普通实体的输入保持原样；这些补丁只用于参考测试副本
 reference.init.gradle把上游开发配置中的可选联动依赖移至compileOnly，保留原版编译API与必需库
 映射数据另加NeoForge官方镜像作为下载来源，限制为org.parchmentmc.data组，不替换其他依赖来源
 
 运行位置与缓存由本地环境设置，放在源码checkout之外；不提交游戏文件、图片、轨迹或本机绝对路径
 初始化脚本需要TLMNH_REFERENCE_PROBE指向本目录，TLMNH_REFERENCE_HOME指向独立运行目录
 在上游工程执行wrapper并通过--init-script指定reference.init.gradle即可应用，只用于参考构建
+
+## 便携实验脚本
+
+Python工具需要3.12或更高版本、Git和已经启动的参考客户端，代码不含开发者本机路径
+
+| 环境变量 | 作用 |
+| --- | --- |
+| TLMNH_REFERENCE_PROBE | 本目录，供Gradle加入探针源码 |
+| TLMNH_REFERENCE_HOME | 参考运行目录，与Gradle使用同一位置 |
+| TLMNH_REFERENCE_UPSTREAM | 固定版本的上游checkout |
+| TLMNH_REFERENCE_REPORTS | 可选的证据目录，默认在参考运行目录的evidence下 |
+| TLMNH_REFERENCE_GIT | 可选的Git程序位置，默认使用PATH中的git |
+
+先在上游checkout对upstream-probe.patch执行git apply --check，通过后再应用
+随后用上游wrapper加--init-script运行runClient，确保使用Java17
+在本目录运行以下命令，A/A实验会重开已有参考世界；首次运行先通过control.py创建测试世界
+
+```console
+python control.py create_lab
+python aa_experiment.py --keep-client
+python fault_experiment.py
+```
+
+各脚本均支持--help；aa_experiment.py默认完成后正常退出客户端
+组合执行时使用--keep-client，再由fault_experiment.py在完成后退出
+compare_aa.py可单独比较两个已保存的受控样本，只判断原版重复性，不作跨版本等价判断
 
 ## 观测器协议
 
@@ -47,11 +76,16 @@ ReferenceObservationProbe在显式tlmnh.referenceProbe=true时读取游戏目录
 | --- | --- |
 | `{"command":"status"}` | 返回实际游戏版本、世界/玩家状态、界面及已加载模组清单 |
 | `{"command":"create_lab"}` | 创建新的空气虚空世界，原生旁观模式；已有同名世界时拒绝覆盖 |
+| `{"command":"open_lab"}` | 重开已经创建的参考世界 |
+| `{"command":"clear_scene"}` | 请求清理带实验标记的女仆，另核对场景状态及maidCount |
+| `{"command":"reload"}` | 场景清空后异步重载资源，完成后才允许受控采样 |
 | `{"command":"spawn_case","model":"geckolib:winefox_hanfu"}` | 请求在该参考世界准备平台及指定原版女仆，返回UUID后再核对scene状态 |
 | `{"command":"observe","entityUuid":"指定女仆UUID","frames":30}` | 采集该女仆接下来实际渲染的指定帧数，范围1至240 |
+| `{"command":"sample_case","model":"geckolib:winefox_hanfu","frames":30,"seed":424242,"fault":"none"}` | 每次清场并重载后，用新实体从首次绘制开始受控采样 |
 | `{"command":"shutdown"}` | 请求客户端正常退出 |
 
-observe先返回waiting-render，完成后改为complete；60秒内未得到足够帧数则failed
+observe和sample_case先返回waiting-render，reload先返回waiting-reload，完成后才改为complete
+60秒内未得到足够帧数则failed，客户端入口的单次等待另有上限
 场景请求返回时ready仍为false，必须等待status中的scene为ready；失败会保留错误
 测试女仆关闭行为AI并固定观察位置，只验证动画采集，不把这些场景当作行为AI测评
 数据包含原版当前模型、骨骼变换和可见性，Gecko另有片段、控制器状态与时间偏移
@@ -59,7 +93,9 @@ Bedrock记录额外四元数和偏移，不能只以欧拉角作为完整姿态
 
 当前格式为observation-v0，仅记录render-post观测
 allInputsCaptured和equivalenceVerified固定为false，不能把这份输出直接作为可重放轨迹或已通过的对照结果
-尚需补齐真实更新标记、核心/头部/硬编码分层、完整输入和初始化状态，实验通过后再确定稳定协议
+受控模式另标记controlled-idle-v0，固定UUID、随机初始状态、tick、partial tick、落地与头部朝向
+每次必须清理旧实体并重载资源，临时实体字段在绘制结束后恢复；采样步不等于现实播放帧时长
+尚需补齐核心/头部/硬编码分层及完整输入，不能把该受控夹具当成任意游戏轨迹的重放协议
 
 采样只读当前动画结果，渲染阶段缓存在有界列表，文件输出在客户端tick完成
 采集器本身可能影响帧时刻，后续实验必须测量其影响并验证可重放性
@@ -67,6 +103,20 @@ allInputsCaptured和equivalenceVerified固定为false，不能把这份输出直
 首个汉服样本的相邻seekTime间隔约0.16至0.30 tick，主片段是jump，不能把该场景假定为固定步长的idle
 上游样本含28个控制器，其中magic_casting在这30帧中保持STOPPED；不能仅凭与移植版控制器数量不同就判动画错误
 原版字段本身可读取，但必须补齐输入、初始状态和阶段对应关系，才能进入可靠对照
+
+## 已完成的小样本验证
+
+| 实验 | 实际结果 | 结论范围 |
+| --- | --- | --- |
+| 原版A/A | 两模型各3次、每次30步，4组对照差异0 | 这两个受控用例可重复，不代表全部模型和状态 |
+| 排除全冻结假通过 | 汉服10根、Bedrock3根骨骼随采样步变化 | 并非只比较了不动的骨骼 |
+| 头部位移故障 | 首个分歧frames[0].bones.Head.translation[0]，0变为0.25 | 检出实际绘制前的骨骼偏移 |
+| 时钟故障 | 首步期望0、实际1，被内部时钟合同拒绝 | 检出时间输入与引擎推进不一致 |
+| 片段选择故障 | 首个分歧frames[0].controllers[8].clip，idle变为walk | 检出实际主控制器选错片段 |
+
+故障通过上游实际执行路径的测试钩子注入，未修改保存后的JSON来冒充端到端检出
+上述结果仍不证明移植版正确，也没有验证贴图、UV、GL状态或所有随机和物理组合
+目前不批准扩大到全部模型批量验收
 
 ## 扩大测试前的门槛
 
