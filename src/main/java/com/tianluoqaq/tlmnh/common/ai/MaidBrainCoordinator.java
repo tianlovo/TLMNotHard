@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAIBase;
+import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.pathfinding.PathEntity;
@@ -12,23 +13,31 @@ import net.minecraftforge.common.util.FakePlayer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 
-/** 唯一服务端任务入口，近战与跟随互斥，远程攻击和生活动作继续独立接入 */
+/** 唯一服务端任务入口，战斗优先打断生活动作，路径和目标由当前动作独占 */
 public final class MaidBrainCoordinator extends EntityAIBase {
 
     private final EntityMaid maid;
     private final MaidFollowController follow;
     private final MaidCombatController combat;
+    private final MaidBowAttack bow;
+    private final MaidLifeController life;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner();
     private boolean suspended;
     private long decisionTick;
+    private long nextDangerScan;
+    private boolean visibleDanger;
 
     public MaidBrainCoordinator(EntityMaid maid) {
         this.maid = maid;
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
+        bow = new MaidBowAttack(maid);
+        life = new MaidLifeController(maid, follow::cancel);
         combat = new MaidCombatController(new CombatActor(), maid.getEntityId());
         setMutexBits(7);
     }
@@ -46,12 +55,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     @Override
     public void updateTask() {
         decisionTick++;
-        if (!combat.tick()) follow.tick();
+        boolean fighting = combat.tick();
+        boolean living = life.tick(!fighting && !suspended && !hasVisibleDanger());
+        if (!fighting && !living) follow.tick();
     }
 
     @Override
     public void resetTask() {
         combat.cancel();
+        life.cancel();
+        bow.cancel();
         follow.cancel();
     }
 
@@ -67,6 +80,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return combat;
     }
 
+    public MaidBowAttack getBowAttack() {
+        return bow;
+    }
+
+    public MaidLifeController getLifeController() {
+        return life;
+    }
+
     public MaidBoundedPathPlanner.Attempt getLastCombatPathAttempt() {
         return combatPlanner.getLastAttempt();
     }
@@ -77,12 +98,35 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (this.suspended != suspended) {
             this.suspended = suspended;
             combat.cancel();
+            life.cancel();
+            bow.cancel();
             follow.cancel();
         }
     }
 
     public boolean isSuspended() {
         return suspended;
+    }
+
+    /** 生活中断不依赖所选战斗任务或武器，扫描有界且不提交路径 */
+    private boolean hasVisibleDanger() {
+        if (maid.hurtTime > 0) return true;
+        if (decisionTick < nextDangerScan) return visibleDanger;
+        nextDangerScan = decisionTick + 10;
+        visibleDanger = false;
+        int inspected = 0;
+        for (Object value : maid.worldObj
+            .getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8))) {
+            if (++inspected > 32) break;
+            if (value instanceof EntityLivingBase entity && entity instanceof IMob
+                && entity.isEntityAlive()
+                && maid.getEntitySenses()
+                    .canSee(entity)) {
+                visibleDanger = true;
+                break;
+            }
+        }
+        return visibleDanger;
     }
 
     private final class CombatActor implements MaidCombatController.Actor {
@@ -93,6 +137,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private UUID ignoredTarget;
         private long ignoreUntil, nextOwnerScan;
         private double seenX, seenY, seenZ;
+        private MaidTask selectedTask;
 
         @Override
         public MaidCombatController.Status blockedReason() {
@@ -101,11 +146,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 || suspended
                 || maid.isSitting()
                 || maid.ridingEntity != null
-                || maid.getLeashed()
-                || maid.hasPose(MaidPose.SLEEPING)) return MaidCombatController.Status.HARD_STOP;
-            if (maid.getTask() == MaidTask.RANGED_ATTACK) return MaidCombatController.Status.RANGED_UNSUPPORTED;
-            if (maid.getTask() != MaidTask.ATTACK) return MaidCombatController.Status.DISABLED;
-            if (!MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
+                || maid.getLeashed()) return MaidCombatController.Status.HARD_STOP;
+            if (selectedTask != null && selectedTask != maid.getTask()) return MaidCombatController.Status.DISABLED;
+            if (maid.getTask() != MaidTask.ATTACK && maid.getTask() != MaidTask.RANGED_ATTACK)
+                return MaidCombatController.Status.DISABLED;
+            if (maid.getTask() == MaidTask.RANGED_ATTACK ? !MaidBowAttack.hasBow(maid) || !bow.hasAmmunition()
+                : !MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
             if (decisionTick >= nextOwnerScan) {
                 nextOwnerScan = decisionTick + MaidCombatController.SCAN_INTERVAL;
                 owner = null;
@@ -160,6 +206,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private boolean adopt(EntityLivingBase candidate) {
             if (!usable(candidate)) return false;
             target = candidate;
+            selectedTask = maid.getTask();
             maid.setAttackTarget(candidate);
             rememberPosition();
             return true;
@@ -182,6 +229,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             boolean visible = maid.getEntitySenses()
                 .canSee(target);
             if (visible) rememberPosition();
+            if (maid.getTask() == MaidTask.RANGED_ATTACK) bow.observe(target, visible, decisionTick);
             return visible;
         }
 
@@ -192,13 +240,15 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public double reachSq() {
-            return MaidCombatTargeting.meleeReachSq(maid, target);
+            return maid.getTask() == MaidTask.RANGED_ATTACK ? MaidBowAttack.RANGE_SQ
+                : MaidCombatTargeting.meleeReachSq(maid, target);
         }
 
         @Override
         public void claimControl() {
             // 旧路径必须先取消，之后才能由近战提交新路径，避免相同路径对象被误释放
             follow.cancel();
+            life.cancel();
         }
 
         @Override
@@ -239,8 +289,24 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         @Override
         public boolean attack() {
             if (!targetValid()) return false;
+            if (maid.getTask() == MaidTask.RANGED_ATTACK) return bow.fire(target);
             maid.swingItem();
             return maid.attackEntityAsMob(target);
+        }
+
+        @Override
+        public boolean prepareAttack() {
+            return maid.getTask() != MaidTask.RANGED_ATTACK || bow.prepare();
+        }
+
+        @Override
+        public void interruptAttack() {
+            bow.interrupt();
+        }
+
+        @Override
+        public int attackInterval() {
+            return maid.getTask() == MaidTask.RANGED_ATTACK ? 2 : MaidCombatController.ATTACK_INTERVAL;
         }
 
         @Override
@@ -253,7 +319,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 if (maid.getAttackTarget() == target) maid.setAttackTarget(null);
             }
             stopNavigation();
+            bow.cancel();
             target = null;
+            selectedTask = null;
         }
 
         @Override

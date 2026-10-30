@@ -271,3 +271,22 @@ Gecko原版GeoReplacedEntityRenderer对相对yaw作wrap/clamp后将yaw、pitch�
 BuiltinGeckoPlayer增加可选只读核心姿态观察点，默认路径不复制姿态；回放另以同输入的新播放器检查观察前后输出一致
 Gecko分别比较核心、头部、最终层，Bedrock只报告实际可观测的最终姿态；不把不同阶段强制判为相等
 故障从真正播放器消费输入前注入，不改写保存后的JSON；这些有界检查仍不能证明GPU像素和全部动作已经正确
+
+## 弓箭、生活与死亡核心的新增适配
+
+本批把离散预瞄接入实际原生弓箭行为，新增MaidBowAttack和ObservedTargetMotion，参考固定上游TaskBowAttack、MaidShootTargetTask及目标版本EntityArrow/ItemBow
+按用户选择保留RC2箭的重力与阻力，使用连续可见位置拟合速度，丢失视野、换目标、时间不连续或瞬移后清理历史
+首批只支持原生弓和箭，发射前检查已加载空气弹道和静态碰撞实体，生成成功并复核事件后的资源和箭状态才扣箭与耐久
+拉弓、路径和姿态均按动作归属释放；未来横穿的友军、介质切换与其他武器尚不在此批保证范围，原版O/F/N测评仍未执行
+
+common/life参考固定上游MaidStealEdibleMoveBlockTask、CakeEdible、MaidBedTask与InitEntities作息
+实现柜上偷吃、背包摆蛋糕、床占用和醒来清理，由唯一MaidBrainCoordinator仲裁，临时外观采用原生方柜与床
+当前要求在线非旁观主人在附近，离线生活、居家点与完整上游外观尚未完成，不宣称完整生活等价
+
+common/lifecycle参考固定上游初始魂符、ItemFilm、BlockShrine和EntityTombstone，保留神龛生命代价及原主人
+新增服务端世界凭证账本处理重复兑换和死亡库存，魂符/胶片物品仅携带凭证；十二槽库存与复活身份分开保存
+普通保存与异常掉电的保证分开：WorldSavedData与玩家/区块并非跨文件原子事务，当前不能承诺任意断电都不丢不重
+
+四份魂符与胶片资产保留原Git blob字节及CC BY-NC-SA 4.0许可，见assets/tlmnh/core-assets-provenance.json
+源目录为固定上游textures/item，目标为1.7的textures/items；原650份内置资产清单不变，校验器额外核对这四份资产
+新方块与墓碑当前外观仅供Indev链路测试，最终素材、GTNH配方与科技门槛继续待验和讨论

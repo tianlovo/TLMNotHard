@@ -32,6 +32,7 @@ public final class MaidCombatController {
         PATH_FAILED,
         STUCK,
         ATTACKING,
+        PREPARING_ATTACK,
         ATTACK_COOLDOWN,
         CANCELLED
     }
@@ -64,6 +65,16 @@ public final class MaidCombatController {
         void stopNavigation();
 
         boolean attack();
+
+        default boolean prepareAttack() {
+            return true;
+        }
+
+        default void interruptAttack() {}
+
+        default int attackInterval() {
+            return ATTACK_INTERVAL;
+        }
 
         void release(boolean suppressTarget);
 
@@ -128,12 +139,17 @@ public final class MaidCombatController {
                 status = Status.ATTACK_COOLDOWN;
                 return true;
             }
-            nextAttack = tick + ATTACK_INTERVAL;
+            if (!actor.prepareAttack()) {
+                status = Status.PREPARING_ATTACK;
+                return true;
+            }
+            nextAttack = tick + actor.attackInterval();
             attackAttempts++;
             if (actor.attack()) hits++;
             status = Status.ATTACKING;
             return true;
         }
+        actor.interruptAttack();
         if (tick - pursuitStarted >= PURSUIT_TIMEOUT) return stop(Status.PATH_FAILED, true);
         if (tick - progressTick >= STUCK_INTERVAL) {
             double movement = square(actor.x() - progressX) + square(actor.y() - progressY)
@@ -175,6 +191,7 @@ public final class MaidCombatController {
     }
 
     private boolean stop(Status reason, boolean suppressTarget) {
+        actor.interruptAttack();
         if (active || actor.hasTarget()) {
             actor.release(suppressTarget);
             if (active) cancellations++;

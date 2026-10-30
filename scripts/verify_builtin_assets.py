@@ -52,8 +52,16 @@ def verify(read):
                     raise ValueError(f"Untracked model resource: {choice['id']}/{reference}")
     if len(bases) != 234 or len(ids) != 254 or len(winefox) != 35:
         raise ValueError(f"Unexpected model inventory: choices={len(ids)}, winefox={len(winefox)}")
+    core = json.loads(read("assets/tlmnh/core-assets-provenance.json"))
+    if core["commit"] != provenance["commit"] or core["license"] != "CC-BY-NC-SA-4.0" or len(core["files"]) != 4:
+        raise ValueError("Core asset provenance differs from the fixed upstream")
+    for path, expected in core["files"].items():
+        data = read(path)
+        if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+            raise ValueError(f"Resource differs from fixed upstream: {path}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
+            "core_files": len(core["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 

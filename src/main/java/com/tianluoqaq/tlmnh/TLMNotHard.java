@@ -4,9 +4,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
+import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
+import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
 
 import cpw.mods.fml.common.Mod;
@@ -46,7 +49,10 @@ public final class TLMNotHard {
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();
+        MaidAcquisitionConfig.load(event.getSuggestedConfigurationFile());
         ModEntities.register(this);
+        MaidLifeContent.register();
+        MaidResurrectionContent.register();
         AnimationLab.register();
     }
 
@@ -57,6 +63,7 @@ public final class TLMNotHard {
     public void init(FMLInitializationEvent event) {
         NetworkRegistry.INSTANCE.registerGuiHandler(this, PROXY);
         PROXY.init();
+        MaidResurrectionContent.registerSpawns();
         LOG.info("TLMNH_BOOTSTRAP_READY side={} version={} bytecodeTarget=8", event.getSide(), Tags.VERSION);
     }
 

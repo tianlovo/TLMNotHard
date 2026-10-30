@@ -17,17 +17,20 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidArrowPhysicsProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidBowProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleProbe;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 只在显式 JVM 开关下注册，供真实 Forge 环境验证实体和 NBT */
@@ -50,6 +53,21 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "lifecycle-test".equals(args[0])) {
+            MaidLifecycleProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_passed"));
+            return;
+        }
+        if (args.length == 1 && "bow-core-test".equals(args[0])) {
+            MaidBowProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_core_passed"));
+            return;
+        }
+        if (args.length == 1 && "life-test".equals(args[0])) {
+            MaidLifeProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_passed"));
+            return;
+        }
         if (args.length == 1 && "lab-world-test".equals(args[0])) {
             AnimationLab.verifyWorld();
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_world_passed"));

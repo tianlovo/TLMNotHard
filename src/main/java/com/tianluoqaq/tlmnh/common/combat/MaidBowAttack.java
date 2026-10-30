@@ -1,0 +1,311 @@
+package com.tianluoqaq.tlmnh.common.combat;
+
+import net.minecraft.block.material.Material;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.Vec3;
+
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+
+/** 原生弓箭执行器：观察、拉弓、真实弹道安全检查和成功生成后的资源结算 */
+public final class MaidBowAttack {
+
+    public static final int DRAW_TICKS = 20;
+    public static final int MAX_FLIGHT_TICKS = 60;
+    public static final double RANGE_SQ = 144;
+
+    public enum Status {
+        IDLE,
+        DRAWING,
+        READY,
+        FIRED,
+        NO_AMMO,
+        NO_SOLUTION,
+        BLOCKED,
+        UNLOADED,
+        LIQUID,
+        SPAWN_REJECTED
+    }
+
+    private final EntityMaid maid;
+    private final ObservedTargetMotion motion = new ObservedTargetMotion();
+    private EntityLivingBase observed;
+    private ItemStack drawingBow;
+    private long tick, retryAt;
+    private int drawTicks;
+    private long shots, rejectedShots;
+    private Status status = Status.IDLE;
+    private ArrowInterceptSolver.Solution lastSolution;
+    private EntityArrow lastArrow;
+    private boolean firing, ownsPose;
+    private long generation;
+
+    public MaidBowAttack(EntityMaid maid) {
+        this.maid = maid;
+    }
+
+    public static boolean hasBow(EntityMaid maid) {
+        var held = maid.getHeldItem();
+        return held != null && held.stackSize > 0 && held.getItem() == Items.bow;
+    }
+
+    public boolean hasAmmunition() {
+        return arrowSlot() >= 0;
+    }
+
+    public void observe(EntityLivingBase target, boolean visible, long tick) {
+        this.tick = tick;
+        if (!visible || target == null) {
+            motion.clear();
+            observed = null;
+            interrupt();
+            return;
+        }
+        if (observed != target) interrupt();
+        observed = target;
+        motion.observe(target, tick, aimPoint(target));
+    }
+
+    public boolean prepare() {
+        if (firing) return false;
+        if (!hasBow(maid) || !hasAmmunition() || observed == null) {
+            interrupt();
+            status = Status.NO_AMMO;
+            return false;
+        }
+        if (tick < retryAt) return false;
+        if (drawingBow != maid.getHeldItem()) {
+            interrupt();
+            drawingBow = maid.getHeldItem();
+        }
+        drawTicks++;
+        ownsPose = true;
+        maid.setPose(MaidPose.USING_ITEM, true);
+        maid.setPose(MaidPose.AIMING_BOW, true);
+        status = drawTicks >= DRAW_TICKS ? Status.READY : Status.DRAWING;
+        return drawTicks >= DRAW_TICKS;
+    }
+
+    public boolean fire(EntityLivingBase target) {
+        if (firing) return false;
+        firing = true;
+        try {
+            return fireOnce(target);
+        } finally {
+            firing = false;
+        }
+    }
+
+    private boolean fireOnce(EntityLivingBase target) {
+        if (!canFire(target) || target != observed
+            || drawTicks < DRAW_TICKS
+            || drawingBow != maid.getHeldItem()
+            || !hasBow(maid)
+            || arrowSlot() < 0) return false;
+        var origin = new BallisticVector(maid.posX, maid.posY + maid.getEyeHeight() - 0.1, maid.posZ);
+        lastSolution = ArrowInterceptSolver
+            .solve(origin, aimPoint(target), motion.velocity(), 3.0, MAX_FLIGHT_TICKS, ArrowPhysics.OVERWORLD_AIR);
+        if (!lastSolution.isSolved()) return reject(Status.NO_SOLUTION);
+        var arrow = new EntityArrow(maid.worldObj, origin.x, origin.y, origin.z);
+        arrow.shootingEntity = maid;
+        // 使用原生定向接口，零随机散布使预瞄误差可归因；保留其实际浮点归一化结果
+        var velocity = lastSolution.initialVelocity;
+        arrow.setThrowableHeading(velocity.x, velocity.y, velocity.z, 3.0F, 0.0F);
+        var safety = safePath(arrow, target, lastSolution.flightTicks);
+        if (safety != null) {
+            arrow.setDead();
+            return reject(safety);
+        }
+        var bow = drawingBow;
+        int slot = arrowSlot();
+        var ammunition = maid.getMaidInventory()
+            .getStackInSlot(slot);
+        var bowBefore = bow.copy();
+        var ammunitionBefore = ammunition.copy();
+        long transaction = generation;
+        boolean infinite = EnchantmentHelper.getEnchantmentLevel(Enchantment.infinity.effectId, bow) > 0;
+        arrow.canBePickedUp = infinite ? 2 : 1;
+        arrow.setIsCritical(true);
+        int power = EnchantmentHelper.getEnchantmentLevel(Enchantment.power.effectId, bow);
+        if (power > 0) arrow.setDamage(arrow.getDamage() + power * 0.5 + 0.5);
+        int punch = EnchantmentHelper.getEnchantmentLevel(Enchantment.punch.effectId, bow);
+        if (punch > 0) arrow.setKnockbackStrength(punch);
+        if (EnchantmentHelper.getEnchantmentLevel(Enchantment.flame.effectId, bow) > 0) arrow.setFire(100);
+        var arrowBefore = new NBTTagCompound();
+        arrow.writeToNBT(arrowBefore);
+        var boundsBefore = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
+            arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
+        if (!maid.worldObj.spawnEntityInWorld(arrow)) {
+            arrow.setDead();
+            return reject(Status.SPAWN_REJECTED);
+        }
+        // spawn事件允许重入；若事件改了库存，撤销箭实体，不能扣另一组资源或免费射击
+        var arrowAfter = new NBTTagCompound();
+        arrow.writeToNBT(arrowAfter);
+        var boundsAfter = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
+            arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
+        if (arrow.isDead || arrow.shootingEntity != maid
+            || !arrowBefore.equals(arrowAfter)
+            || !java.util.Arrays.equals(boundsBefore, boundsAfter)
+            || generation != transaction
+            || !canFire(target)
+            || maid.getHeldItem() != bow
+            || maid.getMaidInventory()
+                .getStackInSlot(slot) != ammunition
+            || !ItemStack.areItemStacksEqual(bow, bowBefore)
+            || !ItemStack.areItemStacksEqual(ammunition, ammunitionBefore)) {
+            arrow.setDead();
+            return reject(Status.SPAWN_REJECTED);
+        }
+        if (!infinite) maid.getMaidInventory()
+            .decrStackSize(slot, 1);
+        bow.damageItem(1, maid);
+        if (bow.stackSize <= 0) maid.setCurrentItemOrArmor(0, null);
+        maid.worldObj.playSoundAtEntity(maid, "random.bow", 1, 1);
+        shots++;
+        lastArrow = arrow;
+        interrupt();
+        status = Status.FIRED;
+        return true;
+    }
+
+    private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks) {
+        var state = new ArrowPhysics.State(
+            new BallisticVector(arrow.posX, arrow.posY, arrow.posZ),
+            new BallisticVector(arrow.motionX, arrow.motionY, arrow.motionZ));
+        for (int step = 0; step < Math.ceil(flightTicks); step++) {
+            var end = state.position.add(state.velocity.scale(Math.min(1, flightTicks - step)));
+            int minX = MathHelper.floor_double(Math.min(state.position.x, end.x) - .3);
+            int maxX = MathHelper.floor_double(Math.max(state.position.x, end.x) + .3);
+            int minY = MathHelper.floor_double(Math.min(state.position.y, end.y) - .5);
+            int maxY = MathHelper.floor_double(Math.max(state.position.y, end.y) + 1);
+            int minZ = MathHelper.floor_double(Math.min(state.position.z, end.z) - .3);
+            int maxZ = MathHelper.floor_double(Math.max(state.position.z, end.z) + .3);
+            for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
+                if (!maid.worldObj.getChunkProvider()
+                    .chunkExists(x >> 4, z >> 4)) return Status.UNLOADED;
+                for (int y = minY; y <= maxY; y++) {
+                    if (!maid.worldObj.blockExists(x, y, z)) return Status.UNLOADED;
+                    Material material = maid.worldObj.getBlock(x, y, z)
+                        .getMaterial();
+                    if (material.isLiquid()) return Status.LIQUID;
+                }
+            }
+            var from = vec(state.position);
+            var to = vec(end);
+            if (maid.worldObj.func_147447_a(from, to, false, true, false) != null) return Status.BLOCKED;
+            var bounds = AxisAlignedBB
+                .getBoundingBox(
+                    Math.min(from.xCoord, to.xCoord),
+                    Math.min(from.yCoord, to.yCoord),
+                    Math.min(from.zCoord, to.zCoord),
+                    Math.max(from.xCoord, to.xCoord),
+                    Math.max(from.yCoord, to.yCoord),
+                    Math.max(from.zCoord, to.zCoord))
+                .expand(1, 1, 1);
+            for (Object value : maid.worldObj.getEntitiesWithinAABBExcludingEntity(maid, bounds)) {
+                if (!(value instanceof Entity entity) || entity == target
+                    || entity == arrow
+                    || !entity.canBeCollidedWith()) continue;
+                var collision = entity.boundingBox.expand(.3, .3, .3);
+                if (collision.isVecInside(from) || collision.calculateIntercept(from, to) != null)
+                    return Status.BLOCKED;
+            }
+            state = ArrowPhysics.OVERWORLD_AIR.step(state);
+        }
+        return null;
+    }
+
+    private boolean reject(Status reason) {
+        rejectedShots++;
+        retryAt = tick + 20;
+        interrupt();
+        status = reason;
+        return false;
+    }
+
+    private boolean canFire(EntityLivingBase target) {
+        return !maid.worldObj.isRemote && maid.getTask() == MaidTask.RANGED_ATTACK
+            && !maid.getBrainCoordinator()
+                .isSuspended()
+            && !maid.isSitting()
+            && maid.ridingEntity == null
+            && !maid.getLeashed()
+            && !maid.hasPose(MaidPose.SLEEPING)
+            && MaidCombatTargeting.canAttack(maid, maid.getOwner(), target)
+            && maid.getDistanceSqToEntity(target) <= RANGE_SQ
+            && maid.getEntitySenses()
+                .canSee(target);
+    }
+
+    public void interrupt() {
+        generation++;
+        drawTicks = 0;
+        drawingBow = null;
+        if (ownsPose) {
+            maid.setPose(MaidPose.USING_ITEM, false);
+            maid.setPose(MaidPose.AIMING_BOW, false);
+            ownsPose = false;
+        }
+        status = Status.IDLE;
+    }
+
+    public void cancel() {
+        interrupt();
+        motion.clear();
+        observed = null;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public long getShots() {
+        return shots;
+    }
+
+    public long getRejectedShots() {
+        return rejectedShots;
+    }
+
+    public int getDrawTicks() {
+        return drawTicks;
+    }
+
+    public ArrowInterceptSolver.Solution getLastSolution() {
+        return lastSolution;
+    }
+
+    public EntityArrow getLastArrow() {
+        return lastArrow;
+    }
+
+    private int arrowSlot() {
+        var inventory = maid.getMaidInventory();
+        for (int slot = 0; slot <= MaidInventory.OFF_HAND; slot++) {
+            var stack = inventory.getStackInSlot(slot);
+            if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.arrow) return slot;
+        }
+        return -1;
+    }
+
+    private static BallisticVector aimPoint(EntityLivingBase target) {
+        return new BallisticVector(target.posX, target.boundingBox.minY + target.height * .5, target.posZ);
+    }
+
+    private static Vec3 vec(BallisticVector point) {
+        return Vec3.createVectorHelper(point.x, point.y, point.z);
+    }
+}

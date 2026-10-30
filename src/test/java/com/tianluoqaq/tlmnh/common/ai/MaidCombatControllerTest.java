@@ -143,12 +143,36 @@ public class MaidCombatControllerTest {
         for (int i = 0; i < ticks; i++) controller.tick();
     }
 
+    @Test
+    public void preparationIsNotAnAttackAndVisibilityLossDiscardsIt() {
+        var actor = new TestActor();
+        actor.distance = 1;
+        actor.requiredPreparation = 20;
+        actor.interval = 2;
+        var controller = new MaidCombatController(actor, 0);
+        run(controller, 19);
+        assertEquals(0, controller.getAttackAttempts());
+        assertEquals(Status.PREPARING_ATTACK, controller.getStatus());
+        actor.visible = false;
+        controller.tick();
+        actor.visible = true;
+        run(controller, 19);
+        assertEquals(0, controller.getAttackAttempts());
+        controller.tick();
+        assertEquals(1, controller.getAttackAttempts());
+        actor.blocked = Status.HARD_STOP;
+        controller.tick();
+        assertEquals(0, actor.preparation);
+        assertFalse(actor.target);
+    }
+
     private static final class TestActor implements MaidCombatController.Actor {
 
         private final StringBuilder events = new StringBuilder();
         private boolean target, path, suppressed, valid = true, visible = true, hit = true, breakWeapon;
         private double distance = 36;
         private int releases;
+        private int preparation, requiredPreparation, interval = MaidCombatController.ATTACK_INTERVAL;
         private Status blocked;
         private PathResult pathResult = PathResult.STARTED;
 
@@ -220,6 +244,21 @@ public class MaidCombatControllerTest {
             events.append("attack,");
             if (breakWeapon) blocked = Status.NO_WEAPON;
             return hit;
+        }
+
+        @Override
+        public boolean prepareAttack() {
+            return ++preparation >= requiredPreparation;
+        }
+
+        @Override
+        public void interruptAttack() {
+            preparation = 0;
+        }
+
+        @Override
+        public int attackInterval() {
+            return interval;
         }
 
         @Override

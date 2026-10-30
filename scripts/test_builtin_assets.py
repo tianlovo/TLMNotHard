@@ -39,6 +39,14 @@ class AssetIntegrityTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Untracked model resource"):
             verify(changed)
 
+    def test_changed_core_item_animation_rejected(self):
+        def changed(path):
+            data = source_read(path)
+            return data + b"corrupted" if path.endswith("smart_slab_has_maid.png.mcmeta") else data
+
+        with self.assertRaisesRegex(ValueError, "Resource differs"):
+            verify(changed)
+
     def test_incorrect_texture_id_rejected(self):
         def changed(path):
             data = source_read(path)

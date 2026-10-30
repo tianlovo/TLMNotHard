@@ -13,11 +13,13 @@ import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
+import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneRenderer;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
@@ -39,6 +41,7 @@ public final class ClientProxy extends CommonProxy {
         ((IReloadableResourceManager) manager).registerReloadListener(models);
         ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
+        RenderingRegistry.registerEntityRenderingHandler(MaidTombstoneEntity.class, new TombstoneRenderer());
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             try {
                 FMLCommonHandler.instance()

@@ -16,6 +16,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.DamageSource;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
@@ -26,6 +27,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
@@ -309,9 +311,19 @@ public class EntityMaid extends EntityTameable {
         func_110163_bv();
     }
 
-    /** M3 接入死亡保管前，所有槽位完整掉落，禁止原版随机毁损装备 */
+    @Override
+    public void onDeath(DamageSource source) {
+        super.onDeath(source);
+        if (!worldObj.isRemote && dead) {
+            MaidDeathService.preserve(this);
+            brain.resetTask();
+        }
+    }
+
+    /** 驯服女仆交给死亡保管；野生女仆完整掉落，禁止原版随机毁损装备 */
     @Override
     protected void dropEquipment(boolean recentlyHit, int looting) {
+        if (MaidDeathService.preserve(this)) return;
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             var stack = inventory.getStackInSlot(slot);
             if (stack != null) {
