@@ -6,7 +6,7 @@
 
 ## 范围
 
-原版在 MC 1.20.1 客户端线程上，从实际资源管理器读取模型并连续重建三次
+原版在 MC 1.20.1 客户端线程上，从实际加载的唯一默认模型包读取模型并连续重建三次
 Gecko 调用原版 `IGeoRenderer.renderRecursively`，Bedrock 构造原版 `BedrockModel`，调用其继承自 `AbstractBedrockEntityModel` 的 `renderToBuffer`
 记录原生 `VertexConsumer` 输出的位置、法线、UV，以及包含匿名 cube 子节点的静态骨骼树
 没有另写几何或父链矩阵公式，也没有修改原版动画控制器

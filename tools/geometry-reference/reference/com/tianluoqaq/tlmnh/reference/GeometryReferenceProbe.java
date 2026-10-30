@@ -18,6 +18,7 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.BedrockMod
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.BedrockVersion;
 import com.github.tartaricacid.touhoulittlemaid.TouhouLittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel;
+import com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter;
@@ -124,6 +125,10 @@ public final class GeometryReferenceProbe {
         boolean gecko = model.get("backend").getAsString().equals("gecko");
         var geometry = new ResourceLocation(model.get("geometry").getAsString());
         var texture = new ResourceLocation(model.get("texture").getAsString());
+        var info = CustomPackLoader.MAID_MODELS.getInfo(modelId)
+            .orElseThrow(() -> new IllegalStateException("Original model metadata is missing"));
+        require(info.getModel().equals(geometry) && info.getTexture().equals(texture) && info.isGeckoModel() == gecko,
+            "Loaded original model metadata differs from the reviewed contract");
         var result = new JsonObject();
         result.addProperty("schema", "geometry-reference-v1");
         result.addProperty("contract", "native-bind-geometry-v1");
@@ -250,7 +255,18 @@ public final class GeometryReferenceProbe {
 
     private static JsonObject contract() throws Exception { return JsonParser.parseString(new String(resource("/tlmnh-geometry/contract.json"), StandardCharsets.UTF_8)).getAsJsonObject(); }
     private static byte[] asset(ResourceLocation location) throws Exception {
-        try (var stream = Minecraft.getInstance().getResourceManager().open(location)) { return stream.readAllBytes(); }
+        Path folder = CustomPackLoader.PACK_FOLDER.toRealPath();
+        Path pack;
+        try (var stream = Files.list(folder)) {
+            var entries = stream.filter(path -> Files.isDirectory(path) || path.getFileName().toString().endsWith(".zip")).toList();
+            require(entries.size() == 1 && entries.get(0).getFileName().toString().equals("touhou_little_maid-1.0.0"),
+                "The single original default model pack is required");
+            pack = entries.get(0).toRealPath();
+            require(pack.startsWith(folder), "Original model pack escapes its folder");
+        }
+        Path file = pack.resolve("assets").resolve(location.getNamespace()).resolve(location.getPath()).toRealPath();
+        require(file.startsWith(pack) && Files.isRegularFile(file), "Invalid actual model pack asset");
+        return Files.readAllBytes(file);
     }
     private static byte[] resource(String name) throws Exception {
         try (var stream = GeometryReferenceProbe.class.getResourceAsStream(name)) {
