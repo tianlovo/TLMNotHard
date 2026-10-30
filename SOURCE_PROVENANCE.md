@@ -1,6 +1,7 @@
 # 上游移植记录
 
-固定上游为 TartaricAcid/TouhouLittleMaid 的 1.20 分支，提交 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6，代码许可见 licenses/TouhouLittleMaid-MIT.txt
+固定上游为 TartaricAcid/TouhouLittleMaid 的 1.20 分支，提交 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6，
+代码许可见 licenses/TouhouLittleMaid-MIT.txt
 
 | 工程路径，均位于 src/main/java/ | 上游同路径 | 移植与改动 |
 | --- | --- | --- |
@@ -19,13 +20,15 @@
 | model/BedrockPart.java、BedrockCube.java、BedrockCubeBox.java、BedrockCubePerFace.java | 保留层级变换、方块旋转与顶点顺序；改用 LegacyPoseStack 和 LegacyVertexConsumer，集合改为 JDK 类型，数学常量和接口改为 1.7.10 可用形式；骨骼输出异常时也恢复矩阵栈 |
 | AbstractBedrockEntityModel.java、BedrockModelProvider.java、BedrockModelUtil.java | 改接 ModelBase、Entity 与 AxisAlignedBB；移除高版本 RenderType 和 Sodium 专用分支，保留普通几何路径；补上 ModelBase 渲染入口，并让 renderToBuffer 的颜色参数传入骨骼 |
 
-新增矩阵栈、顶点接口和 Tessellator 适配位于 `com.tianluoqaq.tlmnh.client.render`，JOML 按官方 Shadow 配置重定位到本工程包下；矩阵法线以余子式计算，单轴缩放为零时仍能保留平面法线，提交时再归一化
+新增矩阵栈、顶点接口和 Tessellator 适配位于 `com.tianluoqaq.tlmnh.client.render`，JOML 按官方 Shadow 配置重定位到本工程包下；矩阵法线以余子式计算，
+单轴缩放为零时仍能保留平面法线，提交时再归一化
 
 CPU 测试覆盖 205 份非 Gecko 内置几何，以及层级与独立方块旋转、镜像、逐面 UV、零厚度平面和法线；不能据此判断动画或 Angelica 下的实际画面已通过验收
 
 ## Gecko 几何与骨骼
 
-以下 34 个原文件均来自同一固定 TLM 提交，位于 `com/github/tartaricacid/touhoulittlemaid/geckolib3/`，保留原包名和已有作者头，同时保留 TLM 与 GeckoLib 的 MIT 原文
+以下 34 个原文件均来自同一固定 TLM 提交，位于 `com/github/tartaricacid/touhoulittlemaid/geckolib3/`，保留原包名和已有作者头，
+同时保留 TLM 与 GeckoLib 的 MIT 原文
 
 | 相对目录 | 原文件与适配 |
 | --- | --- |
@@ -37,17 +40,22 @@ CPU 测试覆盖 205 份非 Gecko 内置几何，以及层级与独立方块旋�
 | util | VectorUtils、RenderUtils；接入旧 Vec3 和 LegacyPoseStack，保留平移、旋转、缩放及定位骨骼的变换顺序 |
 | geo/IGeoRenderer.java | 保留递归骨骼与逐面网格输出，改接 LegacyVertexConsumer；移除高版本渲染类型和 Sodium 分支，由 1.7.10 实体渲染器调用；零长度法线安全归零，异常时恢复矩阵栈 |
 
-GeckoLib 许可来源为 [固定提交的 LICENSE](https://github.com/bernie-g/geckolib/blob/4533673f89c2f1301ba0676ab7240ed20fb7f784/LICENSE)，不是将 TLM 的署名替代其原作者
+GeckoLib 许可来源为原项目的固定提交，保留原作者署名：
+[固定提交的 LICENSE](https://github.com/bernie-g/geckolib/blob/4533673f89c2f1301ba0676ab7240ed20fb7f784/LICENSE)
 
-Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
+Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；
+同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
 
 动画控制器、关键帧解析、采样和 Molang 绑定见后文；几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
 
 ## 实体渲染适配
 
-新增独立文件 BuiltinMaidModels、BuiltinMaidModel 和 MaidRenderer 均位于 `com.tianluoqaq.tlmnh.client.render`，不复制高版本实体渲染器；参考固定 TLM 的 EntityMaidRenderer 与 GeckoEntityMaidRenderer、GeoReplacedEntityRenderer 核对模型、贴图、缩放和坐标，继承 1.7.10 RenderLiving 接入 Forge 既有渲染路径
+新增独立文件 BuiltinMaidModels、BuiltinMaidModel 和 MaidRenderer 均位于 `com.tianluoqaq.tlmnh.client.render`，不复制高版本实体渲染器；
+参考固定 TLM 的 EntityMaidRenderer 与 GeckoEntityMaidRenderer、GeoReplacedEntityRenderer 核对模型、贴图、缩放和坐标，
+继承 1.7.10 RenderLiving 接入 Forge 既有渲染路径
 
-BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；CPU 测试覆盖全部254个选择以及旋转方块的两种坐标一致性；Bedrock组合和Gecko核心播放见后文，画面待验收
+BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；
+CPU 测试覆盖全部254个选择以及旋转方块的两种坐标一致性；Bedrock组合和Gecko核心播放见后文，画面待验收
 
 ## Bedrock 内置动画
 
@@ -63,19 +71,26 @@ BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐�
 | client/animation/inner/MaidTaskAnimation.java | 保留按任务 ID 控制模型骨骼显隐的条件；首版实际任务仍只有空闲、近战与远程，显隐代码不会注册额外工作 |
 | client/animation/inner/EntityBaseAnimation.java、SpecialAnimation.java | 保留悬浮、时钟、旋转、维度、随机选择及两个特殊模型的条件；修复地狱显隐比较，空随机骨骼集合安全退出，随机索引覆盖 Long.MIN_VALUE；旧世界日时在输入侧规范到一天内 |
 
-独立适配 BedrockPose、BuiltinBedrockAnimations 和 MaidAnimationState 位于本工程包名；BedrockPose 每帧恢复命名骨骼及旋转方块生成的子骨骼，并保存本体与附件共用的整体变换；MaidAnimationState 读取实体同步状态，动画不操作服务端世界
+独立适配 BedrockPose、BuiltinBedrockAnimations 和 MaidAnimationState 位于本工程包名；BedrockPose 每帧恢复命名骨骼及旋转方块生成的子骨骼，并保存本体与附件共用的整体变换；
+MaidAnimationState 读取实体同步状态，动画不操作服务端世界
 
-BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/authors_and_credits/animation/arm.js` 与 `float.js`，原作者 TartaricAcid，固定提交下完整原路径见资源来源清单；保留原公式，去掉上游已弃用的推车和载具分支；该适配文件按 CC BY-NC-SA 4.0 提供，原脚本资源保持原字节，不能用 Java 代码的许可覆盖这些改写
+BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/authors_and_credits/animation/arm.js` 与 `float.js`，原作者 TartaricAcid，
+固定提交下完整原路径见资源来源清单；保留原公式，去掉上游已弃用的推车和载具分支；该适配文件按 CC BY-NC-SA 4.0 提供，原脚本资源保持原字节，不能用 Java 代码的许可覆盖这些改写
 
-实体新增同步索引 28 保存短时动作位，MaidPose 位于本工程包名；动作由服务端设置且不持久化，生活和战斗行为尚未接入这些触发状态，硬编码游泳等动作层继续实现；本阶段仅接入 Bedrock 资源组合，不代表 Gecko 动画或整套女仆行为完成
+实体新增同步索引 28 保存短时动作位，MaidPose 位于本工程包名；动作由服务端设置且不持久化，生活和战斗行为尚未接入这些触发状态，硬编码游泳等动作层继续实现；本阶段仅接入 Bedrock 资源组合，
+不代表 Gecko 动画或整套女仆行为完成
 
 ## Molang 表达式核心
 
-`com/github/tartaricacid/touhoulittlemaid/molang` 下 36 个原文件来自同一固定 TLM 提交，保留原包名和已有 Unnamed Team 的 MIT 许可头；原许可另存于 licenses/UnnamedTeam-Molang-MIT.txt；它们提供词法、表达式树、绑定接口、求值器和循环，不引入外部脚本引擎
+`com/github/tartaricacid/touhoulittlemaid/molang` 下 36 个原文件来自同一固定 TLM 提交，保留原包名和已有 Unnamed Team 的 MIT 许可头；
+原许可另存于 licenses/UnnamedTeam-Molang-MIT.txt；它们提供词法、表达式树、绑定接口、求值器和循环，不引入外部脚本引擎
 
-适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
+适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，
+保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，
+相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
 
-`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量、帧查询、Gecko 文件解析与控制器见后文，不能将表达式测试当作 Gecko 模型动画完成
+`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量、帧查询、Gecko 文件解析与控制器见后文，
+不能将表达式测试当作 Gecko 模型动画完成
 
 ## Molang 数学与变量绑定
 
@@ -91,25 +106,34 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 | core/molang/context/IContext.java、function/ContextFunction.java 与 variable/ 下3个通用类型 | 保留数据实体、独立随机源和三类存储接口；不引入高版本 capability、Minecraft 单例和客户端世界类型，游戏查询在后续帧桥接中适配 |
 | util/Interpolations.java 与 MathHelper.java | 保留原插值、角度归一化和几何辅助公式 |
 
-新增独立文件 `MolangAnimationContext` 与 `MolangRandom` 位于 `com.tianluoqaq.tlmnh.client.render.molang`；每个动画实例独立持有变量和随机源，数据输入不持有游戏实体；表达式执行前清理 temp，scoped 值跨调用保留，模型初始化才清空；子上下文只有明确提供公有存储时才能读取对应 public 值，不意外读到父实体的公有值
+新增独立文件 `MolangAnimationContext` 与 `MolangRandom` 位于 `com.tianluoqaq.tlmnh.client.render.molang`；每个动画实例独立持有变量和随机源，
+数据输入不持有游戏实体；表达式执行前清理 temp，scoped 值跨调用保留，模型初始化才清空；子上下文只有明确提供公有存储时才能读取对应 public 值，不意外读到父实体的公有值
 
-整数随机函数的正常范围保持下界包含、上界排除；等端点返回该值，避免上游 nextInt(0)；宽度使用 long，避免跨整数范围溢出；die_roll 和 die_roll_integer 单次最多1024次，避免表达式占用渲染线程过久，普通次数仍保留上游取整差异
+整数随机函数的正常范围保持下界包含、上界排除；等端点返回该值，避免上游 nextInt(0)；宽度使用 long，避免跨整数范围溢出；die_roll 和 die_roll_integer 单次最多1024次，避免表达式占用渲染线程过久，
+普通次数仍保留上游取整差异
 
 `MolangBindingTest` 覆盖全部数学入口及别名、固定随机种子与多实例交错、反向和等端点范围、public 变量可见性、temp 清理、模型初始化、提前 return 和旋转符号
 
 ## Molang 帧查询与主绑定
 
-新增移植9个原文件：`core/molang/MolangParser.java`、`binding/PrimaryBinding.java`、`builtin/QueryBinding.java`、`builtin/query/` 下的 Position、PositionDelta、ItemNameAny、ItemMaxDurability、ItemRemainingDurability，以及 `core/controller/AnimationControllerContext.java`，相对路径均位于 geckolib3 下，来自同一固定 TLM 提交并保留原包名与 MIT 来源头
+新增移植9个原文件：`core/molang/MolangParser.java`、`binding/PrimaryBinding.java`、`builtin/QueryBinding.java`、
+`builtin/query/` 下的 Position、PositionDelta、ItemNameAny、ItemMaxDurability、ItemRemainingDurability，
+以及 `core/controller/AnimationControllerContext.java`，相对路径均位于 geckolib3 下，来自同一固定 TLM 提交并保留原包名与 MIT 来源头
 
-PrimaryBinding 保留 math、query/q、variable/v、context/c、temp/t、loop 和 for_each，集合改用 JDK；解析包装在成功或失败后都释放临时变量地址；运行时继续由各动画实例独立保存变量和控制器 anim_time
+PrimaryBinding 保留 math、query/q、variable/v、context/c、temp/t、loop 和 for_each，集合改用 JDK；解析包装在成功或失败后都释放临时变量地址；
+运行时继续由各动画实例独立保存变量和控制器 anim_time
 
-QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到纯数据帧，不导入高版本实体能力、物品标签或其他模组专用查询；保留固定上游的头部轴名称、每秒速度单位、位置插值和 position_delta 的部分 tick 语义；未实现的查询不注册占位结果
+QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到纯数据帧，不导入高版本实体能力、物品标签或其他模组专用查询；保留固定上游的头部轴名称、每秒速度单位、位置插值和 position_delta 的部分 tick 语义；
+未实现的查询不注册占位结果
 
-独立文件 `MolangQueryFrame`、`MolangQueryFunction` 和 `MaidMolangFrames` 位于本工程包名；取帧从 RC2 实际实体的主手、副手、护甲、生命、位置及水中状态读取，动画寿命由调用方的时间轴传入；纯数据不保存实体或世界引用，避免渲染缓存保活已卸载女仆
+独立文件 `MolangQueryFrame`、`MolangQueryFunction` 和 `MaidMolangFrames` 位于本工程包名；取帧从 RC2 实际实体的主手、副手、护甲、生命、位置及水中状态读取，
+动画寿命由调用方的时间轴传入；纯数据不保存实体或世界引用，避免渲染缓存保活已卸载女仆
 
-物品槽名保留不区分大小写，省略命名空间时使用 minecraft，满足酒狐原资源的 `Mainhand` 与 `bow` 写法；RC2 旧注册 ID 允许大小写并保持原字节，不将 IC2 等旧物品误判为高版本非法 ID；实际取帧不会因旧 ID 字符差异中断
+物品槽名保留不区分大小写，省略命名空间时使用 minecraft，满足酒狐原资源的 `Mainhand` 与 `bow` 写法；RC2 旧注册 ID 允许大小写并保持原字节，不将 IC2 等旧物品误判为高版本非法 ID；
+实际取帧不会因旧 ID 字符差异中断
 
-`MolangQueryTest` 使用实际主绑定检查查询单位、头部轴、独立控制器时间、多实例与更新帧、世界边界的 double 插值、主副手隔离、旧物品 ID、耐久度、临时地址清理和参数错误；这些 CPU 测试不代表实体取帧、完整动画或实际画面验收完成
+`MolangQueryTest` 使用实际主绑定检查查询单位、头部轴、独立控制器时间、多实例与更新帧、世界边界的 double 插值、主副手隔离、旧物品 ID、耐久度、临时地址清理和参数错误；这些 CPU 测试不代表实体取帧、
+完整动画或实际画面验收完成
 
 ## Gecko 关键帧与内置动画查询
 
@@ -123,17 +147,22 @@ QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到�
 | core/util/MathUtil.java、util/AnimationUtils.java | 保留插值和时间单位，角度常量改用 Math；移除本阶段不用的高版本渲染器查找 |
 | util/json/JsonAnimationUtils.java、JsonKeyFrameUtils.java | 保留动画与关键帧格式，兼容 Gson 2.2.4；所有表达式使用严格解析，不能用零吞掉加载错误；未写 animation_length 时按最后一段的起点加时长计算，修正上游只读取段起点导致时长过短的问题 |
 
-新增独立文件 BuiltinGeckoAnimations 和 GeckoKeyframes 位于本工程包名；加载器按清单顺序合并动画、共享解析定义并在重载时失效，错误包含文件与片段名称；采样器定位区间并限制进度，处理零时长、首帧延迟和前后值跳变；MolangValue 在每个独立程序求值前清理 temp，避免不同坐标表达式重用临时地址
+新增独立文件 BuiltinGeckoAnimations 和 GeckoKeyframes 位于本工程包名；加载器按清单顺序合并动画、共享解析定义并在重载时失效，错误包含文件与片段名称；采样器定位区间并限制进度，处理零时长、
+首帧延迟和前后值跳变；MolangValue 在每个独立程序求值前清理 temp，避免不同坐标表达式重用临时地址
 
-另有10个原文件来自 `client/animation/gecko/molang/`：TLMBinding、YSMBinding、PhysicsManager、MoveInputVariable、SecondOrderFunction、BoneParamFunction、BoneRotation、Vec3fStruct、IPhysics 与 SecondOrder，均保留上游包名与 MIT 来源，SecondOrder 的 MicroCraft 作者信息保留
+另有10个原文件来自 `client/animation/gecko/molang/`：TLMBinding、YSMBinding、PhysicsManager、MoveInputVariable、SecondOrderFunction、
+BoneParamFunction、BoneRotation、Vec3fStruct、IPhysics 与 SecondOrder，均保留上游包名与 MIT 来源，SecondOrder 的 MicroCraft 作者信息保留
 
-这里的 ysm 是 TLM 内嵌动画查询命名空间，酒狐等原资源直接依赖它；只适配当前内置资源使用的头部、装备、饥饿、闭眼、移动方向、骨骼旋转和二阶物理，不加载外部 YSM 模组或模型；女仆背包物品不在首版范围，因此 has_backpack 由实际无装备状态输入；RC2 的鞘翅查询识别胸甲槽的 etfuturum:elytra
+这里的 ysm 是 TLM 内嵌动画查询命名空间，酒狐等原资源直接依赖它；只适配当前内置资源使用的头部、装备、饥饿、闭眼、移动方向、骨骼旋转和二阶物理，不加载外部 YSM 模组或模型；女仆背包物品不在首版范围，
+因此 has_backpack 由实际无装备状态输入；RC2 的鞘翅查询识别胸甲槽的 etfuturum:elytra
 
 独立 MolangModelResources 随模型实例保存骨骼和物理状态，子上下文共享该实例资源，不保留游戏实体；普通二阶模拟保留上游公式，零频率按直接跟随处理，重复或倒退时间不推进，非有限参数不污染状态，长时间未绘制时最多追算一秒
 
-GeckoAnimationTest 严格解析56份文件、1645个片段与13824条表达式，结合41个Gecko选择的各自骨骼执行205242次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、临时变量、指令、重载和错误清理；MolangModelQueryTest检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些是CPU检查，不能代替实际画面验收
+GeckoAnimationTest 严格解析56份文件、1645个片段与13824条表达式，结合41个Gecko选择的各自骨骼执行205242次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、
+临时变量、指令、重载和错误清理；MolangModelQueryTest检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些是CPU检查，不能代替实际画面验收
 
-内置女仆模型的原始资源已导入，逐文件原路径与SHA-256见src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的maid_model.json和lang/*.json；资产许可见THIRD_PARTY_NOTICES.md，渲染画面仍待验收，时间轴声音继续实现
+内置女仆模型的原始资源已导入，逐文件原路径与SHA-256见src/main/resources/assets/tlmnh/builtin-assets-provenance.json，
+原始说明与作者信息保留在各命名空间的maid_model.json和lang/*.json；资产许可见THIRD_PARTY_NOTICES.md，渲染画面仍待验收，时间轴声音继续实现
 
 ## Gecko 播放控制器
 
@@ -153,12 +182,32 @@ GeckoControllerTest的15项纯数据检查覆盖过渡、单次与保持模式�
 
 ## Gecko 核心动作与实体播放
 
-新增BuiltinGeckoPlayer和AnimationClock位于本工程包名；动作优先级与层顺序参考固定TLM的client/animation/gecko/AnimationRegister.java、AnimationManager.java和client/entity/GeckoMaidEntity.java，物品条件参考同目录condition/ConditionalHold、ConditionalSwing、ConditionalUse、InnerClassify和ConditionArmor，不引入外部内容模组的控制器
+新增BuiltinGeckoPlayer和AnimationClock位于本工程包名；动作优先级与层顺序参考固定TLM的client/animation/gecko/AnimationRegister.java、
+AnimationManager.java和client/entity/GeckoMaidEntity.java，物品条件参考同目录condition/ConditionalHold、ConditionalSwing、
+ConditionalUse、InnerClassify和ConditionArmor，不引入外部内容模组的控制器
 
-保留8个前置层、主层、双手持物、挥动、使用物品、乞食、乘客、8个并行层和4个护甲条件层；主层按死亡、睡眠、游泳、攀爬、乘坐、坐姿、水中站立、受击、跳跃、跑、走、空闲选择；物品先匹配注册ID，再匹配类型和使用动作；护甲条件动画不等于外部装备已经渲染到女仆身上，装备渲染层仍待完成
+保留8个前置层、主层、双手持物、挥动、使用物品、乞食、乘客、8个并行层和4个护甲条件层；主层按死亡、睡眠、游泳、攀爬、乘坐、坐姿、水中站立、受击、跳跃、跑、走、空闲选择；物品先匹配注册ID，再匹配类型和使用动作；
+护甲条件动画不等于外部装备已经渲染到女仆身上，装备渲染层仍待完成
 
-BuiltinGeckoAnimations按固定GeckoModelLoader.registerMaidAnimations补齐默认女仆动画，仅填充缺少的片段，保留模型自带动作；不补入外部枪械、魔法或奏乐联动的默认动画；默认文件中first_person_mod_hide与上游一致为false，不查询外部第一人称模组
+BuiltinGeckoAnimations按固定GeckoModelLoader.registerMaidAnimations补齐默认女仆动画，仅填充缺少的片段，保留模型自带动作；不补入外部枪械、魔法或奏乐联动的默认动画；
+默认文件中first_person_mod_hide与上游一致为false，不查询外部第一人称模组
 
-实体只在取帧时读取游戏状态，播放器持有纯数据、骨骼、变量和物理；资源重载或模型切换会创建新实例；独立时钟保留小数tick，暂停冻结，恢复时重新对齐输入，重复或倒退输入不回拨；骨骼求值后按上游叠加头部看向，重复绘制不会积累角度；SWIMMING为服务端动作位，行为触发尚未实现
+实体只在取帧时读取游戏状态，播放器持有纯数据、骨骼、变量和物理；资源重载或模型切换会创建新实例；独立时钟保留小数tick，暂停冻结，恢复时重新对齐输入，重复或倒退输入不回拨；骨骼求值后按上游叠加头部看向，重复绘制不会积累角度；
+SWIMMING为服务端动作位，行为触发尚未实现
 
-BuiltinGeckoPlayerTest检查主层优先级、物品条件、层顺序、暂停、头部及重复挥动，并对41个Gecko选择执行10种状态、1230帧CPU检查，其中酒狐33个选择；AnimationClockTest覆盖实例隔离、暂停恢复、倒退和无效时间；这些检查未创建游戏窗口，不代表Angelica画面、装备定位、动作过渡或完整玩法通过验收
+BuiltinGeckoPlayerTest检查主层优先级、物品条件、层顺序、暂停、头部及重复挥动，并对41个Gecko选择执行10种状态、1230帧CPU检查，其中酒狐33个选择；AnimationClockTest覆盖实例隔离、
+暂停恢复、倒退和无效时间；这些检查未创建游戏窗口，不代表Angelica画面、装备定位、动作过渡或完整玩法通过验收
+
+## 原版动画对照工具
+
+tools/animation-reference-1.20.1使用同一固定上游提交，参考构建仍是Minecraft1.20.1、Forge47.2.0与Java17；
+新增独立探针和回放器位于com.tianluoqaq.tlmnh.reference下，不进入GTNH分发JAR
+
+upstream-probe.patch仅应用于独立参考checkout：EntityMaidRenderer提供临时输入作用域；AnimatableEntity、
+AnimationManager和GeoReplacedEntityRenderer提供显式时钟、选片与位移故障；GeckoMaidEntity在核心和头部阶段采样；BedrockModel采实际绘制参数；
+普通实体与默认none故障保持原计算路径
+
+资源来源另核对CommonDefaultPack、CustomPackLoader和GeckoModelLoader；原版内置包位于上游资源的嵌套tlm_custom_pack目录，运行时解包后读取；
+Windows参考checkout的JSON换行可与固定Git字节不同，工具只允许可复算的LF/CRLF变体，移植版仍保留Git原字节
+
+CPU回放使用实际移植类、独立模型与输入快照，Java25运行，遵守工程Java8输出目标；当前仅两个空手待机夹具，不能据此宣称全部模型、动作或GPU画面通过；操作与实验限制见工具DESIGN.md

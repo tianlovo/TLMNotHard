@@ -36,6 +36,22 @@ def clear_and_reload():
     control("reload")
 
 
+def ensure_lab():
+    state = control("status")["response"]
+    if not state["minimalReferenceMods"]:
+        raise ValueError("Unexpected reference runtime mods")
+    if not state["worldLoaded"]:
+        control("open_lab")
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            state = control("status")["response"]
+            if state["worldLoaded"] and state["playerPresent"]:
+                break
+            time.sleep(.2)
+        else:
+            raise TimeoutError("Reference world not ready")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep-client", action="store_true")
@@ -45,19 +61,7 @@ def main():
               "full_capture_contract_passed": False, "ab_equivalence_executed": False,
               "e2e_fault_injection_executed": False, "equivalence_verified": False}
     try:
-        state = control("status")["response"]
-        if not state["minimalReferenceMods"]:
-            raise ValueError("Unexpected reference runtime mods")
-        if not state["worldLoaded"]:
-            control("open_lab")
-            deadline = time.monotonic() + 30
-            while time.monotonic() < deadline:
-                state = control("status")["response"]
-                if state["worldLoaded"] and state["playerPresent"]:
-                    break
-                time.sleep(.2)
-            else:
-                raise TimeoutError("Reference world not ready")
+        ensure_lab()
         spec = importlib.util.spec_from_file_location("compare_aa", PROBE / "compare_aa.py")
         comparator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(comparator)
@@ -86,7 +90,7 @@ def main():
         report["error"] = str(error)
     finally:
         try:
-            if not args.keep_client:
+            if not args.keep_client or not report["passed"]:
                 control("shutdown")
                 report["shutdown_requested"] = True
         except Exception as error:

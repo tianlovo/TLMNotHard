@@ -3,10 +3,11 @@
 import argparse
 import importlib.util
 import json
+import time
 from pathlib import Path
 
-from reference_environment import PROBE, RUNTIME, EVIDENCE
-from aa_experiment import control, clear_and_reload
+from reference_environment import PROBE, RUNTIME, EVIDENCE, GAME
+from aa_experiment import control, clear_and_reload, ensure_lab
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
     try:
         if not aa["passed"]:
             raise ValueError("A/A prerequisite failed")
+        ensure_lab()
         baseline_case = next(value for value in aa["models"] if value["model"] == "geckolib:winefox_hanfu")
         baseline_file = RUNTIME / baseline_case["samples"][0]["file"]
         baseline = json.loads(baseline_file.read_text(encoding="utf-8"))
@@ -28,6 +30,18 @@ def main():
         comparator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(comparator)
         report["baseline"] = baseline_case["samples"][0]
+        clear_and_reload()
+        guard = GAME / "tlm_custom_pack" / ("tlmnh_io_guard_" + str(time.time_ns()))
+        guard.mkdir()
+        try:
+            failed = control("sample_case", "--model", "geckolib:winefox_hanfu", "--frames", "2",
+                             "--seed", "424242", allow_failure=True)["response"]
+            state = control("status")["response"]
+            report["command_io_error_isolated"] = (failed["status"] == "failed"
+                and "single original default model pack" in failed.get("error", "")
+                and state["minimalReferenceMods"] and not state["captureActive"])
+        finally:
+            guard.rmdir()
         for fault in ("head_offset", "clock_offset", "wrong_clip"):
             clear_and_reload()
             result = control("sample_case", "--model", "geckolib:winefox_hanfu", "--frames", "30",
@@ -54,7 +68,8 @@ def main():
                     case["actual_main_clips"] = sorted(str(value) for value in clips)
                     case["detected"] = case["detected"] and "walk" in clips
             print(json.dumps({"fault": fault, "detected": case["detected"]}), flush=True)
-        report["passed"] = len(report["faults"]) == 3 and all(value["detected"] for value in report["faults"])
+        report["passed"] = (len(report["faults"]) == 3 and all(value["detected"] for value in report["faults"])
+                            and report["command_io_error_isolated"])
     except Exception as error:
         report["error"] = str(error)
     finally:

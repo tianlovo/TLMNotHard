@@ -18,6 +18,32 @@ index d4fd504..e1cbdda 100644
 -}
 \ No newline at end of file
 +}
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
+index a9323e3..6a008d4 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/entity/GeckoMaidEntity.java
+@@ -94,7 +94,9 @@ public class GeckoMaidEntity<T extends Mob> extends AnimatableEntity<T> implemen
+             var update = super.setCustomAnimations(context, event);
+             AnimatedGeoModel currentModel = this.getCurrentModel();
+             if (currentModel != null) {
++                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "core");
+                 this.updateHead(data, currentModel, update);
++                com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.geckoPhase(entity, currentModel, context, "head");
+                 HardcodedAnimationManger.playGeckoMaidAnimation(maid, currentModel, event.getLimbSwing(), event.getLimbSwingAmount(),
+                         maid.asEntity().tickCount + event.getPartialTick(), data.netHeadYaw, data.headPitch);
+ 
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java
+index 8d037a8..5dd186a 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java
+@@ -57,6 +57,7 @@ public class BedrockModel<T extends LivingEntity> extends AbstractBedrockEntityM
+                 IMaid maid = IMaid.convert(mob);
+                 if (maid != null) {
+                     setupMaidAnim(maid, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, invocable);
++                    com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe.bedrockInputs(entityIn, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                     // 硬编码动画
+                     HardcodedAnimationManger.playMaidAnimation(maid, modelMapWrapper, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                 }
 diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java
 index 26724b1..65540cd 100644
 --- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/renderer/entity/EntityMaidRenderer.java

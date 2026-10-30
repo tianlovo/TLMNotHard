@@ -1,0 +1,24 @@
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def tool = new File(project.projectDir, 'tools/animation-reference-1.20.1')
+    project.sourceSets.test.java.srcDir(new File(tool, 'replay'))
+    project.tasks.register('replayReferenceAnimation', JavaExec) {
+        group = 'verification'
+        description = 'Replays bounded original-client animation inputs through the actual port CPU pipeline'
+        dependsOn project.tasks.named('testClasses')
+        mainClass.set('com.tianluoqaq.tlmnh.reference.replay.ReferenceAnimationReplay')
+        javaLauncher.set(project.javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(25))
+        })
+        classpath = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+        workingDir = project.layout.buildDirectory.dir('reference-replay').get().asFile
+        doFirst {
+            workingDir.mkdirs()
+            def input = project.findProperty('referenceInput')
+            def output = project.findProperty('referenceOutput')
+            if (input == null || output == null) throw new GradleException('referenceInput and referenceOutput are required')
+            args project.file(input).absolutePath, project.file(output).absolutePath,
+                (project.findProperty('referenceReplayFault') ?: 'none')
+        }
+    }
+}

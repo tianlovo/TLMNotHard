@@ -31,6 +31,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityMai
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.GeckoEntityMaidRenderer;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.context.AnimationContext;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -94,6 +95,7 @@ public final class ReferenceObservationProbe {
                     report.addProperty("seed", active.seed);
                     report.addProperty("resourceGeneration", resourceGeneration);
                     report.addProperty("faultInjection", active.fault);
+                    if (active.assets != null) report.add("actualAssetSha256", active.assets);
                     var frames = new JsonArray();
                     active.frames.forEach(frames::add);
                     report.add("frames", frames);
@@ -112,6 +114,7 @@ public final class ReferenceObservationProbe {
         } catch (IOException error) {
             ioFailed = true;
             TouhouLittleMaid.LOGGER.error("TLMNH_REFERENCE_PROBE_FAILED", error);
+            Minecraft.getInstance().stop();
         }
     }
 
@@ -172,11 +175,13 @@ public final class ReferenceObservationProbe {
                     String fault = request.has("fault") ? request.get("fault").getAsString() : "none";
                     if (!Set.of("none", "head_offset", "clock_offset", "wrong_clip").contains(fault))
                         throw new IllegalArgumentException("Unknown experiment fault");
+                    var assets = ReferenceReplayInputs.assets(request.get("model").getAsString());
                     UUID entity = UUID.nameUUIDFromBytes(("tlmnh-reference:" + request.get("model").getAsString()).getBytes(StandardCharsets.UTF_8));
                     ReferenceScene.spawn(request, entity, () -> {
                         active = new Capture(name, entity, count, true, seed);
                         active.expectedModel = request.get("model").getAsString();
                         active.fault = fault;
+                        active.assets = assets;
                     });
                     lastControlledGeneration = resourceGeneration;
                     response.addProperty("status", "waiting-render");
@@ -185,7 +190,7 @@ public final class ReferenceObservationProbe {
                 default -> throw new IllegalArgumentException("Unknown reference observation command");
             }
             if (!response.has("status")) response.addProperty("status", "complete");
-        } catch (RuntimeException error) {
+        } catch (RuntimeException | IOException error) {
             response.addProperty("status", "failed");
             response.addProperty("error", error.toString());
         }
@@ -213,6 +218,11 @@ public final class ReferenceObservationProbe {
             frame.addProperty("headPitch", maid.getXRot());
             frame.addProperty("netHeadYaw", maid.yHeadRot - maid.yBodyRot);
             frame.add("position", vector(maid.getX(), maid.getY(), maid.getZ()));
+            if (active.controlled) {
+                if (active.inputs == null || active.inputTick != maid.tickCount)
+                    throw new IllegalStateException("Actual animation inputs were not captured for this step");
+                frame.add("inputs", active.inputs);
+            }
             var bones = new JsonObject();
             if (event.getRenderer() instanceof GeckoEntityMaidRenderer<?>) {
                 var animatable = maid.getCapability(GeckoMaidEntityCapabilityProvider.CAP).orElse(null);
@@ -227,16 +237,13 @@ public final class ReferenceObservationProbe {
                 if (active.controlled && animatable.getSeekTime() != active.frames.size())
                     throw new IllegalStateException("Original seek time did not match the controlled frame: expected="
                         + active.frames.size() + " actual=" + animatable.getSeekTime());
-                new TreeMap<>(animatable.getCurrentModel().bones()).forEach((key, bone) -> {
-                    var pose = new JsonObject();
-                    pose.add("translation", vector(bone.getPositionX(), bone.getPositionY(), bone.getPositionZ()));
-                    pose.add("rotationRadians", vector(bone.getRotationX(), bone.getRotationY(), bone.getRotationZ()));
-                    pose.add("scale", vector(bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()));
-                    pose.add("pivot", vector(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ()));
-                    pose.addProperty("hidden", bone.isHidden());
-                    pose.addProperty("cubesHidden", bone.cubesAreHidden());
-                    bones.add(key, pose);
-                });
+                geckoBones(animatable.getCurrentModel(), bones);
+                if (active.controlled) {
+                    if (active.core == null || active.head == null)
+                        throw new IllegalStateException("Missing original animation phase snapshot");
+                    frame.add("coreBones", active.core);
+                    frame.add("headBones", active.head);
+                }
                 var controllers = new JsonArray();
                 for (var controller : animatable.getAnimationData().getAnimationControllers()) {
                     var state = new JsonObject();
@@ -291,6 +298,7 @@ public final class ReferenceObservationProbe {
         if (Minecraft.getInstance().isPaused() || !(entity instanceof EntityMaid maid) || !ReferenceScene.isCurrent(maid)
             || !maid.isTame() || !maid.getModelId().equals(active.expectedModel)) return ReferenceFrameScope.skip(partialTick);
         try {
+            active.inputs = active.core = active.head = null;
             var scope = ReferenceFrameScope.controlled(maid, active.frames.size(), active.seed, !active.seeded);
             active.seeded = true;
             return scope;
@@ -301,9 +309,56 @@ public final class ReferenceObservationProbe {
     }
 
     private static boolean hasFault(Entity entity, String fault) {
+        return matchesCapture(entity) && active.fault.equals(fault);
+    }
+
+    private static boolean matchesCapture(Entity entity) {
         return Boolean.getBoolean("tlmnh.referenceProbe") && active != null && active.controlled
-            && active.frames.size() < active.limit && active.fault.equals(fault)
+            && active.frames.size() < active.limit
             && entity.getUUID().equals(active.entity) && entity instanceof EntityMaid maid && ReferenceScene.isCurrent(maid);
+    }
+
+    public static void geckoPhase(Entity entity, AnimatedGeoModel model, AnimationContext<?> context, String phase) {
+        if (!matchesCapture(entity)) return;
+        try {
+            var snapshot = new JsonObject();
+            geckoBones(model, snapshot);
+            if (phase.equals("core")) {
+                var event = context.animationEvent();
+                active.inputs = ReferenceReplayInputs.capture((EntityMaid) entity, event.getLimbSwing(),
+                    event.getLimbSwingAmount(), entity.tickCount + event.getPartialTick(),
+                    context.data().netHeadYaw, context.data().headPitch, event.getPartialTick(), context);
+                active.inputTick = entity.tickCount;
+                active.core = snapshot;
+            } else if (phase.equals("head")) active.head = snapshot;
+            else throw new IllegalArgumentException("Unknown original animation phase: " + phase);
+        } catch (RuntimeException error) {
+            active.failure = error.toString();
+        }
+    }
+
+    public static void bedrockInputs(Entity entity, float limb, float amount, float age, float yaw, float pitch) {
+        if (!matchesCapture(entity)) return;
+        try {
+            active.inputs = ReferenceReplayInputs.capture((EntityMaid) entity, limb, amount, age, yaw, pitch,
+                age - entity.tickCount, null);
+            active.inputTick = entity.tickCount;
+        } catch (RuntimeException error) {
+            active.failure = error.toString();
+        }
+    }
+
+    private static void geckoBones(AnimatedGeoModel model, JsonObject bones) {
+        new TreeMap<>(model.bones()).forEach((key, bone) -> {
+            var pose = new JsonObject();
+            pose.add("translation", vector(bone.getPositionX(), bone.getPositionY(), bone.getPositionZ()));
+            pose.add("rotationRadians", vector(bone.getRotationX(), bone.getRotationY(), bone.getRotationZ()));
+            pose.add("scale", vector(bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()));
+            pose.add("pivot", vector(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ()));
+            pose.addProperty("hidden", bone.isHidden());
+            pose.addProperty("cubesHidden", bone.cubesAreHidden());
+            bones.add(key, pose);
+        });
     }
 
     public static double animationTick(Entity entity, double original) {
@@ -349,6 +404,8 @@ public final class ReferenceObservationProbe {
         String failure;
         String expectedModel;
         String fault = "none";
+        JsonObject inputs, core, head, assets;
+        int inputTick = -1;
 
         Capture(String request, UUID entity, int limit, boolean controlled, long seed) {
             this.request = request;
