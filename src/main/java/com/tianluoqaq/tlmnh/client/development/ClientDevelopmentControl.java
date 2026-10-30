@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.Queue;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.util.ScreenShotHelper;
@@ -44,6 +45,7 @@ public final class ClientDevelopmentControl {
     private final Minecraft minecraft;
     private final Path controls, responses;
     private final Queue<Capture> captures = new ArrayDeque<>();
+    private Boolean previousPauseOnLostFocus;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
@@ -62,6 +64,7 @@ public final class ClientDevelopmentControl {
     @SubscribeEvent
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
         try (var stream = Files.newDirectoryStream(controls, "*.json")) {
             var pending = new ArrayList<Path>();
             for (var path : stream) if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) pending.add(path);
@@ -131,6 +134,24 @@ public final class ClientDevelopmentControl {
                     response.addProperty("server", "127.0.0.1:" + request.port);
                     response.addProperty("connection", "requested");
                     break;
+                case LAB_VIEW:
+                    if (!AnimationLab.isLab(minecraft.theWorld) || minecraft.thePlayer == null
+                        || !minecraft.thePlayer.capabilities.disableDamage
+                        || !minecraft.thePlayer.capabilities.isFlying
+                        || !minecraft.thePlayer.noClip)
+                        throw new IllegalStateException("Safe animation lab observer required");
+                    if (minecraft.currentScreen != null && !(minecraft.currentScreen instanceof GuiIngameMenu))
+                        throw new IllegalStateException("Close the current screen before viewing the lab");
+                    if (previousPauseOnLostFocus == null)
+                        previousPauseOnLostFocus = minecraft.gameSettings.pauseOnLostFocus;
+                    minecraft.gameSettings.pauseOnLostFocus = false;
+                    minecraft.displayGuiScreen(null);
+                    if (minecraft.currentScreen != null) {
+                        restorePauseSetting();
+                        throw new IllegalStateException("Lab view was cancelled");
+                    }
+                    response.addProperty("backgroundRendering", true);
+                    break;
                 case LOOK:
                     if (minecraft.thePlayer == null) throw new IllegalStateException("Player not loaded");
                     minecraft.thePlayer.rotationYaw = minecraft.thePlayer.prevRotationYaw = request.yaw;
@@ -139,6 +160,8 @@ public final class ClientDevelopmentControl {
                 case SCREENSHOT:
                     if (minecraft.theWorld == null || minecraft.thePlayer == null)
                         throw new IllegalStateException("World not loaded");
+                    if (minecraft.currentScreen != null)
+                        throw new IllegalStateException("Screenshot obscured by screen");
                     if (captures.size() >= MAX_PENDING_CAPTURES)
                         throw new IllegalStateException("Screenshot queue full");
                     if (captures.stream()
@@ -156,6 +179,7 @@ public final class ClientDevelopmentControl {
                     minecraft.refreshResources();
                     break;
                 case SHUTDOWN:
+                    restorePauseSetting();
                     minecraft.shutdown();
                     break;
                 default:
@@ -187,6 +211,7 @@ public final class ClientDevelopmentControl {
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT);
         int unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
+            if (minecraft.currentScreen != null) throw new IllegalStateException("Screenshot obscured by screen");
             var path = minecraft.mcDataDir.toPath()
                 .resolve("screenshots")
                 .resolve(capture.filename);
@@ -220,6 +245,13 @@ public final class ClientDevelopmentControl {
             capture.filename,
             response.get("status")
                 .getAsString());
+    }
+
+    private void restorePauseSetting() {
+        if (previousPauseOnLostFocus != null) {
+            minecraft.gameSettings.pauseOnLostFocus = previousPauseOnLostFocus;
+            previousPauseOnLostFocus = null;
+        }
     }
 
     private void writeResponse(String name, JsonObject response) throws IOException {

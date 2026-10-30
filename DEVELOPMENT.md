@@ -17,15 +17,21 @@ python scripts/verify_bytecode.py build/libs/<候选版本>.jar
 
 使用 IntelliJ IDEA 2026.2.1 打开源码仓库根目录，也就是 README.md、build.gradle.kts 和 src/ 所在目录；不要打开外层研究工作区或上游克隆目录，如果出现导入选项，选择 Gradle
 
-项目 SDK 和 Gradle JVM 选择本机 JDK25，源码语言级别为17，IDE 导入模型与实际构建的目标字节码均为8；Jabel 编译器仍使用 JDK17，单元测试与 RC2 游戏运行于 Java25，构建和测试委托给 Gradle，不使用 IDEA 原生编译器绕过 Jabel
+项目 SDK 和 Gradle JVM 选择本机 JDK25，源码语言级别为17，IDE 导入模型与实际构建的目标字节码均为8；Jabel 编译器仍使用 JDK17，单元测试与 RC2 游戏运行于 Java25，
+构建和测试委托给 Gradle，不使用 IDEA 原生编译器绕过 Jabel
 
-使用项目 Wrapper 固定的 Gradle 9.7.1，Gradle User Home 选择已有项目缓存；发行包缓存在该目录的 wrapper/dists，依赖缓存与发行包缓存需要分别齐备；已有同版本本机安装时可以校验后复用，避免 IDEA 导入时重新下载；本机目录、SDK 名称与解释器路径只保存在忽略的 IDE 配置或仓库外层工具中，不写入公开仓库
+使用项目 Wrapper 固定的 Gradle 9.7.1，Gradle User Home 选择已有项目缓存；发行包缓存在该目录的 wrapper/dists，依赖缓存与发行包缓存需要分别齐备；
+已有同版本本机安装时可以校验后复用，避免 IDEA 导入时重新下载；本机目录、SDK 名称与解释器路径只保存在忽略的 IDE 配置或仓库外层工具中，不写入公开仓库
 
-本机运行配置生成器位于仓库外层的 scripts/configure_idea.py，用 Python3 执行；它保留原设置备份，生成 .idea/ 下的项目 SDK、编译目标、Gradle 关联、本机任务及八个运行入口，并设置 IDEA 的本工程缓存位置；先关闭 IDEA 再重新生成，避免运行中的 IDE 覆盖配置；若 Wrapper 缓存缺失，先运行外层 scripts/seed_wrapper_cache.py 复用已验证的本机安装；.idea、.run、.vscode、.fleet、Eclipse 和模块文件继续由 .gitignore 忽略，不提交到远程
+本机运行配置生成器位于仓库外层的 scripts/configure_idea.py，用 Python3 执行；它保留原设置备份，生成 .idea/ 下的项目 SDK、编译目标、Gradle
+关联、本机任务及八个运行入口，并设置 IDEA 的本工程缓存位置；先关闭 IDEA 再重新生成，避免运行中的 IDE 覆盖配置；若 Wrapper 缓存缺失，先运行外层
+scripts/seed_wrapper_cache.py 复用已验证的本机安装；.idea、.run、.vscode、.fleet、Eclipse 和模块文件继续由 .gitignore 忽略，不提交到远程
 
 打开项目后等待 Gradle 同步与索引；需要手动同步时，在 Gradle 工具窗口执行 Reload All Gradle Projects
 
-SDK 与 Gradle JVM 的设置位置见 [JetBrains 的 Gradle JVM 说明](https://www.jetbrains.com/help/idea/gradle-jvm-selection.html)，缓存目录和构建委托见 [Gradle 设置说明](https://www.jetbrains.com/help/idea/gradle-settings.html)
+SDK 与 Gradle JVM 的设置位置见 [JetBrains 的 Gradle JVM
+说明](https://www.jetbrains.com/help/idea/gradle-jvm-selection.html)，缓存目录和构建委托见 [Gradle
+设置说明](https://www.jetbrains.com/help/idea/gradle-settings.html)
 
 | 本机运行入口 | 使用方式 |
 | --- | --- |
@@ -42,17 +48,24 @@ SDK 与 Gradle JVM 的设置位置见 [JetBrains 的 Gradle JVM 说明](https://
 
 运行01–03后，任务成功结束表示启动器已经接管，不表示游戏退出或完成验收；用05查实际状态，日志位于专用实例各侧 console-时间戳.log，路径会打印到运行窗口；不要用 Gradle 的红色停止按钮代替停服
 
-这些入口复用外层 scripts/idea_runtime.py、test_runtime.py 和 install_candidate.py，只允许操作 instance/test/tlmnh；测试整包、存档、日志和本机外层工具不进入源码仓库，其他开发者需自行准备相应测试实例，普通 Gradle 构建不依赖这些本地运行配置
+这些入口复用外层 scripts/idea_runtime.py、test_runtime.py 和 install_candidate.py，只允许操作 instance/test/tlmnh；
+测试整包、存档、日志和本机外层工具不进入源码仓库，其他开发者需自行准备相应测试实例，普通 Gradle 构建不依赖这些本地运行配置
 
 ## README 维护规范
 
 README.md 默认显示简体中文，README.en.md 为英文，两者在页首互相链接；当前是 Indev 说明，已实现、已检查和待验收须分开写，不能提前使用正式版安装指南或可用性承诺
 
-章节顺序参考 [Standard Readme](https://github.com/RichardLitt/standard-readme/blob/main/spec.md)：标题与简述、目录、背景、安装及依赖、使用、开发状态、维护者、参与贡献、许可证；标题可以翻译，许可证放最后；多语言文件名按本项目中文首页要求处理，属于 Standard Readme 默认英文文件命名之外的项目约定
+章节顺序参考 [Standard Readme](https://github.com/RichardLitt/standard-readme/blob/main/spec.md)
 
-语法使用 [GFM](https://github.github.com/gfm/)，格式由 [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) 检查，固定工具版本0.24.0，配置在 .markdownlint-cli2.jsonc；当前检查两份 README，普通文本每行最多120字符，表格不限制行长，其余默认规则开启
+标题与简述、目录、背景、安装及依赖、使用、开发状态、维护者、参与贡献、许可证；标题可以翻译，许可证放最后
+多语言文件名按本项目中文首页要求处理，属于 Standard Readme 默认英文文件命名之外的项目约定
 
-GitHub 工作流只在两份 README、markdownlint 配置、工作流自身或路径检查器变更时自动运行，支持手动执行；同一分支或 PR 有更新时取消尚未结束的旧检查，纯源码提交不触发文档检查；工作流仍检查 Git 跟踪的文本是否混入本机绝对路径，每次推送前也须在本地执行路径检查
+语法使用 [GFM](https://github.github.com/gfm/)，格式由
+[markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) 检查，固定工具版本0.24.0，配置在
+.markdownlint-cli2.jsonc；当前检查两份 README，普通文本每行最多120字符，表格不限制行长，其余默认规则开启
+
+GitHub 工作流只在两份 README、markdownlint 配置、工作流自身或路径检查器变更时自动运行，支持手动执行；同一分支或 PR 有更新时取消尚未结束的旧检查，纯源码提交不触发文档检查；工作流仍检查
+Git 跟踪的文本是否混入本机绝对路径，每次推送前也须在本地执行路径检查
 
 ```powershell
 npx --yes markdownlint-cli2@0.24.0
@@ -78,7 +91,8 @@ python scripts/check_repository_paths.py
 
 背包视图 0–5 为背包，6 主手、7 副手、8–11 为靴子到头盔；只有六格背包计入基础容量，不能把 12 个总槽位称为十二格背包
 
-存档扩展使用 TLMNH.Schema = 1，背包为 MaidInventory 列表，副手为 TLMNHOffhand，原有模型、任务、作息和经验等键保留；TLMNH 扩展区中的未知字段保留，不宣称支持读取高版本 Minecraft 存档
+存档扩展使用 TLMNH.Schema = 1，背包为 MaidInventory 列表，副手为 TLMNHOffhand，原有模型、任务、作息和经验等键保留；TLMNH 扩展区中的未知字段保留，不宣称支持读取高版本
+Minecraft 存档
 
 ## 真实服务端状态检查
 
@@ -100,11 +114,13 @@ save-all
 stop
 ```
 
-重启同一存档、同一候选 JAR 的服务器后执行 `tlmnhdev persist-check`，检查带原 UUID 的唯一女仆、12 个槽位、装备耐久与 NBT、核心状态和扩展区；期望值保存在独立的 WorldSavedData，夹具实体按普通区块流程保存
+重启同一存档、同一候选 JAR 的服务器后执行 `tlmnhdev persist-check`，检查带原 UUID 的唯一女仆、12 个槽位、装备耐久与 NBT、核心状态和扩展区；期望值保存在独立的
+WorldSavedData，夹具实体按普通区块流程保存
 
 成功标记为 TLMNH_PERSISTENCE_CHECK_PASS；测试报告同时保存两次 Java 进程、停服和启动日志，单次进程内执行 create/check 不能作为重启证据；夹具无敌且静坐，不能用于战斗或生存玩法验收
 
-容器夹具使用 `tlmnhdev container-test`，在真实服务端构造两名临时 FakePlayer 和一只临时女仆，检查堆叠与满格守恒、护甲有效性、非主人拒绝、距离与实体身份撤权，以及设置操作的逐次校验；结束时清理夹具物品和实体
+容器夹具使用 `tlmnhdev container-test`，在真实服务端构造两名临时 FakePlayer 和一只临时女仆，检查堆叠与满格守恒、护甲有效性、非主人拒绝、距离与实体身份撤权，以及设置操作的逐次校验；
+结束时清理夹具物品和实体
 
 成功标记为 TLMNH_CONTAINER_TEST_PASS，不表示已经验收客户端界面、实际网络点击或多人观察；按钮复用原版 C11 容器消息，动作编号限制在 0–8，服务端不会信任客户端的槽位、所有权或距离判断
 
@@ -114,17 +130,21 @@ stop
 
 主人普通右键打开六格背包、双手和护甲界面，可以设置任务、作息、拾取与坐姿；潜行空手右键切换坐姿，坐下时清除当前目标与路径；模型选择界面、动画、行为和其余物品交互仍待实现，选择战斗任务不代表已经能够作战
 
-CommonProxy 创建服务端容器，其初始化入口不引用客户端类型；ClientProxy 注册 GUI、女仆渲染器和资源重载监听；开发开关开启时，`tlmnhdev spawn [玩家] [模型ID]` 在在线玩家附近生成一只绑定测试女仆，指定模型必须存在于内置目录，否则拒绝生成
+CommonProxy 创建服务端容器，其初始化入口不引用客户端类型；ClientProxy 注册 GUI、女仆渲染器和资源重载监听；开发开关开启时，`tlmnhdev spawn [玩家] [模型ID]`
+在在线玩家附近生成一只绑定测试女仆，指定模型必须存在于内置目录，否则拒绝生成
 
-`tlmnhdev interaction-test` 使用未加入在线列表的服务器玩家检查蛋糕消耗、首次绑定、拒绝换主人、坐姿和超距拒绝，成功标记为 TLMNH_INTERACTION_TEST_PASS；它不发送真实玩家网络点击，也不打开客户端界面
+`tlmnhdev interaction-test` 使用未加入在线列表的服务器玩家检查蛋糕消耗、首次绑定、拒绝换主人、坐姿和超距拒绝，成功标记为 TLMNH_INTERACTION_TEST_PASS；
+它不发送真实玩家网络点击，也不打开客户端界面
 
 ## 客户端测试控制
 
 ### 虚空场地与旁观观察者
 
-开发开关下注册独立空气维度，默认ID7337，可通过两端相同的 `-Dtlmnh.labDimension=<ID>` 调整，冲突时停止注册；生成器不生成地面、结构或装饰，仅场地初始化创建21×21格网平台，使用独立存档子目录；固定正午、关闭局部天气和自然刷怪，不写主世界的时间与天气数据
+开发开关下注册独立空气维度，默认ID7337，可通过两端相同的 `-Dtlmnh.labDimension=<ID>` 调整，冲突时停止注册；生成器不生成地面、结构或装饰，仅场地初始化创建21×21格网平台，
+使用独立存档子目录；固定正午、关闭局部天气和自然刷怪，不写主世界的时间与天气数据
 
-服务端另加 `-Dtlmnh.animationLabAutoEnter=true` 时，在登录事件中自动切换到RC2实装的旁观模式并进入展台；默认模型为汉服酒狐，可用 `-Dtlmnh.labModel=<内置模型ID>` 指定；进入前记录返回位置和原模式，复用同一只带展台标记的女仆，不改背包内容；鼠标光标上仍拿着物品时拒绝进入，避免触发旁观模式的光标物品处理
+服务端另加 `-Dtlmnh.animationLabAutoEnter=true` 时，在登录事件中自动切换到RC2实装的旁观模式并进入展台；默认模型为汉服酒狐，可用
+`-Dtlmnh.labModel=<内置模型ID>` 指定；进入前记录返回位置和原模式，复用同一只带展台标记的女仆，不改背包内容；鼠标光标上仍拿着物品时拒绝进入，避免触发旁观模式的光标物品处理
 
 ```text
 tlmnhdev lab-world-test
@@ -139,22 +159,28 @@ tlmnhdev lab-exit [玩家]
 
 ### 请求与结果
 
-客户端同样需要显式加入 `-Dtlmnh.devCommands=true`；启动后在游戏目录的 tlmnh-dev/control/ 读取 JSON 文件，在 tlmnh-dev/responses/ 写入同名结果；默认关闭此入口，不通过键鼠或 IDE 界面自动化驱动游戏
+客户端同样需要显式加入 `-Dtlmnh.devCommands=true`；启动后在游戏目录的 tlmnh-dev/control/ 读取 JSON 文件，在 tlmnh-dev/responses/ 写入同名结果；
+默认关闭此入口，不通过键鼠或 IDE 界面自动化驱动游戏
 
-写入请求时先使用 .tmp 后缀，内容完整后改成 .json；文件按名称排序，每 tick 最多处理8个，单文件不超过16KiB；已处理请求改为 .json.done，结果的 status 为 complete 或 failed，截图先返回 pending-render，实际绘制结束后再更新结果
+写入请求时先使用 .tmp 后缀，内容完整后改成 .json；文件按名称排序，每 tick 最多处理8个，单文件不超过16KiB；已处理请求改为 .json.done，结果的 status 为 complete 或
+failed，截图先返回 pending-render，实际绘制结束后再更新结果
 
 | 请求 JSON | 作用 |
 | --- | --- |
 | `{"command":"status"}` | 查询世界、玩家、当前界面及窗口尺寸 |
 | `{"command":"connect_local","port":25585}` | 从主菜单调用 Forge 常规连接入口加入本地测试服，只接受127.0.0.1和1024至65535的整数端口 |
+| `{"command":"lab_view"}` | 仅限安全旁观者所在的虚空展台，关闭游戏菜单并临时关闭失焦暂停，以便后台截图 |
 | `{"command":"look","yaw":180,"pitch":10}` | 设置当前玩家相机方向，yaw 限定为−360至360，pitch 为−90至90 |
 | `{"command":"screenshot","name":"winefox-idle-01.png"}` | 在下一次 RenderTick.END 用原版截图接口保存游戏画面，结果记录相对路径 |
 | `{"command":"reload"}` | 在游戏主线程重新加载资源 |
 | `{"command":"shutdown"}` | 调用 Minecraft 正常退出流程 |
 
-截图仅接受受限 ASCII 文件名和小写 .png 后缀，不能带目录或覆盖已有文件；队列最多8张，读取后恢复截图接口改动的纹理绑定与像素对齐状态；请求不支持任意代码、聊天或服务端命令
+截图仅接受受限 ASCII 文件名和小写 .png 后缀，不能带目录或覆盖已有文件；有界面遮挡时拒绝截图，入队和实际截图时分别检查；队列最多8张，读取后恢复截图接口改动的纹理绑定与像素对齐状态；请求不支持任意代码、聊天或服务端命令
 
-connect_local 返回 complete 仅表示已请求连接，仍须用 status 核对 worldLoaded、playerPresent 与实际维度；已加载世界时拒绝再次连接，不自动断开现有会话；本地启动器的自动加入入口在客户端开始运行后发送该请求，不再传递 Minecraft 的 --server 参数
+lab_view不保存游戏选项，离开展台或通过shutdown退出时恢复此前的失焦暂停设置；它只接受已关闭界面或游戏菜单，拒绝关闭容器及其他界面，其他维度不能使用
+
+connect_local 返回 complete 仅表示已请求连接，仍须用 status 核对 worldLoaded、playerPresent 与实际维度；已加载世界时拒绝再次连接，不自动断开现有会话；
+本地启动器的自动加入入口在客户端开始运行后发送该请求，不再传递 Minecraft 的 --server 参数
 
 这套入口用于专用测试实例的实际渲染检查；协议单测不能证明 GL 截图可用，普通世界截图也不能代替虚空展台、完整动作循环或多人同步验收；生成的请求、结果与图片不提交到源码仓库
 
@@ -162,27 +188,38 @@ connect_local 返回 complete 仅表示已请求连接，仍须用 status 核对
 
 普通功能提交不打 tag，只在完成小阶段或里程碑时创建标签；日常构建用源码提交号、显式开发版本与 JAR SHA-256 追踪
 
-内置模型资源使用 `scripts/import_builtin_assets.py --upstream <固定 TLM 克隆路径>` 静态核对，显式添加 `--write` 才导入；脚本要求固定提交且相关上游文件没有修改，保留原字节与原始作者说明，生成模型装饰 ID 和逐文件来源摘要，不导入椅子或 LLM 设置
+内置模型资源使用 `scripts/import_builtin_assets.py --upstream <固定 TLM 克隆路径>` 静态核对，显式添加 `--write` 才导入；
+脚本要求固定提交且相关上游文件没有修改，保留原字节与原始作者说明，生成模型装饰 ID 和逐文件来源摘要，不导入椅子或 LLM 设置
 
-使用 `python scripts/verify_builtin_assets.py [候选JAR]` 核对源码或打包后资源摘要及引用；`tlmnhdev model-test` 在服务端检查 254 个装饰 ID 的 NBT 往返、酒狐 19 个 Gecko 基础条目与 2 个 Bedrock 基础条目合计 35 个选择，以及未知模型回退；上述检查均不能替代客户端渲染和动画验收
+使用 `python scripts/verify_builtin_assets.py [候选JAR]` 核对源码或打包后资源摘要及引用；`tlmnhdev model-test` 在服务端检查 254 个装饰 ID
+的 NBT 往返、酒狐 19 个 Gecko 基础条目与 2 个 Bedrock 基础条目合计 35 个选择，以及未知模型回退；上述检查均不能替代客户端渲染和动画验收
 
-`build` 包含 Java 25 上运行的 JUnit 几何测试，测试源码仍通过 Jabel 编译为 Java 8 字节码；可用 `./gradlew.bat test --tests '*BedrockGeometryTest'` 单独检查 Bedrock 几何，`LegacyPoseStackTest` 检查矩阵与法线变换
+`build` 包含 Java 25 上运行的 JUnit 几何测试，测试源码仍通过 Jabel 编译为 Java 8 字节码；可用
+`./gradlew.bat test --tests '*BedrockGeometryTest'` 单独检查 Bedrock 几何，`LegacyPoseStackTest` 检查矩阵与法线变换
 
-几何测试直接向内存顶点接收器输出，覆盖全部 205 份非 Gecko 内置几何，包含两款 Bedrock 酒狐；不会创建 GL 上下文，不能据此宣称游戏内渲染或 Gecko 动画完成；JOML 仅打包 Java 数学类并重定位，字节码检查仍扫描它们
+几何测试直接向内存顶点接收器输出，覆盖全部 205 份非 Gecko 内置几何，包含两款 Bedrock 酒狐；不会创建 GL 上下文，不能据此宣称游戏内渲染或 Gecko 动画完成；JOML 仅打包 Java
+数学类并重定位，字节码检查仍扫描它们
 
-`GeckoGeometryTest` 覆盖 26 份内置 Gecko 几何与独立骨骼姿态，检查酒狐 19 个基础条目和 33 个 Gecko 选择的几何输入、镜像、逐面 UV、隐藏控制、定位骨骼、快照及异常矩阵清理；AnimatedGeoModel 保存每只女仆的可变姿态，关键帧、Molang 与核心状态控制器已接入，实际画面仍需验收
+`GeckoGeometryTest` 覆盖 26 份内置 Gecko 几何与独立骨骼姿态，检查酒狐 19 个基础条目和 33 个 Gecko 选择的几何输入、镜像、逐面 UV、隐藏控制、定位骨骼、快照及异常矩阵清理；
+AnimatedGeoModel 保存每只女仆的可变姿态，关键帧、Molang 与核心状态控制器已接入，实际画面仍需验收
 
-模板默认测试类路径使用 Gson 2.2.4，`testRc2ClientGson` 以 RC2 客户端的 Gson 2.10.1 再运行几何、模型、动画控制器与测试协议检查；两组测试都使用 Java 25，均由 `check` / `build` 执行，兼容性测试依赖不会打包进模组，也不会替换整包的 Gson
+模板默认测试类路径使用 Gson 2.2.4，`testRc2ClientGson` 以 RC2 客户端的 Gson 2.10.1 再运行几何、模型、动画控制器与测试协议检查；两组测试都使用 Java 25，均由
+`check` / `build` 执行，兼容性测试依赖不会打包进模组，也不会替换整包的 Gson
 
-`MaidRenderer` 继承 RC2 的 RenderLiving，将同步的模型 ID、原贴图和实体缩放接入生物渲染；解析后的几何按资源缓存，可变姿态按女仆持有弱引用缓存，资源重载后两者失效；模型资源损坏时记录错误并尝试默认模型，这种回退不能算作该模型验收通过
+`MaidRenderer` 继承 RC2 的 RenderLiving，将同步的模型 ID、原贴图和实体缩放接入生物渲染；解析后的几何按资源缓存，可变姿态按女仆持有弱引用缓存，资源重载后两者失效；
+模型资源损坏时记录错误并尝试默认模型，这种回退不能算作该模型验收通过
 
-`BuiltinMaidModelsTest` 逐项创建并输出 254 个选择，包含酒狐 35 个选择，检查两种坐标的转换、姿态隔离、资源重载、流关闭与异常清理；Gecko 已使用独立时钟、核心片段选择和原顺序控制器，按上游规则补齐缺失的默认女仆片段；硬编码动作层、装备层、选择界面和实际 GL 验收待完成
+`BuiltinMaidModelsTest` 逐项创建并输出 254 个选择，包含酒狐 35 个选择，检查两种坐标的转换、姿态隔离、资源重载、流关闭与异常清理；Gecko 已使用独立时钟、核心片段选择和原顺序控制器，
+按上游规则补齐缺失的默认女仆片段；硬编码动作层、装备层、选择界面和实际 GL 验收待完成
 
-Bedrock 渲染入口按资源中的顺序执行上游内置动画组合，每帧先恢复全部骨骼与整体变换；两个固定 JS 已逐式转为 Java，仍按原资产许可提供，不执行外部脚本；`BedrockPoseTest` 检查复位、嵌套绑定和异常清理，`BuiltinBedrockAnimationsTest` 让全部 213 个 Bedrock 选择各输出十种姿态输入，另查左右手、护甲、生命值与两个脚本的公式
+Bedrock 渲染入口按资源中的顺序执行上游内置动画组合，每帧先恢复全部骨骼与整体变换；两个固定 JS 已逐式转为 Java，仍按原资产许可提供，不执行外部脚本；`BedrockPoseTest`
+检查复位、嵌套绑定和异常清理，`BuiltinBedrockAnimationsTest` 让全部 213 个 Bedrock 选择各输出十种姿态输入，另查左右手、护甲、生命值与两个脚本的公式
 
-`MaidPose` 的睡眠、乞食、用手、副手挥动和拉弓标记由服务端同步，动画侧读取一次绘制的快照，动作标记不写入存档；当前接入了原有坐姿、骑乘、摆动、生命和装备状态，触发睡眠、乞食、用物品与拉弓的生活或战斗行为仍待实现，硬编码游泳等动作层也未完成；CPU 姿态检查通过不能作为这些玩法或画面的验收
+`MaidPose` 的睡眠、乞食、用手、副手挥动和拉弓标记由服务端同步，动画侧读取一次绘制的快照，动作标记不写入存档；当前接入了原有坐姿、骑乘、摆动、生命和装备状态，
+触发睡眠、乞食、用物品与拉弓的生活或战斗行为仍待实现，硬编码游泳等动作层也未完成；CPU 姿态检查通过不能作为这些玩法或画面的验收
 
-Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解析、短路、作用域和上下文隔离；数学、帧查询、TLM 内嵌查询与控制器时间绑定每次绘制的上下文，各模型实例独立保存变量与物理状态；时间轴指令可执行，声音与粒子事件暂未接入游戏播放
+Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解析、短路、作用域和上下文隔离；数学、帧查询、TLM 内嵌查询与控制器时间绑定每次绘制的上下文，各模型实例独立保存变量与物理状态；
+时间轴指令可执行，声音与粒子事件暂未接入游戏播放
 
 上游来源与许可见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [移植记录](SOURCE_PROVENANCE.md)，复制原文件时保留包名，独立适配文件使用 com.tianluoqaq.tlmnh
 

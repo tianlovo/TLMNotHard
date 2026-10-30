@@ -13,11 +13,12 @@ public class ClientDevelopmentRequestTest {
 
     @Test
     public void acceptsOnlyTheListedCommands() {
-        for (var command : new Command[] { Command.STATUS, Command.RELOAD, Command.SHUTDOWN }) assertEquals(
-            command,
-            parse(
-                "{\"command\":\"" + command.name()
-                    .toLowerCase(java.util.Locale.ROOT) + "\"}").command);
+        for (var command : new Command[] { Command.STATUS, Command.LAB_VIEW, Command.RELOAD, Command.SHUTDOWN })
+            assertEquals(
+                command,
+                parse(
+                    "{\"command\":\"" + command.name()
+                        .toLowerCase(java.util.Locale.ROOT) + "\"}").command);
         for (String json : new String[] { "{}", "{\"command\":null}", "{\"command\":1}", "{\"command\":{}}",
             "{\"command\":\"chat\"}", "{\"command\":\"exec\"}" })
             assertThrows(IllegalArgumentException.class, () -> parse(json));

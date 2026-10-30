@@ -1,5 +1,9 @@
 package com.tianluoqaq.tlmnh.common.development;
 
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.monster.EntitySlime;
 import net.minecraft.entity.player.EntityPlayer;
@@ -34,6 +38,7 @@ public final class AnimationLab {
     private static final String RETURN = "TLMNHAnimationLabReturn";
     private static final int FLOOR = 64, RADIUS = 10;
     private static final String DEFAULT_MODEL = "geckolib:winefox_hanfu";
+    private final Set<UUID> pendingObservers = ConcurrentHashMap.newKeySet();
 
     private AnimationLab() {}
 
@@ -241,11 +246,22 @@ public final class AnimationLab {
     @SubscribeEvent
     public void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (Boolean.getBoolean("tlmnh.animationLabAutoEnter") && event.player instanceof EntityPlayerMP player)
-            enter(player, System.getProperty("tlmnh.labModel", DEFAULT_MODEL));
+            pendingObservers.add(player.getUniqueID());
+    }
+
+    @SubscribeEvent
+    public void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        pendingObservers.remove(event.player.getUniqueID());
     }
 
     @SubscribeEvent
     public void tick(TickEvent.PlayerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && !event.player.worldObj.isRemote
+            && event.player instanceof EntityPlayerMP player
+            && pendingObservers.remove(player.getUniqueID())) {
+            // 所有登录监听器先完成，再在正常服务端实体 tick 中切换维度
+            enter(player, System.getProperty("tlmnh.labModel", DEFAULT_MODEL));
+        }
         if (event.phase == TickEvent.Phase.START && !event.player.worldObj.isRemote
             && isLab(event.player.worldObj)
             && event.player instanceof EntityPlayerMP player

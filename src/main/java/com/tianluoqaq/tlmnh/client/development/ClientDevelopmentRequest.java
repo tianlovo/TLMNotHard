@@ -75,6 +75,7 @@ public final class ClientDevelopmentRequest {
     public enum Command {
         STATUS,
         CONNECT_LOCAL,
+        LAB_VIEW,
         LOOK,
         SCREENSHOT,
         RELOAD,
