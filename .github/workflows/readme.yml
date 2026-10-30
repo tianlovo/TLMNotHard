@@ -2,8 +2,24 @@ name: Repository documentation
 
 on:
   push:
+    paths:
+      - 'README.md'
+      - 'README.en.md'
+      - '.markdownlint*'
+      - '.github/workflows/readme.yml'
+      - 'scripts/check_repository_paths.py'
   pull_request:
+    paths:
+      - 'README.md'
+      - 'README.en.md'
+      - '.markdownlint*'
+      - '.github/workflows/readme.yml'
+      - 'scripts/check_repository_paths.py'
   workflow_dispatch:
+
+concurrency:
+  group: documentation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

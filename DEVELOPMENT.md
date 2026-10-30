@@ -50,7 +50,9 @@ README.md 默认显示简体中文，README.en.md 为英文，两者在页首互
 
 章节顺序参考 [Standard Readme](https://github.com/RichardLitt/standard-readme/blob/main/spec.md)：标题与简述、目录、背景、安装及依赖、使用、开发状态、维护者、参与贡献、许可证；标题可以翻译，许可证放最后；多语言文件名按本项目中文首页要求处理，属于 Standard Readme 默认英文文件命名之外的项目约定
 
-语法使用 [GFM](https://github.github.com/gfm/)，格式由 [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) 检查，固定工具版本0.24.0，配置在 .markdownlint-cli2.jsonc；当前检查两份 README，普通文本每行最多120字符，表格不限制行长，其余默认规则开启；GitHub workflow 对 push 和 PR 运行同一命令，并检查 Git 跟踪的文本是否混入本机绝对路径
+语法使用 [GFM](https://github.github.com/gfm/)，格式由 [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) 检查，固定工具版本0.24.0，配置在 .markdownlint-cli2.jsonc；当前检查两份 README，普通文本每行最多120字符，表格不限制行长，其余默认规则开启
+
+GitHub 工作流只在两份 README、markdownlint 配置、工作流自身或路径检查器变更时自动运行，支持手动执行；同一分支或 PR 有更新时取消尚未结束的旧检查，纯源码提交不触发文档检查；工作流仍检查 Git 跟踪的文本是否混入本机绝对路径，每次推送前也须在本地执行路径检查
 
 ```powershell
 npx --yes markdownlint-cli2@0.24.0
