@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
+import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
@@ -46,6 +47,7 @@ public final class TLMNotHard {
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();
         ModEntities.register(this);
+        AnimationLab.register();
     }
 
     /**
@@ -61,6 +63,7 @@ public final class TLMNotHard {
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         if (Boolean.getBoolean("tlmnh.devCommands")) {
+            AnimationLab.validateAutoEntry();
             event.registerServerCommand(new DevelopmentCommand());
         }
     }

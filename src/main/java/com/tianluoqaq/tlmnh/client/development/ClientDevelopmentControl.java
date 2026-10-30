@@ -24,6 +24,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
+import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 
 import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -106,6 +107,17 @@ public final class ClientDevelopmentControl {
                         response.addProperty("z", player.posZ);
                         response.addProperty("yaw", player.rotationYaw);
                         response.addProperty("pitch", player.rotationPitch);
+                        response.addProperty("health", player.getHealth());
+                        response.addProperty("invulnerable", player.capabilities.disableDamage);
+                        response.addProperty("allowFlying", player.capabilities.allowFlying);
+                        response.addProperty("flying", player.capabilities.isFlying);
+                        response.addProperty("noClip", player.noClip);
+                        response.addProperty("animationLab", AnimationLab.isLab(player.worldObj));
+                        response.addProperty(
+                            "spectatorAbilities",
+                            player.noClip && player.capabilities.disableDamage
+                                && player.capabilities.isFlying
+                                && !player.capabilities.isCreativeMode);
                     }
                     break;
                 case CONNECT_LOCAL:

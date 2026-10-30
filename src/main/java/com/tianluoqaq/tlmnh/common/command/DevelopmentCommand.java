@@ -14,6 +14,7 @@ import net.minecraft.world.WorldServer;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
@@ -43,6 +44,27 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "lab-world-test".equals(args[0])) {
+            AnimationLab.verifyWorld();
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_world_passed"));
+            return;
+        }
+        if (args.length >= 1 && args.length <= 3 && "lab-enter".equals(args[0])) {
+            var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+            AnimationLab.enter(player, args.length == 3 ? args[2] : "geckolib:winefox_hanfu");
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_entered"));
+            return;
+        }
+        if (args.length >= 1 && args.length <= 2 && "lab-exit".equals(args[0])) {
+            AnimationLab.leave(args.length == 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender));
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_left"));
+            return;
+        }
+        if (args.length == 2 && "lab-observer-test".equals(args[0])) {
+            AnimationLab.verifyObserver(getPlayer(sender, args[1]));
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_observer_passed"));
+            return;
+        }
         if (args.length == 1 && "model-test".equals(args[0])) {
             BuiltinModelProbe.run(sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.model_passed"));

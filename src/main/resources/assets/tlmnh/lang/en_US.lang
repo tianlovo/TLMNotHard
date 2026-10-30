@@ -1,11 +1,15 @@
 entity.tlmnh.maid.name=Maid
 container.tlmnh.maid=Maid
-commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|model-test|persist-create|persist-check|spawn [player] [model-id]>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|model-test|persist-create|persist-check|spawn [player] [model-id]|lab-world-test|lab-enter [player] [model-id]|lab-exit [player]|lab-observer-test player>
 commands.tlmnhdev.passed=Maid state round-trip passed; gameplay and multiplayer sync remain untested
 commands.tlmnhdev.persist_created=Maid fixture created; save and restart the server, then run persist-check
 commands.tlmnhdev.persist_passed=Maid persistence check passed; verify the restart against both server process records
 commands.tlmnhdev.container_passed=Maid container conservation and permission checks passed; client transactions remain untested
 commands.tlmnhdev.spawned=Spawned a test maid near the player and bound her to that player
+commands.tlmnhdev.lab_world_passed=Void animation lab environment checks passed
+commands.tlmnhdev.lab_entered=Entered the animation lab as a spectator
+commands.tlmnhdev.lab_left=Returned to the saved position
+commands.tlmnhdev.lab_observer_passed=Spectator safety checks passed
 commands.tlmnhdev.interaction_passed=Cake taming, ownership and sitting interactions passed; actual client clicks remain untested
 commands.tlmnhdev.model_passed=Builtin model IDs and saved-model validation passed; rendering and animations remain untested
 gui.tlmnh.hands=Main hand / Offhand
