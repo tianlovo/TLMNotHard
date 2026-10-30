@@ -40,15 +40,10 @@ public final class WorldProviderAnimationLab extends WorldProvider {
     }
 
     @Override
-    public void calculateInitialWeather() {
-        updateWeather();
-    }
+    public void calculateInitialWeather() {}
 
     @Override
-    public void updateWeather() {
-        worldObj.setRainStrength(0);
-        worldObj.setThunderStrength(0);
-    }
+    public void updateWeather() {}
 
     @Override
     public void setAllowedSpawnTypes(boolean hostile, boolean peaceful) {

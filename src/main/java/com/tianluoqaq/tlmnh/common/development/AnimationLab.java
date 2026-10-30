@@ -211,6 +211,7 @@ public final class AnimationLab {
             slime.setDead();
         }
         require(world.getWorldTime() == 6000, "Lab daylight is not fixed");
+        require(!world.isRaining() && !world.isThundering(), "Lab weather must remain clear");
         TLMNotHard.LOG
             .info("TLMNH_ANIMATION_LAB_WORLD_PASS dimension={} airSamples=1024 platform=441 slime=rejected", DIMENSION);
     }
