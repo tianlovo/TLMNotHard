@@ -9,10 +9,13 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
+import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
+import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
@@ -31,6 +34,7 @@ public final class ClientProxy extends CommonProxy {
             location -> manager.getResource(location)
                 .getInputStream());
         ((IReloadableResourceManager) manager).registerReloadListener(models);
+        ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             try {
@@ -47,6 +51,7 @@ public final class ClientProxy extends CommonProxy {
     public Object getClientGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {
         var container = getServerGuiElement(id, player, world, entityId, unusedY, unusedZ);
-        return container instanceof ContainerMaid maidContainer ? new GuiMaid(maidContainer) : null;
+        if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
+        return container instanceof ContainerMaidModels modelContainer ? new GuiMaidModels(modelContainer) : null;
     }
 }

@@ -13,7 +13,10 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 在实际模组环境中检查容器移动守恒和逐次权限，临时物品只存在于夹具 */
@@ -132,6 +135,7 @@ public final class MaidContainerProbe {
             require(!container.enchantItem(owner, ContainerMaid.ACTION_RANGED), "distant command denial");
             owner.setPosition(x + 0.5D, y, z + 0.5D);
             require(container.enchantItem(owner, ContainerMaid.ACTION_RANGED), "valid next-tick command");
+            verifyModelSelection(world, owner, stranger, maid, container, proxy);
             world.removeEntity(maid);
             require(!container.canInteractWith(owner), "removed entity revocation");
             TLMNotHard.LOG.info(
@@ -144,6 +148,79 @@ public final class MaidContainerProbe {
             for (int slot = 0; slot < 36; slot++) owner.inventory.setInventorySlotContents(slot, null);
             world.removeEntity(maid);
         }
+    }
+
+    private static void verifyModelSelection(WorldServer world, EntityPlayer owner, EntityPlayer stranger,
+        EntityMaid maid, ContainerMaid main, CommonProxy proxy) {
+        var models = new ContainerMaidModels(owner.inventory, maid);
+        require(models.canInteractWith(owner) && !models.canInteractWith(stranger), "model owner access");
+        require(
+            proxy.getServerGuiElement(
+                CommonProxy.GUI_MAID_MODELS,
+                owner,
+                world,
+                maid.getEntityId(),
+                0,
+                0) instanceof ContainerMaidModels,
+            "model GUI owner routing");
+        require(
+            proxy.getServerGuiElement(CommonProxy.GUI_MAID_MODELS, stranger, world, maid.getEntityId(), 0, 0) == null,
+            "model GUI non-owner denial");
+        require(
+            proxy.getClientGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
+            "model common side has no client GUI");
+        String before = maid.getModelId();
+        require(!models.enchantItem(stranger, 0) && before.equals(maid.getModelId()), "model non-owner change denial");
+        for (int invalid : new int[] { -129, 128, 255, 256, -1 }) require(
+            !models.enchantItem(owner, invalid) && before.equals(maid.getModelId()),
+            "model invalid action denial");
+        maid.ticksExisted++;
+        owner.inventory.setItemStack(new ItemStack(Items.stick, 3));
+        try {
+            require(!main.enchantItem(owner, ContainerMaid.ACTION_MODELS), "model entry cursor denial");
+            require(
+                proxy.getServerGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
+                "model routed cursor denial");
+            require(!models.enchantItem(owner, 0), "model selection cursor denial");
+            require(
+                models.slotClick(-999, 0, 0, owner) == null && models.transferStackInSlot(owner, 0) == null
+                    && owner.inventory.getItemStack().stackSize == 3,
+                "model cursor and shift conservation");
+        } finally {
+            owner.inventory.setItemStack(null);
+        }
+        int accepted = 0, winefox = 0, extraWinefox = 0;
+        for (int index = 0; index < BuiltinModelCatalog.choices()
+            .size(); index++) {
+            maid.ticksExisted++;
+            var choice = BuiltinModelCatalog.choices()
+                .get(index);
+            require(
+                models.enchantItem(owner, BuiltinModelSelection.wireAction(index)) && choice.getId()
+                    .equals(maid.getModelId()),
+                "model fixed-index selection");
+            require(!models.enchantItem(owner, 0), "model same-tick bound");
+            accepted++;
+            if (choice.isWinefox()) {
+                winefox++;
+                if (!choice.getId()
+                    .equals(choice.getBaseId())) extraWinefox++;
+            }
+        }
+        require(accepted == 254 && winefox == 35 && extraWinefox == 14, "model selection coverage");
+        double oldX = owner.posX, oldY = owner.posY, oldZ = owner.posZ;
+        owner.setPosition(oldX + 100, oldY, oldZ);
+        maid.ticksExisted++;
+        before = maid.getModelId();
+        require(!models.enchantItem(owner, 0) && before.equals(maid.getModelId()), "model distant change denial");
+        owner.setPosition(oldX, oldY, oldZ);
+        world.removeEntity(maid);
+        require(!models.canInteractWith(owner) && !models.enchantItem(owner, 0), "model removed entity denial");
+        TLMNotHard.LOG.info(
+            "TLMNH_MODEL_SELECTION_TEST_PASS choices={} winefox={} extraWinefox={} permissions=checked wire=signed-byte",
+            accepted,
+            winefox,
+            extraWinefox);
     }
 
     private static int countArrows(EntityMaid maid, EntityPlayer player) {

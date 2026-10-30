@@ -9,6 +9,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
+import com.tianluoqaq.tlmnh.client.development.RenderSubmissionProbe;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -85,11 +86,19 @@ public final class BuiltinMaidModel extends ModelBase {
             }
         }
         var consumer = TessellatorVertexConsumer.INSTANCE;
-        consumer.begin();
+        int light = entity.getBrightnessForRender(partialTick);
+        RenderSubmissionProbe.begin(this, entity, light);
+        boolean completed = false;
         try {
-            renderGeometry(new LegacyPoseStack(), consumer, entity.getBrightnessForRender(partialTick));
+            consumer.begin();
+            try {
+                renderGeometry(new LegacyPoseStack(), consumer, light);
+            } finally {
+                consumer.end();
+            }
+            completed = true;
         } finally {
-            consumer.end();
+            RenderSubmissionProbe.finish(completed);
         }
     }
 

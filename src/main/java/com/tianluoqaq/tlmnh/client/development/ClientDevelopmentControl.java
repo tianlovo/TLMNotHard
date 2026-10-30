@@ -65,6 +65,17 @@ public final class ClientDevelopmentControl {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
+        var submission = RenderSubmissionProbe.poll();
+        if (submission != null) {
+            submission.report.addProperty("version", Tags.VERSION);
+            submission.report.addProperty("request", submission.request);
+            submission.report.addProperty("command", "RENDER_PROBE");
+            try {
+                writeResponse(submission.request, submission.report);
+            } catch (IOException error) {
+                TLMNotHard.LOG.error("Cannot save render submission response", error);
+            }
+        }
         try (var stream = Files.newDirectoryStream(controls, "*.json")) {
             var pending = new ArrayList<Path>();
             for (var path : stream) if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) pending.add(path);
@@ -158,9 +169,12 @@ public final class ClientDevelopmentControl {
                     minecraft.thePlayer.rotationPitch = minecraft.thePlayer.prevRotationPitch = request.pitch;
                     break;
                 case SCREENSHOT:
+                case MODELS_UI_CAPTURE:
                     if (minecraft.theWorld == null || minecraft.thePlayer == null)
                         throw new IllegalStateException("World not loaded");
-                    if (minecraft.currentScreen != null)
+                    boolean modelsUi = request.command == ClientDevelopmentRequest.Command.MODELS_UI_CAPTURE;
+                    if (modelsUi) MaidModelUiProbe.requireCaptureScreen();
+                    else if (minecraft.currentScreen != null)
                         throw new IllegalStateException("Screenshot obscured by screen");
                     if (captures.size() >= MAX_PENDING_CAPTURES)
                         throw new IllegalStateException("Screenshot queue full");
@@ -172,11 +186,24 @@ public final class ClientDevelopmentControl {
                             .resolve("screenshots")
                             .resolve(request.screenshotName)))
                         throw new IllegalArgumentException("Screenshot already exists");
-                    captures.add(new Capture(name, request.screenshotName));
+                    captures.add(
+                        new Capture(
+                            name,
+                            request.screenshotName,
+                            modelsUi,
+                            modelsUi ? minecraft.thePlayer.openContainer.windowId : -1));
                     response.addProperty("status", "pending-render");
                     break;
                 case RELOAD:
                     minecraft.refreshResources();
+                    break;
+                case RENDER_PROBE:
+                    RenderSubmissionProbe.arm(name, request.model, request.fault);
+                    response.addProperty("status", "pending-render");
+                    break;
+                case MODELS_UI:
+                    var observed = MaidModelUiProbe.perform(request.action, request.model);
+                    for (var entry : observed.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case SHUTDOWN:
                     restorePauseSetting();
@@ -206,12 +233,18 @@ public final class ClientDevelopmentControl {
         var response = new JsonObject();
         response.addProperty("version", Tags.VERSION);
         response.addProperty("request", capture.request);
-        response.addProperty("command", "SCREENSHOT");
+        response.addProperty("command", capture.modelsUi ? "MODELS_UI_CAPTURE" : "SCREENSHOT");
         int texture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT);
         int unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
-            if (minecraft.currentScreen != null) throw new IllegalStateException("Screenshot obscured by screen");
+            if (capture.modelsUi) {
+                MaidModelUiProbe.requireCaptureScreen();
+                if (minecraft.thePlayer.openContainer.windowId != capture.expectedWindow)
+                    throw new IllegalStateException("Model selector window changed before capture");
+                response.add("modelUiAtCapture", MaidModelUiProbe.observe());
+            } else
+                if (minecraft.currentScreen != null) throw new IllegalStateException("Screenshot obscured by screen");
             var path = minecraft.mcDataDir.toPath()
                 .resolve("screenshots")
                 .resolve(capture.filename);
@@ -266,10 +299,14 @@ public final class ClientDevelopmentControl {
     private static final class Capture {
 
         private final String request, filename;
+        private final boolean modelsUi;
+        private final int expectedWindow;
 
-        private Capture(String request, String filename) {
+        private Capture(String request, String filename, boolean modelsUi, int expectedWindow) {
             this.request = request;
             this.filename = filename;
+            this.modelsUi = modelsUi;
+            this.expectedWindow = expectedWindow;
         }
     }
 }

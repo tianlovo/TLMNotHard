@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
+import java.util.Collections;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.util.StatCollector;
@@ -37,6 +39,7 @@ public final class GuiMaid extends GuiContainer {
         addButton(ContainerMaid.ACTION_PICKUP_ITEMS, 184, 100, 124);
         addButton(ContainerMaid.ACTION_PICKUP_EXPERIENCE, 184, 122, 124);
         addButton(ContainerMaid.ACTION_SIT, 184, 154, 124);
+        addButton(ContainerMaid.ACTION_MODELS, 84, 28, 84);
         refreshButtons();
     }
 
@@ -77,9 +80,11 @@ public final class GuiMaid extends GuiContainer {
                     maid.canPickupExperience());
                 case ContainerMaid.ACTION_SIT -> button.displayString = text(
                     maid.isSitting() ? "gui.tlmnh.stand" : "gui.tlmnh.sit");
+                case ContainerMaid.ACTION_MODELS -> button.displayString = text("gui.tlmnh.models.open");
                 default -> {}
             }
-            button.enabled = !selected && (button.id != ContainerMaid.ACTION_SIT || maid.ridingEntity == null);
+            button.enabled = !selected && (button.id != ContainerMaid.ACTION_SIT || maid.ridingEntity == null)
+                && (button.id != ContainerMaid.ACTION_MODELS || mc.thePlayer.inventory.getItemStack() == null);
         }
     }
 
@@ -93,7 +98,33 @@ public final class GuiMaid extends GuiContainer {
 
     @Override
     protected void actionPerformed(GuiButton button) {
-        if (button.enabled) mc.playerController.sendEnchantPacket(inventorySlots.windowId, button.id);
+        if (!button.enabled) return;
+        if (button.id == ContainerMaid.ACTION_MODELS) openModelSelector();
+        else mc.playerController.sendEnchantPacket(inventorySlots.windowId, button.id);
+    }
+
+    public boolean openModelSelector() {
+        if (mc.currentScreen != this || mc.thePlayer.inventory.getItemStack() != null
+            || !inventorySlots.canInteractWith(mc.thePlayer)) return false;
+        mc.playerController.sendEnchantPacket(inventorySlots.windowId, ContainerMaid.ACTION_MODELS);
+        return true;
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTick) {
+        super.drawScreen(mouseX, mouseY, partialTick);
+        if (mc.thePlayer.inventory.getItemStack() == null) return;
+        for (var button : buttonList) {
+            if (button.id == ContainerMaid.ACTION_MODELS && mouseX >= button.xPosition
+                && mouseY >= button.yPosition
+                && mouseX < button.xPosition + button.width
+                && mouseY < button.yPosition + button.height)
+                drawHoveringText(
+                    Collections.singletonList(text("gui.tlmnh.models.put_down_item")),
+                    mouseX,
+                    mouseY,
+                    fontRendererObj);
+        }
     }
 
     @Override

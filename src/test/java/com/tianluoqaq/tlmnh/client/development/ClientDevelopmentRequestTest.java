@@ -88,4 +88,36 @@ public class ClientDevelopmentRequestTest {
             new JsonParser().parse(text)
                 .getAsJsonObject());
     }
+
+    @Test
+    public void renderProbeAcceptsOnlyReviewedModelsAndExplicitFaults() {
+        for (String model : new String[] { "geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid" }) {
+            for (String fault : new String[] { "none", "uv_offset", "wrong_texture", "drop_geometry" }) {
+                var request = parse(
+                    "{\"command\":\"render_probe\",\"model\":\"" + model + "\",\"fault\":\"" + fault + "\"}");
+                assertEquals(model, request.model);
+                assertEquals(fault, request.fault);
+            }
+        }
+        for (String json : new String[] { "{\"command\":\"render_probe\"}",
+            "{\"command\":\"render_probe\",\"model\":null}",
+            "{\"command\":\"render_probe\",\"model\":\"touhou_little_maid:hakurei_reimu\"}",
+            "{\"command\":\"render_probe\",\"model\":\"geckolib:winefox_hanfu\",\"fault\":\"random\"}" })
+            assertThrows(IllegalArgumentException.class, () -> parse(json));
+    }
+
+    @Test
+    public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
+        for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all" })
+            assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
+        var selection = parse("{\"command\":\"models_ui\",\"action\":\"select\",\"model\":\"geckolib:winefox_hanfu\"}");
+        assertEquals("geckolib:winefox_hanfu", selection.model);
+        assertEquals(
+            "selector.png",
+            parse("{\"command\":\"models_ui_capture\",\"name\":\"selector.png\"}").screenshotName);
+        for (String json : new String[] { "{\"command\":\"models_ui\"}",
+            "{\"command\":\"models_ui\",\"action\":\"eval\"}", "{\"command\":\"models_ui\",\"action\":\"select\"}",
+            "{\"command\":\"models_ui_capture\",\"name\":\"../selector.png\"}" })
+            assertThrows(IllegalArgumentException.class, () -> parse(json));
+    }
 }

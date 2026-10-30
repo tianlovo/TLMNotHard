@@ -7,10 +7,13 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemBow;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
+import net.minecraft.util.ChatComponentTranslation;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 复用原版容器交易，每次操作重新检查主人、实体身份和距离 */
 public final class ContainerMaid extends Container {
@@ -26,6 +29,7 @@ public final class ContainerMaid extends Container {
     public static final int ACTION_PICKUP_ITEMS = 6;
     public static final int ACTION_PICKUP_EXPERIENCE = 7;
     public static final int ACTION_SIT = 8;
+    public static final int ACTION_MODELS = 9;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
@@ -74,8 +78,7 @@ public final class ContainerMaid extends Container {
 
     @Override
     public boolean canInteractWith(EntityPlayer player) {
-        return player == viewer && maid.getMaidInventory()
-            .isUseableByPlayer(player) && player.worldObj.getEntityByID(maid.getEntityId()) == maid;
+        return MaidContainerAccess.canInteract(viewer, player, maid);
     }
 
     @Override
@@ -87,9 +90,13 @@ public final class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_SIT
+            || action > ACTION_MODELS
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
+        if (action == ACTION_MODELS && player.inventory.getItemStack() != null) {
+            player.addChatMessage(new ChatComponentTranslation("gui.tlmnh.models.put_down_item"));
+            return false;
+        }
         lastActionTick = maid.ticksExisted;
         switch (action) {
             case ACTION_IDLE -> maid.setTask(MaidTask.IDLE);
@@ -106,6 +113,8 @@ public final class ContainerMaid extends Container {
                     .clearPathEntity();
                 maid.setAttackTarget(null);
             }
+            case ACTION_MODELS -> player
+                .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_MODELS, maid.worldObj, maid.getEntityId(), 0, 0);
             default -> {
                 return false;
             }

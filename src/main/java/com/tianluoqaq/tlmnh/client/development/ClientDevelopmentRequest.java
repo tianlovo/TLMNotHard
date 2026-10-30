@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -13,13 +14,18 @@ public final class ClientDevelopmentRequest {
     public final String screenshotName;
     public final float yaw, pitch;
     public final int port;
+    public final String model, fault, action;
 
-    private ClientDevelopmentRequest(Command command, String screenshotName, float yaw, float pitch, int port) {
+    private ClientDevelopmentRequest(Command command, String screenshotName, float yaw, float pitch, int port,
+        String model, String fault, String action) {
         this.command = command;
         this.screenshotName = screenshotName;
         this.yaw = yaw;
         this.pitch = pitch;
         this.port = port;
+        this.model = model;
+        this.fault = fault;
+        this.action = action;
     }
 
     public static ClientDevelopmentRequest parse(JsonObject json) {
@@ -36,7 +42,9 @@ public final class ClientDevelopmentRequest {
         String name = null;
         float yaw = 0, pitch = 0;
         int port = 0;
-        if (command == Command.SCREENSHOT) {
+        String model = null, fault = "none";
+        String action = null;
+        if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE) {
             if (!json.has("name") || !json.get("name")
                 .isJsonPrimitive()
                 || !json.getAsJsonPrimitive("name")
@@ -56,7 +64,31 @@ public final class ClientDevelopmentRequest {
             if (json.get("port")
                 .getAsDouble() != port) throw new IllegalArgumentException("Invalid port");
         }
-        return new ClientDevelopmentRequest(command, name, yaw, pitch, port);
+        if (command == Command.RENDER_PROBE) {
+            model = text(json, "model");
+            if (!Arrays.asList("geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid")
+                .contains(model)) throw new IllegalArgumentException("Unreviewed render probe model");
+            if (json.has("fault")) fault = text(json, "fault");
+            if (!Arrays.asList("none", "uv_offset", "wrong_texture", "drop_geometry")
+                .contains(fault)) throw new IllegalArgumentException("Unknown render probe fault");
+        }
+        if (command == Command.MODELS_UI) {
+            action = text(json, "action");
+            if (!Arrays.asList("status", "open", "select", "back", "next", "previous", "winefox", "all")
+                .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
+            if (action.equals("select")) model = text(json, "model");
+        }
+        return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action);
+    }
+
+    private static String text(JsonObject json, String name) {
+        if (!json.has(name) || !json.get(name)
+            .isJsonPrimitive()
+            || !json.getAsJsonPrimitive(name)
+                .isString())
+            throw new IllegalArgumentException("Missing string " + name);
+        return json.get(name)
+            .getAsString();
     }
 
     private static float number(JsonObject json, String name, double minimum, double maximum) {
@@ -78,6 +110,9 @@ public final class ClientDevelopmentRequest {
         LAB_VIEW,
         LOOK,
         SCREENSHOT,
+        RENDER_PROBE,
+        MODELS_UI,
+        MODELS_UI_CAPTURE,
         RELOAD,
         SHUTDOWN
     }

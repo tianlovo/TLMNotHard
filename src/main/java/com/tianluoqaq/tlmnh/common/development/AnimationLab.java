@@ -23,7 +23,9 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -125,19 +127,26 @@ public final class AnimationLab {
         prepare();
         var world = world();
         var maid = sceneMaid(world);
-        if (maid == null) {
+        boolean spawnMaid = maid == null;
+        if (spawnMaid) {
             maid = new EntityMaid(world);
             maid.getEntityData()
                 .setBoolean(MAID_MARKER, true);
             maid.bindTo(player.getUniqueID());
-            maid.setSitting(true);
             maid.func_110163_bv();
-            maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
-            maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
-            maid.rotationYawHead = maid.prevRotationYawHead = 180;
             maid.setModelId(model);
-            require(world.spawnEntityInWorld(maid), "Animation lab maid spawn rejected");
         } else maid.setModelId(model);
+        // 复用存档中的展台女仆时也恢复夹具输入，避免历史位置和朝向污染下一例
+        maid.setSitting(true);
+        maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
+        maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
+        maid.rotationYawHead = maid.prevRotationYawHead = 180;
+        maid.prevRotationPitch = 0;
+        maid.motionX = maid.motionY = maid.motionZ = 0;
+        maid.prevPosX = maid.lastTickPosX = maid.posX;
+        maid.prevPosY = maid.lastTickPosY = maid.posY;
+        maid.prevPosZ = maid.lastTickPosZ = maid.posZ;
+        if (spawnMaid) require(world.spawnEntityInWorld(maid), "Animation lab maid spawn rejected");
         transfer(player, world, 0.5, FLOOR + 1, -4.5, 0, 10);
         player.sendPlayerAbilities();
         TLMNotHard.LOG.info(
@@ -148,6 +157,14 @@ public final class AnimationLab {
                 .getID(),
             maid.getModelId(),
             maid.getUniqueID());
+    }
+
+    public static void openOwnerGui(EntityPlayerMP player) {
+        verifyObserver(player);
+        var maid = sceneMaid(world());
+        require(MaidContainerAccess.canInteract(player, player, maid), "Owner lab maid must be in reach");
+        require(player.inventory.getItemStack() == null, "Empty cursor required for GUI fixture");
+        player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, player.worldObj, maid.getEntityId(), 0, 0);
     }
 
     public static void leave(EntityPlayerMP player) {

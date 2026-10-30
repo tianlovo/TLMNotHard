@@ -65,6 +65,10 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_observer_passed"));
             return;
         }
+        if (args.length == 2 && "lab-open-gui".equals(args[0])) {
+            AnimationLab.openOwnerGui(getPlayer(sender, args[1]));
+            return;
+        }
         if (args.length == 1 && "model-test".equals(args[0])) {
             BuiltinModelProbe.run(sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.model_passed"));
