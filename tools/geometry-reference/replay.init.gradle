@@ -1,0 +1,60 @@
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def tool = new File(project.projectDir, 'tools/geometry-reference')
+    project.sourceSets.test.java.srcDirs(new File(tool, 'replay'), new File(tool, 'shared'))
+    project.tasks.named('processTestResources').configure {
+        from(new File(tool, 'contract.json')) { into 'tlmnh-geometry' }
+    }
+    project.tasks.register('prepareGeometryReplay') {
+        group = 'verification'
+        dependsOn project.tasks.named('testClasses')
+        doLast {
+            def agentOption = project.findProperty('geometryAgent')
+            def outputOption = project.findProperty('geometryLauncher')
+            if (!agentOption || !outputOption) throw new GradleException('geometryAgent and external geometryLauncher are required')
+            def agent = project.file(agentOption).canonicalFile
+            def output = project.file(outputOption).canonicalFile
+            if (!agent.isFile() || output.toPath().startsWith(project.projectDir.canonicalFile.toPath()))
+                throw new GradleException('Built geometry agent and external launcher destination required')
+            def sha = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+            def names = [
+                'com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels',
+                'com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel',
+                'com.tianluoqaq.tlmnh.client.render.LegacyPoseStack',
+                'com.tianluoqaq.tlmnh.client.render.BedrockPose',
+                'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer',
+                'com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils',
+                'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder',
+                'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoMesh',
+                'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel',
+                'com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel',
+                'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart',
+                'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubeBox',
+                'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubePerFace',
+                'com.tianluoqaq.tlmnh.geometry.GeometrySnapshots',
+                'com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay',
+                'com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$Sink'
+            ].sort()
+            def roots = project.sourceSets.main.output.classesDirs.files + project.sourceSets.test.output.classesDirs.files
+            def classes = names.collectEntries { name ->
+                def matches = roots.collect { new File(it, name.replace('.', '/') + '.class') }.findAll { it.isFile() }
+                if (matches.size() != 1) throw new GradleException('Missing/duplicate geometry replay class: ' + name)
+                [(name): sha(matches[0].bytes)]
+            }
+            def identity = new File(output.parentFile, 'port-geometry-build.json')
+            output.parentFile.mkdirs()
+            identity.setText(JsonOutput.prettyPrint(JsonOutput.toJson([schema: 'port-geometry-build-v1',
+                contractSha256: sha(new File(tool, 'contract.json').bytes), agentSha256: sha(agent.bytes), compiledClasses: classes])) + '\n', 'UTF-8')
+            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            def launcher = project.javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }.get()
+            output.setText(JsonOutput.prettyPrint(JsonOutput.toJson([schema: 'geometry-replay-launcher-v1',
+                executable: launcher.executablePath.asFile.absolutePath, classpath: runtime.files.collect { it.absolutePath },
+                agent: agent.absolutePath, agentSha256: sha(agent.bytes), identity: identity.absolutePath,
+                identitySha256: sha(identity.bytes), selected: names, mainClass: 'com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay',
+                workingDirectory: output.parentFile.absolutePath])) + '\n', 'UTF-8')
+        }
+    }
+}

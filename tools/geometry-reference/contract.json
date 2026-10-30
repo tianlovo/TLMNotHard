@@ -1,0 +1,25 @@
+{
+  "schema": "geometry-contract-v1",
+  "contract": "native-bind-geometry-v1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "repetitions": 3,
+  "vertexFields": ["x", "y", "z", "nx", "ny", "nz", "u", "v"],
+  "coordinateContract": "gecko-native-to-modelbase=(-x,1.5-y,z),normal=(-nx,-ny,nz);bedrock=identity",
+  "absoluteTolerance": {"position": 0.00001, "normal": 0.00001, "uv": 0.000001, "tree": 0.000001},
+  "models": {
+    "geckolib:winefox_hanfu": {
+      "backend": "gecko",
+      "geometry": "geckolib:models/entity/winefox_hanfu.json",
+      "geometrySha256": "6dd80215c0873cc04cac4bd33d14cdfd1016e8bcd2c883bb5b76005a327a9f89",
+      "texture": "geckolib:textures/entity/winefox_hanfu.png",
+      "textureSha256": "f7f78e3cf56be2588b27287842178ad4e8c45257a002ae13765df4b1bcd24d2b"
+    },
+    "authors_and_credits:wine_fox_maid": {
+      "backend": "bedrock",
+      "geometry": "authors_and_credits:models/entity/wine_fox_maid.json",
+      "geometrySha256": "eab9975a5d172630aef5e775005a3bf1b19d2942bce1335d26b809400eed0c17",
+      "texture": "authors_and_credits:textures/entity/wine_fox_maid.png",
+      "textureSha256": "660c2e6631f5e0afb0e0e803b2444b489fcad1a574c65d0c8448382b9b0bbb5b"
+    }
+  }
+}

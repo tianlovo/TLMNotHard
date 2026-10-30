@@ -1,0 +1,94 @@
+// Apply AFTER the unchanged animation-reference-1.20.1/reference.init.gradle
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+def tool = new File(System.getenv('TLMNH_GEOMETRY_TOOL') ?: '').canonicalFile
+def runtime = new File(System.getenv('TLMNH_GEOMETRY_HOME') ?: '').canonicalFile
+if (!new File(tool, 'contract.json').isFile() || !System.getenv('TLMNH_GEOMETRY_HOME'))
+    throw new GradleException('TLMNH_GEOMETRY_TOOL and external TLMNH_GEOMETRY_HOME are required')
+def port = new File(tool, '../..').canonicalFile
+if (runtime.toPath().startsWith(port.toPath())) throw new GradleException('Geometry evidence must remain outside the checkout')
+def identityFile = new File(runtime, 'identity/geometry-build.json')
+def sha = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+def selected = [
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoMesh',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoModel',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoBone',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoBone',
+    'com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel',
+    'com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel',
+    'com.github.tartaricacid.simplebedrockmodel.client.bedrock.BedrockModelUtil',
+    'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart',
+    'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubeBox',
+    'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubePerFace',
+    'com.tianluoqaq.tlmnh.geometry.GeometrySnapshots',
+    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe',
+    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$Sink',
+    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$1'
+].sort()
+
+gradle.projectsEvaluated {
+    def upstream = gradle.rootProject
+    if (upstream.tasks.findByName('tlmnhReferenceRuntimeIdentity') == null)
+        throw new GradleException('Apply the unchanged, approved animation reference init first')
+    upstream.sourceSets.main.java.srcDirs(new File(tool, 'reference'), new File(tool, 'shared'))
+    upstream.tasks.named('processResources').configure {
+        from(new File(tool, 'contract.json')) { into 'tlmnh-geometry' }
+    }
+    def agentSources = upstream.sourceSets.create('geometryDefinitionAgent') {
+        java.srcDir(new File(tool, 'agent'))
+    }
+    upstream.tasks.named(agentSources.compileJavaTaskName).configure { options.release.set(17) }
+    def agent = upstream.tasks.register('geometryDefinitionAgentJar', Jar) {
+        dependsOn agentSources.classesTaskName
+        from agentSources.output
+        archiveFileName.set('geometry-definition-agent.jar')
+        destinationDirectory.set(new File(runtime, 'identity'))
+        manifest.attributes('Premain-Class': 'com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent',
+            'Can-Redefine-Classes': 'false', 'Can-Retransform-Classes': 'false')
+    }
+    def identity = upstream.tasks.register('prepareGeometryReferenceIdentity') {
+        dependsOn upstream.tasks.named('tlmnhReferenceRuntimeIdentity'), agent
+        doLast {
+            def basePath = System.getenv('TLMNH_REFERENCE_BUILD_IDENTITY')
+            def base = basePath ? new File(basePath) : new File(System.getenv('TLMNH_REFERENCE_HOME'), 'identity/build-identity.json')
+            if (!base.isFile()) throw new GradleException('Verified original reference identity is required')
+            def classes = selected.collectEntries { name ->
+                def files = upstream.sourceSets.main.output.classesDirs.files.collect {
+                    new File(it, name.replace('.', '/') + '.class')
+                }.findAll { it.isFile() }
+                if (files.size() != 1) throw new GradleException('Missing/duplicate geometry class: ' + name)
+                [(name): sha(files[0].bytes)]
+            }
+            def inputs = upstream.fileTree(tool).matching {
+                include '**/*.java', '**/*.gradle', '*.json', '*.py'
+                exclude '**/__pycache__/**'
+            }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
+            def value = [schema: 'geometry-build-identity-v1', upstreamCommit: '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6',
+                baseReferenceBuildIdentitySha256: sha(base.bytes), baseReferenceBuildIdentity: new JsonSlurper().parse(base),
+                contractSha256: sha(new File(tool, 'contract.json').bytes), compiledClasses: classes,
+                agentSha256: sha(agent.get().archiveFile.get().asFile.bytes), toolInputs: inputs,
+                scope: 'selected independently observed native geometry definitions; not entire classpath identity']
+            identityFile.parentFile.mkdirs()
+            identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+    }
+    upstream.minecraft.runs.client {
+        property 'tlmnh.geometryProbe', 'true'
+        property 'tlmnh.referenceProbe', 'false'
+    }
+    upstream.tasks.matching { it.name == 'runClient' }.configureEach {
+        dependsOn identity
+        doFirst {
+            jvmArgs '-Dtlmnh.geometry.buildIdentity=' + identityFile.absolutePath,
+                '-javaagent:' + agent.get().archiveFile.get().asFile.absolutePath + '=' + selected.join(',')
+        }
+    }
+}
