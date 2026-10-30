@@ -94,17 +94,20 @@ Completed checks and unfinished work are recorded separately. A successful build
 | --- | --- |
 | Build and loading | Java 25 builds and Java 8 bytecode checks pass; the entry point has RC2 loading records on both sides |
 | Entity basics | Core state, six inventory slots, both hands, restart persistence and permissions have server fixture checks |
-| Basic interaction | Owner GUI and basic taming entry points are present; actual client clicks await acceptance |
+| Basic interaction | Taming, sitting, saddle carry, golden apples, potions, milk and 12-XP bottle exchange have actual server fixture checks; name tags and full network-click acceptance remain pending |
 | Models and animation | Built-in geometry, Bedrock poses and core Gecko playback are connected; CPU checks pass, in-game visuals await review |
 | Built-in selection | Search, pages, wine-fox filtering and extra textures are connected; all 254 entries are reachable and 35 wine-fox selections have client/server roundtrip checks in RC2 |
-| Animation regression | Two controlled empty-idle fixtures match upstream replay exactly; actual submission-bridge UV, binding and dropped-geometry faults are detected, while full GPU imaging remains unverified |
+| Animation regression | Controlled idle and 72-step in-place walking transitions match upstream CPU replay for two models; submission-bridge faults are detected, while full GPU imaging remains unverified |
 | Unfinished | Remaining action layers and visual review, equipment layers, life and combat AI, player interactions |
 | Acceptance pending | Wine-fox and other model visuals, animation transitions, Angelica compatibility, multiplayer and gameplay |
-| Behaviour AI and aiming | Research and architecture exist; implementation, upstream benchmarks and arrow-physics tests are pending |
+| Behaviour AI and aiming | A single follow coordinator and sit/carry cancellation have natural-tick checks; full perception and arbitration, combat/life behaviours, aiming and upstream benchmarks remain unfinished |
 
 Asset hashes, CPU geometry and pose checks do not replace in-game rendering and animation acceptance.
 A true-air void platform and spectator observer run in RC2;
 model animation cycles, pause controls and the full visual matrix remain pending.
+The follow check covers a fixed flat platform; it does not establish complex navigation or intelligence parity.
+Input contracts, evidence limits and commands are documented in the
+[comparison experiment](tools/animation-reference-1.20.1/DESIGN.md).
 See [Development notes](DEVELOPMENT.md) and [Source provenance](SOURCE_PROVENANCE.md) for implementation details and origins.
 
 ## Maintainers

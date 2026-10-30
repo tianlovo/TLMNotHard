@@ -141,6 +141,20 @@ python fault_experiment.py
 组合执行时使用--keep-client，再由fault_experiment.py在完成后退出
 compare_aa.py可单独比较两个已保存的受控样本，只判断原版重复性，不作跨版本等价判断
 
+走动转换使用独立报告，参考客户端已启动时运行：
+
+```console
+python aa_experiment.py --scenario idle_walk_idle
+```
+
+该脚本默认正常退出参考客户端；切回移植版Java25构建环境后运行以下CPU重放：
+
+```console
+python ab_experiment.py --scenario idle_walk_idle
+```
+
+这是原地构造输入的动画转换合同，不是实际移动或行为AI测评；默认不加scenario时仍使用原待机报告
+
 参考客户端正常退出后，将移植工程的构建环境切回Java25，在本目录运行python ab_experiment.py
 它使用显式replay.init.gradle，将回放器临时加入test源码集，运行实际移植版CPU动画路径，不写入分发JAR
 除两个正例外，还会在实际回放路径注入头部位移，并验证缺少输入字段时拒绝计算
