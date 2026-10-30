@@ -1,12 +1,15 @@
 package com.tianluoqaq.tlmnh.client.render;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.entity.Entity;
 
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
+import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;
@@ -22,15 +25,22 @@ public final class BuiltinMaidModel extends ModelBase {
     private final AnimatedGeoModel gecko;
     private final BedrockPose bedrockPose;
     private final BuiltinBedrockAnimations bedrockAnimations;
+    private final BuiltinGeckoPlayer geckoPlayer;
 
     BuiltinMaidModel(BuiltinModelCatalog.Choice choice, AbstractBedrockEntityModel<EntityMaid> bedrock,
-        AnimatedGeoModel gecko) {
+        AnimatedGeoModel gecko, AnimationFile animations) {
         this.choice = choice;
         this.bedrock = bedrock;
         this.gecko = gecko;
         if ((bedrock == null) == (gecko == null)) throw new IllegalArgumentException("Expected one model geometry");
         bedrockPose = bedrock == null ? null : new BedrockPose(bedrock);
         bedrockAnimations = bedrock == null ? null : new BuiltinBedrockAnimations(choice);
+        geckoPlayer = gecko == null ? null
+            : new BuiltinGeckoPlayer(
+                gecko,
+                animations,
+                java.util.concurrent.ThreadLocalRandom.current()
+                    .nextLong());
     }
 
     public BuiltinModelCatalog.Choice getChoice() {
@@ -49,6 +59,10 @@ public final class BuiltinMaidModel extends ModelBase {
         return bedrockPose;
     }
 
+    public BuiltinGeckoPlayer getGeckoPlayer() {
+        return geckoPlayer;
+    }
+
     public void setupPose(MaidAnimationState state, float limbSwing, float limbSwingAmount, float ageInTicks,
         float netHeadYaw, float headPitch) {
         if (bedrockAnimations != null)
@@ -59,13 +73,17 @@ public final class BuiltinMaidModel extends ModelBase {
     public void render(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
         float headPitch, float scale) {
         float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
-        if (entity instanceof EntityMaid maid) setupPose(
-            MaidAnimationState.capture(maid, partialTick),
-            limbSwing,
-            limbSwingAmount,
-            ageInTicks,
-            netHeadYaw,
-            headPitch);
+        if (entity instanceof EntityMaid maid) {
+            var state = MaidAnimationState.capture(maid, partialTick);
+            if (geckoPlayer == null) setupPose(state, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+            else {
+                boolean paused = Minecraft.getMinecraft()
+                    .isGamePaused();
+                double seekTicks = geckoPlayer.advanceClock(ageInTicks, paused);
+                var frame = MaidMolangFrames.capture(maid, partialTick, seekTicks, netHeadYaw, headPitch);
+                geckoPlayer.apply(state, frame, limbSwing, limbSwingAmount, partialTick, paused);
+            }
+        }
         var consumer = TessellatorVertexConsumer.INSTANCE;
         consumer.begin();
         try {

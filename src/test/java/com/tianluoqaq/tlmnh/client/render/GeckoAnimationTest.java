@@ -65,6 +65,7 @@ public class GeckoAnimationTest {
             }
         };
         var locations = new HashSet<ResourceLocation>();
+        locations.add(BuiltinGeckoAnimations.DEFAULT_MAID_ANIMATION);
         for (var choice : BuiltinModelCatalog.choices()) if (choice.isGecko()) locations.addAll(choice.getAnimations());
         int clips = 0;
         for (var location : locations) {
@@ -74,8 +75,8 @@ public class GeckoAnimationTest {
                     .size();
             }
         }
-        assertEquals(55, locations.size());
-        assertEquals(1548, clips);
+        assertEquals(56, locations.size());
+        assertEquals(1645, clips);
         var context = context();
         var frame = context.entity();
         frame.health = 13;
@@ -142,7 +143,7 @@ public class GeckoAnimationTest {
         }
         assertEquals(41, choices);
         assertEquals(33, winefox);
-        assertEquals(55, reads.size());
+        assertEquals(56, reads.size());
         for (int count : reads.values()) assertEquals(1, count);
         assertTrue(sampled > 10000);
         System.out.println(
@@ -254,6 +255,25 @@ public class GeckoAnimationTest {
         var selected = choice;
         assertThrows(IOException.class, () -> broken.load(selected));
         assertEquals(1, closed[0]);
+    }
+
+    @Test
+    public void defaultCoreClipsFillMissingNamesWithoutReplacingModelOverrides() throws Exception {
+        int[] defaultReads = { 0 };
+        var animations = new BuiltinGeckoAnimations(location -> {
+            if (BuiltinGeckoAnimations.DEFAULT_MAID_ANIMATION.equals(location)) {
+                defaultReads[0]++;
+                return bytes(
+                    "{\"animations\":{\"idle\":{\"animation_length\":99},\"attacked\":{\"animation_length\":2}}}");
+            }
+            return bytes("{\"animations\":{\"idle\":{\"animation_length\":1}}}");
+        });
+        var choice = BuiltinModelCatalog.get("geckolib:winefox_hanfu");
+        var loaded = animations.load(choice);
+        assertEquals(20, loaded.getAnimation("idle").animationLength, 0);
+        assertEquals(40, loaded.getAnimation("attacked").animationLength, 0);
+        assertSame(loaded, animations.load(choice));
+        assertEquals(1, defaultReads[0]);
     }
 
     @Test

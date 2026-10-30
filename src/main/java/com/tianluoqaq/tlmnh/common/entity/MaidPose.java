@@ -8,7 +8,8 @@ public enum MaidPose {
     USING_ITEM(4),
     USING_OFFHAND(8),
     SWING_OFFHAND(16),
-    AIMING_BOW(32);
+    AIMING_BOW(32),
+    SWIMMING(64);
 
     private final int mask;
 

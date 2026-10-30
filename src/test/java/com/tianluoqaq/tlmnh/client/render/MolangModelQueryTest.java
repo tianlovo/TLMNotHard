@@ -53,6 +53,7 @@ public class MolangModelQueryTest {
                     "tlm.is_begging && tlm.is_sitting && ysm.is_close_eyes && ysm.has_mainhand && ysm.has_helmet")),
             0);
         assertEquals(0, context.evaluate(parser.parseExpressionRequired("tlm.has_backpack || ysm.has_offhand")), 0);
+        assertEquals(0, context.evaluate(parser.parseExpressionRequired("ysm.first_person_mod_hide")), 0);
         var equipment = parser.parseExpressionRequired("ysm.has_mainhand");
         frame.setEquipment(Slot.MAINHAND, null, 0, 0);
         assertEquals(0, context.evaluate(equipment), 0);

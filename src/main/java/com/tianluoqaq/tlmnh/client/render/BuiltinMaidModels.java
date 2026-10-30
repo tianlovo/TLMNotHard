@@ -31,6 +31,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
 
     private final Map<ResourceLocation, BedrockModelPOJO> bedrock = new HashMap<>();
     private final Map<ResourceLocation, GeoModel> gecko = new HashMap<>();
+    private final BuiltinGeckoAnimations animations = new BuiltinGeckoAnimations(this::stream);
     private ResourceOpener opener;
     private int generation;
 
@@ -57,7 +58,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
                     }
                     gecko.put(location, model);
                 }
-                return new BuiltinMaidModel(choice, null, new AnimatedGeoModel(model));
+                return new BuiltinMaidModel(choice, null, new AnimatedGeoModel(model), animations.load(choice));
             }
             var pojo = bedrock.get(location);
             if (pojo == null) {
@@ -71,7 +72,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
                 @Override
                 public void setupAnim(EntityMaid entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                     float netHeadYaw, float headPitch) {}
-            }, null);
+            }, null, null);
         } catch (RuntimeException | cpw.mods.fml.common.versioning.InvalidVersionSpecificationException error) {
             throw new IOException("Cannot build builtin geometry " + location, error);
         }
@@ -93,6 +94,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
             .getInputStream();
         bedrock.clear();
         gecko.clear();
+        animations.reload(this::stream);
         generation++;
     }
 

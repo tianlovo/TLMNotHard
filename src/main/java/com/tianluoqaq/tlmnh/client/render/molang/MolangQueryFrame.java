@@ -45,13 +45,18 @@ public final class MolangQueryFrame {
     }
 
     public void setEquipment(Slot slot, String itemId, int maxDamage, int damage) {
+        setEquipment(slot, itemId, maxDamage, damage, "", "none");
+    }
+
+    public void setEquipment(Slot slot, String itemId, int maxDamage, int damage, String classification,
+        String useAnimation) {
         if (itemId == null) {
             equipment.remove(slot);
             return;
         }
         // 实际注册表数据不经高版本 ID 校验，避免旧模组的合法物品中断整帧动画
         String qualified = itemId.indexOf(':') < 0 ? "minecraft:" + itemId : itemId;
-        equipment.put(slot, new Equipment(qualified, maxDamage, damage));
+        equipment.put(slot, new Equipment(qualified, maxDamage, damage, classification, useAnimation));
     }
 
     public Equipment equipment(Slot slot) {
@@ -88,11 +93,14 @@ public final class MolangQueryFrame {
 
         public final String itemId;
         public final int maxDamage, damage;
+        public final String classification, useAnimation;
 
-        private Equipment(String itemId, int maxDamage, int damage) {
+        private Equipment(String itemId, int maxDamage, int damage, String classification, String useAnimation) {
             this.itemId = itemId;
             this.maxDamage = maxDamage;
             this.damage = damage;
+            this.classification = java.util.Objects.requireNonNull(classification, "classification");
+            this.useAnimation = java.util.Objects.requireNonNull(useAnimation, "useAnimation");
         }
     }
 }

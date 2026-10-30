@@ -2,6 +2,12 @@ package com.tianluoqaq.tlmnh.client.render;
 
 import java.util.UUID;
 
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityBoat;
+import net.minecraft.entity.item.EntityMinecart;
+import net.minecraft.entity.passive.EntityHorse;
+import net.minecraft.entity.player.EntityPlayer;
+
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
@@ -15,6 +21,10 @@ public final class MaidAnimationState {
     public final UUID uuid;
     public boolean sleeping, sitting, passenger, begging, usingItem, usingOffhand, swingLeft, aimingBow;
     public boolean mainHandPresent, helmet, chestPlate, leggings, boots, hurt;
+    public boolean onGround = true, sprinting, climbing, swimming, dead, swinging;
+    public String vehicleId = "", passengerId = "";
+    public int swingTick;
+    public double verticalSpeed;
     public float attackAnim, health = 20, maxHealth = 20;
     public int dimension;
     public long dayTime;
@@ -41,6 +51,16 @@ public final class MaidAnimationState {
         state.leggings = maid.getEquipmentInSlot(2) != null;
         state.boots = maid.getEquipmentInSlot(1) != null;
         state.hurt = maid.hurtTime > 0;
+        state.onGround = maid.onGround;
+        state.sprinting = maid.isSprinting();
+        state.climbing = maid.isOnLadder();
+        state.swimming = maid.hasPose(MaidPose.SWIMMING);
+        state.dead = maid.getHealth() <= 0 || maid.isDead;
+        state.swinging = maid.isSwingInProgress;
+        state.swingTick = maid.swingProgressInt;
+        state.verticalSpeed = 20 * (maid.posY - maid.prevPosY);
+        state.vehicleId = animationEntityId(maid.ridingEntity);
+        state.passengerId = animationEntityId(maid.riddenByEntity);
         state.health = maid.getHealth();
         state.maxHealth = maid.getMaxHealth();
         state.dimension = maid.dimension;
@@ -49,5 +69,14 @@ public final class MaidAnimationState {
             .getId();
         state.task = id.substring(id.indexOf(':') + 1);
         return state;
+    }
+
+    private static String animationEntityId(Entity entity) {
+        if (entity instanceof EntityPlayer) return "minecraft:player";
+        if (entity instanceof EntityBoat) return "minecraft:boat";
+        if (entity instanceof EntityMinecart) return "minecraft:minecart";
+        if (entity instanceof EntityHorse) return "minecraft:horse";
+        if (entity instanceof EntityMaid) return "touhou_little_maid:maid";
+        return "";
     }
 }

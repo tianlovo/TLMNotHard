@@ -1,7 +1,15 @@
 package com.tianluoqaq.tlmnh.client.render.molang;
 
+import java.util.Locale;
+
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemAxe;
+import net.minecraft.item.ItemHoe;
+import net.minecraft.item.ItemPickaxe;
+import net.minecraft.item.ItemPotion;
+import net.minecraft.item.ItemSpade;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemSword;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.MathHelper;
@@ -65,7 +73,26 @@ public final class MaidMolangFrames {
     private static void equipment(MolangQueryFrame frame, Slot slot, ItemStack stack) {
         if (stack != null && stack.stackSize > 0) {
             String id = Item.itemRegistry.getNameForObject(stack.getItem());
-            if (id != null) frame.setEquipment(slot, id, stack.getMaxDamage(), stack.getItemDamage());
+            if (id != null) frame.setEquipment(
+                slot,
+                id,
+                stack.getMaxDamage(),
+                stack.getItemDamage(),
+                classify(stack),
+                stack.getItemUseAction()
+                    .name()
+                    .toLowerCase(Locale.ROOT));
         }
+    }
+
+    private static String classify(ItemStack stack) {
+        Item item = stack.getItem();
+        if (item instanceof ItemSword) return "sword";
+        if (item instanceof ItemAxe) return "axe";
+        if (item instanceof ItemPickaxe) return "pickaxe";
+        if (item instanceof ItemSpade) return "shovel";
+        if (item instanceof ItemHoe) return "hoe";
+        if (item instanceof ItemPotion && ItemPotion.isSplash(stack.getItemDamage())) return "throwable_potion";
+        return "";
     }
 }

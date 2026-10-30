@@ -24,6 +24,9 @@ import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 /** 按内置清单顺序合并动画，共享定义，不共享播放进度、骨骼或物理状态 */
 public final class BuiltinGeckoAnimations {
 
+    public static final ResourceLocation DEFAULT_MAID_ANIMATION = new ResourceLocation(
+        "touhou_little_maid",
+        "animation/maid.animation.json");
     private final Map<ResourceLocation, AnimationFile> files = new HashMap<>();
     private final Map<String, AnimationFile> models = new HashMap<>();
     private final MolangParser parser = MaidMolangBindings.parser();
@@ -39,21 +42,27 @@ public final class BuiltinGeckoAnimations {
         if (cached != null) return cached;
         var merged = new LinkedHashMap<String, Animation>();
         for (var location : choice.getAnimations()) {
-            var file = files.get(location);
-            if (file == null) {
-                try (var stream = opener.open(location)) {
-                    if (stream == null) throw new IOException("Missing builtin animation " + location);
-                    file = read(stream, parser);
-                } catch (RuntimeException error) {
-                    throw new IOException("Cannot parse builtin animation " + location, error);
-                }
-                files.put(location, file);
-            }
-            merged.putAll(file.animations());
+            merged.putAll(loadFile(location).animations());
         }
+        loadFile(DEFAULT_MAID_ANIMATION).animations()
+            .forEach(merged::putIfAbsent);
         var result = new AnimationFile(Collections.unmodifiableMap(merged));
         models.put(choice.getBaseId(), result);
         return result;
+    }
+
+    private AnimationFile loadFile(ResourceLocation location) throws IOException {
+        var file = files.get(location);
+        if (file == null) {
+            try (var stream = opener.open(location)) {
+                if (stream == null) throw new IOException("Missing builtin animation " + location);
+                file = read(stream, parser);
+            } catch (RuntimeException error) {
+                throw new IOException("Cannot parse builtin animation " + location, error);
+            }
+            files.put(location, file);
+        }
+        return file;
     }
 
     public void reload(BuiltinMaidModels.ResourceOpener opener) {

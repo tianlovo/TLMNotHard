@@ -33,5 +33,6 @@ public class YSMBinding extends MolangFrameBinding {
         frameVar("has_elytra", frame -> frame.hasElytra);
         frameVar("input_vertical", MoveInputVariable::getVertical);
         frameVar("input_horizontal", MoveInputVariable::getHorizontal);
+        frameVar("first_person_mod_hide", frame -> false);
     }
 }

@@ -65,7 +65,7 @@ public class BuiltinMaidModelsTest {
         }
         assertEquals(254, choices);
         assertEquals(35, winefox);
-        assertEquals(231, reads.size());
+        assertEquals(287, reads.size());
         for (var count : reads.values()) assertEquals(1, count.intValue());
         System.out.println(
             "TLMNH_MODEL_BRIDGE_PASS choices=" + choices
@@ -115,7 +115,9 @@ public class BuiltinMaidModelsTest {
     @Test
     public void bothCoordinateSystemsAgreeAfterModelBaseConversion() throws Exception {
         var models = new BuiltinMaidModels(
-            location -> new ByteArrayInputStream(GEOMETRY.getBytes(StandardCharsets.UTF_8)));
+            location -> location.equals(choice(false).getGeometry()) || location.equals(choice(true).getGeometry())
+                ? new ByteArrayInputStream(GEOMETRY.getBytes(StandardCharsets.UTF_8))
+                : resource(location));
         var bedrock = render(models.create(choice(false)));
         var gecko = render(models.create(choice(true)));
         assertEquals(24, bedrock.count);
@@ -151,8 +153,11 @@ public class BuiltinMaidModelsTest {
             models.create(selected)
                 .getGecko()
                 .geoModel());
-        assertEquals(1, reads[0]);
-        assertEquals(1, closes[0]);
+        var animationResources = new java.util.HashSet<>(selected.getAnimations());
+        animationResources.add(BuiltinGeckoAnimations.DEFAULT_MAID_ANIMATION);
+        int expectedResources = 1 + animationResources.size();
+        assertEquals(expectedResources, reads[0]);
+        assertEquals(expectedResources, closes[0]);
     }
 
     @Test

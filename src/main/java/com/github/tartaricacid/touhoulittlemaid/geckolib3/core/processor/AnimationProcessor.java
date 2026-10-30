@@ -211,11 +211,11 @@ public class AnimationProcessor<T extends GeckoAnimationTarget> {
         return duration <= 0 ? 1 : Math.max(0, Math.min((tick - lastAnimatedTick) / duration, 1));
     }
 
-    public void registerModelRenderer(Map<String, IBone> boneMap) {
+    public void registerModelRenderer(Map<String, ? extends IBone> boneMap) {
         this.modelRendererMap.clear();
         this.modelRendererList.clear();
         this.modelRendererList.ensureCapacity(boneMap.size());
-        for (Map.Entry<String, IBone> entry : boneMap.entrySet()) {
+        for (Map.Entry<String, ? extends IBone> entry : boneMap.entrySet()) {
             BoneTopLevelSnapshot renderer = new BoneTopLevelSnapshot(entry.getValue());
             this.modelRendererMap.put(entry.getKey(), renderer);
             this.modelRendererList.add(renderer);

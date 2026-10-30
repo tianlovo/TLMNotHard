@@ -41,13 +41,13 @@ GeckoLib 许可来源为 [固定提交的 LICENSE](https://github.com/bernie-g/g
 
 Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
 
-动画控制器、关键帧解析、采样和 Molang 绑定见后文，实体 Gecko 播放入口尚未接入；几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
+动画控制器、关键帧解析、采样和 Molang 绑定见后文；几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
 
 ## 实体渲染适配
 
 新增独立文件 BuiltinMaidModels、BuiltinMaidModel 和 MaidRenderer 均位于 `com.tianluoqaq.tlmnh.client.render`，不复制高版本实体渲染器；参考固定 TLM 的 EntityMaidRenderer 与 GeckoEntityMaidRenderer、GeoReplacedEntityRenderer 核对模型、贴图、缩放和坐标，继承 1.7.10 RenderLiving 接入 Forge 既有渲染路径
 
-BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；CPU 测试覆盖全部 254 个选择以及旋转方块的两种坐标一致性；Gecko 目前仍输出初始姿态，Bedrock 组合见下节
+BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；CPU 测试覆盖全部254个选择以及旋转方块的两种坐标一致性；Bedrock组合和Gecko核心播放见后文，画面待验收
 
 ## Bedrock 内置动画
 
@@ -131,9 +131,9 @@ QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到�
 
 独立 MolangModelResources 随模型实例保存骨骼和物理状态，子上下文共享该实例资源，不保留游戏实体；普通二阶模拟保留上游公式，零频率按直接跟随处理，重复或倒退时间不推进，非有限参数不污染状态，长时间未绘制时最多追算一秒
 
-GeckoAnimationTest 严格解析55份文件、1548个片段与13585条表达式，结合41个 Gecko 选择的各自骨骼执行145605次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、临时变量、指令、重载和错误清理；MolangModelQueryTest 检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些都是 CPU 检查，尚不包含播放策略、切换过渡或实际画面验收
+GeckoAnimationTest 严格解析56份文件、1645个片段与13824条表达式，结合41个Gecko选择的各自骨骼执行205242次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、临时变量、指令、重载和错误清理；MolangModelQueryTest检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些是CPU检查，不能代替实际画面验收
 
-内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现
+内置女仆模型的原始资源已导入，逐文件原路径与SHA-256见src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的maid_model.json和lang/*.json；资产许可见THIRD_PARTY_NOTICES.md，渲染画面仍待验收，时间轴声音继续实现
 
 ## Gecko 播放控制器
 
@@ -149,4 +149,16 @@ GeckoAnimationTest 严格解析55份文件、1548个片段与13585条表达式�
 
 已有 BoneTopLevelSnapshot 增加各通道最后动画姿态，使用 double 保存复位时刻；新增独立接口 GeckoAnimationTarget 位于本工程包名，控制器只读取动画定义与状态，不保留世界或实体
 
-GeckoControllerTest 的15项纯数据检查覆盖过渡、单次与保持模式、循环余量、首尾指令、顺序叠加、复位、实例及控制器时间隔离、片段排队、停止后重播和几何重载；实体播放入口、片段选择策略和实际画面继续实现，不能据此认定酒狐动画可用
+GeckoControllerTest的15项纯数据检查覆盖过渡、单次与保持模式、循环余量、首尾指令、顺序叠加、复位、实例及控制器时间隔离、片段排队、停止后重播和几何重载；这些检查不包括实际画面，不能据此认定酒狐动画可用
+
+## Gecko 核心动作与实体播放
+
+新增BuiltinGeckoPlayer和AnimationClock位于本工程包名；动作优先级与层顺序参考固定TLM的client/animation/gecko/AnimationRegister.java、AnimationManager.java和client/entity/GeckoMaidEntity.java，物品条件参考同目录condition/ConditionalHold、ConditionalSwing、ConditionalUse、InnerClassify和ConditionArmor，不引入外部内容模组的控制器
+
+保留8个前置层、主层、双手持物、挥动、使用物品、乞食、乘客、8个并行层和4个护甲条件层；主层按死亡、睡眠、游泳、攀爬、乘坐、坐姿、水中站立、受击、跳跃、跑、走、空闲选择；物品先匹配注册ID，再匹配类型和使用动作；护甲条件动画不等于外部装备已经渲染到女仆身上，装备渲染层仍待完成
+
+BuiltinGeckoAnimations按固定GeckoModelLoader.registerMaidAnimations补齐默认女仆动画，仅填充缺少的片段，保留模型自带动作；不补入外部枪械、魔法或奏乐联动的默认动画；默认文件中first_person_mod_hide与上游一致为false，不查询外部第一人称模组
+
+实体只在取帧时读取游戏状态，播放器持有纯数据、骨骼、变量和物理；资源重载或模型切换会创建新实例；独立时钟保留小数tick，暂停冻结，恢复时重新对齐输入，重复或倒退输入不回拨；骨骼求值后按上游叠加头部看向，重复绘制不会积累角度；SWIMMING为服务端动作位，行为触发尚未实现
+
+BuiltinGeckoPlayerTest检查主层优先级、物品条件、层顺序、暂停、头部及重复挥动，并对41个Gecko选择执行10种状态、1230帧CPU检查，其中酒狐33个选择；AnimationClockTest覆盖实例隔离、暂停恢复、倒退和无效时间；这些检查未创建游戏窗口，不代表Angelica画面、装备定位、动作过渡或完整玩法通过验收
