@@ -9,6 +9,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.NetHandlerPlayServer;
+import net.minecraft.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldServer;
@@ -51,6 +53,7 @@ public final class MaidLifeProbe {
             world,
             new GameProfile(UUID.fromString("b4ced159-49d2-43b3-a0ad-d928a8f990d4"), "TLMNHLifeFixture"),
             new ItemInWorldManager(world));
+        new NetHandlerPlayServer(MinecraftServer.getServer(), new NetworkManager(false), owner);
         owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
         owner.setPosition(x + 2.5, y, z + 1.5);
         var maid = new EntityMaid(world);

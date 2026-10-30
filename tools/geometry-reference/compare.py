@@ -161,10 +161,15 @@ def validate(report, reference):
     require(report["coordinateSpace"] == ("upstream-native-bind" if reference else "port-modelbase-bind"), "Wrong coordinate space")
     model = report["model"]
     require(model in CONTRACT["models"] and report["backend"] == CONTRACT["models"][model]["backend"], "Wrong model/backend")
+    require(CONTRACT["referenceGeometryNewlineContract"] == "canonical-lf-or-full-crlf-v1", "Unsupported reference JSON newline contract")
+    variants = CONTRACT["models"][model]["referenceGeometrySha256"]
+    require(set(variants) == {"LF", "CRLF"} and all(digest(value) for value in variants.values())
+            and variants["LF"] == CONTRACT["models"][model]["geometrySha256"], "Invalid approved JSON newline variants")
     for key in ("geometrySha256", "textureSha256"):
         approved = CONTRACT["models"][model][key]
         require(digest(approved) and digest(report[key]), "Missing approved/actual asset identity: " + key)
-        require(report[key] == approved, "Actual asset differs from approved fixed upstream: " + key)
+        allowed = set(variants.values()) if reference and key == "geometrySha256" else {approved}
+        require(report[key] in allowed, "Actual asset differs from approved fixed upstream: " + key)
     for key in ("worldRendererVerified", "gpuVerified", "dynamicAnimationVerified", "materialAttributesCompared"):
         require(report[key] is False, "Overclaimed geometry scope: " + key)
     validate_identity(report, reference)
@@ -223,9 +228,17 @@ def compare(reference, port):
         validate(reference, True)
         validate(port, False)
         require(reference["model"] == port["model"], "Different model")
-        for key in ("geometrySha256", "textureSha256"):
-            require(reference[key] == port[key], "Different actual asset: " + key)
         result["model"] = reference["model"]
+        model = CONTRACT["models"][reference["model"]]
+        result["assets"] = {
+            "geometry": {"canonicalSha256": model["geometrySha256"],
+                         "referenceActualSha256": reference["geometrySha256"],
+                         "portActualSha256": port["geometrySha256"],
+                         "referenceNewlines": next(name for name, value in model["referenceGeometrySha256"].items()
+                                                   if value == reference["geometrySha256"])},
+            "texture": {"canonicalSha256": model["textureSha256"],
+                        "referenceActualSha256": reference["textureSha256"],
+                        "portActualSha256": port["textureSha256"]}}
         a, b = reference["samples"][0], port["samples"][0]
         tree_diff = first_difference(a["bindTree"], b["bindTree"], CONTRACT["absoluteTolerance"]["tree"])
         result["bindTreeMatched"] = tree_diff is None

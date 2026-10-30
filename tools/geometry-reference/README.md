@@ -17,6 +17,11 @@ Gecko 调用原版 `IGeoRenderer.renderRecursively`，Bedrock 构造原版 `Bedr
 
 坐标转换已在 `contract.json` 固定：Gecko 原生位置转换为 `(-x, 1.5-y, z)`，法线为 `(-nx, -ny, nz)`；Bedrock 保持原坐标
 两模型的几何与贴图摘要固定于同一上游来源，两侧各自必须满足；不能通过一起改资源生成新的比较基线
+`geometrySha256` 保持固定 Git blob 的 canonical LF 字节摘要，移植端必须严格匹配
+参考端几何 JSON 只接受合同中列出的 LF 和完整 CRLF 两个摘要；CRLF 摘要由已核对 `builtin-assets-provenance.json` 的 canonical 字节逐个将 LF 替换为 CRLF 推导
+这项规则只处理参考默认包解压后已实测的换行差异，不接受混合换行、额外空白或其他 JSON 改动；贴图仍严格匹配原摘要
+原始捕获和比较报告保留参考端实际 SHA、移植端实际 SHA 及 canonical SHA，不把实际 CRLF 摘要改写成 LF 摘要，也不修改资源、旧捕获或旧实验判定
+合同摘要随规则变更而改变，后续实验须重新构建身份并重启采集，旧捕获不能直接套用新合同
 禁止用拟合、顶点重排或自动翻轴降低差异
 先要求各自三次新建输出完全稳定，再逐项比较静态树和完整顺序顶点流
 位置、法线、UV 的绝对误差阈值分别为 `1e-5`、`1e-5`、`1e-6`，保留各项最大误差和第一个差异

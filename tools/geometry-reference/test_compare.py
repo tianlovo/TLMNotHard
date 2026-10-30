@@ -1,6 +1,7 @@
 """Synthetic comparator protocol tests; these do not execute native or GPU geometry."""
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import unittest
@@ -52,6 +53,62 @@ def fixture(reference, backend="gecko"):
 
 
 class CompareTests(unittest.TestCase):
+    def test_only_provenance_verified_lf_and_mechanically_derived_crlf_are_approved(self):
+        project = Path(__file__).resolve().parents[2]
+        provenance = json.loads((project / "src/main/resources/assets/tlmnh/builtin-assets-provenance.json").read_text(encoding="utf-8"))
+        self.assertEqual("canonical-lf-or-full-crlf-v1", subject.CONTRACT["referenceGeometryNewlineContract"])
+        for model in subject.CONTRACT["models"].values():
+            domain, path = model["geometry"].split(":", 1)
+            filename = "src/main/resources/assets/" + domain + "/" + path
+            raw = (project / filename).read_bytes()
+            canonical = hashlib.sha256(raw).hexdigest()
+            self.assertEqual(provenance["files"][filename]["sha256"], canonical)
+            self.assertEqual(model["geometrySha256"], canonical)
+            self.assertNotIn(b"\r", raw)
+            self.assertIn(b"\n", raw)
+            self.assertEqual({"LF": canonical, "CRLF": hashlib.sha256(raw.replace(b"\n", b"\r\n")).hexdigest()},
+                             model["referenceGeometrySha256"])
+
+    def test_reference_crlf_acceptance_keeps_both_actual_digests(self):
+        for backend in ("gecko", "bedrock"):
+            with self.subTest(backend=backend):
+                reference, port = fixture(True, backend), fixture(False, backend)
+                actual = subject.CONTRACT["models"][reference["model"]]["referenceGeometrySha256"]["CRLF"]
+                reference["geometrySha256"] = actual
+                result = subject.compare(reference, port)
+                self.assertTrue(result["matched"])
+                self.assertEqual("CRLF", result["assets"]["geometry"]["referenceNewlines"])
+                self.assertEqual(actual, result["assets"]["geometry"]["referenceActualSha256"])
+                self.assertEqual(port["geometrySha256"], result["assets"]["geometry"]["portActualSha256"])
+                self.assertNotEqual(actual, port["geometrySha256"])
+                self.assertEqual(actual, reference["geometrySha256"])
+
+    def test_port_still_rejects_crlf_even_when_reference_has_the_same_digest(self):
+        for backend in ("gecko", "bedrock"):
+            with self.subTest(backend=backend):
+                reference, port = fixture(True, backend), fixture(False, backend)
+                actual = subject.CONTRACT["models"][reference["model"]]["referenceGeometrySha256"]["CRLF"]
+                reference["geometrySha256"] = port["geometrySha256"] = actual
+                self.assertEqual("INCONCLUSIVE", subject.compare(reference, port)["verdict"])
+
+    def test_mixed_newlines_and_other_json_changes_remain_rejected(self):
+        project = Path(__file__).resolve().parents[2]
+        for backend in ("gecko", "bedrock"):
+            model = next(spec for spec in subject.CONTRACT["models"].values() if spec["backend"] == backend)
+            domain, path = model["geometry"].split(":", 1)
+            raw = (project / "src/main/resources/assets" / domain / path).read_bytes()
+            self.assertEqual(model["geometrySha256"], hashlib.sha256(raw).hexdigest())
+            for kind, modified in (("mixed", raw.replace(b"\n", b"\r\n", 1)),
+                                   ("other whitespace", raw + b" "),
+                                   ("crlf plus change", raw.replace(b"\n", b"\r\n") + b" ")):
+                with self.subTest(backend=backend, change=kind):
+                    actual = hashlib.sha256(modified).hexdigest()
+                    reference, port = fixture(True, backend), fixture(False, backend)
+                    reference["geometrySha256"] = actual
+                    self.assertEqual("INCONCLUSIVE", subject.compare(reference, port)["verdict"])
+                    port["geometrySha256"] = actual
+                    self.assertEqual("INCONCLUSIVE", subject.compare(reference, port)["verdict"])
+
     def test_original_transformed_definition_is_recorded_separately_from_bound_resource(self):
         reference = fixture(True)
         definition = next(iter(reference["identity"]["actualFirstDefinitions"].values()))
