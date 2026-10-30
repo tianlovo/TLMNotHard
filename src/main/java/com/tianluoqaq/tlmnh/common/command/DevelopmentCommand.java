@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 只在显式 JVM 开关下注册，供真实 Forge 环境验证实体和 NBT */
 public final class DevelopmentCommand extends CommandBase {
@@ -52,13 +53,22 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
             return;
         }
-        if ((args.length == 1 || args.length == 2) && "spawn".equals(args[0])) {
-            var player = args.length == 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+        if (args.length >= 1 && args.length <= 3 && "spawn".equals(args[0])) {
+            var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
             var maid = new EntityMaid(player.worldObj);
+            if (args.length == 3) {
+                if (!BuiltinModelCatalog.contains(args[2])) throw new WrongUsageException(getCommandUsage(sender));
+                maid.setModelId(args[2]);
+            }
             maid.bindTo(player.getUniqueID());
             maid.setPosition(player.posX + 1.5D, player.posY, player.posZ);
             if (!player.worldObj.spawnEntityInWorld(maid))
                 throw new IllegalStateException("TLMNH development maid spawn rejected");
+            TLMNotHard.LOG.info(
+                "TLMNH_DEV_MAID_SPAWN uuid={} model={} dimension={}",
+                maid.getUniqueID(),
+                maid.getModelId(),
+                maid.dimension);
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.spawned"));
             return;
         }

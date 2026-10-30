@@ -1,11 +1,14 @@
 package com.tianluoqaq.tlmnh.client.proxy;
 
+import java.io.IOException;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
@@ -13,6 +16,7 @@ import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -28,6 +32,15 @@ public final class ClientProxy extends CommonProxy {
                 .getInputStream());
         ((IReloadableResourceManager) manager).registerReloadListener(models);
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
+        if (Boolean.getBoolean("tlmnh.devCommands")) {
+            try {
+                FMLCommonHandler.instance()
+                    .bus()
+                    .register(new ClientDevelopmentControl(Minecraft.getMinecraft()));
+            } catch (IOException error) {
+                throw new IllegalStateException("Cannot initialize client development controls", error);
+            }
+        }
     }
 
     @Override
