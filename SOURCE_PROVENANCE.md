@@ -41,7 +41,7 @@ GeckoLib 许可来源为 [固定提交的 LICENSE](https://github.com/bernie-g/g
 
 Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
 
-当前尚未移植动画控制器、关键帧时间轴或 Molang；几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
+动画控制器和关键帧时间轴尚未接入；Molang 表达式及数学与变量层见后文，几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
 
 ## 实体渲染适配
 
@@ -75,6 +75,26 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 
 适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
 
-`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；此处还没有动画查询、数学函数绑定、Gecko 文件解析或时间轴，不能将表达式测试当作 Gecko 模型动画完成
+`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学与变量绑定见下节，动画查询、Gecko 文件解析和时间轴尚未接入，不能将表达式测试当作 Gecko 模型动画完成
+
+## Molang 数学与变量绑定
+
+以下48个原文件同样来自固定 TLM 提交，保留 `geckolib3` 下原包名和 MIT 来源头，不添加 fastutil 或外部脚本引擎依赖
+
+| 相对 geckolib3/ 的路径 | 移植与改动 |
+| --- | --- |
+| core/molang/builtin/MathBinding.java 与 builtin/math/ 下27个函数 | 保留常量、别名、参数个数和普通范围的求值行为；Clamp 去掉高版本 Mth 依赖；sin/cos 按角度输入，反三角按固定上游返回弧度；HermitBlend 保留原 ceil/floor 公式 |
+| core/molang/binding/ContextBinding.java 与 binding/variable/ 下3个文件 | 保留通用函数、常量和动态变量注册，以及 scoped、public 外部读取、temp 地址绑定；集合改用 JDK，record 改为 Java8 可用的普通不可变类；高版本实体和方块专用注册器未导入 |
+| core/molang/storage/ 下4个文件 | 保留实体内的作用域变量、公有变量共享 holder 和可增长临时数组；模型初始化清空全部状态，增加 clearTemp 供单次表达式执行前清理 |
+| core/molang/util/PooledStringHashSet.java | 使用 JDK Set 保存原字符串池 ID，不改变名称映射 |
+| core/molang/value/ 下4个文件 | 保留常数、表达式序列、提前 return 和角度符号包装；错误日志接本模组入口 |
+| core/molang/context/IContext.java、function/ContextFunction.java 与 variable/ 下3个通用类型 | 保留数据实体、独立随机源和三类存储接口；不引入高版本 capability、Minecraft 单例和客户端世界类型，游戏查询在后续帧桥接中适配 |
+| util/Interpolations.java 与 MathHelper.java | 保留原插值、角度归一化和几何辅助公式 |
+
+新增独立文件 `MolangAnimationContext` 与 `MolangRandom` 位于 `com.tianluoqaq.tlmnh.client.render.molang`；每个动画实例独立持有变量和随机源，数据输入不持有游戏实体；表达式执行前清理 temp，scoped 值跨调用保留，模型初始化才清空；子上下文只有明确提供公有存储时才能读取对应 public 值，不意外读到父实体的公有值
+
+整数随机函数的正常范围保持下界包含、上界排除；等端点返回该值，避免上游 nextInt(0)；宽度使用 long，避免跨整数范围溢出；die_roll 和 die_roll_integer 单次最多1024次，避免表达式占用渲染线程过久，普通次数仍保留上游取整差异
+
+`MolangBindingTest` 覆盖全部数学入口及别名、固定随机种子与多实例交错、反向和等端点范围、public 变量可见性、temp 清理、模型初始化、提前 return 和旋转符号；当前仍不包含游戏查询、时间轴或实际画面验收
 
 内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现

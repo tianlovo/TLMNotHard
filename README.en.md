@@ -95,7 +95,7 @@ Completed checks and unfinished work are recorded separately. A successful build
 | Build and loading | Java 25 builds and Java 8 bytecode checks pass; the entry point has RC2 loading records on both sides |
 | Entity basics | Core state, six inventory slots, both hands, restart persistence and permissions have server fixture checks |
 | Basic interaction | Owner GUI and basic taming entry points are present; actual client clicks await acceptance |
-| Models and animation | Built-in assets, both geometry paths, Bedrock poses and the Molang expression core are present |
+| Models and animation | Built-in assets, both geometry paths, Bedrock poses, Molang expressions, math and variable bindings are present |
 | Unfinished | Gecko controllers, complete built-in model switching, equipment layers, life and combat AI, player interactions |
 | Acceptance pending | Wine-fox and other model visuals, animation transitions, Angelica compatibility, multiplayer and gameplay |
 | Behaviour AI and aiming | Research and architecture exist; implementation, upstream benchmarks and arrow-physics tests are pending |
