@@ -8,6 +8,16 @@
 **/run/
 **/.idea/
 **/.vscode/
+**/.fleet/
+**/.settings/
+**/.run/
+**/nbproject/private/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+/out/
 **/__pycache__/
 *.log
 *.class

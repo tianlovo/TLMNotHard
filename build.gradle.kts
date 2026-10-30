@@ -3,6 +3,14 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
+// Jabel 使用 Java17 语法；IDE 导入模型也应保留 Java8 的目标字节码
+extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
+    project {
+        languageLevel = org.gradle.plugins.ide.idea.model.IdeaLanguageLevel(JavaVersion.VERSION_17)
+        targetBytecodeVersion = JavaVersion.VERSION_1_8
+    }
+}
+
 tasks.withType<Jar>().configureEach {
     from("licenses") { into("META-INF/licenses") }
     from("THIRD_PARTY_NOTICES.md") { into("META-INF") }

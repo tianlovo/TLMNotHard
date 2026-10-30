@@ -13,6 +13,54 @@ python scripts/verify_bytecode.py build/libs/<候选版本>.jar
 
 第一次构建会下载 Forge、MCP 和 Minecraft 原版开发依赖，网络失败应核对下载与缓存，不能关闭格式和字节码检查
 
+## IntelliJ IDEA 本机配置
+
+使用 IntelliJ IDEA 2026.2.1 打开源码仓库根目录，也就是 README.md、build.gradle.kts 和 src/ 所在目录；不要打开外层研究工作区或上游克隆目录，如果出现导入选项，选择 Gradle
+
+项目 SDK 和 Gradle JVM 选择本机 JDK25，源码语言级别为17，IDE 导入模型与实际构建的目标字节码均为8；Jabel 编译器仍使用 JDK17，单元测试与 RC2 游戏运行于 Java25，构建和测试委托给 Gradle，不使用 IDEA 原生编译器绕过 Jabel
+
+使用项目 Wrapper 固定的 Gradle 9.7.1，Gradle User Home 选择已有项目缓存；发行包缓存在该目录的 wrapper/dists，依赖缓存与发行包缓存需要分别齐备；已有同版本本机安装时可以校验后复用，避免 IDEA 导入时重新下载；本机目录、SDK 名称与解释器路径只保存在忽略的 IDE 配置或仓库外层工具中，不写入公开仓库
+
+本机运行配置生成器位于仓库外层的 scripts/configure_idea.py，用 Python3 执行；它保留原设置备份，生成 .idea/ 下的项目 SDK、编译目标、Gradle 关联、本机任务及八个运行入口，并设置 IDEA 的本工程缓存位置；先关闭 IDEA 再重新生成，避免运行中的 IDE 覆盖配置；若 Wrapper 缓存缺失，先运行外层 scripts/seed_wrapper_cache.py 复用已验证的本机安装；.idea、.run、.vscode、.fleet、Eclipse 和模块文件继续由 .gitignore 忽略，不提交到远程
+
+打开项目后等待 Gradle 同步与索引；需要手动同步时，在 Gradle 工具窗口执行 Reload All Gradle Projects
+
+SDK 与 Gradle JVM 的设置位置见 [JetBrains 的 Gradle JVM 说明](https://www.jetbrains.com/help/idea/gradle-jvm-selection.html)，缓存目录和构建委托见 [Gradle 设置说明](https://www.jetbrains.com/help/idea/gradle-settings.html)
+
+| 本机运行入口 | 使用方式 |
+| --- | --- |
+| 00 准备 RC2 测试包（两端停止时） | 执行完整 build 和字节码检查，将同一候选安装到专用双端；版本为显式 0.1.0-indev.idea，不创建 tag |
+| 01 RC2 测试服务端 | 用 Java25 启动专用测试服，启动器接管后 Gradle 任务结束，游戏继续运行 |
+| 02 RC2 测试客户端（主菜单） | 直接启动专用客户端到主菜单，不调用 Prism |
+| 03 RC2 测试客户端（加入本地服） | 启动专用客户端并连接127.0.0.1:25585，先等测试服日志出现 Done |
+| 04 RC2 正常停服并保存 | 发送 save-all 和 stop，等待正常退出，不强制终止 Java |
+| 05 RC2 测试实例状态 | 查看双端 PID、退出状态、日志路径和候选 SHA-256 |
+| 06 单元测试（Java25） | 执行 Gradle test |
+| 07 构建与完整检查 | 执行 Gradle build，含格式、规范和两版 Gson 检查，不安装或发布 |
+
+先运行00，再运行01和02或03；改代码后先让客户端从游戏菜单退出，再用04正常停服，最后重新运行00；准备包与启动分开，避免另一端仍运行时替换 JAR
+
+运行01–03后，任务成功结束表示启动器已经接管，不表示游戏退出或完成验收；用05查实际状态，日志位于专用实例各侧 console-时间戳.log，路径会打印到运行窗口；不要用 Gradle 的红色停止按钮代替停服
+
+这些入口复用外层 scripts/idea_runtime.py、test_runtime.py 和 install_candidate.py，只允许操作 instance/test/tlmnh；测试整包、存档、日志和本机外层工具不进入源码仓库，其他开发者需自行准备相应测试实例，普通 Gradle 构建不依赖这些本地运行配置
+
+## README 维护规范
+
+README.md 默认显示简体中文，README.en.md 为英文，两者在页首互相链接；当前是 Indev 说明，已实现、已检查和待验收须分开写，不能提前使用正式版安装指南或可用性承诺
+
+章节顺序参考 [Standard Readme](https://github.com/RichardLitt/standard-readme/blob/main/spec.md)：标题与简述、目录、背景、安装及依赖、使用、开发状态、维护者、参与贡献、许可证；标题可以翻译，许可证放最后；多语言文件名按本项目中文首页要求处理，属于 Standard Readme 默认英文文件命名之外的项目约定
+
+语法使用 [GFM](https://github.github.com/gfm/)，格式由 [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) 检查，固定工具版本0.24.0，配置在 .markdownlint-cli2.jsonc；当前检查两份 README，普通文本每行最多120字符，表格不限制行长，其余默认规则开启；GitHub workflow 对 push 和 PR 运行同一命令，并检查 Git 跟踪的文本是否混入本机绝对路径
+
+```powershell
+npx --yes markdownlint-cli2@0.24.0
+python scripts/check_repository_paths.py
+```
+
+更新进度时同时校对双语版本、目录锚点和相对链接；新增中文按 humanizer-zh 校订，保留未完成与未验证的范围；原创代码许可尚未确定，不能把上游 MIT 与资产 CC BY-NC-SA 4.0 合并成整个项目的 MIT
+
+正式版发布前，另行改写对应玩法、获取方式、依赖、安装更新、已知限制和验收结果；本轮不把 Indev 标记移除
+
 ## 代码职责
 
 | 路径 | 职责 |
