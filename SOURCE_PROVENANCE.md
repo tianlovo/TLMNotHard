@@ -41,7 +41,7 @@ GeckoLib 许可来源为 [固定提交的 LICENSE](https://github.com/bernie-g/g
 
 Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型及其 33 个 Gecko 选择对应的几何输入，并检查独立姿态、快照恢复、可见性、定位骨骼和异常清理；同样的几何测试还在 RC2 客户端使用的 Gson 2.10.1 上运行，不将更高版本 Gson 打包进模组
 
-动画控制器尚未接入；关键帧解析、采样和 Molang 绑定见后文，几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
+动画控制器、关键帧解析、采样和 Molang 绑定见后文，实体 Gecko 播放入口尚未接入；几何和骨骼测试通过不能作为动画、酒狐完整姿态或 Angelica 画面的验收
 
 ## 实体渲染适配
 
@@ -75,7 +75,7 @@ BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/a
 
 适配去掉 JetBrains 空值注解依赖，结构体存储和另两个原文件 `geckolib3/core/molang/util/StringPool.java`、`PooledStringHashMap.java` 改用 JDK 集合，保留字符串池编号、结构体复制、短路求值和上游 1024 次循环上限；修复作用域末尾分号后仍尝试读取表达式的问题，并允许空作用域，相关语法对照 [Mojang 官方 Molang 文档](https://mojang.github.io/bedrock-samples/Molang.html)
 
-`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量、帧查询和 Gecko 文件解析见后文，动画播放控制器尚未接入，不能将表达式测试当作 Gecko 模型动画完成
+`MolangEngineTest` 使用独立上下文检查优先级、条件分支、变量和结构体复制、同一表达式在不同实体输入间隔离、函数参数、循环和错误位置；数学、变量、帧查询、Gecko 文件解析与控制器见后文，不能将表达式测试当作 Gecko 模型动画完成
 
 ## Molang 数学与变量绑定
 
@@ -134,3 +134,19 @@ QueryBinding 将内置动画需要的17类查询及两个耐久度函数接到�
 GeckoAnimationTest 严格解析55份文件、1548个片段与13585条表达式，结合41个 Gecko 选择的各自骨骼执行145605次向量采样，其中酒狐33个选择；另测角度符号、默认时长、Catmull–Rom、前后值、临时变量、指令、重载和错误清理；MolangModelQueryTest 检查原查询含义、动态骨骼、物理隔离、收敛与异常边界；这些都是 CPU 检查，尚不包含播放策略、切换过渡或实际画面验收
 
 内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现
+
+## Gecko 播放控制器
+
+以下17个原文件来自同一固定 TLM 提交，保留原包名和 GeckoLib、TLM 的 MIT 来源头，fastutil 改为 JDK 集合，Pair 改用既有 Commons Lang 接口
+
+| 相对 geckolib3/ 的路径 | 移植与改动 |
+| --- | --- |
+| core/AnimationState.java、PlayState.java；core/builder/AnimationBuilder.java、RawAnimation.java；core/manager/AnimationData.java | 保留控制器状态、片段队列与循环覆盖；拒绝非有限复位时长 |
+| core/event/predicate/AnimationEvent.java；core/event/KeyframeEvent.java、SoundKeyframeEvent.java、ParticleKeyFrameEvent.java | 保留动画事件数据及监听器接口，不加载高版本实体类型；声音和粒子关键帧尚未播放 |
+| core/keyframe/AnimationPoint.java、KeyFramePoint.java、TransitionPoint.java、AnimationPointQueue.java、BoneAnimationQueue.java | 保留控制器独立时间、关键帧与过渡采样及骨骼队列 |
+| core/controller/AnimationController.java | 保留谓词、过渡和片段队列；修正零时长过渡未执行首帧指令、结束时丢失端点及末尾指令、保持模式提前停止的问题；循环保留跨帧余量，停止后重新激活会重播片段 |
+| core/processor/AnimationProcessor.java；core/util/RateLimiter.java | 注入实例私有变量存储，使用固定60Hz指令调度；保留主层覆盖与parallel旋转累加顺序；无动画通道从最后姿态连续复位，重复绘制同一时刻不改变复位结果；无效或倒退的调度时间不污染限流状态 |
+
+已有 BoneTopLevelSnapshot 增加各通道最后动画姿态，使用 double 保存复位时刻；新增独立接口 GeckoAnimationTarget 位于本工程包名，控制器只读取动画定义与状态，不保留世界或实体
+
+GeckoControllerTest 的15项纯数据检查覆盖过渡、单次与保持模式、循环余量、首尾指令、顺序叠加、复位、实例及控制器时间隔离、片段排队、停止后重播和几何重载；实体播放入口、片段选择策略和实际画面继续实现，不能据此认定酒狐动画可用

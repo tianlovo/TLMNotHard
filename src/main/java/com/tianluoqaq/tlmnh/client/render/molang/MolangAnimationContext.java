@@ -19,7 +19,7 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     private final VariableStorage storage;
     private final Random random;
     private final IForeignVariableStorage foreignStorage;
-    private final AnimationControllerContext animationControllerContext;
+    private AnimationControllerContext animationControllerContext;
     private final MolangModelResources modelResources;
 
     public MolangAnimationContext(TEntity entity, VariableStorage storage, Random random) {
@@ -77,6 +77,10 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     @Override
     public AnimationControllerContext animationControllerContext() {
         return animationControllerContext;
+    }
+
+    public void setAnimationControllerContext(AnimationControllerContext context) {
+        animationControllerContext = Objects.requireNonNull(context, "context");
     }
 
     @Override

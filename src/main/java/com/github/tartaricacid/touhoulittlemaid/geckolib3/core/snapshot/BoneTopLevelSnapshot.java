@@ -14,9 +14,10 @@ public class BoneTopLevelSnapshot extends BoneSnapshot {
     public final IBone bone;
     public final PointData cachedPointData = new PointData(); // 并行动画控制器需要缓存旋转参数
 
-    public float mostRecentResetRotationTick = 0;
-    public float mostRecentResetPositionTick = 0;
-    public float mostRecentResetScaleTick = 0;
+    public double mostRecentResetRotationTick = 0;
+    public double mostRecentResetPositionTick = 0;
+    public double mostRecentResetScaleTick = 0;
+    public final BoneSnapshot lastAnimatedSnapshot;
     public boolean isCurrentlyRunningRotationAnimation = true;
     public boolean isCurrentlyRunningPositionAnimation = true;
     public boolean isCurrentlyRunningScaleAnimation = true;
@@ -39,6 +40,7 @@ public class BoneTopLevelSnapshot extends BoneSnapshot {
         this.childrenHidden = bone.childBonesAreHiddenToo();
 
         this.bone = bone;
+        this.lastAnimatedSnapshot = new BoneSnapshot(this);
     }
 
     public BoneTopLevelSnapshot(IBone bone, boolean dontSaveRotations) {
