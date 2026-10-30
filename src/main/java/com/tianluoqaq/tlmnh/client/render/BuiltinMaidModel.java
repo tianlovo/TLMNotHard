@@ -20,6 +20,8 @@ public final class BuiltinMaidModel extends ModelBase {
     private final BuiltinModelCatalog.Choice choice;
     private final AbstractBedrockEntityModel<EntityMaid> bedrock;
     private final AnimatedGeoModel gecko;
+    private final BedrockPose bedrockPose;
+    private final BuiltinBedrockAnimations bedrockAnimations;
 
     BuiltinMaidModel(BuiltinModelCatalog.Choice choice, AbstractBedrockEntityModel<EntityMaid> bedrock,
         AnimatedGeoModel gecko) {
@@ -27,6 +29,8 @@ public final class BuiltinMaidModel extends ModelBase {
         this.bedrock = bedrock;
         this.gecko = gecko;
         if ((bedrock == null) == (gecko == null)) throw new IllegalArgumentException("Expected one model geometry");
+        bedrockPose = bedrock == null ? null : new BedrockPose(bedrock);
+        bedrockAnimations = bedrock == null ? null : new BuiltinBedrockAnimations(choice);
     }
 
     public BuiltinModelCatalog.Choice getChoice() {
@@ -41,13 +45,30 @@ public final class BuiltinMaidModel extends ModelBase {
         return gecko;
     }
 
+    public BedrockPose getBedrockPose() {
+        return bedrockPose;
+    }
+
+    public void setupPose(MaidAnimationState state, float limbSwing, float limbSwingAmount, float ageInTicks,
+        float netHeadYaw, float headPitch) {
+        if (bedrockAnimations != null)
+            bedrockAnimations.apply(bedrockPose, state, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+    }
+
     @Override
     public void render(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
         float headPitch, float scale) {
+        float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
+        if (entity instanceof EntityMaid maid) setupPose(
+            MaidAnimationState.capture(maid, partialTick),
+            limbSwing,
+            limbSwingAmount,
+            ageInTicks,
+            netHeadYaw,
+            headPitch);
         var consumer = TessellatorVertexConsumer.INSTANCE;
         consumer.begin();
         try {
-            float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
             renderGeometry(new LegacyPoseStack(), consumer, entity.getBrightnessForRender(partialTick));
         } finally {
             consumer.end();
@@ -57,7 +78,13 @@ public final class BuiltinMaidModel extends ModelBase {
     /** 输出位于 ModelBase 坐标系的顶点，供实体本体、预览与 CPU 检查共用 */
     public void renderGeometry(LegacyPoseStack poses, LegacyVertexConsumer consumer, int light) {
         if (bedrock != null) {
-            bedrock.renderToBuffer(poses, consumer, light, 0, 1, 1, 1, 1);
+            poses.pushPose();
+            try {
+                bedrockPose.applyTransform(poses);
+                bedrock.renderToBuffer(poses, consumer, light, 0, 1, 1, 1, 1);
+            } finally {
+                poses.popPose();
+            }
             return;
         }
         poses.pushPose();

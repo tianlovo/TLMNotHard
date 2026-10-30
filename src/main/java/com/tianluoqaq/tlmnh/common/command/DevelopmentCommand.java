@@ -18,6 +18,7 @@ import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 
@@ -91,6 +92,13 @@ public final class DevelopmentCommand extends CommandBase {
         original.setCustomNameTag("TLMNH state test");
         original.setHealth(13.5F);
         original.setSitting(true);
+        for (var pose : MaidPose.values()) {
+            require(!original.hasPose(pose), "initial pose " + pose);
+            original.setPose(pose, true);
+            require(original.hasPose(pose), "active pose " + pose);
+        }
+        original.setPose(MaidPose.BEGGING, false);
+        require(!original.hasPose(MaidPose.BEGGING) && original.hasPose(MaidPose.SLEEPING), "independent pose flags");
         original.setTask(MaidTask.RANGED_ATTACK);
         original.setSchedule(MaidSchedule.NIGHT);
         original.setExperience(155);
@@ -118,6 +126,7 @@ public final class DevelopmentCommand extends CommandBase {
         original.writeToNBT(snapshot);
         var restored = new EntityMaid(sender.getEntityWorld());
         restored.readFromNBT(snapshot);
+        for (var pose : MaidPose.values()) require(!restored.hasPose(pose), "transient pose " + pose);
         require(
             restored.getUniqueID()
                 .equals(original.getUniqueID()),

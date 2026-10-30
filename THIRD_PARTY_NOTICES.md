@@ -9,6 +9,7 @@
 | 构建共享规范 | ExampleMod Blowdryer 0.2.2 | 由固定模板规范提供，不将研究克隆提交进本仓库 |
 | EntityMaid、MaidSchedule 的核心状态与 ID | TartaricAcid/TouhouLittleMaid，8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6 | MIT，原文见 licenses/TouhouLittleMaid-MIT.txt，保留原包名；改动见 SOURCE_PROVENANCE.md |
 | simplebedrockmodel 的模型 POJO、几何构造与顶点生成 | 同一 TLM 提交的 com/github/tartaricacid/simplebedrockmodel/client/bedrock | MIT，保留原包名与来源头；1.7.10 适配见 SOURCE_PROVENANCE.md |
+| TLM 内置 Bedrock 动画、骨骼包装与注册表 | 同一 TLM 提交的 api/animation、client/animation/inner 与 client/animation/script | MIT，保留原文件包名，改动与保留范围见 SOURCE_PROVENANCE.md |
 | TLM 内嵌 GeckoLib 3 的模型解析、网格与骨骼实例 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/geckolib3；GeckoLib 原许可核对提交 4533673f89c2f1301ba0676ab7240ed20fb7f784 | MIT，同时保留 licenses/GeckoLib-MIT.txt 的 Copyright (c) 2021 GeckoThePecko、上游文件中的 Bernie G. 作者头与 TLM 许可；当前只接几何和骨骼，不包含动画控制器运行 |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
@@ -16,6 +17,8 @@
 资产来源为 [Touhou Little Maid 固定提交](https://github.com/TartaricAcid/TouhouLittleMaid/tree/8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6)，许可为 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)，要求署名、非商业使用和相同方式共享；不以代码的 MIT 许可替代资产许可
 
 本次展开上游内置包的目录，将原字节资源放入对应 assets 命名空间，没有修改模型、贴图、动画和上游说明文本；生成了本工程的装饰 ID 索引与逐文件来源摘要，位于 assets/tlmnh/builtin-models.json 和 builtin-assets-provenance.json，摘要包含原路径、SHA-256 和固定提交，目录与索引适配涉及的资产贡献同样按 CC BY-NC-SA 4.0 提供
+
+BuiltinBedrockAnimations.java 含两个原资产脚本 arm.js 和 float.js 的 Java 改写，原包 authors_and_credits 标注作者 TartaricAcid；该文件按 CC BY-NC-SA 4.0 提供，修改内容为去除已弃用分支并接入本工程逐帧状态与矩阵；原始脚本与作者说明仍保留，完整来源见 SOURCE_PROVENANCE.md 和资源来源清单
 
 TLM 原有代码和资产在导入时分别登记提交、原路径、修改原因及许可，不以代码许可覆盖模型和声音
 

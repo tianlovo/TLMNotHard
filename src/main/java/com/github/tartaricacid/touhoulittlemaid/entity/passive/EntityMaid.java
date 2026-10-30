@@ -20,6 +20,7 @@ import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
@@ -41,6 +42,7 @@ public class EntityMaid extends EntityTameable {
     private static final int DATA_FAVORABILITY = 25;
     private static final int DATA_FLAGS = 26;
     private static final int DATA_OFFHAND = 27;
+    private static final int DATA_POSE = 28;
     private static final int FLAG_PICKUP_ITEMS = 1;
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
     private static final String OFFHAND_TAG = "TLMNHOffhand";
@@ -67,6 +69,7 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.addObject(DATA_FAVORABILITY, 0);
         dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE));
         dataWatcher.addObjectByDataType(DATA_OFFHAND, 5);
+        dataWatcher.addObject(DATA_POSE, (byte) 0);
     }
 
     @Override
@@ -92,6 +95,16 @@ public class EntityMaid extends EntityTameable {
 
     public MaidInventory getMaidInventory() {
         return inventory;
+    }
+
+    public boolean hasPose(MaidPose pose) {
+        return (dataWatcher.getWatchableObjectByte(DATA_POSE) & pose.getMask()) != 0;
+    }
+
+    public void setPose(MaidPose pose, boolean active) {
+        if (worldObj.isRemote) return;
+        int flags = dataWatcher.getWatchableObjectByte(DATA_POSE);
+        dataWatcher.updateObject(DATA_POSE, (byte) (active ? flags | pose.getMask() : flags & ~pose.getMask()));
     }
 
     @Override

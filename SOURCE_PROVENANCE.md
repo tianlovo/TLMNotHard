@@ -47,6 +47,26 @@ Java 25 测试覆盖全部 26 份内置 Gecko 几何、19 个酒狐基础模型�
 
 新增独立文件 BuiltinMaidModels、BuiltinMaidModel 和 MaidRenderer 均位于 `com.tianluoqaq.tlmnh.client.render`，不复制高版本实体渲染器；参考固定 TLM 的 EntityMaidRenderer 与 GeckoEntityMaidRenderer、GeoReplacedEntityRenderer 核对模型、贴图、缩放和坐标，继承 1.7.10 RenderLiving 接入 Forge 既有渲染路径
 
-BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；CPU 测试覆盖全部 254 个选择以及旋转方块的两种坐标一致性，目前只输出初始姿态
+BuiltinMaidModel 将 Gecko 的脚部原点和 X/Y 方向转换为 ModelBase 坐标，保留原几何数据；共享解析定义，每只女仆持有独立可变骨骼，资源重载时失效，弱引用缓存不保活已卸载实体；CPU 测试覆盖全部 254 个选择以及旋转方块的两种坐标一致性；Gecko 目前仍输出初始姿态，Bedrock 组合见下节
+
+## Bedrock 内置动画
+
+以下原文件均来自固定 TLM 提交，保留 `com.github.tartaricacid.touhoulittlemaid` 包名和 MIT 来源头
+
+| 相对上述包名的路径 | 移植与改动 |
+| --- | --- |
+| api/animation/IModelRenderer.java、client/animation/script/ModelRendererWrapper.java | 保留旋转、初始角、偏移、旋转中心与显隐接口，操作已移植的 BedrockPart |
+| client/animation/script/GlWrapper.java | 改用 LegacyPoseStack；线程内嵌套绑定恢复外层矩阵，动画结束后清理绑定，不调用脚本引擎 |
+| client/animation/inner/IAnimation.java、InnerAnimation.java | 动画输入改为本工程逐帧状态；IAnimation 改为单抽象方法，注册表只接女仆所需类别，排除椅子、玩家替身和节日内容 |
+| client/animation/inner/MaidBaseAnimation.java、MaidExtraAnimation.java | 保留原有头、耳、头发、四肢、眨眼、坐骑、坐姿、裙摆、翅膀、尾巴与组合顺序；移除枪械联动、娱乐方块和背包物品显隐，修复反向眨眼只有一种拼写骨骼时的空引用 |
+| client/animation/inner/MaidArmorAnimation.java | 只移植普通与反向护甲显隐；温度、天气及护甲值动画不在当前内置模型所需范围 |
+| client/animation/inner/MaidTaskAnimation.java | 保留按任务 ID 控制模型骨骼显隐的条件；首版实际任务仍只有空闲、近战与远程，显隐代码不会注册额外工作 |
+| client/animation/inner/EntityBaseAnimation.java、SpecialAnimation.java | 保留悬浮、时钟、旋转、维度、随机选择及两个特殊模型的条件；修复地狱显隐比较，空随机骨骼集合安全退出，随机索引覆盖 Long.MIN_VALUE；旧世界日时在输入侧规范到一天内 |
+
+独立适配 BedrockPose、BuiltinBedrockAnimations 和 MaidAnimationState 位于本工程包名；BedrockPose 每帧恢复命名骨骼及旋转方块生成的子骨骼，并保存本体与附件共用的整体变换；MaidAnimationState 读取实体同步状态，动画不操作服务端世界
+
+BuiltinBedrockAnimations 中两个固定脚本的改写来自内置包 `assets/authors_and_credits/animation/arm.js` 与 `float.js`，原作者 TartaricAcid，固定提交下完整原路径见资源来源清单；保留原公式，去掉上游已弃用的推车和载具分支；该适配文件按 CC BY-NC-SA 4.0 提供，原脚本资源保持原字节，不能用 Java 代码的许可覆盖这些改写
+
+实体新增同步索引 28 保存短时动作位，MaidPose 位于本工程包名；动作由服务端设置且不持久化，生活和战斗行为尚未接入这些触发状态，硬编码游泳等动作层继续实现；本阶段仅接入 Bedrock 资源组合，不代表 Gecko 动画或整套女仆行为完成
 
 内置女仆模型的原始资源已导入，逐文件原路径与 SHA-256 见 src/main/resources/assets/tlmnh/builtin-assets-provenance.json，原始说明与作者信息保留在各命名空间的 maid_model.json 和 lang/*.json；资产许可见 THIRD_PARTY_NOTICES.md，渲染画面仍待验收，动画和声音播放继续实现
