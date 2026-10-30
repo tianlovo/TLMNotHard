@@ -76,6 +76,7 @@ public final class ReferenceAnimationReplay {
         result.addProperty("modelChoice", id);
         result.addProperty("faultInjection", fault);
         result.addProperty("javaRuntime", System.getProperty("java.runtime.version"));
+        result.add("runtimeInputArguments", GSON.toJsonTree(java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments()));
         result.addProperty("renderingVerified", false);
         result.addProperty("equivalenceVerified", false);
         if (headFixture) result.addProperty("phaseSampling", "Gecko core observer, actual apply-return head and final; Bedrock final only");
@@ -86,17 +87,33 @@ public final class ReferenceAnimationReplay {
         asset(assets, new ResourceLocation(choice.getGeometry().getResourceDomain(), "maid_model.json"));
         if (choice.isGecko()) asset(assets, BuiltinGeckoAnimations.DEFAULT_MAID_ANIMATION);
         result.add("assetSha256", assets);
+        var assetSources = new JsonObject();
+        for (var entry : assets.entrySet()) {
+            var location = new ResourceLocation(entry.getKey());
+            var url = ReferenceAnimationReplay.class.getResource("/assets/" + location.getResourceDomain() + "/" + location.getResourcePath());
+            require(url != null, "Missing actual asset source: " + location);
+            assetSources.addProperty(location.toString(), url.toExternalForm());
+        }
+        result.add("assetSources", assetSources);
         var classes = new JsonObject();
+        var classSources = new JsonObject();
         for (Class<?> type : new Class<?>[] { ReferenceAnimationReplay.class, BuiltinGeckoPlayer.class,
             com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController.class,
             com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor.AnimationProcessor.class,
-            com.tianluoqaq.tlmnh.client.render.BuiltinBedrockAnimations.class, MaidAnimationState.class, MolangQueryFrame.class }) {
+            com.tianluoqaq.tlmnh.client.render.BuiltinBedrockAnimations.class, MaidAnimationState.class, MolangQueryFrame.class,
+            BuiltinMaidModel.class, BuiltinMaidModels.class, BuiltinGeckoAnimations.class }) {
             try (var stream = type.getResourceAsStream("/" + type.getName().replace('.', '/') + ".class")) {
                 require(stream != null, "Missing actual replay class: " + type.getName());
                 classes.addProperty(type.getName(), sha256(bytes(stream)));
             }
+            var source = new JsonObject();
+            require(type.getProtectionDomain().getCodeSource() != null, "Unknown replay class source: " + type.getName());
+            source.addProperty("codeSource", type.getProtectionDomain().getCodeSource().getLocation().toExternalForm());
+            source.addProperty("resource", type.getResource("/" + type.getName().replace('.', '/') + ".class").toExternalForm());
+            classSources.add(type.getName(), source);
         }
         result.add("classSha256", classes);
+        result.add("classSources", classSources);
         var replayed = new JsonArray();
         for (int index = 0; index < frames.size(); index++) {
             var original = frames.get(index).getAsJsonObject();

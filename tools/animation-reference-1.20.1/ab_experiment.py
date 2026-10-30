@@ -23,7 +23,17 @@ def source_state():
         digest.update(hashlib.sha256(path.read_bytes()).digest())
     head = subprocess.check_output([GIT, "-C", str(PROJECT), "rev-parse", "HEAD"], text=True).strip()
     dirty = subprocess.check_output([GIT, "-C", str(PROJECT), "status", "--porcelain"], text=True)
-    return {"head": head, "dirty": bool(dirty), "main_input_files": len(files), "main_input_sha256": digest.hexdigest()}
+    tools_digest = hashlib.sha256()
+    tools = [path for folder in (PROJECT / "tools/animation-reference-1.20.1", PROJECT / "gradle", PROJECT / "src/test")
+             for path in folder.rglob("*") if path.is_file() and "__pycache__" not in path.parts]
+    tools += [PROJECT / name for name in ("build.gradle", "settings.gradle", "gradle.properties", "gradlew", "gradlew.bat")
+              if (PROJECT / name).is_file()]
+    for path in sorted(tools):
+        tools_digest.update(path.relative_to(PROJECT).as_posix().encode())
+        tools_digest.update(b"\0")
+        tools_digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return {"head": head, "dirty": bool(dirty), "main_input_files": len(files), "main_input_sha256": digest.hexdigest(),
+            "tool_input_files": len(tools), "tool_input_sha256": tools_digest.hexdigest()}
 
 
 def replay(reference, output, log, fault="none"):
@@ -92,8 +102,10 @@ def main():
         report["incomplete_input_rejected"] = code != 0 and "Missing captured field: groundSpeed" in log.read_text(encoding="utf-8", errors="replace")
         report["source_after"] = source_state()
         report["main_inputs_unchanged_during_run"] = report["source_before"]["main_input_sha256"] == report["source_after"]["main_input_sha256"]
+        report["tool_inputs_unchanged_during_run"] = report["source_before"]["tool_input_sha256"] == report["source_after"]["tool_input_sha256"]
         report["passed"] = (all(case["comparison"]["status"] == "CPU_MATCH_EXACT" for case in report["cases"])
-            and report["actual_port_fault_detected"] and report["incomplete_input_rejected"] and report["main_inputs_unchanged_during_run"])
+            and report["actual_port_fault_detected"] and report["incomplete_input_rejected"]
+            and report["main_inputs_unchanged_during_run"] and report["tool_inputs_unchanged_during_run"])
     except Exception as error:
         report["error"] = str(error)
     report["evidence_directory"] = run.relative_to(EVIDENCE).as_posix()

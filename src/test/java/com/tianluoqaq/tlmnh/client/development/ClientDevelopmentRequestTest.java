@@ -132,6 +132,20 @@ public class ClientDevelopmentRequestTest {
     }
 
     @Test
+    public void gpuMatrixProbeUsesOnlyTwoModelsAndTheFixedSequence() {
+        for (String model : new String[] { "geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid" }) {
+            var request = parse("{\"command\":\"gpu_matrix_probe\",\"model\":\"" + model + "\"}");
+            assertEquals(Command.GPU_MATRIX_PROBE, request.command);
+            assertEquals(model, request.model);
+        }
+        for (String json : new String[] { "{\"command\":\"gpu_matrix_probe\"}",
+            "{\"command\":\"gpu_matrix_probe\",\"model\":\"touhou_little_maid:hakurei_reimu\"}",
+            "{\"command\":\"gpu_matrix_probe\",\"model\":\"geckolib:winefox_hanfu\",\"fault\":\"none\"}",
+            "{\"command\":\"gpu_matrix_probe\",\"model\":\"geckolib:winefox_hanfu\",\"fault\":\"outer_scale_0_5\"}" })
+            assertThrows(IllegalArgumentException.class, () -> parse(json));
+    }
+
+    @Test
     public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
         for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);

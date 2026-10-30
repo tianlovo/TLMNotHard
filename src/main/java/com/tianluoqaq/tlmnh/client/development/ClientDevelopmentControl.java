@@ -52,6 +52,7 @@ public final class ClientDevelopmentControl {
     private boolean shutdownAfterWrites;
     private boolean submissionPending;
     private HeadBindingProbe.Result unwrittenHeadBinding;
+    private GpuMatrixProbe.Result unwrittenGpuMatrix;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
@@ -73,6 +74,8 @@ public final class ClientDevelopmentControl {
         flushResponses();
         HeadBindingProbe.tickEnd();
         flushHeadBinding();
+        GpuMatrixProbe.tickEnd();
+        flushGpuMatrix();
         if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
         var submission = RenderSubmissionProbe.poll();
         if (submission != null) {
@@ -99,7 +102,10 @@ public final class ClientDevelopmentControl {
             TLMNotHard.LOG.error("Cannot read client development requests", error);
         }
         flushHeadBinding();
-        if (shutdownAfterWrites && pendingWrites.isEmpty() && unwrittenHeadBinding == null) minecraft.shutdown();
+        flushGpuMatrix();
+        if (shutdownAfterWrites && pendingWrites.isEmpty()
+            && unwrittenHeadBinding == null
+            && unwrittenGpuMatrix == null) minecraft.shutdown();
     }
 
     private void handle(Path path) throws IOException {
@@ -118,6 +124,10 @@ public final class ClientDevelopmentControl {
                 && request.command != ClientDevelopmentRequest.Command.STATUS
                 && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
                 throw new IllegalStateException("Finish the active head binding probe before another operation");
+            if ((GpuMatrixProbe.isPending() || unwrittenGpuMatrix != null)
+                && request.command != ClientDevelopmentRequest.Command.STATUS
+                && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
+                throw new IllegalStateException("Finish the active GPU matrix probe before another operation");
             switch (request.command) {
                 case STATUS:
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
@@ -132,6 +142,7 @@ public final class ClientDevelopmentControl {
                     response.addProperty(
                         "headBindingPending",
                         HeadBindingProbe.isPending() || unwrittenHeadBinding != null);
+                    response.addProperty("gpuMatrixPending", GpuMatrixProbe.isPending() || unwrittenGpuMatrix != null);
                     if (minecraft.thePlayer != null) {
                         var player = minecraft.thePlayer;
                         response.addProperty("dimension", player.dimension);
@@ -226,12 +237,19 @@ public final class ClientDevelopmentControl {
                     HeadBindingProbe.arm(name, request.model, request.yaw, request.pitch, request.fault);
                     response.addProperty("status", "pending-render");
                     break;
+                case GPU_MATRIX_PROBE:
+                    if (submissionPending || !captures.isEmpty())
+                        throw new IllegalStateException("Finish the active submission or screenshot capture first");
+                    GpuMatrixProbe.arm(name, request.model);
+                    response.addProperty("status", "pending-render");
+                    break;
                 case MODELS_UI:
                     var observed = MaidModelUiProbe.perform(request.action, request.model);
                     for (var entry : observed.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case SHUTDOWN:
                     HeadBindingProbe.cancel("Client shutdown requested during capture");
+                    GpuMatrixProbe.cancel("Client shutdown requested during GPU capture");
                     restorePauseSetting();
                     shutdownAfterWrites = true;
                     break;
@@ -325,6 +343,21 @@ public final class ClientDevelopmentControl {
             unwrittenHeadBinding = null;
         } catch (IOException error) {
             TLMNotHard.LOG.error("Cannot save head binding response", error);
+        }
+    }
+
+    private void flushGpuMatrix() {
+        if (unwrittenGpuMatrix == null) unwrittenGpuMatrix = GpuMatrixProbe.poll();
+        var result = unwrittenGpuMatrix;
+        if (result == null) return;
+        result.report.addProperty("version", Tags.VERSION);
+        result.report.addProperty("request", result.request);
+        result.report.addProperty("command", "GPU_MATRIX_PROBE");
+        try {
+            writeResponse(result.request, result.report);
+            unwrittenGpuMatrix = null;
+        } catch (IOException error) {
+            TLMNotHard.LOG.error("Cannot save GPU matrix response", error);
         }
     }
 

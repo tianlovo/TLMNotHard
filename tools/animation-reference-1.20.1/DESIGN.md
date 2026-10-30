@@ -109,6 +109,25 @@ DTO字段回显一致不等于所有运行时依赖已正确采集，不能以�
 
 ## 选型与限制
 
+### 冻结包和身份工具的实现进度
+
+新增baseline_bundle.py导出与校验完整18份压缩采集、canonical资产、构建身份和工具链锁，导出不会自动修改catalog批准新基线
+消费时先核对外部固定的manifest摘要，再逐文件核对压缩和原始字节、相对路径、大小、18份原版重复性与运行时身份
+canonical资产只用于Python对照和依赖解析，不加入Java classpath，也不替换当前生产资源
+旧采集缺少新身份字段，会被导出器拒绝；不能事后把历史configured-commit标签升级成实际定义字节证明
+
+参考构建增加tlmnhReferenceIdentityInventory，实际解析的插件artifact与实现类CodeSource分列；INVENTORY_ONLY不是批准
+审阅后建立外置APPROVED锁，tlmnhReferenceRuntimeIdentity和runClient逐项核对工具链、固定源码与补丁、探针及20类编译输出
+最小只读premain观察器另记录定义输入摘要，资源摘要独立保存；限定单一启动agent、禁动态attach、无类重定义的参考环境，不称完整classpath等价
+testReferenceIdentityAgent在独立Java17进程检查真实premain、启动manifest绑定与缺记录拒绝，不启动游戏
+
+本轮已取得实际离线inventory、独立agent夹具和严格参考构建通过记录；新的真实客户端身份采集、冻结包与GPU实验仍待运行
+bundle_regression.py设计为一次prepareReferenceReplay编译后，每个用例启动独立Java25进程，记录本次生产类和资源来源及编译摘要，拒绝测试classpath同名覆盖
+正例、实际Head位移故障、Java缺输入和未知协议拒绝分开记录；包摘要拒绝不能冒充Java语义负例
+干净checkout加已有Gradle缓存的离线回归，与冷机器完全离线构建分别验收，不提前承诺后者
+
+新增入口支持--help；冻结包的批准ID和实际运行结果将在通过准入后补入，不以工具代码存在宣称便携性完成
+
 计划先验证原版实际轨迹采集、移植版输入重放和分层姿态差分，再补两端实际渲染检查
 两个世界同时播放后按录像帧号或截图直接判等价，会混入渲染时刻、随机数、物理步长及坐标系差异
 

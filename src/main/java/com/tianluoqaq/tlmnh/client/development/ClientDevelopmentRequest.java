@@ -84,6 +84,13 @@ public final class ClientDevelopmentRequest {
             if (fault.equals("legacy_sign") && !model.equals("geckolib:winefox_hanfu"))
                 throw new IllegalArgumentException("Legacy head sign fault requires Gecko");
         }
+        if (command == Command.GPU_MATRIX_PROBE) {
+            model = text(json, "model");
+            if (!Arrays.asList("geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid")
+                .contains(model)) throw new IllegalArgumentException("Unreviewed GPU matrix model");
+            if (json.has("fault"))
+                throw new IllegalArgumentException("GPU matrix probe uses a fixed five-draw sequence");
+        }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
             if (!Arrays.asList("status", "open", "select", "back", "next", "previous", "winefox", "all")
@@ -124,6 +131,7 @@ public final class ClientDevelopmentRequest {
         SCREENSHOT,
         RENDER_PROBE,
         HEAD_BINDING_PROBE,
+        GPU_MATRIX_PROBE,
         MODELS_UI,
         MODELS_UI_CAPTURE,
         RELOAD,

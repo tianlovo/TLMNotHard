@@ -88,7 +88,9 @@ public final class ReferenceObservationProbe {
                     var report = new JsonObject();
                     report.addProperty("schema", "observation-v0");
                     report.addProperty("upstreamCommit", System.getProperty("tlmnh.upstreamCommit"));
-                    report.addProperty("sourceIdentity", "configured-commit-label-not-runtime-class-verification");
+                    report.addProperty("sourceIdentity", "verified-selected-runtime-definitions-and-build-manifest");
+                    report.add("buildIdentity", active.identity.buildIdentity());
+                    report.add("runtimeIdentity", active.identity.runtimeIdentity());
                     report.addProperty("entityUuid", active.entity.toString());
                     report.addProperty("allInputsCaptured", false);
                     report.addProperty("equivalenceVerified", false);
@@ -152,6 +154,7 @@ public final class ReferenceObservationProbe {
                     ids.forEach(mods::add);
                     response.add("loadedMods", mods);
                     response.addProperty("minimalReferenceMods", Set.of("minecraft", "forge", "touhou_little_maid").equals(Set.copyOf(ids)));
+                    response.add("runtimeIdentity", ReferenceRuntimeIdentity.status());
                 }
                 case "observe" -> {
                     if (minecraft.level == null || active != null || pendingReload != null) throw new IllegalStateException("A world must be loaded and capture must be idle");
@@ -445,6 +448,7 @@ public final class ReferenceObservationProbe {
         final boolean controlled;
         final long seed;
         final List<JsonObject> frames = new ArrayList<>();
+        final ReferenceRuntimeIdentity.Evidence identity;
         long deadline = System.nanoTime() + 60_000_000_000L;
         boolean seeded;
         String failure;
@@ -461,6 +465,7 @@ public final class ReferenceObservationProbe {
             this.limit = limit;
             this.controlled = controlled;
             this.seed = seed;
+            identity = ReferenceRuntimeIdentity.capture();
         }
     }
 

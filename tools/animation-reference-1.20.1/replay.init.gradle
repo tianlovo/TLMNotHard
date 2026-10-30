@@ -2,6 +2,29 @@ gradle.projectsEvaluated {
     def project = gradle.rootProject
     def tool = new File(project.projectDir, 'tools/animation-reference-1.20.1')
     project.sourceSets.test.java.srcDir(new File(tool, 'replay'))
+    project.tasks.register('prepareReferenceReplay') {
+        group = 'verification'
+        description = 'Compiles once and records a local launcher for isolated CPU replay processes'
+        dependsOn project.tasks.named('testClasses')
+        doLast {
+            def launcher = project.javaToolchains.launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            }.get()
+            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            def destination = project.file(project.findProperty('referenceLauncher') ?: 'build/reference-replay/launcher.json')
+            destination.parentFile.mkdirs()
+            destination.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+                schema: 'reference-replay-launcher-v1',
+                executable: launcher.executablePath.asFile.absolutePath,
+                classpath: runtime.files.collect { it.absolutePath },
+                mainClasses: project.sourceSets.main.output.classesDirs.files.collect { it.absolutePath },
+                testClasses: project.sourceSets.test.output.classesDirs.files.collect { it.absolutePath },
+                mainResources: project.sourceSets.main.output.resourcesDir.absolutePath,
+                mainClass: 'com.tianluoqaq.tlmnh.reference.replay.ReferenceAnimationReplay',
+                workingDirectory: project.layout.buildDirectory.dir('reference-replay').get().asFile.absolutePath
+            ])) + '\n', 'UTF-8')
+        }
+    }
     project.tasks.register('replayReferenceAnimation', JavaExec) {
         group = 'verification'
         description = 'Replays bounded original-client animation inputs through the actual port CPU pipeline'

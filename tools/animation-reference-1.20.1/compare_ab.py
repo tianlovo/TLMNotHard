@@ -62,21 +62,28 @@ def differences(expected, actual, path):
     return result
 
 
-def pinned_assets(assets, port_assets):
+def upstream_asset(location, upstream=UPSTREAM):
+    domain, name = location.split(":", 1)
+    prefix = "src/main/resources/assets/"
+    if location != "touhou_little_maid:animation/maid.animation.json":
+        prefix += "touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/"
+    path = prefix + domain + "/" + name
+    process = subprocess.run([GIT, "-C", str(upstream), "cat-file", "blob", BASE + ":" + path], capture_output=True)
+    if process.returncode:
+        raise ValueError("Cannot read the pinned upstream asset: " + location)
+    return process.stdout
+
+
+def pinned_assets(assets, port_assets, canonical_assets=None):
     result = {}
     checks = []
     if assets.keys() != port_assets.keys():
         raise ValueError("Different actual runtime asset lists")
     for location, expected in assets.items():
-        domain, name = location.split(":", 1)
-        prefix = "src/main/resources/assets/"
-        if location != "touhou_little_maid:animation/maid.animation.json":
-            prefix += "touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/"
-        path = prefix + domain + "/" + name
-        process = subprocess.run([GIT, "-C", str(UPSTREAM), "cat-file", "blob", BASE + ":" + path], capture_output=True)
-        if process.returncode:
-            raise ValueError("Cannot read the pinned upstream asset: " + location)
-        raw = process.stdout
+        _, name = location.split(":", 1)
+        if canonical_assets is not None and location not in canonical_assets:
+            raise ValueError("Missing approved canonical asset: " + location)
+        raw = upstream_asset(location) if canonical_assets is None else canonical_assets[location]
         pinned = hashlib.sha256(raw).hexdigest()
         if port_assets[location] != pinned:
             raise ValueError("Port asset bytes differ from pinned upstream: " + location)
@@ -130,7 +137,7 @@ def dependencies(reference, asset_bytes):
             "internal_values_recomputed": sorted(used & (INTERNAL | MATH))}
 
 
-def compare(reference, replay, digest, aa):
+def compare(reference, replay, digest, aa, canonical_assets=None):
     report = {"scope": "two reviewed empty-equipment fixtures; local bones and controllers on CPU",
               "status": "INCONCLUSIVE", "equivalence_verified": False, "rendering_verified": False,
               "approved_for_bulk": False, "tolerance": 0,
@@ -149,7 +156,7 @@ def compare(reference, replay, digest, aa):
         cases = [case for case in aa["models"] if case["model"] == model and case["passed"]]
         if len(cases) != 1 or len(cases[0]["samples"]) < 3 or cases[0]["samples"][0]["sha256"] != digest:
             raise ValueError("Capture is not the verified repeated baseline")
-        asset_bytes, checks = pinned_assets(reference["actualAssetSha256"], replay["assetSha256"])
+        asset_bytes, checks = pinned_assets(reference["actualAssetSha256"], replay["assetSha256"], canonical_assets)
         report["assets"] = checks
         report["asset_normalization"] = "Original valid JSON may use exactly LF or CRLF; all port assets match pinned Git bytes; binary assets require exact bytes"
         report["dependencies"] = dependencies(reference, asset_bytes)

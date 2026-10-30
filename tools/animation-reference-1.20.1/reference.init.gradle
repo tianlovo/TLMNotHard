@@ -1,12 +1,16 @@
 // This script only configures the separately checked out upstream reference build
 // The GTNH build never applies it or compiles these probe sources
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
 def probePath = System.getenv('TLMNH_REFERENCE_PROBE')
 def runtimePath = System.getenv('TLMNH_REFERENCE_HOME')
 if (!probePath || !runtimePath) {
     throw new GradleException('Reference probe and runtime locations must be supplied by the local launcher')
 }
+
 def probeRoot = new File(probePath).canonicalFile
 def runtimeRoot = new File(runtimePath).canonicalFile
 def portRoot = new File(probeRoot, '../..').canonicalFile
@@ -14,6 +18,216 @@ if (runtimeRoot.toPath().startsWith(portRoot.toPath())) {
     throw new GradleException('Reference runtime and private evidence must remain outside the source checkout')
 }
 
+// The inventory task never approves itself; runClient requires a separately reviewed lock
+def identityRoot = new File(runtimeRoot, 'identity')
+def outsideIdentity = { File file ->
+    def resolved = file.canonicalFile
+    if (resolved.toPath().startsWith(portRoot.toPath()))
+        throw new GradleException('Reference identity files must remain outside the source checkout')
+    resolved
+}
+def identityLockFile = outsideIdentity(new File(System.getenv('TLMNH_REFERENCE_IDENTITY_LOCK') ?: new File(identityRoot, 'toolchain-lock.json').path))
+def identityManifestFile = outsideIdentity(new File(System.getenv('TLMNH_REFERENCE_BUILD_IDENTITY') ?: new File(identityRoot, 'build-identity.json').path))
+def identityInventoryFile = outsideIdentity(new File(identityRoot, 'toolchain-inventory.json'))
+def identityClassesFile = new File(probeRoot, 'identity-classes.json')
+def identityClassesSpec = new JsonSlurper().parse(identityClassesFile)
+if (identityClassesSpec.schema != 'reference-identity-classes-v1' || !identityClassesSpec.classes
+    || identityClassesSpec.classes.toSet().size() != identityClassesSpec.classes.size())
+    throw new GradleException('Invalid reference identity class list')
+def identitySelectedClasses = identityClassesSpec.classes.sort()
+def identityApprovedLock = identityLockFile.isFile() ? new JsonSlurper().parse(identityLockFile) : null
+if (identityApprovedLock != null && (identityApprovedLock.schema != 'reference-toolchain-lock-v1' || identityApprovedLock.status != 'APPROVED'))
+    throw new GradleException('Reference toolchain lock is not approved')
+def identityShaBytes = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+def identityShaFile = { File file -> identityShaBytes(file.bytes) }
+def identityJava = {
+    [runtimeVersion: System.getProperty('java.runtime.version'), vendor: System.getProperty('java.vendor'), vmName: System.getProperty('java.vm.name')]
+}
+def identityWriteJson = { File file, Object value ->
+    file.parentFile.mkdirs()
+    def temporary = new File(file.parentFile, file.name + '.tmp')
+    temporary.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+    java.nio.file.Files.move(temporary.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+}
+def identityTreeHash = { File root, Collection<File> files ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    files.sort { a, b -> root.toPath().relativize(a.toPath()).toString() <=> root.toPath().relativize(b.toPath()).toString() }.each { file ->
+        digest.update(root.toPath().relativize(file.toPath()).toString().replace('\\', '/').getBytes('UTF-8'))
+        digest.update((byte) 0)
+        digest.update(MessageDigest.getInstance('SHA-256').digest(file.bytes))
+    }
+    digest.digest().encodeHex().toString()
+}
+def identityCodeSource = { Class type ->
+    def location = type.protectionDomain?.codeSource?.location
+    if (location == null || location.protocol != 'file') throw new GradleException('Unsupported plugin implementation CodeSource')
+    def file = new File(location.toURI()).canonicalFile
+    if (file.isFile()) return [kind: 'jar', fileName: file.name, sha256: identityShaFile(file)]
+    if (!file.isDirectory()) throw new GradleException('Plugin implementation CodeSource unavailable')
+    def files = []
+    file.eachFileRecurse { if (it.isFile() && it.name.endsWith('.class')) files.add(it) }
+    [kind: 'directory', classTreeSha256: identityTreeHash(file, files)]
+}
+def identityPluginModules = [
+    'net.minecraftforge.gradle': 'net.minecraftforge.gradle:ForgeGradle',
+    'org.parchmentmc.librarian.forgegradle': 'org.parchmentmc:librarian',
+    'org.spongepowered.mixin': 'org.spongepowered:mixingradle',
+    'com.github.johnrengelman.shadow': 'gradle.plugin.com.github.johnrengelman:shadow'
+]
+
+gradle.beforeProject { upstream ->
+    upstream.buildscript.configurations.matching { it.name == 'classpath' }.configureEach { configuration ->
+        if (identityApprovedLock != null)
+            configuration.resolutionStrategy.force(*identityApprovedLock.buildscriptArtifacts.collect { "${it.group}:${it.name}:${it.version}" }.unique())
+    }
+    upstream.afterEvaluate {
+        if (upstream != upstream.rootProject) return
+        def currentIdentityToolchain = {
+            def artifacts = upstream.buildscript.configurations.classpath.resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+                def id = artifact.moduleVersion.id
+                [group: id.group, name: id.name, version: id.version, classifier: artifact.classifier ?: '', extension: artifact.extension,
+                 fileName: artifact.file.name, sha256: identityShaFile(artifact.file)]
+            }.sort { a, b -> JsonOutput.toJson(a) <=> JsonOutput.toJson(b) }
+            def implementations = identityPluginModules.collect { id, module ->
+                def plugin = upstream.plugins.findPlugin(id)
+                if (plugin == null) throw new GradleException('Required reference build plugin absent: ' + id)
+                Class implementation = plugin.class
+                while (implementation.name.endsWith('_Decorated') && implementation.superclass != null) implementation = implementation.superclass
+                def resource = implementation.getResourceAsStream('/' + implementation.name.replace('.', '/') + '.class')
+                if (resource == null) throw new GradleException('Plugin implementation resource unavailable: ' + id)
+                def classSha
+                resource.withCloseable { classSha = identityShaBytes(it.readAllBytes()) }
+                if (!artifacts.any { it.group + ':' + it.name == module }) throw new GradleException('Raw plugin artifact missing: ' + id)
+                [id: id, instanceClass: plugin.class.name, implementationClass: implementation.name,
+                 implementationResourceSha256: classSha, resourceScope: 'loader-resource-not-post-transform-definition',
+                 codeSource: identityCodeSource(implementation), rawArtifactModule: module]
+            }.sort { it.id }
+            [gradleVersion: gradle.gradleVersion, java: identityJava(), buildscriptArtifacts: artifacts, plugins: implementations]
+        }
+        def verifyIdentityToolchain = { Map current ->
+            if (identityApprovedLock == null) throw new GradleException('Approved reference toolchain lock required; run tlmnhReferenceIdentityInventory first')
+            for (key in ['gradleVersion', 'java', 'buildscriptArtifacts', 'plugins'])
+                if (identityApprovedLock[key] != current[key]) throw new GradleException('Reference toolchain identity mismatch: ' + key)
+            if (gradle.gradleVersion != '8.14.3' || JavaVersion.current().majorVersion != '17')
+                throw new GradleException('Reference identity requires Gradle 8.14.3 and Java 17')
+        }
+        upstream.tasks.register('tlmnhReferenceIdentityInventory') {
+            group = 'verification'
+            description = 'Records actual plugin resolution and origins without approving them'
+            doLast {
+                def value = currentIdentityToolchain()
+                value.schema = 'reference-toolchain-inventory-v1'
+                value.status = 'INVENTORY_ONLY'
+                identityWriteJson(identityInventoryFile, value)
+                logger.lifecycle('Reference toolchain inventory recorded outside the source checkout; review before creating the APPROVED lock')
+            }
+        }
+        upstream.tasks.named('processResources').configure { from(identityClassesFile) { into 'tlmnh-reference' } }
+        def agentSources = upstream.sourceSets.create('referenceIdentityAgent') {
+            java.srcDir(new File(probeRoot, 'identity-agent'))
+        }
+        upstream.tasks.named(agentSources.compileJavaTaskName).configure { options.release.set(17) }
+        def identityAgentJar = upstream.tasks.register('referenceIdentityAgentJar', Jar) {
+            dependsOn agentSources.classesTaskName
+            from agentSources.output
+            archiveFileName.set('tlmnh-reference-identity-agent.jar')
+            destinationDirectory.set(upstream.layout.buildDirectory.dir('reference-identity'))
+            preserveFileTimestamps = false
+            reproducibleFileOrder = true
+            manifest.attributes('Premain-Class': 'com.tianluoqaq.tlmnh.reference.identity.ReferenceIdentityAgent',
+                'Can-Redefine-Classes': 'false', 'Can-Retransform-Classes': 'false')
+        }
+        def identityFixtureSources = upstream.sourceSets.create('referenceIdentityAgentFixture') {
+            java.srcDir(new File(probeRoot, 'identity-agent-test'))
+        }
+        upstream.tasks.named(identityFixtureSources.compileJavaTaskName).configure { options.release.set(17) }
+        upstream.tasks.register('testReferenceIdentityAgent', JavaExec) {
+            group = 'verification'
+            description = 'Tests the actual premain observer in a separate Java 17 process without Minecraft'
+            dependsOn identityAgentJar, identityFixtureSources.classesTaskName
+            mainClass.set('com.tianluoqaq.tlmnh.reference.identitytest.ReferenceIdentityAgentFixture')
+            javaLauncher.set(upstream.javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(17)) })
+            classpath = identityFixtureSources.runtimeClasspath
+            doFirst {
+                def fixtureManifest = upstream.layout.buildDirectory.file('reference-identity/fixture-build-identity.txt').get().asFile
+                fixtureManifest.parentFile.mkdirs()
+                fixtureManifest.setText('standalone-agent-fixture-v1\n', 'UTF-8')
+                jvmArgs '-XX:+DisableAttachMechanism',
+                    '-javaagent:' + identityAgentJar.get().archiveFile.get().asFile.absolutePath + '=com.tianluoqaq.tlmnh.reference.identitytest.ReferenceIdentityAgentFixture',
+                    '-Dtlmnh.reference.buildIdentity=' + fixtureManifest.absolutePath
+            }
+        }
+        def identityGit = { String... arguments ->
+            def command = [System.getenv('TLMNH_REFERENCE_GIT') ?: 'git', '-C', upstream.projectDir.path] + arguments.toList()
+            def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+            def output = new ByteArrayOutputStream()
+            def reader = Thread.start { process.inputStream.withCloseable { output << it } }
+            if (!process.waitFor(15, TimeUnit.SECONDS)) { process.destroyForcibly(); throw new GradleException('Reference Git identity query timed out') }
+            reader.join()
+            if (process.exitValue() != 0) throw new GradleException('Reference Git identity query failed')
+            output.toString('UTF-8')
+        }
+        def normalizeIdentityPatch = { String text -> text.replace('\r\n', '\n').readLines().findAll { !it.startsWith('index ') }.join('\n').trim() }
+        def identityBuild = upstream.tasks.register('tlmnhReferenceRuntimeIdentity') {
+            group = 'verification'
+            description = 'Writes a verified path-free identity for the actually compiled reference build'
+            dependsOn upstream.tasks.named('compileJava'), upstream.tasks.named('processResources'), identityAgentJar
+            doLast {
+                def value = currentIdentityToolchain()
+                verifyIdentityToolchain(value)
+                def head = identityGit('rev-parse', 'HEAD').trim()
+                if (head != '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6') throw new GradleException('Unexpected upstream reference commit')
+                def buildInputs = ['build.gradle', 'settings.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat',
+                    'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties']
+                if (!identityGit(*(['diff', '--name-only', 'HEAD', '--'] + buildInputs)).trim().isEmpty())
+                    throw new GradleException('Upstream reference build inputs differ from the pinned commit')
+                def patch = new File(probeRoot, 'upstream-probe.patch')
+                def diff = identityGit('diff', '--binary', '--no-ext-diff', 'HEAD', '--', 'src')
+                if (normalizeIdentityPatch(diff) != normalizeIdentityPatch(patch.getText('UTF-8')))
+                    throw new GradleException('Upstream source changes do not match the reviewed reference probe patch')
+                if (identityGit('status', '--porcelain', '--untracked-files=all', '--', 'src').readLines().any { it.startsWith('??') })
+                    throw new GradleException('Untracked upstream reference sources are not allowed')
+                def probeFiles = []
+                for (folder in ['src/main/java', 'identity-agent'])
+                    new File(probeRoot, folder).eachFileRecurse { if (it.isFile() && it.name.endsWith('.java')) probeFiles.add(it) }
+                def compiled = new TreeMap<String, String>()
+                identitySelectedClasses.each { name ->
+                    def matches = upstream.sourceSets.main.output.classesDirs.files.collect { new File(it, name.replace('.', '/') + '.class') }.findAll { it.isFile() }
+                    if (matches.size() != 1) throw new GradleException('Missing or ambiguous compiled reference class: ' + name)
+                    compiled[name] = identityShaFile(matches[0])
+                }
+                value.schema = 'reference-build-identity-v1'
+                value.status = 'LOCK_VERIFIED'
+                value.toolchainLockSha256 = identityShaFile(identityLockFile)
+                value.upstreamCommit = head
+                value.patchSha256 = identityShaFile(patch)
+                value.upstreamDiffSha256 = identityShaBytes(normalizeIdentityPatch(diff).getBytes('UTF-8'))
+                value.probeSourcesSha256 = identityTreeHash(probeRoot, probeFiles)
+                value.referenceInitSha256 = identityShaFile(new File(probeRoot, 'reference.init.gradle'))
+                value.upstreamBuildInputs = buildInputs.findAll { new File(upstream.projectDir, it).isFile() }.collectEntries {
+                    [(it): identityShaFile(new File(upstream.projectDir, it))]
+                }
+                value.probeSources = probeFiles.collect { [file: probeRoot.toPath().relativize(it.toPath()).toString().replace('\\', '/'), sha256: identityShaFile(it)] }.sort { it.file }
+                value.identityClassesSha256 = identityShaFile(identityClassesFile)
+                value.compiledClasses = compiled
+                value.identityAgent = [fileName: identityAgentJar.get().archiveFile.get().asFile.name, sha256: identityShaFile(identityAgentJar.get().archiveFile.get().asFile),
+                    className: 'com.tianluoqaq.tlmnh.reference.identity.ReferenceIdentityAgent']
+                value.runtimeArtifacts = upstream.configurations.runtimeClasspath.files.findAll { it.isFile() }.collect {
+                    [fileName: it.name, sha256: identityShaFile(it)]
+                }.sort { a, b -> a.fileName <=> b.fileName ?: a.sha256 <=> b.sha256 }
+                identityWriteJson(identityManifestFile, value)
+            }
+        }
+        upstream.tasks.matching { it.name == 'runClient' }.configureEach {
+            dependsOn identityBuild
+            doFirst {
+                jvmArgs '-XX:+DisableAttachMechanism',
+                    '-javaagent:' + identityAgentJar.get().archiveFile.get().asFile.absolutePath + '=' + identitySelectedClasses.join(','),
+                    '-Dtlmnh.reference.buildIdentity=' + identityManifestFile.absolutePath
+            }
+        }
+    }
+}
 gradle.beforeProject { upstream ->
     upstream.repositories.maven {
         name = 'TLMNHParchmentMirror'

@@ -1,0 +1,25 @@
+{
+  "schema": "reference-identity-classes-v1",
+  "classes": [
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+    "com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.AnimationManager",
+    "com.github.tartaricacid.touhoulittlemaid.client.entity.GeckoMaidEntity",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.AnimatableEntity",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.GeoReplacedEntityRenderer",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor.AnimationProcessor",
+    "com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityMaidRenderer",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.GeckoEntityMaidRenderer",
+    "com.github.tartaricacid.touhoulittlemaid.client.animation.HardcodedAnimationManger",
+    "com.github.tartaricacid.touhoulittlemaid.client.animation.CustomJsAnimationManger",
+    "com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel",
+    "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart",
+    "com.tianluoqaq.tlmnh.reference.ReferenceObservationProbe",
+    "com.tianluoqaq.tlmnh.reference.ReferenceFrameScope",
+    "com.tianluoqaq.tlmnh.reference.ReferenceReplayInputs",
+    "com.tianluoqaq.tlmnh.reference.ReferenceScenario",
+    "com.tianluoqaq.tlmnh.reference.ReferenceScene",
+    "com.tianluoqaq.tlmnh.reference.ReferenceRuntimeIdentity"
+  ]
+}

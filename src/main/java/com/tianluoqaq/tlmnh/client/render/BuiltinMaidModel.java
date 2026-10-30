@@ -9,6 +9,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
+import com.tianluoqaq.tlmnh.client.development.GpuMatrixProbe;
 import com.tianluoqaq.tlmnh.client.development.HeadBindingProbe;
 import com.tianluoqaq.tlmnh.client.development.RenderSubmissionProbe;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
@@ -95,6 +96,7 @@ public final class BuiltinMaidModel extends ModelBase {
                 throw error;
             }
         }
+        if (entity instanceof EntityMaid maid) GpuMatrixProbe.afterPose(this, maid, partialTick);
         var consumer = TessellatorVertexConsumer.INSTANCE;
         int light = entity.getBrightnessForRender(partialTick);
         RenderSubmissionProbe.begin(this, entity, light);
