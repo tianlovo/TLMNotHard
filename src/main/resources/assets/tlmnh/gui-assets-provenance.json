@@ -1,0 +1,45 @@
+{
+  "repository": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "copyright": "Copyright (c) 2019-2025 tartaric_acid",
+  "files": [
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_main.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_main.png",
+      "sha256": "af8c1c7ec475f478c7e022a84f3d194261834844189bfc9b17d3a61387a90b3f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_side.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_side.png",
+      "sha256": "895e6c97442b12fd0b17a1f2a35ee78088e8b3fbd3cbdcd550512cfff8819d64"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_button.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_button.png",
+      "sha256": "1500d37c5e05251cce25482e74db328cf8e5f632d56538551d525eed511772f9"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_task.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_task.png",
+      "sha256": "f78af768820aaf1e2fbd9a20c20bcb501197a7b9cf56edf7491734bc27f63236"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_backpack.png",
+      "sha256": "22ade366e7e65a4b342f1e36b2158486fc73b207b4d8d7213f9a6fa5b3c29f44"
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/zh_CN.lang",
+      "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
+      "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
+      "sha256": "f4fde62424cf7eaec3e95b16f3de76d3067892a895d484f57786e9d59ba3feea"
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/en_US.lang",
+      "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
+      "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
+      "sha256": "f3c6f7268ae61cb32fb16e7e3df5d78188d3c31bac4feec5e93fddc4bfd193aa"
+    }
+  ]
+}

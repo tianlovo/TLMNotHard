@@ -43,6 +43,7 @@ public final class MaidContainerProbe {
         maid.bindTo(owner.getUniqueID());
         require(world.spawnEntityInWorld(maid), "temporary maid spawn");
         try {
+            verifyOriginalLayout(world, owner, stranger, maid);
             var inventory = maid.getMaidInventory();
             var container = new ContainerMaid(owner.inventory, maid);
             require(container.canInteractWith(owner), "owner access");
@@ -148,6 +149,83 @@ public final class MaidContainerProbe {
             for (int slot = 0; slot < 36; slot++) owner.inventory.setInventorySlotContents(slot, null);
             world.removeEntity(maid);
         }
+    }
+
+    private static void verifyOriginalLayout(WorldServer world, EntityPlayer owner, EntityPlayer stranger,
+        EntityMaid maid) {
+        var original = new com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer(
+            owner.inventory,
+            maid);
+        var inventory = maid.getMaidInventory();
+        require(original.inventorySlots.size() == 48, "original slot count");
+        for (int i = 0; i < 36; i++) {
+            var slot = original.inventorySlots.get(i);
+            require(slot.inventory == owner.inventory, "original player-first inventory");
+            require(
+                slot.xDisplayPosition == 88 + 18 * (i % 9)
+                    && slot.yDisplayPosition == (i < 27 ? 174 + 18 * (i / 9) : 232),
+                "original player coordinates");
+        }
+        int[] x = { 94, 114, 94, 114, 87, 121, 143, 161, 179, 197, 215, 233 };
+        int[] y = { 37, 37, 57, 57, 77, 77, 37, 37, 37, 37, 37, 37 };
+        for (int i = 0; i < 12; i++) {
+            var slot = original.inventorySlots.get(36 + i);
+            require(
+                slot.inventory == inventory && slot.xDisplayPosition == x[i] && slot.yDisplayPosition == y[i],
+                "original maid coordinates");
+        }
+        require(
+            new CommonProxy().getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL, owner, world, maid.getEntityId(), 0, 0)
+                != null,
+            "original owner route");
+        require(
+            new CommonProxy()
+                .getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL, stranger, world, maid.getEntityId(), 0, 0) == null,
+            "original stranger route");
+        owner.inventory.setInventorySlotContents(0, new ItemStack(Items.iron_helmet));
+        original.transferStackInSlot(owner, 27);
+        require(
+            inventory.getStackInSlot(MaidInventory.ARMOR_START + 3) != null
+                && owner.inventory.getStackInSlot(0) == null,
+            "original helmet logical mapping");
+        owner.inventory.setInventorySlotContents(0, new ItemStack(Items.bow));
+        original.transferStackInSlot(owner, 27);
+        require(
+            inventory.getStackInSlot(MaidInventory.MAIN_HAND) != null && owner.inventory.getStackInSlot(0) == null,
+            "original main-hand mapping");
+        inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 63));
+        for (int i = 1; i < 6; i++) inventory.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
+        owner.inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 64));
+        int before = countArrows(maid, owner);
+        original.transferStackInSlot(owner, 27);
+        require(
+            inventory.getStackInSlot(0).stackSize == 64 && owner.inventory.getStackInSlot(0).stackSize == 63
+                && countArrows(maid, owner) == before,
+            "original bounded shift conservation");
+        require(
+            original.transferStackInSlot(stranger, 42) == null && original.slotClick(42, 0, 0, stranger) == null
+                && !original.enchantItem(stranger, ContainerMaid.ACTION_HOME),
+            "original stranger operations");
+        original.transferStackInSlot(owner, 42);
+        require(
+            countArrows(maid, owner) == before && inventory.getStackInSlot(0) == null,
+            "original reverse conservation");
+        maid.ticksExisted++;
+        maid.setPickupItems(true);
+        maid.setPickupExperience(false);
+        require(
+            original.enchantItem(owner, ContainerMaid.ACTION_PICKUP_ALL) && !maid.canPickupItems()
+                && !maid.canPickupExperience(),
+            "original combined pickup off");
+        maid.ticksExisted++;
+        require(
+            original.enchantItem(owner, ContainerMaid.ACTION_PICKUP_ALL) && maid.canPickupItems()
+                && maid.canPickupExperience(),
+            "original combined pickup on");
+        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) inventory.setInventorySlotContents(i, null);
+        for (int i = 0; i < 36; i++) owner.inventory.setInventorySlotContents(i, null);
+        TLMNotHard.LOG.info(
+            "TLMNH_ORIGINAL_CONTAINER_TEST_PASS slots=48 mapping=original shifts=conserved permissions=checked pickup=authoritative");
     }
 
     private static void verifyModelSelection(WorldServer world, EntityPlayer owner, EntityPlayer stranger,

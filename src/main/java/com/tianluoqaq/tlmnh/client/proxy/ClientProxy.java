@@ -57,6 +57,9 @@ public final class ClientProxy extends CommonProxy {
     public Object getClientGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {
         var container = getServerGuiElement(id, player, world, entityId, unusedY, unusedZ);
+        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer original)
+            return new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen(
+                original);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         return container instanceof ContainerMaidModels modelContainer ? new GuiMaidModels(modelContainer) : null;

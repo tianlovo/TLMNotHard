@@ -483,3 +483,16 @@ TinkersDefense 圆盾和鸢形盾继续使用真实物品回调及 `InfiTool` �
 安全远距返家另参考同一固定上游 `SchedulePos.tick` 与 `TeleportHelper.teleportToRestrictCenter`
 `MaidHomeTeleport` 保留家园候选 X/Z ±3、Y 向上 0～3 及最多 10 次尝试，使用 RC2 原生碰撞、液体和实体检查
 仅采用已加载且仍在当前家园范围的落点，排除已知火焰/仙人掌并清理本动作；不是完整现代 randomTeleport 等价实现
+
+## 原版女仆主界面
+
+主页面与空背包页面、容器按固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 移植，保留原包名
+来源为 `client/gui/entity/maid/AbstractMaidContainerGui.java`、`backpack/EmptyBackpackContainerScreen.java`
+及 `inventory/container/AbstractMaidContainer.java`、`MaidMainContainer.java`、`backpack/EmptyBackpackContainer.java`
+适配 Forge 1.7.10 GUI/容器 API，原版玩家槽位在前；默认背包最后一格只建立一个逻辑槽，避免重复映射
+服务端动作复用既有权限与同步，独立图集按钮、预览恢复和物品转移适配保留工程包名
+
+五张原版主图集按原始字节导入，语言键从上游 JSON 选取并保留原文，来源与摘要见
+`src/main/resources/assets/tlmnh/gui-assets-provenance.json`，资产沿用 CC BY-NC-SA 4.0，代码沿用 MIT
+当前为开发开关下的原版主页面实验入口；任务/女仆设置、声音选择、原版模型列表和完整提示仍待移植
+现有自制页面保留作开发隔离工具，不作为正式界面或原版视觉等价验收

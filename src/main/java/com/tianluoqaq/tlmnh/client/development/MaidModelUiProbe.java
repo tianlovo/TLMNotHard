@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.client.development;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -32,7 +33,10 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
         if (!action.equals("status")) {
-            if (minecraft.currentScreen instanceof GuiMaid main) {
+            if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
+                requested = original.requestAction(action);
+                network = requested && !action.equals("tasks");
+            } else if (minecraft.currentScreen instanceof GuiMaid main) {
                 if (action.equals("open")) {
                     requested = main.openModelSelector();
                     network = requested;
@@ -112,6 +116,26 @@ public final class MaidModelUiProbe {
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("clientReplicaOnly", true);
+        if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
+            response.addProperty("taskListOpen", original.isTaskListOpen());
+            response.addProperty("scaledWidth", original.width);
+            response.addProperty("scaledHeight", original.height);
+            response.addProperty("slotCount", original.inventorySlots.inventorySlots.size());
+            response.addProperty(
+                "task",
+                maid.getTask()
+                    .getId());
+            response.addProperty(
+                "schedule",
+                maid.getSchedule()
+                    .name());
+            response.addProperty(
+                "homeEnabled",
+                maid.getHomeArea()
+                    .enabled());
+            response.addProperty("pickupItems", maid.canPickupItems());
+            response.addProperty("pickupExperience", maid.canPickupExperience());
+        }
         if (minecraft.currentScreen instanceof GuiMaid main) {
             response.addProperty("homePage", main.isHomeSettingsPage());
             response.addProperty(
@@ -149,7 +173,8 @@ public final class MaidModelUiProbe {
     public static void requireCaptureScreen() {
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
-        if (!(screen instanceof GuiMaidModels) && !(screen instanceof GuiMaid main && main.isHomeSettingsPage()))
+        if (!(screen instanceof AbstractMaidContainerGui<?>) && !(screen instanceof GuiMaidModels)
+            && !(screen instanceof GuiMaid main && main.isHomeSettingsPage()))
             throw new IllegalStateException("Maid GUI capture requires the actual selector or home settings page");
     }
 
@@ -163,7 +188,9 @@ public final class MaidModelUiProbe {
             || !player.noClip) throw new IllegalStateException("Safe lab observer required");
         if (!(minecraft.currentScreen instanceof GuiContainer screen) || screen.inventorySlots != player.openContainer
             || !screen.inventorySlots.canInteractWith(player)
-            || !(minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
+            || !(minecraft.currentScreen instanceof AbstractMaidContainerGui<?>
+                && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
+                || minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
                 || minecraft.currentScreen instanceof GuiMaidModels
                     && player.openContainer instanceof ContainerMaidModels))
             throw new IllegalStateException("Actual owned maid window required");

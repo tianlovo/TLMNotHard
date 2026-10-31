@@ -98,3 +98,6 @@ gui.tlmnh.home.dimension=Home dimension: %s
 commands.tlmnhdev.home_passed=Home activity checks passed
 gui.tlmnh.home.open=Home settings
 gui.tlmnh.home.back=Status
+
+gui.tlmnh.original.pending=This page is not ported yet; the original icon is retained
+gui.tlmnh.original.model_prototype=Indev currently opens the model selection prototype

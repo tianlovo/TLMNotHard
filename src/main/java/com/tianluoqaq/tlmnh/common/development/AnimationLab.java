@@ -169,6 +169,11 @@ public final class AnimationLab {
         player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, player.worldObj, maid.getEntityId(), 0, 0);
     }
 
+    public static void openOriginalGui(EntityPlayerMP player) {
+        var maid = ownedSceneMaid(player);
+        player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, player.worldObj, maid.getEntityId(), 0, 0);
+    }
+
     public static EntityMaid ownedSceneMaid(EntityPlayerMP player) {
         verifyObserver(player);
         var maid = sceneMaid(world());

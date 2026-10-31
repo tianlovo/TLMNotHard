@@ -4,6 +4,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
@@ -19,6 +20,7 @@ public class CommonProxy implements IGuiHandler {
     public static final int GUI_MAID = 0;
     public static final int GUI_MAID_MODELS = 1;
     public static final int GUI_MAID_NAMING = 2;
+    public static final int GUI_MAID_ORIGINAL = 3;
 
     public void init() {
         MaidNamingNetwork.init();
@@ -27,12 +29,15 @@ public class CommonProxy implements IGuiHandler {
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {
-        if ((id != GUI_MAID && id != GUI_MAID_MODELS && id != GUI_MAID_NAMING) || world == null
+        if ((id != GUI_MAID && id != GUI_MAID_MODELS && id != GUI_MAID_NAMING && id != GUI_MAID_ORIGINAL)
+            || world == null
             || player == null
             || world != player.worldObj) return null;
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
+        if (id == GUI_MAID_ORIGINAL)
+            return Boolean.getBoolean("tlmnh.devCommands") ? new EmptyBackpackContainer(player.inventory, maid) : null;
         if (id == GUI_MAID_NAMING) {
             long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
             if (session == 0 || !MaidInteractions.canInteract(maid, player)

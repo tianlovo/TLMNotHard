@@ -97,3 +97,6 @@ gui.tlmnh.home.dimension=家园维度：%s
 commands.tlmnhdev.home_passed=家园活动范围检查通过
 gui.tlmnh.home.open=家园设置
 gui.tlmnh.home.back=返回状态
+
+gui.tlmnh.original.pending=此页尚未移植，当前仅保留原版图标
+gui.tlmnh.original.model_prototype=开发版暂时打开模型选择原型

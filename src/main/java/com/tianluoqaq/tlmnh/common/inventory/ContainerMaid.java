@@ -17,7 +17,7 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 复用原版容器交易，每次操作重新检查主人、实体身份和距离 */
-public final class ContainerMaid extends Container {
+public class ContainerMaid extends Container {
 
     public static final int WIDTH = 320;
     public static final int HEIGHT = 220;
@@ -36,13 +36,20 @@ public final class ContainerMaid extends Container {
     public static final int ACTION_HOME_IDLE = 12;
     public static final int ACTION_HOME_REST = 13;
     public static final int ACTION_HOME_RESET = 14;
+    public static final int ACTION_PICKUP_ALL = 15;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
 
     public ContainerMaid(InventoryPlayer playerInventory, EntityMaid maid) {
+        this(playerInventory, maid, true);
+    }
+
+    /** 原版布局复用相同权限和动作处理，槽位由原版容器子类建立 */
+    protected ContainerMaid(InventoryPlayer playerInventory, EntityMaid maid, boolean developmentLayout) {
         this.maid = maid;
         this.viewer = playerInventory.player;
+        if (!developmentLayout) return;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
             addMaidSlot(slot, 8 + slot * 18, 100);
         }
@@ -96,7 +103,7 @@ public final class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_HOME_RESET
+            || action > ACTION_PICKUP_ALL
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
         if (action == ACTION_MODELS && player.inventory.getItemStack() != null) {
@@ -111,6 +118,11 @@ public final class ContainerMaid extends Container {
             case ACTION_DAY -> maid.setSchedule(MaidSchedule.DAY);
             case ACTION_NIGHT -> maid.setSchedule(MaidSchedule.NIGHT);
             case ACTION_ALL_DAY -> maid.setSchedule(MaidSchedule.ALL);
+            case ACTION_PICKUP_ALL -> {
+                boolean enabled = !(maid.canPickupItems() || maid.canPickupExperience());
+                maid.setPickupItems(enabled);
+                maid.setPickupExperience(enabled);
+            }
             case ACTION_PICKUP_ITEMS -> maid.setPickupItems(!maid.canPickupItems());
             case ACTION_PICKUP_EXPERIENCE -> maid.setPickupExperience(!maid.canPickupExperience());
             case ACTION_SIT -> {
