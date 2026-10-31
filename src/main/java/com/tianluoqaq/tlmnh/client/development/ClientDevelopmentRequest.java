@@ -13,11 +13,11 @@ public final class ClientDevelopmentRequest {
     public final Command command;
     public final String screenshotName;
     public final float yaw, pitch;
-    public final int port;
+    public final int port, warmupTicks;
     public final String model, fault, action, view;
 
     private ClientDevelopmentRequest(Command command, String screenshotName, float yaw, float pitch, int port,
-        String model, String fault, String action, String view) {
+        String model, String fault, String action, String view, int warmupTicks) {
         this.command = command;
         this.screenshotName = screenshotName;
         this.yaw = yaw;
@@ -27,6 +27,7 @@ public final class ClientDevelopmentRequest {
         this.fault = fault;
         this.action = action;
         this.view = view;
+        this.warmupTicks = warmupTicks;
     }
 
     public static ClientDevelopmentRequest parse(JsonObject json) {
@@ -43,6 +44,7 @@ public final class ClientDevelopmentRequest {
         String name = null;
         float yaw = 0, pitch = 0;
         int port = 0;
+        int warmupTicks = 0;
         String model = null, fault = "none";
         String action = null, view = null;
         if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE) {
@@ -96,6 +98,11 @@ public final class ClientDevelopmentRequest {
             model = text(json, "model");
             action = text(json, "action");
             view = json.has("view") ? text(json, "view") : "positive_z";
+            if (json.has("warmupTicks")) {
+                warmupTicks = (int) number(json, "warmupTicks", 0, 60);
+                if (json.get("warmupTicks")
+                    .getAsDouble() != warmupTicks) throw new IllegalArgumentException("Invalid integer warmupTicks");
+            }
             if (!Arrays.asList("touhou_little_maid:hakurei_reimu", "geckolib:winefox")
                 .contains(model) || !heldGpuActions().contains(action)
                 || !heldGpuViews().contains(view)
@@ -107,7 +114,7 @@ public final class ClientDevelopmentRequest {
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
             if (action.equals("select")) model = text(json, "model");
         }
-        return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view);
+        return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }
 
     private static String text(JsonObject json, String name) {

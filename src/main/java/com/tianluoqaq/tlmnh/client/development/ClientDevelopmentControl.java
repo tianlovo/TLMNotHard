@@ -20,6 +20,8 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.util.ScreenShotHelper;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.WorldEvent;
 
 import org.lwjgl.opengl.GL11;
 
@@ -70,6 +72,7 @@ public final class ClientDevelopmentControl {
             Files.createDirectories(directory);
         }
         TLMNotHard.LOG.info("TLMNH_CLIENT_CONTROL_READY directory=tlmnh-dev/control version={}", Tags.VERSION);
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -109,9 +112,17 @@ public final class ClientDevelopmentControl {
         }
         flushHeadBinding();
         flushGpuMatrix();
+        flushHeldGpu();
         if (shutdownAfterWrites && pendingWrites.isEmpty()
             && unwrittenHeadBinding == null
-            && unwrittenGpuMatrix == null) minecraft.shutdown();
+            && unwrittenGpuMatrix == null
+            && unwrittenHeldGpu == null
+            && !HeldItemGpuProbe.isPending()) minecraft.shutdown();
+    }
+
+    @SubscribeEvent
+    public void worldUnload(WorldEvent.Unload event) {
+        if (event.world.isRemote) HeldItemGpuProbe.onWorldUnload(event.world);
     }
 
     private void handle(Path path) throws IOException {
@@ -275,7 +286,7 @@ public final class ClientDevelopmentControl {
                 case HELD_ITEM_GPU_PROBE:
                     if (submissionPending || !captures.isEmpty())
                         throw new IllegalStateException("Finish the active submission or screenshot first");
-                    HeldItemGpuProbe.arm(name, request.model, request.action, request.view);
+                    HeldItemGpuProbe.arm(name, request.model, request.action, request.view, request.warmupTicks);
                     response.addProperty("status", "pending-render");
                     break;
                 case GECKO_LIBRARY_PROBE:

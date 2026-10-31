@@ -25,6 +25,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings.GameType;
 
 import org.joml.Matrix4f;
@@ -42,6 +43,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.client.render.BuiltinGeckoPlayer;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
@@ -76,7 +78,7 @@ public final class HeldItemGpuProbe {
         return transaction != null && transaction.request.maid == maid;
     }
 
-    public static void arm(String request, String model, String action, String view) {
+    public static void arm(String request, String model, String action, String view, int warmupTicks) {
         requireObserver();
         if (pending != null || active != null) throw new IllegalStateException("Held GPU probe already pending");
         if (!request.matches("[A-Za-z0-9_-]{1,100}\\.json")
@@ -84,9 +86,10 @@ public final class HeldItemGpuProbe {
                 .contains(model)
             || !actions().contains(action)
             || !ClientDevelopmentRequest.heldGpuViews()
-                .contains(view))
-            throw new IllegalArgumentException("Unreviewed held GPU fixture");
-        pending = new Request(request, model, action, view, soleMaid(model));
+                .contains(view)
+            || warmupTicks < 0
+            || warmupTicks > 60) throw new IllegalArgumentException("Unreviewed held GPU fixture");
+        pending = new Request(request, model, action, view, warmupTicks, soleMaid(model));
     }
 
     public static List<String> actions() {
@@ -95,22 +98,59 @@ public final class HeldItemGpuProbe {
 
     public static void tickEnd() {
         if (pending == null || pending.report != null) return;
-        if (++pending.ticks > 200 || System.nanoTime() > pending.deadline) cancel("Held GPU frame deadline exceeded");
+        var request = pending;
+        if (request.cancelReason != null) {
+            cancel(request.cancelReason);
+            return;
+        }
+        if (++request.ticks > 200 || System.nanoTime() > request.deadline) {
+            cancel("Held GPU frame deadline exceeded");
+            return;
+        }
+        try {
+            request.requireContext();
+            if (!request.fixtureInstalled && request.warmupTicks > 0) request.installFixture();
+            else if (request.fixtureInstalled) request.observeTick();
+        } catch (RuntimeException | LinkageError failure) {
+            cancel("Held GPU warmup tick failed: " + failure);
+        }
+    }
+
+    public static void onWorldUnload(World world) {
+        if (pending != null && pending.world == world) cancel("Held GPU original client world unloaded");
     }
 
     public static void renderEnd(float partialTick) {
         if (pending == null || pending.report != null || active != null) return;
         var request = pending;
-        var report = header(request);
+        if (request.cancelReason != null) {
+            cancel(request.cancelReason);
+            return;
+        }
+        if (System.nanoTime() > request.deadline) {
+            cancel("Held GPU render deadline exceeded");
+            return;
+        }
+        try {
+            request.requireContext();
+            if (!request.fixtureInstalled) {
+                if (request.warmupTicks > 0) return;
+                request.installFixture();
+            }
+            request.requireOwnedLease();
+            request.observeNaturalCompletion();
+            if (!request.ready()) return;
+            request.captureStarted = true;
+            request.phase = "CAPTURING";
+        } catch (RuntimeException | LinkageError failure) {
+            cancel("Held GPU warmup render failed: " + failure);
+            return;
+        }
+        var report = request.evidence;
         HeldItemGpuState state = null;
         Framebuffer target = null, body = null, empty = null;
         Transaction transaction = null;
-        ItemStack main = request.maid.getHeldItem(), off = request.maid.getOffhandItem();
-        var mainValue = main == null ? null : main.copy();
-        var offValue = off == null ? null : off.copy();
-        report.add("originalMainhand", MaidShieldFixtures.snapshot(main));
-        report.add("originalOffhand", MaidShieldFixtures.snapshot(off));
-        boolean stateRestored = false, equipmentRestored = false;
+        boolean stateRestored = false;
         try {
             requireObserver();
             if (soleMaid(request.model) != request.maid) throw new IllegalStateException("Held GPU actor changed");
@@ -138,11 +178,7 @@ public final class HeldItemGpuProbe {
                 "nativeItemRendererClass",
                 RenderManager.instance.itemRenderer.getClass()
                     .getName());
-            var fixture = item(request.action, report);
-            request.maid.setCurrentItemOrArmor(0, request.side == Side.RIGHT ? fixture : null);
-            request.maid.setOffhandItem(request.side == Side.LEFT ? fixture : null);
-            report.add("actualMainhand", MaidShieldFixtures.snapshot(request.maid.getHeldItem()));
-            report.add("actualOffhand", MaidShieldFixtures.snapshot(request.maid.getOffhandItem()));
+            request.requireOwnedLease();
             state = new HeldItemGpuState();
             state.push();
             try (var matrices = renderer.openDevelopmentItemStateScope()) {
@@ -174,16 +210,10 @@ public final class HeldItemGpuProbe {
             report.addProperty(report.has("error") ? "renderFailure" : "error", failure.toString());
         } finally {
             active = null;
-            if (transaction != null) transaction.cleanup();
-            try {
-                request.maid.setCurrentItemOrArmor(0, main);
-                request.maid.setOffhandItem(off);
-                equipmentRestored = ItemStack.areItemStacksEqual(request.maid.getHeldItem(), mainValue)
-                    && ItemStack.areItemStacksEqual(request.maid.getOffhandItem(), offValue);
-                report.add("restoredMainhand", MaidShieldFixtures.snapshot(request.maid.getHeldItem()));
-                report.add("restoredOffhand", MaidShieldFixtures.snapshot(request.maid.getOffhandItem()));
+            if (transaction != null) try {
+                transaction.cleanup();
             } catch (RuntimeException | LinkageError failure) {
-                report.addProperty("equipmentRestoreError", failure.toString());
+                if (!report.has("cleanupError")) report.addProperty("cleanupError", failure.toString());
             }
             try {
                 if (empty != null) empty.deleteFramebuffer();
@@ -207,10 +237,8 @@ public final class HeldItemGpuProbe {
                 report.addProperty("stateRestoreError", failure.toString());
             }
         }
-        report.addProperty("equipmentValuesRestored", equipmentRestored);
         report.addProperty("glStateRestored", stateRestored);
-        report.addProperty(
-            "transactionComplete",
+        request.finish(
             transaction != null && transaction.seams == 1
                 && transaction.samples.size() == 10
                 && !report.has("error")
@@ -220,9 +248,7 @@ public final class HeldItemGpuProbe {
                 && !report.has("bodyDeleteError")
                 && !report.has("emptyDeleteError")
                 && !report.has("targetDeleteError")
-                && equipmentRestored
                 && stateRestored);
-        request.report = report;
     }
 
     /** 实际RendererLivingEntity已完成本体，此接缝内不重新准备pose */
@@ -243,17 +269,34 @@ public final class HeldItemGpuProbe {
 
     public static void beforeMaidBody(EntityMaid maid, BuiltinMaidModel model) {
         var transaction = active;
-        if (transaction == null || transaction.request.maid != maid) return;
+        if (transaction == null) {
+            var request = pending;
+            if (request != null && request.report == null
+                && request.fixtureInstalled
+                && request.warmupTicks > 0
+                && !request.captureStarted
+                && request.phase.equals("WARMING")
+                && request.maid == maid) {
+                try {
+                    request.noteNaturalEntry(model);
+                } catch (RuntimeException | LinkageError failure) {
+                    cancel("Held GPU natural body observation failed: " + failure);
+                }
+            }
+            return;
+        }
+        if (transaction.request.maid != maid) return;
+        transaction.request.requireCaptureModel(model);
         if (++transaction.rendererEntries != 1) throw new IllegalStateException("Nested actual maid renderer in pilot");
         transaction.poseBefore = model.getPoseSerial();
     }
 
     public static void cancel(String reason) {
         if (pending != null && pending.report == null) {
-            var report = header(pending);
-            report.addProperty("transactionComplete", false);
-            report.addProperty("error", reason);
-            pending.report = report;
+            var request = pending;
+            request.cancelReason = reason;
+            if (Thread.currentThread() != request.owner || active != null) return;
+            request.finish(false);
         }
     }
 
@@ -766,6 +809,7 @@ public final class HeldItemGpuProbe {
         }
 
         void capture(BuiltinMaidModel model, float partialTick, Runnable draw) throws Exception {
+            request.requireOwnedLease();
             observedModel = model;
             if (seams != 1 || !model.hasCompletedPoseFor(request.maid)
                 || !model.getChoice()
@@ -826,6 +870,7 @@ public final class HeldItemGpuProbe {
             observing = true;
             String[] phases = { "normal0", "normal1", "normal2", "skip_native_draw", "recovery" };
             for (int index = 0; index < phases.length * 2; index++) {
+                request.requireOwnedLease();
                 if (System.nanoTime() > request.deadline)
                     throw new IllegalStateException("Held GPU transaction deadline");
                 boolean itemOnly = index >= phases.length;
@@ -866,6 +911,7 @@ public final class HeldItemGpuProbe {
                     GL15.glBeginQuery(GL15.GL_SAMPLES_PASSED, query);
                     queryActive = true;
                     draw.run();
+                    request.requireOwnedLease();
                     var phaseBatchAfter = batchState("phase_after", 0);
                     requireImmediateBatch(phaseBatchAfter);
                     if (hands.size() != 2)
@@ -1054,17 +1100,403 @@ public final class HeldItemGpuProbe {
         final String request, model, action, view;
         final EntityMaid maid;
         final Side side;
+        final World world;
+        final Object player;
+        final String actor;
+        final int entityId, warmupTicks;
+        final Thread owner = Thread.currentThread();
         final long deadline = System.nanoTime() + 15_000_000_000L;
+        final HandLease mainLease, offLease;
+        final JsonObject evidence;
+        final List<JsonObject> tickSamples = new ArrayList<>(), naturalFrames = new ArrayList<>();
+        String phase = "ARMED", failureReason = "";
+        volatile String cancelReason;
+        boolean fixtureInstalled, captureStarted, readyForCapture, ownershipIntact = true;
+        boolean modelReferenceStable = true, playerReferenceStable = true, naturalEntryPending;
+        int installEntityTick, clientTickEnds, naturalRendererEntries, completedNaturalBodies;
+        long entryPoseSerial;
+        BuiltinMaidModel naturalModel;
+        BuiltinGeckoPlayer naturalPlayer;
+        JsonObject restoration;
         int ticks;
         JsonObject report;
 
-        Request(String request, String model, String action, String view, EntityMaid maid) {
+        Request(String request, String model, String action, String view, int warmupTicks, EntityMaid maid) {
             this.request = request;
             this.model = model;
             this.action = action;
             this.view = view;
+            this.warmupTicks = warmupTicks;
             this.maid = maid;
+            world = maid.worldObj;
+            player = Minecraft.getMinecraft().thePlayer;
+            actor = maid.getUniqueID()
+                .toString();
+            entityId = maid.getEntityId();
             side = action.startsWith("shield_") ? Side.LEFT : Side.RIGHT;
+            mainLease = new HandLease(maid, false);
+            offLease = new HandLease(maid, true);
+            evidence = header(this);
+            evidence.add("originalMainhand", snapshot(mainLease.originalValue));
+            evidence.add("originalOffhand", snapshot(offLease.originalValue));
+        }
+
+        void requireContext() {
+            if (Thread.currentThread() != owner)
+                throw new IllegalStateException("Held GPU requires original client thread");
+            var mc = Minecraft.getMinecraft();
+            if (mc.theWorld != world || mc.thePlayer != player
+                || maid.worldObj != world
+                || !actor.equals(
+                    maid.getUniqueID()
+                        .toString())
+                || entityId != maid.getEntityId())
+                throw new IllegalStateException("Held GPU original world/actor/owner context changed");
+            requireObserver();
+            if (soleMaid(model) != maid) throw new IllegalStateException("Held GPU registered actor/model changed");
+            if (cancelReason != null) throw new IllegalStateException(cancelReason);
+        }
+
+        void installFixture() {
+            requireContext();
+            if (!mainLease.originalMatches() || !offLease.originalMatches()) {
+                ownershipIntact = false;
+                throw new IllegalStateException("Held GPU equipment changed before fixture installation");
+            }
+            try {
+                evidence.add(
+                    "runtimeIdentity",
+                    DevelopmentArtifactIdentity.capture(
+                        HeldItemGpuProbe.class,
+                        HeldItemGpuState.class,
+                        MaidRenderer.class,
+                        MaidHeldItemLayer.class));
+                var fixture = item(action, evidence);
+                mainLease.write(side == Side.RIGHT ? fixture : null);
+                offLease.write(side == Side.LEFT ? fixture : null);
+                fixtureInstalled = true;
+                installEntityTick = maid.ticksExisted;
+                phase = "WARMING";
+                recordTick();
+                evidence.add("actualMainhand", snapshot(mainLease.ownedValue));
+                evidence.add("actualOffhand", snapshot(offLease.ownedValue));
+                requireOwnedLease();
+            } catch (Exception | LinkageError failure) {
+                throw new IllegalStateException("Held GPU fixture installation failed: " + failure, failure);
+            }
+        }
+
+        void requireOwnedLease() {
+            requireContext();
+            if (!fixtureInstalled || !mainLease.ownedMatches() || !offLease.ownedMatches()) {
+                ownershipIntact = false;
+                throw new IllegalStateException(
+                    "Held GPU fixture ownership lost; external equipment will not be overwritten");
+            }
+        }
+
+        void observeTick() {
+            requireOwnedLease();
+            clientTickEnds++;
+            int previous = tickSamples.get(tickSamples.size() - 1)
+                .get("entityTick")
+                .getAsInt();
+            if (maid.ticksExisted < previous || maid.ticksExisted > previous + 1)
+                throw new IllegalStateException("Held GPU observed nonconsecutive natural maid tick");
+            recordTick();
+        }
+
+        void recordTick() {
+            var row = new JsonObject();
+            row.addProperty("clientTickIndex", clientTickEnds);
+            row.addProperty("entityTick", maid.ticksExisted);
+            if (!tickSamples.isEmpty() && tickSamples.get(tickSamples.size() - 1)
+                .get("entityTick")
+                .getAsInt() == maid.ticksExisted) tickSamples.set(tickSamples.size() - 1, row);
+            else {
+                if (tickSamples.size() >= 64) throw new IllegalStateException("Held GPU warmup tick observation bound");
+                tickSamples.add(row);
+            }
+        }
+
+        void requireCaptureModel(BuiltinMaidModel current) {
+            if (naturalModel != null && current != naturalModel) {
+                modelReferenceStable = false;
+                throw new IllegalStateException("Held GPU natural model object changed");
+            }
+            if (naturalModel != null && current.getGeckoPlayer() != naturalPlayer) {
+                playerReferenceStable = false;
+                throw new IllegalStateException("Held GPU natural animation player object changed");
+            }
+        }
+
+        void noteNaturalEntry(BuiltinMaidModel current) {
+            requireOwnedLease();
+            if (!current.getChoice()
+                .getId()
+                .equals(model)) throw new IllegalStateException("Natural body used a different model");
+            requireCaptureModel(current);
+            if (naturalModel == null) {
+                naturalModel = current;
+                naturalPlayer = current.getGeckoPlayer();
+            }
+            naturalRendererEntries++;
+            entryPoseSerial = current.getPoseSerial();
+            naturalEntryPending = true;
+        }
+
+        void observeNaturalCompletion() {
+            if (!naturalEntryPending) return;
+            naturalEntryPending = false;
+            requireCaptureModel(naturalModel);
+            if (!naturalModel.hasCompletedPoseFor(maid) || naturalModel.getPoseSerial() <= entryPoseSerial) return;
+            var row = new JsonObject();
+            row.addProperty("entityTick", maid.ticksExisted);
+            row.addProperty("entryPoseSerial", entryPoseSerial);
+            row.addProperty("completedPoseSerial", naturalModel.getPoseSerial());
+            row.addProperty("modelIdentity", System.identityHashCode(naturalModel));
+            row.addProperty("backend", naturalPlayer == null ? "BEDROCK" : "GECKO");
+            row.addProperty("geckoPlayerPresent", naturalPlayer != null);
+            var controllers = new JsonArray();
+            row.add("controllers", controllers);
+            if (naturalPlayer != null) {
+                double seek = naturalPlayer.getSeekTicks();
+                if (!Double.isFinite(seek)) throw new IllegalStateException("Non-finite natural animation clock");
+                row.addProperty("geckoPlayerIdentity", System.identityHashCode(naturalPlayer));
+                row.addProperty("playerSeekTicks", seek);
+                for (var controller : naturalPlayer.getAnimationData()
+                    .getAnimationControllers()) {
+                    if (controllers.size() >= 64)
+                        throw new IllegalStateException("Natural controller observation bound");
+                    double offset = controller.tickOffset, speed = controller.getAnimationSpeed();
+                    double derived = speed * Math.max(seek - offset, 0);
+                    if (!Double.isFinite(offset) || !Double.isFinite(speed) || !Double.isFinite(derived))
+                        throw new IllegalStateException("Non-finite natural controller clock");
+                    var value = new JsonObject();
+                    value.addProperty("name", controller.getName());
+                    value.addProperty(
+                        "state",
+                        controller.getAnimationState()
+                            .name());
+                    value.addProperty("tickOffset", offset);
+                    value.addProperty("animationSpeed", speed);
+                    value.addProperty("shouldResetTick", controller.shouldResetTick);
+                    value.addProperty("derivedUnadjustedTick", derived);
+                    value.addProperty("derivedReadOnly", true);
+                    var animation = controller.getCurrentAnimation();
+                    value.addProperty("animationPresent", animation != null);
+                    if (animation != null) {
+                        if (!Double.isFinite(animation.animationLength))
+                            throw new IllegalStateException("Non-finite natural clip duration");
+                        value.addProperty("animationName", animation.animationName);
+                        value.addProperty("animationLength", animation.animationLength);
+                    }
+                    controllers.add(value);
+                }
+            }
+            if (!naturalFrames.isEmpty() && naturalFrames.get(naturalFrames.size() - 1)
+                .get("entityTick")
+                .getAsInt() == maid.ticksExisted) naturalFrames.set(naturalFrames.size() - 1, row);
+            else {
+                if (naturalFrames.size() >= 64) throw new IllegalStateException("Natural body observation bound");
+                naturalFrames.add(row);
+            }
+            completedNaturalBodies++;
+        }
+
+        boolean ready() {
+            readyForCapture = fixtureInstalled && (warmupTicks == 0
+                || maid.ticksExisted - installEntityTick >= warmupTicks && clientTickEnds >= warmupTicks
+                    && !naturalFrames.isEmpty()
+                    && naturalFrames.get(naturalFrames.size() - 1)
+                        .get("entityTick")
+                        .getAsInt() >= installEntityTick + warmupTicks);
+            return readyForCapture;
+        }
+
+        void finish(boolean captureComplete) {
+            if (report != null) return;
+            if (Thread.currentThread() != owner) {
+                cancelReason = "Held GPU terminal requested off the original client thread";
+                return;
+            }
+            if (cancelReason != null) {
+                failureReason = cancelReason;
+                if (!evidence.has("error")) evidence.addProperty("error", cancelReason);
+            } else if (evidence.has("error")) failureReason = evidence.get("error")
+                .getAsString();
+            restoration = new JsonObject();
+            restoration.addProperty("attempted", true);
+            var main = mainLease.restore();
+            var off = offLease.restore();
+            restoration.add("main", main);
+            restoration.add("off", off);
+            boolean restored = HandLease.restored(main) && HandLease.restored(off);
+            if (main.get("status")
+                .getAsString()
+                .equals("REFUSED_EXTERNAL_CHANGE")
+                || off.get("status")
+                    .getAsString()
+                    .equals("REFUSED_EXTERNAL_CHANGE"))
+                ownershipIntact = false;
+            restoration.addProperty("complete", restored);
+            evidence.add("restoredMainhand", main.get("afterRestore"));
+            evidence.add("restoredOffhand", off.get("afterRestore"));
+            boolean equipmentRestored = mainLease.originalValueRestored() && offLease.originalValueRestored();
+            evidence.addProperty("equipmentValuesRestored", equipmentRestored);
+            if (!restored && !evidence.has("equipmentRestoreError")) evidence.addProperty(
+                "equipmentRestoreError",
+                "Original fixture lease was not fully restored; inspect per-hand warmup restore");
+            if ((!restored || !equipmentRestored) && failureReason.isEmpty())
+                failureReason = "Original equipment values or owned fixture lease were not fully restored";
+            if (!captureComplete && failureReason.isEmpty())
+                failureReason = "Held GPU capture or cleanup contract incomplete";
+            phase = "TERMINAL";
+            evidence.add("warmup", warmupSnapshot());
+            boolean complete = captureComplete && restored
+                && equipmentRestored
+                && ownershipIntact
+                && cancelReason == null
+                && captureStarted
+                && readyForCapture;
+            evidence.addProperty("transactionComplete", complete);
+            evidence.addProperty("status", complete ? "complete" : "failed");
+            report = evidence;
+        }
+
+        JsonObject warmupSnapshot() {
+            var value = new JsonObject();
+            value.addProperty("schema", "held-item-natural-warmup-v1");
+            value.addProperty("requestedTicks", warmupTicks);
+            value.addProperty("phase", phase);
+            value.addProperty("fixtureInstalled", fixtureInstalled);
+            value.addProperty("captureStarted", captureStarted);
+            if (fixtureInstalled) {
+                value.addProperty("installEntityTick", installEntityTick);
+                value.addProperty("finalEntityTick", maid.ticksExisted);
+                value.addProperty("entityTickDelta", maid.ticksExisted - installEntityTick);
+            }
+            value.addProperty("clientTickEnds", clientTickEnds);
+            value.addProperty("naturalRendererEntries", naturalRendererEntries);
+            value.addProperty("completedNaturalBodies", completedNaturalBodies);
+            value.addProperty("naturalModelObserved", completedNaturalBodies > 0);
+            value.addProperty("modelReferenceStable", modelReferenceStable);
+            value.addProperty("playerReferenceStable", playerReferenceStable);
+            value.addProperty("readyForCapture", readyForCapture);
+            value.addProperty("ownershipIntact", ownershipIntact);
+            value.addProperty("failureReason", failureReason);
+            value.add("tickSamples", GSON.toJsonTree(tickSamples));
+            value.add("naturalFrames", GSON.toJsonTree(naturalFrames));
+            value.add("restore", restoration);
+            return value;
+        }
+    }
+
+    private static JsonObject snapshot(ItemStack stack) {
+        try {
+            return MaidShieldFixtures.snapshot(stack == null ? null : stack.copy());
+        } catch (RuntimeException | LinkageError failure) {
+            var result = new JsonObject();
+            result.addProperty("present", stack != null);
+            result.addProperty("snapshotError", failure.toString());
+            return result;
+        }
+    }
+
+    private static final class HandLease {
+
+        final EntityMaid maid;
+        final boolean offhand;
+        final ItemStack originalReference, originalValue;
+        ItemStack ownedReference, ownedValue;
+        boolean written, referenceCaptured;
+
+        HandLease(EntityMaid maid, boolean offhand) {
+            this.maid = maid;
+            this.offhand = offhand;
+            originalReference = current();
+            originalValue = originalReference == null ? null : originalReference.copy();
+        }
+
+        ItemStack current() {
+            return offhand ? maid.getOffhandItem() : maid.getHeldItem();
+        }
+
+        boolean originalMatches() {
+            return current() == originalReference && ItemStack.areItemStacksEqual(current(), originalValue);
+        }
+
+        boolean ownedMatches() {
+            return written && referenceCaptured
+                && current() == ownedReference
+                && ItemStack.areItemStacksEqual(current(), ownedValue);
+        }
+
+        boolean originalValueRestored() {
+            try {
+                return ItemStack.areItemStacksEqual(current(), originalValue);
+            } catch (RuntimeException | LinkageError ignored) {
+                return false;
+            }
+        }
+
+        void write(ItemStack stack) {
+            written = true;
+            ownedValue = stack == null ? null : stack.copy();
+            set(stack);
+            ownedReference = current();
+            referenceCaptured = true;
+        }
+
+        void set(ItemStack stack) {
+            if (offhand) maid.setOffhandItem(stack);
+            else maid.setCurrentItemOrArmor(0, stack);
+        }
+
+        JsonObject restore() {
+            var result = new JsonObject();
+            result.add("original", snapshot(originalValue));
+            result.add("owned", snapshot(ownedValue));
+            result.addProperty("referenceOwned", false);
+            result.addProperty("valueOwned", false);
+            result.addProperty("reason", "");
+            try {
+                ItemStack before = current();
+                result.add("beforeRestore", snapshot(before));
+                boolean reference = written && referenceCaptured && before == ownedReference;
+                boolean value = written && ItemStack.areItemStacksEqual(before, ownedValue);
+                result.addProperty("referenceOwned", reference);
+                result.addProperty("valueOwned", value);
+                if (!written) result.addProperty("status", "NOT_WRITTEN");
+                else if (!reference || !value) {
+                    result.addProperty("status", "REFUSED_EXTERNAL_CHANGE");
+                    result.addProperty(
+                        "reason",
+                        "Current hand no longer matches the fixture reference and value; left untouched");
+                } else {
+                    set(originalValue == null ? null : originalValue.copy());
+                    if (!ItemStack.areItemStacksEqual(current(), originalValue))
+                        throw new IllegalStateException("Restored hand value differs from original snapshot");
+                    result.addProperty("status", "RESTORED");
+                }
+                result.add("afterRestore", snapshot(current()));
+            } catch (RuntimeException | LinkageError failure) {
+                result.addProperty("status", "RESTORE_FAILED");
+                result.addProperty("reason", failure.toString());
+                if (!result.has("beforeRestore")) result.add("beforeRestore", snapshot(null));
+                try {
+                    result.add("afterRestore", snapshot(current()));
+                } catch (RuntimeException | LinkageError ignored) {
+                    result.add("afterRestore", snapshot(null));
+                }
+            }
+            return result;
+        }
+
+        static boolean restored(JsonObject value) {
+            String status = value.get("status")
+                .getAsString();
+            return status.equals("RESTORED") || status.equals("NOT_WRITTEN");
         }
     }
 

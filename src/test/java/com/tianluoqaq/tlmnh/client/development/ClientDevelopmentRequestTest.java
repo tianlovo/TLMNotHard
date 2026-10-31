@@ -25,8 +25,32 @@ public class ClientDevelopmentRequestTest {
                 assertEquals(model, parsed.model);
                 assertEquals(action, parsed.action);
                 assertEquals("positive_z", parsed.view);
+                assertEquals(0, parsed.warmupTicks);
             }
         }
+    }
+
+    @Test
+    public void heldGpuWarmupUsesBoundedIntegerTicks() {
+        var request = new JsonObject();
+        request.addProperty("command", "held_item_gpu_probe");
+        request.addProperty("model", "geckolib:winefox");
+        request.addProperty("action", "main_bow");
+        for (int ticks : new int[] { 0, 1, 30, 60 }) {
+            request.addProperty("warmupTicks", ticks);
+            assertEquals(ticks, ClientDevelopmentRequest.parse(request).warmupTicks);
+        }
+        for (double invalid : new double[] { -1, 61, 1.5, Double.NaN, Double.POSITIVE_INFINITY }) {
+            request.addProperty("warmupTicks", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
+        for (String value : new String[] { "null", "true", "\"30\"", "[]", "{}" }) assertThrows(
+            IllegalArgumentException.class,
+            () -> parse(
+                "{\"command\":\"held_item_gpu_probe\","
+                    + "\"model\":\"geckolib:winefox\",\"action\":\"main_bow\",\"warmupTicks\":"
+                    + value
+                    + "}"));
     }
 
     @Test
