@@ -59,9 +59,15 @@ def verify(read):
         data = read(path)
         if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
             raise ValueError(f"Resource differs from fixed upstream: {path}")
+    gui = json.loads(read("assets/tlmnh/gui-assets-provenance.json"))
+    if gui["commit"] != provenance["commit"]:
+        raise ValueError("GUI asset provenance commit differs")
+    for expected in gui["files"]:
+        if hashlib.sha256(read(expected["path"])).hexdigest() != expected["sha256"]:
+            raise ValueError(f"GUI resource differs from its provenance: {expected['path']}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
-            "core_files": len(core["files"]),
+            "core_files": len(core["files"]), "gui_files": len(gui["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 
