@@ -540,12 +540,12 @@ Shift 详情、关联音包及完整输入矩阵仍待补齐，本段不表示�
 | client/gui/sound/MaidSoundPackGui.java | 保留 400×220 双栏、每页 4 包/13 类、选择/应用/试听、作者链接确认；应用经服务端容器复核，不由客户端写真实音包 |
 | client/gui/widget/button/FlatColorButton.java、SoundPackButton.java、SoundElementButton.java | 保留原色值、尺寸、文字与图标位置，改接旧版按钮事件和原生字体；首版仅内置静态图标 |
 | entity/passive/DefaultMaidSoundPack.java | 保留两包 ID 与 75% PECO 的初始化概率 |
-| client/sound/data/MaidSoundInstance.java | 保留跟随实体及死亡停止，改接 1.7.10 MovingSound 和生成的原生声音事件；当前接入本机试听，世界触发仍待移植 |
+| client/sound/data/MaidSoundInstance.java | 保留跟随实体及死亡停止，改接 1.7.10 MovingSound 和生成的原生声音事件；同时用于本机试听及世界消息，声音触发和验证范围见后文 |
 | EntityMaid.java 的 SoundPackId 状态 | 新增 DataWatcher 30、原 NBT 键及旧档缺键迁移；仅接受两内置包，旧档缺键保留初始化值 |
 
 `BuiltinSoundCatalog`、`ContainerMaidSounds` 和导入脚本为本工程新增适配，位于 `com.tianluoqaq.tlmnh` 或 scripts
 目录从固定 Git blob 生成，保留 CustomSoundLoader 的事件顺序、数字文件名规则和追加复用关系，不将复用误写为仅缺失时回退
-原版模型数据没有指定关联音包，不能据模型名称虚构酒狐专属音包；后续仍须完成模型关联入口、世界触发、频率设置和时间轴音效
+原版模型数据没有指定关联音包，不能据模型名称虚构酒狐专属音包；世界语音与两级频率基础见后文；模型关联入口、原版设置控件和时间轴音效仍待完成
 
 配音文件按独立作者条款处理，不能由 TLM 代码 MIT 或模型 CC 许可推断声音再分发权
 源码仓库只含目录、映射、原说明/图标及摘要，435 个配音文件只生成到被忽略的本机构建输入；详见 THIRD_PARTY_NOTICES.md 与 DEVELOPMENT.md
