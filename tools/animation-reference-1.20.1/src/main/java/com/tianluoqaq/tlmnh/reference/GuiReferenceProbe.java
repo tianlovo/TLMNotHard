@@ -14,6 +14,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.AbstractModelGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.pojo.IModelInfo;
@@ -62,7 +64,8 @@ public final class GuiReferenceProbe {
 
     static JsonObject status() {
         var minecraft = Minecraft.getInstance();
-        var screen = minecraft.screen;
+        var actualScreen = minecraft.screen;
+        var screen = actualScreen instanceof CacheScreen<?, ?> ? (net.minecraft.client.gui.screens.Screen) field(CacheScreen.class, actualScreen, "parent") : actualScreen;
         if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui) || minecraft.player == null)
             throw new IllegalStateException("Actual original maid GUI required");
         var maid = screen instanceof AbstractMaidContainerGui<?> main ? main.getMenu().getMaid()
@@ -70,7 +73,8 @@ public final class GuiReferenceProbe {
         if (!ReferenceScene.isCurrent(maid) || !maid.isOwnedBy(minecraft.player) || !minecraft.player.isSpectator())
             throw new IllegalStateException("Owned reference lab maid and spectator required");
         var result = new JsonObject();
-        result.addProperty("screen", screen.getClass().getName());
+        result.addProperty("screen", actualScreen.getClass().getName());
+        result.addProperty("cacheRemaining", ((java.util.Queue<?>) field(CacheIconManager.class, null, "MAID_CACHE_QUEUE")).size());
         result.addProperty("model", maid.getModelId());
         result.addProperty("windowId", minecraft.player.containerMenu.containerId);
         result.addProperty("language", minecraft.options.languageCode);
@@ -133,6 +137,25 @@ public final class GuiReferenceProbe {
             throw new IllegalStateException("Original main window required");
         com.github.tartaricacid.touhoulittlemaid.config.subconfig.MiscConfig.MODEL_ICON_CACHE.set(false);
         com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.openMaidModelGui(main.getMenu().getMaid());
+        return status();
+    }
+
+    static JsonObject cacheToggle() {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelGui screen)) throw new IllegalStateException("Original model screen required");
+        for (var child : screen.children()) if (child instanceof net.minecraft.client.gui.components.Checkbox checkbox) {
+            checkbox.onPress();
+            return status();
+        }
+        throw new IllegalStateException("Original cache checkbox missing");
+    }
+
+    static JsonObject cachedModels() {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelGui screen)) throw new IllegalStateException("Original model screen required");
+        CacheIconManager.openMaidModelGui((EntityMaid) field(AbstractModelGui.class, screen, "entity"));
         return status();
     }
 

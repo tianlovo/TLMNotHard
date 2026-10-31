@@ -73,6 +73,8 @@ public final class MaidModelGui extends AbstractModelGui {
 
     @Override
     protected void drawRightEntity(int x, int y, int modelIndex) {
+        if (com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE
+            .draw(modelIndex, x, y)) return;
         var maid = previews.computeIfAbsent(modelIndex, index -> {
             var detached = new EntityMaid(mc.theWorld);
             detached.onGround = true;

@@ -49,3 +49,6 @@ gui.touhou_little_maid.skin.tooltips.maid_use_sound_pack_id=Use Sound Pack: %s
 gui.touhou_little_maid.skin.enable_cache=Icon Cache
 gui.touhou_little_maid.skin.search=Search Model
 gui.touhou_little_maid.skin.search.hint=Enter model name...
+
+gui.touhou_little_maid.cache_screen.progress=Progress: %d/%d
+gui.touhou_little_maid.cache_screen.desc=Caching model icon, please wait...

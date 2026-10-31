@@ -3,6 +3,8 @@ package com.tianluoqaq.tlmnh.client.development;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -55,6 +57,10 @@ public final class MaidModelUiProbe {
                     case "pack" -> requested = models.selectPack(model);
                     case "search" -> {
                         models.search(model);
+                        requested = true;
+                    }
+                    case "cache" -> {
+                        models.toggleIconCache();
                         requested = true;
                     }
                     case "pointer" -> {
@@ -152,6 +158,7 @@ public final class MaidModelUiProbe {
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("clientReplicaOnly", true);
+        response.add("iconCache", CacheIconManager.INSTANCE.observation());
         if (minecraft.currentScreen instanceof MaidModelGui models) {
             response.addProperty("pack", models.getPackId());
             response.addProperty("row", models.getRow());
@@ -232,7 +239,8 @@ public final class MaidModelUiProbe {
     public static void requireCaptureScreen() {
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
-        if (!(screen instanceof MaidModelGui) && !(screen instanceof AbstractMaidContainerGui<?>)
+        if (!(screen instanceof CacheScreen) && !(screen instanceof MaidModelGui)
+            && !(screen instanceof AbstractMaidContainerGui<?>)
             && !(screen instanceof GuiMaidModels)
             && !(screen instanceof GuiMaid main && main.isHomeSettingsPage()))
             throw new IllegalStateException("Maid GUI capture requires the actual selector or home settings page");
@@ -247,12 +255,13 @@ public final class MaidModelUiProbe {
             || !player.capabilities.isFlying
             || !player.noClip) throw new IllegalStateException("Safe lab observer required");
         var actual = minecraft.currentScreen instanceof GuiContainer screen ? screen.inventorySlots
-            : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer() : null;
+            : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
+                : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer() : null;
         if (actual == null || actual != player.openContainer
             || !actual.canInteractWith(player)
             || !(minecraft.currentScreen instanceof AbstractMaidContainerGui<?>
                 && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
-                || minecraft.currentScreen instanceof MaidModelGui
+                || (minecraft.currentScreen instanceof MaidModelGui || minecraft.currentScreen instanceof CacheScreen)
                     && player.openContainer instanceof ContainerMaidModels
                 || minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
                 || minecraft.currentScreen instanceof GuiMaidModels

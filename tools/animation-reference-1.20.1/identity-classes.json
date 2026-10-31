@@ -28,6 +28,10 @@
     "com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.AbstractModelGui",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui",
-    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.SkinGuiNumber"
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.SkinGuiNumber",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture",
+    "com.github.tartaricacid.touhoulittlemaid.util.IconCache"
   ]
 }

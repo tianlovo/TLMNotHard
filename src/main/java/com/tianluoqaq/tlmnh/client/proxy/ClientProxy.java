@@ -33,6 +33,7 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void init() {
         super.init();
+        com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
         var models = new BuiltinMaidModels(
@@ -40,6 +41,8 @@ public final class ClientProxy extends CommonProxy {
                 .getInputStream());
         ((IReloadableResourceManager) manager).registerReloadListener(models);
         ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
+        ((IReloadableResourceManager) manager).registerReloadListener(
+            com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE);
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
         RenderingRegistry.registerEntityRenderingHandler(MaidTombstoneEntity.class, new TombstoneRenderer());
         if (Boolean.getBoolean("tlmnh.devCommands")) {
@@ -63,7 +66,8 @@ public final class ClientProxy extends CommonProxy {
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         if (container instanceof ContainerMaidModels modelContainer) return modelContainer.isOriginalView()
-            ? new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui(modelContainer)
+            ? com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE
+                .openMaidModelGui(modelContainer)
             : new GuiMaidModels(modelContainer);
         return null;
     }

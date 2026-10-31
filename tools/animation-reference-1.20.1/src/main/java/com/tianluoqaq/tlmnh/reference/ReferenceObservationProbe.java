@@ -165,6 +165,8 @@ public final class ReferenceObservationProbe {
                 }
                 case "gui_open" -> response = GuiReferenceProbe.open();
                 case "gui_models" -> response = GuiReferenceProbe.models();
+                case "gui_cache_toggle" -> response = GuiReferenceProbe.cacheToggle();
+                case "gui_cached_models" -> response = GuiReferenceProbe.cachedModels();
                 case "gui_models_pack" -> response = GuiReferenceProbe.modelsPack(request);
                 case "gui_models_search" -> response = GuiReferenceProbe.modelsSearch(request);
                 case "gui_status" -> response = GuiReferenceProbe.status();

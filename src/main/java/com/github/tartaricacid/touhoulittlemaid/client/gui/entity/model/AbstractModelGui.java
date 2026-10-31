@@ -30,11 +30,12 @@ import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks.Pack;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.MaidCacheCheckbox;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 
-import cpw.mods.fml.client.config.GuiCheckBox;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -132,8 +133,7 @@ public abstract class AbstractModelGui extends GuiScreen {
             atlas(CHOICE + visible.get(i), x - 108 + 20 * (i % 11), y - 61 + 30 * (i / 11), 15, 24, BG, 41, 201, 24);
         String label = text("gui.touhou_little_maid.skin.enable_cache");
         int cacheX = (x - 128) / 2 - (fontRendererObj.getStringWidth(label) + 20) / 2;
-        var checkbox = new GuiCheckBox(CACHE, cacheX, y - 101, label, false);
-        checkbox.enabled = false;
+        var checkbox = new MaidCacheCheckbox(CACHE, cacheX, y - 101, label);
         buttonList.add(checkbox);
         searchBox = new GuiTextField(fontRendererObj, x - 96, y + 101, 216, 18);
         searchBox.setMaxStringLength(48);
@@ -265,6 +265,7 @@ public abstract class AbstractModelGui extends GuiScreen {
             selectPack(packs.get(guiNumber.tabToPackIndex(button.id - TAB, getPageIndex())).id);
         } else switch (button.id) {
             case CLOSE -> returnToMaid();
+            case CACHE -> toggleIconCache();
             case UP -> changeRow(-1);
             case DOWN -> changeRow(1);
             case SEARCH -> search("");
@@ -275,6 +276,10 @@ public abstract class AbstractModelGui extends GuiScreen {
             }
             default -> {}
         }
+    }
+
+    public void toggleIconCache() {
+        MaidClientPreferences.setModelIconCache(!MaidClientPreferences.modelIconCache());
     }
 
     @Override
@@ -401,7 +406,7 @@ public abstract class AbstractModelGui extends GuiScreen {
                 } else if (button.id >= TAB && button.id < TAB + 7)
                     lines.add(names.text(packs.get(guiNumber.tabToPackIndex(button.id - TAB, getPageIndex())).name));
                 else if (button.id == CLOSE) lines.add(text("gui.touhou_little_maid.skin.button.close"));
-                else if (button.id == CACHE) lines.add(text("gui.tlmnh.original.model_cache_pending"));
+
                 if (!lines.isEmpty()) drawHoveringText(lines, mouseX, mouseY, fontRendererObj);
                 return;
             }
@@ -409,6 +414,7 @@ public abstract class AbstractModelGui extends GuiScreen {
 
     @Override
     protected void mouseClicked(int x, int y, int button) {
+        for (var widget : buttonList) if (widget instanceof MaidCacheCheckbox checkbox) checkbox.clearFocus();
         if (searchMode) searchBox.mouseClicked(x, y, button);
         super.mouseClicked(x, y, button);
     }

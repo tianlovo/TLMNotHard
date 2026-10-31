@@ -27,7 +27,7 @@ def git(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
     parser.add_argument("--pack", type=int)
     parser.add_argument("--query")
     parser.add_argument("--name")

@@ -219,7 +219,7 @@ public class ClientDevelopmentRequestTest {
     public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
         for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all", "home",
             "home_toggle", "home_work", "home_idle", "home_rest", "home_reset", "tasks", "idle", "attack", "ranged",
-            "pointer", "schedule", "pickup" })
+            "pointer", "schedule", "pickup", "cache" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
         assertEquals("winefox", parse("{\"command\":\"models_ui\",\"action\":\"search\",\"model\":\"winefox\"}").model);
         assertEquals("geckolib", parse("{\"command\":\"models_ui\",\"action\":\"pack\",\"model\":\"geckolib\"}").model);

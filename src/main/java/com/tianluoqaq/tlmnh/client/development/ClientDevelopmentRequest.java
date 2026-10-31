@@ -133,6 +133,7 @@ public final class ClientDevelopmentRequest {
                     "pointer",
                     "schedule",
                     "pickup",
+                    "cache",
                     "pack",
                     "search")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
