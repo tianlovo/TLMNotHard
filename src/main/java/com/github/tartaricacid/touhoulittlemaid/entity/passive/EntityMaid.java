@@ -51,7 +51,8 @@ public class EntityMaid extends EntityTameable {
     private static final int DATA_FLAGS = 26;
     private static final int DATA_OFFHAND = 27;
     private static final int DATA_POSE = 28;
-    private static final int DATA_SOUND_PACK = 29;
+    // 29 由 MaidHomeArea 使用，声音占用 30
+    private static final int DATA_SOUND_PACK = 30;
     public static final String SOUND_PACK_ID_TAG = "SoundPackId";
     private static final int FLAG_PICKUP_ITEMS = 1;
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
