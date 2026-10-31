@@ -102,7 +102,7 @@ public final class FollowNaturalReferenceProbe {
         } catch (Exception | LinkageError failure) {
             ioFailed = true;
             if (current != null) current.requestAbort("control_io_failed");
-            TouhouLittleMaid.LOGGER.error("TLMNH_FOLLOW_NATURAL_REFERENCE_IO_FAILED type={}", failure.getClass().getSimpleName());
+            logFailure("control_io", failure);
         }
     }
 
@@ -159,6 +159,7 @@ public final class FollowNaturalReferenceProbe {
             }
             response.addProperty("status", "complete");
         } catch (Exception | LinkageError failure) {
+            logFailure("control_request_" + name, failure);
             response.addProperty("status", "inconclusive"); response.addProperty("errorType", failure.getClass().getSimpleName());
             response.addProperty("reason", safeReason(failure));
         }
@@ -489,24 +490,38 @@ public final class FollowNaturalReferenceProbe {
         void finish(String reason, Throwable failure) {
             if (finished) return;
             finished = true; status = "cleanup";
-            Throwable problem = failure;
+            if (failure != null) logFailure("observation_" + name, failure);
+            Throwable cleanupFailure = null;
+            var cleanupStages = new JsonArray();
+            report.add("cleanupStages", cleanupStages);
             if (reason != null) report.addProperty("reason", reason);
-            problem = attempt(this::removeMaid, problem);
-            if (platform != null) problem = attempt(platform::close, problem);
-            problem = attempt(() -> worldState.restore(server), problem);
-            problem = attempt(() -> playerState.restore(owner), problem);
-            boolean cleanup = problem == null;
-            report.addProperty("cleanupComplete", cleanup); report.addProperty("complete", reason == null && cleanup && runs.size() == 9);
-            report.addProperty("totalObservedLevelTicks", totalTicks);
-            try {
+            cleanupFailure = cleanupStage(cleanupStages, "maid", this::removeMaid, cleanupFailure);
+            cleanupFailure = cleanupStage(cleanupStages, "platform", () -> {
+                if (platform != null) platform.close();
+                else if (report.has("platform")) require(report.getAsJsonObject("platform").get("cleanupComplete").getAsBoolean(),
+                    "platform_constructor_cleanup_not_verified");
+            }, cleanupFailure);
+            cleanupFailure = cleanupStage(cleanupStages, "world", () -> worldState.restore(server), cleanupFailure);
+            cleanupFailure = cleanupStage(cleanupStages, "owner", () -> playerState.restore(owner), cleanupFailure);
+            cleanupFailure = cleanupStage(cleanupStages, "owner_actual_verification", () -> {
                 report.add("ownerAfterCleanup", entity(owner));
                 report.add("ownerAfterCleanupState", new PlayerState(owner).json());
                 report.add("ownerRestoration", playerState.verify(owner));
-            }
-            catch (RuntimeException | LinkageError extra) { problem = collect(problem, extra); report.addProperty("complete", false); report.addProperty("cleanupComplete", false); }
+            }, cleanupFailure);
+            cleanupFailure = cleanupStage(cleanupStages, "actor_removal_verification", () -> {
+                report.addProperty("remainingActorRegistered", maid != null && level.getEntity(maid.getUUID()) == maid);
+                report.addProperty("remainingActorUuid", maid == null ? null : maid.getUUID().toString());
+                require(maid == null || level.getEntity(maid.getUUID()) != maid, "remaining_actor_registered_after_cleanup");
+            }, cleanupFailure);
+            boolean observationComplete = reason == null && failure == null && runs.size() == 9;
+            report.addProperty("observationComplete", observationComplete);
+            report.addProperty("cleanupComplete", cleanupFailure == null);
+            report.addProperty("complete", observationComplete && cleanupFailure == null);
+            report.addProperty("totalObservedLevelTicks", totalTicks);
+            report.add("observationFailure", failureInfo(failure));
+            report.add("cleanupFailure", failureInfo(cleanupFailure));
+            Throwable problem = failure != null ? failure : cleanupFailure;
             if (problem != null) { report.addProperty("errorType", problem.getClass().getSimpleName()); report.addProperty("failureReason", safeReason(problem)); }
-            report.addProperty("remainingActorRegistered", maid != null && level.getEntity(maid.getUUID()) == maid);
-            report.addProperty("remainingActorUuid", maid == null ? null : maid.getUUID().toString());
             var response = new JsonObject(); response.addProperty("request", name);
             try {
                 byte[] json = (GSON.toJson(report) + "\n").getBytes(StandardCharsets.UTF_8);
@@ -524,7 +539,7 @@ public final class FollowNaturalReferenceProbe {
                 write(root.resolve("responses").resolve(name), response);
                 TouhouLittleMaid.LOGGER.info("TLMNH_FOLLOW_NATURAL_REFERENCE_CAPTURE {}", response);
             } catch (Exception | LinkageError writing) {
-                ioFailed = true; TouhouLittleMaid.LOGGER.error("TLMNH_FOLLOW_NATURAL_REFERENCE_WRITE_FAILED type={}", writing.getClass().getSimpleName());
+                ioFailed = true; logFailure("artifact_write_" + name, writing);
             } finally { status = "finished"; if (active == this) active = null; }
         }
 
@@ -931,9 +946,30 @@ public final class FollowNaturalReferenceProbe {
     private static JsonObject copy(JsonObject value) { return JsonParser.parseString(GSON.toJson(value)).getAsJsonObject(); }
     private static Object read(Class<?> owner, String name, Object instance) throws Exception { Field field = owner.getDeclaredField(name); field.setAccessible(true); return field.get(instance); }
     private static Throwable attempt(Runnable action, Throwable previous) { try { action.run(); } catch (RuntimeException | LinkageError failure) { return collect(previous, failure); } return previous; }
+    private static Throwable cleanupStage(JsonArray stages, String stage, Runnable action, Throwable previous) {
+        var result = new JsonObject(); result.addProperty("stage", stage);
+        try { action.run(); result.addProperty("success", true); }
+        catch (RuntimeException | LinkageError failure) {
+            result.addProperty("success", false); result.add("failure", failureInfo(failure));
+            logFailure("cleanup_" + stage, failure); previous = collect(previous, failure);
+        } finally { stages.add(result); }
+        return previous;
+    }
+    private static JsonObject failureInfo(Throwable failure) {
+        if (failure == null) return null;
+        var result = new JsonObject(); result.addProperty("errorType", failure.getClass().getSimpleName());
+        result.addProperty("reason", safeReason(failure)); result.addProperty("suppressedCount", failure.getSuppressed().length); return result;
+    }
+    private static void logFailure(String stage, Throwable failure) {
+        try { TouhouLittleMaid.LOGGER.error("TLMNH_FOLLOW_NATURAL_REFERENCE_FAILURE stage=" + stage, failure); }
+        catch (RuntimeException | LinkageError loggingFailure) {
+            System.err.println("TLMNH_FOLLOW_NATURAL_REFERENCE_LOG_FALLBACK stage=" + stage);
+            failure.printStackTrace(System.err); loggingFailure.printStackTrace(System.err);
+        }
+    }
     private static Throwable collect(Throwable previous, Throwable next) { if (previous == null) return next; if (previous != next) previous.addSuppressed(next); return previous; }
     private static String sha(byte[] bytes) throws Exception { return FollowNaturalReferenceIdentity.sha(bytes); }
-    private static String safeReason(Throwable failure) { String message = failure.getMessage(); return message != null && message.matches("[a-z0-9_]{1,120}") ? message : "inspect_retained_local_log"; }
+    private static String safeReason(Throwable failure) { String message = failure.getMessage(); return message != null && message.matches("[A-Za-z0-9_$]{1,160}") ? message : "inspect_retained_local_log"; }
     private static void write(Path file, JsonObject value) throws Exception { require(!Files.exists(file), "response_already_exists"); Path temporary = file.resolveSibling(file.getFileName() + ".tmp"); Files.writeString(temporary, GSON.toJson(value) + "\n", StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); Files.move(temporary, file); }
     private static void require(boolean value, String reason) { if (!value) throw new IllegalStateException(reason); }
 }

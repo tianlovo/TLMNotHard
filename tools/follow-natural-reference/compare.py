@@ -142,6 +142,9 @@ def verified_rows(capture, manifest_path):
     contract = load(TOOL / "contract.json")
     assert capture["schema"] == "follow-natural-reference-v1" and capture["contract"] == "FOLLOW_NATURAL_O_V1"
     assert capture["complete"] and capture["cleanupComplete"] and capture["remainingActorRegistered"] is False
+    assert capture["observationComplete"] and capture["observationFailure"] is None and capture["cleanupFailure"] is None
+    assert [stage["stage"] for stage in capture["cleanupStages"]] == ["maid", "platform", "world", "owner", "owner_actual_verification", "actor_removal_verification"]
+    assert all(stage["success"] is True for stage in capture["cleanupStages"])
     assert capture["worldNatural"] and capture["completeOriginalBrain"] and capture["realLoggedInOwner"]
     assert capture["portEquivalenceVerified"] is False and capture["statisticalAdmission"] is False
     assert capture["worldRngReset"] is False and capture["worldRngReplaced"] is False and capture["maidRngReset"] is False
