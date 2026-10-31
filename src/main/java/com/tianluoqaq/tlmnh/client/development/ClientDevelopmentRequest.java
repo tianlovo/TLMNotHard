@@ -125,7 +125,13 @@ public final class ClientDevelopmentRequest {
                     "home_work",
                     "home_idle",
                     "home_rest",
-                    "home_reset")
+                    "home_reset",
+                    "tasks",
+                    "idle",
+                    "attack",
+                    "ranged",
+                    "schedule",
+                    "pickup")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
             if (action.equals("select")) model = text(json, "model");
         }
