@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.development;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -15,6 +16,7 @@ import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.EntityLookHelper;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
@@ -39,12 +41,15 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Creation;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.EndpointRelation;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Installation;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreLookDriver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreMoveDriver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+
+import cpw.mods.fml.relauncher.ReflectionHelper;
 
 /** 未登记实体的真实RC2 AI阶段组件采集，不是自然世界tick或真实登录主人测试 */
 public final class MaidFollowCoreAdapterProbe {
@@ -54,6 +59,12 @@ public final class MaidFollowCoreAdapterProbe {
     private static final int FOOT_Y = 160;
     private static final int PLATFORM_RADIUS = 32;
     private static final int DOMAIN_PADDING = 24;
+    private static final Field LOOK_PENDING = lookField(boolean.class, "isLooking", "field_75655_d");
+    private static final Field LOOK_X = lookField(double.class, "posX", "field_75656_e");
+    private static final Field LOOK_Y = lookField(double.class, "posY", "field_75653_f");
+    private static final Field LOOK_Z = lookField(double.class, "posZ", "field_75654_g");
+    private static final Field LOOK_MAX_YAW = lookField(float.class, "deltaLookYaw", "field_75657_b");
+    private static final Field LOOK_MAX_PITCH = lookField(float.class, "deltaLookPitch", "field_75658_c");
 
     private MaidFollowCoreAdapterProbe() {}
 
@@ -62,7 +73,11 @@ public final class MaidFollowCoreAdapterProbe {
             Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated development overworld required");
         var output = new JsonObject();
-        output.addProperty("schema", "follow-core-adapter-native-v1");
+        output.addProperty("schema", "follow-core-adapter-native-v2");
+        output.addProperty("componentContract", "FOLLOW_CORE_COMPONENT_V2");
+        output.addProperty("componentSchedule", "start-pass look0/move2/follow3; running-pass look0/move2/follow3");
+        output.addProperty("componentWorldRngOrderVerified", false);
+        output.addProperty("lookVisibilitySource", "CURRENT_RC2_LOS");
         output.addProperty("version", Tags.VERSION);
         output.addProperty("worldNatural", false);
         output.addProperty("equivalenceVerified", false);
@@ -70,7 +85,7 @@ public final class MaidFollowCoreAdapterProbe {
         output.addProperty("globalPlayerListResolverExercised", true);
         output.addProperty(
             "scope",
-            "unregistered maid; manual inherited updateAITasks; real after-native component, native pathfinder/navigation and synthetic global-list UUID owner; no natural world tick or real player login");
+            "unregistered maid; manual inherited updateAITasks; V2 look0/move2/follow3 component, native pathfinder/navigation and synthetic global-list UUID owner; read-only native look helper observations after component and inherited AI return; no natural world tick, real player login, modern sensor equivalence or combined O/F replay");
         var rows = new JsonArray();
         output.add("cases", rows);
         var platformReport = new JsonObject();
@@ -84,6 +99,8 @@ public final class MaidFollowCoreAdapterProbe {
                     MaidFollowCoreAdapterProbe.class,
                     StageMaid.class,
                     FollowCoreComponent.class,
+                    FollowCoreLookDriver.class,
+                    FollowCoreLookDriver.State.class,
                     FollowCoreMoveDriver.class,
                     Rc2FollowCoreActor.class,
                     MaidBoundedPathPlanner.class,
@@ -169,6 +186,12 @@ public final class MaidFollowCoreAdapterProbe {
                 fixture.component.getMoveState()
                     .getStatus() == FollowMoveState.Status.STOPPED,
                 "First phase started sink before follow supplied WALK");
+            require(
+                actor.hasLookTarget() && fixture.component.getLookState()
+                    .getStatus() == FollowCoreLookDriver.Status.STOPPED
+                    && fixture.component.getLookState()
+                        .getEndTimestamp() == 0,
+                "First phase ran LOOK before follow supplied its target");
 
             fixture.frame(frames, "create_install");
             Creation created = actor.getLastCreation();
@@ -194,6 +217,17 @@ public final class MaidFollowCoreAdapterProbe {
                 fixture.component.getMoveState()
                     .getStatus() == FollowMoveState.Status.RUNNING,
                 "Sink did not remain running after real install");
+            long behaviorTime = platform.world.getTotalWorldTime();
+            long lookDeadline = fixture.component.getLookState()
+                .getEndTimestamp();
+            require(
+                actor.hasLookTarget() && fixture.component.getLookState()
+                    .getStatus() == FollowCoreLookDriver.Status.RUNNING
+                    && lookDeadline >= behaviorTime + 45
+                    && lookDeadline <= behaviorTime + 90,
+                "LOOK did not start with the admitted 45..90 duration");
+            fixture.requireOwnerLookConsumed();
+            row.addProperty("nativeLookHelperConsumptionVerified", true);
             int installedIndex = path.getCurrentPathIndex();
             fixture.frame(frames, "native_navigation");
             require(
@@ -274,8 +308,12 @@ public final class MaidFollowCoreAdapterProbe {
                     && fixture.component.getActor()
                         .peekPathMemory() == null
                     && fixture.component.getMoveState()
-                        .getStatus() == FollowMoveState.Status.STOPPED,
-                "Runtime cancellation erased the foreign path or retained old memory");
+                        .getStatus() == FollowMoveState.Status.STOPPED
+                    && !fixture.component.getActor()
+                        .hasLookTarget()
+                    && fixture.component.getLookState()
+                        .getStatus() == FollowCoreLookDriver.Status.STOPPED,
+                "Runtime cancellation erased the foreign path or retained old LOOK/movement state");
             row.addProperty("complete", true);
         }
     }
@@ -327,7 +365,41 @@ public final class MaidFollowCoreAdapterProbe {
         return row;
     }
 
+    private static Field lookField(Class<?> type, String... names) {
+        Field field = ReflectionHelper.findField(EntityLookHelper.class, names);
+        require(field.getType() == type, "Native look helper field type differs");
+        return field;
+    }
+
+    /** 只读取原生 helper，不替换实例，也不调用 setter 或 tick */
+    private static JsonObject lookHelperSnapshot(EntityMaid maid) {
+        EntityLookHelper helper = maid.getLookHelper();
+        require(helper.getClass() == EntityLookHelper.class, "Native look helper implementation outside probe scope");
+        try {
+            var result = new JsonObject();
+            result.addProperty(
+                "class",
+                helper.getClass()
+                    .getName());
+            result.addProperty("pending", LOOK_PENDING.getBoolean(helper));
+            result.addProperty("x", LOOK_X.getDouble(helper));
+            result.addProperty("y", LOOK_Y.getDouble(helper));
+            result.addProperty("z", LOOK_Z.getDouble(helper));
+            result.addProperty("maxYaw", LOOK_MAX_YAW.getFloat(helper));
+            result.addProperty("maxPitch", LOOK_MAX_PITCH.getFloat(helper));
+            result.addProperty("headYaw", maid.rotationYawHead);
+            result.addProperty("pitch", maid.rotationPitch);
+            return result;
+        } catch (IllegalAccessException failure) {
+            throw new IllegalStateException("Native look helper fields are not readable", failure);
+        }
+    }
+
     private static final class StageMaid extends EntityMaid {
+
+        JsonObject afterComponentLookHelper;
+        EntityLookHelper componentLookHelper;
+        int nativeHookObservations;
 
         StageMaid(WorldServer world) {
             super(world);
@@ -336,6 +408,14 @@ public final class MaidFollowCoreAdapterProbe {
         void stepInheritedAi() {
             ticksExisted++;
             super.updateAITasks();
+        }
+
+        @Override
+        protected void updateAITick() {
+            super.updateAITick();
+            componentLookHelper = getLookHelper();
+            afterComponentLookHelper = lookHelperSnapshot(this);
+            nativeHookObservations++;
         }
     }
 
@@ -436,15 +516,28 @@ public final class MaidFollowCoreAdapterProbe {
             frames.add(frame);
             frame.add("before", snapshot());
             int beforeTick = maid.ticksExisted;
+            int beforeHookObservations = maid.nativeHookObservations;
+            EntityLookHelper beforeLookHelper = maid.getLookHelper();
+            frame.addProperty("nativeHookBefore", beforeHookObservations);
+            maid.afterComponentLookHelper = null;
             long beforeWorldTick = platform.world.getTotalWorldTime();
             try {
                 maid.stepInheritedAi();
                 actorToken = runtime().getContext()
                     .getToken();
+                frame.add("afterComponentLookHelper", maid.afterComponentLookHelper);
+                frame.addProperty("nativeHookAfter", maid.nativeHookObservations);
+                frame.addProperty("componentHelperIsOriginal", maid.componentLookHelper == beforeLookHelper);
+                frame.addProperty("afterControlsHelperIsOriginal", maid.getLookHelper() == beforeLookHelper);
                 frame.add("after", snapshot());
                 require(
                     maid.ticksExisted == beforeTick + 1 && platform.world.getTotalWorldTime() == beforeWorldTick,
                     "Manual component stage or world clock changed unexpectedly");
+                require(
+                    maid.nativeHookObservations == beforeHookObservations + 1 && maid.afterComponentLookHelper != null
+                        && maid.componentLookHelper == beforeLookHelper
+                        && maid.getLookHelper() == beforeLookHelper,
+                    "Native AI hook observation count or look helper identity changed");
                 require(runtime().isReady(), "Component runtime faulted");
             } catch (RuntimeException | LinkageError failure) {
                 frame.addProperty(
@@ -453,6 +546,36 @@ public final class MaidFollowCoreAdapterProbe {
                         .getSimpleName());
                 throw failure;
             }
+        }
+
+        void requireOwnerLookConsumed() {
+            var beforeControls = maid.afterComponentLookHelper;
+            var afterControls = lookHelperSnapshot(maid);
+            require(
+                beforeControls != null && beforeControls.get("pending")
+                    .getAsBoolean()
+                    && !afterControls.get("pending")
+                        .getAsBoolean(),
+                "Actual native controls did not consume the component LOOK request");
+            require(
+                beforeControls.get("x")
+                    .getAsDouble() == owner.posX
+                    && beforeControls.get("y")
+                        .getAsDouble() == owner.posY + owner.getEyeHeight()
+                    && beforeControls.get("z")
+                        .getAsDouble() == owner.posZ
+                    && beforeControls.get("maxYaw")
+                        .getAsFloat() == 10.0F
+                    && beforeControls.get("maxPitch")
+                        .getAsFloat() == maid.getVerticalFaceSpeed(),
+                "Component LOOK request did not target the actual owner eye position and native turn limits");
+            for (String key : new String[] { "x", "y", "z", "maxYaw", "maxPitch" }) require(
+                beforeControls.get(key)
+                    .equals(afterControls.get(key)),
+                "Native controls changed the submitted LOOK request: " + key);
+            require(
+                Float.isFinite(maid.rotationYawHead) && Float.isFinite(maid.rotationPitch),
+                "Native look helper returned non-finite angles");
         }
 
         JsonObject snapshot() {
@@ -469,6 +592,7 @@ public final class MaidFollowCoreAdapterProbe {
             result.addProperty("entityTick", maid.ticksExisted);
             result.add("maidPosition", position(maid));
             result.add("ownerPosition", position(owner));
+            result.add("ownerEyePosition", point(owner.posX, owner.posY + owner.getEyeHeight(), owner.posZ));
             result.addProperty("maidOnGround", maid.onGround);
             result.addProperty("maidAlive", maid.isEntityAlive() && !maid.isDead);
             result.addProperty("ownerAlive", owner.isEntityAlive() && !owner.isDead);
@@ -540,6 +664,16 @@ public final class MaidFollowCoreAdapterProbe {
             memory.addProperty("cantReachSince", actor.peekCantReachSince());
             memory.addProperty("hasLook", actor.hasLookTarget());
             result.add("memory", memory);
+            var lookState = component.getLookState();
+            var look = new JsonObject();
+            look.addProperty(
+                "status",
+                lookState.getStatus()
+                    .name());
+            look.addProperty("endTimestamp", lookState.getEndTimestamp());
+            look.addProperty("visibilitySource", actor.getLookVisibilitySource());
+            result.add("look", look);
+            result.add("lookHelper", lookHelperSnapshot(maid));
             var state = component.getMoveState();
             var sink = new JsonObject();
             sink.addProperty(
@@ -888,6 +1022,14 @@ public final class MaidFollowCoreAdapterProbe {
     }
 
     private static JsonArray point(int x, int y, int z) {
+        var value = new JsonArray();
+        value.add(GSON.toJsonTree(x));
+        value.add(GSON.toJsonTree(y));
+        value.add(GSON.toJsonTree(z));
+        return value;
+    }
+
+    private static JsonArray point(double x, double y, double z) {
         var value = new JsonArray();
         value.add(GSON.toJsonTree(x));
         value.add(GSON.toJsonTree(y));

@@ -1,0 +1,338 @@
+{
+  "schema": "look-reference-contract-v1",
+  "contracts": [
+    "LOOK_SINK_CORE_V1",
+    "FOLLOW_MOVE_LOOK_COMPONENT_V2"
+  ],
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "minecraft": "1.20.1",
+  "forge": "47.2.0",
+  "javaFeature": 17,
+  "rebuilds": 3,
+  "scope": "original LookAtTargetSink lifecycle and selected original Brain look0/move2/follow3 component; controlled owner, visibility memory, navigation, gameTime and bounded world integers; unregistered entities, no natural Brain/world/helper tick",
+  "cases": [
+    {
+      "id": "L01_min_duration",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 145,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 146,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "L02_max_duration",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        45
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 190,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 191,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "L03_absent",
+      "kind": "look",
+      "initial": {
+        "lookPresent": false,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "L04_invisible_present",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": true,
+        "visibleMemory": "empty",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "L05_remove_running",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "externalPatch": {
+            "lookPresent": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "L06_replace_position",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "externalPatch": {
+            "targetPosition": [
+              2.5,
+              193,
+              8.5
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "L07_feet_tracker",
+      "kind": "look",
+      "initial": {
+        "lookPresent": true,
+        "trackEye": false,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0
+      ],
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "C01_empty_to_follow",
+      "kind": "combined",
+      "initial": {
+        "lookPresent": false,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "steps": [
+        {
+          "operation": "brainPasses",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 101,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 102,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 103,
+          "externalPatch": {}
+        }
+      ]
+    },
+    {
+      "id": "C02_look_expires_walk_retained",
+      "kind": "combined",
+      "initial": {
+        "lookPresent": false,
+        "trackEye": true,
+        "visibleMemory": "owner",
+        "targetPosition": [
+          0.5,
+          192,
+          8.5
+        ]
+      },
+      "worldInts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "steps": [
+        {
+          "operation": "brainPasses",
+          "methodTime": 100,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 101,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 146,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 147,
+          "externalPatch": {}
+        },
+        {
+          "operation": "brainPasses",
+          "methodTime": 148,
+          "externalPatch": {}
+        }
+      ]
+    }
+  ]
+}

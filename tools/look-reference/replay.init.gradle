@@ -1,0 +1,23 @@
+// Generated launcher paths stay inside ignored build output
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    project.tasks.register('prepareLookReplay') {
+        group = 'verification'
+        description = 'Compiles the actual port LOOK driver and records its isolated replay launcher'
+        dependsOn project.tasks.named('testClasses')
+        doLast {
+            def launcher = project.javaToolchains.launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            }.get()
+            def destination = project.file(project.findProperty('lookLauncher') ?: 'build/look-reference/launcher.json')
+            destination.parentFile.mkdirs()
+            destination.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+                schema: 'look-core-replay-launcher-v1',
+                executable: launcher.executablePath.asFile.absolutePath,
+                classpath: project.sourceSets.test.runtimeClasspath.files.collect { it.absolutePath },
+                mainClass: 'com.tianluoqaq.tlmnh.common.ai.faithful.LookCoreReplayMain',
+                workingDirectory: project.layout.buildDirectory.dir('look-reference').get().asFile.absolutePath
+            ])) + '\n', 'UTF-8')
+        }
+    }
+}

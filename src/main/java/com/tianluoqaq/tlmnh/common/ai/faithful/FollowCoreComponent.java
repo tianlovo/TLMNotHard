@@ -8,13 +8,15 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState.Status;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
-/** after-native开发组件：原sink/follow两pass，无手工导航tick，不代表完整F或自然Brain */
+/** after-native开发组件：原look/move/follow两pass，无手工导航tick，不代表完整F或自然Brain */
 public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigationActions {
 
     private final EntityMaid maid;
     private final Rc2FollowCoreActor actor;
+    private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(0.5F, 2);
+    private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
     private FollowMoveState moveState = new FollowMoveState();
     private boolean followRunning, ticking, hasTick;
     private long followEndTimestamp, lastWorldTick;
@@ -40,7 +42,8 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
             lastWorldTick = time;
             lastEntityTick = maid.ticksExisted;
             hasTick = true;
-            // Brain先尝试启动全部STOPPED行为：sink priority2，再follow priority3
+            // Brain先尝试启动全部STOPPED行为：look0、move2、follow3
+            if (lookState.getStatus() == FollowCoreLookDriver.Status.STOPPED) look.tryStart(actor, lookState, time);
             if (moveState.getStatus() == Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
@@ -48,7 +51,8 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }
-            // 再tick运行行为；Follow默认canStillUse=false，正常在本pass停止
+            // 再按同样优先序tick运行行为；Follow默认canStillUse=false
+            if (lookState.getStatus() == FollowCoreLookDriver.Status.RUNNING) look.tickOrStop(actor, lookState, time);
             if (moveState.getStatus() == Status.RUNNING) move.tickOrStop(actor, moveState, time);
             if (followRunning) followRunning = false;
         } finally {
@@ -61,6 +65,7 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
         try {
             actor.cancelOwnedResources();
         } finally {
+            lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
         }
@@ -68,6 +73,10 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
 
     public Rc2FollowCoreActor getActor() {
         return actor;
+    }
+
+    public FollowCoreLookDriver.State getLookState() {
+        return lookState;
     }
 
     public FollowMoveState getMoveState() {

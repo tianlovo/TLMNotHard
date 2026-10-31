@@ -375,6 +375,21 @@ MaidFollowTeleportProbe 用原版记录的整数流驱动实际 RC2 适配器，
 原包 `EntityMaid` 新增 `updateAITick` 适配钩子，保留父类行为，不另注册第二套任务循环
 完整忠实与增强模式仍未启用，新增源码及探针不等于相应自然功能已经验收
 
+## LOOK 执行组件
+
+`FollowCoreLookDriver` 是本工程的独立适配，依据固定 MC1.20.1 的 `LookAtTargetSink`、`Behavior` 实际字节码，
+以及固定 TLM `MaidBrain` 的 priority0 注册方式核对生命周期；不包含或打包 Minecraft 原类
+保留 45..90 tick 持续时间、世界整数随机调用、严格截止边界、运行时可见性检查及停止时只擦除 LOOK 的语义
+
+`Rc2FollowCoreActor` 通过 RC2 原生视线控制器提交主人眼部位置，仍由原生 controls 阶段消费，不手动 tick helper
+当前可见性来源为 `CURRENT_RC2_LOS`，没有宣称还原现代 sensor 的候选范围、刷新相位或缓存
+停止不回写角度，也不撤回已提交的原生请求；两代 helper 的执行物理仍分别记录
+
+`FollowCoreComponent` 在既有 after-native 入口按 look0、move2、follow3 执行开始与运行两 pass
+新增 LOOK 会改变组合的随机消耗，`FOLLOW_MOVE_LOOK_COMPONENT_V2` 与旧任务、移动 sink 的独立证据分开
+`tools/look-reference` 调用真实原版 LOOK 与选定三行为的 Brain 方法，受控记忆、时钟、导航和主人不冒充自然 Brain
+原版采集、移植重放、RC2 原生执行和完整 F/N 的状态见 [开发进度](PROGRESS.md)
+
 ## RC2 副手与盾牌
 
 `common/combat/MaidItemUseState` 与 `common/combat/shield` 为独立适配代码，新增文件仍位于本工程根包

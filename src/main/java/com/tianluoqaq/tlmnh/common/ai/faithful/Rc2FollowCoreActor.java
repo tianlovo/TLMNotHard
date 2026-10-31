@@ -21,7 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 /** FOLLOW_CORE组件的RC2执行边界，仅接受显式开发干燥合同，不提供完整家园/呼吸状态 */
-public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveActor {
+public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor {
 
     /** 必须核实已加载的完整搜索域、STONE平面/空气、无危险和未知块；不允许强加载 */
     public interface DryDomain {
@@ -478,6 +478,44 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
 
     public boolean hasLookTarget() {
         return look != null;
+    }
+
+    /** 本组件只使用RC2当前LOS，不冒充原版sensor的候选范围、刷新相位或缓存 */
+    public String getLookVisibilitySource() {
+        return "CURRENT_RC2_LOS";
+    }
+
+    public boolean isLookTargetRegistered() {
+        guard();
+        return true;
+    }
+
+    public boolean isCurrentLookTargetVisible() {
+        guard();
+        if (look == null) return false;
+        look.check();
+        boolean visible = look.player.worldObj == world && look.player.isEntityAlive()
+            && maid.getEntitySenses()
+                .canSee(look.player);
+        guard();
+        return visible;
+    }
+
+    public void lookAtCurrentTargetIfPresent() {
+        guard();
+        if (look == null) return;
+        look.check();
+        double x = look.player.posX, y = look.player.posY + look.player.getEyeHeight(), z = look.player.posZ;
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) throw outside("non_finite_look_target");
+        guard();
+        maid.getLookHelper()
+            .setLookPosition(x, y, z, 10.0F, maid.getVerticalFaceSpeed());
+    }
+
+    /** 原LookAtTargetSink.stop只擦LOOK，不能改写已经提交或外来helper请求 */
+    public void eraseLookTarget() {
+        guard();
+        look = null;
     }
 
     public MaidBoundedPathPlanner.Creation getLastCreation() {

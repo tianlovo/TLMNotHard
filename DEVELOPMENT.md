@@ -315,3 +315,17 @@ Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解
 开发命令 `tlmnhdev native-ai-phase-test` 使用真实原生调用栈的受控夹具记录阶段，
 `early_component` 参数会实际提前调用组件，用于检验阶段错误能否被拒绝；两者都不是世界自然跟随测评
 新增采集工具和阶段接线的实际验证状态见 [Indev 进度](PROGRESS.md)
+
+### LOOK 与三行为组合
+
+`FollowCoreLookDriver` 处理 LOOK 的开始、持续和停止，`FollowCoreComponent` 在同一 after-native 入口按
+look0、move2、follow3 执行开始 pass，再按同序执行运行 pass；不新增任务循环，也不手动推进 helper
+停止仅清本组件的 LOOK，已提交的转头请求按 RC2 原生规则消费
+
+当前可见性使用 `EntitySenses.canSee`，报告标为 `CURRENT_RC2_LOS`，不等同于现代原版的 sensor 缓存
+原版 `LookAtTargetSink(45,90)` 的参数是持续时间范围，视角限速另由实体和原生 helper 提供
+初始没有 LOOK 时，本帧 follow 写入目标，下一帧 LOOK 才启动；不可为了持续转头而每帧重建已停止的 LOOK
+
+独立原版工具见 [LOOK 对照](tools/look-reference/README.md)，需使用该目录的 init 与新身份清单
+`LOOK_SINK_CORE_V1` 和 `FOLLOW_MOVE_LOOK_COMPONENT_V2` 分别记录，旧任务与移动 sink 的独立结果不升级为新组合通过
+原版自身 A/A、实际故障检出、移植重放和原生 controls 消费分别验收，完整 F/N 模式继续保持不可用
