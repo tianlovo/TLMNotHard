@@ -7,6 +7,7 @@ public final class MaidLifeRules {
 
     public static final int SNACK_INTERVAL = 45 * 20;
     public static final int REWARD_INTERVAL = 3 * 60 * 20;
+    public static final double SNACK_OWNER_RANGE_SQ = 8 * 8;
 
     private MaidLifeRules() {}
 

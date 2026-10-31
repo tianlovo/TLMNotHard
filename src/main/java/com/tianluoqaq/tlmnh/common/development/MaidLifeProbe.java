@@ -164,6 +164,7 @@ public final class MaidLifeProbe {
             world.setBlockToAir(x, y + 1, z);
             // 原生 Item.cake 的堆叠上限为1，分槽放置以免把RC2的堆叠补丁当成前提
             verifyIntentSelection(world, maid, owner, x, y, z);
+            verifySnackOwnerRange(world, maid, owner, x, y, z);
             maid.getMaidInventory()
                 .setInventorySlotContents(0, new ItemStack(Items.cake));
             maid.getMaidInventory()
@@ -180,13 +181,14 @@ public final class MaidLifeProbe {
                 reject.seen && life.getPlacements() == 0 && world.isAirBlock(x, y + 1, z) && cakeCount(maid) == 2,
                 "Cancelled Forge placement conserves original cake");
             life.cancel();
-            for (String mode : new String[] { "policy", "cancel", "reenter" }) {
+            for (String mode : new String[] { "policy", "cancel", "reenter", "owner" }) {
                 var callbackLife = new MaidLifeController(maid, () -> {}, () -> owner);
                 var callback = new RejectPlacement(maid, () -> {
                     if ("policy".equals(mode)) maid.getBrainCoordinator()
                         .getPolicyRuntime()
                         .invalidate(InvalidationReason.RESET);
                     else if ("cancel".equals(mode)) callbackLife.cancel();
+                    else if ("owner".equals(mode)) owner.setPosition(x + 8.5, y + 1.5, z + 0.5);
                     else require(!tick(callbackLife, maid), "Reentrant life tick must be refused");
                 });
                 MinecraftForge.EVENT_BUS.register(callback);
@@ -200,6 +202,7 @@ public final class MaidLifeProbe {
                 } finally {
                     MinecraftForge.EVENT_BUS.unregister(callback);
                     callbackLife.cancel();
+                    owner.setPosition(x + 2.5, y, z + 1.5);
                 }
             }
             life = new MaidLifeController(maid, () -> {}, () -> owner);
@@ -369,13 +372,63 @@ public final class MaidLifeProbe {
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
         TLMNotHard.LOG.info(
-            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved callback_policy=conserved callback_cancel=conserved callback_reentry=refused recovery=placed_once intent_far=honoured intent_stale=refused intent_yield=no_fallback intent_cancel=refused sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
+            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved callback_policy=conserved callback_cancel=conserved callback_reentry=refused callback_owner_range=conserved snack_owner_boundary=strict_8 snack_owner_moved=cancelled recovery=placed_once intent_far=honoured intent_stale=refused intent_yield=no_fallback intent_cancel=refused sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
     }
 
     private static Throwable remember(Throwable first, Throwable next) {
         if (first == null) return next;
         if (first != next) first.addSuppressed(next);
         return first;
+    }
+
+    private static void verifySnackOwnerRange(WorldServer world, EntityMaid maid, EntityPlayerMP owner, int x, int y,
+        int z) {
+        double mx = maid.posX, my = maid.posY, mz = maid.posZ;
+        double ox = owner.posX, oy = owner.posY, oz = owner.posZ;
+        boolean onGround = maid.onGround;
+        MaidLifeController boundary = null, inside = null, moving = null;
+        try {
+            require(world.setBlock(x, y + 1, z, Blocks.cake, 0, 2), "Owner range cake setup");
+            maid.setPosition(x + 1.5, y, z + 0.5);
+            owner.setPosition(x + 8.5, y + 1.5, z + 0.5);
+            require(maid.getDistanceSqToEntity(owner) < 144, "Owner range must not test the existing 12-block gate");
+            boundary = new MaidLifeController(maid, () -> {}, () -> owner);
+            require(
+                !tick(boundary, maid) && boundary.getBites() == 0 && world.getBlockMetadata(x, y + 1, z) == 0,
+                "Cake center at exactly eight blocks from owner must be refused");
+            owner.setPosition(x + 8.4999, y + 1.5, z + 0.5);
+            inside = new MaidLifeController(maid, () -> {}, () -> owner);
+            require(
+                tick(inside, maid) && inside.getBites() == 1 && world.getBlockMetadata(x, y + 1, z) == 1,
+                "Cake just inside owner range must remain usable");
+            inside.cancel();
+            world.setBlockMetadataWithNotify(x, y + 1, z, 0, 2);
+            maid.setPosition(x + 3.5, y, z + 0.5);
+            // 夹具没有推进原生物理，必须给实际石平台上的实体设置着地前提
+            maid.onGround = true;
+            owner.setPosition(x + 2.5, y, z + 0.5);
+            moving = new MaidLifeController(maid, () -> {}, () -> owner);
+            require(
+                tick(moving, maid) && moving.getBites() == 0
+                    && maid.getNavigator()
+                        .getPath() != null,
+                "Owner range continuation needs an actual approaching action");
+            owner.setPosition(x + 8.5, y + 1.5, z + 0.5);
+            require(
+                !tick(moving, maid) && moving.getBites() == 0
+                    && maid.getNavigator()
+                        .noPath()
+                    && world.getBlockMetadata(x, y + 1, z) == 0,
+                "Owner leaving the food range must cancel the owned approach without taking a bite");
+        } finally {
+            if (boundary != null) boundary.cancel();
+            if (inside != null) inside.cancel();
+            if (moving != null) moving.cancel();
+            world.setBlockToAir(x, y + 1, z);
+            maid.setPosition(mx, my, mz);
+            maid.onGround = onGround;
+            owner.setPosition(ox, oy, oz);
+        }
     }
 
     private static Throwable releaseMessages(EmbeddedChannel connection, boolean outbound, Throwable failure) {

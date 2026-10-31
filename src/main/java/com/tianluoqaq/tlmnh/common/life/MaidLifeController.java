@@ -258,7 +258,8 @@ public final class MaidLifeController {
                 if (rest) {
                     var bed = (TileEntityMaidBed) candidate;
                     reason = !bed.available(maid) ? "bed_unavailable" : !bedClear(bed) ? "bed_obstructed" : "eligible";
-                } else reason = snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
+                } else reason = !snackWithinOwnerRange(candidate) ? "snack_outside_owner_range"
+                    : snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
                 boolean usable = "eligible".equals(reason);
                 if (recording) telemetry.candidate("life_tile", tileId(candidate), usable, reason);
                 if (usable) options.add(
@@ -352,6 +353,7 @@ public final class MaidLifeController {
     }
 
     private boolean snackValid(TileEntity cabinet, boolean place) {
+        if (!snackWithinOwnerRange(cabinet)) return false;
         int x = cabinet.xCoord, y = cabinet.yCoord + 1, z = cabinet.zCoord;
         if (!maid.worldObj.blockExists(x, y, z) || !(maid.worldObj.getBlock(x, y - 1, z) instanceof BlockSnackCabinet))
             return false;
@@ -361,6 +363,13 @@ public final class MaidLifeController {
                     && MathHelper.floor_double(maid.posZ) == z)
                 && Blocks.cake.canPlaceBlockAt(maid.worldObj, x, y, z)
             : maid.worldObj.getBlock(x, y, z) == Blocks.cake && maid.worldObj.getBlockMetadata(x, y, z) <= 5;
+    }
+
+    private boolean snackWithinOwnerRange(TileEntity cabinet) {
+        // 上游非家园模式按食物方块中心到主人的距离判断，不是女仆到主人的距离
+        return cabinet != null && ownerValid(owner)
+            && owner.getDistanceSq(cabinet.xCoord + 0.5, cabinet.yCoord + 1.5, cabinet.zCoord + 0.5)
+                < MaidLifeRules.SNACK_OWNER_RANGE_SQ;
     }
 
     private boolean bedClear(TileEntityMaidBed bed) {
@@ -504,6 +513,7 @@ public final class MaidLifeController {
             && ownerValid(owner)
             && maid.getDistanceSqToEntity(owner) <= 144
             && action == Action.PLACE
+            && snackWithinOwnerRange(target)
             && !MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime())
             && target != null
             && !target.isInvalid()
