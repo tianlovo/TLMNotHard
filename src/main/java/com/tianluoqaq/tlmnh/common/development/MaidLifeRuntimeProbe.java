@@ -230,6 +230,8 @@ public final class MaidLifeRuntimeProbe {
         snackX = maid.posX;
         snackZ = maid.posZ;
         snackPathBase = life().getPathRequests();
+        // 先用自然预热检查威胁靶能存活，避免等待两轮冷却后才发现搭场无效
+        spawnDanger();
         record("setup");
     }
 
@@ -298,9 +300,11 @@ public final class MaidLifeRuntimeProbe {
                     .equals("false"),
             "Shared test clock or gamerules changed externally");
         if (ticks % 20 == 0) chunksLoaded();
-        if (phase == Phase.DANGER_WAKE || phase == Phase.HOLD_DANGER) require(
-            danger != null && danger.isEntityAlive() && MaidSpawnChecks.present(danger, world),
-            "Visible hostile disappeared");
+        if (phase == Phase.DANGER_WAKE || phase == Phase.HOLD_DANGER) {
+            boolean present = danger != null && danger.isEntityAlive() && MaidSpawnChecks.present(danger, world);
+            if (!present) record("danger_unavailable");
+            require(present, "Visible hostile disappeared");
+        }
     }
 
     private void advance() {
@@ -310,6 +314,13 @@ public final class MaidLifeRuntimeProbe {
             case WARMUP:
                 if (elapsed < 8) return;
                 require(maid.ticksExisted - initialEntityTick >= 5, "Warmup did not use real entity ticks");
+                require(
+                    danger != null && danger.isEntityAlive()
+                        && MaidSpawnChecks.present(danger, world)
+                        && danger.isNoDespawnRequired(),
+                    "Persistent danger fixture did not survive natural warmup");
+                world.removeEntity(danger);
+                danger = null;
                 maid.getBrainCoordinator()
                     .setSuspended(false);
                 change(Phase.STEAL);
@@ -441,6 +452,8 @@ public final class MaidLifeRuntimeProbe {
 
     private void spawnDanger() {
         danger = new EntityZombie(world);
+        // 本场景测危险中断，不测自然刷怪/远距消失；与弓箭靶一样固定原生持久标志
+        danger.func_110163_bv();
         protect(danger);
         danger.tasks.taskEntries.clear();
         danger.targetTasks.taskEntries.clear();
@@ -555,6 +568,19 @@ public final class MaidLifeRuntimeProbe {
         observation.addProperty("bites", life().getBites());
         observation.addProperty("placements", life().getPlacements());
         observation.addProperty("sleepEntries", life().getSleepEntries());
+        if (danger != null) {
+            observation.addProperty("dangerAlive", danger.isEntityAlive());
+            observation.addProperty("dangerDead", danger.isDead);
+            observation.addProperty("dangerPresent", MaidSpawnChecks.present(danger, world));
+            observation.addProperty("dangerPersistent", danger.isNoDespawnRequired());
+            observation.addProperty("dangerHealth", danger.getHealth());
+            observation.addProperty("difficulty", world.difficultySetting.name());
+            var nearest = world.getClosestPlayerToEntity(danger, -1);
+            observation.addProperty("nearestIsFixtureOwner", nearest == owner);
+            observation.addProperty("nearestSameWorld", nearest != null && nearest.worldObj == world);
+            observation
+                .addProperty("nearestDistanceSq", nearest == null ? null : danger.getDistanceSqToEntity(nearest));
+        }
         observations.add(observation);
     }
 
@@ -636,6 +662,9 @@ public final class MaidLifeRuntimeProbe {
         result.addProperty("snackMovementSq", snackMovementSq);
         result.addProperty("bedApproachMovementSq", bedApproachMovementSq);
         result.addProperty("cleanupRestored", errors.isEmpty());
+        result.addProperty(
+            "dangerFixture",
+            "persistent native zombie with movement/attack tasks removed; despawning is outside this scenario");
         result.addProperty("error", error);
         result.addProperty("restoreError", errors.isEmpty() ? null : String.join("; ", errors));
         result.add("observations", observations);
