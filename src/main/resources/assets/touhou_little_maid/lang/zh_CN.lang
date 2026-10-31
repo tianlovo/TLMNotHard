@@ -37,3 +37,7 @@ gui.touhou_little_maid.button.global_config.desc= -§a 点击跳转模组配置�
 task.touhou_little_maid.idle=空闲
 task.touhou_little_maid.attack=攻击
 task.touhou_little_maid.ranged_attack=弓兵
+gui.touhou_little_maid.task.switch=切换工作模式
+gui.touhou_little_maid.task.close=关闭
+gui.touhou_little_maid.task.previous_page=上一页
+gui.touhou_little_maid.task.next_page=下一页

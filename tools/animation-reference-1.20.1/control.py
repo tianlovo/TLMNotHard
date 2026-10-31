@@ -27,7 +27,8 @@ def git(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "shutdown"))
+    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("--name")
     parser.add_argument("--model")
     parser.add_argument("--entity")
     parser.add_argument("--frames", type=int, default=30)
@@ -43,6 +44,10 @@ def main():
     if not controls.is_dir():
         raise ValueError("Reference probe is not ready")
     request = {"command": args.command}
+    if args.command == "gui_capture":
+        if not args.name:
+            parser.error("gui_capture requires --name")
+        request["name"] = args.name
     if args.command in ("spawn_case", "sample_case"):
         if not args.model:
             parser.error("spawn_case requires --model")
@@ -79,6 +84,13 @@ def main():
                                   for p in probe.rglob("*.java")}, "equivalence_verified": False,
                 "prism_modified": False,
                 "upstream_probe_patch_sha256": hashlib.sha256((PROBE / "upstream-probe.patch").read_bytes()).hexdigest()}
+    if response.get("image"):
+        relative = Path(response["image"])
+        if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != "gui":
+            raise ValueError("Unexpected original GUI screenshot path")
+        picture = controls.parent / relative
+        safe(picture)
+        evidence["image"] = {"path": str(picture), "sha256": hashlib.sha256(picture.read_bytes()).hexdigest()}
     if response.get("capture"):
         relative = Path(response["capture"])
         if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != "captures":

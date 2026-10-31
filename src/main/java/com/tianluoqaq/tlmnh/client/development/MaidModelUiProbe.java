@@ -34,8 +34,13 @@ public final class MaidModelUiProbe {
         boolean requested = false, network = false;
         if (!action.equals("status")) {
             if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
-                requested = original.requestAction(action);
-                network = requested && !action.equals("tasks");
+                if (action.equals("pointer")) {
+                    org.lwjgl.input.Mouse.setCursorPosition(0, minecraft.displayHeight - 1);
+                    requested = true;
+                } else {
+                    requested = original.requestAction(action);
+                    network = requested && !action.equals("tasks");
+                }
             } else if (minecraft.currentScreen instanceof GuiMaid main) {
                 if (action.equals("open")) {
                     requested = main.openModelSelector();
@@ -121,6 +126,8 @@ public final class MaidModelUiProbe {
             response.addProperty("scaledWidth", original.width);
             response.addProperty("scaledHeight", original.height);
             response.addProperty("slotCount", original.inventorySlots.inventorySlots.size());
+            response.addProperty("lastRenderMouseX", original.getLastMouseX());
+            response.addProperty("lastRenderMouseY", original.getLastMouseY());
             response.addProperty(
                 "task",
                 maid.getTask()

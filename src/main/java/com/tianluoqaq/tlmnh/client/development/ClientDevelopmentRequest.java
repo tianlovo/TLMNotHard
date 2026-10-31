@@ -130,6 +130,7 @@ public final class ClientDevelopmentRequest {
                     "idle",
                     "attack",
                     "ranged",
+                    "pointer",
                     "schedule",
                     "pickup")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");

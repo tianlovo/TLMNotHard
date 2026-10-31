@@ -33,6 +33,15 @@ public final class EmptyBackpackContainerScreen extends AbstractMaidContainerGui
             org.lwjgl.opengl.GL11.glColor4f(1, 1, 1, 1);
             drawTexturedModalRect(guiLeft + 190, guiTop + iconY[index], 165, 0, 11, 11);
         }
+        if (!inventorySlots.inventorySlots.get(47)
+            .getHasStack()) {
+            mc.getTextureManager()
+                .bindTexture(
+                    new net.minecraft.util.ResourceLocation(
+                        "touhou_little_maid",
+                        "textures/slot/empty_back_show_slot.png"));
+            net.minecraft.client.gui.Gui.func_146110_a(guiLeft + 233, guiTop + 37, 0, 0, 16, 16, 16, 16);
+        }
     }
 
     public EmptyBackpackContainerScreen(EmptyBackpackContainer container) {

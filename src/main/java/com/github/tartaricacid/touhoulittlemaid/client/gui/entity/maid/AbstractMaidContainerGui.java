@@ -42,9 +42,10 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     private static final Item[] TASK_ICONS = { Items.feather, Items.diamond_sword, Items.bow };
     private static final int TASK_SWITCH = 100, TASK_CLOSE = 101, SCHEDULE = 102;
     private static final int SKIN = 103, INFO = 104, SOUND = 105, RIDE = 106, DOWNLOAD = 107;
-    private static final int MAIN_TAB = 108, TASK_TAB = 109, CONFIG_TAB = 110, BOOK = 111, GLOBAL = 112;
+    private static final int MAIN_TAB = 108, TASK_TAB = 109, CONFIG_TAB = 110, BOOK = 111, GLOBAL = 112, BAUBLE = 115;
     protected final EntityMaid maid;
     private boolean taskListOpen;
+    private int lastMouseX, lastMouseY;
 
     protected AbstractMaidContainerGui(T container) {
         super(container);
@@ -75,6 +76,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         add(CONFIG_TAB, 144, 5, 24, 26, SIDE, 157, 21, 0, 0, "maid_config");
         add(BOOK, 251, 37, 26, 24, SIDE, 209, 107, 0, 0, "task_book");
         add(GLOBAL, 251, 62, 26, 24, SIDE, 209, 132, 0, 0, "global_config");
+        add(BAUBLE, 85, 97, 54, 63, texture("bauble_button"), 0, 0, 0, 0, "");
         add(TASK_CLOSE, -19, 9, 13, 13, TASK, 127, 0, 14, 0, "close");
         add(113, -89, 9, 16, 13, TASK, 110, 0, 14, 0, "previous");
         add(114, -72, 9, 16, 13, TASK, 93, 0, 14, 0, "next");
@@ -102,7 +104,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
             button.enabled = switch (button.id) {
-                case SOUND, RIDE, DOWNLOAD, MAIN_TAB, TASK_TAB, CONFIG_TAB, BOOK, GLOBAL, 113, 114 -> false;
+                case SOUND, RIDE, DOWNLOAD, MAIN_TAB, TASK_TAB, CONFIG_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
                 case SKIN -> mc.thePlayer.inventory.getItemStack() == null;
                 case ContainerMaid.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
                 default -> true;
@@ -167,6 +169,14 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         return taskListOpen;
     }
 
+    public int getLastMouseX() {
+        return lastMouseX;
+    }
+
+    public int getLastMouseY() {
+        return lastMouseY;
+    }
+
     @Override
     protected void drawGuiContainerBackgroundLayer(float partialTick, int mouseX, int mouseY) {
         GL11.glColor4f(1, 1, 1, 1);
@@ -214,7 +224,15 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTick) {
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
         super.drawScreen(mouseX, mouseY, partialTick);
+        drawCenteredString(
+            fontRendererObj,
+            "1.7.10-" + com.tianluoqaq.tlmnh.Tags.VERSION,
+            guiLeft + 40,
+            guiTop - 4,
+            0xAAAAAA);
         drawTask(
             maid.getTask()
                 .ordinal(),
@@ -246,9 +264,18 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     }
 
     private List<String> tooltip(MaidAtlasButton button) {
+        if (button.id == BAUBLE) return Collections.singletonList(text("gui.tlmnh.original.bauble_excluded"));
         if (button.id <= ContainerMaid.ACTION_RANGED) return Collections.emptyList();
         var lines = new ArrayList<String>();
-        if (button.id == INFO) {
+        if (button.id == TASK_SWITCH || button.id == TASK_CLOSE || button.id == 113 || button.id == 114) {
+            String taskKey = switch (button.id) {
+                case TASK_SWITCH -> "switch";
+                case TASK_CLOSE -> "close";
+                case 113 -> "previous_page";
+                default -> "next_page";
+            };
+            lines.add(text("gui.touhou_little_maid.task." + taskKey));
+        } else if (button.id == INFO) {
             lines.add(text("tooltips.touhou_little_maid.info.title"));
             lines.add(maid.getCommandSenderName());
             lines.add(maid.getModelId());
@@ -266,7 +293,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             if (StatCollector.canTranslate("gui.touhou_little_maid.button." + button.tooltip + ".desc"))
                 lines.add(text("gui.touhou_little_maid.button." + button.tooltip + ".desc"));
         }
-        if (!button.enabled && button.id != MAIN_TAB && button.id != 113 && button.id != 114)
+        if (!button.enabled && button.id != MAIN_TAB && button.id != SKIN && button.id != 113 && button.id != 114)
             lines.add(text("gui.tlmnh.original.pending"));
         if (button.id == SKIN) lines.add(text("gui.tlmnh.original.model_prototype"));
         return lines;

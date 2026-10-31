@@ -37,3 +37,7 @@ gui.touhou_little_maid.button.global_config.desc= -§a Click to navigate to the 
 task.touhou_little_maid.idle=Idle
 task.touhou_little_maid.attack=Attack
 task.touhou_little_maid.ranged_attack=Bow
+gui.touhou_little_maid.task.switch=Switch Task
+gui.touhou_little_maid.task.close=Close
+gui.touhou_little_maid.task.previous_page=Previous Page
+gui.touhou_little_maid.task.next_page=Next Page

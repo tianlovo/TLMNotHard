@@ -20,6 +20,11 @@
     "com.tianluoqaq.tlmnh.reference.ReferenceReplayInputs",
     "com.tianluoqaq.tlmnh.reference.ReferenceScenario",
     "com.tianluoqaq.tlmnh.reference.ReferenceScene",
-    "com.tianluoqaq.tlmnh.reference.ReferenceRuntimeIdentity"
+    "com.tianluoqaq.tlmnh.reference.ReferenceRuntimeIdentity",
+    "com.tianluoqaq.tlmnh.reference.GuiReferenceProbe",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen",
+    "com.github.tartaricacid.touhoulittlemaid.inventory.container.MaidMainContainer",
+    "com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer"
   ]
 }

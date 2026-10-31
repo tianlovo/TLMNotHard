@@ -258,7 +258,7 @@ gradle.beforeProject { upstream ->
             workingDirectory new File(runtimeRoot, 'client')
             property 'tlmnh.referenceProbe', 'true'
             property 'tlmnh.upstreamCommit', '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6'
-            args '--username', 'TLMNHReference'
+            args '--username', 'TLMNHReference', '--width', '1280', '--height', '720'
         }
         upstream.tasks.register('tlmnhReferenceRuntimeInventory') {
             doLast {

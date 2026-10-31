@@ -163,6 +163,9 @@ public final class ReferenceObservationProbe {
                     active = new Capture(name, UUID.fromString(request.get("entityUuid").getAsString()), count, false, 0);
                     response.addProperty("status", "waiting-render");
                 }
+                case "gui_open" -> response = GuiReferenceProbe.open();
+                case "gui_status" -> response = GuiReferenceProbe.status();
+                case "gui_capture" -> response = GuiReferenceProbe.capture(request, root, name);
                 case "create_lab" -> response = ReferenceScene.createLab();
                 case "open_lab" -> response = ReferenceScene.openLab();
                 case "spawn_case" -> response = ReferenceScene.spawn(request);
