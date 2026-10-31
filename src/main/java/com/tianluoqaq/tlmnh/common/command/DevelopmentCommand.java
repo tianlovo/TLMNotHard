@@ -209,6 +209,11 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
             return;
         }
+        if (args.length == 1 && "owner-sensor-test".equals(args[0])) {
+            MaidBrainProbe.runOwnerSensor((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
+            return;
+        }
         if (args.length == 1 && "naming-test".equals(args[0])) {
             MaidNamingProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.naming_passed"));

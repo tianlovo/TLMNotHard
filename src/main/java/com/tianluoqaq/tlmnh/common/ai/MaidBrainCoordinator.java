@@ -8,14 +8,13 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -33,9 +32,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final EntityMaid maid;
     private final MaidFollowController follow;
     private final MaidCombatController combat;
+    private final CombatActor combatActor;
     private final MaidBowAttack bow;
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
+    private final MaidOwnerSensor ownerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
@@ -56,12 +57,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     public MaidBrainCoordinator(EntityMaid maid) {
         this.maid = maid;
         telemetry = new MaidTelemetryChannel(maid);
+        ownerSensor = new MaidOwnerSensor(maid, telemetry);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         bow = new MaidBowAttack(maid);
-        life = new MaidLifeController(maid, follow::cancel);
-        combat = new MaidCombatController(new CombatActor(), maid.getEntityId());
+        life = new MaidLifeController(maid, follow::cancel, ownerSensor::findOwner);
+        combatActor = new CombatActor();
+        combat = new MaidCombatController(combatActor, maid.getEntityId());
         lifePermission = () -> !suspended && !hasVisibleDanger();
         setMutexBits(7);
     }
@@ -139,6 +142,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
+        ownerSensor.beginFrame(runtime.getContext(), decisionTick);
         targetMemory.beginFrame(maid.worldObj, runtime.getContext(), maid.worldObj.getTotalWorldTime());
         boolean recording = telemetry.isEnabled();
         long started = recording ? System.nanoTime() : 0;
@@ -371,6 +375,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        ownerSensor.clear();
+        combatActor.forgetOwner();
         targetMemory.clear();
         Throwable failure = cancel(combat::cancel, null);
         failure = cancel(life::cancel, failure);
@@ -416,6 +422,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidLifeController getLifeController() {
         return life;
+    }
+
+    public MaidOwnerSensor getOwnerSensor() {
+        return ownerSensor;
     }
 
     public MaidBoundedPathPlanner.Attempt getLastCombatPathAttempt() {
@@ -478,6 +488,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private long ignoreUntil, nextOwnerScan;
         private MaidTask selectedTask;
 
+        private void forgetOwner() {
+            owner = null;
+            nextOwnerScan = 0;
+        }
+
         @Override
         public MaidCombatController.Status blockedReason() {
             if (maid.worldObj.isRemote || !maid.isEntityAlive()
@@ -493,16 +508,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 : !MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
             if (decisionTick >= nextOwnerScan) {
                 nextOwnerScan = decisionTick + MaidCombatController.SCAN_INTERVAL;
-                owner = null;
-                int inspected = 0;
-                for (Object value : maid.worldObj.playerEntities) {
-                    inspected++;
-                    if (value instanceof EntityPlayer player && MaidCombatTargeting.validOwner(maid, player)) {
-                        owner = player;
-                        break;
-                    }
-                }
-                telemetry.scan("combat_owner", maid.worldObj.playerEntities.size(), inspected, "world_player_list");
+                owner = ownerSensor.findOwner();
             }
             if (!MaidCombatTargeting.validOwner(maid, owner)) return MaidCombatController.Status.NO_OWNER;
             if (maid.getDistanceSqToEntity(owner) > MaidCombatTargeting.OWNER_RADIUS_SQ)
@@ -743,16 +749,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public boolean refreshOwner() {
-            owner = null;
-            int inspected = 0;
-            for (Object value : maid.worldObj.playerEntities) {
-                inspected++;
-                if (value instanceof EntityPlayer player && maid.isOwner(player) && valid(player)) {
-                    owner = player;
-                    break;
-                }
-            }
-            telemetry.scan("follow_owner", maid.worldObj.playerEntities.size(), inspected, "world_player_list");
+            owner = ownerSensor.findOwner();
             return owner != null;
         }
 
@@ -761,19 +758,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             owner = null;
         }
 
-        private boolean valid(EntityPlayer player) {
-            return player != null && !(player instanceof FakePlayer)
-                && player.isEntityAlive()
-                && !player.isDead
-                && player.worldObj == maid.worldObj
-                && player.dimension == maid.dimension
-                && (!(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
-                    .getID() != 3);
-        }
-
         @Override
         public boolean ownerValid() {
-            return valid(owner) && maid.isOwner(owner) && maid.worldObj.playerEntities.contains(owner);
+            return MaidOwnerSensor.isValid(maid, owner);
         }
 
         @Override

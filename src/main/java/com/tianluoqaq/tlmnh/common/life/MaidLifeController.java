@@ -1,8 +1,9 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.function.Supplier;
+
 import net.minecraft.block.BlockBed;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -12,7 +13,6 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -20,6 +20,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -53,6 +54,7 @@ public final class MaidLifeController {
     private static final String REWARD_AT = "TLMNHStealEdibleRewardAt";
     private final EntityMaid maid;
     private final Runnable claimControl;
+    private final Supplier<EntityPlayer> ownerSource;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private TileEntity target;
     private Action action;
@@ -67,11 +69,12 @@ public final class MaidLifeController {
     private boolean sleeping, tryPlaceNext;
     private double wakeX, wakeY, wakeZ;
 
-    public MaidLifeController(EntityMaid maid, Runnable claimControl) {
-        if (maid == null || claimControl == null)
-            throw new IllegalArgumentException("Life action requires its actor and arbiter");
+    public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource) {
+        if (maid == null || claimControl == null || ownerSource == null)
+            throw new IllegalArgumentException("Life action requires its actor, arbiter and owner observation");
         this.maid = maid;
         this.claimControl = claimControl;
+        this.ownerSource = ownerSource;
     }
 
     /** 即使处于 SLEEPING，也须由协调器每 tick 调用以处理醒来和失效清理 */
@@ -94,13 +97,7 @@ public final class MaidLifeController {
         }
         if (tick >= nextOwnerScan) {
             nextOwnerScan = tick + SCAN_INTERVAL;
-            owner = null;
-            for (Object value : maid.worldObj.playerEntities) {
-                if (value instanceof EntityPlayer player && ownerValid(player)) {
-                    owner = player;
-                    break;
-                }
-            }
+            owner = ownerSource.get();
         }
         if (!ownerValid(owner) || maid.getDistanceSqToEntity(owner) > 144) {
             stop(Status.NO_OWNER);
@@ -184,15 +181,7 @@ public final class MaidLifeController {
     }
 
     private boolean ownerValid(EntityPlayer player) {
-        return player != null && !(player instanceof FakePlayer)
-            && maid.isOwner(player)
-            && player.isEntityAlive()
-            && !player.isDead
-            && player.worldObj == maid.worldObj
-            && player.dimension == maid.dimension
-            && maid.worldObj.playerEntities.contains(player)
-            && (!(player instanceof EntityPlayerMP server) || server.theItemInWorldManager.getGameType()
-                .getID() != 3);
+        return MaidOwnerSensor.isValid(maid, player);
     }
 
     private boolean select(boolean rest) {
@@ -423,6 +412,8 @@ public final class MaidLifeController {
     }
 
     public void cancel() {
+        owner = null;
+        nextOwnerScan = 0;
         stop(Status.CANCELLED);
     }
 

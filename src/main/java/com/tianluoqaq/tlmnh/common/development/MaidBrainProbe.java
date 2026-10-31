@@ -6,6 +6,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.WorldSettings.GameType;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
@@ -13,12 +14,64 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 /** 实际世界与导航适配检查；同步夹具不代替自然世界 tick 下的跟随和原版 benchmark */
 public final class MaidBrainProbe {
 
     private MaidBrainProbe() {}
+
+    public static void runOwnerSensor(WorldServer world) {
+        var owner = new EntityPlayerMP(
+            MinecraftServer.getServer(),
+            world,
+            new GameProfile(UUID.fromString("85515bbe-7adb-4193-b171-4b2978403a3b"), "[TLMNH-Owner]"),
+            new ItemInWorldManager(world));
+        owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
+        var maid = new EntityMaid(world);
+        require(maid.bindTo(owner.getUniqueID()), "owner sensor binding");
+        maid.setSitting(true);
+        var brain = maid.getBrainCoordinator();
+        var sensor = brain.getOwnerSensor();
+        int originalPlayers = world.playerEntities.size();
+        world.playerEntities.add(owner);
+        try {
+            brain.updateTask();
+            long before = sensor.getScans();
+            require(sensor.findOwner() == owner && sensor.findOwner() == owner, "shared positive owner observation");
+            require(sensor.getScans() == before + 1, "only one query per decision frame");
+            world.playerEntities.remove(owner);
+            require(sensor.findOwner() == null, "disconnected reference must be rejected immediately");
+            world.playerEntities.add(owner);
+            require(
+                sensor.findOwner() == null && sensor.getScans() == before + 1,
+                "negative result stays in its frame");
+            brain.updateTask();
+            require(sensor.findOwner() == owner, "fresh frame must resolve the restored owner");
+            owner.theItemInWorldManager.setGameType(GameType.getByID(3));
+            require(sensor.findOwner() == null, "spectator owner must be rejected immediately");
+            brain.updateTask();
+            require(sensor.findOwner() == null, "spectator must not enter a new observation");
+            owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
+            brain.updateTask();
+            require(sensor.findOwner() == owner, "new frame after spectator exit");
+            brain.getPolicyRuntime()
+                .invalidate(InvalidationReason.RESET);
+            require(sensor.findOwner() == null, "invalidated policy must discard its observation");
+            brain.updateTask();
+            require(sensor.findOwner() == owner, "new policy lease must reobserve the owner");
+            TLMNotHard.LOG.info(
+                "TLMNH_OWNER_SENSOR_TEST_PASS queries={} shared=once_per_frame offline=immediate spectator=immediate negative=frame_scoped token=discarded next_frame=refreshed fixture=synthetic_owner natural_tick=unverified",
+                sensor.getScans() - before);
+        } finally {
+            brain.resetTask();
+            world.playerEntities.remove(owner);
+            maid.setDead();
+            owner.setDead();
+            require(world.playerEntities.size() == originalPlayers, "owner sensor fixture cleanup");
+        }
+    }
 
     public static void run(WorldServer world) {
         var spawn = world.getSpawnPoint();

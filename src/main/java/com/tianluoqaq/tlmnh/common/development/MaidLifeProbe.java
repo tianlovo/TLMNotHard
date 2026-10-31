@@ -122,7 +122,7 @@ public final class MaidLifeProbe {
                 "Actual RC2 cake differs from the six-portion adapter; observed=" + nativePortions);
             world.setBlock(x, y + 1, z, Blocks.cake, 0, 3);
             int hunger = maid.getHunger(), favor = maid.getFavorability();
-            life = new MaidLifeController(maid, () -> {});
+            life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
                 life.tick(true) && life.getBites() == 1 && world.getBlockMetadata(x, y + 1, z) == 1,
                 "One real cake bite");
@@ -135,7 +135,7 @@ public final class MaidLifeProbe {
             require(!life.tick(true) && life.getBites() == 1, "Sit is a hard constraint");
             maid.setSitting(false);
             world.setBlock(x, y, z, Blocks.planks, 0, 3);
-            var noStand = new MaidLifeController(maid, () -> {});
+            var noStand = new MaidLifeController(maid, () -> {}, () -> owner);
             drive(noStand, 40);
             require(
                 noStand.getBites() == 0 && world.getBlockMetadata(x, y + 1, z) == 1,
@@ -148,7 +148,7 @@ public final class MaidLifeProbe {
             maid.getMaidInventory()
                 .setInventorySlotContents(1, new ItemStack(Items.cake));
             life.cancel();
-            life = new MaidLifeController(maid, () -> {});
+            life = new MaidLifeController(maid, () -> {}, () -> owner);
             MinecraftForge.EVENT_BUS.register(reject);
             try {
                 drive(life, 25);
@@ -159,7 +159,7 @@ public final class MaidLifeProbe {
                 reject.seen && life.getPlacements() == 0 && world.isAirBlock(x, y + 1, z) && cakeCount(maid) == 2,
                 "Cancelled Forge placement conserves original cake");
             life.cancel();
-            life = new MaidLifeController(maid, () -> {});
+            life = new MaidLifeController(maid, () -> {}, () -> owner);
             drive(life, 25);
             require(
                 life.getPlacements() == 1 && cakeCount(maid) == 1 && world.getBlock(x, y + 1, z) == Blocks.cake,
@@ -179,14 +179,14 @@ public final class MaidLifeProbe {
             require(bed != null && bed.complete(), "Actual paired bed head");
             maid.setPosition(x + 1.5, y, z + 3.5);
             world.setWorldTime(16000);
-            life = new MaidLifeController(maid, () -> {});
+            life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
                 life.tick(true) && life.isSleeping()
                     && maid.hasPose(MaidPose.SLEEPING)
                     && bed.isOwnedBy(maid)
                     && (world.getBlockMetadata(x, y, z + 3) & 4) != 0,
                 "Bed-owned sleep at DAY rest boundary");
-            competitor = new MaidLifeController(other, () -> {});
+            competitor = new MaidLifeController(other, () -> {}, () -> owner);
             drive(competitor, 25);
             require(!competitor.isSleeping() && bed.isOwnedBy(maid), "Second maid cannot share occupied bed");
             world.setWorldTime(0);
