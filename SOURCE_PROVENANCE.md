@@ -53,7 +53,7 @@ CPU 测试覆盖 205 份非 Gecko 内置几何，以及层级与独立方块旋�
 | 相对目录 | 原文件与适配 |
 | --- | --- |
 | geo/raw/pojo | Bone、Cube、ModelProperties、UvUnion、UvFaces、FaceUv、RawGeoModel、MinecraftGeometry、LocatorValue、LocatorClass、PolyMesh、PolysUnion、PolysEnum、TextureMesh、FormatVersion、Converter，共 16 个 Java 文件；保留数据结构，JsonAdapter 注解改为 Converter 显式注册，适应模板的 Gson 2.2.4 编译依赖，版本比较改用 Forge 接口 |
-| geo/raw/tree | RawGeometryTree、RawBoneGroup；集合改为 JDK 类型，保留父子关系；增加重复名称、缺失父节点和环检查，避免上游重复寻找父节点时无法结束 |
+| geo/raw/tree | RawGeometryTree、RawBoneGroup；恢复上游 OpenHashMap 与逆向扫描挂树次序，使用 RC2 已提供的 fastutil；增加重复名称、缺失父节点和环检查，避免上游重复寻找父节点时无法结束 |
 | geo/render 与 geo/render/built | GeoBuilder、IGeoBuilder、GeoMesh、GeoBone、GeoModel；保留 Gecko 坐标、旋转符号、镜像、膨胀和网格布局；Vec3 改接 1.7.10，集合和只读视图改为 JDK 类型 |
 | geo/animated | AnimatedGeoBone、AnimatedGeoModel、ILocationModel；保留独立可变姿态、隐藏控制和手持定位骨骼，替换高版本集合及 Stream.toList，未引入枪械联动实现 |
 | core/processor 与 core/snapshot | IBone、ILocationBone、PointData、BoneSnapshot、BoneTopLevelSnapshot；保留姿态快照、提交与初始状态，原作者头保留 |
