@@ -51,6 +51,23 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def check_vector(value):
+    assert isinstance(value, list) and len(value) == 3
+    assert all(type(component) in (int, float) for component in value)
+    try:
+        finite = all(math.isfinite(component) for component in value)
+    except OverflowError:
+        finite = False
+    assert finite
+
+
+def check_runtime_identity_shapes(runtime):
+    for value in runtime["classes"].values():
+        assert type(value["definitionCount"]) is int and value["definitionCount"] == 1
+        digest = value["definitionSha256"]
+        assert isinstance(digest, str) and len(digest) == 64 and all(char in "0123456789abcdef" for char in digest)
+
+
 def first_difference(left, right, path="$"):
     if isinstance(left, bool) != isinstance(right, bool):
         return {"path": path, "first": left, "other": right}
@@ -89,8 +106,8 @@ def identity(capture, manifest_path):
     assert runtime["baseReferenceBuildIdentitySha256"] == build["baseReferenceBuildIdentitySha256"]
     assert build["baseReferenceBuildIdentity"]["status"] == "LOCK_VERIFIED"
     assert set(runtime["classes"]) == set(selected["classes"]) == set(build["expectedResources"])
+    check_runtime_identity_shapes(runtime)
     for name, value in runtime["classes"].items():
-        assert value["definitionCount"] == 1 and len(value["definitionSha256"]) == 64
         assert value["resourceSha256"] == build["expectedResources"][name]["resourceSha256"]
     for item in build["toolInputs"]:
         relative = Path(item["file"])
@@ -100,7 +117,10 @@ def identity(capture, manifest_path):
 
 
 def planned(case, index, origin):
+    check_vector(origin)
     keys = case["ownerKeyframes"]
+    for key in keys:
+        check_vector(key["position"])
     previous = keys[0]
     for next_key in keys[1:]:
         if index <= next_key["frame"]:
@@ -111,10 +131,10 @@ def planned(case, index, origin):
 
 
 def check_empty_hands(owner, selected):
-    assert owner["selectedSlot"] == selected and type(selected) is int and 0 <= selected < 9
+    assert type(owner["selectedSlot"]) is int and owner["selectedSlot"] == selected and type(selected) is int and 0 <= selected < 9
     for key in ("mainHand", "offHand"):
         hand = owner[key]
-        assert hand["empty"] is True and hand["count"] == 0 and hand["registryId"] == "minecraft:air"
+        assert hand["empty"] is True and type(hand["count"]) is int and hand["count"] == 0 and hand["registryId"] == "minecraft:air"
 
 
 def check_edible_action(value):
@@ -127,11 +147,17 @@ def check_edible_action(value):
 def check_snapshot(snapshot, row):
     assert snapshot["maid"]["class"] == "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid"
     assert snapshot["maid"]["uuid"] == row["maidUuid"] and snapshot["owner"]["uuid"] == row["ownerUuid"]
-    assert snapshot["maid"]["alive"] and not snapshot["maid"]["removed"] and snapshot["noAi"] is False
+    assert snapshot["maid"]["alive"] is True and snapshot["maid"]["removed"] is False and snapshot["noAi"] is False
     assert snapshot["guiOpening"] is False
-    assert snapshot["worldRegisteredByUuid"] and snapshot["worldRegisteredById"] and snapshot["positionEntityTicking"]
-    assert snapshot["ownerResolvedSamePlayerListObject"] and snapshot["ownerConnection"]["connected"]
-    assert snapshot["owner"]["mode"] == "creative" and snapshot["owner"]["spectator"] is False and snapshot["owner"]["abilityInvulnerable"]
+    assert all(snapshot[key] is True for key in ("worldRegisteredByUuid", "worldRegisteredById", "positionEntityTicking", "ownerResolvedSamePlayerListObject"))
+    assert snapshot["ownerConnection"]["connected"] is True
+    assert snapshot["owner"]["mode"] == "creative" and snapshot["owner"]["spectator"] is False and snapshot["owner"]["abilityInvulnerable"] is True
+    assert type(snapshot["gameTime"]) is int
+    for entity in (snapshot["maid"], snapshot["owner"]):
+        assert type(entity["tickCount"]) is int
+        for key in ("position", "block", "movement"):
+            check_vector(entity[key])
+    check_vector(snapshot["moveControl"]["wanted"])
     check_empty_hands(snapshot["owner"], row["samplingSelectedSlot"])
     assert snapshot["task"] == "touhou_little_maid:idle" and snapshot["schedule"] == "ALL" and snapshot["radius"] == 8
     assert snapshot["home"] is False and snapshot["sleeping"] is False and snapshot["sitting"] is False
@@ -142,8 +168,12 @@ def check_snapshot(snapshot, row):
         check_edible_action(edible["value"])
     path = snapshot["navigation"]["path"]
     if path is not None:
+        assert type(path["nodeCount"]) is int and type(path["nextNodeIndex"]) is int
         assert path["kind"] == "path" and path["nodeCount"] == len(path["nodes"])
         assert 0 <= path["nextNodeIndex"] <= path["nodeCount"] <= 256
+        check_vector(path["target"])
+        for node in path["nodes"]:
+            check_vector(node)
     for key in ("movementAttribute", "followRangeAttribute"):
         assert {"base", "value", "modifiers"} == snapshot[key].keys()
 
@@ -151,20 +181,22 @@ def check_snapshot(snapshot, row):
 def verified_rows(capture, manifest_path):
     contract = load(TOOL / "contract.json")
     assert capture["schema"] == "follow-natural-reference-v1" and capture["contract"] == "FOLLOW_NATURAL_O_V1"
-    assert capture["complete"] and capture["cleanupComplete"] and capture["remainingActorRegistered"] is False
-    assert capture["observationComplete"] and capture["observationFailure"] is None and capture["cleanupFailure"] is None
+    assert capture["complete"] is True and capture["cleanupComplete"] is True and capture["remainingActorRegistered"] is False
+    assert capture["observationComplete"] is True and capture["observationFailure"] is None and capture["cleanupFailure"] is None
     assert [stage["stage"] for stage in capture["cleanupStages"]] == ["maid", "platform", "world", "owner", "owner_actual_verification", "actor_removal_verification"]
     assert all(stage["success"] is True for stage in capture["cleanupStages"])
-    assert capture["worldNatural"] and capture["completeOriginalBrain"] and capture["realLoggedInOwner"]
+    assert capture["worldNatural"] is True and capture["completeOriginalBrain"] is True and capture["realLoggedInOwner"] is True
     assert capture["portEquivalenceVerified"] is False and capture["statisticalAdmission"] is False
     assert capture["worldRngReset"] is False and capture["worldRngReplaced"] is False and capture["maidRngReset"] is False
     assert capture["randomStateFullyControlled"] is False
     assert capture["transientBehaviorCallsObserved"] is False and capture["teleportMethodCallsObserved"] is False
-    assert capture["ownerRestoration"]["serverStateVerified"] and capture["ownerAfterCleanup"]["spectator"]
-    assert capture["ownerAfterCleanup"]["abilityInvulnerable"]
+    assert capture["ownerRestoration"]["serverStateVerified"] is True and capture["ownerAfterCleanup"]["spectator"] is True
+    assert capture["ownerAfterCleanup"]["abilityInvulnerable"] is True
     assert first_difference(capture["ownerBefore"], capture["ownerAfterCleanupState"]) is None, "Actual owner state was not fully restored"
     assert capture["ownerAfterCleanup"]["position"] == capture["ownerAfterCleanupState"]["position"]
     original = capture["ownerBefore"]
+    check_vector(original["position"])
+    check_vector(original["movement"])
     preparation = capture["slotPreparation"]
     assert len(original["hotbar"]) == 9 and [slot["slot"] for slot in original["hotbar"]] == list(range(9))
     assert original["selectedSlot"] == preparation["originalSelectedSlot"] == preparation["actualBefore"]["selectedSlot"]
@@ -179,7 +211,7 @@ def verified_rows(capture, manifest_path):
     assert capture["ownerAfterCleanup"]["mainHand"] == original["mainHand"] and capture["ownerAfterCleanup"]["offHand"] == original["offHand"]
     identity(capture, manifest_path)
     platform = capture["platform"]
-    assert platform["creationComplete"] and platform["cleanupComplete"] and platform["radius"] == 32
+    assert platform["creationComplete"] is True and platform["cleanupComplete"] is True and platform["radius"] == 32
     assert platform["preflightAirCells"] == 65 * 65 * 6
     assert platform["placedBlocks"] == platform["restoredBlocks"] == 65 * 65
     assert platform["forcedChunksAdded"] is False
@@ -189,32 +221,37 @@ def verified_rows(capture, manifest_path):
     owners = set()
     for row in capture["runs"]:
         key = row["id"], row["rebuild"]
-        assert key not in rows and row["complete"] and row["cleanupComplete"]
+        assert key not in rows and row["complete"] is True and row["cleanupComplete"] is True
         assert row["maidUuid"] not in actors
         actors.add(row["maidUuid"])
         owners.add(row["ownerUuid"])
         spec = specs[row["id"]]
         assert row["input"] == spec and len(row["frames"]) == spec["ticks"]
-        assert row["worldRngAndSensorPhaseUncontrolled"]
+        assert row["worldRngAndSensorPhaseUncontrolled"] is True
         assert row["samplingSelectedSlot"] == sampling_slot
         assert row["brainRegistration"]["originalActivitiesRemoved"] is False and row["brainRegistration"]["guiOpening"] is False
         registered = row["brainRegistration"]["behaviors"]
         assert any(value["priority"] == 2 and value["class"] == "net.minecraft.world.entity.ai.behavior.MoveToTargetSink" for value in registered)
         assert any(value["priority"] == 3 and value["class"].endswith(".MaidFollowOwnerTask") for value in registered)
         for index, frame in enumerate(row["frames"]):
-            assert frame["index"] == index and frame["livingTickEvents"] == 1
+            assert type(frame["index"]) is int and frame["index"] == index
+            assert type(frame["livingTickEvents"]) is int and frame["livingTickEvents"] == 1
             a, b = frame["before"], frame["after"]
             check_snapshot(a, row)
             check_snapshot(b, row)
             assert b["maid"]["tickCount"] == a["maid"]["tickCount"] + 1 and b["gameTime"] == a["gameTime"] + 1
             intended = planned(spec, index, contract["origin"])
             recorded = frame["ownerInput"]["plannedPosition"]
+            check_vector(recorded)
             check_empty_hands(frame["ownerInput"]["before"], sampling_slot)
             check_empty_hands(frame["ownerInput"]["actualAfterCall"], sampling_slot)
             assert max(abs(x - y) for x, y in zip(recorded, intended)) < 1e-12
+            assert type(frame["ownerInput"]["methodInvoked"]) is bool
             if frame["ownerInput"]["methodInvoked"]:
+                check_vector(frame["ownerInput"]["actualArguments"])
                 assert frame["ownerInput"]["actualArguments"] == recorded
             for actual in (frame["ownerInput"]["actualAfterCall"]["position"], a["owner"]["position"], b["owner"]["position"]):
+                check_vector(actual)
                 assert sum((x - y) ** 2 for x, y in zip(actual, intended)) <= contract["ownerTolerance"] ** 2
             if index:
                 previous = row["frames"][index - 1]["after"]

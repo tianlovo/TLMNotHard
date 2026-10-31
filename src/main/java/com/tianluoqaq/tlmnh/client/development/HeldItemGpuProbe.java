@@ -162,7 +162,8 @@ public final class HeldItemGpuProbe {
                 }
             }
         } catch (Exception | LinkageError failure) {
-            report.addProperty("error", failure.toString());
+            // RendererLivingEntity会记录并吞下接缝异常，保留先前记录的原始原因
+            report.addProperty(report.has("error") ? "renderFailure" : "error", failure.toString());
         } finally {
             active = null;
             if (transaction != null) transaction.cleanup();
@@ -601,9 +602,12 @@ public final class HeldItemGpuProbe {
                     GL15.glEndQuery(GL15.GL_SAMPLES_PASSED);
                     queryActive = false;
                     byte[] color = rgba(), afterDepth = depth();
-                    if (GL15.glGetQueryObjectui(query, GL15.GL_QUERY_RESULT_AVAILABLE) == 0)
+                    if (GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT_AVAILABLE) == 0)
                         throw new IllegalStateException("Native query result unavailable after readback");
-                    gpuSamples = Integer.toUnsignedLong(GL15.glGetQueryObjectui(query, GL15.GL_QUERY_RESULT));
+                    // RC2 Angelica提供scalar i，scalar ui会被重定向到不存在的重载
+                    int result = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT);
+                    if (result < 0) throw new IllegalStateException("Native query exceeds signed result range");
+                    gpuSamples = result;
                     var item = save(phases[index], color, afterDepth);
                     item.addProperty("bodyBeforeColorSha256", hash(beforeColor));
                     item.addProperty("bodyBeforeDepthSha256", hash(beforeDepth));
