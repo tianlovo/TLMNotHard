@@ -464,8 +464,7 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
 
     private void verifyFallbackLightContext() {
         guard();
-        if (world.provider == null || world.provider.getClass() != WorldProviderSurface.class
-            || world.provider.dimensionId != 0
+        if (!(world.provider instanceof WorldProviderSurface) || world.provider.dimensionId != 0
             || world.provider.hasNoSky
             || world.getHeight() != 256
             || world.skylightSubtracted != 0) throw outside("fallback_only_bright_overworld_admitted");
