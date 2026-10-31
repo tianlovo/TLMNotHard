@@ -100,6 +100,16 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTick) {
+        int depthFunction = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        try {
+            renderDetails(mouseX, mouseY, partialTick);
+        } finally {
+            GL11.glDepthFunc(depthFunction);
+        }
+    }
+
+    private void renderDetails(int mouseX, int mouseY, float partialTick) {
         int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPushMatrix();
