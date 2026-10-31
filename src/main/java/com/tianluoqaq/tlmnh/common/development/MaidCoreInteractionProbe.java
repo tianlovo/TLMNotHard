@@ -157,12 +157,7 @@ public final class MaidCoreInteractionProbe {
                 boolean found = false;
                 for (var value : values) if (value.getDataValueId() == 31) found = "1;0.3".equals(value.getObject());
                 require(found && packet.readableBytes() == 0, "string slot31 survives actual metadata end marker");
-                restored.getDataWatcher()
-                    .updateWatchedObjectsFromList(values);
-                require(
-                    restored.getConfigManager()
-                        .getSoundFreq() == 0.3F,
-                    "metadata replica frequency");
+                // 专用服务端没有客户端更新方法；真实客户端另验31号字段应用
                 packet.clear();
                 f.maid.writeSpawnData(packet);
                 require(packet.readableBytes() == 16, "additional UUID byte length");
