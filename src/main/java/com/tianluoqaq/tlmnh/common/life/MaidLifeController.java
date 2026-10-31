@@ -3,7 +3,9 @@ package com.tianluoqaq.tlmnh.common.life;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import net.minecraft.block.BlockBed;
@@ -57,7 +59,8 @@ public final class MaidLifeController {
     private static final int SCAN_INTERVAL = 20, MAX_ACTION_TICKS = 200;
     private static final String REWARD_AT = "TLMNHStealEdibleRewardAt";
     private final EntityMaid maid;
-    private final Runnable claimControl;
+    private final Predicate<MaidActionRun> claimControl;
+    private final Consumer<MaidActionRun> releaseControl;
     private final Supplier<EntityPlayer> ownerSource;
     private final Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector;
     private final MaidLifeSensor sensor;
@@ -73,7 +76,7 @@ public final class MaidLifeController {
     private long tick, nextOwnerScan, nextScan, nextSnack, nextPath, selectedAt;
     private int failures, scans, pathRequests, bites, placements, sleepEntries;
     private boolean sleeping, tryPlaceNext;
-    private boolean ticking;
+    private boolean ticking, stopping;
     private MaidActionRun run;
     private double wakeX, wakeY, wakeZ;
 
@@ -83,10 +86,21 @@ public final class MaidLifeController {
 
     public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource,
         Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector) {
-        if (maid == null || claimControl == null || ownerSource == null || selector == null)
+        this(maid, run -> {
+            claimControl.run();
+            return true;
+        }, ignored -> {}, ownerSource, selector);
+        if (claimControl == null) throw new IllegalArgumentException("Missing control callback");
+    }
+
+    public MaidLifeController(EntityMaid maid, Predicate<MaidActionRun> claimControl,
+        Consumer<MaidActionRun> releaseControl, Supplier<EntityPlayer> ownerSource,
+        Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector) {
+        if (maid == null || claimControl == null || releaseControl == null || ownerSource == null || selector == null)
             throw new IllegalArgumentException("Life action requires its actor, arbiter and owner observation");
         this.maid = maid;
         this.claimControl = claimControl;
+        this.releaseControl = releaseControl;
         this.ownerSource = ownerSource;
         this.selector = selector;
         sensor = new MaidLifeSensor(maid);
@@ -94,6 +108,7 @@ public final class MaidLifeController {
 
     /** 即使处于 SLEEPING，也须由协调器每 tick 调用以处理醒来和失效清理 */
     public boolean tick(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+        if (stopping) return false;
         if (context == null || !context.getMaidId()
             .equals(maid.getUniqueID()) || !context.isCurrent(token)) {
             if (run != null && run.matches(context, token)) stop(Status.CANCELLED);
@@ -281,7 +296,7 @@ public final class MaidLifeController {
                 claimedBed = bed;
             } else if (!snackValid(best, intent.getAction() == Action.PLACE))
                 return rejectIntent(Status.INTENT_REJECTED, "snack_conditions_changed");
-            claimControl.run();
+            if (!claimControl.test(planned)) return rejectIntent(Status.CANCELLED, "control_claim_refused");
             if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())
                 || !hardAllowed()
                 || !ownerValid(owner)
@@ -310,7 +325,11 @@ public final class MaidLifeController {
             if (!adopted) {
                 planned.cancel();
                 if (run == planned) run = null;
-                if (claimedBed != null) claimedBed.release(maid);
+                try {
+                    if (claimedBed != null) claimedBed.release(maid);
+                } finally {
+                    releaseControl.accept(planned);
+                }
             }
         }
     }
@@ -561,44 +580,55 @@ public final class MaidLifeController {
     }
 
     private void stop(Status reason, TerminalOutcome explicitOutcome) {
-        if (run != null) run.cancel();
-        if (target != null && action != null && telemetry().isEnabled()) {
-            boolean confirmed = reason == Status.COOLDOWN && action != Action.BED;
-            var outcome = explicitOutcome != null ? explicitOutcome
-                : confirmed ? TerminalOutcome.COMPLETED
-                    : reason == Status.PATH_FAILED || reason == Status.ACTION_FAILED || reason == Status.TARGET_LOST
-                        ? TerminalOutcome.FAILED
-                        : TerminalOutcome.CANCELLED;
-            telemetry().terminal(
-                "life/" + action.name()
-                    .toLowerCase(java.util.Locale.ROOT),
-                tileId(target),
-                "stop_reason=" + reason,
-                outcome,
-                confirmed);
-        }
-        stopNavigation();
-        if (sleeping) {
-            maid.setPose(MaidPose.SLEEPING, false);
-            // 被抱走、跨世界或外部传送后只清本动作，不能把实体拉回旧床坐标
-            if (target != null && target.getWorldObj() == maid.worldObj
-                && maid.ridingEntity == null
-                && maid.riddenByEntity == null
-                && maid.getDistanceSq(target.xCoord + 0.5, target.yCoord + 0.5, target.zCoord + 0.5) <= 16) {
-                Vec3 safe = standBeside(target);
-                if (safe != null) maid.setPositionAndUpdate(safe.xCoord, safe.yCoord, safe.zCoord);
-                else if (safeStand(wakeX, wakeY, wakeZ)) maid.setPositionAndUpdate(wakeX, wakeY, wakeZ);
+        if (stopping) return;
+        stopping = true;
+        var stoppedRun = run;
+        try {
+            if (run != null) run.cancel();
+            if (target != null && action != null && telemetry().isEnabled()) {
+                boolean confirmed = reason == Status.COOLDOWN && action != Action.BED;
+                var outcome = explicitOutcome != null ? explicitOutcome
+                    : confirmed ? TerminalOutcome.COMPLETED
+                        : reason == Status.PATH_FAILED || reason == Status.ACTION_FAILED || reason == Status.TARGET_LOST
+                            ? TerminalOutcome.FAILED
+                            : TerminalOutcome.CANCELLED;
+                telemetry().terminal(
+                    "life/" + action.name()
+                        .toLowerCase(java.util.Locale.ROOT),
+                    tileId(target),
+                    "stop_reason=" + reason,
+                    outcome,
+                    confirmed);
             }
-            sleeping = false;
+            stopNavigation();
+            if (sleeping) {
+                maid.setPose(MaidPose.SLEEPING, false);
+                // 被抱走、跨世界或外部传送后只清本动作，不能把实体拉回旧床坐标
+                if (target != null && target.getWorldObj() == maid.worldObj
+                    && maid.ridingEntity == null
+                    && maid.riddenByEntity == null
+                    && maid.getDistanceSq(target.xCoord + 0.5, target.yCoord + 0.5, target.zCoord + 0.5) <= 16) {
+                    Vec3 safe = standBeside(target);
+                    if (safe != null) maid.setPositionAndUpdate(safe.xCoord, safe.yCoord, safe.zCoord);
+                    else if (safeStand(wakeX, wakeY, wakeZ)) maid.setPositionAndUpdate(wakeX, wakeY, wakeZ);
+                }
+                sleeping = false;
+            }
+            if (target instanceof TileEntityMaidBed bed) bed.release(maid);
+            if (target != null) nextScan = Math.max(nextScan, tick + SCAN_INTERVAL);
+            target = null;
+            run = null;
+            action = null;
+            selectedTask = null;
+            failures = 0;
+            status = reason;
+        } finally {
+            try {
+                releaseControl.accept(stoppedRun);
+            } finally {
+                stopping = false;
+            }
         }
-        if (target instanceof TileEntityMaidBed bed) bed.release(maid);
-        if (target != null) nextScan = Math.max(nextScan, tick + SCAN_INTERVAL);
-        target = null;
-        run = null;
-        action = null;
-        selectedTask = null;
-        failures = 0;
-        status = reason;
     }
 
     private MaidTelemetryChannel telemetry() {

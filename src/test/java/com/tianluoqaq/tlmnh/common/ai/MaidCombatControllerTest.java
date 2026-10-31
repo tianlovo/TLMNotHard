@@ -236,8 +236,9 @@ public class MaidCombatControllerTest {
         }
 
         @Override
-        public void claimControl() {
+        public boolean claimControl() {
             events.append("claim,");
+            return true;
         }
 
         @Override

@@ -80,13 +80,25 @@ public final class MaidFollowController {
         PathResult requestPath();
 
         void stopNavigation();
+
+        default boolean claimControl() {
+            return true;
+        }
+
+        default boolean controlValid() {
+            return true;
+        }
+
+        default void releaseControl() {}
+
+        default void revokeControl() {}
     }
 
     private final Actor actor;
     private long tick, nextOwnerScan, nextPathRequest, failureUntil, progressTick;
     private long ownerScans, pathRequests, pathFailures, cancellations, stuckRecoveries;
     private double progressX, progressY, progressZ, failedX, failedY, failedZ;
-    private boolean following;
+    private boolean following, stopping;
     private Status status = Status.IDLE;
     private PathResult lastPathResult;
 
@@ -96,6 +108,7 @@ public final class MaidFollowController {
     }
 
     public void tick() {
+        if (stopping) return;
         tick++;
         var stopped = actor.stopReason();
         if (stopped != null) {
@@ -121,8 +134,16 @@ public final class MaidFollowController {
             return;
         }
         if (!following) {
+            if (!actor.claimControl() || !actor.controlValid() || !actor.ownerValid()) {
+                stop(Status.CANCELLED);
+                return;
+            }
             following = true;
             markProgress();
+        }
+        if (!actor.controlValid()) {
+            stop(Status.CANCELLED);
+            return;
         }
         actor.lookAtOwner();
         if (tick - progressTick >= STUCK_INTERVAL) {
@@ -168,13 +189,21 @@ public final class MaidFollowController {
     }
 
     private void stop(Status reason) {
-        if (following || actor.hasPath() || status != reason) {
-            actor.stopNavigation();
-            if (following) cancellations++;
+        if (stopping) return;
+        stopping = true;
+        try {
+            actor.revokeControl();
+            if (following || actor.hasPath() || status != reason) {
+                actor.stopNavigation();
+                if (following) cancellations++;
+            }
+        } finally {
+            actor.releaseControl();
+            following = false;
+            failureUntil = 0;
+            status = reason;
+            stopping = false;
         }
-        following = false;
-        failureUntil = 0;
-        status = reason;
     }
 
     private void markProgress() {

@@ -56,7 +56,15 @@ public final class MaidCombatController {
 
         double reachSq();
 
-        void claimControl();
+        boolean claimControl();
+
+        default boolean controlValid() {
+            return true;
+        }
+
+        default void releaseControl() {}
+
+        default void revokeControl() {}
 
         void lookAtTarget();
 
@@ -92,7 +100,7 @@ public final class MaidCombatController {
     private long scans, selections, pathRequests, pathFailures, attackAttempts, successfulAttacks, cancellations;
     private int unseenTicks, consecutivePathFailures;
     private double progressX, progressY, progressZ;
-    private boolean active;
+    private boolean active, stopping;
     private Status status = Status.IDLE;
     private PathResult lastPathResult;
 
@@ -103,6 +111,7 @@ public final class MaidCombatController {
 
     /** true 表示本 tick 占用动作，false 表示协调器可恢复主人跟随 */
     public boolean tick() {
+        if (stopping) return false;
         tick++;
         var blocked = actor.blockedReason();
         if (blocked != null) return stop(blocked, false);
@@ -120,13 +129,15 @@ public final class MaidCombatController {
         }
         if (!actor.targetValid()) return stop(Status.TARGET_LOST, false);
         if (!active) {
-            actor.claimControl();
+            if (!actor.claimControl()) return stop(Status.CANCELLED, false);
             active = true;
+            if (!actor.controlValid() || !actor.targetValid()) return stop(Status.CANCELLED, false);
             selections++;
             pursuitStarted = tick;
             unseenTicks = consecutivePathFailures = 0;
             markProgress();
         }
+        if (!actor.controlValid()) return stop(Status.CANCELLED, false);
         boolean visible = actor.targetVisible();
         unseenTicks = visible ? 0 : unseenTicks + 1;
         if (unseenTicks > HIDDEN_TIMEOUT) return stop(Status.TARGET_HIDDEN, true);
@@ -198,13 +209,21 @@ public final class MaidCombatController {
     }
 
     private boolean stop(Status reason, boolean suppressTarget) {
-        actor.interruptAttack();
-        if (active || actor.hasTarget()) {
-            actor.release(suppressTarget);
-            if (active) cancellations++;
+        if (stopping) return false;
+        stopping = true;
+        try {
+            actor.revokeControl();
+            actor.interruptAttack();
+            if (active || actor.hasTarget()) {
+                actor.release(suppressTarget);
+                if (active) cancellations++;
+            }
+        } finally {
+            actor.releaseControl();
+            active = false;
+            status = reason;
+            stopping = false;
         }
-        active = false;
-        status = reason;
         return false;
     }
 

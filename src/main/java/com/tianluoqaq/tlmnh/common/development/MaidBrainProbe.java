@@ -3,29 +3,157 @@ package com.tianluoqaq.tlmnh.common.development;
 import java.util.ArrayList;
 import java.util.UUID;
 
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
+import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
+import com.tianluoqaq.tlmnh.common.ai.MaidCombatController;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 实际世界与导航适配检查；同步夹具不代替自然世界 tick 下的跟随和原版 benchmark */
 public final class MaidBrainProbe {
 
     private MaidBrainProbe() {}
+
+    public static void runActionControl(WorldServer world) {
+        var spawn = world.getSpawnPoint();
+        int x = (spawn.posX >> 4 << 4) + 8, z = (spawn.posZ >> 4 << 4) + 8, y = 180;
+        require(
+            world.getChunkProvider()
+                .chunkExists(x >> 4, z >> 4),
+            "control fixture chunk unloaded");
+        for (int dx = -2; dx <= 7; dx++) for (int dz = -2; dz <= 4; dz++) for (int dy = -1; dy <= 3; dy++)
+            require(world.isAirBlock(x + dx, y + dy, z + dz), "control fixture requires an empty bounded volume");
+        long day = world.getWorldTime();
+        var existingEntities = new java.util.HashSet<>(world.loadedEntityList);
+        int players = world.playerEntities.size();
+        var owner = new EntityPlayerMP(
+            MinecraftServer.getServer(),
+            world,
+            new GameProfile(UUID.fromString("36ed6894-e390-405d-82ed-1228a4ce1bd7"), "[TLMNH-Control]"),
+            new ItemInWorldManager(world));
+        var maid = new EntityMaid(world);
+        var target = new EntityZombie(world);
+        var brain = maid.getBrainCoordinator();
+        var runner = brain.getActionRunner();
+        try {
+            for (int dx = -2; dx <= 7; dx++) for (int dz = -2; dz <= 4; dz++)
+                require(world.setBlock(x + dx, y - 1, z + dz, Blocks.stone, 0, 2), "control fixture floor");
+            owner.setPosition(x + 6.5, y, z + 0.5);
+            owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
+            world.playerEntities.add(owner);
+            maid.setPosition(x + 0.5, y, z + 0.5);
+            maid.onGround = true;
+            require(maid.bindTo(owner.getUniqueID()), "control fixture owner binding");
+            maid.setSchedule(MaidSchedule.DAY);
+            maid.setTask(MaidTask.ATTACK);
+            maid.setCurrentItemOrArmor(0, new ItemStack(Items.diamond_sword));
+            world.setWorldTime(0);
+            awaitOwner(brain, Owner.FOLLOW, 25);
+            require(
+                maid.getNavigator()
+                    .getPath() != null,
+                "actual follow path installation");
+            require(
+                world.setBlock(x, y, z + 1, MaidLifeContent.maidBed, 0, 2)
+                    && world.setBlock(x, y, z + 2, MaidLifeContent.maidBed, 8, 2),
+                "control fixture paired bed");
+            var bed = (TileEntityMaidBed) world.getTileEntity(x, y, z + 2);
+            world.setWorldTime(16000);
+            awaitOwner(brain, Owner.LIFE, 30);
+            require(
+                bed.isOwnedBy(maid) && maid.getNavigator()
+                    .getPath() != null,
+                "life control must own bed and path");
+            var oldLife = runner.getCurrentRun();
+            int phase = Math.floorMod(maid.getEntityId(), MaidCombatController.SCAN_INTERVAL) + 1;
+            for (int i = 0; Math.floorMod(
+                brain.getCombatController()
+                    .getTicks() + 1
+                    - phase,
+                MaidCombatController.SCAN_INTERVAL) != 0 && i < 10; i++) brain.updateTask();
+            require(runner.getOwner() == Owner.LIFE, "life must still own control immediately before combat scan");
+            target.setPosition(x + 4.5, y, z + 0.5);
+            require(world.spawnEntityInWorld(target), "control fixture target spawn");
+            brain.updateTask();
+            require(
+                runner.getOwner() == Owner.COMBAT && oldLife.isCancelled()
+                    && !bed.isOwnedBy(maid)
+                    && (world.getBlockMetadata(x, y, z + 2) & 4) == 0,
+                "combat must acquire control after life releases the bed");
+            var combatPath = maid.getNavigator()
+                .getPath();
+            require(combatPath != null, "actual combat path installation");
+            runner.release(oldLife);
+            brain.getFollowController()
+                .cancel();
+            require(
+                runner.getOwner() == Owner.COMBAT && maid.getNavigator()
+                    .getPath() == combatPath,
+                "old release and late follow cleanup must preserve combat control and path");
+            target.setDead();
+            world.setWorldTime(0);
+            awaitOwner(brain, Owner.FOLLOW, 40);
+            brain.setSuspended(true);
+            require(
+                runner.getOwner() == null && maid.getNavigator()
+                    .noPath(),
+                "suspension must release all action control");
+        } finally {
+            try {
+                brain.resetTask();
+            } finally {
+                target.setDead();
+                world.removeEntity(target);
+                world.playerEntities.remove(owner);
+                maid.setCurrentItemOrArmor(0, null);
+                maid.setDead();
+                owner.setDead();
+                for (int dx = -2; dx <= 7; dx++) for (int dz = -2; dz <= 4; dz++)
+                    for (int dy = -1; dy <= 3; dy++) world.setBlockToAir(x + dx, y + dy, z + dz);
+                for (Object value : new ArrayList<>(world.loadedEntityList))
+                    if (value instanceof EntityItem item && !existingEntities.contains(item)) {
+                        item.setDead();
+                        world.removeEntity(item);
+                    }
+                world.setWorldTime(day);
+                require(world.playerEntities.size() == players, "control fixture owner cleanup");
+            }
+        }
+        TLMNotHard.LOG.info(
+            "TLMNH_ACTION_CONTROL_TEST_PASS order=follow,life,combat,follow bed=released paths=native stale_release=preserved late_follow_cancel=preserved suspend=cleared fixture=manual_root_dispatch natural_tick=unverified");
+    }
+
+    private static void awaitOwner(MaidBrainCoordinator brain, Owner owner, int limit) {
+        for (int i = 0; i < limit; i++) {
+            brain.updateTask();
+            if (brain.getActionRunner()
+                .getOwner() == owner) return;
+        }
+        throw new IllegalStateException("Control owner not reached: " + owner);
+    }
 
     public static void runDangerSensor(WorldServer world) {
         var spawn = world.getSpawnPoint();

@@ -16,6 +16,9 @@ import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
@@ -38,6 +41,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidBowAttack bow;
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
+    private final MaidActionRunner actionRunner = new MaidActionRunner();
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
@@ -64,7 +68,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         bow = new MaidBowAttack(maid);
-        life = new MaidLifeController(maid, follow::cancel, ownerSensor::findOwner, MaidLifeSelector::nearest);
+        life = new MaidLifeController(
+            maid,
+            this::claimLifeControl,
+            actionRunner::release,
+            ownerSensor::findOwner,
+            MaidLifeSelector::nearest);
         combatActor = new CombatActor();
         combat = new MaidCombatController(combatActor, maid.getEntityId());
         lifePermission = () -> !suspended && !dangerSensor.hasKnownDanger();
@@ -144,6 +153,13 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
+        if (runtime.getProfile() == MaidBrainProfile.LEGACY_PROTOTYPE) actionRunner.beginFrame(
+            runtime.getContext(),
+            runtime.getContext()
+                .getToken(),
+            maid.worldObj,
+            maid.getTask());
+        else actionRunner.clear();
         ownerSensor.beginFrame(runtime.getContext(), decisionTick);
         dangerSensor.beginFrame(runtime.getContext(), decisionTick);
         targetMemory.beginFrame(maid.worldObj, runtime.getContext(), maid.worldObj.getTotalWorldTime());
@@ -385,6 +401,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
         failure = cancel(follow::cancel, failure);
+        failure = cancel(actionRunner::clear, failure);
         failure = cancel(
             () -> maid.getShieldController()
                 .cancelUse("policy_cancel"),
@@ -427,6 +444,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return life;
     }
 
+    private boolean claimLifeControl(MaidActionRun run) {
+        return actionRunner.claim(Owner.LIFE, run, life::cancel);
+    }
+
+    public MaidActionRunner getActionRunner() {
+        return actionRunner;
+    }
+
     public MaidOwnerSensor getOwnerSensor() {
         return ownerSensor;
     }
@@ -458,6 +483,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private UUID ignoredTarget;
         private long ignoreUntil, nextOwnerScan;
         private MaidTask selectedTask;
+        private MaidActionRun controlRun;
 
         private void forgetOwner() {
             owner = null;
@@ -593,14 +619,33 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         }
 
         @Override
-        public void claimControl() {
-            // 旧路径必须先取消，之后才能由近战提交新路径，避免相同路径对象被误释放
-            follow.cancel();
-            life.cancel();
+        public boolean claimControl() {
+            var proposed = actionRunner.newRun(maid.worldObj, maid.getTask());
+            if (!actionRunner.claim(Owner.COMBAT, proposed, combat::cancel)) return false;
+            controlRun = proposed;
+            return controlValid();
+        }
+
+        @Override
+        public boolean controlValid() {
+            return actionRunner.isOwned(controlRun, maid.worldObj, maid.getTask());
+        }
+
+        @Override
+        public void releaseControl() {
+            var released = controlRun;
+            controlRun = null;
+            actionRunner.release(released);
+        }
+
+        @Override
+        public void revokeControl() {
+            if (controlRun != null) controlRun.cancel();
         }
 
         @Override
         public void lookAtTarget() {
+            if (!controlValid()) return;
             var observation = lastSeen();
             if (observation == null) return;
             maid.getLookHelper()
@@ -622,7 +667,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public PathResult approachTarget() {
-            if (!targetValid()) return PathResult.UNREACHABLE;
+            if (!controlValid() || !targetValid()) return PathResult.UNREACHABLE;
             var observation = lastSeen();
             if (observation == null) return PathResult.UNREACHABLE;
             double dx = observation.getX() - maid.posX, dy = observation.getFootY() - maid.posY,
@@ -646,7 +691,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public boolean attack() {
-            if (!targetValid()) return false;
+            if (!controlValid() || !targetValid()) return false;
             if (maid.getTask() == MaidTask.RANGED_ATTACK) return bow.fire(target);
             maid.swingItem();
             return maid.attackEntityAsMob(target);
@@ -703,6 +748,32 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         private EntityPlayer owner;
         private PathEntity ownedPath;
+        private MaidActionRun controlRun;
+
+        @Override
+        public boolean claimControl() {
+            var proposed = actionRunner.newRun(maid.worldObj, maid.getTask());
+            if (!actionRunner.claim(Owner.FOLLOW, proposed, follow::cancel)) return false;
+            controlRun = proposed;
+            return controlValid();
+        }
+
+        @Override
+        public boolean controlValid() {
+            return actionRunner.isOwned(controlRun, maid.worldObj, maid.getTask());
+        }
+
+        @Override
+        public void releaseControl() {
+            var released = controlRun;
+            controlRun = null;
+            actionRunner.release(released);
+        }
+
+        @Override
+        public void revokeControl() {
+            if (controlRun != null) controlRun.cancel();
+        }
 
         @Override
         public Status stopReason() {
@@ -771,6 +842,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public void lookAtOwner() {
+            if (!controlValid()) return;
             maid.getLookHelper()
                 .setLookPositionWithEntity(owner, 10.0F, maid.getVerticalFaceSpeed());
         }
@@ -783,7 +855,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public PathResult requestPath() {
-            if (!ownerValid()) return PathResult.UNREACHABLE;
+            if (!controlValid() || !ownerValid()) return PathResult.UNREACHABLE;
             double dx = ownerX() - maid.posX, dy = ownerY() - maid.posY, dz = ownerZ() - maid.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             double fraction = distance > 16 ? 16 / distance : 1;
