@@ -44,12 +44,11 @@ public final class SoundPackButton extends FlatColorButton {
             font.drawStringWithShadow("§nv" + info.version, x + font.getStringWidth(name) + 5, y, 0x55FFFF);
         if (!info.authors.isEmpty()) {
             y += 10;
-            String delimiter = StatCollector
-                .translateToLocal("gui.touhou_little_maid.resources_download.author.delimiter");
+            // 上游 joinWith 将整个 List 作为一个 vararg，显示内容包含方括号
             font.drawStringWithShadow(
                 StatCollector.translateToLocalFormatted(
                     "gui.touhou_little_maid.resources_download.author",
-                    String.join(delimiter, info.authors)),
+                    info.authors.toString()),
                 x,
                 y,
                 0xFFAA00);
