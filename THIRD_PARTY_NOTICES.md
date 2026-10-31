@@ -41,3 +41,15 @@ Ancient Warfare 2、Zombie Awareness 与 SmartBrainLib 当前仅作为研究参�
 
 盾牌 API 来源见 [Battlegear2-for-Backhand](https://github.com/GTNewHorizons/Battlegear2-for-Backhand)，原许可见其 [LICENCE](https://github.com/GTNewHorizons/Battlegear2-for-Backhand/blob/1.6.8-backhand/LICENCE)
 TConstruct 与 TinkersDefense 的开发夹具调用目标环境现有工厂和物品，不将这些模组或其实现类纳入分发 JAR
+
+## 内置配音的单独来源
+
+- LittleMaid PECO：作品 LittleMaid_PEKO/PECO，CV 秋野かえで，作者 Tamemaru，来自[作者发布页](https://booth.pm/ja/items/1903163)
+  页面列出 Minecraft 作品及内嵌配音的自制 MOD 用途，同时限制无授权转载与单独再分发；不能把这些声音改标为 MIT 或 CC
+- 默认音包：Voice: Amitaro's Voice Material Studio ([あみたろの声素材工房](https://amitaro.net/))
+  核对日 2026-11-01，[英文条款](https://amitaro.net/voice/terms/)限制用户可独立提取/下载的打包形式
+  [日文条款](https://amitaro.net/voice/voice_rule/)另列 MOD 同捆和事后报告要求
+  且明确两版适用条件不同
+
+本仓库没有上传上述配音文件，当前本机构建从固定 TLM 源码取得原字节进行开发验证
+两包的原作者说明、逐文件路径/摘要和原版事件映射均保留，配音分发问题仍是正式发布前的未完成项，不把本地能播放当作获准公开分发

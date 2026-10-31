@@ -1,0 +1,3318 @@
+{
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "audio_distribution_cleared": false,
+  "audio_scope": "local generated build input only; creator terms require separate release review",
+  "files": [
+    {
+      "path": "assets/littlemaid_peco/lang/de_de.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/de_de.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/en_us.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/en_us.json",
+      "sha256": "799cae3d3d33892c818ab4d292a0c68f595656c8f334c6c3149aa863eb76ed7e",
+      "bytes": 152,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/es_es.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/es_es.json",
+      "sha256": "4bb3f20c3b2628fea02c0e2391efd21fbf917c01ee1acd90e1b36971b27f2678",
+      "bytes": 156,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/fr_fr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/fr_fr.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/id_id.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/id_id.json",
+      "sha256": "c59c35d22b94a4adad2cc27de757783a9e38d2858f1032728fc68546310d9e62",
+      "bytes": 158,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/it_it.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/it_it.json",
+      "sha256": "ddaf22006aeb2cd3d5ba4e39fc5af7b03dcc1d9b64541c394b6a77c09d0ac986",
+      "bytes": 166,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/ja_jp.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/ja_jp.json",
+      "sha256": "d1c794196dfe112dbb69220dfac350e576e11f1a0976b597660171a14f639c7f",
+      "bytes": 272,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/ko_kr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/ko_kr.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/la_la.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/la_la.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/pt_br.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/pt_br.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/pt_pt.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/pt_pt.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/ru_ru.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/ru_ru.json",
+      "sha256": "5aac92fcc3c4e5a2dc88985cfda378abe532c92d1dfa704cfc02d4227d0e3362",
+      "bytes": 197,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/tr_tr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/tr_tr.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/vi_vn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/vi_vn.json",
+      "sha256": "79da8a295d89223d6a808ab4972976697d46241ef0101872db596e12c70e6c08",
+      "bytes": 313,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/zh_cn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/zh_cn.json",
+      "sha256": "ccce465177b1e0481887f6df882e494ad28eddabeef50c1dd06ef25399bfb497",
+      "bytes": 228,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/lang/zh_tw.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/lang/zh_tw.json",
+      "sha256": "a83c159b01d0227457cae04996e7b5f999de40f235c55b60239bd632616020a3",
+      "bytes": 228,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/maid_sound.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/maid_sound.json",
+      "sha256": "cd30f18c4124598e7b800b4f7bf5ecbc2f9ef06d5d57c98eeff4314044d4315a",
+      "bytes": 244,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds.json",
+      "source": null,
+      "sha256": "91d104edf13cae3702e99038fc81ddb9a3f05f838aeaa4b1ebb1dc3588cecee1",
+      "bytes": 54695,
+      "local_audio": false
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death1.ogg",
+      "sha256": "27d54914b33e652195770844219f90b91e86af61339dd11b77ac3740ed49d55c",
+      "bytes": 32723,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death10.ogg",
+      "sha256": "4ce6e8ff860d2dcec50329f2d2fd6df660dcf758e63c34b73c811910a0c758f5",
+      "bytes": 37027,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death11.ogg",
+      "sha256": "f4ccd641d2e4347d32246fc4fc28e4cc2eacabcf80a137266075e0c7db734a9b",
+      "bytes": 31364,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death12.ogg",
+      "sha256": "4b5bb8324ce58e5c5039414dc4b1d7fb5882e4e44154b15a6038d22fdc869833",
+      "bytes": 23089,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death13.ogg",
+      "sha256": "2963c84123cbfdba0138f8904f3278cb3cef2db7a3ecf1f207a201b48a5d9a2d",
+      "bytes": 23464,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death14.ogg",
+      "sha256": "e405e9486ce4e60665538c6f3dfa4b188644e07f56e34b35c5487c6a5cef4a56",
+      "bytes": 25879,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death15.ogg",
+      "sha256": "be2a8b408a4acf54de2cf8b84eb93ed9ca30a06d249999758c933fb9ac217c16",
+      "bytes": 35067,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death16.ogg",
+      "sha256": "aa0b4df6ed79d78eed0ea7aae369b20fbad6004c0cd5162349a7afa69f20b64c",
+      "bytes": 25939,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death17.ogg",
+      "sha256": "d7f381d26aa5ea4e8c677e1a0f3d8a6c392084a58f4acac8fb836a7e3c40da95",
+      "bytes": 41966,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death18.ogg",
+      "sha256": "5554d9fe7d5118b2929785e4d97be9f0550ae0a8323bb2081bf502684aca56c1",
+      "bytes": 31188,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death19.ogg",
+      "sha256": "7b42819997ccc15974e201b2cfb1337ddcd9c6ff9e876db57ed6840298f2433a",
+      "bytes": 27796,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death2.ogg",
+      "sha256": "7c0205a7b9a48688e4024f21281d35c9725caf3576fc91393a937ada473f9b42",
+      "bytes": 39480,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death20.ogg",
+      "sha256": "956976e3d3185a9a64c909afe910a330c1966577606fdc405fd32455499d350b",
+      "bytes": 21201,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death21.ogg",
+      "sha256": "e333d4c9b4c4594c0084df6fc60d7fc66e6eaa9d25b54f3b5491ee40fe01a7e3",
+      "bytes": 24298,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death22.ogg",
+      "sha256": "1ea1e24f943d89e49517b96d6be028621335c6b4906c9a5dd3be6e8550d6bebe",
+      "bytes": 20095,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death23.ogg",
+      "sha256": "7701c2c499717de4c5ac60e7c654a5d53c0ed828d868fa89c7fa37811ae5ecea",
+      "bytes": 22823,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death24.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death24.ogg",
+      "sha256": "0cf661ba5ca62303338bfa99f6f203446795d55cfb90fd301daed3d92361d4f9",
+      "bytes": 19012,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death25.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death25.ogg",
+      "sha256": "89bb626df91f3f21c81cd3a4ae078ccf7bdae6f71dd73cee29403427f22bdc82",
+      "bytes": 20544,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death3.ogg",
+      "sha256": "5f04d2c425f55d3862af8f3c6f5dbfe75691b7fe6b5de83d2daafecb6b4b5a77",
+      "bytes": 32488,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death4.ogg",
+      "sha256": "5c577cb4b4e1b274570970a6a7e90854b89908027de84285b0aeea15d0930c2b",
+      "bytes": 51230,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death5.ogg",
+      "sha256": "2057e55973b9efa2bb6291d604986c571df2f773d643013efcc1ee9c6f6be66a",
+      "bytes": 46565,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death6.ogg",
+      "sha256": "64c5be2249ff07bfdf53d9566c1d9f616e270f023c6b150cf1dc822bfee8ee5b",
+      "bytes": 35452,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death7.ogg",
+      "sha256": "6891f0129f91ed14a19dff3ffd45a19f394e604fb9ac7bf0d8b4889499094f42",
+      "bytes": 24153,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death8.ogg",
+      "sha256": "df326883aca1980074d861a7c803486e1489167c584fedf085e6939fd1dec53f",
+      "bytes": 35531,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/death9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/death9.ogg",
+      "sha256": "9ab16f14109f88d9d4cc9e3de7070907da1069c05c52b6dff1cfc1a49c9363ca",
+      "bytes": 33013,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target1.ogg",
+      "sha256": "16eef71108c102c98a77b0be02483f1eb267bc4368ac3a8577efa8e1c05e92fb",
+      "bytes": 9639,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target10.ogg",
+      "sha256": "2c6ca9b7ef9ac3f2a4fa680e930e9a01784724917cb3cddf5a86847402886d2e",
+      "bytes": 20498,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target11.ogg",
+      "sha256": "e972b9c4003ac6b8015996be7b799274dc29af00427273096a2daaaf584f0eb9",
+      "bytes": 16238,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target12.ogg",
+      "sha256": "c9283212885f17483c1e75c759e7dfc023d8fe4c6f33bf779b9a1d0b8753fdf9",
+      "bytes": 13537,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target13.ogg",
+      "sha256": "f2d75141a186f77b552b05ab1a6951de2ac05192ffddd6442cfe42b2718429a9",
+      "bytes": 17780,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target14.ogg",
+      "sha256": "c8f7943a84d64ff94e8367e5e9ec619953ea85af18db76207dbc381b74eb176e",
+      "bytes": 22850,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target15.ogg",
+      "sha256": "d46e77e7eef76f4a27710209a468db67831c87394a171613b69242c6b6e6771f",
+      "bytes": 15082,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target16.ogg",
+      "sha256": "1f42a1085cfd62b93f73d0b23f181a5f11cc5c1b6945a097039217de76c39380",
+      "bytes": 11606,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target17.ogg",
+      "sha256": "6e7a7a3248cd6226e320b0763c9e3cd6f56c88e43d610e0d0a96a1e0c66c842b",
+      "bytes": 14918,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target18.ogg",
+      "sha256": "9be9e44521ba307aa848b2cd108bec769443dfb66ffdaa94dd4067c1c1eb0c24",
+      "bytes": 22209,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target2.ogg",
+      "sha256": "439b5fbc833a37c27995e4f4458ddbdcc43b8b12245eeb8996c94c9828bd46d2",
+      "bytes": 15561,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target3.ogg",
+      "sha256": "d5dfa0a37ac2eef4543b128cfa00f3f60b41567ab71d82a8ef28b9e86ce44d76",
+      "bytes": 18240,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target4.ogg",
+      "sha256": "cfefc1d59e96b83b219b6daa08330567beca9e7bd9c53e3a74dd0bb063b2d69d",
+      "bytes": 10311,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target5.ogg",
+      "sha256": "29c2dab5f875edcee5483a9deacd7d739151b479eb2a6b00ec524b59f2f719cd",
+      "bytes": 10522,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target6.ogg",
+      "sha256": "17b89a791a209e63ca0b306216ed64f9721f7b6d2c76a3d04d3911061a919301",
+      "bytes": 21731,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target7.ogg",
+      "sha256": "0d7fb4b26ddab0c527cacd884c504f2f15e222e7254509619491420e1ea4c617",
+      "bytes": 13000,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target8.ogg",
+      "sha256": "ff40a74d99398c4c0c4adb4753a521e1be5c91496e9867e028bdb588d343effb",
+      "bytes": 12856,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/find_target9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/find_target9.ogg",
+      "sha256": "7915dafd059751dc481772c920d565b3b949a2661ec4d743d3462f1a62a61bdd",
+      "bytes": 19780,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt1.ogg",
+      "sha256": "2d8fda52237cb6679f5b42722201b642523db0adf51dee8b3ab58789af18c055",
+      "bytes": 5947,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt10.ogg",
+      "sha256": "5e02e5866938ca916c7f03fa219a9d333bdc5887c36f0f7b192c5ac558f48535",
+      "bytes": 8332,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt11.ogg",
+      "sha256": "284c2f74da930258276805892690e7426f01e571cd6ef3372428ab0b9dcc98c9",
+      "bytes": 11591,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt12.ogg",
+      "sha256": "5b6be041851c2baa912bde9a452b9e4ab5412c8226dd11bb64a369cfaf7e2ce5",
+      "bytes": 13294,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt13.ogg",
+      "sha256": "318fda6f128cd7c40e2c997f73f2532ad853e7a8eeb669b5ad28e55f56456676",
+      "bytes": 9454,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt2.ogg",
+      "sha256": "501c50e7ee9cf0f24649b1aebdfab6c6199965d434e6fb55bba6d46ba7a956b3",
+      "bytes": 6197,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt3.ogg",
+      "sha256": "817e86b1540ca815d85eec954aa53a20e515d7f472cca7e8afb81829ad9cec1e",
+      "bytes": 15341,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt4.ogg",
+      "sha256": "828daa62ae6cf2ce58e921614843c23d4de091c329f4356acdb5890785ee26f0",
+      "bytes": 7456,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt5.ogg",
+      "sha256": "2f72fab65a746ab94ba8b45d42f1f10ad05f5519bcf415465d924daaa54e1e34",
+      "bytes": 10071,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt6.ogg",
+      "sha256": "543e503fc00879ed55f588c88b6272b83bed56239af8a2eee09fb585fa199bde",
+      "bytes": 7578,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt7.ogg",
+      "sha256": "95bed2e87ed5493a97b6c26fafb3787b46a7227725600cd50e15d3f4ed17c794",
+      "bytes": 7058,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt8.ogg",
+      "sha256": "25da71d0180ee8114859946f38b8a835cd47923bdd1fe4f5fb8375571f4cf943",
+      "bytes": 9745,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt9.ogg",
+      "sha256": "8911464011efe22cb9786c140b5796b3788033b648af1065eb85dd89ee85419d",
+      "bytes": 6344,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire1.ogg",
+      "sha256": "1eecc57b325d54ad9590f7d57909c8e121b9aa756065fa6e612c02433ff59c0b",
+      "bytes": 12031,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire10.ogg",
+      "sha256": "61efab72f7ab3ff0d20a2191116a80434e626210387314e48bac1b24b55c4ec7",
+      "bytes": 14883,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire11.ogg",
+      "sha256": "7d8df72864b7a59f29c6633160e0269dfca458a552e0026a39e0f66f8f91c6d2",
+      "bytes": 21190,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire12.ogg",
+      "sha256": "ee22320406b3f8942b5ae71d748d6ef6e336babef0767f7cc865e72a55a4fdd2",
+      "bytes": 22306,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire2.ogg",
+      "sha256": "e59e711e862268c353a34d8d7b4212f412b64f0afa8a468e53a2a8ba4be6492e",
+      "bytes": 17673,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire3.ogg",
+      "sha256": "6a1a81d18465264536022ba875f6e897096848d60afa657bba0f1a41ce6b798c",
+      "bytes": 12333,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire4.ogg",
+      "sha256": "5e5c1bbe3092f130ccc21abefa7f59857d78ee97af1958ad4cb34adbac05f4f0",
+      "bytes": 21536,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire5.ogg",
+      "sha256": "a03b651ff4e736aa4ca865154bb15f26fee609d6453b7f01983f2e2697e2b81b",
+      "bytes": 15385,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire6.ogg",
+      "sha256": "4647569b2b680502cf9f860a6920de823fde232510bf6a69e8994d527cbc9719",
+      "bytes": 12027,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire7.ogg",
+      "sha256": "60ba91f6766477028b0b11fa1108b3b9303b871c7118c912bc781f0a2d31d3a0",
+      "bytes": 12719,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire8.ogg",
+      "sha256": "385bce969547de85979981923e2a0085f29d83898ca49649fdbca10627c761d0",
+      "bytes": 15426,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/hurt_fire9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/hurt_fire9.ogg",
+      "sha256": "a9df2dcc769a45a00c939d70d17dcab89d347c30f28e53a8f4168fe79a6c7865",
+      "bytes": 18313,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get1.ogg",
+      "sha256": "3ece42bca15a11c619942ea98a9610724c9d2dd9ab2a590f68a509245809edf1",
+      "bytes": 23972,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get10.ogg",
+      "sha256": "df5a4cd558fbd755dd35134027cbd8c9a65cc928043ff036fbb9242c12b74ca3",
+      "bytes": 15822,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get11.ogg",
+      "sha256": "1737eb077b1e60bec3d25f090ebedd89d3432b6709929d72735feb29cd6f6887",
+      "bytes": 8688,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get12.ogg",
+      "sha256": "3f9e7fc8ce6b7ed7268f68bab0e39a7ee8fea9a1453d6247976e67243879a3f8",
+      "bytes": 9065,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get13.ogg",
+      "sha256": "bdbbf55c9cb24a45d00067cea0ecb220f139389c423771dae262ad9756a4a270",
+      "bytes": 8571,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get14.ogg",
+      "sha256": "a0502c63fb7fca3324a9e31ced0e74123335166ec40540b055b8e9d8fbe4a848",
+      "bytes": 13376,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get15.ogg",
+      "sha256": "45ae503f6cc2c398c6c782b3e9a648498a1613ab8c9f69ceb2cd591b7428c397",
+      "bytes": 14327,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get2.ogg",
+      "sha256": "65279241d9d22e9c4f5d3b63c48e3d127c29d3ce95b9d32806870f8835deda3b",
+      "bytes": 14163,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get3.ogg",
+      "sha256": "1f1371328e8effe2a6b53bcdce92b34a6b44e275043c0593d19ad0c64719c5d0",
+      "bytes": 11613,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get4.ogg",
+      "sha256": "3776c67697c51b4d93764b122216721813de2264dbb6316dfd3ce2ce72a318d7",
+      "bytes": 15455,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get5.ogg",
+      "sha256": "2884fe3f3d6fad21f0335888872a07ab37e6398bb5160ab83ae43b57f1e29d60",
+      "bytes": 10672,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get6.ogg",
+      "sha256": "c6b404d19acdac506ba13257a07584254508d706f63197a46bd1d436b5be1605",
+      "bytes": 13597,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get7.ogg",
+      "sha256": "600b66afa5f40b0528127e75c48b28087704226bddc59f31f7433297369f7988",
+      "bytes": 12205,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get8.ogg",
+      "sha256": "f07e2c8c09bb83bfea6227d590b334fdc3bb6eb50e1b4050797521b7d5274272",
+      "bytes": 9674,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/item_get9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/item_get9.ogg",
+      "sha256": "b5daec2374345428ec71d811f0cc2796a6da06be4acd0657fa5117c769c69a42",
+      "bytes": 8703,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed1.ogg",
+      "sha256": "9aac801c3019a76eebe3d533fa6995abb3efcc632bdf557d3e450643c714190b",
+      "bytes": 17429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed10.ogg",
+      "sha256": "fe17dff3a2894b3c2f29450bf51b2fc6b7d828d1d0ab014a311f92ed66dcbf47",
+      "bytes": 22349,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed11.ogg",
+      "sha256": "8732040febfb836a80b17cf1b091b58d98df3b305b141399ce943a3cf63a590b",
+      "bytes": 54741,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed12.ogg",
+      "sha256": "e70800b3cc4f2a02ed6b36223a539954309afabe19c4d813bb83b7bb0c2756e6",
+      "bytes": 34666,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed13.ogg",
+      "sha256": "35d9518d8c3853e485335430e48a7b213619cc9e26fc030b2cd7efea3c1f02f1",
+      "bytes": 29532,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed14.ogg",
+      "sha256": "9bf7f4728f37fbf8ef7953f8bf0c7aca66a863ad4d62e134d6632067e5550b70",
+      "bytes": 137408,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed15.ogg",
+      "sha256": "791bcfcfd69ae03500e542f6addab508acc8040a1d22bf5f8a77e5f42189881c",
+      "bytes": 75604,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed2.ogg",
+      "sha256": "b52c226475b993d15ef3ef94ecf9242fba01ee8bb98321357caaf93b266136ff",
+      "bytes": 17471,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed3.ogg",
+      "sha256": "576a8a247afe6757d2f418f6b704810bc3d7b358929a041fc836d458724307f5",
+      "bytes": 23065,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed4.ogg",
+      "sha256": "0584c63044cff163b5789d3035d6651f9642f3e5bfbd6110c078574b658ba12e",
+      "bytes": 24188,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed5.ogg",
+      "sha256": "d97217b6d87e7fd6512cf0a3d36b902291bf0c3f02a092bf60c555c736665cf7",
+      "bytes": 99429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed6.ogg",
+      "sha256": "e2445c3c0bd629300d827e2bec444c4faa9ccceb198088a2a6f36752ba1c5e4e",
+      "bytes": 77886,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed7.ogg",
+      "sha256": "4459c6a2813adf88ca96b05ca37139366d4fa90652dcaa699177bb9bbecec27f",
+      "bytes": 35912,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed8.ogg",
+      "sha256": "f6229db42f116c050c8b49abd253b698f0a963df12f2ed2b767b1e78700d2601",
+      "bytes": 39220,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/ai/tamed9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/ai/tamed9.ogg",
+      "sha256": "67711330e5a8487fba23abc15aec8353a552def4f7bdf4e9de4a443b73a0e739",
+      "bytes": 47065,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning1.ogg",
+      "sha256": "208a078b26230cfeb6ef043456a16373e656c89bdb0567394e7822ee289830f2",
+      "bytes": 22365,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning10.ogg",
+      "sha256": "a0678737bedbcdb3399c258942324be92368c66e421326cdf182ddd12db4ceb9",
+      "bytes": 31012,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning11.ogg",
+      "sha256": "3cd9907a8557916c866f9d94e38a5ae614217007657824a22356bb017ec2bffb",
+      "bytes": 26643,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning12.ogg",
+      "sha256": "ae2f95898077b304a58fd459836ec8e3a40b5da885c36404cd1e1b12c7d5a5f3",
+      "bytes": 28713,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning13.ogg",
+      "sha256": "840a7a85348bd90ce31c90c52c54d902be59a770f1b2d8f75517ff183274f80d",
+      "bytes": 47022,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning14.ogg",
+      "sha256": "32e52527705a6ca228614fe723d38b427c77805fbef9abb89d741e92044b6a8f",
+      "bytes": 40110,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning15.ogg",
+      "sha256": "735a93a1ebad2571e8c726d84ce9ad382fe7277e88c885e614a6e0ee696ff1f9",
+      "bytes": 61485,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning16.ogg",
+      "sha256": "11d459b55da3f2dee6c910f92d39696f24c7a008c6c9b52ca1e7c0210d0e2722",
+      "bytes": 33412,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning17.ogg",
+      "sha256": "49c5beadb641310b52f453c2a9309e8ab7168289bb78255052226b0ab8d2a8b4",
+      "bytes": 38403,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning18.ogg",
+      "sha256": "7a4eecb174cc1c6e9ad0c29e9e40cb8e79ca18a884459ecc5144e85d97518276",
+      "bytes": 27493,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning19.ogg",
+      "sha256": "8a5e7f29295bbd3487cef99269fbe72761fa76997b9cbf572625a316183c7374",
+      "bytes": 40159,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning2.ogg",
+      "sha256": "17108b517954e76693249424e8ea165ae8c43fb051fb0bea5df8c1614a435944",
+      "bytes": 22967,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning20.ogg",
+      "sha256": "2cd121275855106fb0db60cd594fa0046fc825026d592722034580be98005b02",
+      "bytes": 50564,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning21.ogg",
+      "sha256": "d4bed8b8d4cced4609a36ab1d2b7a795ba96d36e03957129358385c6fa835a1a",
+      "bytes": 45595,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning22.ogg",
+      "sha256": "538a3e1ba1f9656c66cb1f23ba0eb00594b23a625d506d968cc5d5a5985351d4",
+      "bytes": 44567,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning23.ogg",
+      "sha256": "93591c71cdb42fd7994901d1f5944db58dc24ae73361e06ce7c9d5b0d41db728",
+      "bytes": 24084,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning3.ogg",
+      "sha256": "794dc28bf5345a34651e4e3a9dcc6c6a2ee7e7f7c93941223a15aa782a6be07b",
+      "bytes": 40441,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning4.ogg",
+      "sha256": "99b7d17a609a2f5a2922e99a70b19ae422e54665e16e15f43690f506a8a5d1c0",
+      "bytes": 30478,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning5.ogg",
+      "sha256": "3a4df78695e56626381713966ff31a3f3c49d77b413c7cde95e5b3c0af34656f",
+      "bytes": 26576,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning6.ogg",
+      "sha256": "8b5ef39eab8442067db2e131a61052e59d4d38e575b92ae737b3ca1e4f5ea5f9",
+      "bytes": 66937,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning7.ogg",
+      "sha256": "77675df89d5429a66be04e8ba6fd7cf1ea310a12f9774af47f64b58db33516c8",
+      "bytes": 28736,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning8.ogg",
+      "sha256": "6cdb468e3c6cf5d5e4cd9154127254ff2660c4168f33010dd76e7e29f7734e32",
+      "bytes": 24596,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/morning9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/morning9.ogg",
+      "sha256": "0286294e5a930fd3db26f93d7d5d8b1013a2561be3a7f26147ee6155b0c28cf4",
+      "bytes": 26223,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night1.ogg",
+      "sha256": "5867ad0343a57abf447ac8e6c14f29dcb61e122083be252ce71262c85b1af7ab",
+      "bytes": 26082,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night10.ogg",
+      "sha256": "53e4cc5e506026224973d782c09a800fd6ea783299a91acd51a9d51fce2adae0",
+      "bytes": 36803,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night11.ogg",
+      "sha256": "c820c3c24c1009904bda3be6bc270450717206476397962cf10a703bce3ddd2b",
+      "bytes": 39147,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night12.ogg",
+      "sha256": "5a693e859dff30f21b7ccef6cd2ea5be85d6cb4279b921a721477f698724799e",
+      "bytes": 33749,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night13.ogg",
+      "sha256": "5a55fe3cd5ac43d45260a91a1862ba656c5001c737f045831336fce5b6137082",
+      "bytes": 37983,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night14.ogg",
+      "sha256": "c8c9882fdfa3e506b681c59ad9ffb47a1e2a5a7330e14826afffa53b124db5b9",
+      "bytes": 26432,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night15.ogg",
+      "sha256": "faef16e11e3989869b6a7d0024dda96b0ed1f30cfcdb376db47e8b0db86f2e6e",
+      "bytes": 20943,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night16.ogg",
+      "sha256": "484370ad8f5aa802a583f408a1854996e6b91f2e90dc9e22bbe7463a1eebc258",
+      "bytes": 45180,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night17.ogg",
+      "sha256": "6b97085a1cfedb7c3d6bbd3bc40a7c4ed43e5db162c7c1851a24b84a57c50c99",
+      "bytes": 28348,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night18.ogg",
+      "sha256": "bb7924812a84625830880e2c1588b18e157f6e16e27c379a5818437b615fd7c7",
+      "bytes": 30902,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night2.ogg",
+      "sha256": "9556f8c630b8bea1b277161daf02afefd262e5fdd774112e8df445a6aa7c1594",
+      "bytes": 18036,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night3.ogg",
+      "sha256": "791fc661012a560d49ee4d91501cf44bc058d1eaf4f8b9453c38f3b9c077d830",
+      "bytes": 24740,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night4.ogg",
+      "sha256": "66282adb30080f0f35866c259b23cb7a4358a0a44cf3c0193c0d18ab92e162db",
+      "bytes": 27218,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night5.ogg",
+      "sha256": "640aa186796b52e919af4de7a04552c1421963ff866cd608fc39af8774bb0608",
+      "bytes": 29280,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night6.ogg",
+      "sha256": "f325b1c97293bc3ea622930506745f9f1715416003b3168e4400b487d62d7a90",
+      "bytes": 34277,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night7.ogg",
+      "sha256": "560a178f0a46ba431012a848bc382d7db09d89422f5bb98a4a410f100fd7e7a6",
+      "bytes": 44513,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night8.ogg",
+      "sha256": "4c679936be1115c233b3c68c93961f43c765441d3c5f43814f4947d449ac5cf9",
+      "bytes": 47744,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/environment/night9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/environment/night9.ogg",
+      "sha256": "1a5c1534dc15074282ca5087af33ef1b76d6e6e6b6270a33906f9bdbcb9cb568",
+      "bytes": 24153,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack1.ogg",
+      "sha256": "c08f6ed8fd0eebe8c0630eeedfec9ff11bf7e4e5e01a0124fcac06e0dd383d62",
+      "bytes": 7654,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack10.ogg",
+      "sha256": "66ad9aebea94290540bfdeff1212bfc7119c3706dd27e1eb29233e9693068070",
+      "bytes": 8499,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack11.ogg",
+      "sha256": "068436955ca1d5559e66f48dda31640051989860ac418755ab75cae94f3d4a2e",
+      "bytes": 6883,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack12.ogg",
+      "sha256": "93cc20f4f7b5441cbdd647f35cadf153b362022aad955dcd38957dff772b22eb",
+      "bytes": 8362,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack13.ogg",
+      "sha256": "a1a3a1f9ca3b529d019ba46b215671b7ce8148b4660292f57a1eabdf4cfc7579",
+      "bytes": 11146,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack14.ogg",
+      "sha256": "fbbe35721182f2f01ac99e348af7910b2d02c3ebf3b4ccb418525c744f8e6a0b",
+      "bytes": 11565,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack2.ogg",
+      "sha256": "3434c40f7ddefa0fb243f3b83e3d0d19e38bea02118928fc2091d2dd94e20660",
+      "bytes": 8217,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack3.ogg",
+      "sha256": "f6ad3c7adfb7e657ee04bf97fb29a206498bc42337fa4166ea2dba833ee03117",
+      "bytes": 7538,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack4.ogg",
+      "sha256": "d51e6592e994a2b4585a18e52df126fa1ad9d7c8e639409c59c5600183b1ac87",
+      "bytes": 9044,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack5.ogg",
+      "sha256": "d4c37a7fcac123c0dc1e8933432ac6928106f8c7bc8bb2dcaad531365d86e963",
+      "bytes": 10192,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack6.ogg",
+      "sha256": "2c04e22312cb5f9409b7d96810c2ed15b637109d2fdbab96648accc5069f919c",
+      "bytes": 8153,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack7.ogg",
+      "sha256": "2d3d7e9514d43c64466b4a0618daee0b9cd5debc149b735b1608ecab44f4825d",
+      "bytes": 8590,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack8.ogg",
+      "sha256": "339bf2893d04cd5faf7aaa1441590a53ead269053b2ca17ba9420c97caf665d7",
+      "bytes": 8391,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/attack9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/attack9.ogg",
+      "sha256": "296afa9d81e90a128f86f83c91aacdd7d8b5bc6e20a35747eb81bb04b38c17fe",
+      "bytes": 6627,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm1.ogg",
+      "sha256": "068436955ca1d5559e66f48dda31640051989860ac418755ab75cae94f3d4a2e",
+      "bytes": 6883,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm2.ogg",
+      "sha256": "a1a3a1f9ca3b529d019ba46b215671b7ce8148b4660292f57a1eabdf4cfc7579",
+      "bytes": 11146,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm3.ogg",
+      "sha256": "93cc20f4f7b5441cbdd647f35cadf153b362022aad955dcd38957dff772b22eb",
+      "bytes": 8362,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm4.ogg",
+      "sha256": "955a556161900e2d93406c8f4d4642834d74af47c04095672b02851dffb29ee8",
+      "bytes": 6166,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm5.ogg",
+      "sha256": "ec5abfeacae10a5fcf5f3345029958d27a61c366554a23cc2986b3e7d0555447",
+      "bytes": 11019,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/farm6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/farm6.ogg",
+      "sha256": "35ff0ee280ea010b82a3a312c176dcc20aadd6da5354bef2ae0db469f1ff5c14",
+      "bytes": 10162,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed1.ogg",
+      "sha256": "15bf206618f8935f7c96e7da9d5312d71c1d5943635e0c0975d601d0edf4455f",
+      "bytes": 25118,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed10.ogg",
+      "sha256": "5d885d511244dbcd2a77b8123086751a7af06e2bfe3895ed96ae9101ba25a4b6",
+      "bytes": 29647,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed11.ogg",
+      "sha256": "ff289a48b59ab90234a888167eec81b2144f2192d8c1cf3e77031d9bceb29d36",
+      "bytes": 21882,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed12.ogg",
+      "sha256": "35e71783570efa616cb10e9acea74f08a34fb7301dc7444ec56e68f79ba67460",
+      "bytes": 25003,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed13.ogg",
+      "sha256": "077e0c4ab48bf8225442255c4fc70ffef41f5fdc7563bceed63f918eb26ba5dc",
+      "bytes": 26319,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed14.ogg",
+      "sha256": "3f12215f55efaf812e9cd55b27170274cee743a69343213c9876ff625d16f2d5",
+      "bytes": 23868,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed15.ogg",
+      "sha256": "f9eb51d375508b16ae04a6eaf7fb435f2019eadf7178e3005d0263c38f82e168",
+      "bytes": 27839,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed2.ogg",
+      "sha256": "961a79878d1ca13c3e3bfbcf327c73403354cf3db849ea8dbc15a77897015567",
+      "bytes": 32255,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed3.ogg",
+      "sha256": "ec90d2cd7ec0da1374f018c61987d184b73f972e89027f438ab2b87663bbbe56",
+      "bytes": 19786,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed4.ogg",
+      "sha256": "041e56d10cdb534874b1939ff7fa77961cb2e2429a4df789b34836bb6990bbd9",
+      "bytes": 30703,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed5.ogg",
+      "sha256": "02257089c2703c45c72a41016be3e5d3151e569512c4b9adb102bc93ea0f8328",
+      "bytes": 21426,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed6.ogg",
+      "sha256": "c913ecf4e63fc030d3dcf16836c917ffe269f375ecda022aa4397e04fb93f418",
+      "bytes": 19453,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed7.ogg",
+      "sha256": "c02affcfb1d1a0017666ef15850b64876700d065f68eb0c5978432d15c4055c2",
+      "bytes": 20537,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed8.ogg",
+      "sha256": "4bb453993f41d73d5972bdaa3178b41db5c11a57d7ffab66105f7b65f7d3456f",
+      "bytes": 25656,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/feed9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/feed9.ogg",
+      "sha256": "0ea2a9b42dbe60be01b551fcff58767a22a5a1c8010e5f8d4d125f2a3dac7435",
+      "bytes": 33124,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace1.ogg",
+      "sha256": "f8d5c3407e8b9ffa2605601289b615585dc189a9955cbd5bf15e684b2883e390",
+      "bytes": 11049,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace10.ogg",
+      "sha256": "c3a01ba04bce97d09309b7ec9111c5d0a9ebfac5cee7df7ee73f024625db184c",
+      "bytes": 26823,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace11.ogg",
+      "sha256": "6a6126783e53500d3377b55632840a35b1a3ad27f504dd131e6aee603e1fe97e",
+      "bytes": 22868,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace12.ogg",
+      "sha256": "c830eee57696c033b8a3c1862421dc57603e46e3addc0d5c800e1788a2be7bd0",
+      "bytes": 77887,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace13.ogg",
+      "sha256": "6c39005fcf1b2390f43c2a69b50051654efc19ca73fc0c0a24ff86634001fbf9",
+      "bytes": 30329,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace14.ogg",
+      "sha256": "f5d2ff9cdc89d3411c485eb537e5b4bd0c7201d76a7f4de4d64e0abf1a71a711",
+      "bytes": 21638,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace15.ogg",
+      "sha256": "a6496d162a7b8b14346a3a81e1ee5f187295574736c9759669baa31a8a351ac7",
+      "bytes": 23855,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace16.ogg",
+      "sha256": "eafff2a69d2320ccf906a2fd65b581b0e20350d427b872f13fb10b81a7042748",
+      "bytes": 19987,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace17.ogg",
+      "sha256": "fe70c6e65da7aa23c581e7604ac25a4ba7752d94949bd8ce6e12ee0c9db92bea",
+      "bytes": 20173,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace18.ogg",
+      "sha256": "99b636ee3fdd6823a84ba9dde0c7c26386df8d565771a65bcc4b23a0e63372c4",
+      "bytes": 25851,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace19.ogg",
+      "sha256": "a83bad82dabfd171ae61e5014eb95ce5d7aa6916ec0ba648c678ed3b4bb94868",
+      "bytes": 41993,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace2.ogg",
+      "sha256": "4b047a198dbbf42dc265b39b6d8b1558fe4253a3f7ce072e8065217f016b51c1",
+      "bytes": 11998,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace20.ogg",
+      "sha256": "143ce9ae9d0928336ddae34bdaa522453768c61feb3a2c84e184a4d34d7b30a7",
+      "bytes": 28960,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace21.ogg",
+      "sha256": "bd1b1ccc8c7e3e17764fce60be70024d4e8ee59c21d840f4834f039c729bad18",
+      "bytes": 27939,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace22.ogg",
+      "sha256": "44f37ff5dbc438c091a3876813c2d6de753495ae6fcd027efb5e4d2da2593dfd",
+      "bytes": 30943,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace23.ogg",
+      "sha256": "935afc4e864f33da237c2684f490e2bd3acf0b8e7b9808c15df107ed7d30fdba",
+      "bytes": 30052,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace3.ogg",
+      "sha256": "407b3bdada399061c48815b60e8539c675aa7cfc98b3216ab8324c2ba7070dad",
+      "bytes": 13720,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace4.ogg",
+      "sha256": "2d94d741d894ab34a6e98be1de48145ec5566c368dfe6657fc60506884e0434e",
+      "bytes": 22859,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace5.ogg",
+      "sha256": "43cedd7a17a0bb50781f8d558165c7d69d73b6559d9e1d1b25b061d78ddb703c",
+      "bytes": 26449,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace6.ogg",
+      "sha256": "49816beb77484af76594a87abfac8fa97779f5d30ea4e3a4adcb14caae7d0ca3",
+      "bytes": 12376,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace7.ogg",
+      "sha256": "a13d392f404988e22767dc02f8dba325b5d8a2e7cd4a801aad044a2e2e83d45c",
+      "bytes": 22937,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace8.ogg",
+      "sha256": "207effa0675b2f92243f986faf3f2ebf4d9b24c4b10121669ad5da1f0104f3f8",
+      "bytes": 26853,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/furnace9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/furnace9.ogg",
+      "sha256": "ab452f5cdcc9b2914cf4639cb4bf21e8af973f0f7a4a7eb3413ac51faa34d5f8",
+      "bytes": 32119,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle1.ogg",
+      "sha256": "a98ca16b06552303a50d7e5c352a4787d7113f58d76bd9d1e5577b5ae3d23b2c",
+      "bytes": 15931,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle10.ogg",
+      "sha256": "d7ffe843cfc0f128ebf0e5d3233da706e749ef229751fb37c65c6640b3ee7368",
+      "bytes": 17762,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle11.ogg",
+      "sha256": "f163b64f88e6709c87f19ab7b09b8cb48b461931836a4ecaa72dcca203998fa4",
+      "bytes": 25512,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle12.ogg",
+      "sha256": "f2ef2c068facb275d40ecc6a038e391ade913014e3d6a5e248ee76fed361df62",
+      "bytes": 27073,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle13.ogg",
+      "sha256": "c2dfc78c9a5db7682bc027ce31dde5fadccaa075326dac96ee35a24e7354282e",
+      "bytes": 18363,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle14.ogg",
+      "sha256": "545f875460a852c9ae460de5be9e4d27fcf3e6b64e04924947785c98c86d6fc4",
+      "bytes": 14187,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle15.ogg",
+      "sha256": "145f9c19c6fdccf537de17ed678d5c9e1f9e5e93f076224bb56d189f32f541e1",
+      "bytes": 31614,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle16.ogg",
+      "sha256": "c2ed18d8f12bf2593f76aafcb39fc172ad4de5d9fff01a26db286b73a570c5cc",
+      "bytes": 31096,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle17.ogg",
+      "sha256": "95de1985b8c2ccec1f0aac7c50ea5d6432b8828d30b39852e836ad08081b89a8",
+      "bytes": 30506,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle18.ogg",
+      "sha256": "8b9c0efb1972d4c5ea951dea81f91a4f34a486d1e5638503fb4781abc0a6a81c",
+      "bytes": 30942,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle19.ogg",
+      "sha256": "90cbd970b8512166a10fb7cbe99370571e9208a0d7ad51ac0af4e4733588fd49",
+      "bytes": 46524,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle2.ogg",
+      "sha256": "cbc669ddb9bc0967de823ac992e07b227f4bee97aa3570aa25cf3f92a726f4e5",
+      "bytes": 19970,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle20.ogg",
+      "sha256": "47fcee1c6af9efca998ca1b79dd8eac209ff8f66173d05468da88355a354c170",
+      "bytes": 46599,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle21.ogg",
+      "sha256": "286fc9f5911f8cf10522b60bcb081fff3a2b5bb6bf2c1398c39f7af8f4f3a558",
+      "bytes": 26927,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle22.ogg",
+      "sha256": "1150e5eea1deb6037f2fd019fb3b5e92b75a5e1c1ad936b4740eb0f0a0d6d2ec",
+      "bytes": 22322,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle23.ogg",
+      "sha256": "0c9f9ea366bf81d61561817cb3e0e516b98c784cfe9953e15ef55969a47a5ae3",
+      "bytes": 30747,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle24.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle24.ogg",
+      "sha256": "d948d5daf1f494668fc77723380b607d34b004a52b42c53ced13e97e40c3f7f0",
+      "bytes": 35776,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle25.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle25.ogg",
+      "sha256": "34f52c3913d31424defa93e3a4fa293bb79a2db7ac9a59dafaaa8bdbdfb7e43f",
+      "bytes": 19003,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle26.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle26.ogg",
+      "sha256": "254c485513025ff72e84b2bc29064f58246e3aa471166be31f1bee6ef4132f14",
+      "bytes": 20269,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle27.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle27.ogg",
+      "sha256": "a9b11a5bc90b3702cdc54be4989d5e78f565c78fbf7efab0296946fffe173770",
+      "bytes": 18619,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle28.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle28.ogg",
+      "sha256": "915e8ab8520de8dc63822c86e446e03ec968c8e5839da8d8736998bb2108137e",
+      "bytes": 23015,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle29.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle29.ogg",
+      "sha256": "e23f9dcac3b1d665d5ac21bd10ac356f203eb987ede6840a7bb286a471cbcba8",
+      "bytes": 19147,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle3.ogg",
+      "sha256": "fa6de602164b0dd9c17294db0c2f1bf3d08e457565585ab9fce1b438d509d1c4",
+      "bytes": 15956,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle30.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle30.ogg",
+      "sha256": "a4969a6b8f57be13b100b729fbe5ad2b104d4b44ffd1a9c49b4511dc984a9148",
+      "bytes": 24705,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle31.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle31.ogg",
+      "sha256": "dcf4784976357bf9d1b4992275ea8ffd9520f520f02cfd5bf7b72cc8fcb0c169",
+      "bytes": 12892,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle32.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle32.ogg",
+      "sha256": "879b905628bb1e6f4256f7fc0629057582f75552843eb3d4cc3a8f108cbd51e1",
+      "bytes": 17356,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle33.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle33.ogg",
+      "sha256": "3be9e970f4476ef35c427b7d216dd5e62113efa0ac1f3c1cc11654b192302e9a",
+      "bytes": 13946,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle34.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle34.ogg",
+      "sha256": "e3c1cebd89767c87b080c7600792e1302b762f38eef7a83404e048b167ed5b04",
+      "bytes": 25349,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle35.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle35.ogg",
+      "sha256": "035d2f3b4531fb2b5a46ea4393b5c9b7d94d962929359b45481050edde065a4e",
+      "bytes": 35678,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle36.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle36.ogg",
+      "sha256": "4c88bc3601f0099f5018412c02fe511945dc9e141bcf876bc6bc79ddf0eca2b7",
+      "bytes": 40973,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle37.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle37.ogg",
+      "sha256": "14d1e2dca94b82235c01a5d4b5a64ae9223f23fa2a5ab502e9a307fa1fd1ee23",
+      "bytes": 17399,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle38.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle38.ogg",
+      "sha256": "409b7c4c3d29c165866a6974c12a8401f9095f41ece4aa884904c0352514bf19",
+      "bytes": 30512,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle39.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle39.ogg",
+      "sha256": "a81f7b877a502715e7a92973b1a7b907d0e11aa1bef1437ce4c9cdd9c9e9236d",
+      "bytes": 20052,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle4.ogg",
+      "sha256": "a971ba3a48b258b6956e7481898713997200fcf7e52f7ffbfeadc3738da9e08e",
+      "bytes": 25015,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle40.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle40.ogg",
+      "sha256": "67e7fd78f3b3d68aac4dc376ee71cbb68d34ec82d243686ba0774f0b1395807f",
+      "bytes": 16761,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle41.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle41.ogg",
+      "sha256": "0cdaa401772f2c93b575f3090a779003bcbf7bf7d51158cf0558d8aaba78a7e6",
+      "bytes": 24697,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle42.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle42.ogg",
+      "sha256": "f695ce2e230f629e5874451b576a28d8f6913cbcb287481de1f76aead380fd2b",
+      "bytes": 27026,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle43.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle43.ogg",
+      "sha256": "d8b976331fe5d45ee770db29b431b9f282c8cd76a0b1147a547d9923aa358889",
+      "bytes": 17361,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle44.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle44.ogg",
+      "sha256": "ea5c761227d176011a132f7d3ae421d3f45fcd0d86a4b6e3f27dd67d70374917",
+      "bytes": 13005,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle45.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle45.ogg",
+      "sha256": "d6ca02fd81cfadb267d8a535354513d71b1645e4c7c712a4a60a15198176cfbf",
+      "bytes": 31250,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle46.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle46.ogg",
+      "sha256": "7ae621ed1af94cd7b1412f1c18ecb570ad5b10f2dd6b5db8f01e956f6d8f9cd4",
+      "bytes": 31070,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle47.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle47.ogg",
+      "sha256": "daa6bd7b357c30f28caea2383bf0d598384e6635af213d37d6ea1cd5df8cba6a",
+      "bytes": 28529,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle48.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle48.ogg",
+      "sha256": "68d60154aeecbb9019f2064162e495cd7dfb4db4dc4d1a6aeb5543087ff0cddc",
+      "bytes": 26698,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle49.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle49.ogg",
+      "sha256": "4ba5c16ee7d232350e1eb8b933dfa49fd7fcf5f960303154f8ad62cec68a3b20",
+      "bytes": 47487,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle5.ogg",
+      "sha256": "c37a25d62c2760e1cf79ffcde75ba6286d703a590cb18ce18fe3d3663c424f47",
+      "bytes": 33198,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle50.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle50.ogg",
+      "sha256": "e0c71857264581d3198ee61a5af752623c36293ab7c3afa2d34341b9485ead82",
+      "bytes": 47223,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle51.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle51.ogg",
+      "sha256": "ca7668159f8d7a015d76af6f78cb8a7a7297ccf721797815ce1cb5b2ee3022a8",
+      "bytes": 26630,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle52.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle52.ogg",
+      "sha256": "913eac51b7062d52f1fd67d2909cd22c36a9f7165fc4bb42f18534c42824f075",
+      "bytes": 22814,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle53.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle53.ogg",
+      "sha256": "c45edd867e0520dd6730725256e9ae6b63cb60f8ca6daa0d5830852289b726c3",
+      "bytes": 25202,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle54.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle54.ogg",
+      "sha256": "663188c306d47a8a59309e355b4eaccf8c19659dce8facb0831cc06655ae4ee3",
+      "bytes": 35519,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle55.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle55.ogg",
+      "sha256": "615309911cd303f6f60a2b1caab533561db3e0fa141f944bb4defa539958816f",
+      "bytes": 19112,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle56.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle56.ogg",
+      "sha256": "73f35288c32ec0713f9b41f963ea2f7c2b05f8032995733ac0ddd575ede340e5",
+      "bytes": 19974,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle57.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle57.ogg",
+      "sha256": "8dd4a7cd6120dcb564dfc20f7b09dfcee77fdede996cd8ba10535d2866ef619e",
+      "bytes": 18753,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle58.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle58.ogg",
+      "sha256": "7ed244fa4fa35b2d2f5acd11638a4fadb461de828099768f5a5d762cb9bb9863",
+      "bytes": 21395,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle59.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle59.ogg",
+      "sha256": "31621f424e8b8f4ea4a2ae993a94ff84dfdee2c100175c30dc4c6778fc826cb0",
+      "bytes": 20607,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle6.ogg",
+      "sha256": "e966d6cd84f72168d00afe2e4f1601ada3227477d5e0f29de884950e84b06dcb",
+      "bytes": 38068,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle60.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle60.ogg",
+      "sha256": "68b8e692edd347ac0f08397b5a524230fd075be3cccba7e2b575648bf335bb95",
+      "bytes": 27559,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle61.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle61.ogg",
+      "sha256": "0a622b05ef7b4d3ef7a4bd45f0ab578fa812e83a61fba74d72da3b2fe7d818bd",
+      "bytes": 25229,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle62.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle62.ogg",
+      "sha256": "a30b11632c65dc75341a371b909f94343df74547823d4aca39b3e025ecefdf0a",
+      "bytes": 37152,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle63.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle63.ogg",
+      "sha256": "950f2ab16e70fe1b06cd820d90ebf01636aa69a9d3b6202e27cd30a2d35d77fa",
+      "bytes": 36380,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle64.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle64.ogg",
+      "sha256": "8111054fbbc0224c5f8a9932f550eb404a50bb6daa09d69ae5ca36ab8d5a683e",
+      "bytes": 24539,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle65.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle65.ogg",
+      "sha256": "6a8bba61787672798f2b079030ae06d5a634776b279b8866af44df7652ef113b",
+      "bytes": 29073,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle66.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle66.ogg",
+      "sha256": "31656217d25d7e6846e9462a654689fa4fd0ca518b2b69ec7d329d74ee5f5ca1",
+      "bytes": 38994,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle67.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle67.ogg",
+      "sha256": "eb2398835e1cd43eb2bc906602c505ad0e5a9bd290361ff092df3928aeda61ad",
+      "bytes": 36192,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle68.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle68.ogg",
+      "sha256": "95c56545ee0333c5f5f0f7036900810cefe96bbb1ac16a602726d079a1ce0c63",
+      "bytes": 67025,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle69.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle69.ogg",
+      "sha256": "ca96a5fefb1b12a73924cd89fe92ab49174ed003b8960408c73542709e22e5a9",
+      "bytes": 36423,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle7.ogg",
+      "sha256": "8d5e0a01b61c6466bef939abd52adddefdf2ee0dc3a418ad4d6be05dad76c461",
+      "bytes": 18482,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle70.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle70.ogg",
+      "sha256": "d881bdc8c8514928f34b5cc4d1f592a817fed8cd243bf91dfae097d9961d0fa7",
+      "bytes": 30677,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle71.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle71.ogg",
+      "sha256": "e5c0832372ef1fcdb461f7b097451cc0b76ec5b49d18ae8ed587d2e46e9c1e7a",
+      "bytes": 30390,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle72.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle72.ogg",
+      "sha256": "45a45df139d6046d4ea8c4f6e0481113790d16bb47a93f4a45a87a01065e2c85",
+      "bytes": 26152,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle73.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle73.ogg",
+      "sha256": "b0593d4f5e613be6864b6650dfef73b966b56d588e7bca12e4f063978beb9ce3",
+      "bytes": 28540,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle74.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle74.ogg",
+      "sha256": "00dc454b014fdeb76a430274ec1e4cc724d409f045471cf3489dfcd12c0a028a",
+      "bytes": 23933,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle75.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle75.ogg",
+      "sha256": "e0bb5b6c0d125c32f54b138f90939ad8bd10f1c16df14adb2b01aa8a70c54ff2",
+      "bytes": 36962,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle76.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle76.ogg",
+      "sha256": "6819483b41fa5451560a46bfbfea6d9d275e679c4d2297b236dcdf0c110be715",
+      "bytes": 63522,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle77.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle77.ogg",
+      "sha256": "a5b6afca785580da9fcc692c8519e43e0e6d7d0fe27cff376bdd05f9739b7a81",
+      "bytes": 116002,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle78.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle78.ogg",
+      "sha256": "ef21446f129847f4ac4fc1ffe844f6ac4cfe28cca74e3977b7ed670055073e5e",
+      "bytes": 21336,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle8.ogg",
+      "sha256": "662560776d3d8476b4e9b15ba27da7766b3fe8ac6470dbc1e13c39e807d34cc6",
+      "bytes": 32563,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/idle9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/idle9.ogg",
+      "sha256": "ce8404b865baad6ce888a12cd457604bdf5eed7d3b27872fabbf9c58c6a56246",
+      "bytes": 22561,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack1.ogg",
+      "sha256": "ddba0e90ae25cc2a74f8d4f3909c901a6ca7c13c220db7fc7710ef3dbb69a6c9",
+      "bytes": 7934,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack10.ogg",
+      "sha256": "a020cda6b0863ebf7a5b01790879367e231157a4118fb7616b048498d934548e",
+      "bytes": 5429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack11.ogg",
+      "sha256": "f4747e4e8dee258e6514d03df0246edc8460d644607e2c8e520a2374fecaa2cc",
+      "bytes": 5429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack12.ogg",
+      "sha256": "d2bee47a3dbaf31bfc5497edf9c619490273a6e6ac306672543e697c443a383f",
+      "bytes": 5429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack13.ogg",
+      "sha256": "92d1f48f42244bfbb3e0175d65337c35d29ef6b070c2f1c97e513e62088e3a0c",
+      "bytes": 20381,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack14.ogg",
+      "sha256": "e739b4b66a8e22c7d55eacf07cdae49edeb9c7be11299ab2d6b2f8034a3bb6be",
+      "bytes": 26025,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack15.ogg",
+      "sha256": "ec5abfeacae10a5fcf5f3345029958d27a61c366554a23cc2986b3e7d0555447",
+      "bytes": 11019,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack16.ogg",
+      "sha256": "2d4015929cf28d8ca8d9ddbc609ba2b0ccd0611d33609aa6a27e931e2da3f3d3",
+      "bytes": 14915,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack17.ogg",
+      "sha256": "917272ee6f1352d020aac57241079110fdbffd08601dde43a5db8228dace0783",
+      "bytes": 21526,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack18.ogg",
+      "sha256": "6600573785635baace0739ff3b6d307f27dc8bd0289a90daf1f2f0f225d1a3e6",
+      "bytes": 14725,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack19.ogg",
+      "sha256": "c261d0a18ef7fdc627370a5995b368cf23582fcd41405daeb70832283aabb918",
+      "bytes": 23554,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack2.ogg",
+      "sha256": "371e80dc48dfffee77ac9626b901679ad7411d55a3c8dd4bef4bb44256411fcf",
+      "bytes": 14430,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack20.ogg",
+      "sha256": "9df3bd98faae35b5da1c376f1aa1de890056c5ad1ae855774cb5454b08bbc4b9",
+      "bytes": 11803,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack21.ogg",
+      "sha256": "2781c4c04975235e57c8381a88fff27b3cd4ba88a656f96b72ff760820a7ca1f",
+      "bytes": 17564,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack22.ogg",
+      "sha256": "1eec399b91a792cbafd734a5a93c9ea5f0e05c55f6dcfdaa3180d4db98db7b83",
+      "bytes": 9461,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack23.ogg",
+      "sha256": "5fe32acb4e4b253d713cde3ab0e414382a011cfeb4e830f87dfc4b5c249827d6",
+      "bytes": 26280,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack24.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack24.ogg",
+      "sha256": "8573c328bd4a27a76c8cb4fb0563395a2ff7ea71f050c66ba59229cc6544d95a",
+      "bytes": 13086,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack25.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack25.ogg",
+      "sha256": "0847686f7d41c3dba501cc36f37d1052b7797b18af425c72cd76ed1855e4aa98",
+      "bytes": 10044,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack26.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack26.ogg",
+      "sha256": "7d44ef6e74c9dd080c54b96c16b64c23e3047865c0fc1699ee1ebe5b31769e73",
+      "bytes": 8657,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack27.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack27.ogg",
+      "sha256": "ffa98858fe9354ddce7b40fae478e09b4ac0b66d6be90ba9f7cc8b5abc81b5a4",
+      "bytes": 25055,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack28.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack28.ogg",
+      "sha256": "a3dd1174a3b6887e8a0c8a8bca15abd9dc2b3536c3cac424cf707def7fdc3eec",
+      "bytes": 8817,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack29.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack29.ogg",
+      "sha256": "9dcb94accb0720841db1e690f541783fb95498d8e4a99b674f14a6ee44e1d805",
+      "bytes": 13377,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack3.ogg",
+      "sha256": "10a08368714a8c16808a8f902dfad1d5544462a8839bbf7a4d5340c7610ccff7",
+      "bytes": 12823,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack4.ogg",
+      "sha256": "9da7cc29abe8f2f4ce5fb04894167086f80cda0a1c036f2e3ec1f56f27dfa558",
+      "bytes": 10803,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack5.ogg",
+      "sha256": "e334283a88a952ae302476ce01a36d9ce6e870799cbfaa9d39971cf2edfccf9d",
+      "bytes": 9482,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack6.ogg",
+      "sha256": "b565a3e6f91a164f471882eeb4f9f20eeade75819b184236f80316c820ee8ea4",
+      "bytes": 12286,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack7.ogg",
+      "sha256": "1c7606b17c1d2c2907325304527ca4155efa79ca2b07ff9bf73b5bfab8f21547",
+      "bytes": 9694,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack8.ogg",
+      "sha256": "b863bb26a7a745f963812362b806a8f685822a7c6d207848e7460fefee4c97e4",
+      "bytes": 5429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/range_attack9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/range_attack9.ogg",
+      "sha256": "3e787c1d1a2f8963dd7f9370a8dddeb1706c09e8599d3aba062fc6aeea09e3d2",
+      "bytes": 5429,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch1.ogg",
+      "sha256": "a944ab4e4caa108c35b08ee8af44f95e3f825a2dde423bf5124cc2e115501782",
+      "bytes": 10315,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch10.ogg",
+      "sha256": "17224256122efc54041b74100886bd80995be4d7aaa059aebdd23224d1ff3e3d",
+      "bytes": 19555,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch11.ogg",
+      "sha256": "683dedd16d9ca52b8df6cc9d98de26b81118980695a90218576faf3e416a0ce7",
+      "bytes": 23023,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch12.ogg",
+      "sha256": "8a7fdbbe8ca621a1c27997c0a1be02c867da1165d27c2dee7d8f279726fc1660",
+      "bytes": 18308,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch13.ogg",
+      "sha256": "a527b3fa3da42df9f6cfaefbe955d8c00803aee0b7b34bfa3d556d48656df13f",
+      "bytes": 10135,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch14.ogg",
+      "sha256": "dc219c8575e4fe18aa5d5a123da9288a4b3940f49d8cdedb5e4b8bb7761c22b3",
+      "bytes": 9613,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch15.ogg",
+      "sha256": "82a485a639b4e5e13f7aafbb53e82f2dab841cf131c699cb35c39c1a5525478b",
+      "bytes": 20428,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch17.ogg",
+      "sha256": "380cc4449967790c3ff29b270084575368a08d58c07f87a630c4675a5d693491",
+      "bytes": 9661,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch18.ogg",
+      "sha256": "e65c9b51d996108dae04f1b8b51663b287d4710779ed69c2c15e441f93538300",
+      "bytes": 11342,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch19.ogg",
+      "sha256": "fab510b2a1e5d4ec574adea946a8e77f9e13bf69cd711a3437016d6cef7f489e",
+      "bytes": 13395,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch2.ogg",
+      "sha256": "e21145028b7b671b083eb4c591b09ded5a7a4e472dbbb20eb66e49fc11bf8028",
+      "bytes": 12003,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch20.ogg",
+      "sha256": "f38f340715649603d781d63b5a4bd6015098a256460b321f1b75196c795fcfae",
+      "bytes": 16754,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch21.ogg",
+      "sha256": "aae7815269f82d4aee64315bf8c5ca9044fe6af49db59caa80c4e1d891d589cc",
+      "bytes": 15084,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch22.ogg",
+      "sha256": "f5d7bf288cf8baeac065794f351c193c9701232f61dae7777020ae2391c6a9b3",
+      "bytes": 18529,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch23.ogg",
+      "sha256": "51ef67c23f6c8f718b1cf9f27c16926e3cc81f5a3d6bed05364cfc714ae494fa",
+      "bytes": 9152,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch24.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch24.ogg",
+      "sha256": "4f11a0f78a18a99aaf393babb2f2f7554943cb7d3a7a01816065719d4b2898b6",
+      "bytes": 22530,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch25.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch25.ogg",
+      "sha256": "7c87b427e86024fd094b5c0426da112575efa8c3a844df14e4ed1b53327fc273",
+      "bytes": 9693,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch26.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch26.ogg",
+      "sha256": "778be0ab0291446572f11106468fee43c68792ba7dcef888ccfc4d66d87def67",
+      "bytes": 10903,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch27.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch27.ogg",
+      "sha256": "fb1c6fe1e2d835c18149c1c5e0a46d9a6fa3074100f1151acafbcea924321ae6",
+      "bytes": 12838,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch28.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch28.ogg",
+      "sha256": "5330f7cb96ba6ec3ff1916168255c003f339013d931acbbe7c5061d5c0bf920b",
+      "bytes": 14155,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch29.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch29.ogg",
+      "sha256": "de5ee5509b58caf78a571c6df235308bbe8cdaca6092a3897245f5a4befe0044",
+      "bytes": 7309,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch3.ogg",
+      "sha256": "058790c214e1a92be7d7538b6f814aca3c45fb1e3dc3a138237354ea5daadca5",
+      "bytes": 7284,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch4.ogg",
+      "sha256": "e641ca3b413ff58e9244149113c642900f5809760babd122ddef4ba9e4139aed",
+      "bytes": 14439,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch5.ogg",
+      "sha256": "0c8a99885845bbf7c7c796c3948ac1193f0ddf1722fbf821e077726675357790",
+      "bytes": 13874,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch6.ogg",
+      "sha256": "462a897e4dd72f661eba288c2fab9559abded6e3b412ab28433f405a81898c70",
+      "bytes": 13469,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch7.ogg",
+      "sha256": "b24e3606980582dd7433f33637b96227009e5f7fa894fdc0d489fd778a23ffc3",
+      "bytes": 15484,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch8.ogg",
+      "sha256": "591292c595e0982ec35ba5f7e3467ea9d7ff7b12581b0c53ba41c5022a5160e1",
+      "bytes": 22765,
+      "local_audio": true
+    },
+    {
+      "path": "assets/littlemaid_peco/sounds/maid/mode/torch9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/littlemaid_peco/sounds/maid/mode/torch9.ogg",
+      "sha256": "3f76d9ed0a797b19d8b6cadf35dbf8a1039c14df9df82fb9a406f9a2c7b9acad",
+      "bytes": 19680,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/de_de.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/de_de.json",
+      "sha256": "c99d60caff1495a440b3f4fb522159841c6747927e9f740dc054ef993cce703d",
+      "bytes": 1032,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/en_us.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/en_us.json",
+      "sha256": "724cfd5e380548980494552de90df64e174a77518e60d7d8995913fb82806743",
+      "bytes": 23987,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/es_es.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/es_es.json",
+      "sha256": "9f597c896da03699431b22cde72d5d90e7d65b7e7cd0741bc4e4470fe9edd26c",
+      "bytes": 24218,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/fr_fr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/fr_fr.json",
+      "sha256": "ed6a09873e05d1bf980d6dc32af7481547be652e771e19d54323b77db72d6c15",
+      "bytes": 11174,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/id_id.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/id_id.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/it_it.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/it_it.json",
+      "sha256": "1d00f3354cfa77998056144c049a59c9b6f91877d8d006bcb2a978d9a29e74f9",
+      "bytes": 23901,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/ja_jp.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/ja_jp.json",
+      "sha256": "52838b9300310a8ed05dc52cf3d96a905010a7757d71e6fa2751cb1888c93d93",
+      "bytes": 23271,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/ko_kr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/ko_kr.json",
+      "sha256": "82bb776cb38c6b29f3ffac30e3ac630a1617a31aa148869c857d21448f5d5b53",
+      "bytes": 17080,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/la_la.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/la_la.json",
+      "sha256": "1edb17b1a484faf83fddd1c8e831782241725f0eff982a925ae10af99b3f1919",
+      "bytes": 8303,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/pt_br.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/pt_br.json",
+      "sha256": "ab1a2294cb35101ddca4d3fea67a44461b76de08c0a3b7e4167b7609b62b3d6b",
+      "bytes": 5470,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/pt_pt.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/pt_pt.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/ru_ru.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/ru_ru.json",
+      "sha256": "d8be6b2f2631f49a44cab3f8f92287c00685aeb83bae90361bc97742fbb75890",
+      "bytes": 28747,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/tr_tr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/tr_tr.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/vi_vn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/vi_vn.json",
+      "sha256": "429780fe48aa498c95cd062788201a1abe0a26002b92624195db5f7ce20c1821",
+      "bytes": 25545,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/zh_cn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/zh_cn.json",
+      "sha256": "92b869c52b2593467e62b2059eb28b1735d2ab1119fdc76b731972e8836fc848",
+      "bytes": 22853,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/lang/zh_tw.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/lang/zh_tw.json",
+      "sha256": "58fd3f7e12c351feba658cdc76b816bffd64bb0f8679d265c0f2f4243a81b917",
+      "bytes": 22128,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/maid_sound.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/maid_sound.json",
+      "sha256": "c56e516797a3612c09c3e1889c695106348512cbeb066adc9edbecbdbf69127d",
+      "bytes": 274,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds.json",
+      "source": null,
+      "sha256": "6c63dc245784093721193c8ed66edac614cbc7673d80d5894e8216408e8fc031",
+      "bytes": 27434,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/death1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/death1.ogg",
+      "sha256": "b668227133797985c454d5c6d1b38756adcbb9878818fa1a34c312b3204ccb41",
+      "bytes": 15497,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/death2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/death2.ogg",
+      "sha256": "648dead111bed2cd306e71e42c0f71f1bd359f9b1c198eeef498e3941f5b8b2f",
+      "bytes": 21794,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/find_target1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/find_target1.ogg",
+      "sha256": "e9c821fbf3a0103ab03ae7e925f5b273def511bd4fc20802f67eaac577be9b68",
+      "bytes": 11343,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/find_target2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/find_target2.ogg",
+      "sha256": "e91dfb8dcbe403ad2d87d27635d6da3e2d9749dcc56aa1dbf5e4d64367625808",
+      "bytes": 12176,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/find_target3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/find_target3.ogg",
+      "sha256": "38fbe278058edbb8358752e152cc524417fd1c8b7c7ec544f56f71f338603101",
+      "bytes": 10654,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt1.ogg",
+      "sha256": "a55885261c0951a5952be0464f470dbcb2bdfeb0809e33b2f23d2e8de22792b2",
+      "bytes": 7390,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt2.ogg",
+      "sha256": "9d49ab3624889751c60329d098304110e0e3db1bb99b1fb3d1b94aa019a0a654",
+      "bytes": 7374,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt3.ogg",
+      "sha256": "6ec9cd05cd12bf0ecb7d772d2b3087d5d0cef0fa99e8edf892fde4c9c313d9ae",
+      "bytes": 7357,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt4.ogg",
+      "sha256": "0ebf8f536766a7ec6c71977b16750b41ee590d3894c0669b0b7649d1eae0c2a9",
+      "bytes": 11697,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt5.ogg",
+      "sha256": "6065eb96ffe9fa8b289adeb2749581c90aff5f4dd90d212a6b510b04faa6490a",
+      "bytes": 14380,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt6.ogg",
+      "sha256": "72d156ee5f297d0f8bcc6320321b485b6bb47803906a9ed15bcbc3a0ea38929a",
+      "bytes": 13599,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt7.ogg",
+      "sha256": "f6e89fca7c0d0043f7e7551f7fb6a4e8e1defd53ef4d475350c38141922df97e",
+      "bytes": 8332,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt8.ogg",
+      "sha256": "c45ad35b6a6f3ccd20260ef0a1c937e8d0283a4aa51d22793634fc7be127c5eb",
+      "bytes": 9689,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt9.ogg",
+      "sha256": "e513b02bc463d99a71ef259d073e66aaf1b551e1ddfabd31fc0277a50a3098b0",
+      "bytes": 8156,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player1.ogg",
+      "sha256": "314a37fc32466c2c17f1c7dcc4680866181bbf3d4a45b8ba662c918a6de93139",
+      "bytes": 33279,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player2.ogg",
+      "sha256": "8ecd2a8729f11b38feeba05935f8500c1b4aed0cf01967b0aa3e5932b1423c1e",
+      "bytes": 15327,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player3.ogg",
+      "sha256": "e2807c2d4423c67a4ad891ea0d41e70a2aa5582d3802b76e696a6a3b99ed7ef4",
+      "bytes": 15323,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player4.ogg",
+      "sha256": "400ce96b6008877715186647708d30263c9d0e4d12fd3d5cdce8e894b00c99fb",
+      "bytes": 25291,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player5.ogg",
+      "sha256": "04a7df3fc0bd1442e3c951509c76885e47392c943cc6757287106354643c1f42",
+      "bytes": 17619,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player6.ogg",
+      "sha256": "a00f3764fec5acf1ac3d06c548e7926f2708442a3af5047db79106e3de5a193f",
+      "bytes": 14673,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/hurt_player7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/hurt_player7.ogg",
+      "sha256": "aff2762a55104f6203e6a6b5ead9b5e720af0b5ae1c62d855496bd8a0e14db64",
+      "bytes": 24657,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/item_get1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/item_get1.ogg",
+      "sha256": "543b32ea25c2ec698a494efbca6b2e36676ef4e81e48523bce81457b796ca4a5",
+      "bytes": 15148,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/tamed1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/tamed1.ogg",
+      "sha256": "070a8c33caa6a6bd0adc23a2d28a6abfdae18f9ac5652791fae6141dc7c4d192",
+      "bytes": 15839,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/tamed2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/tamed2.ogg",
+      "sha256": "7172bbb87716ed2b811da2c0f950fb3d63620327757bfa5c958831b90c04539a",
+      "bytes": 15025,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/tamed3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/tamed3.ogg",
+      "sha256": "5cae8b7e6441b8ec418be6fa4e65a55695f3d7c7e89f3e22f3ea7626a3b4be35",
+      "bytes": 10212,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/tamed4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/tamed4.ogg",
+      "sha256": "24a5645bb16588b3e963ae794dcefcf55f0f31fec45c99f60e8c54d7a7e101e1",
+      "bytes": 28100,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/ai/tamed5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/ai/tamed5.ogg",
+      "sha256": "fbb50e7e648884261a26aa0ef1722c876f5243854b7c9575033a252ab87d0349",
+      "bytes": 24245,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/cold1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/cold1.ogg",
+      "sha256": "c564afb5d6383f8d4794bcb939ab9571209cb02e5f01296d8f8a343126406d56",
+      "bytes": 15225,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/cold2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/cold2.ogg",
+      "sha256": "2643af1253837eb95349f9b84faff51a6e7424ccc619e2b23c9badcb78ce5591",
+      "bytes": 23645,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/cold3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/cold3.ogg",
+      "sha256": "63a964e5cc9f52ecfb8a450eec5c829a23f032fab13a7d9f66548e67b33a8b0b",
+      "bytes": 16742,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/cold4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/cold4.ogg",
+      "sha256": "4cd6a457f9faa406db347ba5a2169a6df45357350886e4180274947029528290",
+      "bytes": 26018,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/hot1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/hot1.ogg",
+      "sha256": "3d6d8788b3d405288707a363719ed214d37c6f9d797a6b952780bfa8139d40b2",
+      "bytes": 19947,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/hot2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/hot2.ogg",
+      "sha256": "bf48e955fb31248000aaf670298326b5d051fce3871a157cd427649319238223",
+      "bytes": 18756,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/hot3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/hot3.ogg",
+      "sha256": "11a4ed1588af8c118799bb1518d1feb12a5f076ddf14632dc066085e42d70ca9",
+      "bytes": 19058,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning1.ogg",
+      "sha256": "78bd9a2ad861ccf6e2f2c18a214dfbd977802dc87f8dba25ec7d09a32d5580bc",
+      "bytes": 21326,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning2.ogg",
+      "sha256": "8b1c0cce74cb2ca0b103cd6888d9a4b6c872d46e344e3836244de29eea021e3a",
+      "bytes": 20466,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning3.ogg",
+      "sha256": "2e97fc148e33a3ba2e3df316e4e5dc864a456451a5e395ec22346b3c577811ec",
+      "bytes": 10300,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning4.ogg",
+      "sha256": "672dedbc61a7792dcd5a4ae6e362005ba17fc2f168175cf7b6a7da7171fa56b6",
+      "bytes": 28242,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning5.ogg",
+      "sha256": "7495f84768c57e21bed3b5d8292705e8d5ad3d361e4438eaf362b0ce8b650f77",
+      "bytes": 15799,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning6.ogg",
+      "sha256": "efc8d4518f374456c12096085c2e9d9a64b162ff02bcfdeaa922e54d68d1fc38",
+      "bytes": 21104,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning7.ogg",
+      "sha256": "ad84b61c65c163b9d66cde73c1837ffae903640ea03b5c35a7bf429a4f8c0e20",
+      "bytes": 86979,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/morning8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/morning8.ogg",
+      "sha256": "190bdb53d168068978d6792ba5a5b0a0f14f3a8085d989c1d7ecff3b2d211836",
+      "bytes": 26384,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/night1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/night1.ogg",
+      "sha256": "423d5bdb0cc8c1fc0aa466e85e02e3528eabf46fe8cd7b6fe3f7e14e5c97e6a5",
+      "bytes": 14246,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/night2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/night2.ogg",
+      "sha256": "3da029ea5c9be8c7cf47c35da6c91442f27873429e7772dc8c832bc49d9997b6",
+      "bytes": 14865,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/rain1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/rain1.ogg",
+      "sha256": "4ecf352ff49e16362f81d2ad2d6650f0592f9313d7c525ac2738c27c586d3411",
+      "bytes": 12146,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/rain2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/rain2.ogg",
+      "sha256": "cc975f1a9cb66cce341ae1e04ac350cfee60d944b0536f2326dd43669f99d7e3",
+      "bytes": 18499,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/rain3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/rain3.ogg",
+      "sha256": "585db6f6abdb2d46b83a72646d6864d79d6c0554c4e5a3b9e50c7b824e484154",
+      "bytes": 16014,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/snow1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/snow1.ogg",
+      "sha256": "68a2cc245f3072960316e4f139744652291dd95fc710e54b541d568f34c093d2",
+      "bytes": 13178,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/environment/snow2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/environment/snow2.ogg",
+      "sha256": "a620670fac96791484dbe58ed4b07ce05faa4184ad8f987b04336909132d5dd0",
+      "bytes": 13924,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack1.ogg",
+      "sha256": "37bbac9b059e17ad7091e123c2ab48c23adcd30e86b194a99512934b36ec854f",
+      "bytes": 14464,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack2.ogg",
+      "sha256": "cf2e928977fc714805dc016b89871a00e93668ad12c597b60befe01be061c051",
+      "bytes": 12237,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack3.ogg",
+      "sha256": "8440c8deec3a1d147e5b8de6eb72eab2ed0c6bc9629ef11cd51a8e53f4969779",
+      "bytes": 14993,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack4.ogg",
+      "sha256": "af7db49916eac588b2ea031978860cb190dc9536aee4bf4ead03f6017be8b2b6",
+      "bytes": 14801,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack5.ogg",
+      "sha256": "9aabeb21e9ecdb02c48651ba5767816c7faa9e8fba4cbf852c5901bb44baf5da",
+      "bytes": 12714,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack6.ogg",
+      "sha256": "8a0a03fd51d2d1dbe75007243ed58ac9060887c2ddc9f7320b8dd7a982181d54",
+      "bytes": 20360,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/attack7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/attack7.ogg",
+      "sha256": "31cf5c27a021ebe26ae74fa7734d62ccdb67bf9fc3fd5fca76df4c7e0e9de9d0",
+      "bytes": 18659,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed1.ogg",
+      "sha256": "1ac710b3a3bec0e51cd6107af7f8269acc693660374f9e9d2c1cc48f263d978f",
+      "bytes": 14365,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed2.ogg",
+      "sha256": "e553fa910b3958b5d2f25dee9205813d7727452d27c8e9c1234270538bfe4155",
+      "bytes": 18963,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed3.ogg",
+      "sha256": "750102221380b074a4c993b51b64525f5e1dab69e2ad407d2bc16493b1cfdc29",
+      "bytes": 13071,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed4.ogg",
+      "sha256": "6df723ef7f12e159ecc4abffc5f34083eb6a48cc4466dc627614b727a3605b74",
+      "bytes": 14365,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed5.ogg",
+      "sha256": "8f5cec87678bcda4a95f391c75e5847f27426947620ceaa81ee38e42b09c1113",
+      "bytes": 12875,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed6.ogg",
+      "sha256": "cb57835366ddf425d47ed6980db846a19baa0514f46dcdfda4e6d20eeec5d34a",
+      "bytes": 22720,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/feed7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/feed7.ogg",
+      "sha256": "99cc4980caa9ac02907db925254849741396bc5ca4b0a1cf0598a74800dff4f1",
+      "bytes": 22338,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle1.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle1.ogg",
+      "sha256": "0596a3103c36f233cae27e638f83ccffd7f9324982ec7b8acbd1bcddfa4c739e",
+      "bytes": 19384,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle10.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle10.ogg",
+      "sha256": "0ecb7028c119c20f0b448863be64eca612e37b30fa981cacbf21709f3f4cabad",
+      "bytes": 12635,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle11.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle11.ogg",
+      "sha256": "8fd46666f1268b780343c719ecac5be5230811fc703a1aa1b6875b44185021aa",
+      "bytes": 14371,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle12.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle12.ogg",
+      "sha256": "004acde62b71f4433b96cdd4a03a496168d50e97ac0344282593271ff94fc306",
+      "bytes": 16097,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle13.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle13.ogg",
+      "sha256": "671d234f5cfe830ad86d4e5f4a8f85d1f3635ed3aeb644714188e0d68ab59637",
+      "bytes": 14980,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle14.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle14.ogg",
+      "sha256": "d1da40c537a40435e50c3f69d8b6d0c25961096edc7cda9492d69ecf460d457f",
+      "bytes": 17507,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle15.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle15.ogg",
+      "sha256": "3e0c3088edf7dda007093357b58b419fc0cdbe1f07338fc0785a35ca3b38e58f",
+      "bytes": 15391,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle16.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle16.ogg",
+      "sha256": "f1c2a4d6878cb961cd688c5ff625b1c44eb2be277b4c643756a9854ddaed9518",
+      "bytes": 15542,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle17.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle17.ogg",
+      "sha256": "2998d1b19690eb22868fad33d5bfb96d157ba41e422456075d9c3c8075581b26",
+      "bytes": 17714,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle18.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle18.ogg",
+      "sha256": "9d66676c0598094b6fe4bcd5348c5a2b83b314b62f1850d7131894684666c50f",
+      "bytes": 16548,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle19.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle19.ogg",
+      "sha256": "54f0e62da155ea5faf7906e754d6742ef20b33f5b06c9689aeb7d61321f9c4b9",
+      "bytes": 11999,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle2.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle2.ogg",
+      "sha256": "a2fa297222235939775d451bd576aef9065c627c82ee9244f740fd9304db4952",
+      "bytes": 11381,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle20.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle20.ogg",
+      "sha256": "aa32739427d75b2cb4677a9e3d8290bdfd6e0b630de98203715c68ae833f4608",
+      "bytes": 10020,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle21.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle21.ogg",
+      "sha256": "69e4f9335e3f2a6ce292e415c61f54079be298b8ae01993a9e06c0c58db501cb",
+      "bytes": 13167,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle22.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle22.ogg",
+      "sha256": "d72feb66fa866967700d465cd0a2ed1c1e17b921b9398d3c03a127c78a31b664",
+      "bytes": 8463,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle23.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle23.ogg",
+      "sha256": "7e5751117859caf3a058adfd8883452e9aa550db36176dc11abb7ebbdaaa4e6f",
+      "bytes": 13400,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle24.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle24.ogg",
+      "sha256": "14eb4bedf2e94d64933c1d06616ef699a2a234dccc601545f6e4d89298a25456",
+      "bytes": 7469,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle25.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle25.ogg",
+      "sha256": "46dc9521a2a96c4cc3b2d0a8ab144e4c7839e89232a297f2635371b12c9962df",
+      "bytes": 18249,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle26.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle26.ogg",
+      "sha256": "c7ab8eaecc9fbb055036abd8d93eaa297515dc14b050e38f93e59fcd29ceb7f1",
+      "bytes": 12465,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle27.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle27.ogg",
+      "sha256": "fb241f1ebbb86f0da82cb9b3406a3a0f331bbf4d7c5d18e03d8c0e62261cf7cc",
+      "bytes": 13268,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle28.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle28.ogg",
+      "sha256": "93b7f2b201858615821244ba4be37a6095afa9b3df67417c716075bbe63743a4",
+      "bytes": 21169,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle29.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle29.ogg",
+      "sha256": "e05e6fdd1a6ae8cf5a259f57a463909cc1846bdf6cf625e4199a7ceaa2e72e57",
+      "bytes": 21180,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle3.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle3.ogg",
+      "sha256": "c258e011d1d705211638e3cf44c2b328c9d56c965a7cb8c1b855f5727fd4b577",
+      "bytes": 10146,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle30.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle30.ogg",
+      "sha256": "7869577ce0f44a11bb2187aae70a6c0d94a8ece2609d4ad5be16a61d5746448b",
+      "bytes": 16436,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle31.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle31.ogg",
+      "sha256": "11573ef6a283518041415bee92d7ec12af0e74e31c5254527cdbf7c8473a9602",
+      "bytes": 9687,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle32.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle32.ogg",
+      "sha256": "548760cdafe3627dc9436dca736e4d6729bf437a7ab2591fe69fe3d70dffbb05",
+      "bytes": 11949,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle33.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle33.ogg",
+      "sha256": "a6f914fa93bbd41ac6a12e4bb26142700c4eb450742455a262b313baa13fa9a5",
+      "bytes": 9046,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle34.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle34.ogg",
+      "sha256": "84e8a5a1bf8eab64356aabdc1564578bb64a80fb969b3bc95edb98c306c9171c",
+      "bytes": 10507,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle35.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle35.ogg",
+      "sha256": "ca6b831c36960e82b48aace356633d50e7abd487d85205c2e47d181abe6b142b",
+      "bytes": 11778,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle36.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle36.ogg",
+      "sha256": "73b96d4ec41b91dc8740b9ed28ee1f6d8cef5d303866d8fd91f5cd5e85d9d6bc",
+      "bytes": 15948,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle37.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle37.ogg",
+      "sha256": "ac02a52da6a78b80fac7ecbad0dd2c2d7ba6e6fe6b4842013d2ef864a3c2a91d",
+      "bytes": 9104,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle38.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle38.ogg",
+      "sha256": "8bb6896c3708e0085eef63a9d9a0b6aa0388184fa0aee2bb8c01e1f0e0a13474",
+      "bytes": 12958,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle39.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle39.ogg",
+      "sha256": "fe36ae5218a8e8570b43a5f01ffae542caeaa03b0f7fa4ac492577a25643a313",
+      "bytes": 17300,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle4.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle4.ogg",
+      "sha256": "b2b8062372331ac60f9db6b5f331bbcbe4f9e2813c5b0cde49afdfc25656fe89",
+      "bytes": 13630,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle5.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle5.ogg",
+      "sha256": "ebbe97194aa32d720593d8663e1d5ac6872e73260567b23267dcab6093e40199",
+      "bytes": 16105,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle6.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle6.ogg",
+      "sha256": "00f1068ada81d80e0f6844e3e099730c6321a2b27c515d828fcfc7df9924339c",
+      "bytes": 12307,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle7.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle7.ogg",
+      "sha256": "e928f364490bb0ccad7724221e3c686abc5a6034683ba451192ec5bfccb2090f",
+      "bytes": 21350,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle8.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle8.ogg",
+      "sha256": "cdafd28c68a39b1bd274900c429be0e9e5b49a45dd4f727501207ff3bfb1e498",
+      "bytes": 17619,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/mode/idle9.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/mode/idle9.ogg",
+      "sha256": "496f9a9eff3c290dc4d034a137a001f0dfc034c44ece2c6ee7b40af9f3ca758c",
+      "bytes": 12722,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/sounds/maid/other/credit.ogg",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/sounds/maid/other/credit.ogg",
+      "sha256": "6e316c8bf3116fe402d605c26e90a1e8640a98f0e55caf090f1c2b12445e1a92",
+      "bytes": 56234,
+      "local_audio": true
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_custom_sound.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_custom_sound.png",
+      "sha256": "f4409c241e8bbe13a8e2eb9eb0216c2c19b0cbf38a2470d0213898b9d9f5c793",
+      "bytes": 1536,
+      "local_audio": false
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/sound_icon.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/sound_icon.png",
+      "sha256": "323c1546345241032b2e81e833894868d7dba44f88098c5593d9dd38c8d5b0f8",
+      "bytes": 256,
+      "local_audio": false
+    }
+  ]
+}

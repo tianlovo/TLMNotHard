@@ -68,10 +68,11 @@ public final class GuiReferenceProbe {
         var minecraft = Minecraft.getInstance();
         var actualScreen = minecraft.screen;
         var screen = actualScreen instanceof CacheScreen<?, ?> ? (net.minecraft.client.gui.screens.Screen) field(CacheScreen.class, actualScreen, "parent") : actualScreen;
-        if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui || screen instanceof MaidModelDetailsGui) || minecraft.player == null)
+        if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui || screen instanceof MaidModelDetailsGui || screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui) || minecraft.player == null)
             throw new IllegalStateException("Actual original maid GUI required");
         var maid = screen instanceof AbstractMaidContainerGui<?> main ? main.getMenu().getMaid()
             : screen instanceof MaidModelDetailsGui ? (EntityMaid) field(AbstractModelDetailsGui.class, screen, "sourceEntity")
+            : screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui ? (EntityMaid) field(screen.getClass(), screen, "maid")
             : (EntityMaid) field(AbstractModelGui.class, screen, "entity");
         if (!ReferenceScene.isCurrent(maid) || !maid.isOwnedBy(minecraft.player) || !minecraft.player.isSpectator())
             throw new IllegalStateException("Owned reference lab maid and spectator required");
@@ -100,6 +101,17 @@ public final class GuiReferenceProbe {
             slots.add(entry);
         }
         result.add("slots", slots);
+        if (screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui) {
+            result.addProperty("soundSelected", (String) field(screen.getClass(), screen, "selectSoundId"));
+            result.addProperty("soundApplied", maid.getSoundPackId());
+            result.addProperty("soundPage", (Integer) field(screen.getClass(), screen, "soundPage"));
+            var packs = new JsonObject();
+            com.github.tartaricacid.touhoulittlemaid.client.sound.CustomSoundLoader.CACHE.forEach((id, cache) -> {
+                var events = new JsonObject(); cache.buffers().forEach((event, buffers) -> events.addProperty(event.getPath(), buffers.size())); packs.add(id, events);
+            });
+            result.add("soundPacks", packs);
+        }
+
         if (screen instanceof MaidModelGui) {
             int pack = (Integer) field(MaidModelGui.class, null, "PACK_INDEX");
             int row = (Integer) field(MaidModelGui.class, null, "ROW_INDEX");
@@ -152,6 +164,31 @@ public final class GuiReferenceProbe {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Cannot read original GUI field: " + name, error);
         }
+    }
+
+    static JsonObject sounds() {
+        status();
+        var mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof AbstractMaidContainerGui<?> main)) throw new IllegalStateException("Original main window required");
+        main.mouseClicked((main.width - 256) / 2 + 56, (main.height - 256) / 2 + 18, 0);
+        if (!(mc.screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui)) throw new IllegalStateException("Original sound button did not open sound screen");
+        return status();
+    }
+
+    static JsonObject soundAction(JsonObject request) {
+        status();
+        var mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui screen)) throw new IllegalStateException("Original sound screen required");
+        int x = (screen.width - 400) / 2, y = (screen.height - 220) / 2;
+        switch (request.get("action").getAsString()) {
+            case "pack0" -> screen.mouseClicked(x + 100, y + 30, 0);
+            case "pack1" -> screen.mouseClicked(x + 100, y + 75, 0);
+            case "play0" -> screen.mouseClicked(x + 300, y + 47, 0);
+            case "next" -> screen.mouseClicked(x + 390, y + 209, 0);
+            case "previous" -> screen.mouseClicked(x + 252, y + 209, 0);
+            default -> throw new IllegalArgumentException("Unknown sound fixture");
+        }
+        return status();
     }
 
     static JsonObject models() {

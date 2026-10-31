@@ -209,6 +209,10 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
             return;
         }
+        if (args.length == 1 && "sound-test".equals(args[0])) {
+            MaidCoreInteractionProbe.runSound((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "core-interactions-test".equals(args[0])) {
             MaidCoreInteractionProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.core_interactions_passed"));

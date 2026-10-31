@@ -22,6 +22,7 @@ public class CommonProxy implements IGuiHandler {
     public static final int GUI_MAID_NAMING = 2;
     public static final int GUI_MAID_ORIGINAL = 3;
     public static final int GUI_MAID_ORIGINAL_MODELS = 4;
+    public static final int GUI_MAID_SOUNDS = 5;
 
     public void init() {
         MaidNamingNetwork.init();
@@ -33,11 +34,15 @@ public class CommonProxy implements IGuiHandler {
         if ((id != GUI_MAID && id != GUI_MAID_MODELS
             && id != GUI_MAID_NAMING
             && id != GUI_MAID_ORIGINAL
-            && id != GUI_MAID_ORIGINAL_MODELS) || world == null || player == null || world != player.worldObj)
-            return null;
+            && id != GUI_MAID_ORIGINAL_MODELS
+            && id != GUI_MAID_SOUNDS) || world == null || player == null || world != player.worldObj) return null;
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
+        if (id == GUI_MAID_SOUNDS)
+            return Boolean.getBoolean("tlmnh.devCommands") && player.inventory.getItemStack() == null
+                ? new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
+                : null;
         if (id == GUI_MAID_ORIGINAL)
             return Boolean.getBoolean("tlmnh.devCommands") ? new EmptyBackpackContainer(player.inventory, maid) : null;
         if (id == GUI_MAID_ORIGINAL_MODELS)

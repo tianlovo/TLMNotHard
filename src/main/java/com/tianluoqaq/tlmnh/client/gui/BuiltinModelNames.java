@@ -86,6 +86,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
     private void readLanguage(String code) {
         var packs = new LinkedHashSet<String>();
         for (var choice : BuiltinModelCatalog.choices()) packs.add(choice.getPackId());
+        for (var pack : com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs()) packs.add(pack.id);
         for (String pack : packs) {
             var location = new ResourceLocation(pack, "lang/" + code + ".json");
             try (var reader = new InputStreamReader(

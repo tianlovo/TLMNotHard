@@ -53,6 +53,60 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    public static void runSound(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            var packs = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs();
+            require(packs.size() == 2, "two builtin sound packs");
+            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
+            require(world.spawnEntityInWorld(f.maid), "registered sound fixture");
+            var container = new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(f.owner.inventory, f.maid);
+            f.owner.openContainer = container;
+            for (int i = 0; i < packs.size(); i++) {
+                f.maid.ticksExisted++;
+                require(container.enchantItem(f.owner, i), "owned apply accepted");
+                require(
+                    f.maid.getSoundPackId()
+                        .equals(packs.get(i).id),
+                    "selected sound applied");
+                require(!container.enchantItem(f.owner, 1 - i), "same tick duplicate rejected");
+                var tag = new NBTTagCompound();
+                f.maid.writeEntityToNBT(tag);
+                var restored = new EntityMaid(world);
+                restored.readEntityFromNBT(tag);
+                require(
+                    restored.getSoundPackId()
+                        .equals(packs.get(i).id),
+                    "sound NBT roundtrip");
+                tag.removeTag(EntityMaid.SOUND_PACK_ID_TAG);
+                restored.setSoundPackId(packs.get(i).id);
+                restored.readEntityFromNBT(tag);
+                require(
+                    restored.getSoundPackId()
+                        .equals(packs.get(i).id),
+                    "legacy missing tag retains initialized sound");
+            }
+            f.maid.ticksExisted++;
+            require(
+                !container.enchantItem(f.owner, -1) && !container.enchantItem(f.owner, 2),
+                "out of catalog rejected");
+            require(!container.enchantItem(f.stranger, 0), "other viewer rejected");
+            var stranger = new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(f.stranger.inventory, f.maid);
+            require(!stranger.enchantItem(f.stranger, 0), "nonowner rejected");
+            f.owner.inventory.setItemStack(new ItemStack(Items.apple));
+            require(!container.enchantItem(f.owner, 0), "cursor item rejected");
+            f.owner.inventory.setItemStack(null);
+            f.owner.setPosition(f.owner.posX + 100, f.owner.posY, f.owner.posZ);
+            require(!container.enchantItem(f.owner, 0), "distance rechecked");
+            f.maid.setSoundPackId("untrusted:pack");
+            require(
+                f.maid.getSoundPackId()
+                    .equals(packs.get(1).id),
+                "unknown sound ignored");
+            TLMNotHard.LOG.info(
+                "TLMNH_SOUND_TEST_PASS apply=both-builtin nbt=roundtrip legacy=retained permissions=checked preview=unverified");
+        }
+    }
+
     private static void carry(Fixture f) {
         f.hand(new ItemStack(Items.saddle));
         f.maid.setSitting(true);

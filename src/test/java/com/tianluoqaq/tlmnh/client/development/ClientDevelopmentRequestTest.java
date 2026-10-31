@@ -219,7 +219,7 @@ public class ClientDevelopmentRequestTest {
     public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
         for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all", "home",
             "home_toggle", "home_work", "home_idle", "home_rest", "home_reset", "tasks", "idle", "attack", "ranged",
-            "pointer", "schedule", "pickup", "cache" })
+            "pointer", "schedule", "pickup", "cache", "sound", "sound_apply" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
         assertEquals("winefox", parse("{\"command\":\"models_ui\",\"action\":\"search\",\"model\":\"winefox\"}").model);
         assertEquals("geckolib", parse("{\"command\":\"models_ui\",\"action\":\"pack\",\"model\":\"geckolib\"}").model);
@@ -230,6 +230,9 @@ public class ClientDevelopmentRequestTest {
         assertEquals(
             "rotate",
             parse("{\"command\":\"models_ui\",\"action\":\"details_view\",\"model\":\"rotate\"}").model);
+        assertEquals(
+            "maid.mode.idle",
+            parse("{\"command\":\"models_ui\",\"action\":\"sound_play\",\"model\":\"maid.mode.idle\"}").model);
         var selection = parse("{\"command\":\"models_ui\",\"action\":\"select\",\"model\":\"geckolib:winefox_hanfu\"}");
         assertEquals("geckolib:winefox_hanfu", selection.model);
         assertEquals(

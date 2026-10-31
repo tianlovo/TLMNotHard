@@ -37,7 +37,26 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
         if (!action.equals("status")) {
-            if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
+            if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds) {
+                if (action.equals("pack")) {
+                    var packs = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs();
+                    for (int i = 0; i < packs.size(); i++)
+                        if (packs.get(i).id.equals(model)) requested = sounds.pressButton(1000 + i);
+                } else if (action.equals("sound_apply")) {
+                    requested = sounds.pressButton(3);
+                    network = requested;
+                } else if (action.equals("next")) requested = sounds.pressButton(7);
+                else if (action.equals("previous")) requested = sounds.pressButton(6);
+                else if (action.equals("sound_play")) {
+                    var state = sounds.observation();
+                    var pack = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.get(
+                        state.get("selected")
+                            .getAsString());
+                    var ids = new java.util.ArrayList<>(pack.events.keySet());
+                    int index = ids.indexOf(model);
+                    if (index >= 0) requested = sounds.pressButton(2000 + index);
+                } else throw new IllegalArgumentException("Action does not apply to the sound screen");
+            } else if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
                 switch (action) {
                     case "back" -> requested = details.pressButton(2);
                     case "details_toggle" -> {
@@ -177,7 +196,8 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         var container = minecraft.thePlayer.openContainer;
         EntityMaid maid = container instanceof ContainerMaid main ? main.getMaid()
-            : ((ContainerMaidModels) container).getMaid();
+            : container instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds sounds ? sounds.getMaid()
+                : ((ContainerMaidModels) container).getMaid();
         var response = new JsonObject();
         response.addProperty(
             "currentScreen",
@@ -190,6 +210,9 @@ public final class MaidModelUiProbe {
             maid.getUniqueID()
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
+        response.addProperty("maidSoundPack", maid.getSoundPackId());
+        if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds)
+            response.add("sounds", sounds.observation());
         response.addProperty("clientReplicaOnly", true);
         response.add("iconCache", CacheIconManager.INSTANCE.observation());
         if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
@@ -277,7 +300,9 @@ public final class MaidModelUiProbe {
     public static void requireCaptureScreen() {
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
-        if (!(screen instanceof MaidModelDetailsGui) && !(screen instanceof CacheScreen)
+        if (!(screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui)
+            && !(screen instanceof MaidModelDetailsGui)
+            && !(screen instanceof CacheScreen)
             && !(screen instanceof MaidModelGui)
             && !(screen instanceof AbstractMaidContainerGui<?>)
             && !(screen instanceof GuiMaidModels)
@@ -304,6 +329,8 @@ public final class MaidModelUiProbe {
                 || (minecraft.currentScreen instanceof MaidModelGui || minecraft.currentScreen instanceof CacheScreen
                     || minecraft.currentScreen instanceof MaidModelDetailsGui)
                     && player.openContainer instanceof ContainerMaidModels
+                || minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui
+                    && player.openContainer instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds
                 || minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
                 || minecraft.currentScreen instanceof GuiMaidModels
                     && player.openContainer instanceof ContainerMaidModels))

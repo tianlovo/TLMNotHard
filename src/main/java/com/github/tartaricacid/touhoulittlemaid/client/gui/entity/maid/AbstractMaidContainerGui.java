@@ -104,8 +104,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
             button.enabled = switch (button.id) {
-                case SOUND, RIDE, DOWNLOAD, MAIN_TAB, TASK_TAB, CONFIG_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
-                case SKIN -> mc.thePlayer.inventory.getItemStack() == null;
+                case RIDE, DOWNLOAD, MAIN_TAB, TASK_TAB, CONFIG_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case SKIN, SOUND -> mc.thePlayer.inventory.getItemStack() == null;
                 case ContainerMaid.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
                 default -> true;
             };
@@ -132,6 +132,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case TASK_CLOSE -> taskListOpen = false;
             case INFO -> {}
             case SKIN -> send(ContainerMaid.ACTION_MODELS);
+            case SOUND -> send(ContainerMaid.ACTION_SOUNDS);
             case SCHEDULE -> send(
                 ContainerMaid.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
@@ -156,6 +157,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "home_toggle" -> ContainerMaid.ACTION_HOME;
             case "pickup" -> ContainerMaid.ACTION_PICKUP_ALL;
             case "open" -> SKIN;
+            case "sound" -> SOUND;
             default -> throw new IllegalArgumentException("Unknown original GUI action");
         };
         for (var button : buttonList) if (button.id == id && button.visible && button.enabled) {

@@ -365,3 +365,18 @@ look0、move2、follow3 执行开始 pass，再按同序执行运行 pass；不�
 独立原版工具见 [LOOK 对照](tools/look-reference/README.md)，需使用该目录的 init 与新身份清单
 `LOOK_SINK_CORE_V1` 和 `FOLLOW_MOVE_LOOK_COMPONENT_V2` 分别记录，旧任务与移动 sink 的独立结果不升级为新组合通过
 原版自身 A/A、实际故障检出、移植重放和原生 controls 消费分别验收，完整 F/N 模式继续保持不可用
+
+## 本机声音开发输入
+
+声音页与两内置音包目录已接入，世界行为/时间轴触发和声音设置仍在开发
+配音使用独立作者条款，原 OGG 不进入源码仓库；当前正式分发条件尚未完成，见 THIRD_PARTY_NOTICES.md
+需要本机试听时，从固定上游克隆读取原字节：
+
+```powershell
+python scripts/import_builtin_sounds.py --upstream ../repo/TouhouLittleMaid --write
+```
+
+上游目录参数可改为自己的克隆位置，脚本固定读取提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`，不读取其余分支的声音
+OGG 仅写到 `build/generated/maid-sounds`，构建资源集会合并该目录；`clean` 会清除此输入，重新执行导入即可恢复
+未导入配音时，源码仍可编译，不能据此宣称试听或世界音效可用；目录与原生事件的局部测试不依赖配音二进制
+当前声音页面随原版 GUI 开发入口开放，应用音包仍由服务端容器检查归属、距离和窗口

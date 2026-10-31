@@ -51,6 +51,8 @@ public class EntityMaid extends EntityTameable {
     private static final int DATA_FLAGS = 26;
     private static final int DATA_OFFHAND = 27;
     private static final int DATA_POSE = 28;
+    private static final int DATA_SOUND_PACK = 29;
+    public static final String SOUND_PACK_ID_TAG = "SoundPackId";
     private static final int FLAG_PICKUP_ITEMS = 1;
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
     private static final String OFFHAND_TAG = "TLMNHOffhand";
@@ -83,6 +85,7 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE));
         dataWatcher.addObjectByDataType(DATA_OFFHAND, 5);
         dataWatcher.addObject(DATA_POSE, (byte) 0);
+        dataWatcher.addObject(DATA_SOUND_PACK, DefaultMaidSoundPack.getInitSoundPackId());
         MaidHomeArea.register(dataWatcher);
     }
 
@@ -300,6 +303,15 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.updateObject(DATA_FLAGS, (byte) (enabled ? flags | flag : flags & ~flag));
     }
 
+    public String getSoundPackId() {
+        return dataWatcher.getWatchableObjectString(DATA_SOUND_PACK);
+    }
+
+    public void setSoundPackId(String id) {
+        if (com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.get(id) != null)
+            dataWatcher.updateObject(DATA_SOUND_PACK, id);
+    }
+
     public ItemStack getOffhandItem() {
         return worldObj.isRemote ? dataWatcher.getWatchableObjectItemStack(DATA_OFFHAND) : offhand;
     }
@@ -325,6 +337,7 @@ public class EntityMaid extends EntityTameable {
         extension.setInteger("Schema", Math.max(SAVE_VERSION, extension.getInteger("Schema")));
         tag.setTag("TLMNH", extension);
         tag.setString(MODEL_ID_TAG, getModelId());
+        tag.setString(SOUND_PACK_ID_TAG, getSoundPackId());
         tag.setString("MaidTask", getTask().getId());
         tag.setString("MaidScheduleMode", getSchedule().name());
         tag.setInteger(EXPERIENCE_TAG, getExperience());
@@ -371,6 +384,7 @@ public class EntityMaid extends EntityTameable {
                     extraSaveData.getInteger("Schema"));
             }
             setModelId(tag.hasKey(MODEL_ID_TAG, 8) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
+            if (tag.hasKey(SOUND_PACK_ID_TAG, 8)) setSoundPackId(tag.getString(SOUND_PACK_ID_TAG));
             setTask(MaidTask.fromId(tag.getString("MaidTask")));
             try {
                 setSchedule(MaidSchedule.valueOf(tag.getString("MaidScheduleMode")));

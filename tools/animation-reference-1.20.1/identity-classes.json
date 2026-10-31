@@ -36,6 +36,11 @@
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.AbstractModelDetailsGui",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton",
-    "com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel"
+    "com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.FlatColorButton",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.SoundPackButton",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.SoundElementButton",
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.CustomSoundLoader"
   ]
 }

@@ -63,6 +63,8 @@ public final class ClientProxy extends CommonProxy {
         if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer original)
             return new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen(
                 original);
+        if (container instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds sounds)
+            return new com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui(sounds);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         if (container instanceof ContainerMaidModels modelContainer) return modelContainer.isOriginalView()

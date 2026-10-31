@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "upstream_commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "packs": [
+    {
+      "id": "littlemaid_peco",
+      "info": {
+        "pack_name": "{sound_pack.littlemaid_peco.name}",
+        "author": [
+          "秋野かえで (CV)",
+          "Tamemaru"
+        ],
+        "version": "1.0.0",
+        "date": "2023-11-23",
+        "url": "https://booth.pm/ja/items/1903163",
+        "description": "{sound_pack.littlemaid_peco.desc}"
+      },
+      "events": {
+        "maid.mode.idle": 78,
+        "maid.mode.attack": 14,
+        "maid.mode.range_attack": 43,
+        "maid.mode.danmaku_attack": 14,
+        "maid.mode.farm": 84,
+        "maid.mode.feed": 93,
+        "maid.mode.shears": 78,
+        "maid.mode.milk": 78,
+        "maid.mode.torch": 106,
+        "maid.mode.feed_animal": 78,
+        "maid.mode.extinguishing": 78,
+        "maid.mode.snow": 78,
+        "maid.mode.break": 78,
+        "maid.mode.furnace": 101,
+        "maid.mode.brewing": 78,
+        "maid.ai.find_target": 18,
+        "maid.ai.hurt": 13,
+        "maid.ai.hurt_fire": 25,
+        "maid.ai.hurt_player": 0,
+        "maid.ai.tamed": 15,
+        "maid.ai.item_get": 15,
+        "maid.ai.death": 25,
+        "maid.ai.game_win": 0,
+        "maid.ai.game_lost": 0,
+        "maid.environment.cold": 0,
+        "maid.environment.hot": 0,
+        "maid.environment.rain": 0,
+        "maid.environment.snow": 0,
+        "maid.environment.morning": 23,
+        "maid.environment.night": 18,
+        "maid.credit": 0
+      }
+    },
+    {
+      "id": "touhou_little_maid",
+      "info": {
+        "pack_name": "{pack.touhou_little_maid.sound.name}",
+        "author": [
+          "Amitaro"
+        ],
+        "description": "{pack.touhou_little_maid.sound.desc}",
+        "icon": "touhou_little_maid:textures/sound_icon.png",
+        "version": "1.0.0",
+        "date": "2020-03-14",
+        "url": "https://amitaro.net/"
+      },
+      "events": {
+        "maid.mode.idle": 39,
+        "maid.mode.attack": 7,
+        "maid.mode.range_attack": 7,
+        "maid.mode.danmaku_attack": 7,
+        "maid.mode.farm": 39,
+        "maid.mode.feed": 46,
+        "maid.mode.shears": 39,
+        "maid.mode.milk": 39,
+        "maid.mode.torch": 39,
+        "maid.mode.feed_animal": 39,
+        "maid.mode.extinguishing": 39,
+        "maid.mode.snow": 39,
+        "maid.mode.break": 39,
+        "maid.mode.furnace": 39,
+        "maid.mode.brewing": 39,
+        "maid.ai.find_target": 3,
+        "maid.ai.hurt": 9,
+        "maid.ai.hurt_fire": 9,
+        "maid.ai.hurt_player": 7,
+        "maid.ai.tamed": 5,
+        "maid.ai.item_get": 1,
+        "maid.ai.death": 2,
+        "maid.ai.game_win": 0,
+        "maid.ai.game_lost": 0,
+        "maid.environment.cold": 4,
+        "maid.environment.hot": 3,
+        "maid.environment.rain": 3,
+        "maid.environment.snow": 2,
+        "maid.environment.morning": 8,
+        "maid.environment.night": 2,
+        "maid.credit": 1
+      }
+    }
+  ]
+}

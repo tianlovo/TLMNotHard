@@ -11,6 +11,9 @@ extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
     }
 }
 
+// 配音是独立许可的本机构建输入，生成目录不会进入源码仓库
+sourceSets.main { resources.srcDir(layout.buildDirectory.dir("generated/maid-sounds")) }
+
 tasks.withType<Jar>().configureEach {
     from("licenses") { into("META-INF/licenses") }
     from("THIRD_PARTY_NOTICES.md") { into("META-INF") }

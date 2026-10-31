@@ -33,13 +33,13 @@
       "path": "assets/touhou_little_maid/lang/zh_CN.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "b4f47b55e8c0e2a6aafd43782e38e5142e97b100894bc93d31bab18162a24d81"
+      "sha256": "b8137af7ae576eeb9ed2c53b7c1b249058642d956d8b137db285936a17f7d57e"
     },
     {
       "path": "assets/touhou_little_maid/lang/en_US.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "c05a9a1c28644e62423c9022937d12b5a2fff2f79bfc8ac7c3ce08bc2c85751b"
+      "sha256": "38952a5e27c4e2a1100a4d571457d0fc6ec750029d51197972bfd2f74c75fb71"
     },
     {
       "path": "assets/touhou_little_maid/textures/gui/bauble_button.png",
