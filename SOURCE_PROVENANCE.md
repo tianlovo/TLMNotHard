@@ -553,3 +553,26 @@ Shift 详情、关联音包及完整输入矩阵仍待补齐，本段不表示�
 
 声音页保持原版普通 Screen 基类，并保存权威容器引用；不继承物品 GuiContainer，避免把声音页当作 NEI 物品窗口
 应用后重建本机按钮、清除旧焦点；已用图标仍等待服务端音包状态同步，未改为客户端直接应用
+
+## 世界语音、客户端过滤与声音配置基础
+
+固定来源为 TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`，以下原文件保留原包名与 MIT 来源头
+
+| 上游文件 | 保留与适配 |
+| --- | --- |
+| network/message/PlayMaidSoundMessage.java | 保留服务端附近发送、客户端按实体播放；改为两内置包/31 事件索引的 26 字节消息，附带维度及 UUID，网络线程只入队 |
+| client/event/MaidSoundFreqEvent.java | 保留女仆频率乘本机全局百分比、随机大于阈值时拒绝，满频率及 GUI 试听不抽随机值；只过滤 MaidSoundInstance |
+| entity/passive/MaidConfigManager.java | 本轮仅接声音频率及原 MaidSubConfig.SoundFreq 键，保留未接入的其他子配置 NBT；使用版本化字符串元数据，不冒称其他设置已生效 |
+| util/SoundUtil.java | 保留早晨/傍晚/雨/雪/冷/热顺序、每分支先抽随机值及原始 dayTime，不擅自改为每日取模；生物群系判断接目标温度/降水 API |
+| api/event/MaidPlaySoundEvent.java | 改用旧 Forge 可取消事件，仍在服务端选择环境/受伤/死亡及拾取声音时触发，不引入静音饰品或其他物品 |
+| EntityMaid.java 的世界声音方法 | 接任务环境音、驯服、受伤、死亡和原玩家受伤 120 tick 冷却；旧伤害入口用可恢复上下文提供 DamageSource，避免客户端受伤通知重复播放自定义语音 |
+| client/sound/data/MaidSoundInstance.java | 补原试听标记、静音检查、移动跟随及实体/世界失效停止；GUI 试听明确传 true |
+
+新增 `MaidSoundNetwork`、`MaidWorldSoundState`、`MaidSoundFrequency`、`MaidWorldSoundPlayer` 及开发入口均在 `com.tianluoqaq.tlmnh`
+配置元数据使用 31 号字符串，避开 float 类型 31 与旧元数据 `0x7f` 结束字节的冲突；原家园 29 和音包 30 保持
+1.7.10 FML 生成流程未提供通用生物 UUID 同步，因此通过 IEntityAdditionalSpawnData 补 16 字节 UUID，再校验世界声音身份；没有用每端随机 UUID 比较来误拒绝全部消息
+`Silent` 按原实体 NBT 名称保存，并用现有标志位同步；普通非女仆语音继续走原生声音路径，静音语义保持
+
+全局频率保存在本机客户端配置，默认 100%，每只女仆默认 1；本轮先接后台状态与过滤，原版设置页面及全局控件仍待移植
+拾取声音计数 API 已保留，实际地面物品拾取流程和动画时间轴声音尚待接入；不能把这个入口写成完整拾取功能
+原音频仍只在被忽略的本机构建输入，分发条件未解决；世界语音的局部验证不能替代全部配音、自然玩法和正式版跨模块验收

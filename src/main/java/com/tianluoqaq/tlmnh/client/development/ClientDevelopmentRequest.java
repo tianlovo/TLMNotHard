@@ -58,6 +58,11 @@ public final class ClientDevelopmentRequest {
             if (name.contains("..") || !SCREENSHOT_NAME.matcher(name)
                 .matches()) throw new IllegalArgumentException("Invalid screenshot name");
         }
+        if (command == Command.WORLD_SOUND_PROBE) {
+            action = text(json, "action");
+            if (!Arrays.asList("global_0", "global_100", "vanilla", "close_gui", "disconnect")
+                .contains(action)) throw new IllegalArgumentException("Unknown world sound probe action");
+        }
         if (command == Command.LOOK) {
             yaw = number(json, "yaw", -360, 360);
             pitch = number(json, "pitch", -90, 90);
@@ -197,6 +202,7 @@ public final class ClientDevelopmentRequest {
 
     public enum Command {
         STATUS,
+        WORLD_SOUND_PROBE,
         CONNECT_LOCAL,
         LAB_VIEW,
         LOOK,

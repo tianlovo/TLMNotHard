@@ -15,6 +15,13 @@ import com.google.gson.JsonParser;
 public final class BuiltinSoundCatalog {
 
     private static final List<Pack> PACKS = load();
+    private static final List<String> EVENTS = Collections
+        .unmodifiableList(new ArrayList<>(PACKS.get(0).events.keySet()));
+
+    static {
+        for (var pack : PACKS) if (!new ArrayList<>(pack.events.keySet()).equals(EVENTS))
+            throw new IllegalStateException("Inconsistent builtin sound event order");
+    }
 
     private BuiltinSoundCatalog() {}
 
@@ -35,6 +42,10 @@ public final class BuiltinSoundCatalog {
 
     public static List<Pack> packs() {
         return PACKS;
+    }
+
+    public static List<String> events() {
+        return EVENTS;
     }
 
     public static Pack get(String id) {

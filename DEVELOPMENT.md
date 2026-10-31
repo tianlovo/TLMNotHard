@@ -380,3 +380,7 @@ python scripts/import_builtin_sounds.py --upstream ../repo/TouhouLittleMaid --wr
 OGG 仅写到 `build/generated/maid-sounds`，构建资源集会合并该目录；`clean` 会清除此输入，重新执行导入即可恢复
 未导入配音时，源码仍可编译，不能据此宣称试听或世界音效可用；目录与原生事件的局部测试不依赖配音二进制
 当前声音页面随原版 GUI 开发入口开放，应用音包仍由服务端容器检查归属、距离和窗口
+
+世界声音由服务端在 16 格内发送，再由客户端 tick 复核维度/UUID 并提交原生引擎
+本机 `config/tlmnh-client.cfg` 的 `sound.GlobalMaidSoundFrequency` 默认 100%，范围 0～100；当前需重新载入客户端配置后读取文件变更，原版全局控件仍待接入
+单只女仆的频率随存档与实体元数据同步，原版设置页面尚未完成；GUI 试听绕过频率过滤，仍遵守实体静音状态

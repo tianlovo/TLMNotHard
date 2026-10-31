@@ -243,4 +243,15 @@ public class ClientDevelopmentRequestTest {
             "{\"command\":\"models_ui_capture\",\"name\":\"../selector.png\"}" })
             assertThrows(IllegalArgumentException.class, () -> parse(json));
     }
+
+    @Test
+    public void worldSoundProbeAllowsOnlyFixedClientActions() {
+        for (String action : new String[] { "global_0", "global_100", "vanilla", "close_gui", "disconnect" })
+            assertEquals(action, parse("{\"command\":\"world_sound_probe\",\"action\":\"" + action + "\"}").action);
+        assertThrows(IllegalArgumentException.class, () -> parse("{\"command\":\"world_sound_probe\"}"));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> parse("{\"command\":\"world_sound_probe\",\"action\":\"eval\"}"));
+    }
+
 }

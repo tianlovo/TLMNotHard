@@ -160,7 +160,7 @@ public final class MaidSoundPackGui extends GuiScreen implements net.minecraft.c
         lastPreviewEvent = event;
         lastPreview = null;
         if (pack == null || pack.events.getOrDefault(event, 0) == 0) return;
-        lastPreview = new MaidSoundInstance(selectSoundId, event, container.getMaid());
+        lastPreview = new MaidSoundInstance(selectSoundId, event, container.getMaid(), true);
         mc.getSoundHandler()
             .playSound(lastPreview);
     }

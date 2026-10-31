@@ -151,6 +151,10 @@ public final class ClientDevelopmentControl {
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
+                    response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
+                    response.add(
+                        "worldSounds",
+                        com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.observation());
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
                     response.addProperty("playerPresent", minecraft.thePlayer != null);
                     response.addProperty(
@@ -278,6 +282,10 @@ public final class ClientDevelopmentControl {
                         throw new IllegalStateException("Finish the active submission or screenshot capture first");
                     GpuMatrixProbe.arm(name, request.model);
                     response.addProperty("status", "pending-render");
+                    break;
+                case WORLD_SOUND_PROBE:
+                    var soundState = MaidWorldSoundProbe.perform(request.action);
+                    for (var entry : soundState.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case MODELS_UI:
                     var observed = MaidModelUiProbe.perform(request.action, request.model);

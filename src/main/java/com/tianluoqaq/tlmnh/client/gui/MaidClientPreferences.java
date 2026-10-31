@@ -14,6 +14,7 @@ public final class MaidClientPreferences {
 
     private static Configuration configuration;
     private static boolean modelIconCache;
+    private static int globalMaidSoundFrequency = 100;
 
     private MaidClientPreferences() {}
 
@@ -21,7 +22,22 @@ public final class MaidClientPreferences {
         configuration = new Configuration(new File(Minecraft.getMinecraft().mcDataDir, "config/tlmnh-client.cfg"));
         configuration.load();
         modelIconCache = configuration.getBoolean("EnableModelIconCache", "model", false, "Cache builtin model icons");
+        globalMaidSoundFrequency = configuration
+            .getInt("GlobalMaidSoundFrequency", "sound", 100, 0, 100, "Global maid sound frequency percent");
         if (configuration.hasChanged()) configuration.save();
+    }
+
+    public static int globalMaidSoundFrequency() {
+        return globalMaidSoundFrequency;
+    }
+
+    public static void setGlobalMaidSoundFrequency(int percent) {
+        if (percent < 0 || percent > 100)
+            throw new IllegalArgumentException("Maid sound frequency percent out of range");
+        globalMaidSoundFrequency = percent;
+        configuration.get("sound", "GlobalMaidSoundFrequency", 100)
+            .set(percent);
+        configuration.save();
     }
 
     public static boolean modelIconCache() {

@@ -26,7 +26,11 @@ public class CommonProxy implements IGuiHandler {
 
     public void init() {
         MaidNamingNetwork.init();
+        com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.init();
     }
+
+    public void enqueueMaidSound(
+        com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {}
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,

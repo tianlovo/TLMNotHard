@@ -209,6 +209,14 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
             return;
         }
+        if (args.length == 3 && "lab-world-sound".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidWorldSoundRuntimeProbe.run(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
+        if (args.length == 1 && "world-sound-test".equals(args[0])) {
+            MaidCoreInteractionProbe.runWorldSound((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "sound-test".equals(args[0])) {
             MaidCoreInteractionProbe.runSound((WorldServer) sender.getEntityWorld());
             return;

@@ -33,6 +33,13 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void init() {
         super.init();
+        var worldSounds = com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE;
+        FMLCommonHandler.instance()
+            .bus()
+            .register(worldSounds);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(worldSounds);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS
+            .register(new com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent());
         com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
@@ -54,6 +61,12 @@ public final class ClientProxy extends CommonProxy {
                 throw new IllegalStateException("Cannot initialize client development controls", error);
             }
         }
+    }
+
+    @Override
+    public void enqueueMaidSound(
+        com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {
+        com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.enqueue(message);
     }
 
     @Override

@@ -17,16 +17,38 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidSoundInstance extends MovingSound {
 
     private final EntityMaid maid;
+    private final boolean testSound;
 
     public MaidSoundInstance(String pack, String event, EntityMaid maid) {
+        this(pack, event, maid, false);
+    }
+
+    public MaidSoundInstance(String pack, String event, EntityMaid maid, boolean testSound) {
         super(new ResourceLocation(pack, event));
         this.maid = maid;
+        this.testSound = testSound;
         update();
+    }
+
+    public EntityMaid getMaid() {
+        return maid;
+    }
+
+    public boolean isTestSound() {
+        return testSound;
+    }
+
+    public boolean canPlaySound() {
+        return !maid.isSilent();
+    }
+
+    public void stop() {
+        donePlaying = true;
     }
 
     @Override
     public void update() {
-        if (maid.isDead) donePlaying = true;
+        if (maid.isDead || maid.worldObj != net.minecraft.client.Minecraft.getMinecraft().theWorld) donePlaying = true;
         else {
             xPosF = (float) maid.posX;
             yPosF = (float) maid.posY;

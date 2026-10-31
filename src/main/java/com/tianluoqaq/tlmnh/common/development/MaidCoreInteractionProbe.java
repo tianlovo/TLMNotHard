@@ -23,6 +23,7 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
+import net.minecraft.util.DamageSource;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
@@ -104,6 +105,145 @@ public final class MaidCoreInteractionProbe {
                 "unknown sound ignored");
             TLMNotHard.LOG.info(
                 "TLMNH_SOUND_TEST_PASS apply=both-builtin nbt=roundtrip legacy=retained permissions=checked preview=unverified");
+        }
+    }
+
+    public static void runWorldSound(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            var config = f.maid.getConfigManager();
+            config.setSoundFreq(0.3F);
+            var tag = new NBTTagCompound();
+            f.maid.writeEntityToNBT(tag);
+            tag.getCompoundTag("MaidSubConfig")
+                .setString("FutureSetting", "retained");
+            var restored = new EntityMaid(world);
+            restored.readEntityFromNBT(tag);
+            require(
+                restored.getConfigManager()
+                    .getSoundFreq() == 0.3F,
+                "frequency NBT roundtrip");
+            var saved = new NBTTagCompound();
+            restored.writeEntityToNBT(saved);
+            require(
+                saved.getCompoundTag("MaidSubConfig")
+                    .getString("FutureSetting")
+                    .equals("retained"),
+                "unknown subconfig retained");
+            saved.removeTag("MaidSubConfig");
+            var legacy = new EntityMaid(world);
+            legacy.readEntityFromNBT(saved);
+            require(
+                legacy.getConfigManager()
+                    .getSoundFreq() == 1,
+                "legacy frequency defaults to one");
+            try {
+                config.setSoundFreq(Float.NaN);
+                throw new IllegalStateException("NaN accepted");
+            } catch (IllegalArgumentException expected) {}
+            config.setSoundFreq(-1);
+            require(config.getSoundFreq() == 0, "frequency lower clamp");
+            config.setSoundFreq(2);
+            require(config.getSoundFreq() == 1, "frequency upper clamp");
+            config.setSoundFreq(0.3F);
+            var bytes = io.netty.buffer.Unpooled.buffer();
+            try {
+                var packet = new net.minecraft.network.PacketBuffer(bytes);
+                new net.minecraft.network.play.server.S1CPacketEntityMetadata(
+                    f.maid.getEntityId(),
+                    f.maid.getDataWatcher(),
+                    true).writePacketData(packet);
+                require(packet.readInt() == f.maid.getEntityId(), "metadata entity ID");
+                var values = net.minecraft.entity.DataWatcher.readWatchedListFromPacketBuffer(packet);
+                boolean found = false;
+                for (var value : values) if (value.getDataValueId() == 31) found = "1;0.3".equals(value.getObject());
+                require(found && packet.readableBytes() == 0, "string slot31 survives actual metadata end marker");
+                restored.getDataWatcher()
+                    .updateWatchedObjectsFromList(values);
+                require(
+                    restored.getConfigManager()
+                        .getSoundFreq() == 0.3F,
+                    "metadata replica frequency");
+                packet.clear();
+                f.maid.writeSpawnData(packet);
+                require(packet.readableBytes() == 16, "additional UUID byte length");
+                restored.readSpawnData(packet);
+                require(
+                    restored.getUniqueID()
+                        .equals(f.maid.getUniqueID()),
+                    "additional spawn UUID roundtrip");
+            } catch (java.io.IOException error) {
+                throw new IllegalStateException("world sound metadata codec failed", error);
+            } finally {
+                bytes.release();
+            }
+            var state = f.maid.getWorldSoundState();
+            var outer = state.beginDamage(DamageSource.causePlayerDamage(f.owner));
+            try {
+                require(state.hurt() == null, "initial player hurt cooldown");
+                for (int i = 0; i < 120; i++) state.tick();
+                require(
+                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt_player")
+                        .equals(state.hurt()),
+                    "player voice after120 ticks");
+                require(state.hurt() == null, "player voice resets120 cooldown");
+                var inner = state.beginDamage(DamageSource.onFire);
+                require(
+                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt_fire")
+                        .equals(state.hurt()),
+                    "fire overrides player cooldown");
+                state.endDamage(inner);
+                require(state.hurt() == null, "nested damage context restores player");
+            } finally {
+                state.endDamage(outer);
+            }
+            require(
+                com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt")
+                    .equals(state.hurt()),
+                "damage context restored");
+            long previousTime = world.getWorldTime();
+            try {
+                world.setWorldTime(1000);
+                require(
+                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("environment.morning")
+                        .equals(
+                            com.github.tartaricacid.touhoulittlemaid.util.SoundUtil
+                                .environmentSound(f.maid, "fallback", 1)),
+                    "original morning branch and target biome adapter");
+                world.setWorldTime(27000);
+                require(
+                    !com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("environment.morning")
+                        .equals(
+                            com.github.tartaricacid.touhoulittlemaid.util.SoundUtil
+                                .environmentSound(f.maid, "fallback", 1)),
+                    "raw daytime remains unmodded");
+            } finally {
+                world.setWorldTime(previousTime);
+            }
+            var canceller = new SoundCanceller(f.maid);
+            MinecraftForge.EVENT_BUS.register(canceller);
+            try {
+                require(
+                    state.ambient() == null && state.hurt() == null && state.death() == null,
+                    "actual cancellable voice event");
+            } finally {
+                MinecraftForge.EVENT_BUS.unregister(canceller);
+            }
+            TLMNotHard.LOG.info(
+                "TLMNH_WORLD_SOUND_TEST_PASS config=nbt-and-metadata31 spawn=uuid16 cooldown=120 damage=nested event=cancelled environment=original-priority client=unverified");
+        }
+    }
+
+    public static final class SoundCanceller {
+
+        private final EntityMaid maid;
+
+        private SoundCanceller(EntityMaid maid) {
+            this.maid = maid;
+        }
+
+        @SubscribeEvent
+        public void onSound(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPlaySoundEvent event) {
+            if (event.getMaid() == maid) event.setCanceled(true);
         }
     }
 

@@ -35,7 +35,7 @@ import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原实体的核心状态移植，渲染、交互和行为由独立适配模块接入 */
-public class EntityMaid extends EntityTameable {
+public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.registry.IEntityAdditionalSpawnData {
 
     public static final String DEFAULT_MODEL_ID = "touhou_little_maid:hakurei_reimu";
     public static final String MODEL_ID_TAG = "ModelId";
@@ -56,8 +56,12 @@ public class EntityMaid extends EntityTameable {
     public static final String SOUND_PACK_ID_TAG = "SoundPackId";
     private static final int FLAG_PICKUP_ITEMS = 1;
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
+    private static final int FLAG_SILENT = 4;
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
+    private final MaidConfigManager configManager = new MaidConfigManager(dataWatcher);
+    private final com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState worldSounds = new com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState(
+        this);
     private final MaidInventory inventory = new MaidInventory(this);
     private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
@@ -88,6 +92,7 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.addObject(DATA_POSE, (byte) 0);
         dataWatcher.addObject(DATA_SOUND_PACK, DefaultMaidSoundPack.getInitSoundPackId());
         MaidHomeArea.register(dataWatcher);
+        MaidConfigManager.defineSynchedData(dataWatcher);
     }
 
     @Override
@@ -117,8 +122,89 @@ public class EntityMaid extends EntityTameable {
     @Override
     public boolean attackEntityFrom(DamageSource source, float amount) {
         // Forge构造事件发生在本类字段初始化之前，仍让原生伤害入口正常处理
-        if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
-        return super.attackEntityFrom(source, amount);
+        var previous = worldSounds == null ? null : worldSounds.beginDamage(source);
+        try {
+            if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
+            return super.attackEntityFrom(source, amount);
+        } finally {
+            if (worldSounds != null) worldSounds.endDamage(previous);
+        }
+    }
+
+    @Override
+    public void writeSpawnData(io.netty.buffer.ByteBuf buffer) {
+        buffer.writeLong(getUniqueID().getMostSignificantBits())
+            .writeLong(getUniqueID().getLeastSignificantBits());
+    }
+
+    @Override
+    public void readSpawnData(io.netty.buffer.ByteBuf buffer) {
+        entityUniqueID = new UUID(buffer.readLong(), buffer.readLong());
+    }
+
+    public MaidConfigManager getConfigManager() {
+        return configManager;
+    }
+
+    public com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState getWorldSoundState() {
+        return worldSounds;
+    }
+
+    public boolean isSilent() {
+        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_SILENT) != 0;
+    }
+
+    public void setSilent(boolean silent) {
+        setMaidFlag(FLAG_SILENT, silent);
+    }
+
+    @Override
+    public void onEntityUpdate() {
+        super.onEntityUpdate();
+        if (worldSounds != null) worldSounds.tick();
+    }
+
+    @Override
+    protected String getLivingSound() {
+        return worldObj.isRemote || worldSounds == null ? null : worldSounds.ambient();
+    }
+
+    @Override
+    protected String getHurtSound() {
+        return worldObj.isRemote ? com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt")
+            : worldSounds == null ? null : worldSounds.hurt();
+    }
+
+    @Override
+    protected String getDeathSound() {
+        return worldObj.isRemote ? com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.death")
+            : worldSounds == null ? null : worldSounds.death();
+    }
+
+    @Override
+    public float getSoundPitch() {
+        return 1 + rand.nextFloat() * 0.1F;
+    }
+
+    @Override
+    public void playSound(String name, float volume, float pitch) {
+        if (name == null) return;
+        String prefix = "touhou_little_maid:";
+        if (name.startsWith(prefix + "maid.")) {
+            // 旧版受伤状态包也会在客户端调用，女仆语音只由服务端消息负责，避免重复
+            String event = name.substring(prefix.length());
+            if (!worldObj.isRemote && com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.events()
+                .contains(event))
+                com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.send(
+                    this,
+                    new com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage(this, event));
+            return;
+        }
+        if (!isSilent()) super.playSound(name, volume, pitch);
+    }
+
+    public void tryPlayMaidPickupSound() {
+        if (!worldObj.isRemote) worldSounds.tryPickup();
     }
 
     public MaidItemUseState getItemUseState() {
@@ -191,6 +277,7 @@ public class EntityMaid extends EntityTameable {
                 getNavigator().clearPathEntity();
                 setAttackTarget(null);
                 worldObj.setEntityState(this, (byte) 7);
+                playSound(com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.tamed"), 1, 1);
             }
             return true;
         }
@@ -339,6 +426,8 @@ public class EntityMaid extends EntityTameable {
         tag.setTag("TLMNH", extension);
         tag.setString(MODEL_ID_TAG, getModelId());
         tag.setString(SOUND_PACK_ID_TAG, getSoundPackId());
+        tag.setBoolean("Silent", isSilent());
+        configManager.addAdditionalSaveData(tag);
         tag.setString("MaidTask", getTask().getId());
         tag.setString("MaidScheduleMode", getSchedule().name());
         tag.setInteger(EXPERIENCE_TAG, getExperience());
@@ -386,6 +475,8 @@ public class EntityMaid extends EntityTameable {
             }
             setModelId(tag.hasKey(MODEL_ID_TAG, 8) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
             if (tag.hasKey(SOUND_PACK_ID_TAG, 8)) setSoundPackId(tag.getString(SOUND_PACK_ID_TAG));
+            setSilent(tag.getBoolean("Silent"));
+            configManager.readAdditionalSaveData(tag);
             setTask(MaidTask.fromId(tag.getString("MaidTask")));
             try {
                 setSchedule(MaidSchedule.valueOf(tag.getString("MaidScheduleMode")));
