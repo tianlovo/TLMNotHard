@@ -55,6 +55,7 @@ public final class MaidLifeController {
     private Action action;
     private MaidTask selectedTask;
     private PathEntity ownedPath;
+    private Vec3 approachPoint;
     private EntityPlayer owner;
     private Status status = Status.IDLE;
     private PathResult lastPathResult;
@@ -150,12 +151,26 @@ public final class MaidLifeController {
             if (lastPathResult == PathResult.STARTED) {
                 ownedPath = maid.getNavigator()
                     .getPath();
+                approachPoint = stand;
                 failures = 0;
             } else if (++failures >= 3) {
                 stop(Status.PATH_FAILED);
                 return false;
             }
         }
+        // 1.7导航在距终点一个实体宽度内就结束；邻格路径结束不一定进入柜上蛋糕的原2格交互球
+        // 只补完本动作已走到的安全邻格，继续使用原生移动与碰撞，不扩大交互半径或传送
+        if (action != Action.BED && approachPoint != null
+            && ownedPath != null
+            && maid.getNavigator()
+                .getPath() == ownedPath
+            && maid.getNavigator()
+                .noPath()
+            && maid.getDistanceSq(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord)
+                <= maid.width * maid.width
+            && safeStand(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord))
+            maid.getMoveHelper()
+                .setMoveTo(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord, 0.6D);
         if (action == Action.BED && !((TileEntityMaidBed) target).claim(maid)) {
             stop(Status.TARGET_LOST);
             return false;
@@ -415,6 +430,7 @@ public final class MaidLifeController {
             .getPath() == ownedPath) maid.getNavigator()
                 .clearPathEntity();
         ownedPath = null;
+        approachPoint = null;
     }
 
     public Status getStatus() {
