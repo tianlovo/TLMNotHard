@@ -38,6 +38,10 @@ public final class CacheIconTexture extends AbstractTexture {
         }
     }
 
+    public boolean isReleased() {
+        return glTextureId == -1;
+    }
+
     public int visiblePixels() {
         return visiblePixels;
     }

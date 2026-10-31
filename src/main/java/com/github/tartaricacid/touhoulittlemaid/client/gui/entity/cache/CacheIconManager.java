@@ -37,7 +37,7 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
     public static final CacheIconManager INSTANCE = new CacheIconManager();
     private final Map<Integer, CacheIconTexture> textures = new HashMap<>();
     private final Queue<Integer> queue = new ArrayDeque<>();
-    private int generation, failures, lastInvalidated, lastDeleteFailures;
+    private int generation, failures, lastInvalidated, lastDeleteFailures, lastRetainedTextureNames;
 
     private CacheIconManager() {}
 
@@ -89,10 +89,13 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
     public void onResourceManagerReload(IResourceManager manager) {
         lastInvalidated = textures.size();
         lastDeleteFailures = 0;
+        lastRetainedTextureNames = 0;
         for (var texture : textures.values()) {
             int id = texture.getGlTextureId();
             texture.deleteGlTexture();
-            if (GL11.glIsTexture(id)) lastDeleteFailures++;
+            if (!texture.isReleased()) lastDeleteFailures++;
+            // Angelica first frees image storage and retains names until its next allocation
+            if (GL11.glIsTexture(id)) lastRetainedTextureNames++;
         }
         textures.clear();
         queue.clear();
@@ -112,6 +115,7 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
         result.addProperty("failures", failures);
         result.addProperty("lastInvalidated", lastInvalidated);
         result.addProperty("lastDeleteFailures", lastDeleteFailures);
+        result.addProperty("lastRetainedTextureNames", lastRetainedTextureNames);
         int winefox = 0, empty = 0;
         for (var entry : textures.entrySet()) {
             if (BuiltinModelCatalog.choices()
