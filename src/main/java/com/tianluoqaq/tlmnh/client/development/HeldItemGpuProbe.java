@@ -27,6 +27,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.MinecraftForge;
 
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -54,6 +55,8 @@ import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldFixtures;
 
+import cpw.mods.fml.common.eventhandler.Event;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -66,6 +69,8 @@ public final class HeldItemGpuProbe {
         .create();
     private static Request pending;
     private static Transaction active;
+    private static boolean factoryCancellationConsumed;
+    private static long clientTickEndSequence;
 
     private HeldItemGpuProbe() {}
 
@@ -97,8 +102,14 @@ public final class HeldItemGpuProbe {
     }
 
     public static void tickEnd() {
+        clientTickEndSequence++;
         if (pending == null || pending.report != null) return;
         var request = pending;
+        if (request.postTerminalTickPending) {
+            request.observePostTerminalTick();
+            return;
+        }
+        if (request.installing || request.finishing || request.terminalPrepared) return;
         if (request.cancelReason != null) {
             cancel(request.cancelReason);
             return;
@@ -123,6 +134,7 @@ public final class HeldItemGpuProbe {
     public static void renderEnd(float partialTick) {
         if (pending == null || pending.report != null || active != null) return;
         var request = pending;
+        if (request.installing || request.finishing || request.terminalPrepared) return;
         if (request.cancelReason != null) {
             cancel(request.cancelReason);
             return;
@@ -275,6 +287,9 @@ public final class HeldItemGpuProbe {
                 && request.fixtureInstalled
                 && request.warmupTicks > 0
                 && !request.captureStarted
+                && !request.installing
+                && !request.finishing
+                && !request.terminalPrepared
                 && request.phase.equals("WARMING")
                 && request.maid == maid) {
                 try {
@@ -294,14 +309,20 @@ public final class HeldItemGpuProbe {
     public static void cancel(String reason) {
         if (pending != null && pending.report == null) {
             var request = pending;
-            request.cancelReason = reason;
-            if (Thread.currentThread() != request.owner || active != null) return;
+            if (request.cancelReason == null)
+                request.cancelReason = reason == null ? "Held GPU cancellation requested" : reason;
+            if (Thread.currentThread() != request.owner || active != null || request.installing || request.finishing)
+                return;
             request.finish(false);
         }
     }
 
     public static Result poll() {
-        if (pending == null || pending.report == null) return null;
+        if (pending == null || pending.report == null
+            || Thread.currentThread() != pending.owner
+            || pending.installing
+            || pending.finishing
+            || pending.postTerminalTickPending) return null;
         var result = new Result(pending.request, pending.report);
         pending = null;
         return result;
@@ -1095,6 +1116,84 @@ public final class HeldItemGpuProbe {
         }
     }
 
+    /** 一次显式开发故障：真实工厂事件中取消本事务，不修改事件或替换工厂 */
+    public static final class FactoryCancellationListener {
+
+        private final Request request;
+        private final JsonObject observation = new JsonObject();
+        private boolean armed, registrationAttempted;
+
+        private FactoryCancellationListener(Request request) {
+            this.request = request;
+            request.factoryCancellationProbe = observation;
+            request.evidence.add("factoryCancellationProbe", observation);
+            observation.addProperty("schema", "held-factory-cancellation-v1");
+            observation.addProperty("requested", true);
+            observation.addProperty("triggerCount", 0);
+            observation.addProperty("factoryReturned", false);
+            observation.addProperty("registerCallCompleted", false);
+            observation.addProperty("unregisterCallCompleted", false);
+        }
+
+        private void register() {
+            registrationAttempted = true;
+            armed = true;
+            MinecraftForge.EVENT_BUS.register(this);
+            observation.addProperty("registerCallCompleted", true);
+        }
+
+        @SubscribeEvent
+        public void onNativeFactoryEvent(Event event) {
+            if (!armed || factoryCancellationConsumed
+                || !Boolean.getBoolean("tlmnh.devCommands")
+                || !Boolean.getBoolean("tlmnh.heldCancelFactoryOnce")
+                || pending != request
+                || Thread.currentThread() != request.owner
+                || !request.installing
+                || request.report != null
+                || !event.getClass()
+                    .getName()
+                    .equals("tconstruct.library.event.ToolBuildEvent"))
+                return;
+            factoryCancellationConsumed = true;
+            request.factoryFaultTriggered = true;
+            observation.addProperty("triggerCount", 1);
+            observation.addProperty(
+                "eventClass",
+                event.getClass()
+                    .getName());
+            observation.addProperty("request", request.request);
+            observation.addProperty("actor", request.actor);
+            observation.addProperty("ownerThreadMatched", true);
+            observation.addProperty("installingAtCallback", request.installing);
+            observation.addProperty("finishingAtCallback", request.finishing);
+            observation.addProperty("terminalPublishedAtCallback", request.report != null);
+            observation.addProperty("mainWrittenAtCallback", request.mainLease.written);
+            observation.addProperty("offWrittenAtCallback", request.offLease.written);
+            boolean cancelled = event.isCanceled();
+            observation.addProperty("eventCancelledBefore", cancelled);
+            try {
+                observation.add("eventRuntimeIdentity", DevelopmentArtifactIdentity.capture(event.getClass()));
+            } catch (Exception | LinkageError failure) {
+                observation.addProperty("eventIdentityError", failure.toString());
+            }
+            cancel("Development native ToolBuildEvent callback cancelled this held fixture installation");
+            observation.addProperty("eventCancelledAfter", event.isCanceled());
+            observation.addProperty("terminalPublishedAfterCallback", request.report != null);
+        }
+
+        private void close() {
+            armed = false;
+            if (registrationAttempted) try {
+                MinecraftForge.EVENT_BUS.unregister(this);
+                observation.addProperty("unregisterCallCompleted", true);
+            } catch (RuntimeException | LinkageError failure) {
+                observation.addProperty("unregisterError", failure.toString());
+                cancel("Held factory cancellation listener cleanup failed");
+            }
+        }
+    }
+
     private static final class Request {
 
         final String request, model, action, view;
@@ -1112,6 +1211,10 @@ public final class HeldItemGpuProbe {
         String phase = "ARMED", failureReason = "";
         volatile String cancelReason;
         boolean fixtureInstalled, captureStarted, readyForCapture, ownershipIntact = true;
+        boolean installing, finishing, terminalPrepared, factoryFaultTriggered, postTerminalTickPending;
+        long terminalClientTickEndSequence;
+        int terminalEntityTick;
+        JsonObject factoryCancellationProbe;
         boolean modelReferenceStable = true, playerReferenceStable = true, naturalEntryPending;
         int installEntityTick, clientTickEnds, naturalRendererEntries, completedNaturalBodies;
         long entryPoseSerial;
@@ -1158,12 +1261,12 @@ public final class HeldItemGpuProbe {
         }
 
         void installFixture() {
-            requireContext();
-            if (!mainLease.originalMatches() || !offLease.originalMatches()) {
-                ownershipIntact = false;
-                throw new IllegalStateException("Held GPU equipment changed before fixture installation");
-            }
+            if (installing || finishing || terminalPrepared || report != null)
+                throw new IllegalStateException("Held GPU installer is no longer live");
+            installing = true;
+            FactoryCancellationListener cancellation = null;
             try {
+                requireInstallationCheckpoint();
                 evidence.add(
                     "runtimeIdentity",
                     DevelopmentArtifactIdentity.capture(
@@ -1171,9 +1274,19 @@ public final class HeldItemGpuProbe {
                         HeldItemGpuState.class,
                         MaidRenderer.class,
                         MaidHeldItemLayer.class));
+                if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.heldCancelFactoryOnce")
+                    && !factoryCancellationConsumed
+                    && action.startsWith("shield_")) {
+                    cancellation = new FactoryCancellationListener(this);
+                    cancellation.register();
+                }
                 var fixture = item(action, evidence);
-                mainLease.write(side == Side.RIGHT ? fixture : null);
-                offLease.write(side == Side.LEFT ? fixture : null);
+                if (factoryCancellationProbe != null) factoryCancellationProbe.addProperty("factoryReturned", true);
+                requireInstallationCheckpoint();
+                mainLease.write(side == Side.RIGHT ? fixture : null, this);
+                requireInstallationCheckpoint();
+                offLease.write(side == Side.LEFT ? fixture : null, this);
+                requireInstallationCheckpoint();
                 fixtureInstalled = true;
                 installEntityTick = maid.ticksExisted;
                 phase = "WARMING";
@@ -1183,7 +1296,33 @@ public final class HeldItemGpuProbe {
                 requireOwnedLease();
             } catch (Exception | LinkageError failure) {
                 throw new IllegalStateException("Held GPU fixture installation failed: " + failure, failure);
+            } finally {
+                try {
+                    if (cancellation != null) cancellation.close();
+                } finally {
+                    installing = false;
+                    if (cancelReason != null && report == null) finish(false);
+                }
             }
+        }
+
+        void requireInstallationLive() {
+            if (pending != this || report != null
+                || terminalPrepared
+                || !installing
+                || finishing
+                || cancelReason != null) throw new IllegalStateException("Held GPU installation cancelled or terminal");
+            requireContext();
+        }
+
+        void requireInstallationCheckpoint() {
+            requireInstallationLive();
+            if (!(mainLease.written ? mainLease.ownedMatches() : mainLease.originalMatches())
+                || !(offLease.written ? offLease.ownedMatches() : offLease.originalMatches())) {
+                ownershipIntact = false;
+                throw new IllegalStateException("Held GPU equipment changed during installation");
+            }
+            requireInstallationLive();
         }
 
         void requireOwnedLease() {
@@ -1315,53 +1454,113 @@ public final class HeldItemGpuProbe {
         }
 
         void finish(boolean captureComplete) {
-            if (report != null) return;
+            if (report != null || terminalPrepared) return;
             if (Thread.currentThread() != owner) {
                 cancelReason = "Held GPU terminal requested off the original client thread";
                 return;
             }
-            if (cancelReason != null) {
-                failureReason = cancelReason;
-                if (!evidence.has("error")) evidence.addProperty("error", cancelReason);
-            } else if (evidence.has("error")) failureReason = evidence.get("error")
-                .getAsString();
-            restoration = new JsonObject();
-            restoration.addProperty("attempted", true);
-            var main = mainLease.restore();
-            var off = offLease.restore();
-            restoration.add("main", main);
-            restoration.add("off", off);
-            boolean restored = HandLease.restored(main) && HandLease.restored(off);
-            if (main.get("status")
-                .getAsString()
-                .equals("REFUSED_EXTERNAL_CHANGE")
-                || off.get("status")
+            if (installing || finishing) return;
+            finishing = true;
+            try {
+                if (cancelReason != null) {
+                    failureReason = cancelReason;
+                    if (!evidence.has("error")) evidence.addProperty("error", cancelReason);
+                } else if (evidence.has("error")) failureReason = evidence.get("error")
+                    .getAsString();
+                restoration = new JsonObject();
+                restoration.addProperty("attempted", true);
+                var main = mainLease.restore();
+                var off = offLease.restore();
+                restoration.add("main", main);
+                restoration.add("off", off);
+                boolean restored = HandLease.restored(main) && HandLease.restored(off);
+                if (main.get("status")
                     .getAsString()
-                    .equals("REFUSED_EXTERNAL_CHANGE"))
-                ownershipIntact = false;
-            restoration.addProperty("complete", restored);
-            evidence.add("restoredMainhand", main.get("afterRestore"));
-            evidence.add("restoredOffhand", off.get("afterRestore"));
-            boolean equipmentRestored = mainLease.originalValueRestored() && offLease.originalValueRestored();
-            evidence.addProperty("equipmentValuesRestored", equipmentRestored);
-            if (!restored && !evidence.has("equipmentRestoreError")) evidence.addProperty(
-                "equipmentRestoreError",
-                "Original fixture lease was not fully restored; inspect per-hand warmup restore");
-            if ((!restored || !equipmentRestored) && failureReason.isEmpty())
-                failureReason = "Original equipment values or owned fixture lease were not fully restored";
-            if (!captureComplete && failureReason.isEmpty())
-                failureReason = "Held GPU capture or cleanup contract incomplete";
-            phase = "TERMINAL";
-            evidence.add("warmup", warmupSnapshot());
-            boolean complete = captureComplete && restored
-                && equipmentRestored
-                && ownershipIntact
-                && cancelReason == null
-                && captureStarted
-                && readyForCapture;
-            evidence.addProperty("transactionComplete", complete);
-            evidence.addProperty("status", complete ? "complete" : "failed");
-            report = evidence;
+                    .equals("REFUSED_EXTERNAL_CHANGE")
+                    || off.get("status")
+                        .getAsString()
+                        .equals("REFUSED_EXTERNAL_CHANGE"))
+                    ownershipIntact = false;
+                restoration.addProperty("complete", restored);
+                evidence.add("restoredMainhand", main.get("afterRestore"));
+                evidence.add("restoredOffhand", off.get("afterRestore"));
+                boolean equipmentRestored = mainLease.originalValueRestored() && offLease.originalValueRestored();
+                if (cancelReason != null) {
+                    failureReason = cancelReason;
+                    if (!evidence.has("error")) evidence.addProperty("error", cancelReason);
+                }
+                evidence.addProperty("equipmentValuesRestored", equipmentRestored);
+                if (!restored && !evidence.has("equipmentRestoreError")) evidence.addProperty(
+                    "equipmentRestoreError",
+                    "Original fixture lease was not fully restored; inspect per-hand warmup restore");
+                if ((!restored || !equipmentRestored) && failureReason.isEmpty())
+                    failureReason = "Original equipment values or owned fixture lease were not fully restored";
+                if (!captureComplete && failureReason.isEmpty())
+                    failureReason = "Held GPU capture or cleanup contract incomplete";
+                phase = "TERMINAL";
+                evidence.add("warmup", warmupSnapshot());
+                boolean complete = captureComplete && restored
+                    && equipmentRestored
+                    && ownershipIntact
+                    && cancelReason == null
+                    && captureStarted
+                    && readyForCapture;
+                evidence.addProperty("transactionComplete", complete);
+                evidence.addProperty("status", complete ? "complete" : "failed");
+                terminalPrepared = true;
+                if (factoryFaultTriggered) {
+                    terminalEntityTick = maid.ticksExisted;
+                    terminalClientTickEndSequence = clientTickEndSequence;
+                    factoryCancellationProbe.addProperty("terminalEntityTick", terminalEntityTick);
+                    factoryCancellationProbe
+                        .addProperty("terminalClientTickEndSequence", terminalClientTickEndSequence);
+                    postTerminalTickPending = true;
+                } else report = evidence;
+            } finally {
+                finishing = false;
+            }
+        }
+
+        void observePostTerminalTick() {
+            if (!postTerminalTickPending || clientTickEndSequence <= terminalClientTickEndSequence) return;
+            if (Thread.currentThread() != owner) return;
+            var observed = new JsonObject();
+            try {
+                observed.addProperty("clientTickEndSequence", clientTickEndSequence);
+                observed.addProperty("entityTick", maid.ticksExisted);
+                observed.addProperty("terminalWasPublished", report != null);
+                observed.addProperty(
+                    "sameWorldObject",
+                    Minecraft.getMinecraft().theWorld == world && maid.worldObj == world);
+                observed.addProperty(
+                    "sameActorIdentity",
+                    actor.equals(
+                        maid.getUniqueID()
+                            .toString())
+                        && entityId == maid.getEntityId());
+                observed.addProperty("registeredActorReference", world.getEntityByID(entityId) == maid);
+                boolean loaded = false;
+                for (Object entry : world.loadedEntityList) if (entry == maid) {
+                    loaded = true;
+                    break;
+                }
+                observed.addProperty("loadedActorReference", loaded);
+                observed.addProperty("actorAlive", maid.isEntityAlive());
+                observed.addProperty("addedToChunk", maid.addedToChunk);
+                observed.add("actualMainhand", snapshot(mainLease.current()));
+                observed.add("actualOffhand", snapshot(offLease.current()));
+                boolean mainRestored = mainLease.originalValueRestored(),
+                    offRestored = offLease.originalValueRestored();
+                observed.addProperty("mainValueMatchesOriginal", mainRestored);
+                observed.addProperty("offValueMatchesOriginal", offRestored);
+                observed.addProperty("nativeEntityTickAdvanced", maid.ticksExisted > terminalEntityTick);
+            } catch (RuntimeException | LinkageError failure) {
+                observed.addProperty("observationError", failure.toString());
+            } finally {
+                factoryCancellationProbe.add("postTerminalNativeTick", observed);
+                postTerminalTickPending = false;
+                report = evidence;
+            }
         }
 
         JsonObject warmupSnapshot() {
@@ -1440,12 +1639,15 @@ public final class HeldItemGpuProbe {
             }
         }
 
-        void write(ItemStack stack) {
+        void write(ItemStack stack, Request request) {
+            var value = stack == null ? null : stack.copy();
+            request.requireInstallationLive();
+            ownedValue = value;
             written = true;
-            ownedValue = stack == null ? null : stack.copy();
             set(stack);
             ownedReference = current();
             referenceCaptured = true;
+            request.requireInstallationLive();
         }
 
         void set(ItemStack stack) {
@@ -1474,10 +1676,17 @@ public final class HeldItemGpuProbe {
                         "reason",
                         "Current hand no longer matches the fixture reference and value; left untouched");
                 } else {
-                    set(originalValue == null ? null : originalValue.copy());
-                    if (!ItemStack.areItemStacksEqual(current(), originalValue))
-                        throw new IllegalStateException("Restored hand value differs from original snapshot");
-                    result.addProperty("status", "RESTORED");
+                    var replacement = originalValue == null ? null : originalValue.copy();
+                    if (!ownedMatches()) {
+                        result.addProperty("status", "REFUSED_EXTERNAL_CHANGE");
+                        result
+                            .addProperty("reason", "Fixture hand changed while preparing restoration; left untouched");
+                    } else {
+                        set(replacement);
+                        if (!ItemStack.areItemStacksEqual(current(), originalValue))
+                            throw new IllegalStateException("Restored hand value differs from original snapshot");
+                        result.addProperty("status", "RESTORED");
+                    }
                 }
                 result.add("afterRestore", snapshot(current()));
             } catch (RuntimeException | LinkageError failure) {
