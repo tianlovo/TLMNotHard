@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
@@ -54,6 +55,11 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "gecko-library-test".equals(args[0])) {
+            MaidGeckoLibraryProbe.run();
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.gecko_library_passed"));
+            return;
+        }
         if (args.length == 1 && "lifecycle-persist-create".equals(args[0])) {
             MaidLifecycleRestartProbe.create((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_restart_pending"));

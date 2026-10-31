@@ -291,7 +291,6 @@ common/lifecycle参考固定上游初始魂符、ItemFilm、BlockShrine和Entity
 源目录为固定上游textures/item，目标为1.7的textures/items；原650份内置资产清单不变，校验器额外核对这四份资产
 新方块与墓碑当前外观仅供Indev链路测试，最终素材、GTNH配方与科技门槛继续待验和讨论
 
-
 ## 独立几何语义观测与真实重启夹具
 
 新geometry v2合同通过实际骨骼发射边界记录bone/cube/face/corner和drawIndex，逐项核对位置、法线与UV
@@ -303,3 +302,11 @@ port新增可选GeometryBoneObserver，IGeoRenderer仅在consumer实现该接口
 MaidLifecycleRestartProbe仅在开发开关下建立隔离夹具，实际区块保存女仆、墓碑和神龛，世界账本保存凭证状态
 校验要求不同JVM从磁盘载入，固定公式核对十二槽78物品而不从测试快照复制权威库存
 这项检查不包含真实玩家player.dat和异常掉电的跨文件原子事务，结果须与自然行为和客户端网络交互分别记录
+
+## Gecko 原版遍历顺序恢复
+
+独立 v2 基准先保留并报告原有17组兄弟次序差异，随后恢复固定上游RawBoneGroup的OpenHashMap与RawGeometryTree逆向扫描挂树流程
+在挂树前独立检查重名、缺父和环，不让安全校验的容器次序改变最终原版遍历；空树维持安全返回
+使用RC2已提供的fastutil 8.5.18，开发配置为compileOnly、runtimeOnlyNonPublishable和testImplementation，不shade或覆盖整合包全局版本
+上游固定参考环境使用8.5.9；两版本对26份固定几何、4729骨骼的独立容器实验全序列一致，仍须以生产渲染路径和实际RC2类来源验证集成结果
+新汉服测试的根及17组兄弟字面期望来自真实原版capture，未由移植实现重算期望；实际材质与共面覆盖继续独立验收

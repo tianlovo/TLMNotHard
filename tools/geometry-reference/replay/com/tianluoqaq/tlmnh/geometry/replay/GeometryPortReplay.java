@@ -151,19 +151,86 @@ public final class GeometryPortReplay {
         var startup = (Map<String, String>) agent.getMethod("startup").invoke(null);
         require(sha(Files.readAllBytes(file)).equals(startup.get("manifestSha256")), "Port geometry identity changed after startup");
         require(startup.get("agentSha256").equals(build.get("agentSha256").getAsString()), "Unexpected geometry agent");
+        String coordinate = "it.unimi.dsi:fastutil:8.5.18";
+        require("resolved-fastutil-8.5.18-v1".equals(build.get("dependencyPolicy").getAsString()), "Reviewed fastutil dependency policy required");
+        var artifacts = build.getAsJsonObject("externalArtifacts");
+        require(artifacts.entrySet().size() == 1 && artifacts.has(coordinate), "Exactly one reviewed dependency artifact required");
+        var artifact = artifacts.getAsJsonObject(coordinate);
+        require("it.unimi.dsi".equals(artifact.get("group").getAsString()) && "fastutil".equals(artifact.get("name").getAsString())
+            && "8.5.18".equals(artifact.get("version").getAsString()), "Wrong external dependency coordinates");
+        Path dependencyJar = Paths.get(artifact.get("resolvedFile").getAsString()).toRealPath();
+        String actualJarSha = sha(Files.readAllBytes(dependencyJar));
+        require(Files.isRegularFile(dependencyJar) && dependencyJar.getFileName().toString().equals(artifact.get("fileName").getAsString())
+            && actualJarSha.equals(artifact.get("sha256").getAsString()), "Resolved external artifact changed");
+        var actualArtifact = new JsonObject();
+        actualArtifact.addProperty("group", "it.unimi.dsi");
+        actualArtifact.addProperty("name", "fastutil");
+        actualArtifact.addProperty("version", "8.5.18");
+        actualArtifact.addProperty("fileName", dependencyJar.getFileName().toString());
+        actualArtifact.addProperty("resolvedFile", dependencyJar.toString());
+        actualArtifact.addProperty("sha256", actualJarSha);
+        var actualArtifacts = new JsonObject();
+        actualArtifacts.add(coordinate, actualArtifact);
+        var external = build.getAsJsonObject("externalClasses");
+        var requiredExternal = new java.util.HashSet<>(java.util.Arrays.asList("it.unimi.dsi.fastutil.HashCommon",
+            "it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap", "it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap$MapIterator"));
+        require(external.entrySet().stream().map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet()).equals(requiredExternal),
+            "Missing/unreviewed external class selection");
+        require(build.getAsJsonObject("compiledClasses").entrySet().stream().map(Map.Entry::getKey)
+            .collect(java.util.stream.Collectors.toSet()).containsAll(requiredExternal), "External classes missing from selected expected bytes");
         var definitions = new JsonObject();
         for (var entry : build.getAsJsonObject("compiledClasses").entrySet()) {
             var type = Class.forName(entry.getKey(), false, GeometryPortReplay.class.getClassLoader());
             var actual = (Map<String, Object>) agent.getMethod("identity", Class.class).invoke(null, type);
             require(entry.getValue().getAsString().equals(actual.get("sha256")), "Defined production geometry differs: " + entry.getKey());
-            definitions.add(entry.getKey(), GSON.toJsonTree(actual));
+            var evidence = GSON.toJsonTree(actual).getAsJsonObject();
+            if (external.has(entry.getKey())) {
+                var expected = external.getAsJsonObject(entry.getKey());
+                require(coordinate.equals(expected.get("artifact").getAsString())
+                    && entry.getValue().getAsString().equals(expected.get("sha256").getAsString()), "External expected bytes differ");
+                var origin = dependencyOrigin(type, entry.getKey(), expected, dependencyJar);
+                for (var value : origin.entrySet()) evidence.add(value.getKey(), value.getValue());
+                evidence.addProperty("artifactSha256", actualJarSha);
+            }
+            definitions.add(entry.getKey(), evidence);
         }
         var result = new JsonObject();
         result.add("build", build);
         result.add("actualFirstDefinitions", definitions);
         result.addProperty("buildManifestSha256", startup.get("manifestSha256"));
         result.addProperty("runtimePolicy", "geometry-v2-single-passive-observer");
-        result.addProperty("scope", "selected production geometry definitions only");
+        result.addProperty("dependencyPolicy", "resolved-fastutil-8.5.18-v1");
+        result.add("actualExternalArtifacts", actualArtifacts);
+        result.addProperty("scope", "selected production definitions and resolved fastutil JAR origins only; not all runtime classes or live RC2 loading");
+        return result;
+    }
+
+    private static JsonObject dependencyOrigin(Class<?> type, String name, JsonObject expected, Path jar) throws Exception {
+        String entry = name.replace('.', '/') + ".class";
+        require(entry.equals(expected.get("entry").getAsString()), "Wrong external class entry");
+        var domain = type.getProtectionDomain();
+        require(domain != null && domain.getCodeSource() != null, "External CodeSource is unavailable");
+        var source = domain.getCodeSource().getLocation();
+        require(source != null && "file".equals(source.getProtocol()), "External CodeSource is not a file JAR");
+        Path codeSource = Paths.get(source.toURI()).toRealPath();
+        require(codeSource.equals(jar), "External class did not come from the resolved dependency JAR: " + name);
+        var resource = type.getResource('/' + entry);
+        require(resource != null && "jar".equals(resource.getProtocol()), "External class resource is not a JAR entry");
+        var opened = resource.openConnection();
+        require(opened instanceof java.net.JarURLConnection, "External resource origin is unavailable");
+        var connection = (java.net.JarURLConnection) opened;
+        connection.setUseCaches(false);
+        require("file".equals(connection.getJarFileURL().getProtocol()) && entry.equals(connection.getEntryName()), "Unexpected external resource entry");
+        Path resourceJar = Paths.get(connection.getJarFileURL().toURI()).toRealPath();
+        require(resourceJar.equals(jar), "External resource did not come from resolved dependency JAR: " + name);
+        String resourceSha = sha(bytes(connection.getInputStream()));
+        require(resourceSha.equals(expected.get("sha256").getAsString()), "External class resource differs from JAR entry: " + name);
+        var result = new JsonObject();
+        result.addProperty("artifact", expected.get("artifact").getAsString());
+        result.addProperty("resourceSha256", resourceSha);
+        result.addProperty("resourceEntry", entry);
+        result.addProperty("codeSourceFile", codeSource.toString());
+        result.addProperty("resourceArtifactFile", resourceJar.toString());
         return result;
     }
 

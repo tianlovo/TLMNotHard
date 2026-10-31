@@ -132,6 +132,7 @@ public final class ClientDevelopmentRequest {
         RENDER_PROBE,
         HEAD_BINDING_PROBE,
         GPU_MATRIX_PROBE,
+        GECKO_LIBRARY_PROBE,
         MODELS_UI,
         MODELS_UI_CAPTURE,
         RELOAD,

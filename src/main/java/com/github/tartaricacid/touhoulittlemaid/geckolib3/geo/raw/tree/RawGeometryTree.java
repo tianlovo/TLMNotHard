@@ -2,12 +2,14 @@
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/geo/raw/tree/RawGeometryTree.java
  * MIT, see licenses/TouhouLittleMaid-MIT.txt and licenses/GeckoLib-MIT.txt
- * Adaptation: Java 8 API, Forge 1.7.10, explicit Gson adapters and legacy matrices
+ * Adaptation: Java 8 API; validate malformed hierarchy before the original reverse-pass attachment order
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Bone;
@@ -16,44 +18,66 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.ModelProp
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.RawGeoModel;
 import com.google.common.collect.Maps;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
 public class RawGeometryTree {
 
-    public Map<String, RawBoneGroup> topLevelBones = new LinkedHashMap<>();
+    public Map<String, RawBoneGroup> topLevelBones = new Object2ObjectOpenHashMap<>();
     public ModelProperties properties;
 
     public static RawGeometryTree parseHierarchy(RawGeoModel model) {
         RawGeometryTree hierarchy = new RawGeometryTree();
         MinecraftGeometry geometry = model.getMinecraftGeometry()[0];
         hierarchy.properties = geometry.getProperties();
-        Map<String, RawBoneGroup> groups = new LinkedHashMap<>();
-        for (Bone bone : geometry.getBones()) {
-            String name = bone.getName();
-            if (name == null || name.isEmpty() || groups.put(name, new RawBoneGroup(bone)) != null) {
-                throw new IllegalArgumentException("Missing or duplicate Gecko bone name: " + name);
-            }
-        }
-        for (RawBoneGroup group : groups.values()) {
-            String parentName = group.selfBone.getParent();
-            if (parentName == null) {
-                hierarchy.topLevelBones.put(group.selfBone.getName(), group);
+        validate(geometry.getBones());
+        List<Bone> bones = new ObjectArrayList<>(geometry.getBones());
+        // 当前移植版允许空树；不要恢复原版对此输入的 get(-1)
+        if (bones.isEmpty()) return hierarchy;
+        int index = bones.size() - 1;
+        while (true) {
+            Bone bone = bones.get(index);
+            if (!hasParent(bone)) {
+                hierarchy.topLevelBones.put(bone.getName(), new RawBoneGroup(bone));
+                bones.remove(bone);
             } else {
-                RawBoneGroup parent = groups.get(parentName);
-                if (parent == null) throw new IllegalArgumentException("Missing Gecko parent bone: " + parentName);
-                parent.children.put(group.selfBone.getName(), group);
+                RawBoneGroup parent = getGroupFromHierarchy(hierarchy, bone.getParent());
+                if (parent != null) {
+                    parent.children.put(bone.getName(), new RawBoneGroup(bone));
+                    bones.remove(bone);
+                }
             }
+            if (index == 0) {
+                index = bones.size() - 1;
+                if (index == -1) break;
+            } else index--;
         }
-        // 原循环对缺失父节点或环无法结束；在构造递归模型前明确拒绝这两种输入
-        var resolved = new java.util.HashSet<RawBoneGroup>();
-        for (RawBoneGroup group : groups.values()) {
-            var chain = new java.util.HashSet<RawBoneGroup>();
-            RawBoneGroup current = group;
-            while (current != null && !resolved.contains(current)) {
-                if (!chain.add(current)) throw new IllegalArgumentException("Cyclic Gecko bone hierarchy");
-                current = groups.get(current.selfBone.getParent());
+        return hierarchy;
+    }
+
+    /** 校验只做名字查找，不参与任何输出map的填充或迭代次序 */
+    private static void validate(Bone[] bones) {
+        Map<String, Bone> names = new LinkedHashMap<>();
+        for (Bone bone : bones) {
+            String name = bone == null ? null : bone.getName();
+            if (name == null || name.isEmpty() || names.put(name, bone) != null)
+                throw new IllegalArgumentException("Missing or duplicate Gecko bone name: " + name);
+        }
+        for (Bone bone : names.values()) {
+            String parent = bone.getParent();
+            if (parent != null && !names.containsKey(parent))
+                throw new IllegalArgumentException("Missing Gecko parent bone: " + parent);
+        }
+        var resolved = new HashSet<String>();
+        for (Bone bone : names.values()) {
+            var chain = new HashSet<String>();
+            Bone current = bone;
+            while (current != null && !resolved.contains(current.getName())) {
+                if (!chain.add(current.getName())) throw new IllegalArgumentException("Cyclic Gecko bone hierarchy");
+                current = names.get(current.getParent());
             }
             resolved.addAll(chain);
         }
-        return hierarchy;
     }
 
     public static boolean hasParent(Bone bone) {

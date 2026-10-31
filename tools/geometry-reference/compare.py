@@ -10,6 +10,13 @@ CONTRACT_FILE = Path(__file__).with_name("contract.json")
 CONTRACT = json.loads(CONTRACT_FILE.read_text(encoding="utf-8"))
 CONTRACT_SHA = hashlib.sha256(CONTRACT_FILE.read_bytes()).hexdigest()
 STAGE = "premain-transformer-input-after-defining-loader-transformations"
+FASTUTIL_COORDINATE = "it.unimi.dsi:fastutil:8.5.18"
+FASTUTIL_POLICY = "resolved-fastutil-8.5.18-v1"
+FASTUTIL_CLASSES = {
+    "it.unimi.dsi.fastutil.HashCommon",
+    "it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap",
+    "it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap$MapIterator",
+}
 REFERENCE_REQUIRED = {
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils",
@@ -53,6 +60,7 @@ PORT_REQUIRED = {
     "com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$Sink",
     "com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$PlainSink",
 }
+PORT_REQUIRED.update(FASTUTIL_CLASSES)
 
 
 def require(condition, reason):
@@ -162,6 +170,36 @@ def validate_identity(report, reference):
                 and base["upstreamCommit"] == CONTRACT["upstreamCommit"], "Wrong original source")
         require(base["schema"] == "reference-build-identity-v1" and base["status"] == "LOCK_VERIFIED"
                 and digest(build["baseReferenceBuildIdentitySha256"]), "Missing approved original build chain")
+    else:
+        validate_dependency_identity(identity, compiled, actual)
+
+
+def validate_dependency_identity(identity, compiled, actual):
+    build = identity["build"]
+    require(identity["dependencyPolicy"] == FASTUTIL_POLICY and build["dependencyPolicy"] == FASTUTIL_POLICY,
+            "Missing reviewed fastutil dependency policy")
+    artifacts = build["externalArtifacts"]
+    require(isinstance(artifacts, dict) and set(artifacts) == {FASTUTIL_COORDINATE}, "Missing/extra resolved dependency artifact")
+    artifact = artifacts[FASTUTIL_COORDINATE]
+    require(artifact["group"] == "it.unimi.dsi" and artifact["name"] == "fastutil" and artifact["version"] == "8.5.18",
+            "Wrong resolved fastutil coordinates")
+    require(digest(artifact["sha256"]) and isinstance(artifact["resolvedFile"], str) and bool(artifact["resolvedFile"])
+            and isinstance(artifact["fileName"], str) and artifact["fileName"].endswith(".jar"), "Invalid resolved dependency identity")
+    require(artifact["resolvedFile"].replace("\\", "/").rsplit("/", 1)[-1] == artifact["fileName"], "Resolved dependency filename differs")
+    require(identity["actualExternalArtifacts"] == artifacts, "Actual dependency artifact differs from resolved manifest")
+    external = build["externalClasses"]
+    require(isinstance(external, dict) and set(external) == FASTUTIL_CLASSES, "Missing/extra external class entry identities")
+    for name in FASTUTIL_CLASSES:
+        expected, definition = external[name], actual[name]
+        entry = name.replace(".", "/") + ".class"
+        require(expected["artifact"] == FASTUTIL_COORDINATE and expected["entry"] == entry
+                and digest(expected["sha256"]) and expected["sha256"] == compiled[name], "External expected bytes are not from declared JAR entry")
+        require(definition["artifact"] == FASTUTIL_COORDINATE and definition["artifactSha256"] == artifact["sha256"],
+                "Actual external class artifact differs")
+        require(definition["resourceSha256"] == expected["sha256"] and definition["resourceEntry"] == entry,
+                "Actual external class resource differs from selected JAR entry")
+        require(definition["codeSourceFile"] == artifact["resolvedFile"]
+                and definition["resourceArtifactFile"] == artifact["resolvedFile"], "External CodeSource/resource is not the resolved dependency JAR")
 
 
 def semantic_key(value):

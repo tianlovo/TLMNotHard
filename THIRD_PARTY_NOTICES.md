@@ -17,13 +17,20 @@
 | Gecko 关键帧、插值、动画文件和时间轴指令 | 同一 TLM 提交的 geckolib3 下18个原文件 | MIT，保留 Gecko 作者头、原包名和两份许可，集合、严格表达式解析及默认长度修正见 SOURCE_PROVENANCE.md |
 | TLM 内置动画的 tlm/ysm 查询、骨骼结构体与二阶物理 | 同一 TLM 提交的 client/animation/gecko/molang 下10个原文件 | MIT，保留原包名及 SecondOrder 的 MicroCraft 作者信息；只接内置资源所需查询，不集成外部 YSM 模组，边界适配见 SOURCE_PROVENANCE.md |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
+| Gecko 层级遍历使用的 fastutil 容器 | vigna/fastutil，it.unimi.dsi:fastutil:8.5.18 | Apache-2.0，Sebastiano Vigna；运行时复用 RC2 已提供的库，开发与测试单独解析，不随本模组 JAR 打包或重定位 |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
 
-资产来源为 [Touhou Little Maid 固定提交](https://github.com/TartaricAcid/TouhouLittleMaid/tree/8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6)，许可为 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)，要求署名、非商业使用和相同方式共享；不以代码的 MIT 许可替代资产许可
+资产来源为 [Touhou Little Maid 固定提交](https://github.com/TartaricAcid/TouhouLittleMaid/tree/8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6)，
+许可为 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)，要求署名、非商业使用和相同方式共享；
+不以代码的 MIT 许可替代资产许可
 
-本次展开上游内置包的目录，将原字节资源放入对应 assets 命名空间，没有修改模型、贴图、动画和上游说明文本；生成了本工程的装饰 ID 索引与逐文件来源摘要，位于 assets/tlmnh/builtin-models.json 和 builtin-assets-provenance.json，摘要包含原路径、SHA-256 和固定提交，目录与索引适配涉及的资产贡献同样按 CC BY-NC-SA 4.0 提供
+本次展开上游内置包的目录，将原字节资源放入对应 assets 命名空间，没有修改模型、贴图、动画和上游说明文本；
+生成了本工程的装饰 ID 索引与逐文件来源摘要，位于 assets/tlmnh/builtin-models.json 和 builtin-assets-provenance.json，
+摘要包含原路径、SHA-256 和固定提交，目录与索引适配涉及的资产贡献同样按 CC BY-NC-SA 4.0 提供
 
-BuiltinBedrockAnimations.java 含两个原资产脚本 arm.js 和 float.js 的 Java 改写，原包 authors_and_credits 标注作者 TartaricAcid；该文件按 CC BY-NC-SA 4.0 提供，修改内容为去除已弃用分支并接入本工程逐帧状态与矩阵；原始脚本与作者说明仍保留，完整来源见 SOURCE_PROVENANCE.md 和资源来源清单
+BuiltinBedrockAnimations.java 含两个原资产脚本 arm.js 和 float.js 的 Java 改写，原包 authors_and_credits 标注作者 TartaricAcid；
+该文件按 CC BY-NC-SA 4.0 提供，修改内容为去除已弃用分支并接入本工程逐帧状态与矩阵；原始脚本与作者说明仍保留，
+完整来源见 SOURCE_PROVENANCE.md 和资源来源清单
 
 TLM 原有代码和资产在导入时分别登记提交、原路径、修改原因及许可，不以代码许可覆盖模型和声音
 

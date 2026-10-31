@@ -20,7 +20,7 @@ gradle.projectsEvaluated {
             if (!agent.isFile() || output.toPath().startsWith(project.projectDir.canonicalFile.toPath()))
                 throw new GradleException('Built geometry agent and external launcher destination required')
             def sha = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
-            def names = [
+            def projectNames = [
                 'com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels',
                 'com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel',
                 'com.tianluoqaq.tlmnh.client.render.LegacyPoseStack',
@@ -47,17 +47,48 @@ gradle.projectsEvaluated {
                 'com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$Sink',
                 'com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$PlainSink'
             ].sort()
+            def coordinate = 'it.unimi.dsi:fastutil:8.5.18'
+            def dependencies = project.configurations.testRuntimeClasspath.resolvedConfiguration.resolvedArtifacts.findAll {
+                it.moduleVersion.id.group == 'it.unimi.dsi' && it.moduleVersion.id.name == 'fastutil'
+            }
+            if (dependencies.size() != 1 || dependencies[0].moduleVersion.id.version != '8.5.18'
+                || dependencies[0].extension != 'jar' || dependencies[0].classifier)
+                throw new GradleException('Exactly the resolved unclassified it.unimi.dsi:fastutil:8.5.18 JAR is required')
+            def dependencyJar = dependencies[0].file.toPath().toRealPath().toFile()
+            def dependencyNames = [
+                'it.unimi.dsi.fastutil.HashCommon',
+                'it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap',
+                'it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap$MapIterator'
+            ]
             def roots = project.sourceSets.main.output.classesDirs.files + project.sourceSets.test.output.classesDirs.files
-            def classes = names.collectEntries { name ->
+            def classes = projectNames.collectEntries { name ->
                 def matches = roots.collect { new File(it, name.replace('.', '/') + '.class') }.findAll { it.isFile() }
                 if (matches.size() != 1) throw new GradleException('Missing/duplicate geometry replay class: ' + name)
                 [(name): sha(matches[0].bytes)]
             }
+            def externalClasses = [:]
+            new java.util.zip.ZipFile(dependencyJar).withCloseable { zip ->
+                dependencyNames.each { name ->
+                    def entryName = name.replace('.', '/') + '.class'
+                    def entries = java.util.Collections.list(zip.entries()).findAll { it.name == entryName && !it.directory }
+                    if (entries.size() != 1) throw new GradleException('Missing/duplicate actual fastutil JAR entry: ' + entryName)
+                    def digest = zip.getInputStream(entries[0]).withCloseable { stream -> sha(stream.bytes) }
+                    classes[name] = digest
+                    externalClasses[name] = [artifact: coordinate, entry: entryName, sha256: digest]
+                }
+            }
+            def names = (projectNames + dependencyNames).sort()
+            def externalArtifacts = [(coordinate): [group: 'it.unimi.dsi', name: 'fastutil', version: '8.5.18',
+                fileName: dependencyJar.name, sha256: sha(dependencyJar.bytes), resolvedFile: dependencyJar.absolutePath]]
             def identity = new File(output.parentFile, 'port-geometry-build.json')
             output.parentFile.mkdirs()
             identity.setText(JsonOutput.prettyPrint(JsonOutput.toJson([schema: 'port-geometry-build-v2',
-                contractSha256: sha(new File(tool, 'contract.json').bytes), agentSha256: sha(agent.bytes), compiledClasses: classes])) + '\n', 'UTF-8')
+                contractSha256: sha(new File(tool, 'contract.json').bytes), agentSha256: sha(agent.bytes), compiledClasses: classes,
+                dependencyPolicy: 'resolved-fastutil-8.5.18-v1', externalArtifacts: externalArtifacts,
+                externalClasses: externalClasses])) + '\n', 'UTF-8')
             def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            if (runtime.files.count { it.isFile() && it.toPath().toRealPath() == dependencyJar.toPath().toRealPath() } != 1)
+                throw new GradleException('Resolved fastutil JAR is missing or repeated in the actual replay classpath')
             def launcher = project.javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }.get()
             output.setText(JsonOutput.prettyPrint(JsonOutput.toJson([schema: 'geometry-replay-launcher-v2',
                 executable: launcher.executablePath.asFile.absolutePath, classpath: runtime.files.collect { it.absolutePath },

@@ -1,11 +1,12 @@
 # 原版几何独立对照（Indev）
 
 本工具比较两个内置酒狐模型的静态几何，不使用移植版几何函数生成预期结果
-当前合同为 `native-bind-geometry-v2`，新增的 Java 观察边界和完整 v2 实验仍待编译、重采与执行
+当前合同为 `native-bind-geometry-v2`，已有36版真实有界实验记录；本次移植端 fastutil 来源身份扩展仍待重新准备与执行
 已通过的 Python 合成测试只检查比较器及输入边界，不是几何实验通过的证据
 
 旧 v1 四轮报告保持原判：第四轮 Bedrock 的有序数值及负例通过，Gecko 因兄弟骨骼发射顺序不同而比较失败
 只读分块诊断不能把旧失败改成通过；v2 使用新的 schema、合同摘要和证据目录，旧捕获不能直接转换或重新贴标签
+36版v2记录的Gecko几何值匹配及17组顺序差异保留，本次不修改该基准或参考端合同
 
 ## 范围
 
@@ -123,6 +124,18 @@ python tools/geometry-reference/experiment.py `
 每个 Java 进程内部同样重建三次，每次各有 plain/traced 新模型；移植端也通过独立 premain agent 核对实际生产类定义
 新增的标签辅助类、两侧 sink、原版 renderer wrapper 和生产观察接口都列入各自编译清单及实际首次定义采样
 共享 helper 和移植工具维持 Java8 字节码，只有原版和独立 agent 使用 Java17
+
+### 移植端 fastutil 来源
+
+恢复上游树容器后，`RawBoneGroup`、`RawGeometryTree`及实际依赖的`HashCommon`、`Object2ObjectOpenHashMap`、其`$MapIterator`均为必需身份项
+`prepareGeometryReplay`要求Gradle实际解析出唯一无classifier的`it.unimi.dsi:fastutil:8.5.18`，期望外部类字节从该JAR条目读取，不从项目class输出目录寻找
+清单的`compiledClasses`延用选定期望字节集合：项目类来自编译输出，外部类同时由`externalClasses`标记JAR条目，并由`externalArtifacts`记录解析坐标、实际路径及整个JAR摘要
+运行时外部类的第一次definition与resource字节均须匹配条目，实际CodeSource和resource的JarURLConnection都须指向这个已解析JAR；其他生产类仍严格核对编译字节
+缺类、换版本、换JAR来源或resource落到其他位置均不可判定，不默认采用classpath中的另一份fastutil
+此来源验证只适用于独立CPU重放，不能替代实际RC2客户端/服务端的库加载检查
+
+依赖实际路径保存在仓库外的私有manifest和运行证据，不能把这些文件直接提交到公开仓库
+参考producer、契约、启动时身份和旧报告不因这一移植端扩展而改变；重新生成port launcher后使用新证据目录
 单独保留原始捕获、Java stdout/stderr、比较报告和总报告
 输出目录必须是新目录，旧失败、拒绝和基线不被覆盖
 本工具不自动关闭客户端；主开发入口检查结果后正常关闭，并保留进程记录

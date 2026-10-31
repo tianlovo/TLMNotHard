@@ -247,6 +247,9 @@ public final class ClientDevelopmentControl {
                     var observed = MaidModelUiProbe.perform(request.action, request.model);
                     for (var entry : observed.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
+                case GECKO_LIBRARY_PROBE:
+                    response.add("library", com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe.capture());
+                    break;
                 case SHUTDOWN:
                     HeadBindingProbe.cancel("Client shutdown requested during capture");
                     GpuMatrixProbe.cancel("Client shutdown requested during GPU capture");

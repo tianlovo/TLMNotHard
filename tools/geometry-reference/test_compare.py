@@ -24,6 +24,17 @@ def identity(reference):
               "runtimePolicy": "geometry-v2-two-passive-observers" if reference else "geometry-v2-single-passive-observer"}
     if reference:
         result.update(baseReferenceRuntimeVerified=False, baseReferenceBuildIdentityAnchored=True, runtimeJava={"synthetic": True})
+    else:
+        artifact = {"group": "it.unimi.dsi", "name": "fastutil", "version": "8.5.18", "fileName": "fastutil-8.5.18.jar",
+                    "sha256": "e" * 64, "resolvedFile": str((Path("synthetic-artifacts") / "fastutil-8.5.18.jar").resolve())}
+        build.update(dependencyPolicy=subject.FASTUTIL_POLICY, externalArtifacts={subject.FASTUTIL_COORDINATE: artifact},
+                     externalClasses={name: {"artifact": subject.FASTUTIL_COORDINATE, "entry": name.replace(".", "/") + ".class", "sha256": "a" * 64}
+                                      for name in subject.FASTUTIL_CLASSES})
+        result.update(dependencyPolicy=subject.FASTUTIL_POLICY, actualExternalArtifacts=copy.deepcopy(build["externalArtifacts"]))
+        for name in subject.FASTUTIL_CLASSES:
+            definitions[name].update(artifact=subject.FASTUTIL_COORDINATE, artifactSha256=artifact["sha256"], resourceSha256="a" * 64,
+                                     resourceEntry=name.replace(".", "/") + ".class", codeSourceFile=artifact["resolvedFile"],
+                                     resourceArtifactFile=artifact["resolvedFile"])
     return result
 
 
@@ -85,6 +96,47 @@ def siblings_fixture(reference, reverse=False):
 
 
 class CompareTests(unittest.TestCase):
+    def test_missing_fastutil_definition_or_jar_entry_is_rejected(self):
+        for missing in ("definition", "compiled", "entry", "artifact"):
+            with self.subTest(missing=missing):
+                port = fixture(False)
+                name = "it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap$MapIterator"
+                if missing == "definition":
+                    del port["identity"]["actualFirstDefinitions"][name]
+                elif missing == "compiled":
+                    del port["identity"]["build"]["compiledClasses"][name]
+                elif missing == "entry":
+                    del port["identity"]["build"]["externalClasses"][name]
+                else:
+                    del port["identity"]["build"]["externalArtifacts"][subject.FASTUTIL_COORDINATE]
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_fastutil_class_cannot_silently_come_from_another_jar(self):
+        name = "it.unimi.dsi.fastutil.HashCommon"
+        for field, wrong in (("codeSourceFile", "other-library.jar"), ("resourceArtifactFile", "shadow-fastutil.jar"),
+                             ("artifactSha256", "0" * 64), ("resourceSha256", "0" * 64),
+                             ("resourceEntry", "other/HashCommon.class"), ("artifact", "it.unimi.dsi:fastutil:8.5.9")):
+            with self.subTest(field=field):
+                port = fixture(False)
+                port["identity"]["actualFirstDefinitions"][name][field] = wrong
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_resolved_dependency_version_and_artifact_digest_remain_bound(self):
+        for field, wrong in (("version", "8.5.9"), ("sha256", "0" * 64), ("resolvedFile", "another-fastutil.jar")):
+            with self.subTest(field=field):
+                port = fixture(False)
+                port["identity"]["build"]["externalArtifacts"][subject.FASTUTIL_COORDINATE][field] = wrong
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_raw_tree_classes_are_still_selected_production_definitions(self):
+        for name in ("com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawBoneGroup",
+                     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree"):
+            with self.subTest(name=name):
+                port = fixture(False)
+                del port["identity"]["actualFirstDefinitions"][name]
+                del port["identity"]["build"]["compiledClasses"][name]
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
     def test_sibling_draw_order_is_separate_from_semantic_geometry(self):
         result = subject.compare(siblings_fixture(True), siblings_fixture(False, reverse=True))
         self.assertTrue(result["matched"])
