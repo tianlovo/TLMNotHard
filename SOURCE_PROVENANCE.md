@@ -390,6 +390,19 @@ MaidFollowTeleportProbe 用原版记录的整数流驱动实际 RC2 适配器，
 `tools/look-reference` 调用真实原版 LOOK 与选定三行为的 Brain 方法，受控记忆、时钟、导航和主人不冒充自然 Brain
 原版采集、移植重放、RC2 原生执行和完整 F/N 的状态见 [开发进度](PROGRESS.md)
 
+## 备用落点生成
+
+`FollowFallbackSampler` 是本工程的独立数值与候选生成适配，依据固定 MC1.20.1 mapped 输入中
+`DefaultRandomPos`、`RandomPos`、`GoalUtils`、`Mth`、`Animal` 和 `LevelReader` 的实际方法核对
+保留角度查表、实体随机消耗顺序、十次尝试、限制区偏置、筛选短路及 float 光照评分
+不打包 Minecraft 原类或整套源码，也不把 RC2 的 `RandomPositionGenerator` 当作现代实现
+`fixtures/faithful/follow-fallback-utility-v1.json` 记录独立 Java 17 原版 utility 调用的输入、结果与类资源摘要，
+已去除本机资源位置；不表示自然世界、变换后类定义或完整行为 AI 已验
+
+RC2 接线保留原干燥域与路径归属限制，仅显式批准的扩展空气体积可使用 fallback
+TLM 的 `hasRestriction` 随家园模式变化，因此家园关闭时不能仅因半径配置存在而额外消耗限制区随机数
+备用路径创建使用同一有界原生查询与安装入口，不手动推进导航
+
 ## RC2 副手与盾牌
 
 `common/combat/MaidItemUseState` 与 `common/combat/shield` 为独立适配代码，新增文件仍位于本工程根包

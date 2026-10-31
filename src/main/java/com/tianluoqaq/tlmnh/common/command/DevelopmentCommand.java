@@ -94,6 +94,10 @@ public final class DevelopmentCommand extends CommandBase {
             MaidFollowCoreAdapterProbe.run((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "follow-fallback-test".equals(args[0])) {
+            MaidFollowCoreAdapterProbe.runFallback((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "native-ai-phase-test".equals(args[0])) {
             MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld());
             return;

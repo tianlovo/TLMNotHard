@@ -43,6 +43,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Installation;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreComponent;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreLookDriver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreMoveDriver;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowFallbackSampler;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowCoreActor;
@@ -69,11 +70,19 @@ public final class MaidFollowCoreAdapterProbe {
     private MaidFollowCoreAdapterProbe() {}
 
     public static void run(WorldServer world) {
+        run(world, false);
+    }
+
+    public static void runFallback(WorldServer world) {
+        run(world, true);
+    }
+
+    private static void run(WorldServer world, boolean fallback) {
         require(
             Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated development overworld required");
         var output = new JsonObject();
-        output.addProperty("schema", "follow-core-adapter-native-v2");
+        output.addProperty("schema", fallback ? "follow-fallback-native-v1" : "follow-core-adapter-native-v2");
         output.addProperty("componentContract", "FOLLOW_CORE_COMPONENT_V2");
         output.addProperty("componentSchedule", "start-pass look0/move2/follow3; running-pass look0/move2/follow3");
         output.addProperty("componentWorldRngOrderVerified", false);
@@ -93,20 +102,23 @@ public final class MaidFollowCoreAdapterProbe {
         Throwable failure = null;
         Platform platform = null;
         try {
-            output.add(
-                "runtimeIdentity",
-                DevelopmentArtifactIdentity.capture(
-                    MaidFollowCoreAdapterProbe.class,
-                    StageMaid.class,
-                    FollowCoreComponent.class,
-                    FollowCoreLookDriver.class,
-                    FollowCoreLookDriver.State.class,
-                    FollowCoreMoveDriver.class,
-                    Rc2FollowCoreActor.class,
-                    MaidBoundedPathPlanner.class,
-                    MaidPolicyRuntime.class,
-                    EntityMaid.class,
-                    DevelopmentArtifactIdentity.class));
+            var identityClasses = new ArrayList<Class<?>>();
+            java.util.Collections.addAll(
+                identityClasses,
+                MaidFollowCoreAdapterProbe.class,
+                StageMaid.class,
+                FollowCoreComponent.class,
+                FollowCoreLookDriver.class,
+                FollowCoreLookDriver.State.class,
+                FollowCoreMoveDriver.class,
+                Rc2FollowCoreActor.class,
+                MaidBoundedPathPlanner.class,
+                MaidPolicyRuntime.class,
+                EntityMaid.class,
+                DevelopmentArtifactIdentity.class);
+            if (fallback) identityClasses.add(FollowFallbackSampler.class);
+            output
+                .add("runtimeIdentity", DevelopmentArtifactIdentity.capture(identityClasses.toArray(new Class<?>[0])));
             var source = new JsonObject();
             source.addProperty(
                 "worldClass",
@@ -122,10 +134,17 @@ public final class MaidFollowCoreAdapterProbe {
                 "stage",
                 "EntityLiving.updateAITasks: tasks, native navigator, updateAITick, move/look/jump");
             output.add("sourceProvider", source);
-            platform = new Platform(world, platformReport);
-            pipeline(platform, rows);
-            foreignCancellation(platform, rows);
-            createInstallGuards(platform, rows);
+            platform = new Platform(world, platformReport, fallback);
+            if (fallback) {
+                output.addProperty(
+                    "scope",
+                    "unregistered maid with synthetic owner; explicit loaded bright dry volume; direct fallback generation and native create/install, not natural primary-path failure recovery or full F/N");
+                fallbackPaths(platform, rows);
+            } else {
+                pipeline(platform, rows);
+                foreignCancellation(platform, rows);
+                createInstallGuards(platform, rows);
+            }
         } catch (RuntimeException | LinkageError problem) {
             failure = problem;
         } catch (Exception problem) {
@@ -145,7 +164,8 @@ public final class MaidFollowCoreAdapterProbe {
             failure.getClass()
                 .getSimpleName());
         try {
-            Path directory = checkedDirectory(Paths.get("tlmnh-dev", "follow-adapter-results"));
+            String subdirectory = fallback ? "follow-fallback-results" : "follow-adapter-results";
+            Path directory = checkedDirectory(Paths.get("tlmnh-dev", subdirectory));
             String name = UUID.randomUUID() + ".json";
             byte[] bytes = GSON.toJson(output)
                 .getBytes(StandardCharsets.UTF_8);
@@ -155,17 +175,104 @@ public final class MaidFollowCoreAdapterProbe {
             summary.addProperty("executionComplete", failure == null);
             summary.addProperty("worldNatural", false);
             summary.addProperty("equivalenceVerified", false);
-            summary.addProperty("capture", "tlmnh-dev/follow-adapter-results/" + name);
+            summary.addProperty("capture", "tlmnh-dev/" + subdirectory + "/" + name);
             summary.addProperty("sha256", sha(bytes));
             summary.addProperty("bytes", bytes.length);
             summary.addProperty("rows", rows.size());
-            TLMNotHard.LOG.info("TLMNH_FOLLOW_CORE_ADAPTER_CAPTURE {}", summary);
+            TLMNotHard.LOG
+                .info(fallback ? "TLMNH_FOLLOW_FALLBACK_CAPTURE {}" : "TLMNH_FOLLOW_CORE_ADAPTER_CAPTURE {}", summary);
         } catch (Exception | LinkageError writing) {
             if (failure != null && failure != writing) writing.addSuppressed(failure);
             throw new IllegalStateException("Follow adapter evidence could not be saved", writing);
         }
         if (failure != null)
             throw new IllegalStateException("Follow adapter capture incomplete; inspect retained artifact", failure);
+    }
+
+    private static void fallbackPaths(Platform platform, JsonArray rows) {
+        long[] seeds = { 0L, 0L };
+        for (int index = 0; index < seeds.length; index++) {
+            var row = row(rows, index == 1 ? "diagonal_positive" : "east_null_" + seeds[index]);
+            try (var fixture = new Fixture(platform, row)) {
+                var frames = new JsonArray();
+                row.add("frames", frames);
+                fixture.frame(frames, "supply_owner_walk");
+                var actor = fixture.component.getActor();
+                require(
+                    actor.peekWalkTarget() != null && actor.getLastCreation() == null,
+                    "Fallback fixture must begin with WALK and no query");
+                var origin = new FollowMoveActor.Vec3(fixture.maid.posX, fixture.maid.posY, fixture.maid.posZ);
+                int directionZ = index == 1 ? 1 : 0;
+                var target = new FollowMoveActor.Vec3(origin.x + 1, origin.y, origin.z + directionZ);
+                row.addProperty("seed", Long.toString(seeds[index]));
+                row.add("origin", point(origin.x, origin.y, origin.z));
+                row.add("direction", point(1, 0, directionZ));
+                row.addProperty("horizontalRange", 10);
+                row.addProperty("verticalRange", 7);
+                row.addProperty("angle", 1.5707963705062866D);
+                row.addProperty("dimension", platform.world.provider.dimensionId);
+                row.addProperty(
+                    "providerClass",
+                    platform.world.provider.getClass()
+                        .getName());
+                row.addProperty("skySubtracted", platform.world.skylightSubtracted);
+                fixture.maid.getRNG()
+                    .setSeed(seeds[index]);
+                var selected = actor.findFallbackTowards(10, 7, target, 1.5707963705062866D);
+                row.add("selected", selected == null ? JsonNull.INSTANCE : point(selected.x, selected.y, selected.z));
+                row.addProperty(
+                    "nextFloatHex",
+                    Float.toHexString(
+                        fixture.maid.getRNG()
+                            .nextFloat()));
+                row.addProperty(
+                    "nextDoubleHex",
+                    Double.toHexString(
+                        fixture.maid.getRNG()
+                            .nextDouble()));
+                row.addProperty(
+                    "nextInt97",
+                    fixture.maid.getRNG()
+                        .nextInt(97));
+                row.addProperty(
+                    "entityRandomClass",
+                    fixture.maid.getRNG()
+                        .getClass()
+                        .getName());
+                row.add("afterSampling", fixture.snapshot());
+                require(
+                    actor.getLastCreation() == null && fixture.maid.getNavigator()
+                        .getPath() == null,
+                    "Sampling must not query or install a native path");
+                require(
+                    (selected != null) == (index == 1),
+                    "Actual fallback result differs from fixed original utility case");
+                if (selected != null) {
+                    row.addProperty(
+                        "selectedRawLight",
+                        platform.world.getBlockLightValue(
+                            MathHelper.floor_double(selected.x),
+                            MathHelper.floor_double(selected.y),
+                            MathHelper.floor_double(selected.z)));
+                    var path = actor.createPath(selected, 0);
+                    require(
+                        path != null && path.canReach(),
+                        "Positive fallback did not create an actual complete path");
+                    actor.setPathMemory(path);
+                    require(actor.moveTo(path, 0.5D), "Positive fallback native install did not start");
+                    row.add("afterInstall", fixture.snapshot());
+                } else row.add("afterInstall", JsonNull.INSTANCE);
+                fixture.component.cancel();
+                row.add("afterCancel", fixture.snapshot());
+                require(
+                    actor.peekWalkTarget() == null && actor.peekPathMemory() == null
+                        && !actor.hasLookTarget()
+                        && fixture.maid.getNavigator()
+                            .getPath() == null,
+                    "Fallback fixture did not release owned resources");
+                row.addProperty("complete", true);
+            }
+        }
     }
 
     private static void pipeline(Platform platform, JsonArray rows) {
@@ -446,7 +553,23 @@ public final class MaidFollowCoreAdapterProbe {
             originalPlayers = new ArrayList<>(globalPlayers);
             component = new FollowCoreComponent(
                 maid,
-                new Rc2FollowCoreActor.Contract(8, false, false, platform::verify));
+                new Rc2FollowCoreActor.Contract(8, false, false, new Rc2FollowCoreActor.DryDomain() {
+
+                    public void verify(EntityMaid current, FollowMoveActor.BlockPos target) {
+                        platform.verify(current, target);
+                    }
+
+                    public void verifyFallbackVolume(EntityMaid current, int horizontalRange, int verticalRange) {
+                        if (!platform.fallback || horizontalRange != 10 || verticalRange != 7)
+                            throw outside("fallback_volume_not_prepared");
+                        platform.verify(
+                            current,
+                            new FollowMoveActor.BlockPos(
+                                MathHelper.floor_double(current.posX),
+                                MathHelper.floor_double(current.posY),
+                                MathHelper.floor_double(current.posZ)));
+                    }
+                }));
             try {
                 for (Object value : globalPlayers) require(
                     !(value instanceof EntityPlayerMP player) || !player.getUniqueID()
@@ -842,21 +965,29 @@ public final class MaidFollowCoreAdapterProbe {
 
         final WorldServer world;
         final int baseX, baseZ;
+        final int minY, maxY;
+        final boolean fallback;
         final List<Placed> blocks = new ArrayList<>();
         final JsonArray verifications = new JsonArray();
         final JsonObject report;
         Fixture fixture;
         boolean closed;
 
-        Platform(WorldServer world, JsonObject report) {
+        Platform(WorldServer world, JsonObject report, boolean fallback) {
             this.world = world;
             this.report = report;
+            this.fallback = fallback;
+            minY = FOOT_Y - (fallback ? 9 : 2);
+            maxY = FOOT_Y + (fallback ? 9 : 3);
             var spawn = world.getSpawnPoint();
             baseX = (spawn.posX >> 4 << 4) + 8;
             baseZ = (spawn.posZ >> 4 << 4) + 8;
             report.add("origin", point(baseX, FOOT_Y, baseZ));
             report.addProperty("radius", PLATFORM_RADIUS);
             report.addProperty("padding", DOMAIN_PADDING);
+            report.addProperty("fallbackVolume", fallback);
+            report.addProperty("minY", minY);
+            report.addProperty("maxY", maxY);
             report.addProperty("forceLoadedChunks", false);
             report.addProperty("creationComplete", false);
             report.addProperty("cleanupComplete", false);
@@ -875,7 +1006,7 @@ public final class MaidFollowCoreAdapterProbe {
                 int checked = 0;
                 for (int x = baseX - PLATFORM_RADIUS; x <= baseX + PLATFORM_RADIUS; x++)
                     for (int z = baseZ - PLATFORM_RADIUS; z <= baseZ + PLATFORM_RADIUS; z++)
-                        for (int y = FOOT_Y - 2; y <= FOOT_Y + 3; y++) {
+                        for (int y = minY; y <= maxY; y++) {
                             require(air(x, y, z), "Platform requires original air/meta0 without tile entities");
                             checked++;
                         }
@@ -930,7 +1061,7 @@ public final class MaidFollowCoreAdapterProbe {
                 throw outside("fixture_or_resolver_registration_changed");
             int checked = 0;
             for (int atX = minX; atX <= maxX; atX++)
-                for (int atZ = minZ; atZ <= maxZ; atZ++) for (int y = FOOT_Y - 2; y <= FOOT_Y + 3; y++) {
+                for (int atZ = minZ; atZ <= maxZ; atZ++) for (int y = minY; y <= maxY; y++) {
                     if (!(y == FOOT_Y - 1 ? stone(atX, y, atZ) : air(atX, y, atZ)))
                         throw outside("unknown_or_changed_block_in_flat_search_domain");
                     checked++;
@@ -944,8 +1075,8 @@ public final class MaidFollowCoreAdapterProbe {
             observed.addProperty("worldGameTime", world.getTotalWorldTime());
             observed.add("maidBlock", point(x, MathHelper.floor_double(maid.posY), z));
             observed.add("targetBlock", point(target.x, target.y, target.z));
-            observed.add("min", point(minX, FOOT_Y - 2, minZ));
-            observed.add("max", point(maxX, FOOT_Y + 3, maxZ));
+            observed.add("min", point(minX, minY, minZ));
+            observed.add("max", point(maxX, maxY, maxZ));
             observed.addProperty("padding", DOMAIN_PADDING);
             observed.addProperty("checkedCells", checked);
             observed.addProperty("loadedWithoutForce", true);
@@ -966,7 +1097,7 @@ public final class MaidFollowCoreAdapterProbe {
             if (!world
                 .getEntitiesWithinAABBExcludingEntity(
                     null,
-                    AxisAlignedBB.getBoundingBox(minX, FOOT_Y - 2, minZ, maxX + 1, FOOT_Y + 4, maxZ + 1))
+                    AxisAlignedBB.getBoundingBox(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1))
                 .isEmpty()) throw outside("external_entity_in_search_domain");
         }
 

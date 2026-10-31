@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.ai.faithful;
 import java.util.Objects;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -11,6 +12,7 @@ import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldProviderSurface;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
@@ -27,6 +29,14 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     public interface DryDomain {
 
         void verify(EntityMaid maid, BlockPos target);
+
+        /**
+         * 另行核实完整 fallback 候选域与邻域，旧合同保持拒绝
+         * home=false 的 10/7 采样先排除水平超界；须核足点中心水平±11、垂直±8 的完整已加载体积
+         */
+        default void verifyFallbackVolume(EntityMaid maid, int horizontalRange, int verticalRange) {
+            throw new OutsideContractException("fallback_volume_not_admitted");
+        }
     }
 
     public static final class Contract {
@@ -95,6 +105,9 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     private MaidBoundedPathPlanner.Creation lastCreation;
     private MaidBoundedPathPlanner.Installation lastInstallation;
     private Rc2FollowTeleport.Result lastTeleport;
+    private final FollowFallbackSampler.Actor fallbackActor = new DryFallbackActor();
+    private boolean fallbackSampling;
+    private Vec3 fallbackOrigin;
 
     public Rc2FollowCoreActor(EntityMaid maid, Contract contract) {
         this.maid = Objects.requireNonNull(maid, "maid");
@@ -394,11 +407,203 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     }
 
     public Path createPath(Vec3 target, int accuracy) {
-        throw outside("fallback_path_not_admitted");
+        guard();
+        navigationLease();
+        requireBottomCenter(target, accuracy);
+        return createPath(
+            new BlockPos(MathHelper.floor_double(target.x), (int) target.y, MathHelper.floor_double(target.z)),
+            accuracy);
     }
 
     public Vec3 findFallbackTowards(int horizontalRange, int verticalRange, Vec3 target, double angle) {
-        throw outside("modern_fallback_not_implemented");
+        guard();
+        navigationLease();
+        if (horizontalRange != 10 || verticalRange != 7 || angle != 1.5707963705062866D)
+            throw outside("only_move_sink_fallback_10_7_admitted");
+        requireBottomCenter(target, 0);
+        if (walk == null) throw outside("fallback_requires_owner_walk");
+        if (fallbackSampling) throw outside("fallback_sampling_reentry");
+        Vec3 origin = new Vec3(maid.posX, maid.posY, maid.posZ);
+        fallbackOrigin = origin;
+        fallbackSampling = true;
+        try {
+            verifyDry(blockPosition());
+            // 默认拒绝旧 lambda；扩展域必须显式准入，不将未核候选当作普通失败
+            contract.domain.verifyFallbackVolume(maid, horizontalRange, verticalRange);
+            verifyFallbackOrigin(origin);
+            verifyFallbackLightContext();
+            verifyFallbackVolumeFacts(origin, horizontalRange, verticalRange);
+            return FollowFallbackSampler.getPosTowards(fallbackActor, horizontalRange, verticalRange, target, angle);
+        } finally {
+            fallbackSampling = false;
+            fallbackOrigin = null;
+        }
+    }
+
+    private void requireBottomCenter(Vec3 target, int accuracy) {
+        if (accuracy != 0 || target == null
+            || !Double.isFinite(target.x)
+            || !Double.isFinite(target.y)
+            || !Double.isFinite(target.z)
+            || target.x <= -30000000D
+            || target.x >= 30000000D
+            || target.z <= -30000000D
+            || target.z >= 30000000D
+            || target.y != maid.posY
+            || target.y != Math.floor(target.y)
+            || target.x != Math.floor(target.x) + 0.5D
+            || target.z != Math.floor(target.z) + 0.5D) throw outside("same_y_bottom_center_accuracy_zero_required");
+    }
+
+    private void verifyFallbackOrigin(Vec3 origin) {
+        guard();
+        navigationLease();
+        if (maid.posX != origin.x || maid.posY != origin.y || maid.posZ != origin.z)
+            throw outside("fallback_origin_changed");
+    }
+
+    private void verifyFallbackLightContext() {
+        guard();
+        if (world.provider == null || world.provider.getClass() != WorldProviderSurface.class
+            || world.provider.dimensionId != 0
+            || world.provider.hasNoSky
+            || world.getHeight() != 256
+            || world.skylightSubtracted != 0) throw outside("fallback_only_bright_overworld_admitted");
+    }
+
+    private void verifyFallbackVolumeFacts(Vec3 origin, int horizontalRange, int verticalRange) {
+        int x = MathHelper.floor_double(origin.x), y = (int) origin.y, z = MathHelper.floor_double(origin.z);
+        int horizontalPadding = horizontalRange + 1, verticalPadding = verticalRange + 1;
+        if (y - verticalPadding < 0 || y + verticalPadding >= world.getHeight())
+            throw outside("fallback_volume_crosses_build_height");
+        // stable、malus及其邻居全部可读；本切片只接受一层STONE，其余为原生AIR
+        for (int dx = -horizontalPadding; dx <= horizontalPadding; dx++) {
+            for (int dz = -horizontalPadding; dz <= horizontalPadding; dz++) {
+                for (int dy = -verticalPadding; dy <= verticalPadding; dy++) {
+                    fallbackCell(x + dx, y + dy, z + dz, y);
+                }
+            }
+        }
+        verifyFallbackOrigin(origin);
+    }
+
+    private Block fallbackCell(int x, int y, int z, int footY) {
+        guard();
+        if (!world.blockExists(x, y, z)) throw outside("fallback_volume_unloaded");
+        Block actual = world.getBlock(x, y, z);
+        if (world.getBlockMetadata(x, y, z) != 0 || world.getTileEntity(x, y, z) != null)
+            throw outside("fallback_volume_metadata_or_tile");
+        if (actual != (y == footY - 1 ? Blocks.stone : Blocks.air))
+            throw outside("fallback_volume_not_single_stone_air_plane");
+        return actual;
+    }
+
+    private void fallbackSamplingGuard() {
+        if (!fallbackSampling || fallbackOrigin == null) throw outside("fallback_sampling_not_active");
+        verifyFallbackOrigin(fallbackOrigin);
+    }
+
+    private void fallbackCandidateGuard(BlockPos position) {
+        fallbackSamplingGuard();
+        if (position == null || Math.abs((long) position.x - MathHelper.floor_double(fallbackOrigin.x)) > 10L
+            || Math.abs((long) position.z - MathHelper.floor_double(fallbackOrigin.z)) > 10L
+            || Math.abs((long) position.y - (int) fallbackOrigin.y) > 7L)
+            throw outside("fallback_candidate_outside_admitted_volume");
+    }
+
+    private final class DryFallbackActor implements FollowFallbackSampler.Actor {
+
+        public Vec3 position() {
+            fallbackSamplingGuard();
+            return new Vec3(maid.posX, maid.posY, maid.posZ);
+        }
+
+        public float nextEntityFloat() {
+            fallbackSamplingGuard();
+            return maid.getRNG()
+                .nextFloat();
+        }
+
+        public double nextEntityDouble() {
+            fallbackSamplingGuard();
+            return maid.getRNG()
+                .nextDouble();
+        }
+
+        public int nextEntityInt(int bound) {
+            fallbackSamplingGuard();
+            return maid.getRNG()
+                .nextInt(bound);
+        }
+
+        public boolean hasRestriction() {
+            fallbackSamplingGuard();
+            // TLM的hasRestriction由homeMode决定，与已存的restrictRadius无关
+            return false;
+        }
+
+        public BlockPos restrictionCenter() {
+            fallbackSamplingGuard();
+            throw outside("home_restriction_not_admitted");
+        }
+
+        public float restrictionRadius() {
+            fallbackSamplingGuard();
+            throw outside("home_restriction_not_admitted");
+        }
+
+        public boolean isWithinRestriction(BlockPos position) {
+            fallbackSamplingGuard();
+            throw outside("home_restriction_not_admitted");
+        }
+
+        public int minBuildHeight() {
+            fallbackSamplingGuard();
+            return 0;
+        }
+
+        public int maxBuildHeight() {
+            fallbackSamplingGuard();
+            return world.getHeight();
+        }
+
+        public boolean isStableDestination(BlockPos position) {
+            fallbackCandidateGuard(position);
+            // 原版PathNavigation只查below.isSolidRender；本域原生STONE为true、AIR为false
+            return fallbackCell(position.x, position.y - 1, position.z, (int) fallbackOrigin.y) == Blocks.stone;
+        }
+
+        public float pathfindingMalus(BlockPos position) {
+            fallbackCandidateGuard(position);
+            if (position.y != (int) fallbackOrigin.y) throw outside("fallback_malus_without_stable_same_y");
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        fallbackCell(position.x + dx, position.y + dy, position.z + dz, position.y);
+                    }
+                }
+            }
+            // Raw AIR + below STONE为WALKABLE；已核邻域无hazard，原版此类型默认malus为0
+            return 0.0F;
+        }
+
+        public float walkTargetValue(BlockPos position) {
+            fallbackCandidateGuard(position);
+            if (position.y != (int) fallbackOrigin.y
+                || fallbackCell(position.x, position.y - 1, position.z, position.y) != Blocks.stone)
+                throw outside("fallback_score_requires_dry_stone_support");
+            verifyFallbackLightContext();
+            int raw = world.getBlockLightValue(position.x, position.y, position.z);
+            verifyFallbackLightContext();
+            fallbackSamplingGuard();
+            if (raw != 15) throw outside("fallback_nonmax_raw_light_not_admitted");
+            // raw=15时现代ambient项归零；不把旧亮度表当作现代ambient来源
+            float atZeroAmbient = FollowFallbackSampler.lightPathfindingCost(raw, 0.0F);
+            float atOneAmbient = FollowFallbackSampler.lightPathfindingCost(raw, 1.0F);
+            if (Float.floatToIntBits(atZeroAmbient) != Float.floatToIntBits(atOneAmbient))
+                throw outside("fallback_ambient_mapping_not_proven");
+            return atZeroAmbient;
+        }
     }
 
     public boolean navigationIsStuck() {
