@@ -1,7 +1,6 @@
 package com.tianluoqaq.tlmnh.common.development;
 
 import java.io.Reader;
-import java.net.JarURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -14,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.jar.JarFile;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -169,55 +167,8 @@ public final class MaidFollowTeleportProbe {
     }
 
     private static JsonObject runtimeIdentity() throws Exception {
-        var identity = new JsonObject();
-        var classes = new JsonObject();
-        Path artifact = null;
-        for (Class<?> type : new Class<?>[] { MaidFollowTeleportProbe.class, Rc2FollowTeleport.class,
-            EntityMaid.class }) {
-            var source = type.getProtectionDomain()
-                .getCodeSource();
-            require(source != null, "Missing probe class CodeSource");
-            var location = source.getLocation();
-            if ("jar".equals(location.getProtocol())) {
-                var connection = location.openConnection();
-                require(connection instanceof JarURLConnection, "Unsupported JAR CodeSource");
-                location = ((JarURLConnection) connection).getJarFileURL();
-            }
-            require("file".equals(location.getProtocol()), "Local artifact required");
-            Path file = Paths.get(location.toURI())
-                .toRealPath();
-            require(Files.isRegularFile(file), "Packaged development artifact required");
-            if (artifact == null) artifact = file;
-            require(artifact.equals(file), "Probe classes came from different artifacts");
-            String entryName = type.getName()
-                .replace('.', '/') + ".class";
-            try (var jar = new JarFile(file.toFile()); var input = type.getResourceAsStream('/' + entryName)) {
-                var entry = jar.getJarEntry(entryName);
-                require(entry != null && input != null, "Missing actual class resource");
-                try (var packed = jar.getInputStream(entry)) {
-                    String resourceSha = sha(readBytes(input));
-                    require(resourceSha.equals(sha(readBytes(packed))), "Class resource differs from CodeSource");
-                    classes.addProperty(type.getName(), resourceSha);
-                }
-            }
-        }
-        identity.addProperty(
-            "artifactFile",
-            artifact.getFileName()
-                .toString());
-        identity.addProperty("artifactSha256", sha(Files.readAllBytes(artifact)));
-        identity.addProperty("javaSpecificationVersion", System.getProperty("java.specification.version"));
-        identity.addProperty("transformedDefinitionBytesVerified", false);
-        identity.add("classResources", classes);
-        return identity;
-    }
-
-    private static byte[] readBytes(java.io.InputStream input) throws Exception {
-        var bytes = new java.io.ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int count;
-        while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
-        return bytes.toByteArray();
+        return DevelopmentArtifactIdentity
+            .capture(MaidFollowTeleportProbe.class, Rc2FollowTeleport.class, EntityMaid.class);
     }
 
     private static String sha(byte[] bytes) throws Exception {

@@ -1,0 +1,944 @@
+package com.tianluoqaq.tlmnh.common.development;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
+import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.pathfinding.PathPoint;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ItemInWorldManager;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.WorldServer;
+
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
+import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.Tags;
+import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
+import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Creation;
+import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.EndpointRelation;
+import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Installation;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreMoveDriver;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+
+/** 未登记实体的真实RC2 AI阶段组件采集，不是自然世界tick或真实登录主人测试 */
+public final class MaidFollowCoreAdapterProbe {
+
+    private static final Gson GSON = new GsonBuilder().serializeNulls()
+        .create();
+    private static final int FOOT_Y = 160;
+    private static final int PLATFORM_RADIUS = 32;
+    private static final int DOMAIN_PADDING = 24;
+
+    private MaidFollowCoreAdapterProbe() {}
+
+    public static void run(WorldServer world) {
+        require(
+            Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
+            "Dedicated development overworld required");
+        var output = new JsonObject();
+        output.addProperty("schema", "follow-core-adapter-native-v1");
+        output.addProperty("version", Tags.VERSION);
+        output.addProperty("worldNatural", false);
+        output.addProperty("equivalenceVerified", false);
+        output.addProperty("realOnlineOwnerVerified", false);
+        output.addProperty("globalPlayerListResolverExercised", true);
+        output.addProperty(
+            "scope",
+            "unregistered maid; manual inherited updateAITasks; real after-native component, native pathfinder/navigation and synthetic global-list UUID owner; no natural world tick or real player login");
+        var rows = new JsonArray();
+        output.add("cases", rows);
+        var platformReport = new JsonObject();
+        output.add("platform", platformReport);
+        Throwable failure = null;
+        Platform platform = null;
+        try {
+            output.add(
+                "runtimeIdentity",
+                DevelopmentArtifactIdentity.capture(
+                    MaidFollowCoreAdapterProbe.class,
+                    StageMaid.class,
+                    FollowCoreComponent.class,
+                    FollowCoreMoveDriver.class,
+                    Rc2FollowCoreActor.class,
+                    MaidBoundedPathPlanner.class,
+                    MaidPolicyRuntime.class,
+                    EntityMaid.class,
+                    DevelopmentArtifactIdentity.class));
+            var source = new JsonObject();
+            source.addProperty(
+                "worldClass",
+                world.getClass()
+                    .getName());
+            source.addProperty(
+                "chunkProviderClass",
+                world.getChunkProvider()
+                    .getClass()
+                    .getName());
+            source.addProperty("nativeQuery", "World.getEntityPathToXYZ via MaidBoundedPathPlanner.create");
+            source.addProperty(
+                "stage",
+                "EntityLiving.updateAITasks: tasks, native navigator, updateAITick, move/look/jump");
+            output.add("sourceProvider", source);
+            platform = new Platform(world, platformReport);
+            pipeline(platform, rows);
+            foreignCancellation(platform, rows);
+            createInstallGuards(platform, rows);
+        } catch (RuntimeException | LinkageError problem) {
+            failure = problem;
+        } catch (Exception problem) {
+            failure = problem;
+        } finally {
+            if (platform != null) {
+                try {
+                    platform.close();
+                } catch (RuntimeException | LinkageError cleanup) {
+                    failure = collect(failure, cleanup);
+                }
+            }
+        }
+        output.addProperty("executionComplete", failure == null);
+        if (failure != null) output.addProperty(
+            "errorType",
+            failure.getClass()
+                .getSimpleName());
+        try {
+            Path directory = checkedDirectory(Paths.get("tlmnh-dev", "follow-adapter-results"));
+            String name = UUID.randomUUID() + ".json";
+            byte[] bytes = GSON.toJson(output)
+                .getBytes(StandardCharsets.UTF_8);
+            require(bytes.length <= 8_388_608, "Adapter evidence exceeds bounded artifact size");
+            Files.write(directory.resolve(name), bytes, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            var summary = new JsonObject();
+            summary.addProperty("executionComplete", failure == null);
+            summary.addProperty("worldNatural", false);
+            summary.addProperty("equivalenceVerified", false);
+            summary.addProperty("capture", "tlmnh-dev/follow-adapter-results/" + name);
+            summary.addProperty("sha256", sha(bytes));
+            summary.addProperty("bytes", bytes.length);
+            summary.addProperty("rows", rows.size());
+            TLMNotHard.LOG.info("TLMNH_FOLLOW_CORE_ADAPTER_CAPTURE {}", summary);
+        } catch (Exception | LinkageError writing) {
+            if (failure != null && failure != writing) writing.addSuppressed(failure);
+            throw new IllegalStateException("Follow adapter evidence could not be saved", writing);
+        }
+        if (failure != null)
+            throw new IllegalStateException("Follow adapter capture incomplete; inspect retained artifact", failure);
+    }
+
+    private static void pipeline(Platform platform, JsonArray rows) {
+        var row = row(rows, "after_native_pipeline");
+        try (var fixture = new Fixture(platform, row)) {
+            var frames = new JsonArray();
+            row.add("frames", frames);
+            fixture.frame(frames, "first_walk");
+            var actor = fixture.component.getActor();
+            require(
+                actor.peekWalkTarget() != null && actor.peekPathMemory() == null
+                    && actor.getLastCreation() == null
+                    && actor.getLastInstallation() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() == null,
+                "First phase did not leave WALK without query/PATH");
+            require(
+                fixture.component.getMoveState()
+                    .getStatus() == FollowMoveState.Status.STOPPED,
+                "First phase started sink before follow supplied WALK");
+
+            fixture.frame(frames, "create_install");
+            Creation created = actor.getLastCreation();
+            Installation installed = actor.getLastInstallation();
+            PathEntity path = fixture.maid.getNavigator()
+                .getPath();
+            require(
+                created != null && created.queryExecuted
+                    && created.path != null
+                    && created.endpointRelation == EndpointRelation.MATCHES_NATIVE_TARGET,
+                "Real native creation did not provide the admitted full flat path");
+            require(
+                installed != null && installed.nativeSetPathCalled
+                    && installed.started
+                    && !installed.contextChanged
+                    && installed.installedPath == path
+                    && path != null
+                    && actor.peekPathMemory() != null
+                    && actor.peekPathMemory()
+                        .getIdentity() == path,
+                "Created path, actual installation and memory identity differ");
+            require(
+                fixture.component.getMoveState()
+                    .getStatus() == FollowMoveState.Status.RUNNING,
+                "Sink did not remain running after real install");
+            int installedIndex = path.getCurrentPathIndex();
+            fixture.frame(frames, "native_navigation");
+            require(
+                fixture.maid.getNavigator()
+                    .getPath() == path && actor.getLastCreation() == created
+                    && actor.getLastInstallation() == installed,
+                "Third stage unexpectedly replaced the path or repeated the query");
+            require(
+                path.getCurrentPathIndex() > installedIndex && fixture.maid.getMoveHelper()
+                    .getSpeed() > 0 && fixture.maid.getAIMoveSpeed() > 0,
+                "Inherited AI stage did not advance native path and movement control");
+
+            var mutation = new JsonObject();
+            mutation.addProperty("kind", "controlled_reached_position");
+            mutation.add("before", fixture.position(fixture.maid));
+            mutation.add("plannedBlock", point(platform.baseX + 5, FOOT_Y, platform.baseZ));
+            fixture.maid.setLocationAndAngles(platform.baseX + 5.5, FOOT_Y, platform.baseZ + .5, 0, 0);
+            fixture.maid.onGround = true;
+            mutation.add("actualAfter", fixture.position(fixture.maid));
+            row.add("reachedInput", mutation);
+            fixture.frame(frames, "reached_manhattan_two");
+            require(
+                fixture.component.getMoveState()
+                    .getStatus() == FollowMoveState.Status.STOPPED && actor.peekWalkTarget() == null
+                    && actor.peekPathMemory() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() == null,
+                "Reached native phase did not clear its own WALK/PATH/navigation");
+            row.addProperty("complete", true);
+        }
+    }
+
+    private static void foreignCancellation(Platform platform, JsonArray rows) {
+        var row = row(rows, "foreign_path_cancellation");
+        try (var fixture = new Fixture(platform, row)) {
+            var frames = new JsonArray();
+            row.add("frames", frames);
+            fixture.frame(frames, "first_walk");
+            fixture.frame(frames, "create_install");
+            PathEntity owned = fixture.maid.getNavigator()
+                .getPath();
+            require(owned != null, "No owned path to replace");
+            row.add("beforeReplacement", fixture.snapshot());
+            var target = new FollowMoveActor.BlockPos(platform.baseX + 4, FOOT_Y, platform.baseZ + 4);
+            platform.verify(fixture.maid, target);
+            var planner = new MaidBoundedPathPlanner();
+            var creation = planner.create(fixture.maid, target.x, target.y, target.z, .5);
+            require(
+                creation.queryExecuted && creation.path != null
+                    && creation.endpointRelation == EndpointRelation.MATCHES_NATIVE_TARGET,
+                "Foreign native path creation was outside the flat component domain");
+            require(
+                fixture.maid.getNavigator()
+                    .getPath() == owned,
+                "Read-only foreign creation changed active path");
+            var installation = planner.install(fixture.maid, creation);
+            PathEntity foreign = fixture.maid.getNavigator()
+                .getPath();
+            require(
+                installation.nativeSetPathCalled && installation.started
+                    && !installation.contextChanged
+                    && foreign != null
+                    && foreign != owned
+                    && installation.installedPath == foreign,
+                "Distinct foreign native path was not installed");
+            fixture.id(foreign);
+            row.add("foreignCreation", fixture.creation(creation));
+            row.add("foreignInstallation", fixture.installation(installation));
+            row.add("afterReplacement", fixture.snapshot());
+            fixture.runtime()
+                .invalidate(MaidPolicyRuntime.InvalidationReason.RESET);
+            row.add("afterInvalidation", fixture.snapshot());
+            require(
+                fixture.maid.getNavigator()
+                    .getPath() == foreign
+                    && fixture.component.getActor()
+                        .peekWalkTarget() == null
+                    && fixture.component.getActor()
+                        .peekPathMemory() == null
+                    && fixture.component.getMoveState()
+                        .getStatus() == FollowMoveState.Status.STOPPED,
+                "Runtime cancellation erased the foreign path or retained old memory");
+            row.addProperty("complete", true);
+        }
+    }
+
+    private static void createInstallGuards(Platform platform, JsonArray rows) {
+        var row = row(rows, "create_install_token_guard");
+        try (var fixture = new Fixture(platform, row)) {
+            var planner = new MaidBoundedPathPlanner();
+            var runtime = fixture.runtime();
+            Token token = runtime.getContext()
+                .getToken();
+            row.add("beforeCreate", fixture.snapshot());
+            var target = new FollowMoveActor.BlockPos(platform.baseX + 7, FOOT_Y, platform.baseZ);
+            platform.verify(fixture.maid, target);
+            var creation = planner.create(fixture.maid, target.x, target.y, target.z, .5);
+            row.add("creation", fixture.creation(creation));
+            row.add("afterCreate", fixture.snapshot());
+            require(
+                creation.queryExecuted && creation.path != null
+                    && creation.endpointRelation == EndpointRelation.MATCHES_NATIVE_TARGET
+                    && fixture.maid.getNavigator()
+                        .getPath() == null,
+                "Creation failed or installed a path before the explicit install stage");
+            runtime.invalidate(MaidPolicyRuntime.InvalidationReason.RESET);
+            row.addProperty(
+                "createdTokenStillCurrent",
+                runtime.getContext()
+                    .isCurrent(token));
+            var refused = planner.install(fixture.maid, creation);
+            row.add("staleInstallation", fixture.installation(refused));
+            row.add("afterStaleInstall", fixture.snapshot());
+            require(
+                !runtime.getContext()
+                    .isCurrent(token) && refused.contextChanged
+                    && !refused.nativeSetPathCalled
+                    && !refused.started
+                    && fixture.maid.getNavigator()
+                        .getPath() == null,
+                "Stale creation installed a path after its token was invalidated");
+            row.addProperty("complete", true);
+        }
+    }
+
+    private static JsonObject row(JsonArray rows, String id) {
+        var row = new JsonObject();
+        row.addProperty("id", id);
+        row.addProperty("complete", false);
+        rows.add(row);
+        return row;
+    }
+
+    private static final class StageMaid extends EntityMaid {
+
+        StageMaid(WorldServer world) {
+            super(world);
+        }
+
+        void stepInheritedAi() {
+            ticksExisted++;
+            super.updateAITasks();
+        }
+    }
+
+    private static final class Fixture implements AutoCloseable {
+
+        final Platform platform;
+        final StageMaid maid;
+        final EntityPlayerMP owner;
+        final FollowCoreComponent component;
+        final List<Object> globalPlayers, originalPlayers;
+        final Map<PathEntity, String> pathIds = new IdentityHashMap<>();
+        final JsonObject row;
+        Token actorToken;
+        boolean joined, closed;
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        Fixture(Platform platform, JsonObject row) {
+            this.platform = platform;
+            this.row = row;
+            maid = new StageMaid(platform.world);
+            owner = new EntityPlayerMP(
+                MinecraftServer.getServer(),
+                platform.world,
+                new GameProfile(UUID.randomUUID(), "TLMNHCoreOwner"),
+                new ItemInWorldManager(platform.world));
+            globalPlayers = (List) MinecraftServer.getServer()
+                .getConfigurationManager().playerEntityList;
+            originalPlayers = new ArrayList<>(globalPlayers);
+            component = new FollowCoreComponent(
+                maid,
+                new Rc2FollowCoreActor.Contract(8, false, false, platform::verify));
+            try {
+                for (Object value : globalPlayers) require(
+                    !(value instanceof EntityPlayerMP player) || !player.getUniqueID()
+                        .equals(owner.getUniqueID()),
+                    "Synthetic owner UUID already present");
+                owner.setLocationAndAngles(platform.baseX + 7.5, FOOT_Y, platform.baseZ + .5, 0, 0);
+                maid.setLocationAndAngles(platform.baseX + .5, FOOT_Y, platform.baseZ + .5, 0, 0);
+                maid.onGround = true;
+                require(maid.bindTo(owner.getUniqueID()), "Fixture owner binding failed");
+                globalPlayers.add(owner);
+                joined = true;
+                platform.bind(this);
+                maid.getBrainCoordinator()
+                    .setAfterNavigationActionsForDevelopment(component);
+                var participants = new JsonObject();
+                participants.addProperty(
+                    "maidClass",
+                    maid.getClass()
+                        .getName());
+                participants.addProperty(
+                    "maidUuid",
+                    maid.getUniqueID()
+                        .toString());
+                participants.addProperty(
+                    "ownerUuid",
+                    owner.getUniqueID()
+                        .toString());
+                participants.addProperty("maidOwnerUuid", maid.func_152113_b());
+                participants.addProperty("ownerSynthetic", true);
+                participants.addProperty("ownerReallyLoggedIn", false);
+                participants.addProperty("ownerNetworkHandlerPresent", owner.playerNetServerHandler != null);
+                participants.addProperty(
+                    "ownerGameType",
+                    owner.theItemInWorldManager.getGameType()
+                        .getID());
+                participants.addProperty("ownerGlobalListIdentityCount", ownerReferences());
+                participants.addProperty("globalPlayersBefore", originalPlayers.size());
+                participants.addProperty("maidWorldRegistered", registered(maid));
+                participants.addProperty("ownerWorldRegistered", registered(owner));
+                participants.addProperty("controlledOnGround", maid.onGround);
+                participants.addProperty("worldGameTime", platform.world.getTotalWorldTime());
+                row.add("participants", participants);
+                row.add("initialState", snapshot());
+                require(
+                    ownerReferences() == 1 && !registered(maid) && !registered(owner),
+                    "Fixture registration scope changed");
+            } catch (RuntimeException | LinkageError failure) {
+                try {
+                    close();
+                } catch (RuntimeException | LinkageError cleanup) {
+                    if (cleanup != failure) failure.addSuppressed(cleanup);
+                }
+                throw failure;
+            }
+        }
+
+        MaidPolicyRuntime runtime() {
+            var runtime = maid.getBrainCoordinator()
+                .peekPolicyRuntime();
+            require(runtime != null, "Development runtime missing");
+            return runtime;
+        }
+
+        void frame(JsonArray frames, String stage) {
+            var frame = new JsonObject();
+            frame.addProperty("stage", stage);
+            frames.add(frame);
+            frame.add("before", snapshot());
+            int beforeTick = maid.ticksExisted;
+            long beforeWorldTick = platform.world.getTotalWorldTime();
+            try {
+                maid.stepInheritedAi();
+                actorToken = runtime().getContext()
+                    .getToken();
+                frame.add("after", snapshot());
+                require(
+                    maid.ticksExisted == beforeTick + 1 && platform.world.getTotalWorldTime() == beforeWorldTick,
+                    "Manual component stage or world clock changed unexpectedly");
+                require(runtime().isReady(), "Component runtime faulted");
+            } catch (RuntimeException | LinkageError failure) {
+                frame.addProperty(
+                    "errorType",
+                    failure.getClass()
+                        .getSimpleName());
+                throw failure;
+            }
+        }
+
+        JsonObject snapshot() {
+            require(
+                !registered(maid) && !registered(owner) && ownerReferences() == 1,
+                "Unregistered fixture or synthetic resolver identity changed");
+            var actor = component.getActor();
+            var runtime = runtime();
+            boolean readable = actorToken != null && runtime.isReady()
+                && runtime.getContext()
+                    .isCurrent(actorToken);
+            var result = new JsonObject();
+            result.addProperty("worldGameTime", platform.world.getTotalWorldTime());
+            result.addProperty("entityTick", maid.ticksExisted);
+            result.add("maidPosition", position(maid));
+            result.add("ownerPosition", position(owner));
+            result.addProperty("maidOnGround", maid.onGround);
+            result.addProperty("maidAlive", maid.isEntityAlive() && !maid.isDead);
+            result.addProperty("ownerAlive", owner.isEntityAlive() && !owner.isDead);
+            result.addProperty(
+                "ownerGameType",
+                owner.theItemInWorldManager.getGameType()
+                    .getID());
+            result.addProperty("width", maid.width);
+            result.addProperty("height", maid.height);
+            result.addProperty("yOffset", maid.yOffset);
+            result.addProperty("ySize", maid.ySize);
+            result.addProperty("boundingBoxMinY", maid.boundingBox.minY);
+            result.addProperty(
+                "movementBase",
+                maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                    .getBaseValue());
+            result.addProperty(
+                "movementValue",
+                maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                    .getAttributeValue());
+            result.addProperty("aiMoveSpeed", maid.getAIMoveSpeed());
+            result.addProperty(
+                "moveHelperSpeed",
+                maid.getMoveHelper()
+                    .getSpeed());
+            result.addProperty("moveForward", maid.moveForward);
+            result.addProperty(
+                "runtimeProfile",
+                runtime.getProfile()
+                    .getId());
+            result.addProperty("runtimeReady", runtime.isReady());
+            result.addProperty(
+                "epoch",
+                runtime.getContext()
+                    .getEpoch());
+            result.addProperty(
+                "invalidation",
+                runtime.getLastInvalidationReason()
+                    .name());
+            result.addProperty("actorLeaseReadable", readable);
+            if (readable) {
+                var ownerView = actor.getOwner();
+                result.addProperty(
+                    "uuidResolverReturnedOwner",
+                    ownerView != null && ownerView.getWorldIdentity() == owner.worldObj);
+                result.addProperty("ownerIsWalkTarget", ownerView != null && actor.ownerIsWalkTarget(ownerView));
+            } else {
+                result.add("uuidResolverReturnedOwner", JsonNull.INSTANCE);
+                result.add("ownerIsWalkTarget", JsonNull.INSTANCE);
+            }
+            var memory = new JsonObject();
+            var walk = actor.peekWalkTarget();
+            if (walk == null) memory.add("walk", JsonNull.INSTANCE);
+            else {
+                require(readable, "Cannot inspect stale walk target as current memory");
+                var actual = new JsonObject();
+                var block = walk.currentBlockPosition();
+                actual.add("block", point(block.x, block.y, block.z));
+                actual.addProperty("speed", walk.getSpeedModifier());
+                actual.addProperty("closeEnough", walk.getCloseEnoughDistance());
+                actual.addProperty("entityTrackerSpectator", walk.isEntityTrackerSpectator());
+                memory.add("walk", actual);
+            }
+            var pathMemory = actor.peekPathMemory();
+            PathEntity nativePath = maid.getNavigator()
+                .getPath();
+            memory.addProperty("pathId", pathMemory == null ? null : id((PathEntity) pathMemory.getIdentity()));
+            memory.addProperty("pathIsActualNavigation", pathMemory != null && pathMemory.getIdentity() == nativePath);
+            memory.addProperty("cantReachSince", actor.peekCantReachSince());
+            memory.addProperty("hasLook", actor.hasLookTarget());
+            result.add("memory", memory);
+            var state = component.getMoveState();
+            var sink = new JsonObject();
+            sink.addProperty(
+                "status",
+                state.getStatus()
+                    .name());
+            sink.addProperty("remainingCooldown", state.getRemainingCooldown());
+            sink.addProperty(
+                "pathId",
+                state.getPath() == null ? null
+                    : id(
+                        (PathEntity) state.getPath()
+                            .getIdentity()));
+            sink.addProperty("endTimestamp", state.getEndTimestamp());
+            sink.addProperty("speedModifier", state.getSpeedModifier());
+            var last = state.getLastTargetPos();
+            sink.add("lastTargetPos", last == null ? JsonNull.INSTANCE : point(last.x, last.y, last.z));
+            result.add("sink", sink);
+            var nav = new JsonObject();
+            nav.addProperty(
+                "class",
+                maid.getNavigator()
+                    .getClass()
+                    .getName());
+            nav.addProperty(
+                "noPath",
+                maid.getNavigator()
+                    .noPath());
+            nav.add("path", path(nativePath));
+            result.add("navigation", nav);
+            result.add("lastCreation", creation(actor.getLastCreation()));
+            result.add("lastInstallation", installation(actor.getLastInstallation()));
+            result.addProperty("domainVerifications", platform.verifications.size());
+            return result;
+        }
+
+        JsonObject creation(Creation value) {
+            if (value == null) return null;
+            var result = GSON.toJsonTree(value)
+                .getAsJsonObject();
+            result.add("rawPath", path(value.path));
+            return result;
+        }
+
+        JsonObject installation(Installation value) {
+            if (value == null) return null;
+            var result = GSON.toJsonTree(value)
+                .getAsJsonObject();
+            result.addProperty("requestedPathId", id(value.requestedPath));
+            result.addProperty("installedPathId", id(value.installedPath));
+            return result;
+        }
+
+        JsonObject path(PathEntity value) {
+            if (value == null) return null;
+            var result = new JsonObject();
+            result.addProperty("id", id(value));
+            result.addProperty("index", value.getCurrentPathIndex());
+            result.addProperty("length", value.getCurrentPathLength());
+            result.addProperty("finished", value.isFinished());
+            var points = new JsonArray();
+            require(value.getCurrentPathLength() <= 256, "Native fixture path exceeds capacity");
+            for (int i = 0; i < value.getCurrentPathLength(); i++) points.add(point(value.getPathPointFromIndex(i)));
+            result.add("points", points);
+            PathPoint end = value.getFinalPathPoint();
+            result.add("endpoint", end == null ? JsonNull.INSTANCE : point(end));
+            return result;
+        }
+
+        String id(PathEntity value) {
+            if (value == null) return null;
+            String id = pathIds.get(value);
+            if (id == null) {
+                require(pathIds.size() < 16, "Fixture path identity capacity exceeded");
+                id = "path" + pathIds.size();
+                pathIds.put(value, id);
+            }
+            return id;
+        }
+
+        JsonObject position(Entity entity) {
+            var result = new JsonObject();
+            result.addProperty("x", entity.posX);
+            result.addProperty("y", entity.posY);
+            result.addProperty("z", entity.posZ);
+            result.add(
+                "block",
+                point(
+                    MathHelper.floor_double(entity.posX),
+                    MathHelper.floor_double(entity.posY),
+                    MathHelper.floor_double(entity.posZ)));
+            var relative = new JsonObject();
+            relative.addProperty("x", entity.posX - platform.baseX);
+            relative.addProperty("y", entity.posY - FOOT_Y);
+            relative.addProperty("z", entity.posZ - platform.baseZ);
+            result.add("relative", relative);
+            return result;
+        }
+
+        int ownerReferences() {
+            int count = 0;
+            for (Object value : globalPlayers) if (value == owner) count++;
+            return count;
+        }
+
+        boolean registered(Entity value) {
+            if (platform.world.getEntityByID(value.getEntityId()) == value || value.addedToChunk) return true;
+            for (Object item : platform.world.loadedEntityList) if (item == value) return true;
+            for (Object item : platform.world.playerEntities) if (item == value) return true;
+            return false;
+        }
+
+        @Override
+        public void close() {
+            if (closed) return;
+            closed = true;
+            Throwable failure = null;
+            try {
+                maid.getBrainCoordinator()
+                    .setSuspended(true);
+            } catch (RuntimeException | LinkageError problem) {
+                failure = collect(failure, problem);
+            }
+            try {
+                PathEntity actual = maid.getNavigator()
+                    .getPath();
+                if (actual != null) {
+                    require(pathIds.containsKey(actual), "Unowned path appeared during fixture cleanup");
+                    maid.getNavigator()
+                        .clearPathEntity();
+                }
+                maid.setDead();
+            } catch (RuntimeException | LinkageError problem) {
+                failure = collect(failure, problem);
+            }
+            try {
+                if (joined) {
+                    for (int i = globalPlayers.size() - 1; i >= 0; i--)
+                        if (globalPlayers.get(i) == owner) globalPlayers.remove(i);
+                    joined = false;
+                }
+                require(
+                    ownerReferences() == 0 && sameReferences(globalPlayers, originalPlayers),
+                    "Global player list was not restored by identity");
+            } catch (RuntimeException | LinkageError problem) {
+                failure = collect(failure, problem);
+            }
+            try {
+                owner.setDead();
+            } catch (RuntimeException | LinkageError problem) {
+                failure = collect(failure, problem);
+            }
+            try {
+                platform.unbind(this);
+            } catch (RuntimeException | LinkageError problem) {
+                failure = collect(failure, problem);
+            }
+            row.addProperty("cleanupComplete", failure == null);
+            row.addProperty("ownerReferencesAfterCleanup", ownerReferences());
+            if (failure != null)
+                throw new IllegalStateException("Follow component participant cleanup failed", failure);
+        }
+    }
+
+    private static final class Platform implements AutoCloseable {
+
+        final WorldServer world;
+        final int baseX, baseZ;
+        final List<Placed> blocks = new ArrayList<>();
+        final JsonArray verifications = new JsonArray();
+        final JsonObject report;
+        Fixture fixture;
+        boolean closed;
+
+        Platform(WorldServer world, JsonObject report) {
+            this.world = world;
+            this.report = report;
+            var spawn = world.getSpawnPoint();
+            baseX = (spawn.posX >> 4 << 4) + 8;
+            baseZ = (spawn.posZ >> 4 << 4) + 8;
+            report.add("origin", point(baseX, FOOT_Y, baseZ));
+            report.addProperty("radius", PLATFORM_RADIUS);
+            report.addProperty("padding", DOMAIN_PADDING);
+            report.addProperty("forceLoadedChunks", false);
+            report.addProperty("creationComplete", false);
+            report.addProperty("cleanupComplete", false);
+            report.add("domainVerifications", verifications);
+            try {
+                checkLoaded(
+                    baseX - PLATFORM_RADIUS,
+                    baseX + PLATFORM_RADIUS,
+                    baseZ - PLATFORM_RADIUS,
+                    baseZ + PLATFORM_RADIUS);
+                emptyEntities(
+                    baseX - PLATFORM_RADIUS,
+                    baseX + PLATFORM_RADIUS,
+                    baseZ - PLATFORM_RADIUS,
+                    baseZ + PLATFORM_RADIUS);
+                int checked = 0;
+                for (int x = baseX - PLATFORM_RADIUS; x <= baseX + PLATFORM_RADIUS; x++)
+                    for (int z = baseZ - PLATFORM_RADIUS; z <= baseZ + PLATFORM_RADIUS; z++)
+                        for (int y = FOOT_Y - 2; y <= FOOT_Y + 3; y++) {
+                            require(air(x, y, z), "Platform requires original air/meta0 without tile entities");
+                            checked++;
+                        }
+                report.addProperty("preflightAirCells", checked);
+                for (int x = baseX - PLATFORM_RADIUS; x <= baseX + PLATFORM_RADIUS; x++)
+                    for (int z = baseZ - PLATFORM_RADIUS; z <= baseZ + PLATFORM_RADIUS; z++) {
+                        require(air(x, FOOT_Y - 1, z), "Platform placement source changed");
+                        var placed = new Placed(x, FOOT_Y - 1, z);
+                        blocks.add(placed);
+                        require(
+                            world.setBlock(x, placed.y, z, Blocks.stone, 0, 2) && stone(x, placed.y, z),
+                            "Platform block placement failed");
+                    }
+                report.addProperty("placedBlocks", blocks.size());
+                report.addProperty("creationComplete", true);
+            } catch (RuntimeException | LinkageError failure) {
+                try {
+                    close();
+                } catch (RuntimeException | LinkageError cleanup) {
+                    if (cleanup != failure) failure.addSuppressed(cleanup);
+                }
+                throw failure;
+            }
+        }
+
+        void bind(Fixture fixture) {
+            require(this.fixture == null && !closed, "Platform already has a fixture");
+            this.fixture = fixture;
+        }
+
+        void unbind(Fixture fixture) {
+            if (this.fixture == fixture) this.fixture = null;
+            else require(this.fixture == null, "Platform fixture changed");
+        }
+
+        void verify(EntityMaid maid, FollowMoveActor.BlockPos target) {
+            if (fixture == null || fixture.maid != maid || maid.worldObj != world || target.y != FOOT_Y)
+                throw outside("fixture_identity_or_y_changed");
+            int x = MathHelper.floor_double(maid.posX), z = MathHelper.floor_double(maid.posZ);
+            int minX = x - DOMAIN_PADDING, maxX = x + DOMAIN_PADDING;
+            int minZ = z - DOMAIN_PADDING, maxZ = z + DOMAIN_PADDING;
+            if (minX < baseX - PLATFORM_RADIUS || maxX > baseX + PLATFORM_RADIUS
+                || minZ < baseZ - PLATFORM_RADIUS
+                || maxZ > baseZ + PLATFORM_RADIUS
+                || target.x < minX
+                || target.x > maxX
+                || target.z < minZ
+                || target.z > maxZ) throw outside("complete_search_domain_outside_owned_plane");
+            checkLoaded(minX, maxX, minZ, maxZ);
+            emptyEntities(minX, maxX, minZ, maxZ);
+            if (fixture.registered(maid) || fixture.registered(fixture.owner) || fixture.ownerReferences() != 1)
+                throw outside("fixture_or_resolver_registration_changed");
+            int checked = 0;
+            for (int atX = minX; atX <= maxX; atX++)
+                for (int atZ = minZ; atZ <= maxZ; atZ++) for (int y = FOOT_Y - 2; y <= FOOT_Y + 3; y++) {
+                    if (!(y == FOOT_Y - 1 ? stone(atX, y, atZ) : air(atX, y, atZ)))
+                        throw outside("unknown_or_changed_block_in_flat_search_domain");
+                    checked++;
+                }
+            var observed = new JsonObject();
+            observed.addProperty(
+                "caseId",
+                fixture.row.get("id")
+                    .getAsString());
+            observed.addProperty("entityTick", maid.ticksExisted);
+            observed.addProperty("worldGameTime", world.getTotalWorldTime());
+            observed.add("maidBlock", point(x, MathHelper.floor_double(maid.posY), z));
+            observed.add("targetBlock", point(target.x, target.y, target.z));
+            observed.add("min", point(minX, FOOT_Y - 2, minZ));
+            observed.add("max", point(maxX, FOOT_Y + 3, maxZ));
+            observed.addProperty("padding", DOMAIN_PADDING);
+            observed.addProperty("checkedCells", checked);
+            observed.addProperty("loadedWithoutForce", true);
+            observed.addProperty("externalActors", 0);
+            require(verifications.size() < 64, "Domain verification capacity exceeded");
+            verifications.add(observed);
+        }
+
+        void checkLoaded(int minX, int maxX, int minZ, int maxZ) {
+            for (int x = minX >> 4; x <= maxX >> 4; x++) for (int z = minZ >> 4; z <= maxZ >> 4; z++) {
+                if (!world.getChunkProvider()
+                    .chunkExists(x, z)) throw outside("chunk_unloaded_no_force");
+                if (!world.getChunkFromChunkCoords(x, z).isChunkLoaded) throw outside("chunk_not_loaded");
+            }
+        }
+
+        void emptyEntities(int minX, int maxX, int minZ, int maxZ) {
+            if (!world
+                .getEntitiesWithinAABBExcludingEntity(
+                    null,
+                    AxisAlignedBB.getBoundingBox(minX, FOOT_Y - 2, minZ, maxX + 1, FOOT_Y + 4, maxZ + 1))
+                .isEmpty()) throw outside("external_entity_in_search_domain");
+        }
+
+        boolean air(int x, int y, int z) {
+            return world.getBlock(x, y, z) == Blocks.air && world.getBlockMetadata(x, y, z) == 0
+                && world.getTileEntity(x, y, z) == null;
+        }
+
+        boolean stone(int x, int y, int z) {
+            return world.getBlock(x, y, z) == Blocks.stone && world.getBlockMetadata(x, y, z) == 0
+                && world.getTileEntity(x, y, z) == null;
+        }
+
+        @Override
+        public void close() {
+            if (closed) return;
+            Throwable failure = null;
+            int restored = 0;
+            for (int i = blocks.size() - 1; i >= 0; i--) {
+                var at = blocks.get(i);
+                try {
+                    checkLoaded(at.x, at.x, at.z, at.z);
+                    if (!air(at.x, at.y, at.z)) {
+                        require(stone(at.x, at.y, at.z), "Owned platform changed externally; refusing overwrite");
+                        require(world.setBlockToAir(at.x, at.y, at.z), "Platform restoration rejected");
+                    }
+                    require(air(at.x, at.y, at.z), "Original air/meta0 was not restored");
+                    restored++;
+                } catch (RuntimeException | LinkageError problem) {
+                    failure = collect(failure, problem);
+                }
+            }
+            closed = failure == null;
+            report.addProperty("restoredBlocks", restored);
+            report.addProperty("cleanupComplete", closed);
+            if (failure != null) throw new IllegalStateException("Follow component platform cleanup failed", failure);
+        }
+    }
+
+    private static final class Placed {
+
+        final int x, y, z;
+
+        Placed(int x, int y, int z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    private static JsonArray point(PathPoint value) {
+        return point(value.xCoord, value.yCoord, value.zCoord);
+    }
+
+    private static JsonArray point(int x, int y, int z) {
+        var value = new JsonArray();
+        value.add(GSON.toJsonTree(x));
+        value.add(GSON.toJsonTree(y));
+        value.add(GSON.toJsonTree(z));
+        return value;
+    }
+
+    private static boolean sameReferences(List<?> left, List<?> right) {
+        if (left.size() != right.size()) return false;
+        for (int i = 0; i < left.size(); i++) if (left.get(i) != right.get(i)) return false;
+        return true;
+    }
+
+    private static Throwable collect(Throwable previous, Throwable next) {
+        if (previous == null) return next;
+        if (previous != next) previous.addSuppressed(next);
+        return previous;
+    }
+
+    private static Rc2FollowCoreActor.OutsideContractException outside(String reason) {
+        return new Rc2FollowCoreActor.OutsideContractException(reason);
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) throw new IllegalStateException(message);
+    }
+
+    private static Path checkedDirectory(Path relative) throws Exception {
+        Path directory = Paths.get("")
+            .toRealPath();
+        for (Path part : relative) {
+            directory = directory.resolve(part);
+            if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) Files.createDirectory(directory);
+            require(
+                Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(directory)
+                    && directory.toRealPath()
+                        .equals(
+                            directory.toAbsolutePath()
+                                .normalize()),
+                "Redirected adapter evidence directory");
+        }
+        return directory;
+    }
+
+    private static String sha(byte[] bytes) throws Exception {
+        var result = new StringBuilder();
+        for (byte value : MessageDigest.getInstance("SHA-256")
+            .digest(bytes)) {
+            result.append(Character.forDigit((value & 255) >>> 4, 16));
+            result.append(Character.forDigit(value & 15, 16));
+        }
+        return result.toString();
+    }
+}

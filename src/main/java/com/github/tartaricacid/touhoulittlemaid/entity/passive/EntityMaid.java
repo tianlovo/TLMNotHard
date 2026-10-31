@@ -100,6 +100,12 @@ public class EntityMaid extends EntityTameable {
         if (!worldObj.isRemote) syncOffhand();
     }
 
+    @Override
+    protected void updateAITick() {
+        super.updateAITick();
+        if (hasServerBrain()) brain.afterNativeNavigationTick();
+    }
+
     public MaidInventory getMaidInventory() {
         return inventory;
     }

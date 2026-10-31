@@ -251,7 +251,9 @@ Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解
 未绑定本会话成功发射的旧箭单列，不计入当前会话的攻击收益；治疗与多源伤害的 tick 净差不作精确伤害归属
 发生漏采、未知账本重置或采集失败时保留原因，不能以剩余记录生成完整测评分数
 
-生产调度器当前只支持 `LEGACY_PROTOTYPE`，保持已有战斗、生活、跟随调用顺序
+默认调度继续使用 `LEGACY_PROTOTYPE`，保持已有战斗、生活、跟随调用顺序
+`FOLLOW_CORE_COMPONENT` 是显式安装的开发组件，独占原生导航之后的预约阶段；未安装执行器时仍拒绝运行，不回落原型
+该组件不保存到 NBT，不计入 benchmark 准入，也不表示完整 `FOLLOW_CORE_V1` 已通过
 `FAITHFUL_TLM` 与 `ENHANCED` 尚未实现，选择后拒绝执行，不回退到旧原型冒充通过
 策略 token 在保存数据恢复、卸载和身份变化时失效，旧 runtime 永久退役；重新注册实体需要实际世界成员关系
 这些入口只提供后续 O/F/N 测评所需的隔离边界，不能据此声称已完成忠实基线或增强智能
@@ -266,3 +268,19 @@ Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解
 它在预检为空的临时 STONE/air 场景实际运行 RC2 传送，结果写入 `tlmnh-dev/follow-results/`
 日志中的 `CAPTURE` 只表示原始观察已保存，仍须独立比较随机调用、实际位置和原版结果；不以文件生成成功代替等价判定
 原版组件、纯决策重放、RC2 实际传送和完整自然跟随分别判定，完整 F/N 模式仍未启用
+
+### 移动 sink 与原生阶段
+
+`FollowCoreMoveDriver` 按固定 MC1.20.1 的实际 `MoveToTargetSink`、`Behavior` 流程适配纯接口
+保留合法记忆条件下的冷却、150..250 持续时间、严格截止时刻、整格 Manhattan 到达、目标位移平方大于 4 的重规划，
+以及完整、部分、空路径与 fallback 的区别；原生导航、fallback 生成和卡住判定分别由适配边界提供
+受控结果重放不能证明自然 fallback 或 RC2 卡住语义已经还原
+
+`MaidBoundedPathPlanner.create` 只查询，`install` 才提交并核实际实体、世界、导航和 token 上下文
+返回的三维终点关系只是原生事实，不是通用的现代 `canReach`；原 `request` 保留旧原型的立即安装语义
+
+唯一协调器为开发组件预约，`EntityMaid.updateAITick` 保留父类调用后消费一次预约
+这样将组件放在原生导航之后、移动控制之前；省略、重复、旧 tick、身份或 token 失效均不能继续旧动作
+开发命令 `tlmnhdev native-ai-phase-test` 使用真实原生调用栈的受控夹具记录阶段，
+`early_component` 参数会实际提前调用组件，用于检验阶段错误能否被拒绝；两者都不是世界自然跟随测评
+新增采集工具和阶段接线的实际验证状态见 [Indev 进度](PROGRESS.md)

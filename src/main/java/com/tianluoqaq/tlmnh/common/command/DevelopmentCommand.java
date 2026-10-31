@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidFollowCoreAdapterProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowTeleportProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
@@ -30,6 +31,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidNativePhaseProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPolicyLifecycleProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
@@ -62,6 +64,18 @@ public final class DevelopmentCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
+        if (args.length == 1 && "follow-core-adapter-test".equals(args[0])) {
+            MaidFollowCoreAdapterProbe.run((WorldServer) sender.getEntityWorld());
+            return;
+        }
+        if (args.length == 1 && "native-ai-phase-test".equals(args[0])) {
+            MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld());
+            return;
+        }
+        if (args.length == 2 && "native-ai-phase-test".equals(args[0]) && "early_component".equals(args[1])) {
+            MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld(), true);
+            return;
+        }
         if (args.length == 2 && "follow-teleport-replay".equals(args[0])) {
             MaidFollowTeleportProbe.run((WorldServer) sender.getEntityWorld(), args[1]);
             return;

@@ -1,0 +1,3830 @@
+{
+  "schema": "move-sink-contract-v1",
+  "contract": "MOVE_SINK_CORE_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "minecraft": "1.20.1",
+  "forge": "47.2.0",
+  "javaFeature": 17,
+  "rebuilds": 3,
+  "scope": "actual original MoveToTargetSink and Behavior with controlled navigation/path/clock/stability/malus/score dependencies; actual modern fallback generator; no world tick or natural Brain",
+  "cases": [
+    {
+      "id": "S01_duration_min",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 250,
+          "worldGameTime": 750,
+          "patch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 251,
+          "worldGameTime": 751,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S02_duration_max",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        100
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 350,
+          "worldGameTime": 850,
+          "patch": {}
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 351,
+          "worldGameTime": 851,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S03_manhattan_two",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          1,
+          192,
+          1
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": 77,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S04_manhattan_three",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          2,
+          192,
+          1
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S05_vertical_manhattan_three",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          0,
+          195,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S06_replan_strict_squared_four",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "targetBlock": [
+              10,
+              192,
+              0
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 102,
+          "worldGameTime": 602,
+          "patch": {
+            "targetBlock": [
+              10,
+              192,
+              1
+            ],
+            "createReplies": [
+              "B"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S07_partial_first_failure_and_recovery",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "P"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "targetBlock": [
+              12,
+              192,
+              0
+            ],
+            "createReplies": [
+              "Q"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 102,
+          "worldGameTime": 602,
+          "patch": {
+            "targetBlock": [
+              15,
+              192,
+              0
+            ],
+            "createReplies": [
+              "R"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S08_null_path_no_fallback_candidate",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": false,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              null
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S09_null_path_fallback_path",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              null,
+              "B"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S10_null_path_fallback_second_null",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              null,
+              null
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S11_failed_replan_stops_next_phase",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "targetBlock": [
+              12,
+              192,
+              0
+            ],
+            "createReplies": [
+              null
+            ],
+            "stableDestination": false
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 102,
+          "worldGameTime": 602,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S12_navigation_done_without_stuck",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "navigation": {
+              "done": true,
+              "stuck": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "S13_eligible_only_cooldown",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0,
+        3,
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "navigation": {
+              "done": true,
+              "stuck": true
+            }
+          }
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 102,
+          "worldGameTime": 602,
+          "patch": {}
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 103,
+          "worldGameTime": 603,
+          "patch": {
+            "walk": {
+              "present": true
+            },
+            "pathMemory": "A"
+          }
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 104,
+          "worldGameTime": 604,
+          "patch": {
+            "pathMemory": null,
+            "navigation": {
+              "done": false,
+              "stuck": false
+            }
+          }
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 105,
+          "worldGameTime": 605,
+          "patch": {}
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 106,
+          "worldGameTime": 606,
+          "patch": {}
+        },
+        {
+          "operation": "tryStart",
+          "methodTime": 107,
+          "worldGameTime": 607,
+          "patch": {
+            "createReplies": [
+              "B"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S14_spectator_tracker_stops_running",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": true,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S15_walk_removed_skips_stuck_rng",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "walk": {
+              "present": false
+            },
+            "navigation": {
+              "stuck": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "S16_adopt_actual_navigation_path",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "navigation": {
+              "path": "B",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "S17_arrived_during_create",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": 77,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ],
+            "onCreateMaidBlock": [
+              8,
+              192,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "S18_move_return_false_not_start_failure",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": false
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {
+            "navigation": {
+              "done": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "S19_missing_walk_no_extra_check",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": false,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S20_existing_path_memory_blocks_start",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": "A",
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S21_unregistered_cant_reach_blocks_start",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": false
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S22_explicit_stop_preserves_nonpath_state",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": false,
+        "walk": {
+          "present": true,
+          "tracker": "entity",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "doStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {}
+        }
+      ]
+    },
+    {
+      "id": "S23_block_tracker_not_spectator",
+      "initial": {
+        "maidBlock": [
+          0,
+          192,
+          0
+        ],
+        "targetBlock": [
+          8,
+          192,
+          0
+        ],
+        "targetSpectator": true,
+        "walk": {
+          "present": true,
+          "tracker": "block",
+          "speed": 0.5,
+          "closeEnough": 2
+        },
+        "registered": {
+          "walk": true,
+          "path": true,
+          "cantReachSince": true
+        },
+        "pathMemory": null,
+        "cantReachSince": null,
+        "navigation": {
+          "path": null,
+          "done": true,
+          "stuck": false,
+          "moveResult": true
+        },
+        "stableDestination": true,
+        "malus": 0.0,
+        "scoreMode": "constant",
+        "onCreateMaidBlock": null
+      },
+      "paths": {
+        "A": {
+          "canReach": true,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              8,
+              192,
+              0
+            ]
+          ]
+        },
+        "B": {
+          "canReach": true,
+          "target": [
+            12,
+            192,
+            1
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              12,
+              192,
+              1
+            ]
+          ]
+        },
+        "P": {
+          "canReach": false,
+          "target": [
+            8,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              4,
+              192,
+              0
+            ]
+          ]
+        },
+        "Q": {
+          "canReach": false,
+          "target": [
+            12,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              5,
+              192,
+              0
+            ]
+          ]
+        },
+        "R": {
+          "canReach": true,
+          "target": [
+            15,
+            192,
+            0
+          ],
+          "nodes": [
+            [
+              0,
+              192,
+              0
+            ],
+            [
+              15,
+              192,
+              0
+            ]
+          ]
+        }
+      },
+      "worldInts": [
+        0
+      ],
+      "maidSeed": 9182,
+      "steps": [
+        {
+          "operation": "tryStart",
+          "methodTime": 100,
+          "worldGameTime": 600,
+          "patch": {
+            "createReplies": [
+              "A"
+            ]
+          }
+        },
+        {
+          "operation": "tickOrStop",
+          "methodTime": 101,
+          "worldGameTime": 601,
+          "patch": {}
+        }
+      ]
+    }
+  ]
+}

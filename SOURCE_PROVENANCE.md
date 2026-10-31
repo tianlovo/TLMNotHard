@@ -1,5 +1,7 @@
 # 上游移植记录
 
+本页按移植阶段记录来源与改动，早期段落中的待办保留当时范围；当前实现和实际验收状态统一见 [Indev 进度](PROGRESS.md)
+
 固定上游为 TartaricAcid/TouhouLittleMaid 的 1.20 分支，提交 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6，
 代码许可见 licenses/TouhouLittleMaid-MIT.txt
 
@@ -357,3 +359,18 @@ Rc2FollowTeleport 参考同一固定 EntityMaid.teleportToOwner，保留10次候
 当前仅接受声明的干燥 STONE/air 场景，使用 RC2 原生碰撞及实体移动；未知输入返回 OUT_OF_SCOPE，不冒充原生不可达
 MaidFollowTeleportProbe 用原版记录的整数流驱动实际 RC2 适配器，未登记组件实体、不推进自然 tick，不验证完整 Brain、在线主人查找或记忆层
 导航归属在移动前后复核，资源被回调替换时保留替换路径并报告已发生的移动，不将部分执行算作成功
+
+## 移动 sink 与原生阶段适配
+
+新增 `FollowMoveActor`、`FollowMoveState` 和 `FollowCoreMoveDriver` 位于本工程包名，
+根据固定 MC1.20.1 mapped Forge 输入中的 `MoveToTargetSink`、`Behavior`、`Vec3i` 实际字节码核对状态、方法次序和数值语义
+它们不包含 Minecraft 原类，不打包原版或 Forge JAR，也没有把 RC2 的随机位置生成器当作现代 fallback
+独立参考工具 `tools/move-reference` 使用实际原版方法采集受控结果，区别于世界自然 Brain 运行
+
+`MaidBoundedPathPlanner` 将查询与安装分开，保留 RC2 原生 PathFinder 和导航执行；终点关系只描述观察到的三维几何事实
+现代 partial-path、stuck、节点超时与 fallback 的平台对应仍需各自对照，不能由 `noPath` 推导
+
+`MaidBrainCoordinator`、`MaidPolicyRuntime` 和 `MaidAfterNavigationGate` 为本工程独立接线，
+根据两代原生调用顺序将开发组件放到导航之后，并复用既有 A1 token、身份和清理边界
+原包 `EntityMaid` 新增 `updateAITick` 适配钩子，保留父类行为，不另注册第二套任务循环
+完整忠实与增强模式仍未启用，新增源码及探针不等于相应自然功能已经验收

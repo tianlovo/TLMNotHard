@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
-/** 唯一策略执行壳，当前仅运行旧原型，所有调用须来自所属世界的服务端线程 */
+/** 唯一策略执行壳，开发组件与旧原型互斥，所有调用须来自所属世界的服务端线程 */
 public final class MaidPolicyRuntime {
 
     public enum TickResult {
@@ -13,6 +13,7 @@ public final class MaidPolicyRuntime {
         FAULTED,
         REFUSED_REENTRANT,
         INVALIDATED,
+        WRONG_PHASE,
         RETIRED
     }
 
@@ -50,19 +51,42 @@ public final class MaidPolicyRuntime {
         void cancelAll();
     }
 
+    /** 只供已显式安装的开发组件，不代表完整忠实策略 */
+    public interface AfterNavigationActions {
+
+        void tick(MaidPolicyContext.Token token);
+
+        /** 旧 token 已先失效；清理只依据本动作实际持有的资源身份 */
+        void cancel();
+    }
+
     private final LegacyActions actions;
     private final MaidPolicyContext context;
+    private final AfterNavigationActions afterNavigation;
     private MaidBrainProfile profile = MaidBrainProfile.LEGACY_PROTOTYPE;
     private InvalidationReason lastInvalidationReason = InvalidationReason.INITIALIZED;
     private boolean dispatching, changing, faulted, retired;
 
     public MaidPolicyRuntime(UUID maidId, LegacyActions actions) {
+        this(maidId, actions, null);
+    }
+
+    public MaidPolicyRuntime(UUID maidId, LegacyActions actions, AfterNavigationActions afterNavigation) {
         context = new MaidPolicyContext(maidId);
         this.actions = Objects.requireNonNull(actions, "actions");
+        this.afterNavigation = afterNavigation;
     }
 
     /** lifePermission 保持惰性；战斗占用时仍推进一次不被许可的生活清理 */
     public TickResult tick(BooleanSupplier lifePermission) {
+        return tick(false, lifePermission);
+    }
+
+    public TickResult tickAfterNativeNavigation() {
+        return tick(true, () -> false);
+    }
+
+    private TickResult tick(boolean afterNativeNavigation, BooleanSupplier lifePermission) {
         if (retired) return TickResult.RETIRED;
         Objects.requireNonNull(lifePermission, "lifePermission");
         if (dispatching || changing) {
@@ -71,9 +95,14 @@ public final class MaidPolicyRuntime {
         }
         if (faulted) return TickResult.FAULTED;
         if (!hasImplementation(profile)) return TickResult.UNAVAILABLE;
+        if (requiresAfterNativeNavigation() != afterNativeNavigation) return TickResult.WRONG_PHASE;
         dispatching = true;
         var token = context.getToken();
         try {
+            if (afterNativeNavigation) {
+                afterNavigation.tick(token);
+                return context.isCurrent(token) ? TickResult.COMPLETED : invalidatedTickResult();
+            }
             boolean fighting = actions.tickCombat();
             if (!context.isCurrent(token)) return invalidatedTickResult();
             boolean permitted = !fighting && lifePermission.getAsBoolean();
@@ -143,7 +172,7 @@ public final class MaidPolicyRuntime {
         var cancelledToken = context.getToken();
         changing = true;
         try {
-            actions.cancelAll();
+            cancelActions();
         } catch (RuntimeException | Error failure) {
             lastInvalidationReason = InvalidationReason.CALLBACK_FAILURE;
             context.invalidate();
@@ -173,8 +202,30 @@ public final class MaidPolicyRuntime {
         }
     }
 
-    private static boolean hasImplementation(MaidBrainProfile profile) {
-        return profile == MaidBrainProfile.LEGACY_PROTOTYPE && profile.isAvailable();
+    private void cancelActions() {
+        Throwable first = null;
+        try {
+            actions.cancelAll();
+        } catch (RuntimeException | Error failure) {
+            first = failure;
+        }
+        try {
+            if (afterNavigation != null) afterNavigation.cancel();
+        } catch (RuntimeException | Error failure) {
+            if (first == null) first = failure;
+            else if (first != failure) first.addSuppressed(failure);
+        }
+        if (first instanceof RuntimeException failure) throw failure;
+        if (first instanceof Error failure) throw failure;
+    }
+
+    private boolean hasImplementation(MaidBrainProfile profile) {
+        return profile.isAvailable() && (profile == MaidBrainProfile.LEGACY_PROTOTYPE
+            || profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT && afterNavigation != null);
+    }
+
+    public boolean requiresAfterNativeNavigation() {
+        return profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT;
     }
 
     public MaidBrainProfile getProfile() {

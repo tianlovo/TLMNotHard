@@ -1,0 +1,24 @@
+// This task only prepares a local launcher; generated machine paths stay under ignored build output
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    project.tasks.register('prepareMoveReplay') {
+        group = 'verification'
+        description = 'Compiles the actual port movement sink and records its isolated replay launcher'
+        dependsOn project.tasks.named('testClasses')
+        doLast {
+            def launcher = project.javaToolchains.launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            }.get()
+            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            def destination = project.file(project.findProperty('moveLauncher') ?: 'build/move-reference/launcher.json')
+            destination.parentFile.mkdirs()
+            destination.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+                schema: 'move-core-replay-launcher-v1',
+                executable: launcher.executablePath.asFile.absolutePath,
+                classpath: runtime.files.collect { it.absolutePath },
+                mainClass: 'com.tianluoqaq.tlmnh.common.ai.faithful.MoveCoreReplayMain',
+                workingDirectory: project.layout.buildDirectory.dir('move-reference').get().asFile.absolutePath
+            ])) + '\n', 'UTF-8')
+        }
+    }
+}

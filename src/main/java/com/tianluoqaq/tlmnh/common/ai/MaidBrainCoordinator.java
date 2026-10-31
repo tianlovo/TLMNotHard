@@ -16,6 +16,8 @@ import net.minecraftforge.common.util.FakePlayer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
@@ -34,6 +36,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
     private MaidPolicyRuntime policy;
+    private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
+    private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
     private World observedWorld;
     private String observedOwner;
     private String lastPolicyState;
@@ -79,16 +83,64 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (unloaded && !onRegistered()) return;
         decisionTick++;
         var runtime = getPolicyRuntime();
-        if (runtime == null) return;
+        if (runtime == null) {
+            afterNavigationGate.clear();
+            return;
+        }
         if (observedWorld != maid.worldObj) runtime.invalidate(InvalidationReason.WORLD_CHANGED);
         else if (!Objects.equals(observedOwner, maid.func_152113_b()))
             runtime.invalidate(InvalidationReason.OWNER_CHANGED);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
+        if (runtime.requiresAfterNativeNavigation()) {
+            if (suspended) afterNavigationGate.clear();
+            else afterNavigationGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
+            return;
+        }
+        afterNavigationGate.clear();
+        executePolicy(runtime, false);
+    }
+
+    /** 原生navigator更新后、move/look/jump之前，只消费唯一协调器本tick的预约 */
+    public void afterNativeNavigationTick() {
+        var runtime = policy;
+        if (maid.worldObj == null || maid.worldObj.isRemote
+            || runtime == null
+            || suspended
+            || unloaded
+            || persistentReadDepth > 0
+            || lifecycleFailed
+            || transitioningPolicy
+            || !maid.isEntityAlive()
+            || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)) {
+            afterNavigationGate.clear();
+            return;
+        }
+        if (!runtime.getContext()
+            .getMaidId()
+            .equals(maid.getUniqueID())) {
+            retireCurrent(InvalidationReason.IDENTITY_CHANGED);
+            policy = null;
+            afterNavigationActions = null;
+            refreshLifecycleObservations();
+            return;
+        }
+        if (observedWorld != maid.worldObj || !Objects.equals(observedOwner, maid.func_152113_b())) {
+            afterNavigationGate.clear();
+            runtime.invalidate(
+                observedWorld != maid.worldObj ? InvalidationReason.WORLD_CHANGED : InvalidationReason.OWNER_CHANGED);
+            refreshLifecycleObservations();
+            return;
+        }
+        if (afterNavigationGate.consume(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime))
+            executePolicy(runtime, true);
+    }
+
+    private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
         boolean recording = telemetry.isEnabled();
         long started = recording ? System.nanoTime() : 0;
         try {
-            var result = runtime.tick(lifePermission);
+            var result = afterNativeNavigation ? runtime.tickAfterNativeNavigation() : runtime.tick(lifePermission);
             if (recording) {
                 String state = runtime.getProfile()
                     .getId() + ":"
@@ -112,6 +164,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     @Override
     public void resetTask() {
+        afterNavigationGate.clear();
         var runtime = getPolicyRuntime();
         if (runtime != null) runtime.invalidate(InvalidationReason.RESET);
     }
@@ -129,6 +182,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             .equals(maid.getUniqueID())) {
             retireCurrent(InvalidationReason.IDENTITY_CHANGED);
             policy = null;
+            afterNavigationActions = null;
         }
         if (policy == null) policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
 
@@ -151,8 +205,29 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             public void cancelAll() {
                 cancelControllers();
             }
-        });
+        }, afterNavigationActions);
         return policy;
+    }
+
+    /** 开发组件显式安装，不保存到NBT，不把窄组件注册成完整F或N */
+    public void setAfterNavigationActionsForDevelopment(MaidPolicyRuntime.AfterNavigationActions actions) {
+        if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
+            || maid.worldObj.isRemote
+            || !maid.isEntityAlive()
+            || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
+            || persistentReadDepth > 0
+            || unloaded
+            || lifecycleFailed
+            || transitioningPolicy)
+            throw new IllegalStateException("Development component cannot be installed at this lifecycle boundary");
+        retireCurrent(InvalidationReason.PROFILE_CHANGED);
+        policy = null;
+        afterNavigationActions = actions;
+        var runtime = getPolicyRuntime();
+        if (runtime == null) throw new IllegalStateException("No development policy runtime");
+        if (actions != null
+            && runtime.select(MaidBrainProfile.FOLLOW_CORE_COMPONENT) != MaidPolicyRuntime.SelectionResult.SELECTED)
+            throw new IllegalStateException("Development component selection failed");
     }
 
     /** 元数据观察不创建或恢复策略，尚未创建时返回 null */
@@ -202,6 +277,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             lifecycleFailed = persistentReadFailed = true;
             throw failure;
         } finally {
+            afterNavigationActions = null;
             if (telemetry.isEnabled()) telemetry.invalidate("actor_persistent_read_during_recording");
         }
     }
@@ -239,11 +315,13 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         try {
             retireCurrent(InvalidationReason.UNLOADED);
         } finally {
+            afterNavigationActions = null;
             if (telemetry.isEnabled()) telemetry.invalidate("actor_unloaded_during_recording");
         }
     }
 
     private void retireCurrent(InvalidationReason reason) {
+        afterNavigationGate.clear();
         if (transitioningPolicy) {
             if (policy != null) policy.retire(reason);
             return;
@@ -307,6 +385,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     public void setSuspended(boolean suspended) {
         if (maid.worldObj.isRemote) return;
         if (this.suspended != suspended) {
+            afterNavigationGate.clear();
             this.suspended = suspended;
             var runtime = getPolicyRuntime();
             if (runtime != null) runtime.invalidate(InvalidationReason.SUSPENSION_CHANGED);

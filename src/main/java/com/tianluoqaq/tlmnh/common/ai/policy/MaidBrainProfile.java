@@ -4,15 +4,22 @@ package com.tianluoqaq.tlmnh.common.ai.policy;
 public enum MaidBrainProfile {
 
     LEGACY_PROTOTYPE("legacy_prototype", true),
+    FOLLOW_CORE_COMPONENT("follow_core_component", true, true),
     FAITHFUL_TLM("faithful_tlm", false),
     ENHANCED("enhanced", false);
 
     private final String id;
     private final boolean available;
+    private final boolean developmentOnly;
 
     MaidBrainProfile(String id, boolean available) {
+        this(id, available, false);
+    }
+
+    MaidBrainProfile(String id, boolean available, boolean developmentOnly) {
         this.id = id;
         this.available = available;
+        this.developmentOnly = developmentOnly;
     }
 
     public String getId() {
@@ -21,5 +28,9 @@ public enum MaidBrainProfile {
 
     public boolean isAvailable() {
         return available;
+    }
+
+    public boolean isDevelopmentOnly() {
+        return developmentOnly;
     }
 }

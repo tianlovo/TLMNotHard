@@ -462,6 +462,10 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
                 "runtimeEpoch",
                 runtime.getContext()
                     .getEpoch());
+            output.addProperty(
+                "developmentComponent",
+                runtime.getProfile()
+                    .isDevelopmentOnly());
         }
         boolean valid = !observationFailed && observationErrors.size() == 0
             && channel.getFault() == null
@@ -477,6 +481,8 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
             complete && unboundArrowRecords == 0
                 && runtime != null
                 && runtime.isReady()
+                && !runtime.getProfile()
+                    .isDevelopmentOnly()
                 && runtime.getProfile()
                     .isAvailable());
         output.addProperty(
