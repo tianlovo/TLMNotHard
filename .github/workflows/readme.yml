@@ -1,5 +1,6 @@
 name: Repository documentation
 
+# PROGRESS.md 的日常更新不触发本流程，CI lint 仅检查两份 README
 on:
   push:
     paths:
