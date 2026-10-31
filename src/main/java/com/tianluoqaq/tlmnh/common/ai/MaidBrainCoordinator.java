@@ -188,7 +188,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
             @Override
             public boolean tickCombat() {
-                return combat.tick();
+                boolean fighting = combat.tick();
+                maid.getShieldController()
+                    .updateActiveTarget(maid.getAttackTarget());
+                return fighting;
             }
 
             @Override
@@ -272,7 +275,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         persistentReadFailed = false;
         try {
             if (transitioningPolicy) throw new IllegalStateException("Persistent read during policy cleanup");
-            retireCurrent(InvalidationReason.IDENTITY_CHANGED);
+            // 旧runtime必须先失效，之后任何新清理失败也不能保留旧授权
+            Throwable failure = cancel(() -> retireCurrent(InvalidationReason.IDENTITY_CHANGED), null);
+            failure = cancel(
+                () -> maid.getShieldController()
+                    .onEntityBoundary("persistent_read"),
+                failure);
+            if (failure instanceof RuntimeException error) throw error;
+            if (failure instanceof Error error) throw error;
         } catch (RuntimeException | Error failure) {
             lifecycleFailed = persistentReadFailed = true;
             throw failure;
@@ -297,6 +307,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return lifecycleFailed;
     }
 
+    /** 被动物品能力不要求主人在线，也不因开发场景暂停主动AI而失效 */
+    public boolean allowsReactiveItemUse() {
+        return maid.worldObj != null && !maid.worldObj.isRemote
+            && !unloaded
+            && !lifecycleFailed
+            && !transitioningPolicy
+            && persistentReadDepth == 0
+            && !MaidBrainLifecycle.isWorldUnloading(maid.worldObj);
+    }
+
     private void refreshLifecycleObservations() {
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
@@ -313,7 +333,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (maid.worldObj == null || maid.worldObj.isRemote || unloaded) return;
         unloaded = true;
         try {
-            retireCurrent(InvalidationReason.UNLOADED);
+            Throwable failure = cancel(() -> retireCurrent(InvalidationReason.UNLOADED), null);
+            failure = cancel(
+                () -> maid.getShieldController()
+                    .onEntityBoundary("entity_unloaded"),
+                failure);
+            if (failure instanceof RuntimeException error) throw error;
+            if (failure instanceof Error error) throw error;
+        } catch (RuntimeException | Error failure) {
+            lifecycleFailed = true;
+            throw failure;
         } finally {
             afterNavigationActions = null;
             if (telemetry.isEnabled()) telemetry.invalidate("actor_unloaded_during_recording");
@@ -343,6 +372,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
         failure = cancel(follow::cancel, failure);
+        failure = cancel(
+            () -> maid.getShieldController()
+                .cancelUse("policy_cancel"),
+            failure);
+        failure = cancel(
+            () -> maid.getItemUseState()
+                .invalidate(),
+            failure);
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
     }

@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents;
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
@@ -31,7 +32,8 @@ import cpw.mods.fml.common.network.NetworkRegistry;
     modid = TLMNotHard.MOD_ID,
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
-    acceptedMinecraftVersions = "[1.7.10]")
+    acceptedMinecraftVersions = "[1.7.10]",
+    dependencies = "required-after:battlegear2")
 public final class TLMNotHard {
 
     public static final String MOD_ID = "tlmnh";
@@ -60,6 +62,7 @@ public final class TLMNotHard {
         MaidResurrectionContent.register();
         AnimationLab.register();
         MaidBrainLifecycle.register();
+        MaidShieldEvents.register();
     }
 
     /**

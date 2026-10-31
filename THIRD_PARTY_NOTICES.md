@@ -18,6 +18,7 @@
 | TLM 内置动画的 tlm/ysm 查询、骨骼结构体与二阶物理 | 同一 TLM 提交的 client/animation/gecko/molang 下10个原文件 | MIT，保留原包名及 SecondOrder 的 MicroCraft 作者信息；只接内置资源所需查询，不集成外部 YSM 模组，边界适配见 SOURCE_PROVENANCE.md |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
 | Gecko 层级遍历使用的 fastutil 容器 | vigna/fastutil，it.unimi.dsi:fastutil:8.5.18 | Apache-2.0，Sebastiano Vigna；运行时复用 RC2 已提供的库，开发与测试单独解析，不随本模组 JAR 打包或重定位 |
+| Battlegear2-for-Backhand 盾牌公开 API | GTNewHorizons/Battlegear2-for-Backhand，1.6.8-backhand | 上游 LICENCE 为 GNU GPL v3；仅 compileOnly API 依赖，运行时复用 RC2 已安装模组，不随本模组打包或复制实现类；平台适配范围见 SOURCE_PROVENANCE.md |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
 
 资产来源为 [Touhou Little Maid 固定提交](https://github.com/TartaricAcid/TouhouLittleMaid/tree/8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6)，
@@ -37,3 +38,6 @@ TLM 原有代码和资产在导入时分别登记提交、原路径、修改原�
 Ancient Warfare 2、Zombie Awareness 与 SmartBrainLib 当前仅作为研究参考，没有复制其实现或引入运行依赖
 
 原创代码的最终分发许可在正式版发布前单独确定，不从本表推断整个项目采用第三方模板的许可
+
+盾牌 API 来源见 [Battlegear2-for-Backhand](https://github.com/GTNewHorizons/Battlegear2-for-Backhand)，原许可见其 [LICENCE](https://github.com/GTNewHorizons/Battlegear2-for-Backhand/blob/1.6.8-backhand/LICENCE)
+TConstruct 与 TinkersDefense 的开发夹具调用目标环境现有工厂和物品，不将这些模组或其实现类纳入分发 JAR

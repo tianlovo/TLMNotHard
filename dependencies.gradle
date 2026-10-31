@@ -38,6 +38,8 @@ dependencies {
     shadowImplementation("org.joml:joml:1.10.8") { transitive = false }
     // RC2 provides fastutil at runtime; preserve upstream Gecko bone iteration without shading it
     compileOnly("it.unimi.dsi:fastutil:8.5.18") { transitive = false }
+    // RC2 shield item capability only; its published transitive mods are older than the target pack
+    compileOnly("com.github.GTNewHorizons:Battlegear2-for-Backhand:1.6.8-backhand:dev") { transitive = false }
     runtimeOnlyNonPublishable("it.unimi.dsi:fastutil:8.5.18") { transitive = false }
     testImplementation("it.unimi.dsi:fastutil:8.5.18") { transitive = false }
     testImplementation("junit:junit:4.13.2")

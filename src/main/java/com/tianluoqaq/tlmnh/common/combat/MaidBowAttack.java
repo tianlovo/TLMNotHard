@@ -16,6 +16,9 @@ import net.minecraft.util.Vec3;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -50,7 +53,8 @@ public final class MaidBowAttack {
     private Status status = Status.IDLE;
     private ArrowInterceptSolver.Solution lastSolution;
     private EntityArrow lastArrow;
-    private boolean firing, ownsPose;
+    private boolean firing;
+    private Lease useLease;
     private long generation;
 
     public MaidBowAttack(EntityMaid maid) {
@@ -91,10 +95,28 @@ public final class MaidBowAttack {
             interrupt();
             drawingBow = maid.getHeldItem();
         }
+        if (useLease != null && !maid.getItemUseState()
+            .isCurrent(useLease)) {
+            interrupt();
+            drawingBow = maid.getHeldItem();
+        }
+        var expectedBow = drawingBow;
+        long expectedGeneration = generation;
+        useLease = maid.getItemUseState()
+            .tryAcquire(
+                this,
+                expectedBow,
+                Hand.MAIN,
+                Kind.BOW,
+                () -> generation == expectedGeneration && drawingBow == expectedBow
+                    && maid.getHeldItem() == expectedBow
+                    && canHoldBowUse());
+        if (useLease == null) {
+            drawTicks = 0;
+            status = Status.BLOCKED;
+            return false;
+        }
         drawTicks++;
-        ownsPose = true;
-        maid.setPose(MaidPose.USING_ITEM, true);
-        maid.setPose(MaidPose.AIMING_BOW, true);
         status = drawTicks >= DRAW_TICKS ? Status.READY : Status.DRAWING;
         return drawTicks >= DRAW_TICKS;
     }
@@ -116,6 +138,8 @@ public final class MaidBowAttack {
         if (!canFire(target) || target != observed
             || drawTicks < DRAW_TICKS
             || drawingBow != maid.getHeldItem()
+            || !maid.getItemUseState()
+                .isCurrent(useLease)
             || !hasBow(maid)
             || arrowSlot() < 0) return false;
         var origin = new BallisticVector(maid.posX, maid.posY + maid.getEyeHeight() - 0.1, maid.posZ);
@@ -172,6 +196,8 @@ public final class MaidBowAttack {
             || !arrowBefore.equals(arrowAfter)
             || !java.util.Arrays.equals(boundsBefore, boundsAfter)
             || generation != transaction
+            || !maid.getItemUseState()
+                .isCurrent(useLease)
             || !canFire(target)
             || maid.getHeldItem() != bow
             || maid.getMaidInventory()
@@ -265,15 +291,28 @@ public final class MaidBowAttack {
                 .canSee(target);
     }
 
+    private boolean canHoldBowUse() {
+        return maid.worldObj != null && !maid.worldObj.isRemote
+            && maid.isEntityAlive()
+            && maid.getTask() == MaidTask.RANGED_ATTACK
+            && maid.getBrainCoordinator()
+                .allowsReactiveItemUse()
+            && !maid.getBrainCoordinator()
+                .isSuspended()
+            && !maid.isSitting()
+            && maid.ridingEntity == null
+            && !maid.getLeashed()
+            && !maid.hasPose(MaidPose.SLEEPING)
+            && hasBow(maid);
+    }
+
     public void interrupt() {
         generation++;
         drawTicks = 0;
         drawingBow = null;
-        if (ownsPose) {
-            maid.setPose(MaidPose.USING_ITEM, false);
-            maid.setPose(MaidPose.AIMING_BOW, false);
-            ownsPose = false;
-        }
+        maid.getItemUseState()
+            .release(useLease);
+        useLease = null;
         status = Status.IDLE;
     }
 

@@ -14,8 +14,8 @@
       "logoFile": "",
       "screenshots": [],
       "parent": "",
-      "requiredMods": [],
-      "dependencies": [],
+      "requiredMods": ["battlegear2"],
+      "dependencies": ["battlegear2"],
       "dependants": [],
       "useDependencyInformation": false
     }

@@ -23,6 +23,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
@@ -53,6 +55,8 @@ public class EntityMaid extends EntityTameable {
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidInventory inventory = new MaidInventory(this);
+    private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
+    private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private ItemStack offhand;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
@@ -97,7 +101,41 @@ public class EntityMaid extends EntityTameable {
     @Override
     public void onLivingUpdate() {
         super.onLivingUpdate();
-        if (!worldObj.isRemote) syncOffhand();
+        if (!worldObj.isRemote) {
+            shield.tickAfterLivingUpdate();
+            syncOffhand();
+        }
+    }
+
+    @Override
+    public boolean attackEntityFrom(DamageSource source, float amount) {
+        // Forge构造事件发生在本类字段初始化之前，仍让原生伤害入口正常处理
+        if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
+        return super.attackEntityFrom(source, amount);
+    }
+
+    public MaidItemUseState getItemUseState() {
+        return itemUses;
+    }
+
+    public MaidShieldController getShieldController() {
+        return shield;
+    }
+
+    public boolean canUseShield() {
+        return shield != null && shield.canUseShield();
+    }
+
+    public boolean isBlockingWithShield() {
+        return shield != null && shield.isBlocking();
+    }
+
+    private void syncItemUsePose() {
+        if (worldObj == null || worldObj.isRemote) return;
+        var use = itemUses.peek();
+        setPose(MaidPose.USING_ITEM, use != null);
+        setPose(MaidPose.USING_OFFHAND, use != null && use.getHand() == MaidItemUseState.Hand.OFF);
+        setPose(MaidPose.AIMING_BOW, use != null && use.getKind() == MaidItemUseState.Kind.BOW);
     }
 
     @Override
@@ -197,6 +235,8 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.updateObject(DATA_TASK, task.getId());
         setAttackTarget(null);
         getNavigator().clearPathEntity();
+        if (shield != null) shield.cancelUse("task_changed");
+        if (itemUses != null) itemUses.reconcile();
     }
 
     public MaidSchedule getSchedule() {
@@ -260,6 +300,7 @@ public class EntityMaid extends EntityTameable {
     public void setOffhandItem(ItemStack stack) {
         offhand = stack;
         dataWatcher.updateObject(DATA_OFFHAND, stack == null ? null : stack.copy());
+        if (!worldObj.isRemote && shield != null) shield.equipmentChanged();
     }
 
     /** 使用副本比较，原地修改耐久、数量或 NBT 后仍能广播给观察者 */

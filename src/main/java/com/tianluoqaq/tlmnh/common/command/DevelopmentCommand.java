@@ -34,6 +34,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNativePhaseProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPolicyLifecycleProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidShieldNativeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -64,6 +65,10 @@ public final class DevelopmentCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
+        if (args.length == 1 && "shield-native-test".equals(args[0])) {
+            MaidShieldNativeProbe.run((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "follow-core-adapter-test".equals(args[0])) {
             MaidFollowCoreAdapterProbe.run((WorldServer) sender.getEntityWorld());
             return;
