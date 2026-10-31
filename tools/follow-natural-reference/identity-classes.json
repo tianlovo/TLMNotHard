@@ -18,7 +18,8 @@
     "com.tianluoqaq.tlmnh.reference.FollowNaturalReferenceProbe$Session",
     "com.tianluoqaq.tlmnh.reference.FollowNaturalReferenceProbe$Platform",
     "com.tianluoqaq.tlmnh.reference.FollowNaturalReferenceProbe$PlayerState",
-    "com.tianluoqaq.tlmnh.reference.FollowNaturalReferenceProbe$WorldState"
+    "com.tianluoqaq.tlmnh.reference.FollowNaturalReferenceProbe$WorldState",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction"
   ],
   "classes": [
     "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
@@ -65,6 +66,7 @@
     "net.minecraft.server.MinecraftServer",
     "net.minecraft.server.network.ServerGamePacketListenerImpl",
     "net.minecraft.world.entity.player.Inventory",
-    "net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket"
+    "net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction"
   ]
 }

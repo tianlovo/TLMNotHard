@@ -117,6 +117,13 @@ def check_empty_hands(owner, selected):
         assert hand["empty"] is True and hand["count"] == 0 and hand["registryId"] == "minecraft:air"
 
 
+def check_edible_action(value):
+    assert isinstance(value, dict) and value.keys() == {"kind", "class", "name"}
+    assert value["kind"] == "maid_edible_block_action"
+    assert value["class"] == "com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction"
+    assert value["name"] in {"TRY_STEAL", "TRY_PLACE"}
+
+
 def check_snapshot(snapshot, row):
     assert snapshot["maid"]["class"] == "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid"
     assert snapshot["maid"]["uuid"] == row["maidUuid"] and snapshot["owner"]["uuid"] == row["ownerUuid"]
@@ -130,6 +137,9 @@ def check_snapshot(snapshot, row):
     assert snapshot["home"] is False and snapshot["sleeping"] is False and snapshot["sitting"] is False
     for module in ("minecraft:walk_target", "minecraft:path", "minecraft:cant_reach_walk_target_since"):
         assert module in snapshot["memory"]
+    edible = snapshot["memory"]["touhou_little_maid:maid_edible_block_action"]
+    if edible["present"]:
+        check_edible_action(edible["value"])
     path = snapshot["navigation"]["path"]
     if path is not None:
         assert path["kind"] == "path" and path["nodeCount"] == len(path["nodes"])

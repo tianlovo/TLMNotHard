@@ -19,6 +19,7 @@ import java.util.zip.GZIPOutputStream;
 
 import com.github.tartaricacid.touhoulittlemaid.TouhouLittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskManager;
 import com.google.gson.Gson;
@@ -860,6 +861,10 @@ public final class FollowNaturalReferenceProbe {
         require(depth <= 6, "memory_recursion_capacity");
         if (raw == null) return JsonNull.INSTANCE;
         if (raw instanceof Number || raw instanceof Boolean || raw instanceof String) return GSON.toJsonTree(raw);
+        if (raw instanceof MaidEdibleBlockAction action) {
+            var value = new JsonObject(); value.addProperty("kind", "maid_edible_block_action");
+            value.addProperty("class", action.getDeclaringClass().getName()); value.addProperty("name", action.name()); return value;
+        }
         if (raw instanceof Entity entity) { var value = entity(entity); value.addProperty("role", entity == s.maid ? "maid" : entity == s.owner ? "owner" : "other"); return value; }
         if (raw instanceof WalkTarget walk) { var value = new JsonObject(); value.addProperty("kind", "walk"); value.add("tracker", memoryValue(s, walk.getTarget(), depth + 1)); value.addProperty("speed", walk.getSpeedModifier()); value.addProperty("closeEnough", walk.getCloseEnoughDist()); return value; }
         if (raw instanceof PositionTracker tracker) {

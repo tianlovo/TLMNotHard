@@ -14,6 +14,14 @@ spec.loader.exec_module(compare)
 
 
 class EvidenceChecks(unittest.TestCase):
+    def test_only_original_edible_action_members_are_accepted(self):
+        value = {"kind": "maid_edible_block_action", "class": "com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction", "name": "TRY_STEAL"}
+        compare.check_edible_action(value)
+        compare.check_edible_action({**value, "name": "TRY_PLACE"})
+        for invalid in ({**value, "name": "UNKNOWN"}, {**value, "class": "other.Enum"}, {**value, "kind": "generic_enum"}, {**value, "extra": True}):
+            with self.assertRaises(AssertionError):
+                compare.check_edible_action(invalid)
+
     def test_sampling_rejects_gift_in_hand_or_wrong_slot(self):
         empty = {"registryId": "minecraft:air", "count": 0, "empty": True}
         owner = {"selectedSlot": 1, "mainHand": empty, "offHand": empty}
