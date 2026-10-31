@@ -143,5 +143,12 @@
         }
       ]
     }
-  ]
+  ],
+  "ownerSlotPreparation": {
+    "allowSelectExistingEmptyHotbar": true,
+    "moveOrDeleteStacks": false,
+    "offhandMustBeEmpty": true,
+    "sampleHandsMustBeEmpty": true,
+    "restoreOriginalSelectedSlot": true
+  }
 }

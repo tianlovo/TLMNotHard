@@ -110,6 +110,13 @@ def planned(case, index, origin):
     return [offset + value for offset, value in zip(origin, previous["position"])]
 
 
+def check_empty_hands(owner, selected):
+    assert owner["selectedSlot"] == selected and type(selected) is int and 0 <= selected < 9
+    for key in ("mainHand", "offHand"):
+        hand = owner[key]
+        assert hand["empty"] is True and hand["count"] == 0 and hand["registryId"] == "minecraft:air"
+
+
 def check_snapshot(snapshot, row):
     assert snapshot["maid"]["class"] == "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid"
     assert snapshot["maid"]["uuid"] == row["maidUuid"] and snapshot["owner"]["uuid"] == row["ownerUuid"]
@@ -118,6 +125,7 @@ def check_snapshot(snapshot, row):
     assert snapshot["worldRegisteredByUuid"] and snapshot["worldRegisteredById"] and snapshot["positionEntityTicking"]
     assert snapshot["ownerResolvedSamePlayerListObject"] and snapshot["ownerConnection"]["connected"]
     assert snapshot["owner"]["mode"] == "creative" and snapshot["owner"]["spectator"] is False and snapshot["owner"]["abilityInvulnerable"]
+    check_empty_hands(snapshot["owner"], row["samplingSelectedSlot"])
     assert snapshot["task"] == "touhou_little_maid:idle" and snapshot["schedule"] == "ALL" and snapshot["radius"] == 8
     assert snapshot["home"] is False and snapshot["sleeping"] is False and snapshot["sitting"] is False
     for module in ("minecraft:walk_target", "minecraft:path", "minecraft:cant_reach_walk_target_since"):
@@ -143,6 +151,19 @@ def verified_rows(capture, manifest_path):
     assert capture["ownerAfterCleanup"]["abilityInvulnerable"]
     assert first_difference(capture["ownerBefore"], capture["ownerAfterCleanupState"]) is None, "Actual owner state was not fully restored"
     assert capture["ownerAfterCleanup"]["position"] == capture["ownerAfterCleanupState"]["position"]
+    original = capture["ownerBefore"]
+    preparation = capture["slotPreparation"]
+    assert len(original["hotbar"]) == 9 and [slot["slot"] for slot in original["hotbar"]] == list(range(9))
+    assert original["selectedSlot"] == preparation["originalSelectedSlot"] == preparation["actualBefore"]["selectedSlot"]
+    assert original["mainHand"] == preparation["actualBefore"]["mainHand"] and original["offHand"] == preparation["actualBefore"]["offHand"]
+    sampling_slot = preparation["samplingSelectedSlot"]
+    check_empty_hands(preparation["actualAfter"], sampling_slot)
+    assert original["hotbar"][sampling_slot]["stack"]["empty"] is True
+    assert preparation["syncPacket"] == "net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket"
+    for hand in [original["mainHand"], original["offHand"], *(item["stack"] for item in original["hotbar"])]:
+        assert len(hand["nbtSha256"]) == 64 and all(char in "0123456789abcdef" for char in hand["nbtSha256"])
+    assert capture["ownerAfterCleanup"]["selectedSlot"] == original["selectedSlot"]
+    assert capture["ownerAfterCleanup"]["mainHand"] == original["mainHand"] and capture["ownerAfterCleanup"]["offHand"] == original["offHand"]
     identity(capture, manifest_path)
     platform = capture["platform"]
     assert platform["creationComplete"] and platform["cleanupComplete"] and platform["radius"] == 32
@@ -162,6 +183,7 @@ def verified_rows(capture, manifest_path):
         spec = specs[row["id"]]
         assert row["input"] == spec and len(row["frames"]) == spec["ticks"]
         assert row["worldRngAndSensorPhaseUncontrolled"]
+        assert row["samplingSelectedSlot"] == sampling_slot
         assert row["brainRegistration"]["originalActivitiesRemoved"] is False and row["brainRegistration"]["guiOpening"] is False
         registered = row["brainRegistration"]["behaviors"]
         assert any(value["priority"] == 2 and value["class"] == "net.minecraft.world.entity.ai.behavior.MoveToTargetSink" for value in registered)
@@ -174,6 +196,8 @@ def verified_rows(capture, manifest_path):
             assert b["maid"]["tickCount"] == a["maid"]["tickCount"] + 1 and b["gameTime"] == a["gameTime"] + 1
             intended = planned(spec, index, contract["origin"])
             recorded = frame["ownerInput"]["plannedPosition"]
+            check_empty_hands(frame["ownerInput"]["before"], sampling_slot)
+            check_empty_hands(frame["ownerInput"]["actualAfterCall"], sampling_slot)
             assert max(abs(x - y) for x, y in zip(recorded, intended)) < 1e-12
             if frame["ownerInput"]["methodInvoked"]:
                 assert frame["ownerInput"]["actualArguments"] == recorded

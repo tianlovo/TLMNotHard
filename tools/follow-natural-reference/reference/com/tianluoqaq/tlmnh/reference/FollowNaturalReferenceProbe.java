@@ -32,11 +32,15 @@ import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -120,6 +124,11 @@ public final class FollowNaturalReferenceProbe {
                     response.addProperty("worldLoaded", minecraft.getSingleplayerServer() != null);
                     response.addProperty("clientSpectator", minecraft.player != null && minecraft.player.isSpectator());
                     response.addProperty("clientInvulnerable", minecraft.player != null && minecraft.player.getAbilities().invulnerable);
+                    if (minecraft.player != null) {
+                        response.addProperty("clientSelectedSlot", minecraft.player.getInventory().selected);
+                        response.add("clientMainHand", stackState(minecraft.player.getMainHandItem()));
+                        response.add("clientOffHand", stackState(minecraft.player.getOffhandItem()));
+                    }
                 }
                 case "cancel" -> { if (current != null) current.requestAbort("explicit_cancel"); response.addProperty("cancelRequested", current != null); }
                 case "lab_create" -> { require(!queued && current == null, "capture_active"); response = ReferenceScene.createLab(); }
@@ -198,6 +207,10 @@ public final class FollowNaturalReferenceProbe {
                 result.addProperty("sleeping", player.isSleeping());
                 result.add("mainHand", handPreflight(player.getMainHandItem()));
                 result.add("offHand", handPreflight(player.getOffhandItem()));
+                result.addProperty("selectedSlot", player.getInventory().selected);
+                var empty = new JsonArray();
+                for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) if (player.getInventory().getItem(slot).isEmpty()) empty.add(slot);
+                result.add("emptyHotbarSlots", empty);
             }
         } catch (RuntimeException | LinkageError failure) {
             result.addProperty("diagnosticErrorType", failure.getClass().getSimpleName());
@@ -257,6 +270,7 @@ public final class FollowNaturalReferenceProbe {
         final JsonArray runs = new JsonArray();
         final PlayerState playerState;
         final WorldState worldState;
+        final int samplingSelectedSlot;
         final Map<net.minecraft.world.level.pathfinder.Path, String> paths = new IdentityHashMap<>();
         final Map<BehaviorControl<?>, Integer> behaviorIds = new IdentityHashMap<>();
         final List<BehaviorControl<?>> behaviors = new ArrayList<>();
@@ -277,12 +291,23 @@ public final class FollowNaturalReferenceProbe {
             require(contract.get("schema").getAsString().equals("follow-natural-contract-v1")
                 && contract.get("contract").getAsString().equals("FOLLOW_NATURAL_O_V1")
                 && contract.get("rebuilds").getAsInt() == 3, "unsupported_natural_contract");
+            var slotPolicy = contract.getAsJsonObject("ownerSlotPreparation");
+            require(slotPolicy != null && slotPolicy.get("allowSelectExistingEmptyHotbar").getAsBoolean()
+                && !slotPolicy.get("moveOrDeleteStacks").getAsBoolean() && slotPolicy.get("offhandMustBeEmpty").getAsBoolean()
+                && slotPolicy.get("sampleHandsMustBeEmpty").getAsBoolean() && slotPolicy.get("restoreOriginalSelectedSlot").getAsBoolean(),
+                "unsupported_owner_slot_preparation_contract");
             require(server.getWorldData().getLevelName().equals("TLMNH-Reference-Lab") && owner.serverLevel() == level
                 && owner.isSpectator() && owner.getAbilities().invulnerable && owner.getCamera() == owner
                 && !owner.isPassenger() && !owner.isSleeping(),
                 "dedicated_protected_reference_lab_required");
-            require(server.getPlayerList().getPlayerCount() == 1 && owner.getMainHandItem().isEmpty()
-                && owner.getOffhandItem().isEmpty(), "single_real_owner_with_empty_hands_required");
+            require(server.getPlayerList().getPlayerCount() == 1 && owner.getOffhandItem().isEmpty(),
+                "single_real_owner_with_empty_offhand_required");
+            require(Inventory.isHotbarSlot(owner.getInventory().selected), "owner_selected_slot_invalid");
+            int emptySlot = owner.getMainHandItem().isEmpty() ? owner.getInventory().selected : -1;
+            for (int slot = 0; emptySlot < 0 && slot < Inventory.getSelectionSize(); slot++)
+                if (owner.getInventory().getItem(slot).isEmpty()) emptySlot = slot;
+            require(emptySlot >= 0, "no_existing_empty_hotbar_slot");
+            samplingSelectedSlot = emptySlot;
             playerState = new PlayerState(owner); worldState = new WorldState(level);
         }
 
@@ -304,6 +329,17 @@ public final class FollowNaturalReferenceProbe {
             report.add("identity", FollowNaturalReferenceIdentity.capture()); report.add("runs", runs);
             report.add("ownerBefore", playerState.json()); report.add("worldBefore", worldState.json());
             platform = new Platform(level, contract, report);
+            require(owner.getInventory().selected == playerState.selectedSlot && owner.getOffhandItem().isEmpty()
+                && owner.getInventory().getItem(samplingSelectedSlot).isEmpty(), "sampling_slot_preparation_state_changed");
+            playerState.verifyStacks(owner);
+            var preparation = new JsonObject();
+            preparation.addProperty("originalSelectedSlot", playerState.selectedSlot);
+            preparation.addProperty("samplingSelectedSlot", samplingSelectedSlot);
+            preparation.add("actualBefore", selectionState(owner));
+            selectSlot(owner, samplingSelectedSlot);
+            preparation.addProperty("syncPacket", ClientboundSetCarriedItemPacket.class.getName());
+            preparation.add("actualAfter", selectionState(owner));
+            report.add("slotPreparation", preparation);
             worldState.configure(server);
             require(owner.setGameMode(GameType.CREATIVE) || owner.gameMode.getGameModeForPlayer() == GameType.CREATIVE,
                 "owner_creative_transition_rejected");
@@ -330,6 +366,8 @@ public final class FollowNaturalReferenceProbe {
                 "real_owner_identity_or_connection_changed");
             require(owner.gameMode.getGameModeForPlayer() == GameType.CREATIVE && !owner.isSpectator()
                 && owner.getAbilities().invulnerable && owner.isInvulnerable(), "owner_protection_or_mode_changed");
+            require(owner.getInventory().selected == samplingSelectedSlot && owner.getMainHandItem().isEmpty()
+                && owner.getOffhandItem().isEmpty(), "sampling_selected_slot_or_empty_hands_changed");
         }
 
         void beginWarmup() {
@@ -418,6 +456,7 @@ public final class FollowNaturalReferenceProbe {
             row.addProperty("complete", false); row.addProperty("cleanupComplete", false); row.add("input", copy(spec()));
             frames = new JsonArray(); row.add("frames", frames); runs.add(row);
             row.addProperty("maidUuid", maid.getUUID().toString()); row.addProperty("ownerUuid", ownerId.toString());
+            row.addProperty("samplingSelectedSlot", samplingSelectedSlot);
             row.addProperty("maidRandomClass", maid.getRandom().getClass().getName());
             row.addProperty("worldRngAndSensorPhaseUncontrolled", true); row.addProperty("warmupBeforeSpawnTicks", warmup);
             row.add("brainRegistration", registration()); row.add("spawnState", snapshot());
@@ -584,6 +623,11 @@ public final class FollowNaturalReferenceProbe {
         final float yaw, pitch, health, fallDistance, flySpeed, walkSpeed;
         final boolean invulnerable, abilityInvulnerable, flying, mayfly, instabuild, mayBuild;
         final GameType mode;
+        final int selectedSlot;
+        final List<ItemStack> hotbar = new ArrayList<>();
+        final ItemStack offhand;
+        final JsonArray observedHotbar;
+        final JsonObject observedMainHand, observedOffHand;
 
         PlayerState(ServerPlayer player) {
             level = player.serverLevel(); position = player.position(); movement = player.getDeltaMovement();
@@ -592,6 +636,13 @@ public final class FollowNaturalReferenceProbe {
             var abilities = player.getAbilities(); abilityInvulnerable = abilities.invulnerable; flying = abilities.flying;
             mayfly = abilities.mayfly; instabuild = abilities.instabuild; mayBuild = abilities.mayBuild;
             flySpeed = abilities.getFlyingSpeed(); walkSpeed = abilities.getWalkingSpeed();
+            selectedSlot = player.getInventory().selected;
+            require(Inventory.isHotbarSlot(selectedSlot), "owner_selected_slot_invalid");
+            require(Inventory.getSelectionSize() == 9, "unexpected_hotbar_size");
+            observedHotbar = hotbarState(player);
+            observedMainHand = stackState(player.getMainHandItem()); observedOffHand = stackState(player.getOffhandItem());
+            for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) hotbar.add(player.getInventory().getItem(slot).copy());
+            offhand = player.getOffhandItem().copy();
         }
 
         JsonObject json() {
@@ -602,12 +653,15 @@ public final class FollowNaturalReferenceProbe {
             result.addProperty("health", health); result.addProperty("entityInvulnerable", invulnerable);
             result.addProperty("abilityInvulnerable", abilityInvulnerable); result.addProperty("flying", flying);
             result.addProperty("mayfly", mayfly); result.addProperty("instabuild", instabuild); result.addProperty("mayBuild", mayBuild);
-            result.addProperty("flyingSpeed", flySpeed); result.addProperty("walkingSpeed", walkSpeed); return result;
+            result.addProperty("flyingSpeed", flySpeed); result.addProperty("walkingSpeed", walkSpeed);
+            result.addProperty("selectedSlot", selectedSlot); result.add("mainHand", observedMainHand);
+            result.add("offHand", observedOffHand); result.add("hotbar", observedHotbar); return result;
         }
 
         void restore(ServerPlayer player) {
             Throwable failure = null;
             failure = attempt(() -> player.setGameMode(mode), failure);
+            failure = attempt(() -> selectSlot(player, selectedSlot), failure);
             failure = attempt(() -> player.teleportTo(level, position.x, position.y, position.z, yaw, pitch), failure);
             failure = attempt(() -> {
                 var abilities = player.getAbilities(); abilities.invulnerable = abilityInvulnerable; abilities.flying = flying;
@@ -628,8 +682,16 @@ public final class FollowNaturalReferenceProbe {
                 && player.isInvulnerable() == invulnerable && a.invulnerable == abilityInvulnerable && a.invulnerable
                 && a.flying == flying && a.mayfly == mayfly && a.instabuild == instabuild && a.mayBuild == mayBuild
                 && a.getFlyingSpeed() == flySpeed && a.getWalkingSpeed() == walkSpeed, "owner_restore_actual_state_differs");
+            require(player.getInventory().selected == selectedSlot, "original_selected_slot_not_restored");
+            verifyStacks(player);
             var result = new JsonObject(); result.addProperty("serverStateVerified", true);
             result.addProperty("clientAcknowledgementVerified", false); result.addProperty("playerDatPersistenceVerified", false); return result;
+        }
+
+        void verifyStacks(ServerPlayer player) {
+            for (int slot = 0; slot < hotbar.size(); slot++) require(ItemStack.matches(hotbar.get(slot), player.getInventory().getItem(slot)),
+                "original_hotbar_stack_changed");
+            require(ItemStack.matches(offhand, player.getOffhandItem()), "original_offhand_stack_changed");
         }
     }
 
@@ -828,8 +890,39 @@ public final class FollowNaturalReferenceProbe {
         value.add("movement", vector(entity.getDeltaMovement())); value.addProperty("alive", entity.isAlive()); value.addProperty("removed", entity.isRemoved());
         value.addProperty("onGround", entity.onGround()); value.addProperty("fallDistance", entity.fallDistance);
         if (entity instanceof net.minecraft.world.entity.LivingEntity living) value.addProperty("health", living.getHealth());
-        if (entity instanceof ServerPlayer player) { value.addProperty("mode", player.gameMode.getGameModeForPlayer().getName()); value.addProperty("spectator", player.isSpectator()); value.addProperty("abilityInvulnerable", player.getAbilities().invulnerable); }
+        if (entity instanceof ServerPlayer player) {
+            value.addProperty("mode", player.gameMode.getGameModeForPlayer().getName()); value.addProperty("spectator", player.isSpectator());
+            value.addProperty("abilityInvulnerable", player.getAbilities().invulnerable);
+            value.addProperty("selectedSlot", player.getInventory().selected);
+            value.add("mainHand", stackState(player.getMainHandItem())); value.add("offHand", stackState(player.getOffhandItem()));
+        }
         return value;
+    }
+
+    private static void selectSlot(ServerPlayer player, int slot) {
+        require(Inventory.isHotbarSlot(slot) && player.connection != null, "valid_selected_slot_and_real_connection_required");
+        player.getInventory().selected = slot;
+        player.connection.send(new ClientboundSetCarriedItemPacket(slot));
+    }
+
+    private static JsonObject selectionState(ServerPlayer player) {
+        var result = new JsonObject(); result.addProperty("selectedSlot", player.getInventory().selected);
+        result.add("mainHand", stackState(player.getMainHandItem())); result.add("offHand", stackState(player.getOffhandItem())); return result;
+    }
+
+    private static JsonArray hotbarState(ServerPlayer player) {
+        var result = new JsonArray();
+        for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
+            var value = new JsonObject(); value.addProperty("slot", slot); value.add("stack", stackState(player.getInventory().getItem(slot))); result.add(value);
+        }
+        return result;
+    }
+
+    private static JsonObject stackState(ItemStack stack) {
+        var result = handPreflight(stack);
+        try { result.addProperty("nbtSha256", sha(stack.save(new CompoundTag()).toString().getBytes(StandardCharsets.UTF_8))); }
+        catch (Exception failure) { throw new IllegalStateException("item_snapshot_sha_unavailable", failure); }
+        return result;
     }
 
     private static JsonArray vector(Vec3 value) { require(Double.isFinite(value.x) && Double.isFinite(value.y) && Double.isFinite(value.z), "nonfinite_observation"); var out = new JsonArray(); out.add(value.x); out.add(value.y); out.add(value.z); return out; }

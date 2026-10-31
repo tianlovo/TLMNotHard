@@ -10,6 +10,11 @@
 真实主人来自当前 IntegratedServer 的 PlayerList 和客户端连接，采集期间由受保护旁观临时切为创造模式，结束恢复
 主人位置是脚本经真实服务端连接 teleport 输入的轨迹，不代表键盘操作
 
+原版开局魂符可能占据当前主手，准备阶段会保存原selected slot，切到现有空hotbar槽并发送真实carried-slot同步包
+不删除、搬动或回填物品；没有空hotbar或副手非空时拒绝采集
+采样每帧仍严格双手为空，结束切回原slot，并核9格/副手的实际ItemStack.matches与前后NBT摘要
+status在真正客户端线程读取clientSelectedSlot和双手，不能把服务端发包直接冒充客户端已确认
+
 原日程 ALL 实际运行 WORK 活动
 TaskIdle 的工作任务、core、随机走动、传感器和其他原活动全部保留；不会为得到相同轨迹删任务或每 tick 重置 RNG
 三个场景是直行后停、直角转向、跨传送距离界，各三次全新女仆，共1800个实体观察帧

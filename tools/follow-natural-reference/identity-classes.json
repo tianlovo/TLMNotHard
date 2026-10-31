@@ -63,6 +63,8 @@
     "net.minecraft.server.players.PlayerList",
     "net.minecraft.client.server.IntegratedServer",
     "net.minecraft.server.MinecraftServer",
-    "net.minecraft.server.network.ServerGamePacketListenerImpl"
+    "net.minecraft.server.network.ServerGamePacketListenerImpl",
+    "net.minecraft.world.entity.player.Inventory",
+    "net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket"
   ]
 }

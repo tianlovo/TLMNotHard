@@ -14,6 +14,16 @@ spec.loader.exec_module(compare)
 
 
 class EvidenceChecks(unittest.TestCase):
+    def test_sampling_rejects_gift_in_hand_or_wrong_slot(self):
+        empty = {"registryId": "minecraft:air", "count": 0, "empty": True}
+        owner = {"selectedSlot": 1, "mainHand": empty, "offHand": empty}
+        compare.check_empty_hands(owner, 1)
+        for changed in ({**owner, "selectedSlot": 0},
+                        {**owner, "mainHand": {"registryId": "touhou_little_maid:smart_slab_init", "count": 1, "empty": False}},
+                        {**owner, "offHand": {"registryId": "minecraft:stone", "count": 1, "empty": False}}):
+            with self.assertRaises(AssertionError):
+                compare.check_empty_hands(changed, 1)
+
     def test_duplicate_and_nonfinite_json_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "input.json"
