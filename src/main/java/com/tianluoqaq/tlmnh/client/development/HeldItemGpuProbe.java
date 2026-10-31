@@ -252,7 +252,7 @@ public final class HeldItemGpuProbe {
 
     private static JsonObject header(Request request) {
         var report = new JsonObject();
-        report.addProperty("schema", "held-item-gpu-pilot-v1");
+        report.addProperty("schema", "held-item-gpu-pilot-v2");
         report.addProperty("status", "complete");
         report.addProperty("transaction", request.request);
         report.addProperty("model", request.model);
@@ -411,6 +411,39 @@ public final class HeldItemGpuProbe {
         return bytes;
     }
 
+    private static void awaitQuery(int query, long requestDeadline, JsonObject wait) {
+        long started = System.nanoTime();
+        long budget = Math.min(500_000_000L, requestDeadline - started);
+        wait.addProperty("maximumWaitNanos", 500_000_000L);
+        wait.addProperty("budgetNanos", Math.max(0, budget));
+        wait.addProperty("polls", 0);
+        wait.addProperty("timedOut", false);
+        int polls = 0;
+        while (true) {
+            long elapsed = System.nanoTime() - started;
+            wait.addProperty("elapsedNanos", elapsed);
+            if (elapsed >= budget || Thread.currentThread()
+                .isInterrupted()) {
+                wait.addProperty("timedOut", true);
+                throw new IllegalStateException("Native query availability deadline exceeded");
+            }
+            int available = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT_AVAILABLE);
+            if (++polls == 1) wait.addProperty("firstAvailable", available);
+            wait.addProperty("polls", polls);
+            wait.addProperty("lastAvailable", available);
+            elapsed = System.nanoTime() - started;
+            wait.addProperty("elapsedNanos", elapsed);
+            if (available != 0 && available != 1)
+                throw new IllegalStateException("Invalid native query availability value");
+            if (elapsed >= budget) {
+                wait.addProperty("timedOut", true);
+                throw new IllegalStateException("Native query availability deadline exceeded");
+            }
+            if (available == 1) return;
+            java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
+        }
+    }
+
     private static float[] matrix(int name) {
         var buffer = BufferUtils.createFloatBuffer(16);
         GL11.glGetFloat(name, buffer);
@@ -484,6 +517,7 @@ public final class HeldItemGpuProbe {
         final Thread owner = Thread.currentThread();
         final List<byte[]> samples = new ArrayList<>();
         final JsonArray sampleReports = new JsonArray();
+        final JsonArray queryWaits = new JsonArray();
         final Path game, folder;
         MaidHeldItemLayer.DevelopmentDrawGate gate;
         JsonArray calls;
@@ -518,6 +552,7 @@ public final class HeldItemGpuProbe {
             }
             folder = directory;
             report.add("samples", sampleReports);
+            report.add("queryWaits", queryWaits);
         }
 
         void capture(BuiltinMaidModel model, float partialTick, Runnable draw) throws Exception {
@@ -601,14 +636,22 @@ public final class HeldItemGpuProbe {
                     draw.run();
                     GL15.glEndQuery(GL15.GL_SAMPLES_PASSED);
                     queryActive = false;
+                    var wait = new JsonObject();
+                    wait.addProperty("phase", phases[index]);
+                    wait.addProperty("queryId", query);
+                    wait.addProperty("flushCalled", false);
+                    queryWaits.add(wait);
+                    GL11.glFlush();
+                    wait.addProperty("flushCalled", true);
                     byte[] color = rgba(), afterDepth = depth();
-                    if (GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT_AVAILABLE) == 0)
-                        throw new IllegalStateException("Native query result unavailable after readback");
+                    // 像素回读不保证query已就绪，只在真实AVAILABLE后读取可能阻塞的RESULT
+                    awaitQuery(query, request.deadline, wait);
                     // RC2 Angelica提供scalar i，scalar ui会被重定向到不存在的重载
                     int result = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT);
                     if (result < 0) throw new IllegalStateException("Native query exceeds signed result range");
                     gpuSamples = result;
                     var item = save(phases[index], color, afterDepth);
+                    item.add("queryWait", wait);
                     item.addProperty("bodyBeforeColorSha256", hash(beforeColor));
                     item.addProperty("bodyBeforeDepthSha256", hash(beforeDepth));
                     item.addProperty("bodyBeforeGeometrySha256", beforeHash);
