@@ -8,6 +8,8 @@ import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.Kind;
+import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
@@ -19,6 +21,14 @@ public final class MaidBoundedPathPlanner {
     private Attempt lastAttempt;
 
     public PathResult request(EntityMaid maid, double x, double y, double z, double speed) {
+        var result = performRequest(maid, x, y, z, speed);
+        maid.getBrainCoordinator()
+            .getTelemetry()
+            .navigation(Kind.NAV_PROCESSED, "navigation", "", "planner_adapter_finalized:" + result, 0);
+        return result;
+    }
+
+    private PathResult performRequest(EntityMaid maid, double x, double y, double z, double speed) {
         var navigator = maid.getNavigator();
         float nativeRange = navigator.getPathSearchRange();
         float searchRange = Math.min(nativeRange, MAX_SEARCH_RANGE);
@@ -100,16 +110,36 @@ public final class MaidBoundedPathPlanner {
             breakDoors,
             avoidWater,
             "native_canNavigate=false");
-        var path = maid.worldObj.getEntityPathToXYZ(
-            maid,
-            MathHelper.floor_double(x),
-            (int) y,
-            MathHelper.floor_double(z),
-            searchRange,
-            options.enterDoors,
-            breakDoors,
-            avoidWater,
-            options.canSwim);
+        var telemetry = maid.getBrainCoordinator()
+            .getTelemetry();
+        boolean recording = telemetry.isEnabled();
+        long elapsed;
+        net.minecraft.pathfinding.PathEntity path;
+        telemetry.navigation(Kind.NAV_SUBMITTED, "navigation", "", "native_world_path_query", 0);
+        long startedAt = recording ? System.nanoTime() : 0;
+        try {
+            path = maid.worldObj.getEntityPathToXYZ(
+                maid,
+                MathHelper.floor_double(x),
+                (int) y,
+                MathHelper.floor_double(z),
+                searchRange,
+                options.enterDoors,
+                breakDoors,
+                avoidWater,
+                options.canSwim);
+        } catch (RuntimeException | Error failure) {
+            telemetry.state(
+                "navigation",
+                "",
+                "native_path_threw:" + failure.getClass()
+                    .getSimpleName());
+            throw failure;
+        } finally {
+            elapsed = recording ? System.nanoTime() - startedAt : 0;
+            if (recording) telemetry.work("native_path", WorkComponent.NATIVE_PATH, elapsed);
+        }
+        telemetry.navigation(Kind.NAV_RETURNED, "navigation", "", "path_null=" + (path == null), elapsed);
         boolean started = navigator.setPath(path, speed);
         return finish(
             started ? PathResult.STARTED : PathResult.UNREACHABLE,

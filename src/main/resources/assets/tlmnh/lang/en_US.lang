@@ -82,3 +82,5 @@ message.tlmnh.lifecycle.blocked=There is no safe space above the shrine
 message.tlmnh.lifecycle.spawn_rejected=Spawning was prevented; the item was kept
 message.tlmnh.lifecycle.health_low=Requires at least half your maximum health plus 1
 message.tlmnh.lifecycle.inventory_full=Not enough inventory space; sneak-right-click to force retrieval
+commands.tlmnhdev.telemetry_native_passed=Native damage observation fixture passed; behaviour benchmarks remain pending
+commands.tlmnhdev.policy_lifecycle_passed=Policy identity and lifecycle checks passed; enhanced policies remain unimplemented

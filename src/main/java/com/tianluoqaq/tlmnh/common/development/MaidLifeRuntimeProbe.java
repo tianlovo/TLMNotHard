@@ -32,6 +32,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -71,6 +72,8 @@ public final class MaidLifeRuntimeProbe {
     }
 
     private final WorldServer world;
+    private final boolean recordingEnabled;
+    private MaidEpisodeRecorder recorder;
     private final int x, z;
     private final String run = UUID.randomUUID()
         .toString();
@@ -95,8 +98,9 @@ public final class MaidLifeRuntimeProbe {
     private boolean stealVerified, placeVerified, eatVerified, bedMovementVerified, dawnVerified, dangerVerified,
         recoveryVerified;
 
-    private MaidLifeRuntimeProbe(WorldServer world) {
+    private MaidLifeRuntimeProbe(WorldServer world, boolean recordingEnabled) {
         this.world = world;
+        this.recordingEnabled = recordingEnabled;
         var spawn = world.getSpawnPoint();
         x = (spawn.posX >> 4 << 4) + 8 - 64;
         z = (spawn.posZ >> 4 << 4) + 8 - 64;
@@ -108,6 +112,10 @@ public final class MaidLifeRuntimeProbe {
     }
 
     public static void start(WorldServer world) {
+        start(world, true);
+    }
+
+    public static void start(WorldServer world, boolean recordingEnabled) {
         require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands must be enabled");
         require(pending == null, "Another life runtime probe is active");
         require(
@@ -116,7 +124,7 @@ public final class MaidLifeRuntimeProbe {
         require(
             world.difficultySetting != EnumDifficulty.PEACEFUL,
             "Hostile observation requires non-peaceful difficulty");
-        var probe = new MaidLifeRuntimeProbe(world);
+        var probe = new MaidLifeRuntimeProbe(world, recordingEnabled);
         pending = probe;
         try {
             probe.preflight();
@@ -223,6 +231,7 @@ public final class MaidLifeRuntimeProbe {
         maid.setSitting(false);
         maid.setLocationAndAngles(x + 0.5D, Y, z + 0.5D, 0, 0);
         require(world.spawnEntityInWorld(maid) && MaidSpawnChecks.present(maid, world), "Actual living maid spawn");
+        if (recordingEnabled) recorder = MaidEpisodeRecorder.open(maid, "natural_life_runtime");
         initialEntityTick = previousEntityTick = maid.ticksExisted;
         initialFavor = maid.getFavorability();
         initialHunger = maid.getHunger();
@@ -591,6 +600,32 @@ public final class MaidLifeRuntimeProbe {
         int entityTicks = maid == null ? 0 : maid.ticksExisted - initialEntityTick;
         int bites = maid == null ? 0 : life().getBites(), placements = maid == null ? 0 : life().getPlacements();
         int sleeps = maid == null ? 0 : life().getSleepEntries(), paths = maid == null ? 0 : life().getPathRequests();
+        JsonObject episode = null;
+        if (recorder != null) {
+            try {
+                episode = recorder.exportSummary();
+                require(
+                    episode.get("validObservation")
+                        .getAsBoolean(),
+                    "Episode observation failed");
+                require(
+                    episode.get("traceComplete")
+                        .getAsBoolean(),
+                    "Episode trace is incomplete");
+                if (success) require(
+                    episode.getAsJsonObject("telemetry")
+                        .getAsJsonObject("counters")
+                        .get("ACTION_COMPLETED")
+                        .getAsLong() == bites + placements + sleeps,
+                    "Life effect-stage records diverged from native production counters");
+            } catch (RuntimeException | LinkageError failure) {
+                errors.add(
+                    "episode:" + failure.getClass()
+                        .getSimpleName());
+            } finally {
+                restore(recorder::close, errors);
+            }
+        }
         try {
             if (maid != null) restore(
                 () -> maid.getBrainCoordinator()
@@ -653,6 +688,8 @@ public final class MaidLifeRuntimeProbe {
         result.addProperty("passed", success && scenarios && errors.isEmpty());
         result.addProperty("scope", SCOPE);
         result.addProperty("ticks", ticks);
+        result.addProperty("recordingEnabled", recordingEnabled);
+        if (episode != null) result.add("episode", episode);
         result.addProperty("naturalEntityTicks", entityTicks);
         result.addProperty("wallMillis", (System.nanoTime() - startedNanos) / 1_000_000L);
         result.addProperty("bites", bites);

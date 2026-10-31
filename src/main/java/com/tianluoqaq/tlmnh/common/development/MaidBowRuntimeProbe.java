@@ -31,6 +31,7 @@ import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
@@ -57,6 +58,8 @@ public final class MaidBowRuntimeProbe {
 
     private static MaidBowRuntimeProbe pending;
     private final WorldServer world;
+    private final boolean recordingEnabled;
+    private MaidEpisodeRecorder recorder;
     private final EntityPlayerMP owner;
     private final EntityMaid maid, friend;
     private final EmbeddedChannel connection;
@@ -81,8 +84,9 @@ public final class MaidBowRuntimeProbe {
     private boolean approachVerified, movingVerified, blockedVerified, recoveryVerified, sitVerified, resumeVerified;
     private boolean dropObserved, leadObserved;
 
-    private MaidBowRuntimeProbe(WorldServer world) {
+    private MaidBowRuntimeProbe(WorldServer world, boolean recordingEnabled) {
         this.world = world;
+        this.recordingEnabled = recordingEnabled;
         var spawn = world.getSpawnPoint();
         x = (spawn.posX >> 4 << 4) + 8 + 64;
         z = (spawn.posZ >> 4 << 4) + 8 + 64;
@@ -110,6 +114,10 @@ public final class MaidBowRuntimeProbe {
     }
 
     public static void start(WorldServer world) {
+        start(world, true);
+    }
+
+    public static void start(WorldServer world, boolean recordingEnabled) {
         require(
             Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated test overworld required");
@@ -117,7 +125,7 @@ public final class MaidBowRuntimeProbe {
         require(
             world.difficultySetting.getDifficultyId() != 0,
             "Native zombie fixture requires non-peaceful difficulty");
-        var probe = new MaidBowRuntimeProbe(world);
+        var probe = new MaidBowRuntimeProbe(world, recordingEnabled);
         pending = probe;
         try {
             FMLCommonHandler.instance()
@@ -176,6 +184,7 @@ public final class MaidBowRuntimeProbe {
         friend.getBrainCoordinator()
             .setSuspended(true);
         require(world.spawnEntityInWorld(maid), "Native maid spawn rejected");
+        if (recordingEnabled) recorder = MaidEpisodeRecorder.open(maid, "natural_bow_runtime");
         startX = maid.posX;
         startZ = maid.posZ;
         lastWorldTick = world.getTotalWorldTime();
@@ -330,7 +339,10 @@ public final class MaidBowRuntimeProbe {
     }
 
     private void newTarget(double tx, double tz) {
-        if (target != null) target.setDead();
+        if (target != null) {
+            if (recorder != null) recorder.finishVictim(target);
+            target.setDead();
+        }
         clearArrows();
         target = new EntityZombie(world);
         target.func_110163_bv();
@@ -345,6 +357,7 @@ public final class MaidBowRuntimeProbe {
         initialTargetHealth = target.getHealth();
         hurtArrow = null;
         require(world.spawnEntityInWorld(target), "Native target spawn rejected");
+        if (recorder != null) recorder.watch(target);
     }
 
     private boolean hit() {
@@ -460,6 +473,43 @@ public final class MaidBowRuntimeProbe {
         if (finished) return;
         finished = true;
         var cleanup = new ArrayList<String>();
+        JsonObject episode = null;
+        if (recorder != null) {
+            try {
+                episode = recorder.exportSummary();
+                require(
+                    episode.get("validObservation")
+                        .getAsBoolean(),
+                    "Episode observation failed");
+                require(
+                    episode.get("traceComplete")
+                        .getAsBoolean(),
+                    "Episode trace is incomplete");
+                require(
+                    episode.get("unboundArrowNativeRecords")
+                        .getAsLong() == 0,
+                    "Unbound arrow entered episode");
+                require(
+                    episode.getAsJsonObject("telemetry")
+                        .getAsJsonObject("counters")
+                        .get("RELEASE_CONFIRMED")
+                        .getAsLong()
+                        == maid.getBrainCoordinator()
+                            .getBowAttack()
+                            .getShots(),
+                    "Recorded releases diverged from committed production releases");
+                if (success) require(
+                    episode.get("boundArrowNativeRecords")
+                        .getAsLong() >= 4,
+                    "Native ledger did not observe all four successful arrow phases");
+            } catch (RuntimeException | LinkageError failure) {
+                cleanup.add(
+                    "episode:" + failure.getClass()
+                        .getSimpleName());
+            } finally {
+                restore(recorder::close, cleanup);
+            }
+        }
         restore(
             () -> maid.getBrainCoordinator()
                 .setSuspended(true),
@@ -493,6 +543,15 @@ public final class MaidBowRuntimeProbe {
         report.addProperty("passed", success && cleanup.isEmpty());
         report.addProperty("error", error);
         report.addProperty("ticks", ticks);
+        report.addProperty("recordingEnabled", recordingEnabled);
+        report.addProperty(
+            "committedShots",
+            maid.getBrainCoordinator()
+                .getBowAttack()
+                .getShots());
+        report.addProperty("remainingAmmo", ammo());
+        report.addProperty("bowWear", bow.getItemDamage());
+        if (episode != null) report.add("episode", episode);
         report.addProperty(
             "scope",
             "natural RC2 maid selection/navigation/bow/arrow ticks with scripted target inputs and isolated memory owner");

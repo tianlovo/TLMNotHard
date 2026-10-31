@@ -3,11 +3,13 @@ package com.tianluoqaq.tlmnh;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -57,6 +59,7 @@ public final class TLMNotHard {
         MaidLifeContent.register();
         MaidResurrectionContent.register();
         AnimationLab.register();
+        MaidBrainLifecycle.register();
     }
 
     /**
@@ -82,5 +85,6 @@ public final class TLMNotHard {
     public void serverStopping(FMLServerStoppingEvent event) {
         MaidBowRuntimeProbe.cancel();
         MaidLifeRuntimeProbe.cancel();
+        MaidEpisodeRecorder.closeAll();
     }
 }

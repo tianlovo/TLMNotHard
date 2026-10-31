@@ -284,31 +284,60 @@ public class EntityMaid extends EntityTameable {
     }
 
     @Override
-    public void readEntityFromNBT(NBTTagCompound tag) {
-        super.readEntityFromNBT(tag);
-        extraSaveData = (NBTTagCompound) tag.getCompoundTag("TLMNH")
-            .copy();
-        if (extraSaveData.getInteger("Schema") > SAVE_VERSION) {
-            TLMNotHard.LOG.warn(
-                "Maid {} has newer save schema {}; preserving extension data",
-                getUniqueID(),
-                extraSaveData.getInteger("Schema"));
-        }
-        setModelId(tag.hasKey(MODEL_ID_TAG, 8) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
-        setTask(MaidTask.fromId(tag.getString("MaidTask")));
+    public void readFromNBT(NBTTagCompound tag) {
+        boolean managed = hasServerBrain(), entered = false, successful = false;
         try {
-            setSchedule(MaidSchedule.valueOf(tag.getString("MaidScheduleMode")));
-        } catch (IllegalArgumentException exception) {
-            setSchedule(MaidSchedule.DAY);
+            if (managed) {
+                entered = true;
+                brain.beforePersistentRead();
+            }
+            super.readFromNBT(tag);
+            successful = true;
+        } finally {
+            if (entered) brain.afterPersistentRead(successful);
         }
-        setExperience(tag.getInteger(EXPERIENCE_TAG));
-        setHunger(tag.getInteger("MaidHunger"));
-        setFavorability(tag.getInteger("MaidFavorability"));
-        if (tag.hasKey("PickupItems")) setPickupItems(tag.getBoolean("PickupItems"));
-        if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
-        inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
-        setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
-        func_110163_bv();
+    }
+
+    @Override
+    public void readEntityFromNBT(NBTTagCompound tag) {
+        boolean managed = hasServerBrain(), entered = false, successful = false;
+        try {
+            if (managed) {
+                entered = true;
+                brain.beforePersistentRead();
+            }
+            super.readEntityFromNBT(tag);
+            extraSaveData = (NBTTagCompound) tag.getCompoundTag("TLMNH")
+                .copy();
+            if (extraSaveData.getInteger("Schema") > SAVE_VERSION) {
+                TLMNotHard.LOG.warn(
+                    "Maid {} has newer save schema {}; preserving extension data",
+                    getUniqueID(),
+                    extraSaveData.getInteger("Schema"));
+            }
+            setModelId(tag.hasKey(MODEL_ID_TAG, 8) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
+            setTask(MaidTask.fromId(tag.getString("MaidTask")));
+            try {
+                setSchedule(MaidSchedule.valueOf(tag.getString("MaidScheduleMode")));
+            } catch (IllegalArgumentException exception) {
+                setSchedule(MaidSchedule.DAY);
+            }
+            setExperience(tag.getInteger(EXPERIENCE_TAG));
+            setHunger(tag.getInteger("MaidHunger"));
+            setFavorability(tag.getInteger("MaidFavorability"));
+            if (tag.hasKey("PickupItems")) setPickupItems(tag.getBoolean("PickupItems"));
+            if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
+            inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
+            setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
+            func_110163_bv();
+            successful = true;
+        } finally {
+            if (entered) brain.afterPersistentRead(successful);
+        }
+    }
+
+    private boolean hasServerBrain() {
+        return brain != null && worldObj != null && !worldObj.isRemote;
     }
 
     @Override
@@ -317,6 +346,15 @@ public class EntityMaid extends EntityTameable {
         if (!worldObj.isRemote && dead) {
             MaidDeathService.preserve(this);
             brain.resetTask();
+        }
+    }
+
+    @Override
+    public void setDead() {
+        try {
+            if (hasServerBrain()) brain.onUnload();
+        } finally {
+            super.setDead();
         }
     }
 

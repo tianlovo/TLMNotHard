@@ -19,6 +19,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
+import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -135,7 +138,7 @@ public final class MaidLifeController {
             return true;
         }
         if (tick - selectedAt > MAX_ACTION_TICKS) {
-            stop(Status.PATH_FAILED);
+            stop(Status.PATH_FAILED, TerminalOutcome.TIMED_OUT);
             return false;
         }
         double targetY = target.yCoord + (action == Action.BED ? 0.5 : 1.5);
@@ -193,9 +196,16 @@ public final class MaidLifeController {
     }
 
     private boolean select(boolean rest) {
+        var telemetry = telemetry();
+        boolean recording = telemetry.isEnabled();
+        long started = recording ? System.nanoTime() : 0;
         var tiles = maid.worldObj.loadedTileEntityList;
         int size = tiles.size();
-        if (size == 0) return false;
+        if (size == 0) {
+            telemetry.scan("life_tiles", 0, 0, "loaded_tile_list_global");
+            if (recording) telemetry.work("life_tiles", WorkComponent.SENSOR, System.nanoTime() - started);
+            return false;
+        }
         TileEntity best = null;
         double closest = Double.MAX_VALUE;
         boolean place = !rest && tryPlaceNext && cakeSlot() >= 0;
@@ -207,6 +217,8 @@ public final class MaidLifeController {
             if (Math.abs(candidate.yCoord - maid.posY) > 3 || dx * dx + dz * dz > (rest ? 144 : 25)) continue;
             boolean usable = rest ? candidate instanceof TileEntityMaidBed bed && bed.available(maid) && bedClear(bed)
                 : candidate instanceof TileEntitySnackCabinet && snackValid(candidate, place);
+            if (recording)
+                telemetry.candidate("life_tile", tileId(candidate), usable, "spatial_filter_passed;rest=" + rest);
             double distance = maid
                 .getDistanceSq(candidate.xCoord + 0.5, candidate.yCoord + 0.5, candidate.zCoord + 0.5);
             if (usable && distance < closest) {
@@ -214,12 +226,19 @@ public final class MaidLifeController {
                 closest = distance;
             }
         }
+        telemetry.scan(
+            "life_tiles",
+            size,
+            Math.min(size, SCAN_BUDGET),
+            "loaded_tile_list_global;candidate_details_only_after_spatial_filter");
+        if (recording) telemetry.work("life_tiles", WorkComponent.SENSOR, System.nanoTime() - started);
         if (!rest) tryPlaceNext = !place;
         if (best == null) return false;
         if (rest && !((TileEntityMaidBed) best).claim(maid)) return false;
         claimControl.run();
         target = best;
         action = rest ? Action.BED : place ? Action.PLACE : Action.STEAL;
+        if (recording) telemetry.state("life_selected", tileId(best), action.name());
         selectedTask = maid.getTask();
         selectedAt = tick;
         nextPath = tick;
@@ -278,6 +297,12 @@ public final class MaidLifeController {
             maid.setPositionAndUpdate(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
             sleepEntries++;
+            telemetry().terminal(
+                "sleep_entry",
+                tileId(bed),
+                "bed_claimed_pose_started;not_whole_sleep_cycle",
+                TerminalOutcome.COMPLETED,
+                true);
             status = Status.SLEEPING;
             return true;
         }
@@ -402,6 +427,25 @@ public final class MaidLifeController {
     }
 
     private void stop(Status reason) {
+        stop(reason, null);
+    }
+
+    private void stop(Status reason, TerminalOutcome explicitOutcome) {
+        if (target != null && action != null && telemetry().isEnabled()) {
+            boolean confirmed = reason == Status.COOLDOWN && action != Action.BED;
+            var outcome = explicitOutcome != null ? explicitOutcome
+                : confirmed ? TerminalOutcome.COMPLETED
+                    : reason == Status.PATH_FAILED || reason == Status.ACTION_FAILED || reason == Status.TARGET_LOST
+                        ? TerminalOutcome.FAILED
+                        : TerminalOutcome.CANCELLED;
+            telemetry().terminal(
+                "life/" + action.name()
+                    .toLowerCase(java.util.Locale.ROOT),
+                tileId(target),
+                "stop_reason=" + reason,
+                outcome,
+                confirmed);
+        }
         stopNavigation();
         if (sleeping) {
             maid.setPose(MaidPose.SLEEPING, false);
@@ -423,6 +467,21 @@ public final class MaidLifeController {
         selectedTask = null;
         failures = 0;
         status = reason;
+    }
+
+    private MaidTelemetryChannel telemetry() {
+        return maid.getBrainCoordinator()
+            .getTelemetry();
+    }
+
+    private static String tileId(TileEntity tile) {
+        return (tile.getWorldObj() == null ? "unknown" : Integer.toString(tile.getWorldObj().provider.dimensionId))
+            + ":"
+            + tile.xCoord
+            + ","
+            + tile.yCoord
+            + ","
+            + tile.zCoord;
     }
 
     private void stopNavigation() {

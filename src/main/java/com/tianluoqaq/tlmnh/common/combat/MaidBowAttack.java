@@ -15,6 +15,7 @@ import net.minecraft.util.Vec3;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -100,6 +101,9 @@ public final class MaidBowAttack {
 
     public boolean fire(EntityLivingBase target) {
         if (firing) return false;
+        maid.getBrainCoordinator()
+            .getTelemetry()
+            .releaseAttempt(target);
         firing = true;
         try {
             return fireOnce(target);
@@ -115,8 +119,16 @@ public final class MaidBowAttack {
             || !hasBow(maid)
             || arrowSlot() < 0) return false;
         var origin = new BallisticVector(maid.posX, maid.posY + maid.getEyeHeight() - 0.1, maid.posZ);
-        lastSolution = ArrowInterceptSolver
-            .solve(origin, aimPoint(target), motion.velocity(), 3.0, MAX_FLIGHT_TICKS, ArrowPhysics.OVERWORLD_AIR);
+        var telemetry = maid.getBrainCoordinator()
+            .getTelemetry();
+        boolean recording = telemetry.isEnabled();
+        long startedAt = recording ? System.nanoTime() : 0;
+        try {
+            lastSolution = ArrowInterceptSolver
+                .solve(origin, aimPoint(target), motion.velocity(), 3.0, MAX_FLIGHT_TICKS, ArrowPhysics.OVERWORLD_AIR);
+        } finally {
+            if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
+        }
         if (!lastSolution.isSolved()) return reject(Status.NO_SOLUTION);
         var arrow = new EntityArrow(maid.worldObj, origin.x, origin.y, origin.z);
         arrow.shootingEntity = maid;
@@ -176,6 +188,7 @@ public final class MaidBowAttack {
         maid.worldObj.playSoundAtEntity(maid, "random.bow", 1, 1);
         shots++;
         lastArrow = arrow;
+        telemetry.releaseConfirmed(arrow, target);
         interrupt();
         status = Status.FIRED;
         return true;

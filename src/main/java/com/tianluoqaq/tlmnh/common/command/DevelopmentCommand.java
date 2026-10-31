@@ -30,6 +30,8 @@ import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidPolicyLifecycleProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -59,19 +61,29 @@ public final class DevelopmentCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
-        if (args.length == 1 && "bow-runtime-test".equals(args[0])) {
-            MaidBowRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+        if ((args.length == 1 || args.length == 2) && "bow-runtime-test".equals(args[0])) {
+            MaidBowRuntimeProbe.start((WorldServer) sender.getEntityWorld(), recordingRequested(args));
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_runtime_started"));
             return;
         }
-        if (args.length == 1 && "life-runtime-test".equals(args[0])) {
-            MaidLifeRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+        if ((args.length == 1 || args.length == 2) && "life-runtime-test".equals(args[0])) {
+            MaidLifeRuntimeProbe.start((WorldServer) sender.getEntityWorld(), recordingRequested(args));
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_runtime_started"));
             return;
         }
         if (args.length == 1 && "gecko-library-test".equals(args[0])) {
             MaidGeckoLibraryProbe.run();
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.gecko_library_passed"));
+            return;
+        }
+        if (args.length == 1 && "telemetry-native-test".equals(args[0])) {
+            MaidTelemetryProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.telemetry_native_passed"));
+            return;
+        }
+        if (args.length == 1 && "policy-lifecycle-test".equals(args[0])) {
+            MaidPolicyLifecycleProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.policy_lifecycle_passed"));
             return;
         }
         if (args.length == 1 && "lifecycle-persist-create".equals(args[0])) {
@@ -203,6 +215,12 @@ public final class DevelopmentCommand extends CommandBase {
             return;
         }
         throw new WrongUsageException(getCommandUsage(sender));
+    }
+
+    private boolean recordingRequested(String[] args) {
+        if (args.length == 1 || "record".equals(args[1])) return true;
+        if ("plain".equals(args[1])) return false;
+        throw new WrongUsageException("commands.tlmnhdev.usage");
     }
 
     private static void testState(ICommandSender sender) {

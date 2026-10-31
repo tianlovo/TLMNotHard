@@ -327,3 +327,19 @@ RC2的Hodgepodge 2.7.215会让NetworkDispatcher.get在自身属性为空时返�
 正常FML PLAYER发送直接读取原始属性，null表示无目标；探针不调用全局fallback的发送或关闭方法，结束前再次检查自身属性
 这项隔离结论限已核对的PLAYER路径与测试pipeline，不概括全部第三方路由；真实客户端网络另验
 客户端开发状态另读原生GuiDisconnected的错误文本，供自动保存断开原因，不再仅报告界面类名
+
+## 行为观测与策略生命周期
+
+新增 `common/ai/telemetry` 与 `common/ai/policy` 为本工程独立实现，不复制外部行为框架
+生产协调器仍使用旧固定优先原型，未完成的忠实与增强模式拒绝执行；记录开关默认关闭
+路径记录区分查询提交、原生返回与适配器处理，成功发射在生成复核和资源提交后登记，不把发射计数当作命中
+生活记录分别标记偷吃、摆蛋糕与入睡阶段效果，入睡不等于整个睡眠任务完成
+
+开发用 `NativeCombatLedgerReader` 与 `MaidEpisodeRecorder` 只读目标版本 CombatTracker 和 CombatEntry，
+结合伤害前、死亡回调与服务 tick 末采集；依据条目对象身份去重，保留原始金额与不可归属净变化
+没有向原生伤害方法插入写操作，也没有把 LivingHurt 或攻击返回值当作最终伤害提交
+该观测合同面向已核 RC2 原生路径，不承诺任意第三方重写伤害账本后的精确归属
+
+原包 EntityMaid 另增加保存数据读取与死亡边界，读取前让旧策略退役，防止构造 UUID 与存档 UUID 交替期间复用旧 token
+1.7.10 实体没有 onChunkUnload 接口，卸载及重新注册由独立 Forge 生命周期监听器处理
+新增实现仍位于 `com.tianluoqaq.tlmnh`，上游 EntityMaid 的原包名与来源保持不变
