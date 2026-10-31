@@ -18,6 +18,7 @@ import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
@@ -63,7 +64,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         bow = new MaidBowAttack(maid);
-        life = new MaidLifeController(maid, follow::cancel, ownerSensor::findOwner);
+        life = new MaidLifeController(maid, follow::cancel, ownerSensor::findOwner, MaidLifeSelector::nearest);
         combatActor = new CombatActor();
         combat = new MaidCombatController(combatActor, maid.getEntityId());
         lifePermission = () -> !suspended && !dangerSensor.hasKnownDanger();

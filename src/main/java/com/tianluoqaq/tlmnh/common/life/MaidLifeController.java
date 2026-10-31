@@ -1,5 +1,9 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import net.minecraft.block.BlockBed;
@@ -20,10 +24,12 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent.Action;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -42,15 +48,10 @@ public final class MaidLifeController {
         SLEEPING,
         APPROACH_SNACK,
         TARGET_LOST,
+        INTENT_REJECTED,
         PATH_FAILED,
         ACTION_FAILED,
         CANCELLED
-    }
-
-    private enum Action {
-        BED,
-        STEAL,
-        PLACE
     }
 
     private static final int SCAN_INTERVAL = 20, MAX_ACTION_TICKS = 200;
@@ -58,6 +59,7 @@ public final class MaidLifeController {
     private final EntityMaid maid;
     private final Runnable claimControl;
     private final Supplier<EntityPlayer> ownerSource;
+    private final Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector;
     private final MaidLifeSensor sensor;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private TileEntity target;
@@ -76,11 +78,17 @@ public final class MaidLifeController {
     private double wakeX, wakeY, wakeZ;
 
     public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource) {
-        if (maid == null || claimControl == null || ownerSource == null)
+        this(maid, claimControl, ownerSource, MaidLifeSelector::nearest);
+    }
+
+    public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource,
+        Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector) {
+        if (maid == null || claimControl == null || ownerSource == null || selector == null)
             throw new IllegalArgumentException("Life action requires its actor, arbiter and owner observation");
         this.maid = maid;
         this.claimControl = claimControl;
         this.ownerSource = ownerSource;
+        this.selector = selector;
         sensor = new MaidLifeSensor(maid);
     }
 
@@ -145,7 +153,6 @@ public final class MaidLifeController {
             }
             nextScan = tick + SCAN_INTERVAL;
             if (!select(rest, context, token)) {
-                status = Status.IDLE;
                 return false;
             }
         }
@@ -220,51 +227,98 @@ public final class MaidLifeController {
         var telemetry = telemetry();
         boolean recording = telemetry.isEnabled();
         var command = maid.getTask();
-        var candidates = sensor.scan(context, rest);
-        MaidLifeCandidate bestObservation = null;
-        double closest = Double.MAX_VALUE;
-        boolean place = !rest && tryPlaceNext && cakeSlot() >= 0;
-        scans++;
-        for (var observation : candidates) {
-            var candidate = sensor.resolve(observation, context);
-            if (candidate == null) continue;
-            boolean usable = rest ? candidate instanceof TileEntityMaidBed bed && bed.available(maid) && bedClear(bed)
-                : candidate instanceof TileEntitySnackCabinet && snackValid(candidate, place);
-            if (recording)
-                telemetry.candidate("life_tile", tileId(candidate), usable, "spatial_filter_passed;rest=" + rest);
-            double distance = maid
-                .getDistanceSq(candidate.xCoord + 0.5, candidate.yCoord + 0.5, candidate.zCoord + 0.5);
-            if (usable && distance < closest) {
-                bestObservation = observation;
-                closest = distance;
-            }
-        }
-        if (!rest) tryPlaceNext = !place;
-        var best = sensor.resolve(bestObservation, context);
-        if (best == null) return false;
-        if (rest && !((TileEntityMaidBed) best).claim(maid)) return false;
+        var planned = new MaidActionRun(context, token, maid.worldObj, command);
+        run = planned;
+        status = Status.IDLE;
+        TileEntityMaidBed claimedBed = null;
         boolean adopted = false;
         try {
+            var options = new ArrayList<MaidLifeIntent>();
+            boolean place = !rest && tryPlaceNext && cakeSlot() >= 0;
+            scans++;
+            for (var observation : sensor.scan(context, rest)) {
+                var candidate = sensor.resolve(observation, context);
+                if (candidate == null) continue;
+                String reason;
+                if (rest) {
+                    var bed = (TileEntityMaidBed) candidate;
+                    reason = !bed.available(maid) ? "bed_unavailable" : !bedClear(bed) ? "bed_obstructed" : "eligible";
+                } else reason = snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
+                boolean usable = "eligible".equals(reason);
+                if (recording) telemetry.candidate("life_tile", tileId(candidate), usable, reason);
+                if (usable) options.add(
+                    new MaidLifeIntent(
+                        rest ? Action.BED : place ? Action.PLACE : Action.STEAL,
+                        observation,
+                        maid.getDistanceSq(candidate.xCoord + 0.5, candidate.yCoord + 0.5, candidate.zCoord + 0.5)));
+            }
+            if (!rest) tryPlaceNext = !place;
+            var choice = selector.apply(Collections.unmodifiableList(options));
+            if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())) {
+                return rejectIntent(Status.CANCELLED, "selection_cancelled");
+            }
+            if (choice == null) {
+                if (recording) telemetry
+                    .state("life_intent_yielded", "", options.isEmpty() ? "no_eligible_intents" : "policy_yield");
+                return false;
+            }
+            var intent = choice.getIntent();
+            if (!options.contains(intent)) {
+                return rejectIntent(Status.INTENT_REJECTED, "not_from_current_options");
+            }
+            var bestObservation = intent.getCandidate();
+            var best = sensor.resolve(bestObservation, context);
+            if (best == null || !hardAllowed()
+                || !ownerValid(owner)
+                || maid.getDistanceSqToEntity(owner) > 144
+                || MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime()) != rest) {
+                return rejectIntent(Status.INTENT_REJECTED, "observed_target_or_constraints_changed");
+            }
+            if (rest) {
+                var bed = (TileEntityMaidBed) best;
+                if (!bedClear(bed) || !bed.claim(maid))
+                    return rejectIntent(Status.INTENT_REJECTED, "bed_claim_refused");
+                claimedBed = bed;
+            } else if (!snackValid(best, intent.getAction() == Action.PLACE))
+                return rejectIntent(Status.INTENT_REJECTED, "snack_conditions_changed");
             claimControl.run();
-            if (!context.isCurrent(token) || maid.getTask() != command
+            if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())
                 || !hardAllowed()
                 || !ownerValid(owner)
                 || maid.getDistanceSqToEntity(owner) > 144
-                || sensor.resolve(bestObservation, context) != best) return false;
+                || sensor.resolve(bestObservation, context) != best) {
+                return rejectIntent(Status.CANCELLED, "adoption_cancelled");
+            }
             target = best;
-            run = new MaidActionRun(context, token, maid.worldObj, command);
+            action = intent.getAction();
+            selectedTask = command;
+            selectedAt = tick;
+            nextPath = tick;
+            failures = 0;
+            if (!rest) nextSnack = tick + MaidLifeRules.SNACK_INTERVAL;
             adopted = true;
+            if (recording) {
+                telemetry.state("life_selected", tileId(best), action.name());
+                telemetry.state(
+                    "life_intent_selected",
+                    tileId(best),
+                    "action=" + action
+                        .name() + ";reason=" + choice.getReason() + ";distance_sq=" + intent.getDistanceSq());
+            }
+            return true;
         } finally {
-            if (!adopted && best instanceof TileEntityMaidBed bed) bed.release(maid);
+            if (!adopted) {
+                planned.cancel();
+                if (run == planned) run = null;
+                if (claimedBed != null) claimedBed.release(maid);
+            }
         }
-        action = rest ? Action.BED : place ? Action.PLACE : Action.STEAL;
-        if (recording) telemetry.state("life_selected", tileId(best), action.name());
-        selectedTask = maid.getTask();
-        selectedAt = tick;
-        nextPath = tick;
-        failures = 0;
-        if (!rest) nextSnack = tick + MaidLifeRules.SNACK_INTERVAL;
-        return true;
+    }
+
+    private boolean rejectIntent(Status reason, String detail) {
+        status = reason;
+        telemetry().state("life_intent_rejected", "", detail);
+        return false;
     }
 
     private boolean validTarget() {

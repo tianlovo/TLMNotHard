@@ -23,7 +23,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -161,6 +163,7 @@ public final class MaidLifeProbe {
                 "Replacement cabinet cannot inherit old observation");
             world.setBlockToAir(x, y + 1, z);
             // 原生 Item.cake 的堆叠上限为1，分槽放置以免把RC2的堆叠补丁当成前提
+            verifyIntentSelection(world, maid, owner, x, y, z);
             maid.getMaidInventory()
                 .setInventorySlotContents(0, new ItemStack(Items.cake));
             maid.getMaidInventory()
@@ -366,7 +369,7 @@ public final class MaidLifeProbe {
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
         TLMNotHard.LOG.info(
-            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved callback_policy=conserved callback_cancel=conserved callback_reentry=refused recovery=placed_once sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
+            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved callback_policy=conserved callback_cancel=conserved callback_reentry=refused recovery=placed_once intent_far=honoured intent_stale=refused intent_yield=no_fallback intent_cancel=refused sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
     }
 
     private static Throwable remember(Throwable first, Throwable next) {
@@ -385,6 +388,74 @@ public final class MaidLifeProbe {
             }
         }
         return failure;
+    }
+
+    private static void verifyIntentSelection(WorldServer world, EntityMaid maid, EntityPlayerMP owner, int x, int y,
+        int z) {
+        double px = maid.posX, py = maid.posY, pz = maid.posZ;
+        var controllers = new java.util.ArrayList<MaidLifeController>();
+        var saved = new MaidLifeIntent[1];
+        try {
+            require(world.setBlock(x, y + 1, z, Blocks.cake, 0, 2), "Intent near cake setup");
+            require(world.setBlock(x + 2, y, z + 1, MaidLifeContent.snackCabinet, 0, 2), "Intent far cabinet setup");
+            require(world.setBlock(x + 2, y + 1, z + 1, Blocks.cake, 0, 2), "Intent far cake setup");
+            maid.setPosition(x + 1.5, y + 0.25, z + 0.5);
+            var far = new MaidLifeController(maid, () -> {}, () -> owner, options -> {
+                var nearest = MaidLifeSelector.nearest(options);
+                require(
+                    nearest != null && nearest.getIntent()
+                        .getCandidate()
+                        .getX() == x
+                        && nearest.getIntent()
+                            .getCandidate()
+                            .getZ() == z,
+                    "Actual default choice must be the near cabinet");
+                saved[0] = options.stream()
+                    .filter(
+                        intent -> intent.getCandidate()
+                            .getX() == x + 2
+                            && intent.getCandidate()
+                                .getZ() == z + 1)
+                    .findFirst()
+                    .orElse(null);
+                require(saved[0] != null, "Far cabinet must be an eligible current intent");
+                return new MaidLifeSelector.Selection(saved[0], MaidLifeSelector.Reason.POLICY_CHOICE);
+            });
+            controllers.add(far);
+            require(
+                tick(far, maid) && far.getBites() == 1
+                    && world.getBlockMetadata(x, y + 1, z) == 0
+                    && world.getBlockMetadata(x + 2, y + 1, z + 1) == 1,
+                "Execution must honour the exact farther intent rather than reselecting nearest");
+            far.cancel();
+            for (String mode : new String[] { "stale", "yield", "cancel" }) {
+                var refused = new MaidLifeController(maid, () -> {}, () -> owner, options -> {
+                    if ("yield".equals(mode)) return null;
+                    if ("cancel".equals(mode)) {
+                        maid.getBrainCoordinator()
+                            .getPolicyRuntime()
+                            .invalidate(InvalidationReason.RESET);
+                        return MaidLifeSelector.nearest(options);
+                    }
+                    return new MaidLifeSelector.Selection(saved[0], MaidLifeSelector.Reason.POLICY_CHOICE);
+                });
+                controllers.add(refused);
+                require(
+                    !tick(refused, maid) && refused.getBites() == 0
+                        && world.getBlockMetadata(x, y + 1, z) == 0
+                        && world.getBlockMetadata(x + 2, y + 1, z + 1) == 1,
+                    "Refused or empty intent must not fall back to another target: " + mode);
+                if ("stale".equals(mode)) require(
+                    refused.getStatus() == MaidLifeController.Status.INTENT_REJECTED,
+                    "Previous decision's intent must be explicitly rejected");
+            }
+        } finally {
+            for (var controller : controllers) controller.cancel();
+            world.setBlockToAir(x, y + 1, z);
+            world.setBlockToAir(x + 2, y + 1, z + 1);
+            world.setBlockToAir(x + 2, y, z + 1);
+            maid.setPosition(px, py, pz);
+        }
     }
 
     private static void verifyNoForceLoad(WorldServer world, EntityMaid maid, MaidLifeSensor sensor,
