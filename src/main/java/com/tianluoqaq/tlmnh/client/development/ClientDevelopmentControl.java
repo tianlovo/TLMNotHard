@@ -275,7 +275,7 @@ public final class ClientDevelopmentControl {
                 case HELD_ITEM_GPU_PROBE:
                     if (submissionPending || !captures.isEmpty())
                         throw new IllegalStateException("Finish the active submission or screenshot first");
-                    HeldItemGpuProbe.arm(name, request.model, request.action);
+                    HeldItemGpuProbe.arm(name, request.model, request.action, request.view);
                     response.addProperty("status", "pending-render");
                     break;
                 case GECKO_LIBRARY_PROBE:

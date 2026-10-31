@@ -14,10 +14,10 @@ public final class ClientDevelopmentRequest {
     public final String screenshotName;
     public final float yaw, pitch;
     public final int port;
-    public final String model, fault, action;
+    public final String model, fault, action, view;
 
     private ClientDevelopmentRequest(Command command, String screenshotName, float yaw, float pitch, int port,
-        String model, String fault, String action) {
+        String model, String fault, String action, String view) {
         this.command = command;
         this.screenshotName = screenshotName;
         this.yaw = yaw;
@@ -26,6 +26,7 @@ public final class ClientDevelopmentRequest {
         this.model = model;
         this.fault = fault;
         this.action = action;
+        this.view = view;
     }
 
     public static ClientDevelopmentRequest parse(JsonObject json) {
@@ -43,7 +44,7 @@ public final class ClientDevelopmentRequest {
         float yaw = 0, pitch = 0;
         int port = 0;
         String model = null, fault = "none";
-        String action = null;
+        String action = null, view = null;
         if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE) {
             if (!json.has("name") || !json.get("name")
                 .isJsonPrimitive()
@@ -94,9 +95,11 @@ public final class ClientDevelopmentRequest {
         if (command == Command.HELD_ITEM_GPU_PROBE) {
             model = text(json, "model");
             action = text(json, "action");
+            view = json.has("view") ? text(json, "view") : "positive_z";
             if (!Arrays.asList("touhou_little_maid:hakurei_reimu", "geckolib:winefox")
-                .contains(model) || !heldGpuActions().contains(action) || json.has("fault"))
-                throw new IllegalArgumentException("Unreviewed held GPU fixture");
+                .contains(model) || !heldGpuActions().contains(action)
+                || !heldGpuViews().contains(view)
+                || json.has("fault")) throw new IllegalArgumentException("Unreviewed held GPU fixture");
         }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
@@ -104,7 +107,7 @@ public final class ClientDevelopmentRequest {
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
             if (action.equals("select")) model = text(json, "model");
         }
-        return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action);
+        return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view);
     }
 
     private static String text(JsonObject json, String name) {
@@ -130,6 +133,10 @@ public final class ClientDevelopmentRequest {
             "main_bow",
             "main_block",
             "main_tool");
+    }
+
+    public static java.util.List<String> heldGpuViews() {
+        return Arrays.asList("positive_z", "negative_z", "positive_x", "negative_x");
     }
 
     private static float number(JsonObject json, String name, double minimum, double maximum) {

@@ -2,6 +2,8 @@ package com.tianluoqaq.tlmnh.client.development;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -74,14 +76,17 @@ public final class HeldItemGpuProbe {
         return transaction != null && transaction.request.maid == maid;
     }
 
-    public static void arm(String request, String model, String action) {
+    public static void arm(String request, String model, String action, String view) {
         requireObserver();
         if (pending != null || active != null) throw new IllegalStateException("Held GPU probe already pending");
         if (!request.matches("[A-Za-z0-9_-]{1,100}\\.json")
             || !Arrays.asList(EntityMaid.DEFAULT_MODEL_ID, "geckolib:winefox")
                 .contains(model)
-            || !actions().contains(action)) throw new IllegalArgumentException("Unreviewed held GPU fixture");
-        pending = new Request(request, model, action, soleMaid(model));
+            || !actions().contains(action)
+            || !ClientDevelopmentRequest.heldGpuViews()
+                .contains(view))
+            throw new IllegalArgumentException("Unreviewed held GPU fixture");
+        pending = new Request(request, model, action, view, soleMaid(model));
     }
 
     public static List<String> actions() {
@@ -98,7 +103,7 @@ public final class HeldItemGpuProbe {
         var request = pending;
         var report = header(request);
         HeldItemGpuState state = null;
-        Framebuffer target = null, body = null;
+        Framebuffer target = null, body = null, empty = null;
         Transaction transaction = null;
         ItemStack main = request.maid.getHeldItem(), off = request.maid.getOffhandItem();
         var mainValue = main == null ? null : main.copy();
@@ -146,14 +151,17 @@ public final class HeldItemGpuProbe {
                     GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
                     target = new Framebuffer(SIZE, SIZE, true);
                     body = new Framebuffer(SIZE, SIZE, true);
+                    empty = new Framebuffer(SIZE, SIZE, true);
                     target.bindFramebuffer(true);
                     target.checkFramebufferComplete();
-                    configure();
-                    transaction = new Transaction(request, report, target, body);
+                    configure(request.view);
+                    copy(target, empty);
+                    copy(empty, target);
+                    transaction = new Transaction(request, report, target, body, empty);
                     active = transaction;
                     renderer.doRender(request.maid, 0, 0, 0, 0, partialTick);
                     active = null;
-                    if (transaction.seams != 1 || transaction.samples.size() != 5 || report.has("error"))
+                    if (transaction.seams != 1 || transaction.samples.size() != 10 || report.has("error"))
                         throw new IllegalStateException("Actual equipped-items seam did not complete exactly once");
                 } finally {
                     // GL_ALL_ATTRIB包含draw/read buffer，须先回到caller FBO再让production scope弹属性
@@ -178,6 +186,11 @@ public final class HeldItemGpuProbe {
                 report.addProperty("equipmentRestoreError", failure.toString());
             }
             try {
+                if (empty != null) empty.deleteFramebuffer();
+            } catch (RuntimeException | LinkageError failure) {
+                report.addProperty("emptyDeleteError", failure.toString());
+            }
+            try {
                 if (body != null) body.deleteFramebuffer();
             } catch (RuntimeException | LinkageError failure) {
                 report.addProperty("bodyDeleteError", failure.toString());
@@ -199,12 +212,13 @@ public final class HeldItemGpuProbe {
         report.addProperty(
             "transactionComplete",
             transaction != null && transaction.seams == 1
-                && transaction.samples.size() == 5
+                && transaction.samples.size() == 10
                 && !report.has("error")
                 && !report.has("cleanupError")
                 && !report.has("equipmentRestoreError")
                 && !report.has("stateRestoreError")
                 && !report.has("bodyDeleteError")
+                && !report.has("emptyDeleteError")
                 && !report.has("targetDeleteError")
                 && equipmentRestored
                 && stateRestored);
@@ -252,12 +266,24 @@ public final class HeldItemGpuProbe {
 
     private static JsonObject header(Request request) {
         var report = new JsonObject();
-        report.addProperty("schema", "held-item-gpu-pilot-v2");
+        report.addProperty("schema", "held-item-gpu-pilot-v3");
         report.addProperty("status", "complete");
         report.addProperty("transaction", request.request);
         report.addProperty("model", request.model);
         report.addProperty("action", request.action);
         report.addProperty("side", request.side.name());
+        report.addProperty("view", request.view);
+        var camera = new JsonObject();
+        camera.add("eye", GSON.toJsonTree(cameraEye(request.view)));
+        camera.add("target", GSON.toJsonTree(new float[] { 0, 1, 0 }));
+        camera.add("up", GSON.toJsonTree(new float[] { 0, 1, 0 }));
+        report.add("camera", camera);
+        report.addProperty("crossViewSamePose", false);
+        report.addProperty("itemOnlyAppearanceAcceptance", false);
+        report.addProperty("batchObservationSchema", "angelica-immediate-query-observation-v1");
+        report.addProperty(
+            "batchObservationScope",
+            "actual active/hasQueuedGeometry/hasHeldEntities and cumulative counters; raw queue sizes unknown");
         report.addProperty(
             "entityUuid",
             request.maid.getUniqueID()
@@ -267,7 +293,7 @@ public final class HeldItemGpuProbe {
         report.addProperty("depthEncoding", "GL_DEPTH_COMPONENT_FLOAT32_" + java.nio.ByteOrder.nativeOrder());
         report.addProperty(
             "scope",
-            "one actual MaidRenderer body; same-pose production item-layer replay in no-shader FBO; real native draw skip and GPU query");
+            "one actual MaidRenderer body per view; same-pose body and empty-baseline item-layer replay in no-shader FBO; item-only is diagnostic");
         report.addProperty("worldNaturalVerified", false);
         report.addProperty("sourceG1Verified", false);
         report.addProperty("all35Verified", false);
@@ -300,7 +326,17 @@ public final class HeldItemGpuProbe {
         };
     }
 
-    private static void configure() {
+    private static float[] cameraEye(String view) {
+        return switch (view) {
+            case "positive_z" -> new float[] { 0, 1, 5 };
+            case "negative_z" -> new float[] { 0, 1, -5 };
+            case "positive_x" -> new float[] { 5, 1, 0 };
+            case "negative_x" -> new float[] { -5, 1, 0 };
+            default -> throw new IllegalArgumentException("Unknown held GPU view");
+        };
+    }
+
+    private static void configure(String view) {
         GL20.glUseProgram(0);
         GL11.glDrawBuffer(GL30.GL_COLOR_ATTACHMENT0);
         GL11.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
@@ -309,6 +345,7 @@ public final class HeldItemGpuProbe {
         GL11.glClearDepth(1);
         GL11.glDepthMask(true);
         GL11.glColorMask(true, true, true, true);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         for (int cap : new int[] { GL11.GL_FOG, GL11.GL_BLEND, GL11.GL_SCISSOR_TEST, GL11.GL_STENCIL_TEST,
             GL13.GL_MULTISAMPLE, GL13.GL_SAMPLE_ALPHA_TO_COVERAGE }) GL11.glDisable(cap);
@@ -325,7 +362,8 @@ public final class HeldItemGpuProbe {
         GL11.glLoadIdentity();
         GL11.glOrtho(-2.5, 2.5, -1.4, 1.4, -10, 10);
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        var matrix = new Matrix4f().lookAt(0, 1, 5, 0, 1, 0, 0, 1, 0);
+        float[] eye = cameraEye(view);
+        var matrix = new Matrix4f().lookAt(eye[0], eye[1], eye[2], 0, 1, 0, 0, 1, 0);
         var buffer = BufferUtils.createFloatBuffer(16);
         matrix.get(buffer);
         GL11.glLoadMatrix(buffer);
@@ -452,12 +490,36 @@ public final class HeldItemGpuProbe {
         return values;
     }
 
+    private static JsonObject rasterState() {
+        var state = new JsonObject();
+        state.addProperty("depthTest", GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
+        state.addProperty("depthFunction", GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
+        state.addProperty("depthWrite", GL11.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
+        state.addProperty("alphaTest", GL11.glIsEnabled(GL11.GL_ALPHA_TEST));
+        state.addProperty("alphaFunction", GL11.glGetInteger(GL11.GL_ALPHA_TEST_FUNC));
+        state.addProperty("alphaReference", GL11.glGetFloat(GL11.GL_ALPHA_TEST_REF));
+        state.addProperty("cullFace", GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        state.addProperty("cullMode", GL11.glGetInteger(GL11.GL_CULL_FACE_MODE));
+        state.addProperty("frontFace", GL11.glGetInteger(GL11.GL_FRONT_FACE));
+        return state;
+    }
+
     private static byte[] depth() {
         var buffer = BufferUtils.createByteBuffer(SIZE * SIZE * 4);
         GL11.glReadPixels(0, 0, SIZE, SIZE, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, buffer);
         byte[] bytes = new byte[buffer.capacity()];
         buffer.get(bytes);
         return bytes;
+    }
+
+    private static void requireEmptyBaseline(byte[] color, byte[] depth) {
+        for (byte value : color)
+            if (value != 0) throw new IllegalStateException("Diagnostic empty baseline contains actual color");
+        var values = java.nio.ByteBuffer.wrap(depth)
+            .order(java.nio.ByteOrder.nativeOrder())
+            .asFloatBuffer();
+        while (values.hasRemaining())
+            if (values.get() != 1F) throw new IllegalStateException("Diagnostic empty baseline contains actual depth");
     }
 
     private static void copy(Framebuffer from, Framebuffer to) {
@@ -477,6 +539,120 @@ public final class HeldItemGpuProbe {
         to.bindFramebuffer(true);
         GL11.glDrawBuffer(GL30.GL_COLOR_ATTACHMENT0);
         GL11.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
+    }
+
+    /** 只读实际链骨，不将不存在的hidden/scale字段填成推测的默认值 */
+    private static JsonObject boneStates(BuiltinMaidModel model, MaidHeldItemLayer.HandSnapshot hand) {
+        var result = new JsonObject();
+        result.addProperty("backend", hand.attachment.backend);
+        result.add("attachmentChain", GSON.toJsonTree(hand.attachment.boneChain));
+        var bones = new JsonArray();
+        result.add("bones", bones);
+        if (model.getBedrock() != null) {
+            var parts = model.getBedrock()
+                .getModelMap();
+            String arm = hand.attachment.side == Side.LEFT ? "armLeft" : "armRight";
+            for (String name : new String[] { arm, arm + "PositioningBone" }) {
+                var row = new JsonObject();
+                var part = parts.get(name);
+                row.addProperty("name", name);
+                row.addProperty("present", part != null);
+                row.addProperty("includedInAttachmentChain", hand.attachment.boneChain.contains(name));
+                if (part != null) {
+                    row.add("scale", GSON.toJsonTree(new float[] { part.xScale, part.yScale, part.zScale }));
+                    row.addProperty("visible", part.visible);
+                    row.add("position", GSON.toJsonTree(new float[] { part.x, part.y, part.z }));
+                    row.add("rotation", GSON.toJsonTree(new float[] { part.xRot, part.yRot, part.zRot }));
+                }
+                bones.add(row);
+            }
+        } else {
+            var chain = hand.attachment.side == Side.LEFT ? model.getGecko()
+                .leftHandBones()
+                : model.getGecko()
+                    .rightHandBones();
+            result.addProperty("locatorChainSize", chain.size());
+            for (var bone : chain) {
+                var row = new JsonObject();
+                row.addProperty("name", bone.getName());
+                row.addProperty("present", true);
+                row.add("scale", GSON.toJsonTree(new float[] { bone.getScaleX(), bone.getScaleY(), bone.getScaleZ() }));
+                row.addProperty("hidden", bone.isHidden());
+                row.addProperty("cubesHidden", bone.cubesAreHidden());
+                row.addProperty("childBonesHidden", bone.childBonesAreHiddenToo());
+                row.add(
+                    "position",
+                    GSON.toJsonTree(new float[] { bone.getPositionX(), bone.getPositionY(), bone.getPositionZ() }));
+                row.add(
+                    "rotation",
+                    GSON.toJsonTree(new float[] { bone.getRotationX(), bone.getRotationY(), bone.getRotationZ() }));
+                bones.add(row);
+            }
+        }
+        return result;
+    }
+
+    /** actual RC2 2.2.28只读查询，绝不flush/suspend或切换全局Java batch队列 */
+    private static final class BatchReader {
+
+        final Class<?> batcherType, instancerType, glsmType;
+        final Object batcher;
+        final Method active, queued, held;
+        final Method[] batchCounters, itemCounters;
+        final Field drawCalls;
+
+        BatchReader() throws Exception {
+            batcherType = Class.forName("com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher");
+            instancerType = Class.forName("com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer");
+            glsmType = Class.forName("com.gtnewhorizons.angelica.glsm.GLStateManager");
+            batcher = batcherType.getField("INSTANCE")
+                .get(null);
+            active = batcherType.getMethod("isActive");
+            queued = batcherType.getDeclaredMethod("hasQueuedGeometry");
+            held = batcherType.getDeclaredMethod("hasHeldEntities");
+            queued.setAccessible(true);
+            held.setAccessible(true);
+            batchCounters = new Method[] { batcherType.getMethod("statParts"),
+                batcherType.getMethod("statInstancedDraws"), batcherType.getMethod("statInstancedInstances"),
+                batcherType.getMethod("statRedrawnInstances") };
+            itemCounters = new Method[] { instancerType.getMethod("statInstanced"),
+                instancerType.getMethod("statGlintInstanced"), instancerType.getMethod("statFallback") };
+            drawCalls = glsmType.getField("drawCalls");
+        }
+
+        JsonObject snapshot() {
+            var state = new JsonObject();
+            state.addProperty("rawQueueSizesKnown", false);
+            try {
+                state.addProperty("active", (Boolean) active.invoke(batcher));
+                state.addProperty("queuedGeometry", (Boolean) queued.invoke(batcher));
+                state.addProperty("heldEntities", (Boolean) held.invoke(batcher));
+                var batch = new JsonObject();
+                for (Method method : batchCounters) batch.addProperty(method.getName(), (Long) method.invoke(batcher));
+                state.add("batcherCounters", batch);
+                var items = new JsonObject();
+                for (Method method : itemCounters) items.addProperty(method.getName(), (Long) method.invoke(null));
+                state.add("itemInstancerCounters", items);
+                state.addProperty("glsmDrawCalls", drawCalls.getLong(null));
+                state.addProperty("known", true);
+            } catch (Exception | LinkageError failure) {
+                state.addProperty("known", false);
+                state.addProperty("readError", failure.toString());
+            }
+            return state;
+        }
+    }
+
+    private static void requireImmediateBatch(JsonObject state) {
+        if (!state.get("known")
+            .getAsBoolean() || state.get("active")
+                .getAsBoolean()
+            || state.get("queuedGeometry")
+                .getAsBoolean()
+            || state.get("heldEntities")
+                .getAsBoolean())
+            throw new IllegalStateException(
+                "Held GPU query contract requires known inactive non-pending Java batching");
     }
 
     private static final class Geometry implements LegacyVertexConsumer {
@@ -513,23 +689,47 @@ public final class HeldItemGpuProbe {
 
         final Request request;
         final JsonObject report;
-        final Framebuffer target, body;
+        final Framebuffer target, body, empty;
         final Thread owner = Thread.currentThread();
         final List<byte[]> samples = new ArrayList<>();
         final JsonArray sampleReports = new JsonArray();
+        final JsonArray itemOnlyReports = new JsonArray();
         final JsonArray queryWaits = new JsonArray();
+        final JsonArray batchObservations = new JsonArray();
         final Path game, folder;
+        final BatchReader batches;
         MaidHeldItemLayer.DevelopmentDrawGate gate;
-        JsonArray calls;
+        JsonArray calls, hands;
+        JsonObject nativeBatchBefore;
+        BuiltinMaidModel observedModel;
+        String phase;
         int seams, rendererEntries, entered, completed, skipped;
         long poseBefore;
         boolean observing;
 
-        Transaction(Request request, JsonObject report, Framebuffer target, Framebuffer body) throws Exception {
+        Transaction(Request request, JsonObject report, Framebuffer target, Framebuffer body, Framebuffer empty)
+            throws Exception {
             this.request = request;
             this.report = report;
             this.target = target;
             this.body = body;
+            this.empty = empty;
+            try {
+                batches = new BatchReader();
+            } catch (Exception | LinkageError failure) {
+                var unknown = new JsonObject();
+                unknown.addProperty("known", false);
+                unknown.addProperty("readError", failure.toString());
+                report.add("batchingInitialization", unknown);
+                throw failure;
+            }
+            report.add(
+                "batchingIdentity",
+                DevelopmentArtifactIdentity.capture(batches.batcherType, batches.instancerType, batches.glsmType));
+            report.add("batchObservations", batchObservations);
+            var initialBatch = batchState("transaction_begin", 0);
+            report.add("batchingInitialization", initialBatch);
+            requireImmediateBatch(initialBatch);
             game = Minecraft.getMinecraft().mcDataDir.toPath()
                 .toRealPath();
             Path directory = game;
@@ -552,10 +752,21 @@ public final class HeldItemGpuProbe {
             }
             folder = directory;
             report.add("samples", sampleReports);
+            report.add("itemOnlySamples", itemOnlyReports);
             report.add("queryWaits", queryWaits);
         }
 
+        JsonObject batchState(String boundary, long nativeSequence) {
+            var state = batches.snapshot();
+            state.addProperty("boundary", boundary);
+            state.addProperty("phase", phase);
+            state.addProperty("nativeSequence", nativeSequence);
+            batchObservations.add(state);
+            return state;
+        }
+
         void capture(BuiltinMaidModel model, float partialTick, Runnable draw) throws Exception {
+            observedModel = model;
             if (seams != 1 || !model.hasCompletedPoseFor(request.maid)
                 || !model.getChoice()
                     .getId()
@@ -572,6 +783,13 @@ public final class HeldItemGpuProbe {
             report.addProperty("poseSerialBefore", poseBefore);
             report.addProperty("rendererEntries", rendererEntries);
             float[] bodyView = matrix(GL11.GL_MODELVIEW_MATRIX), projection = matrix(GL11.GL_PROJECTION_MATRIX);
+            var raster = rasterState();
+            if (!raster.get("depthTest")
+                .getAsBoolean()
+                || !raster.get("alphaTest")
+                    .getAsBoolean())
+                throw new IllegalStateException("Held GPU requires actual normal depth and alpha tests");
+            report.add("rasterState", raster);
             report.add("bodyModelView", GSON.toJsonTree(bodyView));
             report.add("projection", GSON.toJsonTree(projection));
             report.addProperty(
@@ -595,6 +813,10 @@ public final class HeldItemGpuProbe {
             report.add("bodyBaseline", baseline);
             if (baseline.get("occupiedPixels")
                 .getAsInt() < 64) throw new IllegalStateException("Actual body raster is empty or insufficient");
+            copy(empty, target);
+            byte[] emptyColor = rgba(), emptyDepth = depth();
+            report.add("emptyBaseline", save("empty", emptyColor, emptyDepth));
+            requireEmptyBaseline(emptyColor, emptyDepth);
             gate = MaidHeldItemLayer.installDevelopmentDrawGate(
                 request.maid.getUniqueID()
                     .toString(),
@@ -603,27 +825,37 @@ public final class HeldItemGpuProbe {
             MaidHeldItemLayer.setObserverForDevelopment(this);
             observing = true;
             String[] phases = { "normal0", "normal1", "normal2", "skip_native_draw", "recovery" };
-            for (int index = 0; index < phases.length; index++) {
+            for (int index = 0; index < phases.length * 2; index++) {
                 if (System.nanoTime() > request.deadline)
                     throw new IllegalStateException("Held GPU transaction deadline");
-                copy(body, target);
+                boolean itemOnly = index >= phases.length;
+                phase = (itemOnly ? "item_only_" : "") + phases[index % phases.length];
+                byte[] baselineColor = itemOnly ? emptyColor : bodyColor,
+                    baselineDepth = itemOnly ? emptyDepth : bodyDepth;
+                copy(itemOnly ? empty : body, target);
                 byte[] beforeColor = rgba(), beforeDepth = depth();
-                if (!Arrays.equals(bodyColor, beforeColor) || !Arrays.equals(bodyDepth, beforeDepth))
-                    throw new IllegalStateException("Body color/depth baseline was not restored exactly");
+                if (!Arrays.equals(baselineColor, beforeColor) || !Arrays.equals(baselineDepth, beforeDepth))
+                    throw new IllegalStateException("Actual color/depth baseline was not restored exactly");
                 float[] entryView = matrix(GL11.GL_MODELVIEW_MATRIX),
                     entryProjection = matrix(GL11.GL_PROJECTION_MATRIX);
                 if (!Arrays.equals(bodyView, entryView) || !Arrays.equals(projection, entryProjection))
                     throw new IllegalStateException("Body GL matrix changed before equipment draw");
+                var entryRaster = rasterState();
+                if (!raster.equals(entryRaster))
+                    throw new IllegalStateException("Raster state changed before equipment draw");
                 var beforeGeometry = new Geometry();
                 model.renderGeometry(new LegacyPoseStack(), beforeGeometry, light);
                 String beforeHash = beforeGeometry.finish();
                 if (!geometry.equals(beforeHash) || request.maid.ticksExisted != tick
                     || model.getPoseSerial() != serial)
                     throw new IllegalStateException("Body pose changed before equipment draw");
-                boolean skip = index == 3;
+                boolean skip = index % phases.length == 3;
                 MaidHeldItemLayer.setDevelopmentDrawSkip(gate, skip);
                 calls = new JsonArray();
+                hands = new JsonArray();
                 entered = completed = skipped = 0;
+                var phaseBatchBefore = batchState("phase_before", 0);
+                requireImmediateBatch(phaseBatchBefore);
                 int query = GL15.glGenQueries();
                 if (query == 0) throw new IllegalStateException("Missing native occlusion query");
                 boolean queryActive = false;
@@ -634,10 +866,14 @@ public final class HeldItemGpuProbe {
                     GL15.glBeginQuery(GL15.GL_SAMPLES_PASSED, query);
                     queryActive = true;
                     draw.run();
+                    var phaseBatchAfter = batchState("phase_after", 0);
+                    requireImmediateBatch(phaseBatchAfter);
+                    if (hands.size() != 2)
+                        throw new IllegalStateException("Missing actual left/right hand observations");
                     GL15.glEndQuery(GL15.GL_SAMPLES_PASSED);
                     queryActive = false;
                     var wait = new JsonObject();
-                    wait.addProperty("phase", phases[index]);
+                    wait.addProperty("phase", phase);
                     wait.addProperty("queryId", query);
                     wait.addProperty("flushCalled", false);
                     queryWaits.add(wait);
@@ -650,18 +886,27 @@ public final class HeldItemGpuProbe {
                     int result = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT);
                     if (result < 0) throw new IllegalStateException("Native query exceeds signed result range");
                     gpuSamples = result;
-                    var item = save(phases[index], color, afterDepth);
+                    var item = save(phase, color, afterDepth);
                     item.add("queryWait", wait);
-                    item.addProperty("bodyBeforeColorSha256", hash(beforeColor));
-                    item.addProperty("bodyBeforeDepthSha256", hash(beforeDepth));
+                    item.addProperty("baselinePhase", itemOnly ? "empty" : "body");
+                    item.addProperty("baselineBeforeColorSha256", hash(beforeColor));
+                    item.addProperty("baselineBeforeDepthSha256", hash(beforeDepth));
+                    if (!itemOnly) {
+                        item.addProperty("bodyBeforeColorSha256", hash(beforeColor));
+                        item.addProperty("bodyBeforeDepthSha256", hash(beforeDepth));
+                    }
                     item.addProperty("bodyBeforeGeometrySha256", beforeHash);
                     item.add("entryModelView", GSON.toJsonTree(entryView));
                     item.add("entryProjection", GSON.toJsonTree(entryProjection));
+                    item.add("entryRasterState", entryRaster);
                     item.addProperty("occlusionSamples", gpuSamples);
                     item.addProperty("nativeEntered", entered);
                     item.addProperty("nativeReturned", completed);
                     item.addProperty("nativeSkipped", skipped);
                     item.add("nativeCalls", calls);
+                    item.add("hands", hands);
+                    item.add("batchBefore", phaseBatchBefore);
+                    item.add("batchAfter", phaseBatchAfter);
                     var afterGeometry = new Geometry();
                     model.renderGeometry(new LegacyPoseStack(), afterGeometry, light);
                     String afterHash = afterGeometry.finish();
@@ -670,13 +915,16 @@ public final class HeldItemGpuProbe {
                     item.add("exitModelView", GSON.toJsonTree(exitView));
                     item.add("exitProjection", GSON.toJsonTree(exitProjection));
                     item.addProperty("bodyAfterGeometrySha256", afterHash);
+                    var exitRaster = rasterState();
+                    item.add("exitRasterState", exitRaster);
                     if (!geometry.equals(afterHash) || request.maid.ticksExisted != tick
                         || model.getPoseSerial() != serial
                         || !Arrays.equals(bodyView, exitView)
-                        || !Arrays.equals(projection, exitProjection))
+                        || !Arrays.equals(projection, exitProjection)
+                        || !raster.equals(exitRaster))
                         throw new IllegalStateException("Body pose changed during equipment draw");
                     samples.add(color);
-                    sampleReports.add(item);
+                    (itemOnly ? itemOnlyReports : sampleReports).add(item);
                 } finally {
                     try {
                         if (queryActive) GL15.glEndQuery(GL15.GL_SAMPLES_PASSED);
@@ -692,10 +940,29 @@ public final class HeldItemGpuProbe {
                 "normalRepetitionsEqual",
                 Arrays.equals(samples.get(0), samples.get(1)) && Arrays.equals(samples.get(1), samples.get(2)));
             report.addProperty("recoveryPixelsEqual", Arrays.equals(samples.get(2), samples.get(4)));
+            report.addProperty(
+                "itemOnlyNormalRepetitionsEqual",
+                Arrays.equals(samples.get(5), samples.get(6)) && Arrays.equals(samples.get(6), samples.get(7)));
+            report.addProperty("itemOnlyRecoveryPixelsEqual", Arrays.equals(samples.get(7), samples.get(9)));
+        }
+
+        @Override
+        public void hand(MaidHeldItemLayer.HandSnapshot hand) {
+            if (observedModel == null || hands == null
+                || !hand.actor.equals(
+                    request.maid.getUniqueID()
+                        .toString())
+                || !hand.actualModel.equals(request.model)) throw new IllegalStateException("Unowned hand observation");
+            var row = GSON.toJsonTree(hand)
+                .getAsJsonObject();
+            row.add("boneStates", boneStates(observedModel, hand));
+            hands.add(row);
         }
 
         @Override
         public void beforeNativeCall(MaidHeldItemLayer.NativeCall call) {
+            nativeBatchBefore = batchState("native_before", call.sequence);
+            requireImmediateBatch(nativeBatchBefore);
             if (!call.hand.actor.equals(
                 request.maid.getUniqueID()
                     .toString())
@@ -720,9 +987,13 @@ public final class HeldItemGpuProbe {
             row.addProperty("entered", wasEntered);
             row.addProperty("completed", returned);
             row.addProperty("failure", failure);
+            var after = batchState("native_after", call.sequence);
+            row.add("batchBefore", nativeBatchBefore);
+            row.add("batchAfter", after);
             calls.add(row);
             if (wasEntered) entered++;
             if (returned) completed++;
+            requireImmediateBatch(after);
         }
 
         @Override
@@ -780,17 +1051,18 @@ public final class HeldItemGpuProbe {
 
     private static final class Request {
 
-        final String request, model, action;
+        final String request, model, action, view;
         final EntityMaid maid;
         final Side side;
         final long deadline = System.nanoTime() + 15_000_000_000L;
         int ticks;
         JsonObject report;
 
-        Request(String request, String model, String action, EntityMaid maid) {
+        Request(String request, String model, String action, String view, EntityMaid maid) {
             this.request = request;
             this.model = model;
             this.action = action;
+            this.view = view;
             this.maid = maid;
             side = action.startsWith("shield_") ? Side.LEFT : Side.RIGHT;
         }

@@ -24,8 +24,25 @@ public class ClientDevelopmentRequestTest {
                 assertEquals(Command.HELD_ITEM_GPU_PROBE, parsed.command);
                 assertEquals(model, parsed.model);
                 assertEquals(action, parsed.action);
+                assertEquals("positive_z", parsed.view);
             }
         }
+    }
+
+    @Test
+    public void heldGpuViewsAreRestrictedIndependentTransactions() {
+        for (String view : new String[] { "positive_z", "negative_z", "positive_x", "negative_x" }) {
+            var request = parse(
+                "{\"command\":\"held_item_gpu_probe\",\"model\":\"geckolib:winefox\","
+                    + "\"action\":\"main_icon\",\"view\":\""
+                    + view
+                    + "\"}");
+            assertEquals(view, request.view);
+        }
+        String prefix = "{\"command\":\"held_item_gpu_probe\",\"model\":\"geckolib:winefox\","
+            + "\"action\":\"main_icon\",\"view\":";
+        for (String invalid : new String[] { "null}", "false}", "2}", "\"unknown\"}", "\"POSITIVE_Z\"}", "[]}" })
+            assertThrows(IllegalArgumentException.class, () -> parse(prefix + invalid));
     }
 
     @Test
