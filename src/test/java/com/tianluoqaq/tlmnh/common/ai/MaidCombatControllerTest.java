@@ -45,6 +45,29 @@ public class MaidCombatControllerTest {
     }
 
     @Test
+    public void arrivingAtLastSeenPositionWaitsWithoutRepathingAndResumesOnSight() {
+        var actor = new TestActor();
+        var controller = new MaidCombatController(actor, 0);
+        assertTrue(controller.tick());
+        assertTrue(actor.path);
+        actor.visible = false;
+        controller.tick();
+        assertEquals(Status.CHASING, controller.getStatus());
+        actor.distance = 1;
+        run(controller, 20);
+        assertEquals(Status.SEARCHING_LAST_SEEN, controller.getStatus());
+        assertFalse(actor.path);
+        assertEquals(1, controller.getPathRequests());
+        assertEquals(0, controller.getAttackAttempts());
+        assertEquals(0, actor.preparation);
+        actor.visible = true;
+        assertTrue(controller.tick());
+        assertEquals(Status.ATTACKING, controller.getStatus());
+        assertEquals(1, controller.getAttackAttempts());
+        assertEquals(1, controller.getSelections());
+    }
+
+    @Test
     public void taskAndStateConstraintsPreventAcquisitionAndAttacks() {
         for (var status : new Status[] { Status.HARD_STOP, Status.DISABLED, Status.NO_OWNER, Status.NO_WEAPON,
             Status.RANGED_UNSUPPORTED }) {

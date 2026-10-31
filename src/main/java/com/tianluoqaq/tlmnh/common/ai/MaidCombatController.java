@@ -15,6 +15,7 @@ public final class MaidCombatController {
     public static final int PURSUIT_TIMEOUT = 200;
     private static final int STUCK_INTERVAL = 40;
     private static final int MAX_PATH_FAILURES = 3;
+    private static final double LAST_SEEN_REACH_SQ = 2.25D;
 
     public enum Status {
         IDLE,
@@ -27,6 +28,7 @@ public final class MaidCombatController {
         NO_TARGET,
         TARGET_LOST,
         TARGET_HIDDEN,
+        SEARCHING_LAST_SEEN,
         CHASING,
         PATH_COOLDOWN,
         PATH_FAILED,
@@ -150,6 +152,11 @@ public final class MaidCombatController {
             return true;
         }
         actor.interruptAttack();
+        if (!visible && distance <= LAST_SEEN_REACH_SQ) {
+            actor.stopNavigation();
+            status = Status.SEARCHING_LAST_SEEN;
+            return true;
+        }
         if (tick - pursuitStarted >= PURSUIT_TIMEOUT) return stop(Status.PATH_FAILED, true);
         if (tick - progressTick >= STUCK_INTERVAL) {
             double movement = square(actor.x() - progressX) + square(actor.y() - progressY)

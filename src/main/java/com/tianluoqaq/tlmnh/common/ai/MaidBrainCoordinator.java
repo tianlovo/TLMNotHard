@@ -16,6 +16,7 @@ import net.minecraftforge.common.util.FakePlayer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -35,6 +36,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidBowAttack bow;
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
+    private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
@@ -137,6 +139,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
+        targetMemory.beginFrame(maid.worldObj, runtime.getContext(), maid.worldObj.getTotalWorldTime());
         boolean recording = telemetry.isEnabled();
         long started = recording ? System.nanoTime() : 0;
         try {
@@ -368,6 +371,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        targetMemory.clear();
         Throwable failure = cancel(combat::cancel, null);
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
@@ -472,7 +476,6 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private PathEntity ownedPath;
         private UUID ignoredTarget;
         private long ignoreUntil, nextOwnerScan;
-        private double seenX, seenY, seenZ;
         private MaidTask selectedTask;
 
         @Override
@@ -561,20 +564,27 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         }
 
         private boolean adopt(EntityLivingBase candidate) {
-            if (!usable(candidate)) return false;
+            if (!usable(candidate) || !rememberVisible(candidate)) return false;
             target = candidate;
             selectedTask = maid.getTask();
             maid.setAttackTarget(candidate);
             telemetry
                 .state("combat_target_selected", MaidTelemetryChannel.id(candidate), "task=" + selectedTask.getId());
-            rememberPosition();
             return true;
         }
 
-        private void rememberPosition() {
-            seenX = target.posX;
-            seenY = target.boundingBox.minY;
-            seenZ = target.posZ;
+        private boolean rememberVisible(EntityLivingBase candidate) {
+            return targetMemory.observeVisible(
+                candidate.getUniqueID(),
+                candidate,
+                candidate.posX,
+                candidate.boundingBox.minY,
+                candidate.posZ,
+                candidate.boundingBox.minY + candidate.getEyeHeight());
+        }
+
+        private MaidTargetMemory.Observation lastSeen() {
+            return target == null ? null : targetMemory.recall(target.getUniqueID(), target);
         }
 
         @Override
@@ -587,14 +597,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         public boolean targetVisible() {
             boolean visible = maid.getEntitySenses()
                 .canSee(target);
-            if (visible) rememberPosition();
+            if (visible) visible = rememberVisible(target);
             if (maid.getTask() == MaidTask.RANGED_ATTACK) bow.observe(target, visible, decisionTick);
             return visible;
         }
 
         @Override
         public double distanceSq() {
-            return maid.getDistanceSq(target.posX, target.boundingBox.minY, target.posZ);
+            var observation = lastSeen();
+            return observation == null ? Double.NaN
+                : maid.getDistanceSq(observation.getX(), observation.getFootY(), observation.getZ());
         }
 
         @Override
@@ -612,8 +624,15 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public void lookAtTarget() {
+            var observation = lastSeen();
+            if (observation == null) return;
             maid.getLookHelper()
-                .setLookPosition(seenX, seenY + target.getEyeHeight(), seenZ, 30, maid.getVerticalFaceSpeed());
+                .setLookPosition(
+                    observation.getX(),
+                    observation.getEyeY(),
+                    observation.getZ(),
+                    30,
+                    maid.getVerticalFaceSpeed());
         }
 
         @Override
@@ -627,7 +646,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         @Override
         public PathResult approachTarget() {
             if (!targetValid()) return PathResult.UNREACHABLE;
-            double dx = seenX - maid.posX, dy = seenY - maid.posY, dz = seenZ - maid.posZ;
+            var observation = lastSeen();
+            if (observation == null) return PathResult.UNREACHABLE;
+            double dx = observation.getX() - maid.posX, dy = observation.getFootY() - maid.posY,
+                dz = observation.getZ() - maid.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             double fraction = distance > 16 ? 16 / distance : 1;
             var result = combatPlanner
@@ -670,6 +692,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public void release(boolean suppressTarget) {
+            targetMemory.forgetTarget();
             if (target != null) {
                 if (suppressTarget) {
                     ignoredTarget = target.getUniqueID();
