@@ -478,7 +478,7 @@ TinkersDefense 圆盾和鸢形盾继续使用真实物品回调及 `InfiTool` �
 `MaidConfig` 范围及 `MaidMoveToBlockTask` 的主人/家园判断
 独立实现 `MaidHomeSettings`、`MaidHomeArea` 和 `MaidHomeController`，使用 RC2 原生 DataWatcher、NBT 与导航；原包 `EntityMaid` 只接同步槽及持久化入口
 默认工作/休闲/休息半径为 12/6/6，保持上游日班与夜班时间分段；活动点以女仆方块坐标设置，范围判断采用严格方块距离球
-当前返家使用同维度原生路径，尚未移植远距传送、跨维度或完整随机生活行为，不能作为完整忠实 F；未知存档版本保持原数据并禁用家园，避免覆盖
+当前返家使用原生步行及同维度安全落点，异维度处理和完整随机生活仍待实现；未知存档版本保持原数据并禁用家园，避免覆盖
 
 安全远距返家另参考同一固定上游 `SchedulePos.tick` 与 `TeleportHelper.teleportToRestrictCenter`
 `MaidHomeTeleport` 保留家园候选 X/Z ±3、Y 向上 0～3 及最多 10 次尝试，使用 RC2 原生碰撞、液体和实体检查
