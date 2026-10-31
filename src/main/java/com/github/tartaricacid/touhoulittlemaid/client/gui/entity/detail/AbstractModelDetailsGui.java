@@ -12,6 +12,7 @@ import net.minecraft.util.StatCollector;
 
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -99,10 +100,20 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTick) {
-        drawRect(0, 0, width, height, 0xFE17191D);
-        fontRendererObj.drawString(text("left_mouse"), 136, 19, 0xAAAAAA);
-        fontRendererObj.drawString(text("right_mouse"), 136, 29, 0xAAAAAA);
-        fontRendererObj.drawString(text("mouse_wheel"), 136, 39, 0xAAAAAA);
+        int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        try {
+            GL11.glTranslatef(0, 0, -999);
+            drawRect(0, 0, width, height, 0xFE17191D);
+            GL11.glTranslatef(0, 0, 99);
+            fontRendererObj.drawString(text("left_mouse"), 136, 19, 0xAAAAAA);
+            fontRendererObj.drawString(text("right_mouse"), 136, 29, 0xAAAAAA);
+            fontRendererObj.drawString(text("mouse_wheel"), 136, 39, 0xAAAAAA);
+        } finally {
+            GL11.glPopMatrix();
+            GL11.glMatrixMode(matrixMode);
+        }
         preview.draw(
             guiEntity,
             (width + 132) / 2 + posX,
