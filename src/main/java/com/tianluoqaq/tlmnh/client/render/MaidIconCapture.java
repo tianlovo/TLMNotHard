@@ -54,6 +54,7 @@ public final class MaidIconCapture {
             GL11.glClearDepth(1);
             GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
             Gui.drawRect(0, 0, size, size + 2, 0xFF00FF00);
+            GL11.glColor4f(1, 1, 1, 1);
             GL11.glTranslatef(0, 0, 200);
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240, 240);
             MaidGuiPreview.draw(maid, size / 2, size, (int) (size / 2 * itemScale), -25, -20, 0, 0, size, size + 2);
