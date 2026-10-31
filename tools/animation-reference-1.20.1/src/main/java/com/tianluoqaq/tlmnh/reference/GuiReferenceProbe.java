@@ -112,6 +112,12 @@ public final class GuiReferenceProbe {
             result.add("soundPacks", packs);
         }
 
+        if (screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui) {
+            var config = (com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidConfigManager.SyncNetwork) field(screen.getClass(), screen, "syncNetwork");
+            result.addProperty("displayedFrequency", config.soundFreq());
+            result.addProperty("maidFrequency", maid.getConfigManager().getSoundFreq());
+        }
+
         if (screen instanceof MaidModelGui) {
             int pack = (Integer) field(MaidModelGui.class, null, "PACK_INDEX");
             int row = (Integer) field(MaidModelGui.class, null, "ROW_INDEX");
@@ -164,6 +170,32 @@ public final class GuiReferenceProbe {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Cannot read original GUI field: " + name, error);
         }
+    }
+
+    static JsonObject settings() {
+        status();
+        var mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof AbstractMaidContainerGui<?> main)) throw new IllegalStateException("Original main window required");
+        main.mouseClicked((main.width - 256) / 2 + 156, (main.height - 256) / 2 + 18, 0);
+        var response = new JsonObject();
+        response.addProperty("openRequested", true);
+        return response;
+    }
+
+    static JsonObject configAction(JsonObject request) {
+        status();
+        var mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui config))
+            throw new IllegalStateException("Original config screen required");
+        int x = switch (request.get("action").getAsString()) {
+            case "down" -> 125;
+            case "up" -> 159;
+            case "label" -> 40;
+            default -> throw new IllegalArgumentException("Unknown original config action");
+        };
+        config.mouseClicked((config.width - 256) / 2 + 86 + x, (config.height - 256) / 2 + 97, 0);
+        config.mouseReleased((config.width - 256) / 2 + 86 + x, (config.height - 256) / 2 + 97, 0);
+        return status();
     }
 
     static JsonObject sounds() {

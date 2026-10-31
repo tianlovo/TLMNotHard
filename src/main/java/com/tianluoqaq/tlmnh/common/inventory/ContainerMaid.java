@@ -38,6 +38,8 @@ public class ContainerMaid extends Container {
     public static final int ACTION_HOME_RESET = 14;
     public static final int ACTION_PICKUP_ALL = 15;
     public static final int ACTION_SOUNDS = 16;
+    public static final int ACTION_CONFIG = 17;
+    public static final int ACTION_ORIGINAL_MAIN = 18;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
@@ -104,10 +106,12 @@ public class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_SOUNDS
+            || action > ACTION_ORIGINAL_MAIN
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
-        if ((action == ACTION_MODELS || action == ACTION_SOUNDS) && player.inventory.getItemStack() != null) {
+        if ((action == ACTION_MODELS || action == ACTION_SOUNDS
+            || action == ACTION_CONFIG
+            || action == ACTION_ORIGINAL_MAIN) && player.inventory.getItemStack() != null) {
             player.addChatMessage(new ChatComponentTranslation("gui.tlmnh.models.put_down_item"));
             return false;
         }
@@ -136,6 +140,10 @@ public class ContainerMaid extends Container {
                 .openGui(TLMNotHard.INSTANCE, modelGuiId(), maid.worldObj, maid.getEntityId(), 0, 0);
             case ACTION_SOUNDS -> player
                 .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_SOUNDS, maid.worldObj, maid.getEntityId(), 0, 0);
+            case ACTION_CONFIG -> player
+                .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_CONFIG, maid.worldObj, maid.getEntityId(), 0, 0);
+            case ACTION_ORIGINAL_MAIN -> player
+                .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, maid.worldObj, maid.getEntityId(), 0, 0);
             case ACTION_HOME -> {
                 return maid.getHomeArea()
                     .setEnabled(

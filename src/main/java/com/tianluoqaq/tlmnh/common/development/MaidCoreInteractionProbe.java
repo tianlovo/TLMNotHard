@@ -54,6 +54,61 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    public static void runConfig(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
+            require(world.spawnEntityInWorld(f.maid), "registered config maid");
+            var menu = new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
+                f.owner.inventory,
+                f.maid);
+            f.owner.openContainer = menu;
+            require(menu.inventorySlots.size() == 36, "config contains only 36 player slots");
+            require(
+                menu.enchantItem(f.owner, 24) && Math.abs(
+                    f.maid.getConfigManager()
+                        .getSoundFreq() - 0.9F)
+                    < 0.00001F,
+                "left arrow reduces by ten percent");
+            for (int i = 0; i < 12; i++) require(menu.enchantItem(f.owner, 24), "lower bound action");
+            require(
+                f.maid.getConfigManager()
+                    .getSoundFreq() == 0,
+                "lower clamp");
+            for (int i = 0; i < 12; i++) require(menu.enchantItem(f.owner, 25), "upper bound action");
+            require(
+                f.maid.getConfigManager()
+                    .getSoundFreq() == 1,
+                "upper clamp");
+            require(!menu.enchantItem(f.stranger, 24), "foreign viewer denied");
+            f.owner.inventory.setItemStack(new ItemStack(Items.stick));
+            require(!menu.enchantItem(f.owner, 24), "held cursor denied");
+            f.owner.inventory.setItemStack(null);
+            double x = f.owner.posX;
+            f.owner.setPosition(x + 32, f.owner.posY, f.owner.posZ);
+            require(!menu.enchantItem(f.owner, 24), "distant viewer denied");
+            f.owner.setPosition(x, f.owner.posY, f.owner.posZ);
+            require(
+                !menu.enchantItem(f.owner, 127) && f.maid.getConfigManager()
+                    .getSoundFreq() == 1,
+                "unknown action preserves frequency");
+            f.clearInventory();
+            f.owner.inventory.setInventorySlotContents(9, new ItemStack(Items.arrow, 5));
+            require(
+                menu.transferStackInSlot(f.owner, 0) != null && f.owner.inventory.getStackInSlot(9) == null
+                    && f.owner.inventory.getStackInSlot(0).stackSize == 5,
+                "player inventory to hotbar");
+            require(
+                menu.transferStackInSlot(f.owner, 27) != null && f.owner.inventory.getStackInSlot(0) == null
+                    && f.owner.inventory.getStackInSlot(9).stackSize == 5,
+                "hotbar back to inventory conserved");
+            require(
+                menu.transferStackInSlot(f.stranger, 0) == null && f.owner.inventory.getStackInSlot(9).stackSize == 5,
+                "foreign move denied");
+            TLMNotHard.LOG.info(
+                "TLMNH_CONFIG_TEST_PASS frequency=step-and-clamps owner=checked cursor=denied slots=36 player-transfer=conserved client=unverified");
+        }
+    }
+
     public static void runSound(WorldServer world) {
         try (var f = new Fixture(world)) {
             var packs = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs();

@@ -108,3 +108,17 @@ button.touhou_little_maid.maid.environment.morning=Morning
 button.touhou_little_maid.maid.environment.night=Night
 button.touhou_little_maid.maid.credit=Credit
 button.touhou_little_maid.maid.return=Return
+
+gui.touhou_little_maid.maid_config.sound_frequency=Maid Sound Freq
+gui.touhou_little_maid.maid_config.show_chat_bubble=Show Chat Bubbles
+gui.touhou_little_maid.maid_config.show_backpack=Show Backpack
+gui.touhou_little_maid.maid_config.show_back_item=Show Back Item
+gui.touhou_little_maid.maid_config.pick_type=Pickup Type
+gui.touhou_little_maid.maid_config.open_door=Open Doors
+gui.touhou_little_maid.maid_config.open_fence_gate=Open Fence Gates
+gui.touhou_little_maid.maid_config.active_climbing=Can Active Climbing
+gui.touhou_little_maid.maid_config.value.true=ON
+gui.touhou_little_maid.maid_config.value.false=OFF
+gui.touhou_little_maid.maid_config.value.item=Item
+gui.touhou_little_maid.maid_config.value.xp=XP
+gui.touhou_little_maid.maid_config.value.all=All

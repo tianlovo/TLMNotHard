@@ -82,6 +82,13 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         add(114, -72, 9, 16, 13, TASK, 93, 0, 14, 0, "next");
         for (int task = 0; task < 3; task++) add(task, -89, 23 + 19 * task, 83, 19, TASK, 93, 28, 20, 0, "");
         refreshButtons();
+        initAdditionWidgets();
+    }
+
+    protected void initAdditionWidgets() {}
+
+    protected boolean isConfigPage() {
+        return false;
     }
 
     private void add(int id, int x, int y, int width, int height, ResourceLocation atlas, int u, int v, int hover,
@@ -99,12 +106,15 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
 
     private void refreshButtons() {
         for (var raw : buttonList) {
-            var button = (MaidAtlasButton) raw;
+            if (!(raw instanceof MaidAtlasButton button)) continue;
             button.visible = button.id <= ContainerMaid.ACTION_RANGED || button.id == TASK_CLOSE
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
+            if (button.id == BAUBLE && isConfigPage()) button.visible = false;
             button.enabled = switch (button.id) {
-                case RIDE, DOWNLOAD, MAIN_TAB, TASK_TAB, CONFIG_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case RIDE, DOWNLOAD, TASK_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case MAIN_TAB -> isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
+                case CONFIG_TAB -> !isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case SKIN, SOUND -> mc.thePlayer.inventory.getItemStack() == null;
                 case ContainerMaid.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
                 default -> true;
@@ -114,7 +124,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             button.offsetV = button.id == SCHEDULE ? 14 * maid.getSchedule()
                 .ordinal() : 0;
             button.selected = switch (button.id) {
-                case MAIN_TAB -> true;
+                case MAIN_TAB -> !isConfigPage();
+                case CONFIG_TAB -> isConfigPage();
                 case ContainerMaid.ACTION_HOME -> maid.getHomeArea()
                     .enabled();
                 case ContainerMaid.ACTION_PICKUP_ALL -> maid.canPickupItems() || maid.canPickupExperience();
@@ -133,6 +144,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case INFO -> {}
             case SKIN -> send(ContainerMaid.ACTION_MODELS);
             case SOUND -> send(ContainerMaid.ACTION_SOUNDS);
+            case MAIN_TAB -> send(ContainerMaid.ACTION_ORIGINAL_MAIN);
+            case CONFIG_TAB -> send(ContainerMaid.ACTION_CONFIG);
             case SCHEDULE -> send(
                 ContainerMaid.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
@@ -158,6 +171,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "pickup" -> ContainerMaid.ACTION_PICKUP_ALL;
             case "open" -> SKIN;
             case "sound" -> SOUND;
+            case "config" -> CONFIG_TAB;
+            case "main_tab" -> MAIN_TAB;
             default -> throw new IllegalArgumentException("Unknown original GUI action");
         };
         for (var button : buttonList) if (button.id == id && button.visible && button.enabled) {
@@ -246,7 +261,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         if (taskListOpen) for (int task = 0; task < 3; task++)
             drawTask(task, guiLeft - 87, guiTop + 25 + 19 * task, guiLeft - 66, guiTop + 29 + 19 * task, false);
         for (var raw : buttonList) {
-            var button = (MaidAtlasButton) raw;
+            if (!(raw instanceof MaidAtlasButton button)) continue;
             if (button.contains(mouseX, mouseY)) {
                 var lines = tooltip(button);
                 if (!lines.isEmpty()) drawHoveringText(lines, mouseX, mouseY, fontRendererObj);

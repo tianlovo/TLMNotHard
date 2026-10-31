@@ -85,6 +85,11 @@
       "path": "assets/touhou_little_maid/textures/entity/low_stool.png",
       "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/low_stool.png",
       "sha256": "295b3e6683d00c8aee63501e4816956b27f0f724250ce746219a888d8a2c96e7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_gui_config.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_config.png",
+      "sha256": "f99babc401f67e19039743ce0fe258bdd8a28ad14a9a050d850244accd5ce0fd"
     }
   ]
 }

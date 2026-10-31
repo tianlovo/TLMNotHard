@@ -108,3 +108,17 @@ button.touhou_little_maid.maid.environment.morning=早上
 button.touhou_little_maid.maid.environment.night=傍晚
 button.touhou_little_maid.maid.credit=备注说明
 button.touhou_little_maid.maid.return=返回
+
+gui.touhou_little_maid.maid_config.sound_frequency=女仆声音频率
+gui.touhou_little_maid.maid_config.show_chat_bubble=显示聊天气泡
+gui.touhou_little_maid.maid_config.show_backpack=显示背包
+gui.touhou_little_maid.maid_config.show_back_item=显示背部物品
+gui.touhou_little_maid.maid_config.pick_type=拾取类型
+gui.touhou_little_maid.maid_config.open_door=能否开门
+gui.touhou_little_maid.maid_config.open_fence_gate=能否开栅栏门
+gui.touhou_little_maid.maid_config.active_climbing=能否主动爬梯
+gui.touhou_little_maid.maid_config.value.true=开启
+gui.touhou_little_maid.maid_config.value.false=关闭
+gui.touhou_little_maid.maid_config.value.item=物品
+gui.touhou_little_maid.maid_config.value.xp=经验
+gui.touhou_little_maid.maid_config.value.all=全部
