@@ -30,6 +30,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 /** 唯一服务端任务入口，战斗优先打断生活动作，路径和目标由当前动作独占 */
 public final class MaidBrainCoordinator extends EntityAIBase {
@@ -42,6 +43,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
     private final MaidActionRunner actionRunner = new MaidActionRunner();
+    private final MaidHomeController home;
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
@@ -67,6 +69,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
+        home = new MaidHomeController(maid, actionRunner);
         bow = new MaidBowAttack(maid);
         life = new MaidLifeController(
             maid,
@@ -108,6 +111,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             runtime.invalidate(InvalidationReason.OWNER_CHANGED);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
+        if (maid.getHomeArea()
+            .refreshActivity()) {
+            runtime.invalidate(InvalidationReason.HOME_ACTIVITY_CHANGED);
+            home.requestReturn();
+        }
         if (runtime.requiresAfterNativeNavigation()) {
             if (suspended) afterNavigationGate.clear();
             else afterNavigationGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
@@ -227,7 +235,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
             @Override
             public void tickFollow() {
-                follow.tick();
+                if (maid.getHomeArea()
+                    .enabled()) {
+                    follow.cancel();
+                    home.tick();
+                } else {
+                    home.cancel();
+                    follow.tick();
+                }
             }
 
             @Override
@@ -401,6 +416,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
         failure = cancel(follow::cancel, failure);
+        failure = cancel(home::cancel, failure);
         failure = cancel(actionRunner::clear, failure);
         failure = cancel(
             () -> maid.getShieldController()
@@ -442,6 +458,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidLifeController getLifeController() {
         return life;
+    }
+
+    public MaidHomeController getHomeController() {
+        return home;
+    }
+
+    public void onHomeCommandChanged() {
+        if (policy != null) policy.invalidate(InvalidationReason.HOME_COMMAND_CHANGED);
     }
 
     private boolean claimLifeControl(MaidActionRun run) {
@@ -501,14 +525,18 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             if (selectedTask != null && selectedTask != maid.getTask()) return MaidCombatController.Status.DISABLED;
             if (maid.getTask() != MaidTask.ATTACK && maid.getTask() != MaidTask.RANGED_ATTACK)
                 return MaidCombatController.Status.DISABLED;
+            var area = maid.getHomeArea();
+            if (area.enabled() && (!area.sameDimension() || !area.containsMaid() || area.activity() != Activity.WORK))
+                return MaidCombatController.Status.HARD_STOP;
             if (maid.getTask() == MaidTask.RANGED_ATTACK ? !MaidBowAttack.hasBow(maid) || !bow.hasAmmunition()
                 : !MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
             if (decisionTick >= nextOwnerScan) {
                 nextOwnerScan = decisionTick + MaidCombatController.SCAN_INTERVAL;
                 owner = ownerSensor.findOwner();
             }
-            if (!MaidCombatTargeting.validOwner(maid, owner)) return MaidCombatController.Status.NO_OWNER;
-            if (maid.getDistanceSqToEntity(owner) > MaidCombatTargeting.OWNER_RADIUS_SQ)
+            if (!area.enabled() && !MaidCombatTargeting.validOwner(maid, owner))
+                return MaidCombatController.Status.NO_OWNER;
+            if (!area.enabled() && maid.getDistanceSqToEntity(owner) > MaidCombatTargeting.OWNER_RADIUS_SQ)
                 return MaidCombatController.Status.HARD_STOP;
             return null;
         }
@@ -521,8 +549,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         @Override
         public boolean acquireTarget() {
             if (adopt(maid.getAttackTarget()) || adopt(maid.getAITarget())
-                || adopt(owner.getAITarget())
-                || adopt(owner.getLastAttacker())) return true;
+                || owner != null && (adopt(owner.getAITarget()) || adopt(owner.getLastAttacker()))) return true;
             EntityLivingBase closest = null;
             double distance = Double.MAX_VALUE;
             boolean recording = telemetry.isEnabled();
@@ -786,6 +813,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             if (maid.getLeashed()) return Status.LEASHED;
             if (!maid.isTamed()) return Status.UNTAMED;
             if (maid.getAttackTarget() != null) return Status.BUSY;
+            if (maid.getHomeArea()
+                .enabled()) return Status.BUSY;
             return null;
         }
 

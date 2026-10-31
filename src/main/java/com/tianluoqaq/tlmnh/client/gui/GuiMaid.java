@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
+import java.util.ArrayList;
 import java.util.Collections;
 
 import net.minecraft.client.gui.GuiButton;
@@ -18,6 +19,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class GuiMaid extends GuiContainer {
 
     private final EntityMaid maid;
+    private static final int HOME_PANEL = 1000;
+    private boolean homePage;
 
     public GuiMaid(ContainerMaid container) {
         super(container);
@@ -40,6 +43,12 @@ public final class GuiMaid extends GuiContainer {
         addButton(ContainerMaid.ACTION_PICKUP_EXPERIENCE, 184, 122, 124);
         addButton(ContainerMaid.ACTION_SIT, 184, 154, 124);
         addButton(ContainerMaid.ACTION_MODELS, 84, 28, 84);
+        addButton(HOME_PANEL, 84, 54, 84);
+        addButton(ContainerMaid.ACTION_HOME, 184, 28, 124);
+        addButton(ContainerMaid.ACTION_HOME_WORK, 184, 64, 124);
+        addButton(ContainerMaid.ACTION_HOME_IDLE, 184, 86, 124);
+        addButton(ContainerMaid.ACTION_HOME_REST, 184, 108, 124);
+        addButton(ContainerMaid.ACTION_HOME_RESET, 184, 142, 124);
         refreshButtons();
     }
 
@@ -59,6 +68,8 @@ public final class GuiMaid extends GuiContainer {
 
     private void refreshButtons() {
         for (var button : buttonList) {
+            button.visible = button.id == HOME_PANEL || button.id == ContainerMaid.ACTION_MODELS
+                || (button.id >= ContainerMaid.ACTION_HOME ? homePage : !homePage);
             boolean selected = false;
             switch (button.id) {
                 case ContainerMaid.ACTION_IDLE, ContainerMaid.ACTION_ATTACK, ContainerMaid.ACTION_RANGED -> {
@@ -81,10 +92,28 @@ public final class GuiMaid extends GuiContainer {
                 case ContainerMaid.ACTION_SIT -> button.displayString = text(
                     maid.isSitting() ? "gui.tlmnh.stand" : "gui.tlmnh.sit");
                 case ContainerMaid.ACTION_MODELS -> button.displayString = text("gui.tlmnh.models.open");
+                case ContainerMaid.ACTION_HOME -> button.displayString = toggle(
+                    "gui.tlmnh.home",
+                    maid.getHomeArea()
+                        .enabled());
+                case ContainerMaid.ACTION_HOME_WORK -> button.displayString = text("gui.tlmnh.home.work");
+                case ContainerMaid.ACTION_HOME_IDLE -> button.displayString = text("gui.tlmnh.home.idle");
+                case ContainerMaid.ACTION_HOME_REST -> button.displayString = text("gui.tlmnh.home.rest");
+                case ContainerMaid.ACTION_HOME_RESET -> button.displayString = text("gui.tlmnh.home.reset");
+                case HOME_PANEL -> button.displayString = text(
+                    homePage ? "gui.tlmnh.home.back" : "gui.tlmnh.home.open");
                 default -> {}
             }
             button.enabled = !selected && (button.id != ContainerMaid.ACTION_SIT || maid.ridingEntity == null)
                 && (button.id != ContainerMaid.ACTION_MODELS || mc.thePlayer.inventory.getItemStack() == null);
+            if (button.id >= ContainerMaid.ACTION_HOME && button.id <= ContainerMaid.ACTION_HOME_RESET) {
+                button.enabled = maid.ridingEntity == null && maid.riddenByEntity == null;
+                if (button.id > ContainerMaid.ACTION_HOME) button.enabled &= maid.getHomeArea()
+                    .enabled();
+                if (button.id >= ContainerMaid.ACTION_HOME_WORK && button.id <= ContainerMaid.ACTION_HOME_REST)
+                    button.enabled &= maid.getHomeArea()
+                        .sameDimension();
+            }
         }
     }
 
@@ -99,7 +128,10 @@ public final class GuiMaid extends GuiContainer {
     @Override
     protected void actionPerformed(GuiButton button) {
         if (!button.enabled) return;
-        if (button.id == ContainerMaid.ACTION_MODELS) openModelSelector();
+        if (button.id == HOME_PANEL) {
+            homePage = !homePage;
+            refreshButtons();
+        } else if (button.id == ContainerMaid.ACTION_MODELS) openModelSelector();
         else mc.playerController.sendEnchantPacket(inventorySlots.windowId, button.id);
     }
 
@@ -110,9 +142,48 @@ public final class GuiMaid extends GuiContainer {
         return true;
     }
 
+    public boolean openHomeSettings() {
+        if (mc.currentScreen != this || !inventorySlots.canInteractWith(mc.thePlayer)) return false;
+        homePage = true;
+        refreshButtons();
+        return true;
+    }
+
+    public boolean isHomeSettingsPage() {
+        return homePage;
+    }
+
+    /** 与鼠标入口共用实际按钮及容器消息，返回请求已发送，不推定服务端接受 */
+    public boolean requestHomeAction(int action) {
+        if (!homePage || mc.currentScreen != this || !inventorySlots.canInteractWith(mc.thePlayer)) return false;
+        for (var button : buttonList) if (button.id == action && button.visible
+            && button.enabled
+            && action >= ContainerMaid.ACTION_HOME
+            && action <= ContainerMaid.ACTION_HOME_RESET) {
+                actionPerformed(button);
+                return true;
+            }
+        return false;
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTick) {
         super.drawScreen(mouseX, mouseY, partialTick);
+        for (var button : buttonList) if (button.visible && button.id == ContainerMaid.ACTION_HOME
+            && mouseX >= button.xPosition
+            && mouseY >= button.yPosition
+            && mouseX < button.xPosition + button.width
+            && mouseY < button.yPosition + button.height) {
+                var home = maid.getHomeArea()
+                    .settings();
+                var lines = new ArrayList<String>();
+                lines.add(text("gui.tlmnh.home.tip"));
+                lines.add(StatCollector.translateToLocalFormatted("gui.tlmnh.home.dimension", home.dimension));
+                lines.add(text("gui.tlmnh.home.work") + ": " + home.work);
+                lines.add(text("gui.tlmnh.home.idle") + ": " + home.idle);
+                lines.add(text("gui.tlmnh.home.rest") + ": " + home.rest);
+                drawHoveringText(lines, mouseX, mouseY, fontRendererObj);
+            }
         if (mc.thePlayer.inventory.getItemStack() == null) return;
         for (var button : buttonList) {
             if (button.id == ContainerMaid.ACTION_MODELS && mouseX >= button.xPosition
@@ -134,6 +205,20 @@ public final class GuiMaid extends GuiContainer {
         fontRendererObj.drawString(text("gui.tlmnh.armor"), 8, 54, 0xD2D8DD);
         fontRendererObj.drawString(text("gui.tlmnh.backpack"), 8, 90, 0xD2D8DD);
         fontRendererObj.drawString(text("container.inventory"), 8, 128, 0xD2D8DD);
+        if (homePage) {
+            fontRendererObj.drawString(text("gui.tlmnh.home.title"), 184, 18, 0xD2D8DD);
+            fontRendererObj.drawString(
+                fontRendererObj.trimStringToWidth(
+                    StatCollector.translateToLocalFormatted(
+                        "gui.tlmnh.home.dimension",
+                        maid.getHomeArea()
+                            .settings().dimension),
+                    124),
+                184,
+                184,
+                0xD2D8DD);
+            return;
+        }
         fontRendererObj.drawString(text("gui.tlmnh.task"), 184, 18, 0xD2D8DD);
         fontRendererObj.drawString(text("gui.tlmnh.schedule"), 184, 54, 0xD2D8DD);
         fontRendererObj.drawString(text("gui.tlmnh.pickup"), 184, 90, 0xD2D8DD);

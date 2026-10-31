@@ -35,6 +35,8 @@ public final class MaidPolicyRuntime {
         WORLD_CHANGED,
         UNLOADED,
         PROFILE_CHANGED,
+        HOME_COMMAND_CHANGED,
+        HOME_ACTIVITY_CHANGED,
         REENTRANT_CALL,
         CALLBACK_FAILURE
     }

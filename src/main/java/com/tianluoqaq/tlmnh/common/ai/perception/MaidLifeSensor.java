@@ -43,12 +43,16 @@ public final class MaidLifeSensor {
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
         long started = recording ? System.nanoTime() : 0;
-        int radius = rest ? 12 : 5;
+        var home = maid.getHomeArea();
+        if (home.enabled() && !home.sameDimension()) return Collections.emptyList();
+        int radius = home.enabled() ? rest ? home.radius() : Math.min(5, home.radius()) : rest ? 12 : 5;
+        double centerX = home.enabled() ? home.center().x + 0.5 : maid.posX;
+        double centerZ = home.enabled() ? home.center().z + 0.5 : maid.posZ;
         var tiles = new ArrayList<TileEntity>();
-        for (int cx = MathHelper.floor_double(maid.posX - radius) >> 4,
-            maxX = MathHelper.floor_double(maid.posX + radius) >> 4; cx <= maxX; cx++)
-            for (int cz = MathHelper.floor_double(maid.posZ - radius) >> 4,
-                maxZ = MathHelper.floor_double(maid.posZ + radius) >> 4; cz <= maxZ; cz++) {
+        for (int cx = MathHelper.floor_double(centerX - radius) >> 4,
+            maxX = MathHelper.floor_double(centerX + radius) >> 4; cx <= maxX; cx++)
+            for (int cz = MathHelper.floor_double(centerZ - radius) >> 4,
+                maxZ = MathHelper.floor_double(centerZ + radius) >> 4; cz <= maxZ; cz++) {
                     var chunk = loadedChunk(server, cx, cz);
                     if (chunk != null) tiles.addAll(chunk.chunkTileEntityMap.values());
                 }
@@ -58,8 +62,7 @@ public final class MaidLifeSensor {
             var tile = tiles.get(Math.floorMod(cursor++, size));
             if (tile == null || tile.isInvalid() || tile.getWorldObj() != server) continue;
             boolean correctType = rest ? tile instanceof TileEntityMaidBed : tile instanceof TileEntitySnackCabinet;
-            double dx = tile.xCoord + 0.5 - maid.posX, dz = tile.zCoord + 0.5 - maid.posZ;
-            if (!correctType || Math.abs(tile.yCoord - maid.posY) > 3 || dx * dx + dz * dz > radius * radius) continue;
+            if (!correctType || !withinSearch(rest, tile.xCoord, tile.yCoord, tile.zCoord)) continue;
             result.add(
                 new MaidLifeCandidate(
                     rest ? Kind.BED : Kind.SNACK,
@@ -92,9 +95,8 @@ public final class MaidLifeSensor {
             || tile.yCoord != candidate.getY()
             || tile.zCoord != candidate.getZ()
             || !candidate.matches(server, context, server.getTotalWorldTime(), tile)) return null;
-        double dx = candidate.getX() + 0.5 - maid.posX, dz = candidate.getZ() + 0.5 - maid.posZ;
-        int radius = candidate.getKind() == Kind.BED ? 12 : 5;
-        if (Math.abs(candidate.getY() - maid.posY) > 3 || dx * dx + dz * dz > radius * radius) return null;
+        if (!withinSearch(candidate.getKind() == Kind.BED, candidate.getX(), candidate.getY(), candidate.getZ()))
+            return null;
         return candidate.getKind() == Kind.BED ? tile instanceof TileEntityMaidBed ? tile : null
             : tile instanceof TileEntitySnackCabinet ? tile : null;
     }
@@ -102,6 +104,21 @@ public final class MaidLifeSensor {
     private static Chunk loadedChunk(WorldServer world, int x, int z) {
         var value = world.theChunkProviderServer.loadedChunkHashMap.getValueByKey(ChunkCoordIntPair.chunkXZ2Int(x, z));
         return value instanceof Chunk chunk ? chunk : null;
+    }
+
+    private boolean withinSearch(boolean rest, int x, int y, int z) {
+        var home = maid.getHomeArea();
+        int radius = home.enabled() ? rest ? home.radius() : Math.min(5, home.radius()) : rest ? 12 : 5;
+        double cx = maid.posX, cy = maid.posY, cz = maid.posZ;
+        if (home.enabled()) {
+            if (!home.contains(x, y + (rest ? 0 : 1), z)) return false;
+            var center = home.center();
+            cx = center.x + 0.5;
+            cy = center.y;
+            cz = center.z + 0.5;
+        }
+        double dx = x + 0.5 - cx, dz = z + 0.5 - cz;
+        return Math.abs(y - cy) <= (home.enabled() && rest ? radius : 3) && dx * dx + dz * dz <= radius * radius;
     }
 
     public void clear() {

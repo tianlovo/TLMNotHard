@@ -27,6 +27,10 @@ public class MaidLifeRulesTest {
         assertFalse(MaidLifeRules.isRest(MaidSchedule.NIGHT, 23999));
         for (int time : new int[] { 0, 7999, 8000, 15999, 16000, 23999, 24000 })
             assertFalse(MaidLifeRules.isRest(MaidSchedule.ALL, time));
+        assertEquals(MaidLifeRules.Activity.IDLE, MaidLifeRules.activity(MaidSchedule.DAY, 12000));
+        assertEquals(MaidLifeRules.Activity.WORK, MaidLifeRules.activity(MaidSchedule.DAY, 11999));
+        assertEquals(MaidLifeRules.Activity.IDLE, MaidLifeRules.activity(MaidSchedule.NIGHT, 8000));
+        assertEquals(MaidLifeRules.Activity.WORK, MaidLifeRules.activity(MaidSchedule.NIGHT, 12000));
     }
 
     @Test

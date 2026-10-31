@@ -42,6 +42,7 @@ public final class MaidAcquisitionConfig {
         naturalDimensions = config
             .get("acquisition", "naturalDimensions", new int[] { 0 }, "自然生成维度数字ID / Natural spawning dimension IDs")
             .getIntList();
+        MaidHomeConfig.load(config);
         if (config.hasChanged()) config.save();
     }
 

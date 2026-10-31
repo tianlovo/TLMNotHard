@@ -110,7 +110,22 @@ public final class ClientDevelopmentRequest {
         }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
-            if (!Arrays.asList("status", "open", "select", "back", "next", "previous", "winefox", "all")
+            if (!Arrays
+                .asList(
+                    "status",
+                    "open",
+                    "select",
+                    "back",
+                    "next",
+                    "previous",
+                    "winefox",
+                    "all",
+                    "home",
+                    "home_toggle",
+                    "home_work",
+                    "home_idle",
+                    "home_rest",
+                    "home_reset")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
             if (action.equals("select")) model = text(json, "model");
         }

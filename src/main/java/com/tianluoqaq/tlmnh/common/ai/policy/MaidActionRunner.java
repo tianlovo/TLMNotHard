@@ -7,6 +7,7 @@ public final class MaidActionRunner {
 
     public enum Owner {
         FOLLOW,
+        HOME,
         LIFE,
         COMBAT
     }

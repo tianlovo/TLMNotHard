@@ -32,9 +32,23 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
         if (!action.equals("status")) {
-            if (minecraft.currentScreen instanceof GuiMaid main && action.equals("open")) {
-                requested = main.openModelSelector();
-                network = requested;
+            if (minecraft.currentScreen instanceof GuiMaid main) {
+                if (action.equals("open")) {
+                    requested = main.openModelSelector();
+                    network = requested;
+                } else if (action.equals("home")) requested = main.openHomeSettings();
+                else {
+                    int button = switch (action) {
+                        case "home_toggle" -> ContainerMaid.ACTION_HOME;
+                        case "home_work" -> ContainerMaid.ACTION_HOME_WORK;
+                        case "home_idle" -> ContainerMaid.ACTION_HOME_IDLE;
+                        case "home_rest" -> ContainerMaid.ACTION_HOME_REST;
+                        case "home_reset" -> ContainerMaid.ACTION_HOME_RESET;
+                        default -> throw new IllegalArgumentException("Action does not apply to the main maid screen");
+                    };
+                    requested = main.requestHomeAction(button);
+                    network = requested;
+                }
             } else if (minecraft.currentScreen instanceof GuiMaidModels selector) {
                 switch (action) {
                     case "select":
@@ -98,6 +112,20 @@ public final class MaidModelUiProbe {
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("clientReplicaOnly", true);
+        if (minecraft.currentScreen instanceof GuiMaid main) {
+            response.addProperty("homePage", main.isHomeSettingsPage());
+            response.addProperty(
+                "homeEnabled",
+                maid.getHomeArea()
+                    .enabled());
+            response.addProperty(
+                "homeSettings",
+                maid.getHomeArea()
+                    .settings()
+                    .encode());
+            response.addProperty("scaledWidth", main.width);
+            response.addProperty("scaledHeight", main.height);
+        }
         if (minecraft.currentScreen instanceof GuiMaidModels selector) {
             var visible = new JsonArray();
             for (int index : selector.getVisibleModelIndices()) {
@@ -120,8 +148,9 @@ public final class MaidModelUiProbe {
 
     public static void requireCaptureScreen() {
         requireWindow();
-        if (!(Minecraft.getMinecraft().currentScreen instanceof GuiMaidModels))
-            throw new IllegalStateException("Model selector capture requires the actual selector screen");
+        var screen = Minecraft.getMinecraft().currentScreen;
+        if (!(screen instanceof GuiMaidModels) && !(screen instanceof GuiMaid main && main.isHomeSettingsPage()))
+            throw new IllegalStateException("Maid GUI capture requires the actual selector or home settings page");
     }
 
     private static void requireWindow() {

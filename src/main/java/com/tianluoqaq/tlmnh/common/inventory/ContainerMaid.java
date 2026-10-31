@@ -13,6 +13,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 复用原版容器交易，每次操作重新检查主人、实体身份和距离 */
@@ -30,6 +31,11 @@ public final class ContainerMaid extends Container {
     public static final int ACTION_PICKUP_EXPERIENCE = 7;
     public static final int ACTION_SIT = 8;
     public static final int ACTION_MODELS = 9;
+    public static final int ACTION_HOME = 10;
+    public static final int ACTION_HOME_WORK = 11;
+    public static final int ACTION_HOME_IDLE = 12;
+    public static final int ACTION_HOME_REST = 13;
+    public static final int ACTION_HOME_RESET = 14;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
@@ -90,7 +96,7 @@ public final class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_MODELS
+            || action > ACTION_HOME_RESET
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
         if (action == ACTION_MODELS && player.inventory.getItemStack() != null) {
@@ -115,6 +121,28 @@ public final class ContainerMaid extends Container {
             }
             case ACTION_MODELS -> player
                 .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_MODELS, maid.worldObj, maid.getEntityId(), 0, 0);
+            case ACTION_HOME -> {
+                return maid.getHomeArea()
+                    .setEnabled(
+                        !maid.getHomeArea()
+                            .enabled());
+            }
+            case ACTION_HOME_WORK -> {
+                return maid.getHomeArea()
+                    .capture(Activity.WORK);
+            }
+            case ACTION_HOME_IDLE -> {
+                return maid.getHomeArea()
+                    .capture(Activity.IDLE);
+            }
+            case ACTION_HOME_REST -> {
+                return maid.getHomeArea()
+                    .capture(Activity.REST);
+            }
+            case ACTION_HOME_RESET -> {
+                return maid.getHomeArea()
+                    .resetHere();
+            }
             default -> {
                 return false;
             }

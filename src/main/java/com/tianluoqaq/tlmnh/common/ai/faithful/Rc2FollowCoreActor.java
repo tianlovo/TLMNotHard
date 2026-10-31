@@ -157,7 +157,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     private void guard() {
         if (!current()) throw outside("stale_actor_context");
         if (maid.getNavigator() != navigator) throw outside("navigator_replaced");
-        if (contract.homeMode || contract.goingToBreath) throw outside("home_or_breathing_not_admitted");
+        if (contract.homeMode || maid.getHomeArea()
+            .enabled() || contract.goingToBreath) throw outside("home_or_breathing_not_admitted");
         if (maid.isSitting() || maid.ridingEntity != null
             || maid.getLeashed()
             || maid.hasPose(MaidPose.SLEEPING)

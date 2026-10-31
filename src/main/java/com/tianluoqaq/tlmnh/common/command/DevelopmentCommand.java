@@ -27,6 +27,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidFollowCoreAdapterProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowTeleportProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidHomeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
@@ -162,6 +163,11 @@ public final class DevelopmentCommand extends CommandBase {
         if (args.length == 1 && "life-test".equals(args[0])) {
             MaidLifeProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_passed"));
+            return;
+        }
+        if (args.length == 1 && "home-test".equals(args[0])) {
+            MaidHomeProbe.run((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.home_passed"));
             return;
         }
         if (args.length == 1 && "lab-world-test".equals(args[0])) {

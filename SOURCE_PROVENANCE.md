@@ -471,3 +471,10 @@ TinkersDefense 圆盾和鸢形盾继续使用真实物品回调及 `InfiTool` �
 `tools/follow-natural-reference` 是独立开发工具，只在 MC 1.20.1、Forge 47.2.0、Java 17 的固定原版 TLM 环境运行
 它观察真实登录主人与真实登记的原版女仆，保留原活动、行为竞争和世界自然 tick，不手工调用 Brain 或替换女仆 AI
 重复运行差异和实际移动属性先用于方法核验；采集工具有效不表示忠实 F、增强 N 或完整 O/F/N 测评通过
+
+## 家园与日程活动点
+
+家园设计参考固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `SchedulePos`、`InitEntities` 日程注册、`MaidConfig` 范围及 `MaidMoveToBlockTask` 的主人/家园判断
+独立实现 `MaidHomeSettings`、`MaidHomeArea` 和 `MaidHomeController`，使用 RC2 原生 DataWatcher、NBT 与导航；原包 `EntityMaid` 只接同步槽及持久化入口
+默认工作/休闲/休息半径为 12/6/6，保持上游日班与夜班时间分段；活动点以女仆方块坐标设置，范围判断采用严格方块距离球
+当前返家使用同维度原生路径，尚未移植远距传送、跨维度或完整随机生活行为，不能作为完整忠实 F；未知存档版本保持原数据并禁用家园，避免覆盖

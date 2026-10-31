@@ -42,7 +42,8 @@ public final class MaidCombatTargeting {
     public static boolean canAttack(EntityMaid maid, EntityLivingBase owner, EntityLivingBase target) {
         if (maid.worldObj.isRemote || !maid.isTamed()
             || !maid.isEntityAlive()
-            || !validOwner(maid, owner)
+            || !maid.getHomeArea()
+                .enabled() && !validOwner(maid, owner)
             || target == null
             || target == maid
             || target == owner
@@ -56,20 +57,25 @@ public final class MaidCombatTargeting {
         if (target instanceof EntityPlayer || target instanceof EntityTameable
             || target instanceof INpc
             || maid.isOnSameTeam(target)
-            || owner.isOnSameTeam(target)) return false;
+            || owner != null && owner.isOnSameTeam(target)) return false;
         if (target instanceof EntityLiving mob && mob.hasCustomNameTag()
             && mob.getCustomNameTag()
                 .startsWith("MaidNoAttack"))
             return false;
-        if (maid.getDistanceSqToEntity(owner) > OWNER_RADIUS_SQ
+        var area = maid.getHomeArea();
+        if (area.enabled()) {
+            if (!area.sameDimension() || !area.containsMaid()
+                || area.activity() != com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
+                || !area.contains(target.posX, target.posY, target.posZ)) return false;
+        } else if (maid.getDistanceSqToEntity(owner) > OWNER_RADIUS_SQ
             || owner.getDistanceSqToEntity(target) > OWNER_RADIUS_SQ) return false;
         return target instanceof IMob || recentThreat(maid, owner, target);
     }
 
     public static boolean recentThreat(EntityMaid maid, EntityLivingBase owner, EntityLivingBase target) {
         return target != null && (target == maid.getAITarget() && recent(maid, maid.func_142015_aE())
-            || target == owner.getAITarget() && recent(owner, owner.func_142015_aE())
-            || target == owner.getLastAttacker() && recent(owner, owner.getLastAttackerTime()));
+            || owner != null && (target == owner.getAITarget() && recent(owner, owner.func_142015_aE())
+                || target == owner.getLastAttacker() && recent(owner, owner.getLastAttackerTime())));
     }
 
     private static boolean recent(EntityLivingBase source, int recordedTick) {

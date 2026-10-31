@@ -141,6 +141,12 @@ public final class MaidLifeController {
             && maid.hurtTime <= 0
             && !maid.isInWater()
             && !maid.isBurning()
+            && (!maid.getHomeArea()
+                .enabled()
+                || maid.getHomeArea()
+                    .sameDimension()
+                    && maid.getHomeArea()
+                        .containsMaid())
             && (!maid.hasPose(MaidPose.SLEEPING) || sleeping);
     }
 
@@ -150,11 +156,12 @@ public final class MaidLifeController {
             stop(Status.BLOCKED);
             return false;
         }
-        if (tick >= nextOwnerScan) {
+        if (!maid.getHomeArea()
+            .enabled() && tick >= nextOwnerScan) {
             nextOwnerScan = tick + SCAN_INTERVAL;
             owner = ownerSource.get();
         }
-        if (!ownerValid(owner) || maid.getDistanceSqToEntity(owner) > 144) {
+        if (!scopeAllowed()) {
             stop(Status.NO_OWNER);
             return false;
         }
@@ -238,6 +245,12 @@ public final class MaidLifeController {
         return MaidOwnerSensor.isValid(maid, player);
     }
 
+    private boolean scopeAllowed() {
+        var home = maid.getHomeArea();
+        return home.enabled() ? home.sameDimension() && home.containsMaid()
+            : ownerValid(owner) && maid.getDistanceSqToEntity(owner) <= 144;
+    }
+
     private boolean select(boolean rest, MaidPolicyContext context, MaidPolicyContext.Token token) {
         var telemetry = telemetry();
         boolean recording = telemetry.isEnabled();
@@ -285,8 +298,7 @@ public final class MaidLifeController {
             var bestObservation = intent.getCandidate();
             var best = sensor.resolve(bestObservation, context);
             if (best == null || !hardAllowed()
-                || !ownerValid(owner)
-                || maid.getDistanceSqToEntity(owner) > 144
+                || !scopeAllowed()
                 || MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime()) != rest) {
                 return rejectIntent(Status.INTENT_REJECTED, "observed_target_or_constraints_changed");
             }
@@ -300,8 +312,7 @@ public final class MaidLifeController {
             if (!claimControl.test(planned)) return rejectIntent(Status.CANCELLED, "control_claim_refused");
             if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())
                 || !hardAllowed()
-                || !ownerValid(owner)
-                || maid.getDistanceSqToEntity(owner) > 144
+                || !scopeAllowed()
                 || sensor.resolve(bestObservation, context) != best) {
                 return rejectIntent(Status.CANCELLED, "adoption_cancelled");
             }
@@ -345,7 +356,10 @@ public final class MaidLifeController {
         if (target == null || target.isInvalid()
             || target.getWorldObj() != maid.worldObj
             || !maid.worldObj.blockExists(target.xCoord, target.yCoord, target.zCoord)
-            || maid.worldObj.getTileEntity(target.xCoord, target.yCoord, target.zCoord) != target) return false;
+            || maid.worldObj.getTileEntity(target.xCoord, target.yCoord, target.zCoord) != target
+            || !maid.getHomeArea()
+                .contains(target.xCoord, target.yCoord + (action == Action.BED ? 0 : 1), target.zCoord))
+            return false;
         return action == Action.BED
             ? ((TileEntityMaidBed) target).complete() && ((TileEntityMaidBed) target).isOwnedBy(maid)
                 && bedClear((TileEntityMaidBed) target)
@@ -366,6 +380,9 @@ public final class MaidLifeController {
     }
 
     private boolean snackWithinOwnerRange(TileEntity cabinet) {
+        if (cabinet == null) return false;
+        var home = maid.getHomeArea();
+        if (home.enabled()) return home.contains(cabinet.xCoord, cabinet.yCoord + 1, cabinet.zCoord);
         // 上游非家园模式按食物方块中心到主人的距离判断，不是女仆到主人的距离
         return cabinet != null && ownerValid(owner)
             && owner.getDistanceSq(cabinet.xCoord + 0.5, cabinet.yCoord + 1.5, cabinet.zCoord + 0.5)
@@ -458,8 +475,7 @@ public final class MaidLifeController {
         return attempt != null && run == attempt
             && attempt.isCurrent(maid.worldObj, maid.getTask())
             && hardAllowed()
-            && ownerValid(owner)
-            && maid.getDistanceSqToEntity(owner) <= 144
+            && scopeAllowed()
             && action != null
             && MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime()) == (action == Action.BED);
     }
@@ -510,8 +526,7 @@ public final class MaidLifeController {
         return attempt != null && run == attempt
             && attempt.isCurrent(maid.worldObj, maid.getTask())
             && hardAllowed()
-            && ownerValid(owner)
-            && maid.getDistanceSqToEntity(owner) <= 144
+            && scopeAllowed()
             && action == Action.PLACE
             && snackWithinOwnerRange(target)
             && !MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime())

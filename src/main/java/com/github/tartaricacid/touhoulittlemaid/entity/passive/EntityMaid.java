@@ -29,6 +29,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
@@ -55,6 +56,7 @@ public class EntityMaid extends EntityTameable {
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidInventory inventory = new MaidInventory(this);
+    private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
@@ -81,6 +83,7 @@ public class EntityMaid extends EntityTameable {
         dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE));
         dataWatcher.addObjectByDataType(DATA_OFFHAND, 5);
         dataWatcher.addObject(DATA_POSE, (byte) 0);
+        MaidHomeArea.register(dataWatcher);
     }
 
     @Override
@@ -146,6 +149,10 @@ public class EntityMaid extends EntityTameable {
 
     public MaidInventory getMaidInventory() {
         return inventory;
+    }
+
+    public MaidHomeArea getHomeArea() {
+        return home;
     }
 
     public MaidBrainCoordinator getBrainCoordinator() {
@@ -325,6 +332,7 @@ public class EntityMaid extends EntityTameable {
         tag.setInteger("MaidFavorability", getFavorability());
         tag.setBoolean("PickupItems", canPickupItems());
         tag.setBoolean("PickupExperience", canPickupExperience());
+        home.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
         if (offhand != null) tag.setTag(OFFHAND_TAG, offhand.writeToNBT(new NBTTagCompound()));
         else tag.removeTag(OFFHAND_TAG);
@@ -376,6 +384,7 @@ public class EntityMaid extends EntityTameable {
             if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
             setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
+            home.load(tag);
             func_110163_bv();
             successful = true;
         } finally {
