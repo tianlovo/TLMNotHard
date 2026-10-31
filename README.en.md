@@ -99,15 +99,18 @@ Completed checks and unfinished work are recorded separately. A successful build
 | Built-in selection | Search, pages, wine-fox filtering and extra textures are connected; all 254 entries are reachable and 35 wine-fox selections have client/server roundtrip checks in RC2 |
 | Animation regression | Three controlled contracts match upstream CPU replay for two models; the frozen bundle passes six positive and seven Java negative cases in a clean independent clone with Gradle offline mode; actual head binding and shader-off FBO matrix-fault checks pass, while full world rendering remains unverified |
 | Independent static geometry | Two models pass a comparison between actual upstream methods and port production methods, covering positions, normals, UVs, fault injection and recovery; upstream Gecko submission order is restored, while materials and world rendering remain unverified |
-| Life and acquisition core | Initial soul spells, shrine, death storage, snack stealing and maid beds have native server fixtures; normally saved world ledgers and chunks pass a cross-process restart, while natural behaviour, real player saves, final visuals and GTNH recipes remain unverified |
+| Life and acquisition core | Initial soul spells, shrine, death storage, cabinets and maid beds have native server fixtures; normal world saves pass a cross-process restart, and natural snack stealing, cake placement, bed approach and waking pass on a fixed flat fixture; real player saves, offline/home life, final visuals and GTNH recipes remain unverified |
 | Unfinished | Remaining action layers and visual review, equipment layers, complete life/combat and interaction acceptance |
 | Acceptance pending | Wine-fox and other model visuals, animation transitions, Angelica compatibility, multiplayer and gameplay |
-| Behaviour AI and aiming | A single follow coordinator and sit/carry cancellation have natural-tick checks; melee, actual arrow physics and predictive bow execution fixtures pass, including native moving-target hits and static friendly blocking; natural combat/life behaviours and upstream benchmarks remain unfinished |
+| Behaviour AI and aiming | Natural target selection, approach, native bow hits on stationary/scripted moving targets, static friendly blocking and sit/stand interruption recovery pass on a fixed flat fixture; melee and actual arrow physics have separate execution checks, while complex scenarios and upstream benchmarks remain unfinished |
 
 Asset hashes, CPU geometry and pose checks do not replace in-game rendering and animation acceptance.
 A true-air void platform and spectator observer run in RC2;
 model animation cycles, pause controls and the full visual matrix remain pending.
 The follow check covers a fixed flat platform; it does not establish complex navigation or intelligence parity.
+Combat, life and following currently use a fixed-priority prototype.
+Full perception/memory, utility arbitration and faithful F/enhanced N modes remain in development;
+no benchmark establishes superior intelligence over upstream yet.
 Input contracts, evidence limits and commands are documented in the
 [comparison experiment](tools/animation-reference-1.20.1/DESIGN.md).
 Frozen CPU regression requires a prepared Gradle dependency cache.
