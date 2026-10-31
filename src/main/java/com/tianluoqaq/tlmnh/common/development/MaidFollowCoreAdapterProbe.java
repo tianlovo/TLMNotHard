@@ -190,7 +190,7 @@ public final class MaidFollowCoreAdapterProbe {
     }
 
     private static void fallbackPaths(Platform platform, JsonArray rows) {
-        long[] seeds = { 0L, 0L };
+        long[] seeds = { 0L, Long.MIN_VALUE };
         for (int index = 0; index < seeds.length; index++) {
             var row = row(rows, index == 1 ? "diagonal_positive" : "east_null_" + seeds[index]);
             try (var fixture = new Fixture(platform, row)) {
