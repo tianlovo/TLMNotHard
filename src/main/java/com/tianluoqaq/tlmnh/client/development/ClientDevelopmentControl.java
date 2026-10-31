@@ -14,9 +14,11 @@ import java.util.Map;
 import java.util.Queue;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.ScreenShotHelper;
 
 import org.lwjgl.opengl.GL11;
@@ -32,6 +34,7 @@ import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -138,6 +141,19 @@ public final class ClientDevelopmentControl {
                             : minecraft.currentScreen.getClass()
                                 .getSimpleName());
                     response.addProperty("width", minecraft.displayWidth);
+                    if (minecraft.currentScreen instanceof GuiDisconnected disconnected) {
+                        try {
+                            IChatComponent reason = ReflectionHelper
+                                .getPrivateValue(GuiDisconnected.class, disconnected, "field_146304_f");
+                            response
+                                .addProperty("disconnectReason", reason == null ? null : reason.getUnformattedText());
+                        } catch (RuntimeException error) {
+                            response.addProperty(
+                                "disconnectReasonUnavailable",
+                                error.getClass()
+                                    .getSimpleName());
+                        }
+                    }
                     response.addProperty("height", minecraft.displayHeight);
                     response.addProperty(
                         "headBindingPending",

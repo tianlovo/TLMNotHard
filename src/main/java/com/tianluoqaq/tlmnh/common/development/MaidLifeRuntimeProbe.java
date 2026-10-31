@@ -44,7 +44,6 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 
@@ -190,9 +189,7 @@ public final class MaidLifeRuntimeProbe {
         var manager = new NetworkManager(false);
         connection = new EmbeddedChannel(manager);
         manager.setConnectionState(EnumConnectionState.PLAY);
-        require(
-            manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
-            "Isolated memory PLAY connection without a real client dispatcher");
+        IsolatedPlayerChannel.verify(manager, connection);
         new NetHandlerPlayServer(MinecraftServer.getServer(), manager, owner);
         owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
         owner.capabilities.disableDamage = true;
@@ -259,6 +256,7 @@ public final class MaidLifeRuntimeProbe {
     }
 
     private void verifyParticipants() {
+        IsolatedPlayerChannel.requireUnbound(connection);
         require(
             maid != null && maid.isEntityAlive() && MaidSpawnChecks.present(maid, world) && maid.isOwner(owner),
             "Natural actor identity lost");
@@ -603,6 +601,7 @@ public final class MaidLifeRuntimeProbe {
         } finally {
             try {
                 if (connection != null) {
+                    restore(() -> IsolatedPlayerChannel.requireUnbound(connection), errors);
                     restore(() -> connection.finish(), errors);
                     releaseMessages(true, errors);
                     releaseMessages(false, errors);

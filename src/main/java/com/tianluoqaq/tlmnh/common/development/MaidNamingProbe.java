@@ -31,7 +31,6 @@ import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 
-import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
@@ -329,6 +328,11 @@ public final class MaidNamingProbe {
                 // 窗口或实体清理失败也不能跳过任一内存channel，保留首个异常
                 for (var connection : connections) {
                     try {
+                        IsolatedPlayerChannel.requireUnbound(connection);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                    try {
                         connection.finish();
                     } catch (RuntimeException | Error error) {
                         failure = remember(failure, error);
@@ -369,9 +373,7 @@ public final class MaidNamingProbe {
             var connection = new EmbeddedChannel(manager);
             connections.add(connection);
             manager.setConnectionState(EnumConnectionState.PLAY);
-            require(
-                manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
-                "isolated memory channel without a real FML connection");
+            IsolatedPlayerChannel.verify(manager, connection);
             new NetHandlerPlayServer(MinecraftServer.getServer(), manager, player);
             player.theItemInWorldManager.setGameType(GameType.SURVIVAL);
             return player;

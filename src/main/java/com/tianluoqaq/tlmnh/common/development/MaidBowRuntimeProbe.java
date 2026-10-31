@@ -38,7 +38,6 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 
@@ -96,9 +95,7 @@ public final class MaidBowRuntimeProbe {
         connection = new EmbeddedChannel(manager);
         try {
             manager.setConnectionState(EnumConnectionState.PLAY);
-            require(
-                manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
-                "Isolated memory PLAY connection required");
+            IsolatedPlayerChannel.verify(manager, connection);
             new NetHandlerPlayServer(MinecraftServer.getServer(), manager, owner);
             maid = new EntityMaid(world);
             friend = new EntityMaid(world);
@@ -213,6 +210,7 @@ public final class MaidBowRuntimeProbe {
             require(
                 world.playerEntities.contains(owner) && owner.worldObj == world && owner.isEntityAlive(),
                 "Fixture owner lost");
+            IsolatedPlayerChannel.requireUnbound(connection);
             require(maid.ticksExisted >= ticks - 1, "Maid did not receive natural entity ticks");
             require(ticks - phaseStart <= phaseLimit(), "Natural phase timed out: " + phase);
             require(maid.posY >= y - .1 && Math.abs(maid.posZ - z - .5) < 7, "Actor left the fixture platform");
@@ -527,6 +525,7 @@ public final class MaidBowRuntimeProbe {
     }
 
     private void releaseChannel(List<String> errors) {
+        restore(() -> IsolatedPlayerChannel.requireUnbound(connection), errors);
         restore(() -> connection.finish(), errors);
         drain(true, errors);
         drain(false, errors);

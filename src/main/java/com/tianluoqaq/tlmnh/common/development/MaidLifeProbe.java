@@ -30,7 +30,6 @@ import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 
@@ -68,9 +67,7 @@ public final class MaidLifeProbe {
             // Nutrition等RC2服务端同步需要真实channel，不建立握手或真实客户端dispatcher
             connection = new EmbeddedChannel(manager);
             manager.setConnectionState(EnumConnectionState.PLAY);
-            require(
-                manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
-                "Isolated memory PLAY channel without a real FML client");
+            IsolatedPlayerChannel.verify(manager, connection);
             new NetHandlerPlayServer(MinecraftServer.getServer(), manager, owner);
             owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
             owner.setPosition(x + 2.5, y, z + 1.5);
@@ -294,6 +291,11 @@ public final class MaidLifeProbe {
             } finally {
                 // 控制器、实体或方块清理失败，也必须关闭连接并释放所有已排队消息
                 if (connection != null) {
+                    try {
+                        IsolatedPlayerChannel.requireUnbound(connection);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
                     try {
                         connection.finish();
                     } catch (RuntimeException | Error error) {
