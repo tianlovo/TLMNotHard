@@ -22,6 +22,7 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
@@ -35,7 +36,8 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 /** 真实物品与Forge伤害组件；不登记实体，不把直接伤害调用冒充飞行碰撞或自然举盾AI */
 public final class MaidShieldNativeProbe {
 
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder().serializeNulls()
+        .create();
 
     private MaidShieldNativeProbe() {}
 
