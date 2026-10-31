@@ -9,6 +9,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.EnumConnectionState;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
@@ -29,6 +30,9 @@ import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
+import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.util.ReferenceCountUtil;
 
 /** 真实方块/背包/Forge 放置事件夹具，手动推进控制器，不声称自然 tick 或客户端画面通过 */
 public final class MaidLifeProbe {
@@ -53,14 +57,23 @@ public final class MaidLifeProbe {
             world,
             new GameProfile(UUID.fromString("b4ced159-49d2-43b3-a0ad-d928a8f990d4"), "TLMNHLifeFixture"),
             new ItemInWorldManager(world));
-        new NetHandlerPlayServer(MinecraftServer.getServer(), new NetworkManager(false), owner);
-        owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
-        owner.setPosition(x + 2.5, y, z + 1.5);
         var maid = new EntityMaid(world);
         var other = new EntityMaid(world);
         MaidLifeController life = null, competitor = null;
         var reject = new RejectPlacement(maid);
+        var manager = new NetworkManager(false);
+        EmbeddedChannel connection = null;
+        Throwable failure = null;
         try {
+            // Nutrition等RC2服务端同步需要真实channel，不建立握手或真实客户端dispatcher
+            connection = new EmbeddedChannel(manager);
+            manager.setConnectionState(EnumConnectionState.PLAY);
+            require(
+                manager.channel() == connection && manager.isChannelOpen() && NetworkDispatcher.get(manager) == null,
+                "Isolated memory PLAY channel without a real FML client");
+            new NetHandlerPlayServer(MinecraftServer.getServer(), manager, owner);
+            owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
+            owner.setPosition(x + 2.5, y, z + 1.5);
             for (int dx = -2; dx <= 3; dx++)
                 for (int dz = -2; dz <= 4; dz++) world.setBlock(x + dx, y - 1, z + dz, Blocks.stone, 0, 2);
             world.playerEntities.add(owner);
@@ -217,31 +230,110 @@ public final class MaidLifeProbe {
             world.setBlockToAir(x, y, z + 3);
             life.tick(true);
             require(!life.isSleeping() && !maid.hasPose(MaidPose.SLEEPING), "Removing bed wakes sleeper");
-            TLMNotHard.LOG.info(
-                "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke natural_tick=unverified visuals=unverified");
+        } catch (RuntimeException | Error error) {
+            failure = error;
         } finally {
-            MinecraftForge.EVENT_BUS.unregister(reject);
-            if (life != null) life.cancel();
-            if (competitor != null) competitor.cancel();
-            maid.getMaidInventory()
-                .setInventorySlotContents(0, null);
-            maid.getMaidInventory()
-                .setInventorySlotContents(1, null);
-            maid.setDead();
-            other.setDead();
-            world.removeEntity(maid);
-            world.removeEntity(other);
-            world.playerEntities.remove(owner);
-            for (int dx = -2; dx <= 3; dx++) for (int dz = -2; dz <= 4; dz++)
-                for (int dy = 3; dy >= -1; dy--) world.setBlock(x + dx, y + dy, z + dz, Blocks.air, 0, 2);
-            for (Object value : new java.util.ArrayList<>(world.loadedEntityList)) {
-                if (value instanceof EntityItem item && !existingEntities.contains(item)
-                    && Math.abs(item.posX - x) < 5
-                    && Math.abs(item.posZ - z) < 7
-                    && Math.abs(item.posY - y) < 5) world.removeEntity(item);
+            try {
+                try {
+                    MinecraftForge.EVENT_BUS.unregister(reject);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    if (life != null) life.cancel();
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    if (competitor != null) competitor.cancel();
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    maid.getMaidInventory()
+                        .setInventorySlotContents(0, null);
+                    maid.getMaidInventory()
+                        .setInventorySlotContents(1, null);
+                    maid.setDead();
+                    world.removeEntity(maid);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    other.setDead();
+                    world.removeEntity(other);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    world.playerEntities.remove(owner);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    for (int dx = -2; dx <= 3; dx++) for (int dz = -2; dz <= 4; dz++)
+                        for (int dy = 3; dy >= -1; dy--) world.setBlock(x + dx, y + dy, z + dz, Blocks.air, 0, 2);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    for (Object value : new java.util.ArrayList<>(world.loadedEntityList)) {
+                        if (value instanceof EntityItem item && !existingEntities.contains(item)
+                            && Math.abs(item.posX - x) < 5
+                            && Math.abs(item.posZ - z) < 7
+                            && Math.abs(item.posY - y) < 5) world.removeEntity(item);
+                    }
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+                try {
+                    world.setWorldTime(time);
+                } catch (RuntimeException | Error error) {
+                    failure = remember(failure, error);
+                }
+            } finally {
+                // 控制器、实体或方块清理失败，也必须关闭连接并释放所有已排队消息
+                if (connection != null) {
+                    try {
+                        connection.finish();
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                    try {
+                        failure = releaseMessages(connection, true, failure);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                    try {
+                        failure = releaseMessages(connection, false, failure);
+                    } catch (RuntimeException | Error error) {
+                        failure = remember(failure, error);
+                    }
+                }
             }
-            world.setWorldTime(time);
         }
+        if (failure instanceof RuntimeException error) throw error;
+        if (failure instanceof Error error) throw error;
+        TLMNotHard.LOG.info(
+            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke natural_tick=unverified visuals=unverified");
+    }
+
+    private static Throwable remember(Throwable first, Throwable next) {
+        if (first == null) return next;
+        if (first != next) first.addSuppressed(next);
+        return first;
+    }
+
+    private static Throwable releaseMessages(EmbeddedChannel connection, boolean outbound, Throwable failure) {
+        Object message;
+        while ((message = outbound ? connection.readOutbound() : connection.readInbound()) != null) {
+            try {
+                ReferenceCountUtil.release(message);
+            } catch (RuntimeException | Error error) {
+                failure = remember(failure, error);
+            }
+        }
+        return failure;
     }
 
     private static void drive(MaidLifeController life, int ticks) {

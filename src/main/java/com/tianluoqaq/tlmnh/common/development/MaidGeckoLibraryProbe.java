@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.development;
 
 import java.io.ByteArrayOutputStream;
+import java.net.JarURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -35,12 +36,22 @@ public final class MaidGeckoLibraryProbe {
                 var source = type.getProtectionDomain()
                     .getCodeSource();
                 if (source == null) throw new IllegalStateException("Missing actual library CodeSource");
-                var file = Paths.get(
-                    source.getLocation()
-                        .toURI())
+                var location = source.getLocation();
+                var fileLocation = location;
+                // RC2可用jar:file作为CodeSource，不将它当成已挂载的ZIP文件系统
+                if ("jar".equals(location.getProtocol())) {
+                    var connection = location.openConnection();
+                    if (!(connection instanceof JarURLConnection jar))
+                        throw new IllegalStateException("Unsupported library JAR CodeSource");
+                    fileLocation = jar.getJarFileURL();
+                }
+                if (!"file".equals(fileLocation.getProtocol()))
+                    throw new IllegalStateException("Actual library CodeSource is not a local JAR");
+                var file = Paths.get(fileLocation.toURI())
                     .toRealPath();
-                if (!Files.isRegularFile(file) || !sha(Files.readAllBytes(file)).equals(JAR_SHA))
-                    throw new IllegalStateException("Actual library differs from fixed RC2 fastutil 8.5.18");
+                String actualJarSha = Files.isRegularFile(file) ? sha(Files.readAllBytes(file)) : "not-a-jar-file";
+                if (!actualJarSha.equals(JAR_SHA)) throw new IllegalStateException(
+                    "Actual RC2 fastutil source differs: " + file.getFileName() + " sha256=" + actualJarSha);
                 byte[] bytes;
                 try (var input = type.getResourceAsStream('/' + CLASSES[i].replace('.', '/') + ".class")) {
                     if (input == null) throw new IllegalStateException("Missing actual library class resource");
@@ -60,6 +71,7 @@ public final class MaidGeckoLibraryProbe {
                     file.getFileName()
                         .toString());
                 entry.addProperty("codeSourceJarSha256", JAR_SHA);
+                entry.addProperty("codeSourceProtocol", location.getProtocol());
                 entry.addProperty("resourceSha256", CLASS_SHA[i]);
                 entry.addProperty("resourceMajor", major);
                 entry.addProperty(
