@@ -18,6 +18,7 @@ import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidArrowPhysicsProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBowProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
@@ -26,6 +27,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -55,6 +57,18 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
+            throw new IllegalStateException("A natural runtime experiment owns the development fixture");
+        if (args.length == 1 && "bow-runtime-test".equals(args[0])) {
+            MaidBowRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_runtime_started"));
+            return;
+        }
+        if (args.length == 1 && "life-runtime-test".equals(args[0])) {
+            MaidLifeRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_runtime_started"));
+            return;
+        }
         if (args.length == 1 && "gecko-library-test".equals(args[0])) {
             MaidGeckoLibraryProbe.run();
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.gecko_library_passed"));

@@ -27,7 +27,7 @@ public class MaidCombatControllerTest {
         var controller = new MaidCombatController(actor, 0);
         run(controller, 100);
         assertEquals(5, controller.getAttackAttempts());
-        assertEquals(5, controller.getHits());
+        assertEquals(5, controller.getSuccessfulAttacks());
         assertEquals(0, controller.getPathRequests());
     }
 
@@ -136,7 +136,7 @@ public class MaidCombatControllerTest {
         var controller = new MaidCombatController(actor, 0);
         run(controller, 40);
         assertEquals(2, controller.getAttackAttempts());
-        assertEquals(0, controller.getHits());
+        assertEquals(0, controller.getSuccessfulAttacks());
     }
 
     private static void run(MaidCombatController controller, int ticks) {

@@ -310,3 +310,11 @@ MaidLifecycleRestartProbe仅在开发开关下建立隔离夹具，实际区块�
 使用RC2已提供的fastutil 8.5.18，开发配置为compileOnly、runtimeOnlyNonPublishable和testImplementation，不shade或覆盖整合包全局版本
 上游固定参考环境使用8.5.9；两版本对26份固定几何、4729骨骼的独立容器实验全序列一致，仍须以生产渲染路径和实际RC2类来源验证集成结果
 新汉服测试的根及17组兄弟字面期望来自真实原版capture，未由移植实现重算期望；实际材质与共面覆盖继续独立验收
+
+## 自然行为开发探针
+
+新增MaidBowRuntimeProbe与MaidLifeRuntimeProbe位于本工程包名，仅在显式开发命令下搭建有界测试输入
+它们通过FML tick事件观察生产女仆的自然AI与世界更新，不另算预期行为，不手动推进实体、箭或控制器
+内存PLAY主人、脚本移动靶和空气脚手架是隔离测试条件，不冒充真实玩家网络或原版智能测评
+弓箭以本轮箭伤源和真实生命变化识别碰撞命中；控制器原getHits更名为getSuccessfulAttacks，明确该计数包括成功发射，不能作为命中数
+探针正常结束与测试服停止时释放自己创建的实体、方块、观察器和连接；通过标志要求清理无误

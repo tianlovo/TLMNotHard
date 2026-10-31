@@ -87,7 +87,7 @@ public final class MaidCombatController {
 
     private final Actor actor;
     private long tick, nextScan, nextPath, nextAttack, pursuitStarted, progressTick;
-    private long scans, selections, pathRequests, pathFailures, attackAttempts, hits, cancellations;
+    private long scans, selections, pathRequests, pathFailures, attackAttempts, successfulAttacks, cancellations;
     private int unseenTicks, consecutivePathFailures;
     private double progressX, progressY, progressZ;
     private boolean active;
@@ -145,7 +145,7 @@ public final class MaidCombatController {
             }
             nextAttack = tick + actor.attackInterval();
             attackAttempts++;
-            if (actor.attack()) hits++;
+            if (actor.attack()) successfulAttacks++;
             status = Status.ATTACKING;
             return true;
         }
@@ -244,8 +244,9 @@ public final class MaidCombatController {
         return attackAttempts;
     }
 
-    public long getHits() {
-        return hits;
+    /** 执行成功次数；弓箭表示发射成功，实际命中须另观察原生碰撞和伤害 */
+    public long getSuccessfulAttacks() {
+        return successfulAttacks;
     }
 
     public long getCancellations() {
