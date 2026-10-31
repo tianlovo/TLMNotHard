@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai;
 
 import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
@@ -9,7 +10,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
-/** 家园范围外或日程切换后走回当前活动点，使用原生导航，不加载区块或跨维度传送 */
+/** 家园范围外或日程切换后返家，使用原生导航或同维度安全落点，不加载目标区块 */
 public final class MaidHomeController {
 
     public enum Status {
@@ -17,6 +18,7 @@ public final class MaidHomeController {
         RETURNING,
         BLOCKED,
         WRONG_DIMENSION,
+        TELEPORTED,
         PATH_UNAVAILABLE
     }
 
@@ -87,6 +89,22 @@ public final class MaidHomeController {
         status = Status.RETURNING;
         if (tick < nextPath) return;
         nextPath = tick + 40;
+        double bx = (double) MathHelper.floor_double(maid.posX) - center.x;
+        double by = (double) MathHelper.floor_double(maid.posY) - center.y;
+        double bz = (double) MathHelper.floor_double(maid.posZ) - center.z;
+        int teleportRange = home.radius() + 4;
+        if (bx * bx + by * by + bz * bz > (double) teleportRange * teleportRange) {
+            var teleport = MaidHomeTeleport.tryReturn(maid, runner, run);
+            if (teleport != MaidHomeTeleport.Result.NO_SAFE_DESTINATION) {
+                cancel();
+                if (teleport == MaidHomeTeleport.Result.SUCCESS) status = Status.TELEPORTED;
+                return;
+            }
+        }
+        if (!runner.isOwned(run, maid.worldObj, maid.getTask())) {
+            cancel();
+            return;
+        }
         double factor = Math.min(1, 16 / Math.sqrt(distance));
         var result = planner.request(
             maid,

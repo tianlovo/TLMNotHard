@@ -21,6 +21,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.MaidHomeController;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
@@ -37,12 +38,12 @@ public final class MaidHomeProbe {
         require(Boolean.getBoolean("tlmnh.devCommands") && !AnimationLab.isLab(world), "test overworld required");
         var spawn = world.getSpawnPoint();
         int x = (spawn.posX >> 4 << 4) + 4, y = 180, z = (spawn.posZ >> 4 << 4) + 4;
-        for (int dx = -2; dx <= 17; dx++) for (int dz = -2; dz <= 6; dz++) {
+        for (int dx = -4; dx <= 17; dx++) for (int dz = -4; dz <= 6; dz++) {
             require(
                 world.getChunkProvider()
                     .chunkExists((x + dx) >> 4, (z + dz) >> 4),
                 "loaded fixture chunks required");
-            for (int dy = -1; dy <= 3; dy++)
+            for (int dy = -1; dy <= 5; dy++)
                 require(world.isAirBlock(x + dx, y + dy, z + dz), "empty fixture volume required");
         }
         long day = world.getWorldTime();
@@ -55,7 +56,7 @@ public final class MaidHomeProbe {
         var stranger = player(world, "[TLMNH-Other]");
         var brain = maid.getBrainCoordinator();
         try {
-            for (int dx = -2; dx <= 17; dx++) for (int dz = -2; dz <= 6; dz++)
+            for (int dx = -4; dx <= 17; dx++) for (int dz = -4; dz <= 6; dz++)
                 require(world.setBlock(x + dx, y - 1, z + dz, Blocks.stone, 0, 2), "fixture floor");
             world.setWorldTime(0);
             owner.setPosition(x + 1.5, y, z + 0.5);
@@ -121,6 +122,31 @@ public final class MaidHomeProbe {
                         .noPath(),
                 "sit cancels return path");
             maid.setSitting(false);
+            maid.setPosition(x + 17.5, y, z + 0.5);
+            brain.updateTask();
+            require(
+                maid.getHomeArea()
+                    .containsMaid()
+                    && brain.getHomeController()
+                        .getStatus() == MaidHomeController.Status.TELEPORTED
+                    && brain.getActionRunner()
+                        .getOwner() == null
+                    && maid.getNavigator()
+                        .noPath(),
+                "far offline maid returns to a safe loaded home position and releases control");
+            maid.setPosition(x + 17.5, y, z + 0.5);
+            for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++)
+                for (int dy = 0; dy <= 4; dy++) world.setBlock(x + dx, y + dy, z + dz, Blocks.stone, 0, 2);
+            brain.getHomeController()
+                .cancel();
+            brain.updateTask();
+            require(
+                maid.posX == x + 17.5 && maid.posY == y && maid.posZ == z + 0.5,
+                "blocked teleport candidates cannot move the maid inside solid blocks");
+            brain.getHomeController()
+                .cancel();
+            for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++)
+                for (int dy = 0; dy <= 4; dy++) world.setBlockToAir(x + dx, y + dy, z + dz);
             require(
                 world.setBlock(x + 2, y, z + 3, MaidLifeContent.maidBed, 0, 2)
                     && world.setBlock(x + 2, y, z + 4, MaidLifeContent.maidBed, 8, 2),
@@ -181,6 +207,29 @@ public final class MaidHomeProbe {
                 "idle activity cancels work combat");
             var old = maid.getHomeArea()
                 .settings();
+            var remote = new NBTTagCompound();
+            maid.writeToNBT(remote);
+            var remotePoint = new MaidHomeSettings.Point(1000004, y, 1000004);
+            remote.getCompoundTag("TLMNHHome")
+                .setString(
+                    "Settings",
+                    new MaidHomeSettings(true, true, world.provider.dimensionId, remotePoint, remotePoint, remotePoint)
+                        .encode());
+            maid.readFromNBT(remote);
+            int loadedBefore = world.theChunkProviderServer.loadedChunks.size();
+            double px = maid.posX, py = maid.posY, pz = maid.posZ;
+            require(
+                !world.getChunkProvider()
+                    .chunkExists(1000004 >> 4, 1000004 >> 4),
+                "remote home must start unloaded");
+            brain.updateTask();
+            require(
+                maid.posX == px && maid.posY == py
+                    && maid.posZ == pz
+                    && loadedBefore == world.theChunkProviderServer.loadedChunks.size()
+                    && !world.getChunkProvider()
+                        .chunkExists(1000004 >> 4, 1000004 >> 4),
+                "unloaded same-dimension home cannot be force-loaded or used as a teleport destination");
             var foreign = new NBTTagCompound();
             maid.writeToNBT(foreign);
             foreign.getCompoundTag("TLMNHHome")
@@ -211,8 +260,8 @@ public final class MaidHomeProbe {
             world.playerEntities.remove(owner);
             owner.setDead();
             stranger.setDead();
-            for (int dx = -2; dx <= 17; dx++) for (int dz = -2; dz <= 6; dz++)
-                for (int dy = 3; dy >= -1; dy--) world.setBlockToAir(x + dx, y + dy, z + dz);
+            for (int dx = -4; dx <= 17; dx++) for (int dz = -4; dz <= 6; dz++)
+                for (int dy = 5; dy >= -1; dy--) world.setBlockToAir(x + dx, y + dy, z + dz);
             for (Object value : new ArrayList<>(world.loadedEntityList))
                 if (value instanceof EntityItem item && !existing.contains(item)
                     && Math.abs(item.posX - x) <= 20
@@ -227,7 +276,8 @@ public final class MaidHomeProbe {
             "TLMNH_HOME_TEST_PASS owner_commands=checked centers=3 native_nbt=preserved future_schema=preserved"
                 + " offline_return=native_path sit=cancelled offline_sleep=bed_owned schedule_change=old_bed_released"
                 + " offline_snack=native_bite offline_combat=area_filtered foreign_dimension=no_force_load"
-                + " fixture=manual_root_dispatch natural_tick=unverified client_gui=unverified teleport=not_implemented");
+                + " fixture=manual_root_dispatch natural_tick=unverified client_gui=unverified teleport=safe_loaded"
+                + " teleport_blocked=refused teleport_unloaded=no_force_load");
     }
 
     private static EntityPlayerMP player(WorldServer world, String name) {
