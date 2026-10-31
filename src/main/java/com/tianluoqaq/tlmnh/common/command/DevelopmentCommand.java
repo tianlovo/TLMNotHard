@@ -24,6 +24,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidFollowTeleportProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
@@ -61,6 +62,10 @@ public final class DevelopmentCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
+        if (args.length == 2 && "follow-teleport-replay".equals(args[0])) {
+            MaidFollowTeleportProbe.run((WorldServer) sender.getEntityWorld(), args[1]);
+            return;
+        }
         if ((args.length == 1 || args.length == 2) && "bow-runtime-test".equals(args[0])) {
             MaidBowRuntimeProbe.start((WorldServer) sender.getEntityWorld(), recordingRequested(args));
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_runtime_started"));

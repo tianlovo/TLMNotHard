@@ -7,6 +7,7 @@
 | --- | --- | --- |
 | com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid.java | 是 | 将 TamableAnimal 和 SynchedEntityData 转为 1.7.10 EntityTameable 与 DataWatcher，保留默认模型 ID、任务 ID、日程、经验、饥饿、好感和 NBT 键；装备交给原版实体存储，副手单独保存与同步，基础背包开放六格；接入蛋糕首次驯服、主人界面、潜行空手坐姿、独立交互适配器与单一跟随任务入口，完整生活和战斗仍待接入 |
 | com/github/tartaricacid/touhoulittlemaid/entity/ai/brain/MaidSchedule.java | 是 | 保留 DAY、NIGHT、ALL，移除高版本专用 EntityDataSerializer，由实体字节字段同步 |
+| com/github/tartaricacid/touhoulittlemaid/entity/ai/brain/task/MaidFollowOwnerTask.java | 是 | 保留主人检查、动态半径、传送和呼吸分支顺序；通过纯 FollowOwnerActor 接口替代现代 Behavior 与世界调用，未包含外层 Brain 调度、状态和持续时间随机数 |
 
 新增的背包视图、注册和测试命令位于 com.tianluoqaq.tlmnh，属于本移植工程的独立适配文件，没有复制其他研究候选的实现
 
@@ -343,3 +344,16 @@ RC2的Hodgepodge 2.7.215会让NetworkDispatcher.get在自身属性为空时返�
 原包 EntityMaid 另增加保存数据读取与死亡边界，读取前让旧策略退役，防止构造 UUID 与存档 UUID 交替期间复用旧 token
 1.7.10 实体没有 onChunkUnload 接口，卸载及重新注册由独立 Forge 生命周期监听器处理
 新增实现仍位于 `com.tianluoqaq.tlmnh`，上游 EntityMaid 的原包名与来源保持不变
+
+## 忠实跟随的组件合同
+
+原包 MaidFollowOwnerTask 只移植检查与启动逻辑，`tryStart` 表示检查通过并执行 start，不表示移动成功或完整原版 Behavior 生命周期
+FOLLOW_CORE_V1 当前用于组件对照，生产策略继续使用旧原型，完整忠实 F 和增强 N 仍不可执行
+tools/follow-reference 在独立 MC1.20.1/Forge47.2.0/Java17 中调用原版任务，主人引用和部分状态为明确的受控依赖
+原版真实 Brain、游泳管理器与导航管理器保留；传送返回值桩不模拟记忆清除，原生传送子例另行实际调用上游方法
+移植决策重放消费原版观察到的外部传送副作用，不将这种重放当作 RC2 原生碰撞已经还原
+
+Rc2FollowTeleport 参考同一固定 EntityMaid.teleportToOwner，保留10次候选及每次7/3/7随机调用顺序
+当前仅接受声明的干燥 STONE/air 场景，使用 RC2 原生碰撞及实体移动；未知输入返回 OUT_OF_SCOPE，不冒充原生不可达
+MaidFollowTeleportProbe 用原版记录的整数流驱动实际 RC2 适配器，未登记组件实体、不推进自然 tick，不验证完整 Brain、在线主人查找或记忆层
+导航归属在移动前后复核，资源被回调替换时保留替换路径并报告已发生的移动，不将部分执行算作成功

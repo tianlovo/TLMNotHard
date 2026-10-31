@@ -1,0 +1,40 @@
+{
+  "schema": "follow-reference-identity-classes-v1",
+  "compiledClasses": [
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidBrain",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$Owner",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$Platform",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$ProbeMaid",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$RecordedNavigation",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$RecordedRandom"
+  ],
+  "classes": [
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidBrain",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$Owner",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$Platform",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$ProbeMaid",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$RecordedNavigation",
+    "com.tianluoqaq.tlmnh.reference.FollowReferenceProbe$RecordedRandom",
+    "net.minecraft.server.level.ServerLevel",
+    "net.minecraft.server.level.ServerPlayer",
+    "net.minecraft.world.entity.Entity",
+    "net.minecraft.world.entity.LivingEntity",
+    "net.minecraft.world.entity.ai.Brain",
+    "net.minecraft.world.entity.ai.behavior.Behavior",
+    "net.minecraft.world.entity.ai.behavior.BehaviorUtils",
+    "net.minecraft.world.entity.ai.behavior.EntityTracker",
+    "net.minecraft.world.entity.ai.memory.WalkTarget",
+    "net.minecraft.world.level.Level",
+    "net.minecraft.world.level.pathfinder.WalkNodeEvaluator"
+  ]
+}

@@ -1,0 +1,99 @@
+// Use this init alone: it applies the unchanged, separately approved original reference build
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+def originalProbePath = System.getenv('TLMNH_REFERENCE_PROBE')
+def followProbePath = System.getenv('TLMNH_FOLLOW_PROBE')
+def referenceHomePath = System.getenv('TLMNH_REFERENCE_HOME')
+if (!originalProbePath || !followProbePath || !referenceHomePath)
+    throw new GradleException('TLMNH_REFERENCE_PROBE, TLMNH_FOLLOW_PROBE and external TLMNH_REFERENCE_HOME are required')
+def originalProbe = new File(originalProbePath).canonicalFile
+def tool = new File(followProbePath).canonicalFile
+def home = new File(referenceHomePath).canonicalFile
+def port = new File(tool, '../..').canonicalFile
+if (!new File(tool, 'contract.json').isFile() || home.toPath().startsWith(port.toPath()))
+    throw new GradleException('Follow contract and external reference runtime required')
+apply from: new File(originalProbe, 'reference.init.gradle')
+
+def specFile = new File(tool, 'identity-classes.json')
+def spec = new JsonSlurper().parse(specFile)
+if (spec.schema != 'follow-reference-identity-classes-v1' || spec.classes.toSet().size() != spec.classes.size()
+    || !spec.classes.containsAll(spec.compiledClasses)) throw new GradleException('Invalid follow identity class set')
+def selected = spec.classes.sort()
+def agentRoot = new File(tool, '../geometry-reference/agent').canonicalFile
+def identityFile = new File(home, 'identity/follow-build.json')
+def sha = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+
+gradle.projectsEvaluated {
+    def upstream = gradle.rootProject
+    if (upstream.tasks.findByName('tlmnhReferenceRuntimeIdentity') == null)
+        throw new GradleException('Approved original reference identity task absent')
+    upstream.sourceSets.main.java.srcDir(new File(tool, 'reference'))
+    upstream.tasks.named('processResources').configure {
+        from(new File(tool, 'contract.json')) { into 'tlmnh-follow' }
+        from(specFile) { into 'tlmnh-follow' }
+    }
+    def sources = upstream.sourceSets.create('followDefinitionAgent') { java.srcDir(agentRoot) }
+    upstream.tasks.named(sources.compileJavaTaskName).configure { options.release.set(17) }
+    def agent = upstream.tasks.register('followDefinitionAgentJar', Jar) {
+        dependsOn sources.classesTaskName
+        from sources.output
+        archiveFileName.set('follow-definition-agent.jar')
+        destinationDirectory.set(upstream.layout.buildDirectory.dir('follow-reference'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        manifest.attributes('Premain-Class': 'com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent',
+            'Can-Redefine-Classes': 'false', 'Can-Retransform-Classes': 'false')
+    }
+    def identity = upstream.tasks.register('prepareFollowReferenceIdentity') {
+        dependsOn upstream.tasks.named('tlmnhReferenceRuntimeIdentity'), agent
+        doLast {
+            def configured = System.getenv('TLMNH_REFERENCE_BUILD_IDENTITY')
+            def baseFile = configured ? new File(configured) : new File(home, 'identity/build-identity.json')
+            def base = new JsonSlurper().parse(baseFile)
+            if (base.schema != 'reference-build-identity-v1' || base.status != 'LOCK_VERIFIED'
+                || base.upstreamCommit != '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6')
+                throw new GradleException('Verified fixed original reference build required')
+            def compiled = spec.compiledClasses.collectEntries { name ->
+                def files = upstream.sourceSets.main.output.classesDirs.files.collect {
+                    new File(it, name.replace('.', '/') + '.class')
+                }.findAll { it.isFile() }
+                if (files.size() != 1) throw new GradleException('Missing/duplicate follow class: ' + name)
+                [(name): sha(files[0].bytes)]
+            }
+            def inputs = upstream.fileTree(tool).matching {
+                include '**/*.java', '**/*.gradle', '*.json', '*.py'
+                exclude '**/__pycache__/**'
+            }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
+            def reusedAgentInputs = upstream.fileTree(agentRoot).matching { include '**/*.java' }.files.collect { file ->
+                [file: agentRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)]
+            }.sort { it.file }
+            def taskSource = new File(upstream.projectDir, 'src/main/java/com/github/tartaricacid/touhoulittlemaid/entity/ai/brain/task/MaidFollowOwnerTask.java')
+            def value = [schema: 'follow-reference-build-v1', status: 'BASE_LOCK_VERIFIED',
+                upstreamCommit: base.upstreamCommit, minecraft: '1.20.1', forge: '47.2.0', javaFeature: 17,
+                baseReferenceBuildIdentitySha256: sha(baseFile.bytes), baseReferenceBuildIdentity: base,
+                contractSha256: sha(new File(tool, 'contract.json').bytes), identityClassesSha256: sha(specFile.bytes),
+                originalTaskSourceSha256: sha(taskSource.bytes), compiledClasses: compiled,
+                definitionAgentSha256: sha(agent.get().archiveFile.get().asFile.bytes),
+                definitionAgentClass: 'com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent',
+                toolInputs: inputs, reusedAgentInputs: reusedAgentInputs,
+                scope: 'selected original follow component definitions, controlled dependencies and native teleport subset; not complete classpath or natural Brain']
+            identityFile.parentFile.mkdirs()
+            identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+    }
+    upstream.minecraft.runs.client {
+        property 'tlmnh.referenceProbe', 'false'
+        property 'tlmnh.geometryProbe', 'false'
+        property 'tlmnh.followProbe', 'true'
+    }
+    upstream.tasks.matching { it.name == 'runClient' }.configureEach {
+        dependsOn identity
+        doFirst {
+            jvmArgs '-Dtlmnh.follow.buildIdentity=' + identityFile.absolutePath,
+                '-Dtlmnh.geometry.buildIdentity=' + identityFile.absolutePath,
+                '-javaagent:' + agent.get().archiveFile.get().asFile.absolutePath + '=' + selected.join(',')
+        }
+    }
+}

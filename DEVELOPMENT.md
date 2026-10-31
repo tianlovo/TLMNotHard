@@ -255,3 +255,14 @@ Molang 表达式核心保留上游包名及语义，`MolangEngineTest` 检查解
 `FAITHFUL_TLM` 与 `ENHANCED` 尚未实现，选择后拒绝执行，不回退到旧原型冒充通过
 策略 token 在保存数据恢复、卸载和身份变化时失效，旧 runtime 永久退役；重新注册实体需要实际世界成员关系
 这些入口只提供后续 O/F/N 测评所需的隔离边界，不能据此声称已完成忠实基线或增强智能
+
+### 原版跟随组件对照
+
+`tools/follow-reference` 采集固定原版的真实任务组件，合同、身份和 A/A 检查见该目录 README
+`prepareFollowReplay` 通过该目录的 `replay.init.gradle` 准备本地 Java25 重放入口，生成的机器路径仅在忽略的 build 目录
+重放调用实际移植核心，缺字段即拒绝；它不包含完整 Brain 调度、MoveToTargetSink 或在线主人解析
+
+开发命令 `tlmnhdev follow-teleport-replay <SHA256>.json` 只从测试服相对目录 `tlmnh-dev/follow-inputs/` 读取已核摘要的原版采集
+它在预检为空的临时 STONE/air 场景实际运行 RC2 传送，结果写入 `tlmnh-dev/follow-results/`
+日志中的 `CAPTURE` 只表示原始观察已保存，仍须独立比较随机调用、实际位置和原版结果；不以文件生成成功代替等价判定
+原版组件、纯决策重放、RC2 实际传送和完整自然跟随分别判定，完整 F/N 模式仍未启用
