@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
 public class Rc2NavigationStopStateTest {
@@ -76,7 +77,7 @@ public class Rc2NavigationStopStateTest {
                 return false;
             }
 
-            public boolean tickLife(boolean permitted) {
+            public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
                 return false;
             }
 

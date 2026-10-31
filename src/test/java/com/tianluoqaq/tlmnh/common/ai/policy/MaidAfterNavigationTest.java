@@ -194,7 +194,7 @@ public class MaidAfterNavigationTest {
                     return false;
                 }
 
-                public boolean tickLife(boolean permitted) {
+                public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
                     events.add("life");
                     return false;
                 }

@@ -23,6 +23,8 @@ import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -69,6 +71,8 @@ public final class MaidLifeController {
     private long tick, nextOwnerScan, nextScan, nextSnack, nextPath, selectedAt;
     private int failures, scans, pathRequests, bites, placements, sleepEntries;
     private boolean sleeping, tryPlaceNext;
+    private boolean ticking;
+    private MaidActionRun run;
     private double wakeX, wakeY, wakeZ;
 
     public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource) {
@@ -81,20 +85,45 @@ public final class MaidLifeController {
     }
 
     /** 即使处于 SLEEPING，也须由协调器每 tick 调用以处理醒来和失效清理 */
-    public boolean tick(boolean permitted) {
+    public boolean tick(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+        if (context == null || !context.getMaidId()
+            .equals(maid.getUniqueID()) || !context.isCurrent(token)) {
+            if (run != null && run.matches(context, token)) stop(Status.CANCELLED);
+            return false;
+        }
+        if (ticking) {
+            cancel();
+            return false;
+        }
+        ticking = true;
+        try {
+            if (run != null && (!run.matches(context, token) || !run.isCurrent(maid.worldObj, maid.getTask()))) {
+                stop(Status.CANCELLED);
+                return false;
+            }
+            return tickActive(context, token, permitted);
+        } finally {
+            ticking = false;
+        }
+    }
+
+    private boolean hardAllowed() {
+        return !maid.worldObj.isRemote && maid.isEntityAlive()
+            && maid.isTamed()
+            && !maid.isSitting()
+            && maid.ridingEntity == null
+            && maid.riddenByEntity == null
+            && !maid.getLeashed()
+            && maid.getAttackTarget() == null
+            && maid.hurtTime <= 0
+            && !maid.isInWater()
+            && !maid.isBurning()
+            && (!maid.hasPose(MaidPose.SLEEPING) || sleeping);
+    }
+
+    private boolean tickActive(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
         tick++;
-        if (!permitted || maid.worldObj.isRemote
-            || !maid.isEntityAlive()
-            || !maid.isTamed()
-            || maid.isSitting()
-            || maid.ridingEntity != null
-            || maid.riddenByEntity != null
-            || maid.getLeashed()
-            || maid.getAttackTarget() != null
-            || maid.hurtTime > 0
-            || maid.isInWater()
-            || maid.isBurning()
-            || maid.hasPose(MaidPose.SLEEPING) && !sleeping) {
+        if (!permitted || !hardAllowed()) {
             stop(Status.BLOCKED);
             return false;
         }
@@ -115,7 +144,7 @@ public final class MaidLifeController {
                 return false;
             }
             nextScan = tick + SCAN_INTERVAL;
-            if (!select(rest)) {
+            if (!select(rest, context, token)) {
                 status = Status.IDLE;
                 return false;
             }
@@ -187,12 +216,10 @@ public final class MaidLifeController {
         return MaidOwnerSensor.isValid(maid, player);
     }
 
-    private boolean select(boolean rest) {
+    private boolean select(boolean rest, MaidPolicyContext context, MaidPolicyContext.Token token) {
         var telemetry = telemetry();
         boolean recording = telemetry.isEnabled();
-        var context = maid.getBrainCoordinator()
-            .getPolicyRuntime()
-            .getContext();
+        var command = maid.getTask();
         var candidates = sensor.scan(context, rest);
         MaidLifeCandidate bestObservation = null;
         double closest = Double.MAX_VALUE;
@@ -219,8 +246,13 @@ public final class MaidLifeController {
         boolean adopted = false;
         try {
             claimControl.run();
-            if (sensor.resolve(bestObservation, context) != best) return false;
+            if (!context.isCurrent(token) || maid.getTask() != command
+                || !hardAllowed()
+                || !ownerValid(owner)
+                || maid.getDistanceSqToEntity(owner) > 144
+                || sensor.resolve(bestObservation, context) != best) return false;
             target = best;
+            run = new MaidActionRun(context, token, maid.worldObj, command);
             adopted = true;
         } finally {
             if (!adopted && best instanceof TileEntityMaidBed bed) bed.release(maid);
@@ -270,11 +302,21 @@ public final class MaidLifeController {
     }
 
     private boolean useTarget() {
+        var attempt = run;
+        var usedTarget = target;
+        if (!commitAllowed(attempt) || !attempt.tryCommit(maid.worldObj, maid.getTask())) {
+            if (run == attempt) stop(Status.CANCELLED);
+            return false;
+        }
         stopNavigation();
         if (action == Action.BED) {
             var bed = (TileEntityMaidBed) target;
             if (!bed.claim(maid)) {
                 stop(Status.TARGET_LOST);
+                return false;
+            }
+            if (!commitAllowed(attempt)) {
+                if (run == attempt) stop(Status.CANCELLED);
                 return false;
             }
             wakeX = maid.posX;
@@ -284,6 +326,10 @@ public final class MaidLifeController {
             maid.setPose(MaidPose.SLEEPING, true);
             maid.setPositionAndUpdate(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
+            if (!attempt.finishCommit(true)) {
+                if (run == attempt) stop(Status.CANCELLED);
+                return false;
+            }
             sleepEntries++;
             telemetry().terminal(
                 "sleep_entry",
@@ -302,22 +348,41 @@ public final class MaidLifeController {
                 : maid.worldObj.setBlockMetadataWithNotify(x, y, z, next, 3);
             if (success) {
                 bites++;
-                maid.playSound("random.eat", 1.0F, 1.0F);
+                if (executionCurrent(attempt)) maid.playSound("random.eat", 1.0F, 1.0F);
                 long time = maid.worldObj.getTotalWorldTime();
-                if (time >= maid.getEntityData()
+                if (executionCurrent(attempt) && time >= maid.getEntityData()
                     .getLong(REWARD_AT)) {
                     if (maid.getFavorability() < Integer.MAX_VALUE) maid.setFavorability(maid.getFavorability() + 1);
                     maid.getEntityData()
                         .setLong(REWARD_AT, time + MaidLifeRules.REWARD_INTERVAL);
                 }
             }
-        } else success = placeCake(x, y, z);
-        if (success) maid.swingItem();
-        stop(success ? Status.COOLDOWN : Status.ACTION_FAILED);
-        return success;
+        } else success = placeCake(x, y, z, attempt);
+        boolean committed = attempt.finishCommit(success);
+        if (run != attempt) {
+            if (success) telemetry().state("life_effect_after_cancel", tileId(usedTarget), "world_effect_confirmed");
+            return false;
+        }
+        if (committed) maid.swingItem();
+        stop(committed ? Status.COOLDOWN : attempt.isCancelled() ? Status.CANCELLED : Status.ACTION_FAILED);
+        return committed;
     }
 
-    private boolean placeCake(int x, int y, int z) {
+    private boolean commitAllowed(MaidActionRun attempt) {
+        return executionCurrent(attempt) && validTarget();
+    }
+
+    private boolean executionCurrent(MaidActionRun attempt) {
+        return attempt != null && run == attempt
+            && attempt.isCurrent(maid.worldObj, maid.getTask())
+            && hardAllowed()
+            && ownerValid(owner)
+            && maid.getDistanceSqToEntity(owner) <= 144
+            && action != null
+            && MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime()) == (action == Action.BED);
+    }
+
+    private boolean placeCake(int x, int y, int z, MaidActionRun attempt) {
         int slot = cakeSlot();
         if (slot < 0 || !(maid.worldObj instanceof WorldServer world)) return false;
         var original = maid.getMaidInventory()
@@ -336,11 +401,14 @@ public final class MaidLifeController {
             fake.inventory.setInventorySlotContents(selected, one);
             // Forge 原生放置入口包含可取消的 PlaceEvent；成功后才扣真正背包中的一个
             boolean placed = one.tryPlaceItemIntoWorld(fake, world, x, y - 1, z, 1, 0.5F, 1, 0.5F);
-            if (!placed || one.stackSize != 0 || world.getBlock(x, y, z) != Blocks.cake) return false;
-            if (maid.getMaidInventory()
+            if (!placed || one.stackSize != 0 || !world.blockExists(x, y, z) || world.getBlock(x, y, z) != Blocks.cake)
+                return false;
+            if (!commitAllowedAfterPlacement(attempt) || maid.getMaidInventory()
                 .getStackInSlot(slot) != original || !ItemStack.areItemStacksEqual(original, expectedInventory)) {
                 // 同步 Forge 回调可能改背包；不能扣别的物品或留下未付出的蛋糕
-                world.setBlockToAir(x, y, z);
+                // 原生放置的初始蛋糕仍在时撤销；不覆盖回调留下的其他方块或已改变的蛋糕
+                if (world.getBlock(x, y, z) == Blocks.cake && world.getBlockMetadata(x, y, z) == 0)
+                    world.setBlockToAir(x, y, z);
                 return false;
             }
             maid.getMaidInventory()
@@ -353,6 +421,23 @@ public final class MaidLifeController {
             fake.capabilities.isCreativeMode = creative;
             fake.setPosition(px, py, pz);
         }
+    }
+
+    private boolean commitAllowedAfterPlacement(MaidActionRun attempt) {
+        // PLACE成功后目标上方已非空气，不能再用放置前的snackValid条件
+        return attempt != null && run == attempt
+            && attempt.isCurrent(maid.worldObj, maid.getTask())
+            && hardAllowed()
+            && ownerValid(owner)
+            && maid.getDistanceSqToEntity(owner) <= 144
+            && action == Action.PLACE
+            && !MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime())
+            && target != null
+            && !target.isInvalid()
+            && target.getWorldObj() == maid.worldObj
+            && maid.worldObj.blockExists(target.xCoord, target.yCoord, target.zCoord)
+            && maid.worldObj.getBlock(target.xCoord, target.yCoord, target.zCoord) instanceof BlockSnackCabinet
+            && maid.worldObj.getTileEntity(target.xCoord, target.yCoord, target.zCoord) == target;
     }
 
     private int cakeSlot() {
@@ -422,6 +507,7 @@ public final class MaidLifeController {
     }
 
     private void stop(Status reason, TerminalOutcome explicitOutcome) {
+        if (run != null) run.cancel();
         if (target != null && action != null && telemetry().isEnabled()) {
             boolean confirmed = reason == Status.COOLDOWN && action != Action.BED;
             var outcome = explicitOutcome != null ? explicitOutcome
@@ -454,6 +540,7 @@ public final class MaidLifeController {
         if (target instanceof TileEntityMaidBed bed) bed.release(maid);
         if (target != null) nextScan = Math.max(nextScan, tick + SCAN_INTERVAL);
         target = null;
+        run = null;
         action = null;
         selectedTask = null;
         failures = 0;

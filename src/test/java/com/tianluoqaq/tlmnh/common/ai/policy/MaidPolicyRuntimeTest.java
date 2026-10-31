@@ -31,6 +31,11 @@ public class MaidPolicyRuntimeTest {
             return true;
         }));
         events(actor, "combat", "permission", "life:true", "follow");
+        assertSame(runtime.getContext(), actor.lifeContext);
+        assertSame(
+            runtime.getContext()
+                .getToken(),
+            actor.lifeToken);
     }
 
     @Test
@@ -398,6 +403,11 @@ public class MaidPolicyRuntimeTest {
                     replacement.getContext()
                         .getToken()));
         assertEquals(TickResult.COMPLETED, replacement.tick(() -> true));
+        assertSame(replacement.getContext(), actor.lifeContext);
+        assertSame(
+            replacement.getContext()
+                .getToken(),
+            actor.lifeToken);
         events(actor, "cancel", "combat", "life:true", "follow");
         assertEquals(TickResult.RETIRED, old.tick(() -> true));
         events(actor, "cancel", "combat", "life:true", "follow");
@@ -564,6 +574,8 @@ public class MaidPolicyRuntimeTest {
         private final List<String> events = new ArrayList<>();
         private final MaidPolicyRuntime runtime = new MaidPolicyRuntime(UUID.randomUUID(), this);
         private boolean fighting, living;
+        private MaidPolicyContext lifeContext;
+        private MaidPolicyContext.Token lifeToken;
         private Runnable onCombat, onLife, onFollow, onCancel;
 
         @Override
@@ -574,7 +586,10 @@ public class MaidPolicyRuntimeTest {
         }
 
         @Override
-        public boolean tickLife(boolean permitted) {
+        public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+            lifeContext = context;
+            lifeToken = token;
+            assertTrue(context.isCurrent(token));
             events.add("life:" + permitted);
             if (onLife != null) onLife.run();
             return living;

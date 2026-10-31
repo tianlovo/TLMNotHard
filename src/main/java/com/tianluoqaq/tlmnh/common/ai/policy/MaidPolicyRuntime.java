@@ -43,7 +43,7 @@ public final class MaidPolicyRuntime {
 
         boolean tickCombat();
 
-        boolean tickLife(boolean permitted);
+        boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted);
 
         void tickFollow();
 
@@ -107,7 +107,7 @@ public final class MaidPolicyRuntime {
             if (!context.isCurrent(token)) return invalidatedTickResult();
             boolean permitted = !fighting && lifePermission.getAsBoolean();
             if (!context.isCurrent(token)) return invalidatedTickResult();
-            boolean living = actions.tickLife(permitted);
+            boolean living = actions.tickLife(context, token, permitted);
             if (!context.isCurrent(token)) return invalidatedTickResult();
             if (!fighting && !living) {
                 actions.tickFollow();

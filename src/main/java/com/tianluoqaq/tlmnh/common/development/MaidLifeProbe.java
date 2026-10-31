@@ -138,20 +138,20 @@ public final class MaidLifeProbe {
             int hunger = maid.getHunger(), favor = maid.getFavorability();
             life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
-                life.tick(true) && life.getBites() == 1 && world.getBlockMetadata(x, y + 1, z) == 1,
+                tick(life, maid) && life.getBites() == 1 && world.getBlockMetadata(x, y + 1, z) == 1,
                 "One real cake bite");
             require(
                 maid.getHunger() == hunger && maid.getFavorability() == favor + 1,
                 "Upstream bite is not an invented hunger meal");
-            drive(life, 5);
+            drive(life, maid, 5);
             require(life.getBites() == 1, "Steal cooldown");
             maid.setSitting(true);
-            require(!life.tick(true) && life.getBites() == 1, "Sit is a hard constraint");
+            require(!tick(life, maid) && life.getBites() == 1, "Sit is a hard constraint");
             maid.setSitting(false);
             world.setBlock(x, y, z, Blocks.planks, 0, 3);
             require(sensor.resolve(observedCabinet, context) == null, "Removed cabinet observation must fail");
             var noStand = new MaidLifeController(maid, () -> {}, () -> owner);
-            drive(noStand, 40);
+            drive(noStand, maid, 40);
             require(
                 noStand.getBites() == 0 && world.getBlockMetadata(x, y + 1, z) == 1,
                 "Cake without snack cabinet must not be stolen");
@@ -169,7 +169,7 @@ public final class MaidLifeProbe {
             life = new MaidLifeController(maid, () -> {}, () -> owner);
             MinecraftForge.EVENT_BUS.register(reject);
             try {
-                drive(life, 25);
+                drive(life, maid, 25);
             } finally {
                 MinecraftForge.EVENT_BUS.unregister(reject);
             }
@@ -177,12 +177,34 @@ public final class MaidLifeProbe {
                 reject.seen && life.getPlacements() == 0 && world.isAirBlock(x, y + 1, z) && cakeCount(maid) == 2,
                 "Cancelled Forge placement conserves original cake");
             life.cancel();
+            for (String mode : new String[] { "policy", "cancel", "reenter" }) {
+                var callbackLife = new MaidLifeController(maid, () -> {}, () -> owner);
+                var callback = new RejectPlacement(maid, () -> {
+                    if ("policy".equals(mode)) maid.getBrainCoordinator()
+                        .getPolicyRuntime()
+                        .invalidate(InvalidationReason.RESET);
+                    else if ("cancel".equals(mode)) callbackLife.cancel();
+                    else require(!tick(callbackLife, maid), "Reentrant life tick must be refused");
+                });
+                MinecraftForge.EVENT_BUS.register(callback);
+                try {
+                    drive(callbackLife, maid, 25);
+                    require(
+                        callback.calls == 1 && callbackLife.getPlacements() == 0
+                            && world.isAirBlock(x, y + 1, z)
+                            && cakeCount(maid) == 2,
+                        "Uncancelled Forge callback must conserve the cake after " + mode);
+                } finally {
+                    MinecraftForge.EVENT_BUS.unregister(callback);
+                    callbackLife.cancel();
+                }
+            }
             life = new MaidLifeController(maid, () -> {}, () -> owner);
-            drive(life, 25);
+            drive(life, maid, 25);
             require(
                 life.getPlacements() == 1 && cakeCount(maid) == 1 && world.getBlock(x, y + 1, z) == Blocks.cake,
                 "Backpack places one real native cake");
-            drive(life, 900);
+            drive(life, maid, 900);
             require(
                 life.getBites() == 1 && world.getBlockMetadata(x, y + 1, z) == 1 && maid.getFavorability() == favor + 1,
                 "Placed cake can be stolen; reward cooldown persists across controllers");
@@ -204,40 +226,40 @@ public final class MaidLifeProbe {
                     .invalidate(InvalidationReason.RESET),
                 () -> owner);
             require(
-                !interrupted.tick(true) && !interrupted.isSleeping() && bed.available(other),
+                !tick(interrupted, maid) && !interrupted.isSleeping() && bed.available(other),
                 "Invalidation during adoption must release the bed and refuse the old observation");
             life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
-                life.tick(true) && life.isSleeping()
+                tick(life, maid) && life.isSleeping()
                     && maid.hasPose(MaidPose.SLEEPING)
                     && bed.isOwnedBy(maid)
                     && (world.getBlockMetadata(x, y, z + 3) & 4) != 0,
                 "Bed-owned sleep at DAY rest boundary");
             competitor = new MaidLifeController(other, () -> {}, () -> owner);
-            drive(competitor, 25);
+            drive(competitor, other, 25);
             require(!competitor.isSleeping() && bed.isOwnedBy(maid), "Second maid cannot share occupied bed");
             world.setWorldTime(0);
-            life.tick(true);
+            tick(life, maid);
             require(
                 !life.isSleeping() && !maid.hasPose(MaidPose.SLEEPING) && bed.available(other),
                 "Dawn wakes and releases bed");
             world.setWorldTime(16000);
-            drive(life, 25);
+            drive(life, maid, 25);
             require(life.isSleeping(), "Return to actual bed");
             maid.setSitting(true);
-            life.tick(true);
+            tick(life, maid);
             require(
                 !life.isSleeping() && maid.isSitting() && bed.available(other),
                 "Explicit sit cancels only life-owned sleep");
             maid.setSitting(false);
-            drive(life, 25);
+            drive(life, maid, 25);
             require(life.isSleeping(), "Sleep before unload test");
             bed.onChunkUnload();
-            life.tick(true);
+            tick(life, maid);
             require(
                 !life.isSleeping() && !maid.hasPose(MaidPose.SLEEPING),
                 "Actual unload callback clears stale sleeper");
-            drive(life, 25);
+            drive(life, maid, 25);
             require(life.isSleeping(), "Sleep before reload test");
             var bedTag = new NBTTagCompound();
             bed.writeToNBT(bedTag);
@@ -245,14 +267,14 @@ public final class MaidLifeProbe {
             restoredBed.readFromNBT(bedTag);
             world.setTileEntity(x, y, z + 3, restoredBed);
             restoredBed.updateEntity();
-            life.tick(true);
+            tick(life, maid);
             require(
                 !life.isSleeping() && restoredBed.available(other) && (world.getBlockMetadata(x, y, z + 3) & 4) == 0,
                 "Reload rejects stale occupancy instead of persisting ghost sleep");
-            drive(life, 25);
+            drive(life, maid, 25);
             require(life.isSleeping(), "Sleep before bed removal test");
             world.setBlockToAir(x, y, z + 3);
-            life.tick(true);
+            tick(life, maid);
             require(!life.isSleeping() && !maid.hasPose(MaidPose.SLEEPING), "Removing bed wakes sleeper");
         } catch (RuntimeException | Error error) {
             failure = error;
@@ -344,7 +366,7 @@ public final class MaidLifeProbe {
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
         TLMNotHard.LOG.info(
-            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
+            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved callback_policy=conserved callback_cancel=conserved callback_reentry=refused recovery=placed_once sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
     }
 
     private static Throwable remember(Throwable first, Throwable next) {
@@ -384,8 +406,15 @@ public final class MaidLifeProbe {
         }
     }
 
-    private static void drive(MaidLifeController life, int ticks) {
-        for (int index = 0; index < ticks; index++) life.tick(true);
+    private static boolean tick(MaidLifeController life, EntityMaid maid) {
+        var context = maid.getBrainCoordinator()
+            .getPolicyRuntime()
+            .getContext();
+        return life.tick(context, context.getToken(), true);
+    }
+
+    private static void drive(MaidLifeController life, EntityMaid maid, int ticks) {
+        for (int index = 0; index < ticks; index++) tick(life, maid);
     }
 
     private static int cakeCount(EntityMaid maid) {
@@ -401,10 +430,17 @@ public final class MaidLifeProbe {
     public static final class RejectPlacement {
 
         private final EntityMaid maid;
+        private final Runnable callback;
         private boolean seen;
+        private int calls;
 
         private RejectPlacement(EntityMaid maid) {
+            this(maid, null);
+        }
+
+        private RejectPlacement(EntityMaid maid, Runnable callback) {
             this.maid = maid;
+            this.callback = callback;
         }
 
         @SubscribeEvent
@@ -412,7 +448,9 @@ public final class MaidLifeProbe {
             if (event.player.getUniqueID()
                 .equals(maid.getUniqueID())) {
                 seen = true;
-                event.setCanceled(true);
+                if (++calls > 1 && callback != null) throw new IllegalStateException("Repeated callback placement");
+                if (callback == null) event.setCanceled(true);
+                else callback.run();
             }
         }
     }

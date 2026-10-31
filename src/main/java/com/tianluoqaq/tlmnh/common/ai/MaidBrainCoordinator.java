@@ -18,6 +18,7 @@ import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
@@ -203,8 +204,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             }
 
             @Override
-            public boolean tickLife(boolean permitted) {
-                return life.tick(permitted);
+            public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+                return life.tick(context, token, permitted);
             }
 
             @Override
