@@ -17,6 +17,7 @@ public final class MaidAtlasButton extends GuiButton {
     private final ResourceLocation atlas;
     private final int u, v, hoverV, selectedU;
     public boolean selected;
+    public boolean focused;
     public boolean topTab, sideTab;
     public int offsetV;
 
@@ -50,7 +51,7 @@ public final class MaidAtlasButton extends GuiButton {
             xPosition,
             yPosition,
             u + (selected ? selectedU : 0),
-            v + offsetV + (contains(mouseX, mouseY) ? hoverV : 0),
+            v + offsetV + (contains(mouseX, mouseY) || focused ? hoverV : 0),
             width,
             height);
     }

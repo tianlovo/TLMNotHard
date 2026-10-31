@@ -25,6 +25,7 @@ public final class ModelDetailsButton extends GuiButton {
         "textures/gui/skin_detail.png");
     private final Consumer<Boolean> onClick;
     private boolean selected;
+    public boolean focused;
 
     public ModelDetailsButton(int id, int x, int y, String key, Consumer<Boolean> onClick) {
         super(id, x, y, 128, 12, StatCollector.translateToLocal(key));
@@ -49,7 +50,7 @@ public final class ModelDetailsButton extends GuiButton {
         boolean hover = mouseX >= xPosition && mouseY >= yPosition
             && mouseX < xPosition + width
             && mouseY < yPosition + height;
-        drawTexturedModalRect(xPosition, yPosition, selected ? 128 : 0, hover ? 12 : 0, width, height);
+        drawTexturedModalRect(xPosition, yPosition, selected ? 128 : 0, hover || focused ? 12 : 0, width, height);
         minecraft.fontRenderer.drawString(displayString, xPosition + 14, yPosition + 2, 0xFFFFFFFF);
     }
 }

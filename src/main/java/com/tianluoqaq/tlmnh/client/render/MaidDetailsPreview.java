@@ -37,6 +37,7 @@ public final class MaidDetailsPreview implements AutoCloseable {
         "models/entity/low_stool.json");
     private AbstractBedrockEntityModel<Entity> stool;
     private int resourceRevision = -1;
+    private com.google.gson.JsonObject diagnostic = new com.google.gson.JsonObject();
 
     public void draw(EntityMaid maid, float x, float y, float scale, float yaw, float pitch, boolean floor,
         float partialTick) {
@@ -66,10 +67,16 @@ public final class MaidDetailsPreview implements AutoCloseable {
             manager.playerViewX = pitch;
             manager.playerViewY = 0;
             // 原版详情关闭实体阴影；直接走生物本体绘制，保留其前后事件和装备层
-            manager.getEntityRenderObject(maid)
-                .doRender(maid, 0, 0, 0, 0, partialTick);
+            var renderer = manager.getEntityRenderObject(maid);
+            long before = MaidHeldItemLayer.getNativeCounters().attempts;
+            renderer.doRender(maid, 0, 0, 0, 0, partialTick);
+            if (Boolean.getBoolean("tlmnh.devCommands") && renderer instanceof MaidRenderer maidRenderer) {
+                diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
+                diagnostic.addProperty("nativeItemCalls", MaidHeldItemLayer.getNativeCounters().attempts - before);
+            }
             GL11.glTranslatef(0, 0.5F, 0);
             GL11.glColor4f(1, 1, 1, 1);
+            GL11.glDisable(GL11.GL_CULL_FACE);
             if (floor) {
                 Minecraft.getMinecraft()
                     .getTextureManager()
@@ -162,6 +169,11 @@ public final class MaidDetailsPreview implements AutoCloseable {
             tessellator.addVertex(x * 10, y * 10, z * 10);
         }
         tessellator.draw();
+    }
+
+    public com.google.gson.JsonObject observation() {
+        return new com.google.gson.JsonParser().parse(diagnostic.toString())
+            .getAsJsonObject();
     }
 
     @Override

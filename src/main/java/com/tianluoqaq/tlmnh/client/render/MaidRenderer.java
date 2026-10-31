@@ -118,6 +118,24 @@ public final class MaidRenderer extends RenderLiving {
         }
     }
 
+    public com.google.gson.JsonObject inspectPreviewForDevelopment(EntityMaid maid) {
+        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Preview diagnostic disabled");
+        var result = new com.google.gson.JsonObject();
+        var cached = entities.get(maid);
+        if (cached == null) return result;
+        result.addProperty("completedPose", cached.model.hasCompletedPoseFor(maid));
+        result.addProperty(
+            "model",
+            cached.model.getChoice()
+                .getId());
+        for (var side : MaidHeldItemTransforms.Side.values()) {
+            var attachment = MaidHandAttachment.capture(cached.model, side);
+            result.addProperty(side.name(), attachment.status.name());
+            result.addProperty(side.name() + "Chain", attachment.boneChain.toString());
+        }
+        return result;
+    }
+
     public AutoCloseable openDevelopmentItemStateScope() {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Held item probe disabled");
         return new MaidItemRenderScope();

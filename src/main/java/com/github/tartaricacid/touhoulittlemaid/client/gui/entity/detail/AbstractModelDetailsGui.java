@@ -69,6 +69,10 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
     @Override
     protected void actionPerformed(GuiButton button) {
         if (!button.enabled) return;
+        for (var widget : buttonList) {
+            if (widget instanceof ModelDetailsButton state) state.focused = widget == button;
+            if (widget instanceof MaidAtlasButton atlas) atlas.focused = widget == button;
+        }
         if (button instanceof ModelDetailsButton state) state.press();
         else switch (button.id) {
             case 0 -> mc.thePlayer.closeScreen();
@@ -208,6 +212,7 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
         result.addProperty("posX", posX);
         result.addProperty("posY", posY);
         result.addProperty("floor", showFloor);
+        result.add("renderDiagnostic", preview.observation());
         result.addProperty("previewTicks", guiEntity.ticksExisted);
         result.addProperty("previewBegging", guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.BEGGING));
         result.addProperty("previewSitting", guiEntity.isSitting());
