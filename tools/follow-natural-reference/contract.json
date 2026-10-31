@@ -1,0 +1,147 @@
+{
+  "schema": "follow-natural-contract-v1",
+  "contract": "FOLLOW_NATURAL_O_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "rebuilds": 3,
+  "origin": [
+    64,
+    192,
+    0
+  ],
+  "maidSpawn": [
+    0.5,
+    0,
+    0.5
+  ],
+  "platformRadius": 32,
+  "warmupTicks": 20,
+  "maximumWarmupTicks": 100,
+  "maximumTicks": 2400,
+  "maximumSeconds": 240,
+  "ownerTolerance": 0.001,
+  "scope": "actual registered original EntityMaid, complete original Brain and native world tick, real logged-in owner with prescribed server connection teleports; observational variance study, no port equivalence or statistical admission",
+  "cases": [
+    {
+      "id": "N01_straight_stop",
+      "ticks": 200,
+      "ownerKeyframes": [
+        {
+          "frame": 0,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 39,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 119,
+          "position": [
+            13.1,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 199,
+          "position": [
+            13.1,
+            0,
+            0.5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "N02_right_angle",
+      "ticks": 240,
+      "ownerKeyframes": [
+        {
+          "frame": 0,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 39,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 99,
+          "position": [
+            11.7,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 159,
+          "position": [
+            11.7,
+            0,
+            4.7
+          ]
+        },
+        {
+          "frame": 239,
+          "position": [
+            11.7,
+            0,
+            4.7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "N03_teleport_boundary",
+      "ticks": 160,
+      "ownerKeyframes": [
+        {
+          "frame": 0,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 39,
+          "position": [
+            7.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 40,
+          "position": [
+            21.5,
+            0,
+            0.5
+          ]
+        },
+        {
+          "frame": 159,
+          "position": [
+            21.5,
+            0,
+            0.5
+          ]
+        }
+      ]
+    }
+  ]
+}
