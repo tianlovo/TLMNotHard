@@ -60,6 +60,7 @@ Release acceptance is incomplete; the Prism instance used for regular play remai
 ### Dependencies
 
 - Target pack: GTNH 2.9.0 RC2, Minecraft 1.7.10, Forge 10.13.4.1614
+- UniMixins as included in RC2, for the native navigation stop feedback hook
 - JDK 25 for Gradle, tests and the game; JDK 17 for Jabel compilation targeting Java 8 bytecode
 - Gradle Wrapper 9.7.1, GTNHGradle 2.0.33 and Blowdryer 0.2.2, pinned in the build
 - Python 3 for standalone verification scripts; Node.js 22 or newer for README linting

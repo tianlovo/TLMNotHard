@@ -403,6 +403,14 @@ RC2 接线保留原干燥域与路径归属限制，仅显式批准的扩展空�
 TLM 的 `hasRestriction` 随家园模式变化，因此家园关闭时不能仅因半径配置存在而额外消耗限制区随机数
 备用路径创建使用同一有界原生查询与安装入口，不手动推进导航
 
+## 原生导航停止反馈
+
+`Rc2NavigationStopState`、`Rc2NavigationStopSource` 与 `MixinPathNavigate` 为本工程新增实现
+依据 RC2 实际 `PathNavigate.pathFollow` 的 watchdog 分支记录清空前后事实，不分发或覆写整份原生导航类
+保留原始超过 100 次更新、位移平方小于 2.25 的检测和原清空调用，反馈仅供认领该路径的有效动作使用
+`FollowCoreMoveDriver` 的停止、冷却与重试流程未改，不将该反馈称为 MC1.20.1 导航物理等价
+Mixin 配置和 refmap 使用固定 GTNHGradle/RFG 的生成与重混淆流程，双端实际验证状态见 [进度](PROGRESS.md)
+
 ## RC2 副手与盾牌
 
 `common/combat/MaidItemUseState` 与 `common/combat/shield` 为独立适配代码，新增文件仍位于本工程根包

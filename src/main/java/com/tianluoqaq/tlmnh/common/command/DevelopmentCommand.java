@@ -98,6 +98,10 @@ public final class DevelopmentCommand extends CommandBase {
             MaidFollowCoreAdapterProbe.runFallback((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "navigation-stop-test".equals(args[0])) {
+            MaidFollowCoreAdapterProbe.runNavigationStop((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "native-ai-phase-test".equals(args[0])) {
             MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld());
             return;

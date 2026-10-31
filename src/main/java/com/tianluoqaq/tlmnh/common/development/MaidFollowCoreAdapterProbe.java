@@ -47,6 +47,8 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.FollowFallbackSampler;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopSource;
+import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopState;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
@@ -78,11 +80,22 @@ public final class MaidFollowCoreAdapterProbe {
     }
 
     private static void run(WorldServer world, boolean fallback) {
+        run(world, fallback, false);
+    }
+
+    public static void runNavigationStop(WorldServer world) {
+        run(world, false, true);
+    }
+
+    private static void run(WorldServer world, boolean fallback, boolean watchdog) {
         require(
             Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated development overworld required");
         var output = new JsonObject();
-        output.addProperty("schema", fallback ? "follow-fallback-native-v1" : "follow-core-adapter-native-v2");
+        output.addProperty(
+            "schema",
+            watchdog ? "follow-navigation-stop-native-v1"
+                : fallback ? "follow-fallback-native-v1" : "follow-core-adapter-native-v2");
         output.addProperty("componentContract", "FOLLOW_CORE_COMPONENT_V2");
         output.addProperty("componentSchedule", "start-pass look0/move2/follow3; running-pass look0/move2/follow3");
         output.addProperty("componentWorldRngOrderVerified", false);
@@ -117,6 +130,10 @@ public final class MaidFollowCoreAdapterProbe {
                 EntityMaid.class,
                 DevelopmentArtifactIdentity.class);
             if (fallback) identityClasses.add(FollowFallbackSampler.class);
+            if (watchdog) {
+                identityClasses.add(Rc2NavigationStopState.class);
+                identityClasses.add(Rc2NavigationStopSource.class);
+            }
             output
                 .add("runtimeIdentity", DevelopmentArtifactIdentity.capture(identityClasses.toArray(new Class<?>[0])));
             var source = new JsonObject();
@@ -134,8 +151,15 @@ public final class MaidFollowCoreAdapterProbe {
                 "stage",
                 "EntityLiving.updateAITasks: tasks, native navigator, updateAITick, move/look/jump");
             output.add("sourceProvider", source);
-            platform = new Platform(world, platformReport, fallback);
-            if (fallback) {
+            platform = new Platform(world, platformReport, fallback, watchdog);
+            if (watchdog) {
+                output.addProperty(
+                    "scope",
+                    "controlled manual inherited AI; original RC2 watchdog clear callsite observation, owned stop/retry and unknown-clear refusal; no modern watchdog equivalence or natural F/N");
+                pipeline(platform, rows);
+                watchdogRecovery(platform, rows);
+                unknownClear(platform, rows);
+            } else if (fallback) {
                 output.addProperty(
                     "scope",
                     "unregistered maid with synthetic owner; explicit loaded bright dry volume; direct fallback generation and native create/install, not natural primary-path failure recovery or full F/N");
@@ -164,7 +188,8 @@ public final class MaidFollowCoreAdapterProbe {
             failure.getClass()
                 .getSimpleName());
         try {
-            String subdirectory = fallback ? "follow-fallback-results" : "follow-adapter-results";
+            String subdirectory = watchdog ? "navigation-stop-results"
+                : fallback ? "follow-fallback-results" : "follow-adapter-results";
             Path directory = checkedDirectory(Paths.get("tlmnh-dev", subdirectory));
             String name = UUID.randomUUID() + ".json";
             byte[] bytes = GSON.toJson(output)
@@ -179,14 +204,108 @@ public final class MaidFollowCoreAdapterProbe {
             summary.addProperty("sha256", sha(bytes));
             summary.addProperty("bytes", bytes.length);
             summary.addProperty("rows", rows.size());
-            TLMNotHard.LOG
-                .info(fallback ? "TLMNH_FOLLOW_FALLBACK_CAPTURE {}" : "TLMNH_FOLLOW_CORE_ADAPTER_CAPTURE {}", summary);
+            TLMNotHard.LOG.info(
+                watchdog ? "TLMNH_NAVIGATION_STOP_CAPTURE {}"
+                    : fallback ? "TLMNH_FOLLOW_FALLBACK_CAPTURE {}" : "TLMNH_FOLLOW_CORE_ADAPTER_CAPTURE {}",
+                summary);
         } catch (Exception | LinkageError writing) {
             if (failure != null && failure != writing) writing.addSuppressed(failure);
             throw new IllegalStateException("Follow adapter evidence could not be saved", writing);
         }
         if (failure != null)
             throw new IllegalStateException("Follow adapter capture incomplete; inspect retained artifact", failure);
+    }
+
+    private static void watchdogRecovery(Platform platform, JsonArray rows) {
+        var row = row(rows, "native_watchdog_retry");
+        try (var fixture = new Fixture(platform, row)) {
+            var frames = new JsonArray();
+            row.add("frames", frames);
+            fixture.frame(frames, "first_walk");
+            fixture.frame(frames, "install");
+            var actor = fixture.component.getActor();
+            long generation = actor.getStopGeneration();
+            require(
+                generation > 0 && fixture.maid.getNavigator()
+                    .getPath() != null,
+                "Observed installation missing");
+            int installedTick = fixture.maid.ticksExisted;
+            for (int index = 0; index < 100; index++) fixture.advanceWithoutCapture();
+            row.add("beforeWatchdog", fixture.snapshot());
+            require(
+                fixture.maid.ticksExisted == installedTick + 100 && actor.peekLastNativeStop() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() != null,
+                "Native watchdog fired before its strict boundary");
+            fixture.frame(frames, "watchdog_stop");
+            var event = actor.peekLastNativeStop();
+            int cooldown = fixture.component.getMoveState()
+                .getRemainingCooldown();
+            require(
+                event != null && event.installationGeneration == generation
+                    && event.entityTick == fixture.maid.ticksExisted
+                    && event.worldTick == platform.world.getTotalWorldTime(),
+                "Native clear event was not accepted in its actual frame");
+            require(
+                cooldown >= 0 && cooldown < 40
+                    && actor.peekWalkTarget() == null
+                    && actor.peekPathMemory() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() == null
+                    && fixture.component.getMoveState()
+                        .getStatus() == FollowMoveState.Status.STOPPED,
+                "Original MOVE stop did not clear owned resources and apply cooldown");
+            row.addProperty("cooldown", cooldown);
+            row.addProperty("stoppedInstallationGeneration", generation);
+            fixture.frame(frames, "follow_rebuilds_walk");
+            require(actor.peekWalkTarget() != null, "FOLLOW did not rebuild WALK after stop");
+            for (int index = 0; index < cooldown; index++) fixture.advanceWithoutCapture();
+            fixture.frame(frames, "retry_install");
+            row.addProperty("retryInstallationGeneration", actor.getStopGeneration());
+            require(
+                actor.getStopGeneration() > generation && actor.peekLastNativeStop() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() != null
+                    && actor.peekPathMemory() != null
+                    && fixture.component.getMoveState()
+                        .getStatus() == FollowMoveState.Status.RUNNING,
+                "Cooldown did not lead to a fresh owned path installation");
+            row.addProperty("complete", true);
+        }
+    }
+
+    private static void unknownClear(Platform platform, JsonArray rows) {
+        var row = row(rows, "unknown_clear_refused");
+        try (var fixture = new Fixture(platform, row)) {
+            var frames = new JsonArray();
+            row.add("frames", frames);
+            fixture.frame(frames, "first_walk");
+            fixture.frame(frames, "install");
+            var actor = fixture.component.getActor();
+            fixture.maid.getNavigator()
+                .clearPathEntity();
+            row.add("afterExternalClear", fixture.snapshot());
+            try {
+                fixture.frame(frames, "unknown_clear");
+                throw new IllegalStateException("Ordinary clear was accepted as native watchdog");
+            } catch (Rc2FollowCoreActor.OutsideContractException expected) {
+                require(
+                    expected.getMessage()
+                        .contains("navigation_disappeared_cause_unknown"),
+                    "Unexpected cause refusal");
+                row.addProperty("refusal", expected.getMessage());
+            }
+            row.add("afterRefusal", fixture.snapshot());
+            require(
+                !fixture.runtime()
+                    .isReady() && actor.peekLastNativeStop() == null
+                    && actor.peekWalkTarget() == null
+                    && actor.peekPathMemory() == null
+                    && fixture.maid.getNavigator()
+                        .getPath() == null,
+                "Unknown clear did not retire its owned action");
+            row.addProperty("complete", true);
+        }
     }
 
     private static void fallbackPaths(Platform platform, JsonArray rows) {
@@ -671,6 +790,17 @@ public final class MaidFollowCoreAdapterProbe {
             }
         }
 
+        void advanceWithoutCapture() {
+            int tick = maid.ticksExisted;
+            long worldTick = platform.world.getTotalWorldTime();
+            maid.stepInheritedAi();
+            actorToken = runtime().getContext()
+                .getToken();
+            require(
+                maid.ticksExisted == tick + 1 && platform.world.getTotalWorldTime() == worldTick && runtime().isReady(),
+                "Controlled native navigation update failed");
+        }
+
         void requireOwnerLookConsumed() {
             var beforeControls = maid.afterComponentLookHelper;
             var afterControls = lookHelperSnapshot(maid);
@@ -830,6 +960,21 @@ public final class MaidFollowCoreAdapterProbe {
             result.add("lastCreation", creation(actor.getLastCreation()));
             result.add("lastInstallation", installation(actor.getLastInstallation()));
             result.addProperty("domainVerifications", platform.verifications.size());
+            if (platform.watchdog) {
+                result.addProperty("domainVerificationCalls", platform.totalVerifications);
+                result.addProperty("nativeFeedbackApplied", maid.getNavigator() instanceof Rc2NavigationStopSource);
+                result.addProperty("stopGeneration", actor.getStopGeneration());
+                var event = actor.peekLastNativeStop();
+                var stop = new JsonObject();
+                if (event == null) result.add("lastNativeStop", JsonNull.INSTANCE);
+                else {
+                    stop.addProperty("cause", event.cause);
+                    stop.addProperty("installationGeneration", event.installationGeneration);
+                    stop.addProperty("worldTick", event.worldTick);
+                    stop.addProperty("entityTick", event.entityTick);
+                    result.add("lastNativeStop", stop);
+                }
+            }
             return result;
         }
 
@@ -966,17 +1111,19 @@ public final class MaidFollowCoreAdapterProbe {
         final WorldServer world;
         final int baseX, baseZ;
         final int minY, maxY;
-        final boolean fallback;
+        final boolean fallback, watchdog;
         final List<Placed> blocks = new ArrayList<>();
         final JsonArray verifications = new JsonArray();
         final JsonObject report;
         Fixture fixture;
         boolean closed;
+        int totalVerifications, fixtureVerifications;
 
-        Platform(WorldServer world, JsonObject report, boolean fallback) {
+        Platform(WorldServer world, JsonObject report, boolean fallback, boolean watchdog) {
             this.world = world;
             this.report = report;
             this.fallback = fallback;
+            this.watchdog = watchdog;
             minY = FOOT_Y - (fallback ? 9 : 2);
             maxY = FOOT_Y + (fallback ? 9 : 3);
             var spawn = world.getSpawnPoint();
@@ -1035,6 +1182,7 @@ public final class MaidFollowCoreAdapterProbe {
         void bind(Fixture fixture) {
             require(this.fixture == null && !closed, "Platform already has a fixture");
             this.fixture = fixture;
+            fixtureVerifications = 0;
         }
 
         void unbind(Fixture fixture) {
@@ -1066,6 +1214,12 @@ public final class MaidFollowCoreAdapterProbe {
                         throw outside("unknown_or_changed_block_in_flat_search_domain");
                     checked++;
                 }
+            totalVerifications++;
+            fixtureVerifications++;
+            if (watchdog) {
+                report.addProperty("verificationCalls", totalVerifications);
+                if (fixtureVerifications > 2) return;
+            }
             var observed = new JsonObject();
             observed.addProperty(
                 "caseId",

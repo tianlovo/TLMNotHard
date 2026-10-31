@@ -54,6 +54,7 @@ $env:VERSION = "0.1.0-indev.local"
 ### 依赖
 
 - 目标整合包：GTNH 2.9.0 RC2，Minecraft 1.7.10，Forge 10.13.4.1614
+- UniMixins：使用 RC2 自带版本，提供原生导航停止反馈所需的 Mixin 引导
 - JDK 25：启动 Gradle、运行测试及游戏；JDK 17：供 Jabel 编译，目标字节码为 Java 8
 - Gradle Wrapper 固定 9.7.1，GTNHGradle 固定 2.0.33，Blowdryer 固定 0.2.2
 - Python 3：运行独立校验脚本；Node.js 22 或更新版本：运行 README 格式检查

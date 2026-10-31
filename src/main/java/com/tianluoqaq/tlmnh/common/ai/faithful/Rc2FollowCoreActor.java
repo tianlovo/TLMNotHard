@@ -100,6 +100,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     private OwnerView look;
     private NativePath pathMemory, navigationView;
     private PathEntity ownedPath;
+    private long stopGeneration;
+    private Rc2NavigationStopState.Event lastNativeStop;
     private Long cantReachSince;
     private boolean followStop;
     private MaidBoundedPathPlanner.Creation lastCreation;
@@ -186,8 +188,20 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         guard();
         PathEntity actual = navigator.getPath();
         if (actual != ownedPath) {
+            if (actual == null && ownedPath != null
+                && stopGeneration > 0
+                && stopState().matches(this, ownedPath, world, stopGeneration, token, worldTick, entityTick)) {
+                lastNativeStop = stopState().peekEvent();
+                navigationView = null;
+                return;
+            }
             throw outside(actual == null ? "navigation_disappeared_cause_unknown" : "foreign_navigation_path");
         }
+    }
+
+    private Rc2NavigationStopState stopState() {
+        if (!(navigator instanceof Rc2NavigationStopSource source)) throw outside("native_navigation_feedback_missing");
+        return source.tlmnh$navigationStopState();
     }
 
     private EntityPlayerMP resolveOwner() {
@@ -606,7 +620,9 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     }
 
     public boolean navigationIsStuck() {
-        throw outside("native_stuck_cause_unknown");
+        navigationLease();
+        return ownedPath != null && navigator.getPath() == null
+            && stopState().matches(this, ownedPath, world, stopGeneration, token, worldTick, entityTick);
     }
 
     public Path navigationPath() {
@@ -643,12 +659,20 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         if (actual == requested.raw || actual != null && actual == previous) {
             ownedPath = actual;
             navigationView = new NativePath(actual, requested.creation, requested.reaches, requested.lease);
+            lastNativeStop = null;
+            if (current()) stopGeneration = stopState().arm(this, actual, world, runtime.getContext(), token);
+            else {
+                stopState().release(this);
+                stopGeneration = 0;
+            }
         }
     }
 
     public void stopNavigation() {
         navigationLease();
-        if (ownedPath != null) navigator.clearPathEntity();
+        if (ownedPath != null && navigator.getPath() == ownedPath) navigator.clearPathEntity();
+        stopState().release(this);
+        stopGeneration = 0;
         ownedPath = null;
         navigationView = null;
     }
@@ -658,6 +682,10 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         try {
             if (ownedPath != null && navigator.getPath() == ownedPath) navigator.clearPathEntity();
         } finally {
+            if (navigator instanceof Rc2NavigationStopSource source) source.tlmnh$navigationStopState()
+                .release(this);
+            stopGeneration = 0;
+            lastNativeStop = null;
             ownedPath = null;
             navigationView = null;
             walk = null;
@@ -724,6 +752,14 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
 
     public MaidBoundedPathPlanner.Creation getLastCreation() {
         return lastCreation;
+    }
+
+    public Rc2NavigationStopState.Event peekLastNativeStop() {
+        return lastNativeStop;
+    }
+
+    public long getStopGeneration() {
+        return stopGeneration;
     }
 
     public MaidBoundedPathPlanner.Installation getLastInstallation() {
