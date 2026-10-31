@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from compare import CONTRACT, compare, require, validate
+from compare import CONTRACT, compare, require, submission_order_policy, validate
 from control import send
 
 
@@ -33,13 +33,15 @@ def replay(launcher, original, destination, mode):
     return report
 
 
-def run(game_directory, launcher_file, evidence):
+def run(game_directory, launcher_file, evidence, require_submission_order=False):
     # This output directory must be new; no old reference or rejection is overwritten
     evidence.mkdir(parents=True, exist_ok=False)
     result = {"schema": "geometry-experiment-v2", "passed": False, "cases": [],
               "scope": "two reviewed fresh bind meshes through original native and port production geometry methods",
               "worldRendererVerified": False, "dynamicAnimationVerified": False, "gpuEquivalenceVerified": False,
               "orderDependentRenderingVerified": False,
+              "order_policy": {"required": require_submission_order, "passed": False,
+                               "status": "PENDING" if require_submission_order else "NOT_REQUIRED"},
               "evidenceDirectory": str(evidence.resolve()), "launcherSha256": sha(launcher_file)}
     try:
         launcher = json.loads(launcher_file.read_text(encoding="utf-8"))
@@ -67,13 +69,24 @@ def run(game_directory, launcher_file, evidence):
             uv = case["runs"]["uv_shift"]["comparison"]
             corner = case["runs"]["corner_swap"]["comparison"]
             recovery = case["runs"]["recovery"]["comparison"]
-            case["passed"] = (normal["matched"] and recovery["matched"]
+            case["geometryPassed"] = (normal["matched"] and recovery["matched"]
                               and mirror["verdict"] == "GEOMETRY_DIFFERENCE" and not mirror["position"]["matched"]
                               and corner["verdict"] == "GEOMETRY_DIFFERENCE" and not corner["position"]["matched"]
                               and uv["verdict"] == "GEOMETRY_DIFFERENCE" and not uv["uv"]["matched"]
                               and uv["position"]["matched"] and uv["normal"]["matched"] and uv["bindTreeMatched"])
+            policies = {label: submission_order_policy(comparison, require_submission_order)
+                        for label, comparison in (("normal", normal), ("recovery", recovery))}
+            case["order_policy"] = {"required": require_submission_order, "passed": all(value["passed"] for value in policies.values()),
+                                    "runs": policies}
+            case["passed"] = case["geometryPassed"] and case["order_policy"]["passed"]
+        order_passed = len(result["cases"]) == 2 and all(case["order_policy"]["passed"] for case in result["cases"])
+        result["order_policy"].update(passed=order_passed,
+            status=("SUBMISSION_ORDER_POLICY_PASS" if order_passed else "SUBMISSION_ORDER_POLICY_FAILED")
+                   if require_submission_order else "NOT_REQUIRED")
         result["passed"] = len(result["cases"]) == 2 and all(case["passed"] for case in result["cases"])
         result["verdict"] = "PASS_BOUNDED_BIND_GEOMETRY_V2_EXPERIMENT" if result["passed"] else "BIND_GEOMETRY_V2_EXPERIMENT_FAILED"
+        if require_submission_order and not order_passed:
+            result["verdict"] = "SUBMISSION_ORDER_POLICY_FAILED"
     except (Exception, KeyboardInterrupt) as failure:
         result["verdict"] = "INCONCLUSIVE"
         result["error"] = str(failure)
@@ -89,8 +102,10 @@ def main():
     parser.add_argument("--game-dir", type=Path, required=True)
     parser.add_argument("--launcher", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--require-submission-order", action="store_true",
+                        help="Additionally require matching static root/sibling/vertex submission order; does not verify materials")
     args = parser.parse_args()
-    result = run(args.game_dir, args.launcher, args.evidence)
+    result = run(args.game_dir, args.launcher, args.evidence, args.require_submission_order)
     print(json.dumps({"passed": result["passed"], "verdict": result["verdict"], "error": result.get("error"),
                       "report": str(args.evidence / "experiment.json")}, ensure_ascii=False))
     return 0 if result["passed"] else 2

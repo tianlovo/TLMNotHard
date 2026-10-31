@@ -1,12 +1,21 @@
 # 原版几何独立对照（Indev）
 
 本工具比较两个内置酒狐模型的静态几何，不使用移植版几何函数生成预期结果
-当前合同为 `native-bind-geometry-v2`，已有36版真实有界实验记录；本次移植端 fastutil 来源身份扩展仍待重新准备与执行
+当前合同为 `native-bind-geometry-v2`，36版和恢复原版挂树流程后的37版均有真实有界实验记录
 已通过的 Python 合成测试只检查比较器及输入边界，不是几何实验通过的证据
 
 旧 v1 四轮报告保持原判：第四轮 Bedrock 的有序数值及负例通过，Gecko 因兄弟骨骼发射顺序不同而比较失败
 只读分块诊断不能把旧失败改成通过；v2 使用新的 schema、合同摘要和证据目录，旧捕获不能直接转换或重新贴标签
-36版v2记录的Gecko几何值匹配及17组顺序差异保留，本次不修改该基准或参考端合同
+36版v2记录的Gecko几何值匹配及17组顺序差异保留，不修改该基准或参考端合同
+
+37版重新执行后，Gecko 的根、兄弟与完整顶点提交次序均匹配，原17组兄弟次序差异归零
+该次捕获包含原版115骨骼、11304顶点，最大位置误差为 `5.960464477539062e-7`，最大法线误差为 `1.4901161193847656e-7`，UV误差为0
+Bedrock 的2472个有序顶点在位置、法线和UV上均为0差异
+两模型都通过三次新建的 A/A、plain/traced 中性检查、镜像、UV偏移、面内换角及恢复检查
+这些结果证明当前静态合同可自动对照，不能据此推断材质、动画中的动态输入或完整世界画面一致
+
+现有动画冻结包仍承担日常 CPU 回归：恢复挂树流程后，在已有依赖缓存的独立离线克隆中，6正例和7个Java负例再次通过
+本工具的几何捕获尚未整理成可分发的独立离线冻结包；原始运行身份可能含本机依赖路径，留在私有证据目录，不能直接提交
 
 ## 范围
 
@@ -117,7 +126,8 @@ python tools/geometry-reference/control.py --game-dir "$ReferenceHome/client" `
 python tools/geometry-reference/experiment.py `
   --game-dir "$ReferenceHome/client" `
   --launcher "$GeometryHome/port/launcher.json" `
-  --evidence "$NewGeometryEvidenceDirectory"
+  --evidence "$NewGeometryEvidenceDirectory" `
+  --require-submission-order
 ```
 
 编排器依次采集两个模型，对每个模型执行生产正常、镜像、UV偏移、corner_swap及恢复
@@ -145,6 +155,11 @@ python tools/geometry-reference/experiment.py `
 `PASS_BOUNDED_BIND_GEOMETRY_V2_EXPERIMENT` 要求两个模型的正常与恢复匹配，镜像与corner_swap产生位置差异，UV负例产生独立UV差异，且所有 A/A、观察中性和身份检查通过
 有效流存在顶点、静态树或数值差异时报告 `GEOMETRY_DIFFERENCE`；输入缺失、身份未知、不稳定或不支持时报告 `INCONCLUSIVE`
 CLI 只有整个实验通过才返回退出码 0
+
+恢复原版挂树流程后的回归使用上例的 `--require-submission-order`
+默认 v2 仍只按语义几何判定，避免改写旧实验的含义；此选项另设 `order_policy`，要求正常和恢复的 Gecko 根、兄弟及实际顶点 key 提交次序全部一致
+Bedrock 只沿用已匹配的有序顶点流，不补造语义骨骼 key；缺失或未知次序证据不能通过
+次序策略不会修改原捕获、几何比较结果或材质验收标志
 
 几何数值通过不表示提交次序相同，更不表示透明、深度竞争或材质顺序通过
 `drawOrder` 保留实际差异，`orderDependentRenderingVerified` 始终为 false；二值 alpha 贴图也可能存在共面重叠，不能据此认为换序无影响

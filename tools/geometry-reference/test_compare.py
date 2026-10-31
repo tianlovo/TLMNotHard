@@ -4,9 +4,12 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import tempfile
 import unittest
+from unittest import mock
 
 import compare as subject
+import experiment as orchestration
 
 
 def identity(reference):
@@ -143,6 +146,123 @@ class CompareTests(unittest.TestCase):
         self.assertFalse(result["drawOrder"]["matched"])
         self.assertEqual(1, len(result["drawOrder"]["siblingOrderDifferences"]))
         self.assertFalse(result["orderDependentRenderingVerified"])
+
+    def test_optional_order_policy_rejects_order_only_change_without_relabelling_geometry(self):
+        result = subject.compare(siblings_fixture(True), siblings_fixture(False, reverse=True))
+        original = copy.deepcopy(result)
+        self.assertTrue(result["matched"])
+        self.assertTrue(subject.submission_order_policy(result)["passed"])
+        policy = subject.submission_order_policy(result, required=True)
+        self.assertFalse(policy["passed"])
+        self.assertEqual("SUBMISSION_ORDER_DIFFERENCE", policy["status"])
+        self.assertEqual(original, result)
+
+    def test_order_policy_requires_roots_siblings_and_actual_vertex_order_independently(self):
+        baseline = subject.compare(siblings_fixture(True), siblings_fixture(False))
+        self.assertTrue(subject.submission_order_policy(baseline, required=True)["passed"])
+        for field, changed in (("rootOrderMatched", False), ("matched", False),
+                               ("firstDifference", {"drawIndex": 0}),
+                               ("siblingOrderDifferences", [{"bone": "root"}])):
+            with self.subTest(field=field):
+                result = copy.deepcopy(baseline)
+                result["drawOrder"][field] = changed
+                self.assertFalse(subject.submission_order_policy(result, required=True)["passed"])
+
+    def test_order_policy_preserves_ordered_bedrock_scope_without_inventing_semantic_keys(self):
+        result = subject.compare(fixture(True, "bedrock"), fixture(False, "bedrock"))
+        original = copy.deepcopy(result)
+        policy = subject.submission_order_policy(result, required=True)
+        self.assertTrue(policy["passed"])
+        self.assertEqual("ORDERED_BEDROCK_STREAM_MATCH", policy["status"])
+        self.assertFalse(policy["orderDependentRenderingVerified"])
+        self.assertNotIn("matched", result["drawOrder"])
+        self.assertEqual(original, result)
+
+    def test_order_policy_missing_unknown_or_malformed_evidence_fails_closed(self):
+        baseline = subject.compare(fixture(True), fixture(False))
+        for field in baseline["drawOrder"]:
+            with self.subTest(missing=field):
+                result = copy.deepcopy(baseline)
+                del result["drawOrder"][field]
+                policy = subject.submission_order_policy(result, required=True)
+                self.assertFalse(policy["passed"])
+                self.assertEqual("INCONCLUSIVE", policy["status"])
+        for field, changed in (("schema", "geometry-comparison-v999"), ("model", "unknown:model"),
+                               ("drawOrder", None), ("orderDependentRenderingVerified", True)):
+            with self.subTest(field=field):
+                result = copy.deepcopy(baseline)
+                result[field] = changed
+                self.assertFalse(subject.submission_order_policy(result, required=True)["passed"])
+        for field, changed in (("matched", 1), ("rootOrderMatched", 1), ("siblingOrderDifferences", {})):
+            with self.subTest(orderField=field):
+                result = copy.deepcopy(baseline)
+                result["drawOrder"][field] = changed
+                self.assertFalse(subject.submission_order_policy(result, required=True)["passed"])
+        bedrock = subject.compare(fixture(True, "bedrock"), fixture(False, "bedrock"))
+        bedrock["drawOrder"]["scope"] = "unknown ordered stream"
+        self.assertFalse(subject.submission_order_policy(bedrock, required=True)["passed"])
+
+    def test_order_policy_cannot_override_a_geometry_failure(self):
+        port = fixture(False)
+        for sample in port["samples"]:
+            sample["bindTree"]["nodes"]["root"]["pivot"][0] = 1
+        result = subject.compare(fixture(True), port)
+        self.assertTrue(result["drawOrder"]["matched"])
+        self.assertFalse(result["matched"])
+        policy = subject.submission_order_policy(result, required=True)
+        self.assertFalse(policy["passed"])
+        self.assertEqual("INCONCLUSIVE", policy["status"])
+
+    def test_experiment_optional_order_gate_changes_admission_without_changing_geometry(self):
+        # Protocol orchestration only: the native producers are not executed here
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            launcher = root / "launcher.json"
+            launcher.write_text(json.dumps({"schema": "geometry-replay-launcher-v2"}), encoding="utf-8")
+            captures = {}
+            for backend in ("gecko", "bedrock"):
+                original = siblings_fixture(True) if backend == "gecko" else fixture(True, backend)
+                path = root / (backend + "-synthetic-original.json")
+                path.write_text(json.dumps(original), encoding="utf-8")
+                captures[original["model"]] = path
+
+            def send(_game, command, **options):
+                if command == "status":
+                    return {"worldLoaded": True, "spectator": True}
+                path = captures[options["model"]]
+                return {"localCapture": path, "captureSha256": orchestration.sha(path)}
+
+            def replay(_launcher, original_file, destination, mode):
+                original = json.loads(original_file.read_text(encoding="utf-8"))
+                backend = original["backend"]
+                port = siblings_fixture(False, reverse=True) if backend == "gecko" else fixture(False, backend)
+                for sample in port["samples"]:
+                    if mode == "mirror_x":
+                        for vertex in sample["vertices"]:
+                            vertex[0] *= -1
+                            vertex[3] *= -1
+                    elif mode == "uv_shift":
+                        for vertex in sample["vertices"]:
+                            vertex[6] += 0.125
+                    elif mode == "corner_swap":
+                        sample["vertices"][0], sample["vertices"][1] = sample["vertices"][1], sample["vertices"][0]
+                sync_plain(port)
+                destination.write_text(json.dumps(port), encoding="utf-8")
+                return port
+
+            with mock.patch.object(orchestration, "send", side_effect=send), mock.patch.object(orchestration, "replay", side_effect=replay):
+                default = orchestration.run(root, launcher, root / "default")
+                strict = orchestration.run(root, launcher, root / "strict", require_submission_order=True)
+            self.assertTrue(default["passed"])
+            self.assertEqual("NOT_REQUIRED", default["order_policy"]["status"])
+            self.assertFalse(strict["passed"])
+            self.assertEqual("SUBMISSION_ORDER_POLICY_FAILED", strict["verdict"])
+            self.assertTrue(all(case["geometryPassed"] for case in strict["cases"]))
+            gecko = next(case for case in strict["cases"] if "hanfu" in case["model"])
+            bedrock = next(case for case in strict["cases"] if "hanfu" not in case["model"])
+            self.assertFalse(gecko["order_policy"]["passed"])
+            self.assertTrue(bedrock["order_policy"]["passed"])
+            self.assertFalse(strict["orderDependentRenderingVerified"])
 
     def test_corner_swap_keeps_keys_but_changes_actual_written_values(self):
         for backend in ("gecko", "bedrock"):

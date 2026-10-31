@@ -416,6 +416,44 @@ def compare(reference, port):
     return result
 
 
+def submission_order_policy(comparison, required=False):
+    """Optional regression policy, separate from semantic geometry and materials."""
+    result = {"required": required, "passed": not required,
+              "status": "NOT_REQUIRED" if not required else "INCONCLUSIVE",
+              "orderDependentRenderingVerified": False,
+              "scope": "static submission order only; no material, animation, world or GPU acceptance"}
+    if required is False:
+        return result
+    try:
+        require(required is True, "Submission-order policy requires a boolean selection")
+        require(comparison["schema"] == "geometry-comparison-v2"
+                and comparison["matched"] is True
+                and comparison["verdict"] == "BOUNDED_BIND_GEOMETRY_V2_MATCH",
+                "A conclusive geometry match is required before submission-order admission")
+        require(comparison["orderDependentRenderingVerified"] is False, "Material rendering must remain unverified")
+        backend = CONTRACT["models"][comparison["model"]]["backend"]
+        order = comparison["drawOrder"]
+        require(order["orderDependentRenderingVerified"] is False, "Submission order does not verify material rendering")
+        if backend == "gecko":
+            require(set(order) == {"matched", "firstDifference", "siblingOrderDifferences", "rootOrderMatched", "orderDependentRenderingVerified"},
+                    "Missing or unsupported Gecko order evidence")
+            require(type(order["matched"]) is bool and type(order["rootOrderMatched"]) is bool
+                    and isinstance(order["siblingOrderDifferences"], list), "Malformed Gecko order evidence")
+            result["passed"] = (order["matched"] is True and order["rootOrderMatched"] is True
+                                and order["siblingOrderDifferences"] == [] and order["firstDifference"] is None)
+            result["status"] = "SUBMISSION_ORDER_MATCH" if result["passed"] else "SUBMISSION_ORDER_DIFFERENCE"
+        else:
+            require(backend == "bedrock" and set(order) == {"scope", "orderDependentRenderingVerified"}
+                    and order["scope"] == "ordered Bedrock stream; no semantic bone mapping",
+                    "Missing or unsupported ordered Bedrock evidence")
+            result["passed"] = True
+            result["status"] = "ORDERED_BEDROCK_STREAM_MATCH"
+    except (ValueError, KeyError, TypeError) as failure:
+        result["passed"] = False
+        result["error"] = str(failure)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("reference", type=Path)
