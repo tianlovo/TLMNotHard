@@ -56,7 +56,8 @@ public final class MaidBowRuntimeProbe {
         RESUME
     }
 
-    private static MaidBowRuntimeProbe pending;
+    private static volatile MaidBowRuntimeProbe pending;
+    private static volatile boolean starting;
     private final WorldServer world;
     private final boolean recordingEnabled;
     private MaidEpisodeRecorder recorder;
@@ -80,7 +81,8 @@ public final class MaidBowRuntimeProbe {
     private long lastWorldTick, phaseShots, phaseRejections, phaseSelections;
     private double startX, startZ;
     private String deferredFailure;
-    private boolean finished, fmlRegistered, forgeRegistered, ownerAdded;
+    private volatile boolean finished;
+    private boolean fmlRegistered, forgeRegistered, ownerAdded;
     private boolean approachVerified, movingVerified, blockedVerified, recoveryVerified, sitVerified, resumeVerified;
     private boolean dropObserved, leadObserved;
 
@@ -118,34 +120,51 @@ public final class MaidBowRuntimeProbe {
     }
 
     public static void start(WorldServer world, boolean recordingEnabled) {
-        require(
-            Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
-            "Dedicated test overworld required");
-        require(pending == null, "Another natural bow experiment is active");
-        require(
-            world.difficultySetting.getDifficultyId() != 0,
-            "Native zombie fixture requires non-peaceful difficulty");
-        var probe = new MaidBowRuntimeProbe(world, recordingEnabled);
-        pending = probe;
-        try {
-            FMLCommonHandler.instance()
-                .bus()
-                .register(probe);
-            probe.fmlRegistered = true;
-            MinecraftForge.EVENT_BUS.register(probe);
-            probe.forgeRegistered = true;
-            probe.begin();
-        } catch (RuntimeException error) {
-            probe.finish(false, error.toString());
+        synchronized (MaidShieldRuntimeProbe.class) {
+            require(
+                Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
+                "Dedicated test overworld required");
+            require(!isFixtureReserved(), "Another natural bow experiment is active");
+            require(
+                !MaidShieldRuntimeProbe.isActive() && !MaidLifeRuntimeProbe.isFixtureReserved(),
+                "Another runtime experiment owns the fixture");
+            require(
+                world.difficultySetting.getDifficultyId() != 0,
+                "Native zombie fixture requires non-peaceful difficulty");
+            starting = true;
+            try {
+                var probe = new MaidBowRuntimeProbe(world, recordingEnabled);
+                pending = probe;
+                try {
+                    FMLCommonHandler.instance()
+                        .bus()
+                        .register(probe);
+                    probe.fmlRegistered = true;
+                    MinecraftForge.EVENT_BUS.register(probe);
+                    probe.forgeRegistered = true;
+                    probe.begin();
+                } catch (RuntimeException error) {
+                    probe.finish(false, error.toString());
+                }
+            } finally {
+                starting = false;
+            }
         }
     }
 
     public static boolean isActive() {
-        return pending != null && !pending.finished;
+        var probe = pending;
+        return probe != null && !probe.finished;
+    }
+
+    /** 启动构造与原有cleanup结束前仍占用夹具，不能用finished提前让位 */
+    public static boolean isFixtureReserved() {
+        return starting || pending != null;
     }
 
     public static void cancel() {
-        if (isActive()) pending.finish(false, "Test server is stopping");
+        var probe = pending;
+        if (probe != null && !probe.finished) probe.finish(false, "Test server is stopping");
     }
 
     private void begin() {
@@ -470,8 +489,10 @@ public final class MaidBowRuntimeProbe {
     }
 
     private void finish(boolean success, String error) {
-        if (finished) return;
-        finished = true;
+        synchronized (MaidShieldRuntimeProbe.class) {
+            if (finished) return;
+            finished = true;
+        }
         var cleanup = new ArrayList<String>();
         JsonObject episode = null;
         if (recorder != null) {
@@ -537,7 +558,9 @@ public final class MaidBowRuntimeProbe {
                 .unregister(this),
             cleanup);
         if (forgeRegistered) restore(() -> MinecraftForge.EVENT_BUS.unregister(this), cleanup);
-        if (pending == this) pending = null;
+        synchronized (MaidShieldRuntimeProbe.class) {
+            if (pending == this) pending = null;
+        }
         var report = new JsonObject();
         report.addProperty("run", run);
         report.addProperty("passed", success && cleanup.isEmpty());

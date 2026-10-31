@@ -1,13 +1,8 @@
 package com.tianluoqaq.tlmnh.common.development;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.net.JarURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
-import java.util.jar.JarFile;
 
 import com.google.gson.JsonObject;
 
@@ -21,34 +16,19 @@ public final class DevelopmentArtifactIdentity {
             throw new IllegalStateException("Explicit packaged development classes required");
         var identity = new JsonObject();
         var classes = new JsonObject();
+        var bindings = new JsonObject();
         Path artifact = null;
         for (Class<?> type : types) {
-            var source = type.getProtectionDomain()
-                .getCodeSource();
-            require(source != null, "Missing actual class CodeSource");
-            var location = source.getLocation();
-            if ("jar".equals(location.getProtocol())) {
-                var connection = location.openConnection();
-                require(connection instanceof JarURLConnection, "Unsupported JAR CodeSource");
-                location = ((JarURLConnection) connection).getJarFileURL();
-            }
-            require("file".equals(location.getProtocol()), "Local artifact required");
-            Path file = Paths.get(location.toURI())
-                .toRealPath();
-            require(Files.isRegularFile(file), "Packaged artifact required");
+            Path file = PackagedClassResourceResolver.artifactOf(type);
             if (artifact == null) artifact = file;
-            require(artifact.equals(file), "Classes came from different artifacts");
-            String entryName = type.getName()
-                .replace('.', '/') + ".class";
-            try (var jar = new JarFile(file.toFile()); var input = type.getResourceAsStream('/' + entryName)) {
-                var entry = jar.getJarEntry(entryName);
-                require(entry != null && input != null, "Missing actual class resource");
-                try (var packed = jar.getInputStream(entry)) {
-                    String resourceSha = sha(readBytes(input));
-                    require(resourceSha.equals(sha(readBytes(packed))), "Class resource differs from CodeSource");
-                    classes.addProperty(type.getName(), resourceSha);
-                }
-            }
+            require(artifact.equals(file), "Classes came from different artifacts; class=" + type.getName());
+            var binding = PackagedClassResourceResolver.resolve(type, file);
+            classes.addProperty(type.getName(), binding.sha256);
+            var detail = new JsonObject();
+            detail.addProperty("logicalEntry", binding.logicalEntry);
+            detail.addProperty("physicalEntry", binding.physicalEntry);
+            detail.addProperty("multiReleaseVersion", binding.multiReleaseVersion);
+            bindings.add(type.getName(), detail);
         }
         identity.addProperty(
             "artifactFile",
@@ -58,15 +38,8 @@ public final class DevelopmentArtifactIdentity {
         identity.addProperty("javaSpecificationVersion", System.getProperty("java.specification.version"));
         identity.addProperty("transformedDefinitionBytesVerified", false);
         identity.add("classResources", classes);
+        identity.add("classResourceBindings", bindings);
         return identity;
-    }
-
-    private static byte[] readBytes(InputStream input) throws Exception {
-        var bytes = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int count;
-        while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
-        return bytes.toByteArray();
     }
 
     private static String sha(byte[] bytes) throws Exception {

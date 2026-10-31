@@ -55,7 +55,8 @@ public final class MaidLifeRuntimeProbe {
     private static final long WALL_LIMIT_NANOS = 240_000_000_000L;
     private static final String SCOPE = "natural entity/server ticks on an isolated flat overworld air scaffold; no network-click, client-visual, complex-pathfinding or original-AI benchmark acceptance";
     private static final String RUN_TAG = "TLMNHLifeRuntimeRun";
-    private static MaidLifeRuntimeProbe pending;
+    private static volatile MaidLifeRuntimeProbe pending;
+    private static volatile boolean starting;
 
     private enum Phase {
         WARMUP,
@@ -94,7 +95,8 @@ public final class MaidLifeRuntimeProbe {
     private double snackX, snackZ, bedX, bedZ, snackMovementSq, bedApproachMovementSq;
     private float initialHealth;
     private long expectedTime = 6000;
-    private boolean registeredFml, registeredForge, finished, changedWorld;
+    private boolean registeredFml, registeredForge, changedWorld;
+    private volatile boolean finished;
     private boolean stealVerified, placeVerified, eatVerified, bedMovementVerified, dawnVerified, dangerVerified,
         recoveryVerified;
 
@@ -116,48 +118,65 @@ public final class MaidLifeRuntimeProbe {
     }
 
     public static void start(WorldServer world, boolean recordingEnabled) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands must be enabled");
-        require(pending == null, "Another life runtime probe is active");
-        require(
-            world != null && !world.isRemote && world.provider.dimensionId == 0 && !AnimationLab.isLab(world),
-            "Dedicated test overworld required");
-        require(
-            world.difficultySetting != EnumDifficulty.PEACEFUL,
-            "Hostile observation requires non-peaceful difficulty");
-        var probe = new MaidLifeRuntimeProbe(world, recordingEnabled);
-        pending = probe;
-        try {
-            probe.preflight();
-            FMLCommonHandler.instance()
-                .bus()
-                .register(probe);
-            probe.registeredFml = true;
-            MinecraftForge.EVENT_BUS.register(probe);
-            probe.registeredForge = true;
-            probe.begin();
-            var started = new JsonObject();
-            started.addProperty("run", probe.run);
-            started.addProperty("passed", false);
-            started.addProperty("state", "RUNNING");
-            started.addProperty("scope", SCOPE);
-            started.addProperty("dimension", world.provider.dimensionId);
-            started.addProperty("x", probe.x);
-            started.addProperty("y", Y);
-            started.addProperty("z", probe.z);
-            started.addProperty("tickLimit", TOTAL_TICKS);
-            started.addProperty("wallLimitSeconds", 240);
-            TLMNotHard.LOG.info("TLMNH_LIFE_RUNTIME_STARTED {}", started);
-        } catch (RuntimeException | Error error) {
-            probe.finish(false, error.toString());
+        synchronized (MaidShieldRuntimeProbe.class) {
+            require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands must be enabled");
+            require(!isFixtureReserved(), "Another life runtime probe is active");
+            require(
+                !MaidShieldRuntimeProbe.isActive() && !MaidBowRuntimeProbe.isFixtureReserved(),
+                "Another runtime experiment owns the fixture");
+            require(
+                world != null && !world.isRemote && world.provider.dimensionId == 0 && !AnimationLab.isLab(world),
+                "Dedicated test overworld required");
+            require(
+                world.difficultySetting != EnumDifficulty.PEACEFUL,
+                "Hostile observation requires non-peaceful difficulty");
+            starting = true;
+            try {
+                var probe = new MaidLifeRuntimeProbe(world, recordingEnabled);
+                pending = probe;
+                try {
+                    probe.preflight();
+                    FMLCommonHandler.instance()
+                        .bus()
+                        .register(probe);
+                    probe.registeredFml = true;
+                    MinecraftForge.EVENT_BUS.register(probe);
+                    probe.registeredForge = true;
+                    probe.begin();
+                    var started = new JsonObject();
+                    started.addProperty("run", probe.run);
+                    started.addProperty("passed", false);
+                    started.addProperty("state", "RUNNING");
+                    started.addProperty("scope", SCOPE);
+                    started.addProperty("dimension", world.provider.dimensionId);
+                    started.addProperty("x", probe.x);
+                    started.addProperty("y", Y);
+                    started.addProperty("z", probe.z);
+                    started.addProperty("tickLimit", TOTAL_TICKS);
+                    started.addProperty("wallLimitSeconds", 240);
+                    TLMNotHard.LOG.info("TLMNH_LIFE_RUNTIME_STARTED {}", started);
+                } catch (RuntimeException | Error error) {
+                    probe.finish(false, error.toString());
+                }
+            } finally {
+                starting = false;
+            }
         }
     }
 
     public static boolean isActive() {
-        return pending != null && !pending.finished;
+        var probe = pending;
+        return probe != null && !probe.finished;
+    }
+
+    /** 启动构造与原有cleanup结束前仍占用夹具，不能用finished提前让位 */
+    public static boolean isFixtureReserved() {
+        return starting || pending != null;
     }
 
     public static void cancel() {
-        if (pending != null) pending.finish(false, "Cancelled by development command");
+        var probe = pending;
+        if (probe != null) probe.finish(false, "Cancelled by development command");
     }
 
     private void preflight() {
@@ -594,8 +613,10 @@ public final class MaidLifeRuntimeProbe {
     }
 
     private void finish(boolean success, String error) {
-        if (finished) return;
-        finished = true;
+        synchronized (MaidShieldRuntimeProbe.class) {
+            if (finished) return;
+            finished = true;
+        }
         var errors = new ArrayList<String>();
         int entityTicks = maid == null ? 0 : maid.ticksExisted - initialEntityTick;
         int bites = maid == null ? 0 : life().getBites(), placements = maid == null ? 0 : life().getPlacements();
@@ -674,7 +695,9 @@ public final class MaidLifeRuntimeProbe {
                         .bus()
                         .unregister(this),
                     errors);
-                if (pending == this) pending = null;
+                synchronized (MaidShieldRuntimeProbe.class) {
+                    if (pending == this) pending = null;
+                }
             }
         }
         boolean scenarios = stealVerified && placeVerified

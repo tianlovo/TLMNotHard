@@ -10,6 +10,7 @@ import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
@@ -80,14 +81,24 @@ public final class TLMNotHard {
     public void serverStarting(FMLServerStartingEvent event) {
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             AnimationLab.validateAutoEntry();
+            MaidShieldRuntimeProbe.registerForDevelopment();
             event.registerServerCommand(new DevelopmentCommand());
         }
     }
 
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
-        MaidBowRuntimeProbe.cancel();
-        MaidLifeRuntimeProbe.cancel();
-        MaidEpisodeRecorder.closeAll();
+        Throwable failure = null;
+        for (Runnable close : new Runnable[] { MaidBowRuntimeProbe::cancel, MaidLifeRuntimeProbe::cancel,
+            MaidShieldRuntimeProbe::cancel, MaidEpisodeRecorder::closeAll }) {
+            try {
+                close.run();
+            } catch (RuntimeException | Error error) {
+                if (failure == null) failure = error;
+                else if (failure != error) failure.addSuppressed(error);
+            }
+        }
+        if (failure instanceof RuntimeException error) throw error;
+        if (failure instanceof Error error) throw error;
     }
 }

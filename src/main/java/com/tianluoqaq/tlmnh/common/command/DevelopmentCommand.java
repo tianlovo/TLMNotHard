@@ -35,6 +35,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidNativePhaseProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPolicyLifecycleProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldNativeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -63,8 +64,28 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
-        if (MaidBowRuntimeProbe.isActive() || MaidLifeRuntimeProbe.isActive())
+        // 状态与匹配UUID的中止必须可在事务占用期间到达，不受下面的普通命令门禁吞掉
+        if (args.length == 1 && "shield-runtime-status".equals(args[0])) {
+            sender.addChatMessage(
+                new ChatComponentTranslation(
+                    "commands.tlmnhdev.shield_runtime_status",
+                    MaidShieldRuntimeProbe.status()
+                        .toString()));
+            return;
+        }
+        if (args.length == 2 && "shield-runtime-abort".equals(args[0])) {
+            MaidShieldRuntimeProbe.abort(args[1]);
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.shield_runtime_aborting"));
+            return;
+        }
+        if (MaidBowRuntimeProbe.isFixtureReserved() || MaidLifeRuntimeProbe.isFixtureReserved()
+            || MaidShieldRuntimeProbe.isActive())
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
+        if (args.length == 1 && "shield-runtime-test".equals(args[0])) {
+            String run = MaidShieldRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.shield_runtime_started", run));
+            return;
+        }
         if (args.length == 1 && "shield-native-test".equals(args[0])) {
             MaidShieldNativeProbe.run((WorldServer) sender.getEntityWorld());
             return;
