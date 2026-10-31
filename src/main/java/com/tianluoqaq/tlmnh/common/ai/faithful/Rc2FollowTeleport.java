@@ -53,7 +53,7 @@ public final class Rc2FollowTeleport {
     public static final class Result {
 
         public final Status status;
-        public final int attempts, rngCalls;
+        public final int attempts, rngCalls, collisionQueries, collisionRejections;
         public final boolean hasCandidate, moved;
         public final int candidateX, candidateY, candidateZ;
         public final String diagnostic;
@@ -62,6 +62,8 @@ public final class Rc2FollowTeleport {
             this.status = status;
             attempts = progress.attempts;
             rngCalls = progress.rngCalls;
+            collisionQueries = progress.collisionQueries;
+            collisionRejections = progress.collisionRejections;
             hasCandidate = progress.hasCandidate;
             moved = progress.moved;
             candidateX = progress.x;
@@ -129,8 +131,10 @@ public final class Rc2FollowTeleport {
             int dy = y - MathHelper.floor_double(maid.posY);
             int dz = z - MathHelper.floor_double(maid.posZ);
             var translated = maid.boundingBox.getOffsetBoundingBox(dx, dy, dz);
+            progress.collisionQueries++;
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, translated)
                 .isEmpty()) {
+                progress.collisionRejections++;
                 progress.lastRejection = "native_collision";
                 continue;
             }
@@ -223,7 +227,7 @@ public final class Rc2FollowTeleport {
 
     private static final class Progress {
 
-        private int attempts, rngCalls, x, y, z;
+        private int attempts, rngCalls, collisionQueries, collisionRejections, x, y, z;
         private boolean hasCandidate, moved;
         private String lastRejection = "no_candidate_accepted";
     }
