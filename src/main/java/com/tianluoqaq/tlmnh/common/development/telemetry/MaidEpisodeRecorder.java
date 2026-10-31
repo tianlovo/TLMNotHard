@@ -551,7 +551,7 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
             try {
                 if (!Boolean.getBoolean("tlmnh.devCommands") || fmlRegistered || forgeRegistered)
                     throw new IllegalStateException("Episode export is unavailable or cleanup incomplete");
-                byte[] json = new Gson().toJson(result)
+                byte[] json = result.toString()
                     .getBytes(StandardCharsets.UTF_8);
                 Path directory = episodeDirectory();
                 partial = directory.resolve(session + ".json.gz.part");
