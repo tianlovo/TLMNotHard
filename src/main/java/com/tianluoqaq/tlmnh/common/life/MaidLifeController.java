@@ -20,9 +20,10 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
-import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -50,11 +51,12 @@ public final class MaidLifeController {
         PLACE
     }
 
-    private static final int SCAN_INTERVAL = 20, SCAN_BUDGET = 128, MAX_ACTION_TICKS = 200;
+    private static final int SCAN_INTERVAL = 20, MAX_ACTION_TICKS = 200;
     private static final String REWARD_AT = "TLMNHStealEdibleRewardAt";
     private final EntityMaid maid;
     private final Runnable claimControl;
     private final Supplier<EntityPlayer> ownerSource;
+    private final MaidLifeSensor sensor;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private TileEntity target;
     private Action action;
@@ -65,7 +67,7 @@ public final class MaidLifeController {
     private Status status = Status.IDLE;
     private PathResult lastPathResult;
     private long tick, nextOwnerScan, nextScan, nextSnack, nextPath, selectedAt;
-    private int scanCursor, failures, scans, pathRequests, bites, placements, sleepEntries;
+    private int failures, scans, pathRequests, bites, placements, sleepEntries;
     private boolean sleeping, tryPlaceNext;
     private double wakeX, wakeY, wakeZ;
 
@@ -75,6 +77,7 @@ public final class MaidLifeController {
         this.maid = maid;
         this.claimControl = claimControl;
         this.ownerSource = ownerSource;
+        sensor = new MaidLifeSensor(maid);
     }
 
     /** 即使处于 SLEEPING，也须由协调器每 tick 调用以处理醒来和失效清理 */
@@ -187,23 +190,17 @@ public final class MaidLifeController {
     private boolean select(boolean rest) {
         var telemetry = telemetry();
         boolean recording = telemetry.isEnabled();
-        long started = recording ? System.nanoTime() : 0;
-        var tiles = maid.worldObj.loadedTileEntityList;
-        int size = tiles.size();
-        if (size == 0) {
-            telemetry.scan("life_tiles", 0, 0, "loaded_tile_list_global");
-            if (recording) telemetry.work("life_tiles", WorkComponent.SENSOR, System.nanoTime() - started);
-            return false;
-        }
-        TileEntity best = null;
+        var context = maid.getBrainCoordinator()
+            .getPolicyRuntime()
+            .getContext();
+        var candidates = sensor.scan(context, rest);
+        MaidLifeCandidate bestObservation = null;
         double closest = Double.MAX_VALUE;
         boolean place = !rest && tryPlaceNext && cakeSlot() >= 0;
         scans++;
-        for (int count = 0; count < Math.min(size, SCAN_BUDGET); count++) {
-            TileEntity candidate = (TileEntity) tiles.get(Math.floorMod(scanCursor++, size));
-            if (candidate == null || candidate.isInvalid() || candidate.getWorldObj() != maid.worldObj) continue;
-            double dx = candidate.xCoord + 0.5 - maid.posX, dz = candidate.zCoord + 0.5 - maid.posZ;
-            if (Math.abs(candidate.yCoord - maid.posY) > 3 || dx * dx + dz * dz > (rest ? 144 : 25)) continue;
+        for (var observation : candidates) {
+            var candidate = sensor.resolve(observation, context);
+            if (candidate == null) continue;
             boolean usable = rest ? candidate instanceof TileEntityMaidBed bed && bed.available(maid) && bedClear(bed)
                 : candidate instanceof TileEntitySnackCabinet && snackValid(candidate, place);
             if (recording)
@@ -211,21 +208,23 @@ public final class MaidLifeController {
             double distance = maid
                 .getDistanceSq(candidate.xCoord + 0.5, candidate.yCoord + 0.5, candidate.zCoord + 0.5);
             if (usable && distance < closest) {
-                best = candidate;
+                bestObservation = observation;
                 closest = distance;
             }
         }
-        telemetry.scan(
-            "life_tiles",
-            size,
-            Math.min(size, SCAN_BUDGET),
-            "loaded_tile_list_global;candidate_details_only_after_spatial_filter");
-        if (recording) telemetry.work("life_tiles", WorkComponent.SENSOR, System.nanoTime() - started);
         if (!rest) tryPlaceNext = !place;
+        var best = sensor.resolve(bestObservation, context);
         if (best == null) return false;
         if (rest && !((TileEntityMaidBed) best).claim(maid)) return false;
-        claimControl.run();
-        target = best;
+        boolean adopted = false;
+        try {
+            claimControl.run();
+            if (sensor.resolve(bestObservation, context) != best) return false;
+            target = best;
+            adopted = true;
+        } finally {
+            if (!adopted && best instanceof TileEntityMaidBed bed) bed.release(maid);
+        }
         action = rest ? Action.BED : place ? Action.PLACE : Action.STEAL;
         if (recording) telemetry.state("life_selected", tileId(best), action.name());
         selectedTask = maid.getTask();
@@ -412,6 +411,7 @@ public final class MaidLifeController {
     }
 
     public void cancel() {
+        sensor.clear();
         owner = null;
         nextOwnerScan = 0;
         stop(Status.CANCELLED);

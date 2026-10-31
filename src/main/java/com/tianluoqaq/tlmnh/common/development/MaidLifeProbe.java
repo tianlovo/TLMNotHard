@@ -23,6 +23,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
@@ -88,6 +91,17 @@ public final class MaidLifeProbe {
             world.setWorldTime(0);
             require(world.setBlock(x, y, z, MaidLifeContent.snackCabinet, 0, 3), "Actual cabinet placement");
             var cabinet = (TileEntitySnackCabinet) world.getTileEntity(x, y, z);
+            var sensor = new MaidLifeSensor(maid);
+            var context = maid.getBrainCoordinator()
+                .getPolicyRuntime()
+                .getContext();
+            var observedCabinet = sensor.scan(context, false)
+                .stream()
+                .filter(candidate -> candidate.getX() == x && candidate.getY() == y && candidate.getZ() == z)
+                .findFirst()
+                .orElse(null);
+            require(sensor.resolve(observedCabinet, context) == cabinet, "Actual local chunk cabinet observation");
+            verifyNoForceLoad(world, maid, sensor, context);
             cabinet.setInventorySlotContents(26, new ItemStack(Items.apple, 3));
             var stored = new NBTTagCompound();
             cabinet.writeToNBT(stored);
@@ -135,12 +149,16 @@ public final class MaidLifeProbe {
             require(!life.tick(true) && life.getBites() == 1, "Sit is a hard constraint");
             maid.setSitting(false);
             world.setBlock(x, y, z, Blocks.planks, 0, 3);
+            require(sensor.resolve(observedCabinet, context) == null, "Removed cabinet observation must fail");
             var noStand = new MaidLifeController(maid, () -> {}, () -> owner);
             drive(noStand, 40);
             require(
                 noStand.getBites() == 0 && world.getBlockMetadata(x, y + 1, z) == 1,
                 "Cake without snack cabinet must not be stolen");
             world.setBlock(x, y, z, MaidLifeContent.snackCabinet, 0, 3);
+            require(
+                sensor.resolve(observedCabinet, context) == null,
+                "Replacement cabinet cannot inherit old observation");
             world.setBlockToAir(x, y + 1, z);
             // 原生 Item.cake 的堆叠上限为1，分槽放置以免把RC2的堆叠补丁当成前提
             maid.getMaidInventory()
@@ -179,6 +197,15 @@ public final class MaidLifeProbe {
             require(bed != null && bed.complete(), "Actual paired bed head");
             maid.setPosition(x + 1.5, y, z + 3.5);
             world.setWorldTime(16000);
+            var interrupted = new MaidLifeController(
+                maid,
+                () -> maid.getBrainCoordinator()
+                    .getPolicyRuntime()
+                    .invalidate(InvalidationReason.RESET),
+                () -> owner);
+            require(
+                !interrupted.tick(true) && !interrupted.isSleeping() && bed.available(other),
+                "Invalidation during adoption must release the bed and refuse the old observation");
             life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
                 life.tick(true) && life.isSleeping()
@@ -317,7 +344,7 @@ public final class MaidLifeProbe {
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
         TLMNotHard.LOG.info(
-            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke natural_tick=unverified visuals=unverified");
+            "TLMNH_LIFE_CORE_TEST_PASS cabinet_slots=27 bite=native place=forge_cancel_conserved sleep=paired_bed lease=exclusive dawn=woke unload=callback reload=nbt removal=woke discovery=loaded_chunk_map stale_observation=rejected no_force_load=checked adoption_cancel=released natural_tick=unverified visuals=unverified");
     }
 
     private static Throwable remember(Throwable first, Throwable next) {
@@ -336,6 +363,25 @@ public final class MaidLifeProbe {
             }
         }
         return failure;
+    }
+
+    private static void verifyNoForceLoad(WorldServer world, EntityMaid maid, MaidLifeSensor sensor,
+        MaidPolicyContext context) {
+        double x = maid.posX, y = maid.posY, z = maid.posZ;
+        int loaded = world.theChunkProviderServer.loadedChunks.size();
+        try {
+            maid.setPosition(1_000_000.5, y, 1_000_000.5);
+            int min = 999_995 >> 4, max = 1_000_005 >> 4;
+            for (int cx = min; cx <= max; cx++) for (int cz = min; cz <= max; cz++)
+                require(!world.theChunkProviderServer.chunkExists(cx, cz), "No-force fixture requires unloaded chunks");
+            require(
+                sensor.scan(context, false)
+                    .isEmpty(),
+                "Unloaded region cannot yield observed candidates");
+            require(world.theChunkProviderServer.loadedChunks.size() == loaded, "Discovery must not load any chunk");
+        } finally {
+            maid.setPosition(x, y, z);
+        }
     }
 
     private static void drive(MaidLifeController life, int ticks) {
