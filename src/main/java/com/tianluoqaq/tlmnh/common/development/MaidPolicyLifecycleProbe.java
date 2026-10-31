@@ -47,6 +47,7 @@ public final class MaidPolicyLifecycleProbe {
             probe.directChildRead();
             probe.unavailableProfiles();
             probe.unloadAndRegister();
+            probe.loadedListIdentity();
             probe.failedReadRemainsBlocked();
             probe.chunkFailureIsolation();
         } catch (RuntimeException | Error problem) {
@@ -220,6 +221,74 @@ public final class MaidPolicyLifecycleProbe {
             brain.getPolicyRuntime() == old && !brain.onRegistered() && !old.isReady(),
             "later successful read cleared permanent failure latch");
         passed("failed_native_read_stays_blocked", "native exception rejected and later read cannot silently recover");
+    }
+
+    private void loadedListIdentity() {
+        var maid = remember(new EntityMaid(world));
+        require(world.spawnEntityInWorld(maid), "native identity fixture registration rejected");
+        var brain = maid.getBrainCoordinator();
+        var old = brain.getPolicyRuntime();
+        var token = old.getContext()
+            .getToken();
+        brain.onUnload();
+        int slot = loadedSlot(maid);
+        require(slot >= 0 && world.getEntityByID(maid.getEntityId()) == maid, "native identity fixture not registered");
+        require(
+            maid.addedToChunk && world.getChunkFromChunkCoords(maid.chunkCoordX, maid.chunkCoordZ).isChunkLoaded,
+            "native identity fixture chunk state");
+        // 替身从不登记到世界，也不交给removeEntity；相同ID会干扰原生移除映射
+        var substitute = new EntityMaid(world);
+        substitute.setEntityId(maid.getEntityId());
+        boolean replaced = false;
+        try {
+            require(substitute != maid && substitute.equals(maid), "native equals alias fixture");
+            world.loadedEntityList.set(slot, substitute);
+            replaced = true;
+            require(world.getEntityByID(maid.getEntityId()) == maid, "slot replacement changed the actual ID mapping");
+            require(
+                maid.addedToChunk && world.getChunkFromChunkCoords(maid.chunkCoordX, maid.chunkCoordZ).isChunkLoaded,
+                "slot replacement changed chunk registration");
+            require(
+                world.loadedEntityList.contains(maid) && loadedSlot(maid) < 0,
+                "native equals-based contains must be true while the actual object is absent");
+            require(!brain.onRegistered(), "equal entity ID falsely authorized world re-registration");
+            brain.updateTask();
+            require(
+                brain.peekPolicyRuntime() == old && brain.getPolicyRuntime() == old
+                    && old.isRetired()
+                    && !old.getContext()
+                        .isCurrent(token),
+                "identity-missing actor was rearmed by getter or update");
+        } finally {
+            try {
+                if (replaced) {
+                    require(
+                        slot < world.loadedEntityList.size() && world.loadedEntityList.get(slot) == substitute,
+                        "fixture slot ownership changed before restoration");
+                    world.loadedEntityList.set(slot, maid);
+                }
+            } finally {
+                substitute.setDead();
+            }
+        }
+        require(
+            world.loadedEntityList.get(slot) == maid && world.getEntityByID(maid.getEntityId()) == maid,
+            "fixture identity slot was not restored");
+        require(brain.onRegistered(), "restored actual object cannot register");
+        var fresh = brain.getPolicyRuntime();
+        require(
+            fresh != old && fresh.isReady()
+                && !fresh.getContext()
+                    .isCurrent(token),
+            "restored identity did not produce a fresh runtime token");
+        passed(
+            "loaded_list_requires_object_identity",
+            "native same-ID alias rejected with ID map/chunk intact; owned slot restored and fresh runtime allowed");
+    }
+
+    private int loadedSlot(EntityMaid maid) {
+        for (int i = 0; i < world.loadedEntityList.size(); i++) if (world.loadedEntityList.get(i) == maid) return i;
+        return -1;
     }
 
     private void chunkFailureIsolation() {

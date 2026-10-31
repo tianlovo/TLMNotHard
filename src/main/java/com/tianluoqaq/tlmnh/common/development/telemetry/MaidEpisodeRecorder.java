@@ -472,7 +472,17 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
             && unexpectedResetObservations == 0;
         output.addProperty("validObservation", valid);
         output.addProperty("traceComplete", complete);
-        output.addProperty("benchmarkEligible", complete && unboundArrowRecords == 0 && runtime != null);
+        output.addProperty(
+            "benchmarkEligible",
+            complete && unboundArrowRecords == 0
+                && runtime != null
+                && runtime.isReady()
+                && runtime.getProfile()
+                    .isAvailable());
+        output.addProperty(
+            "benchmarkEligibilityScope",
+            "observation protocol for the selected available policy only; not faithful/enhanced admission or O/F/N completion");
+        output.addProperty("ofnComparisonEligible", false);
         output.addProperty("fault", channel.getFault());
         output.addProperty("victimsObserved", victimsWatched);
         output.addProperty("victimsActiveAtClose", victims.size());

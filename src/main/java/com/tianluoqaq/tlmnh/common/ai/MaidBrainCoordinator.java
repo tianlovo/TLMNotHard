@@ -170,7 +170,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || persistentReadDepth > 0
             || MaidBrainLifecycle.isWorldUnloading(world)
             || world.getEntityByID(maid.getEntityId()) != maid
-            || !world.loadedEntityList.contains(maid)
+            || !listedByIdentity(world)
             || !maid.addedToChunk
             || !world.getChunkProvider()
                 .chunkExists(maid.chunkCoordX, maid.chunkCoordZ)
@@ -181,6 +181,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             refreshLifecycleObservations();
         }
         return true;
+    }
+
+    private boolean listedByIdentity(World world) {
+        // 原生Entity.equals只比较entityId，不能据此确认本对象仍在列表中
+        for (Object value : world.loadedEntityList) if (value == maid) return true;
+        return false;
     }
 
     /** 外层 native NBT 入口先调用，child 入口嵌套时只增加深度 */

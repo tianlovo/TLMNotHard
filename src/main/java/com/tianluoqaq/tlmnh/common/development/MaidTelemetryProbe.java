@@ -12,8 +12,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
-import net.minecraft.entity.monster.EntityZombie;
+import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EntityDamageSource;
@@ -28,6 +30,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.development.telemetry.NativeCombatLedgerReader;
 
@@ -51,6 +55,7 @@ public final class MaidTelemetryProbe {
         try {
             fixture.begin();
             fixture.exercise("default_off", MaidTelemetryProbe::defaultOff);
+            fixture.exercise("unavailable_policy_not_scored", MaidTelemetryProbe::unavailablePolicy);
             fixture.exercise("ordinary_native", MaidTelemetryProbe::ordinary);
             fixture.exercise("overkill_raw_and_clamp", MaidTelemetryProbe::overkill);
             fixture.exercise("hurt_cancelled", c -> suppressed(c, true));
@@ -75,7 +80,7 @@ public final class MaidTelemetryProbe {
         result.addProperty("passed", passed);
         result.addProperty(
             "scope",
-            "controlled vanilla EntityZombie attackEntityFrom and native CombatTracker observation; no manual entity or controller ticks");
+            "registered vanilla EntityCow attackEntityFrom and native CombatTracker observation; no manual entity or controller ticks; hostile join modifiers outside this fixture");
         result.addProperty("naturalAiVerified", false);
         result.addProperty("productionTargetingVerified", false);
         result.addProperty("behaviourBenchmarkVerified", false);
@@ -115,11 +120,13 @@ public final class MaidTelemetryProbe {
     }
 
     private static void ordinary(Case c) {
+        c.target.setCurrentItemOrArmor(3, new ItemStack(Items.iron_chestplate));
+        require(c.target.getTotalArmorValue() > 0, "Controlled native armor did not contribute mitigation");
         var recorder = c.open("ordinary");
         float before = c.target.getHealth();
         require(c.hit(DamageSource.causeMobDamage(c.actor), 4), "Ordinary native call rejected");
         double loss = before - c.target.getHealth();
-        require(loss > 0 && c.target.isEntityAlive(), "Ordinary controlled target did not lose health");
+        require(loss > 0 && loss < 4 && c.target.isEntityAlive(), "Ordinary native armor mitigation was not observed");
         var report = c.finish(recorder);
         healthy(report, 1);
         near(raw(report), loss, "Ordinary native amount differs from actual nonlethal health loss");
@@ -129,7 +136,35 @@ public final class MaidTelemetryProbe {
         c.report.addProperty("observedHealthLoss", loss);
         c.report.addProperty(
             "armorScope",
-            "ordinary zombie armor remains active; expected value is the observed native loss");
+            "controlled iron chestplate uses native armor mitigation; expected ledger value is the observed nonlethal loss");
+    }
+
+    private static void unavailablePolicy(Case c) {
+        var runtime = c.actor.getBrainCoordinator()
+            .getPolicyRuntime();
+        for (var profile : new MaidBrainProfile[] { MaidBrainProfile.FAITHFUL_TLM, MaidBrainProfile.ENHANCED }) {
+            require(runtime.select(profile) == SelectionResult.UNAVAILABLE, "Unavailable profile became active");
+            var recorder = c.open(profile.getId());
+            var report = c.finish(recorder);
+            healthy(report, 0);
+            require(
+                !report.get("benchmarkEligible")
+                    .getAsBoolean(),
+                "Unavailable policy received observation eligibility");
+            require(
+                !report.get("ofnComparisonEligible")
+                    .getAsBoolean(),
+                "Unavailable policy received O/F/N admission");
+            require(
+                profile.getId()
+                    .equals(
+                        report.get("profile")
+                            .getAsString()),
+                "Observer silently changed unavailable profile");
+        }
+        c.report.addProperty(
+            "scope",
+            "valid empty observations do not admit unimplemented policies or imply benchmark completion");
     }
 
     private static void overkill(Case c) {
@@ -477,7 +512,7 @@ public final class MaidTelemetryProbe {
 
         final Fixture fixture;
         final EntityMaid actor;
-        final EntityZombie target;
+        final EntityCow target;
         final JsonObject report = new JsonObject();
         private final List<MaidEpisodeRecorder> recorders = new ArrayList<>();
         private final Set<MaidEpisodeRecorder> finished = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -496,7 +531,7 @@ public final class MaidTelemetryProbe {
                 .setSuspended(true);
             actor.setSitting(true);
             actor.setPosition(fixture.x, fixture.y, fixture.z);
-            target = new EntityZombie(fixture.world);
+            target = new EntityCow(fixture.world);
             fixture.own(target);
             fixture.targets.add(target);
             target.func_110163_bv();
@@ -525,6 +560,12 @@ public final class MaidTelemetryProbe {
                 fixture.world.getEntityByID(actor.getEntityId()) == actor
                     && fixture.world.getEntityByID(target.getEntityId()) == target,
                 "Native participant identity differs");
+            report.addProperty(
+                "targetClass",
+                target.getClass()
+                    .getName());
+            report.addProperty("targetInitialHealth", target.getHealth());
+            report.addProperty("targetMaxHealth", target.getMaxHealth());
         }
 
         MaidEpisodeRecorder open(String suffix) {
@@ -594,10 +635,10 @@ public final class MaidTelemetryProbe {
         final JsonArray cases = new JsonArray();
         final List<Entity> owned = new ArrayList<>();
         final Set<Entity> identities = Collections.newSetFromMap(new IdentityHashMap<>());
-        final Set<EntityZombie> targets = Collections.newSetFromMap(new IdentityHashMap<>());
+        final Set<EntityCow> targets = Collections.newSetFromMap(new IdentityHashMap<>());
         final List<String> cleanupErrors = new ArrayList<>();
         private boolean registered;
-        private EntityZombie activeVictim;
+        private EntityCow activeVictim;
 
         Fixture(WorldServer world) {
             this.world = world;
@@ -680,12 +721,12 @@ public final class MaidTelemetryProbe {
 
     public static final class HurtRule {
 
-        private final EntityZombie target;
+        private final EntityCow target;
         private final DamageSource source;
         private final boolean cancel;
         int calls;
 
-        HurtRule(EntityZombie target, DamageSource source, boolean cancel) {
+        HurtRule(EntityCow target, DamageSource source, boolean cancel) {
             this.target = target;
             this.source = source;
             this.cancel = cancel;
