@@ -29,6 +29,11 @@ public final class BuiltinMaidModel extends ModelBase {
     private final BedrockPose bedrockPose;
     private final BuiltinBedrockAnimations bedrockAnimations;
     private final BuiltinGeckoPlayer geckoPlayer;
+    private String posedActor;
+    private int posedTick;
+    private float posedPartialTick;
+    private long poseSerial;
+    private boolean completedBodyPose;
 
     BuiltinMaidModel(BuiltinModelCatalog.Choice choice, AbstractBedrockEntityModel<EntityMaid> bedrock,
         AnimatedGeoModel gecko, AnimationFile animations) {
@@ -64,6 +69,25 @@ public final class BuiltinMaidModel extends ModelBase {
 
     public BuiltinGeckoPlayer getGeckoPlayer() {
         return geckoPlayer;
+    }
+
+    void beginRenderFrame() {
+        completedBodyPose = false;
+    }
+
+    public boolean hasCompletedPoseFor(EntityMaid maid) {
+        return completedBodyPose && maid.ticksExisted == posedTick
+            && maid.getUniqueID()
+                .toString()
+                .equals(posedActor);
+    }
+
+    public long getPoseSerial() {
+        return poseSerial;
+    }
+
+    public float getPosedPartialTick() {
+        return posedPartialTick;
     }
 
     public void setupPose(MaidAnimationState state, float limbSwing, float limbSwingAmount, float ageInTicks,
@@ -111,6 +135,14 @@ public final class BuiltinMaidModel extends ModelBase {
             completed = true;
         } finally {
             RenderSubmissionProbe.finish(completed);
+        }
+        if (entity instanceof EntityMaid maid) {
+            posedActor = maid.getUniqueID()
+                .toString();
+            posedTick = maid.ticksExisted;
+            posedPartialTick = partialTick;
+            if (poseSerial < Long.MAX_VALUE) poseSerial++;
+            completedBodyPose = true;
         }
     }
 

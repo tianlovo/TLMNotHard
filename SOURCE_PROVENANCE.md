@@ -397,7 +397,24 @@ TinkersDefense 圆盾和鸢形盾继续使用真实物品回调及 `InfiTool` �
 开发夹具通过实际注册表及 TConstruct `ToolBuilder` 构造七种合法盾，保留工厂事件和完整物品快照
 直接调用真实伤害管线的组件结果与自然举盾、真实箭碰撞、联机及装备渲染分别验收
 本切片尚未移植玩家专用箭捕获路径，不将直接伤害取消声明为插箭转移已经完成
-动画输入新增盾牌分类，实际手部装备层仍需独立实现和画面验证
+动画输入新增盾牌分类，实际手部装备层按下节独立实现与验证
+
+## 双手物品渲染与坐标桥接
+
+新增 `MaidHandAttachment`、`MaidHeldItemTransforms` 和 `MaidHeldItemLayer` 位于本工程包名
+附件规则依据固定 TLM 的 `LayerMaidHeldItem`、`GeckoLayerMaidHeld`、`BedrockModel` 和 `RenderUtils`
+保留 Bedrock 选定部件及定位骨骼语义、Gecko 根到手部 Locator 链，不为读取附件再次推进动画或乘实体缩放
+
+现代附件与 RC2 原生物品坐标通过显式矩阵桥接；普通物品依据当前 Forge 的 `RenderBiped`/`ItemRenderer` 入口，
+七盾的独立左手坐标参考 RC2 Battlegear2-for-Backhand 1.6.8 的第三人称盾牌入口
+复用实际注册的 `EQUIPPED` 物品渲染器及其多 pass，不复制玩家事件、Backhand 库存或第三方渲染器实现
+这套桥接是移植物品的坐标合同，不能仅凭矩阵测试声明两代物品外观完全相同
+
+新增作用域保护原生矩阵、图集过滤状态和已核 Angelica 软件状态；对未知渲染器的私有状态不作通用恢复保证
+开发用 `HeldItemGpuProbe` 观察真实本体后的装备绘制，分开记录原生调用、GPU 查询、像素、深度和清理
+没有修改第三方物品渲染器注册，也不把调用计数或单张截图当成完整画面验收
+源码许可与资源许可继续分别记录；引用 BG/TD 的部分须随最终分发许可一起复核
+原版运行时附件对照、全部酒狐、不可见实体、自然世界及光影仍需后续验收
 
 ## 原版自然跟随采集工具
 

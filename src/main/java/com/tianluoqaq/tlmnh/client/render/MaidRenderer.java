@@ -17,6 +17,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.client.development.HeldItemGpuProbe;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;
@@ -28,6 +29,7 @@ public final class MaidRenderer extends RenderLiving {
 
     private static final String DEFAULT_MODEL = "touhou_little_maid:hakurei_reimu";
     private final BuiltinMaidModels models;
+    private final MaidHeldItemLayer heldItems = new MaidHeldItemLayer();
     private final Map<EntityMaid, CachedModel> entities = new WeakHashMap<>();
     private final Set<String> failures = new HashSet<>();
     private int generation = -1;
@@ -41,7 +43,10 @@ public final class MaidRenderer extends RenderLiving {
     public void doRender(EntityLiving entity, double x, double y, double z, float yaw, float partialTick) {
         var previous = mainModel;
         try {
-            mainModel = modelFor((EntityMaid) entity);
+            var model = modelFor((EntityMaid) entity);
+            model.beginRenderFrame();
+            HeldItemGpuProbe.beforeMaidBody((EntityMaid) entity, model);
+            mainModel = model;
             super.doRender(entity, x, y, z, yaw, partialTick);
         } finally {
             mainModel = previous;
@@ -98,6 +103,24 @@ public final class MaidRenderer extends RenderLiving {
         float scale = ((BuiltinMaidModel) mainModel).getChoice()
             .getEntityScale();
         GL11.glScalef(scale, scale, scale);
+    }
+
+    @Override
+    protected void renderEquippedItems(EntityLivingBase entity, float partialTick) {
+        super.renderEquippedItems(entity, partialTick);
+        if (entity instanceof EntityMaid maid && mainModel instanceof BuiltinMaidModel model) {
+            if (HeldItemGpuProbe.isCapturing(maid) && HeldItemGpuProbe.atEquippedItems(
+                maid,
+                model,
+                partialTick,
+                () -> heldItems.render(maid, model, renderManager.itemRenderer, partialTick))) return;
+            heldItems.render(maid, model, renderManager.itemRenderer, partialTick);
+        }
+    }
+
+    public AutoCloseable openDevelopmentItemStateScope() {
+        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Held item probe disabled");
+        return new MaidItemRenderScope();
     }
 
     private static final class CachedModel {

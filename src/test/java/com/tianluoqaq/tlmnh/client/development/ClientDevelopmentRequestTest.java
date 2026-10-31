@@ -12,6 +12,35 @@ import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentRequest.Command;
 public class ClientDevelopmentRequestTest {
 
     @Test
+    public void heldGpuPilotAcceptsBothModelsAndAllReviewedProfiles() {
+        for (String model : new String[] { "touhou_little_maid:hakurei_reimu", "geckolib:winefox" }) {
+            for (String action : new String[] { "shield_wood", "shield_hide", "shield_iron", "shield_diamond",
+                "shield_gold", "shield_round", "shield_heater", "main_icon", "main_bow", "main_block", "main_tool" }) {
+                var request = new JsonObject();
+                request.addProperty("command", "held_item_gpu_probe");
+                request.addProperty("model", model);
+                request.addProperty("action", action);
+                var parsed = ClientDevelopmentRequest.parse(request);
+                assertEquals(Command.HELD_ITEM_GPU_PROBE, parsed.command);
+                assertEquals(model, parsed.model);
+                assertEquals(action, parsed.action);
+            }
+        }
+    }
+
+    @Test
+    public void heldGpuPilotRejectsUnreviewedOrIncompleteInputsAndExternalFaults() {
+        String prefix = "{\"command\":\"held_item_gpu_probe\",";
+        for (String fields : new String[] { "\"model\":\"unknown\",\"action\":\"main_icon\"}",
+            "\"model\":\"geckolib:winefox\",\"action\":\"unknown\"}", "\"model\":\"geckolib:winefox\"}",
+            "\"action\":\"main_icon\"}", "\"model\":null,\"action\":\"main_icon\"}",
+            "\"model\":\"geckolib:winefox\",\"action\":false}",
+            "\"model\":\"geckolib:winefox\",\"action\":\"main_icon\",\"fault\":\"none\"}",
+            "\"model\":\"geckolib:winefox\",\"action\":\"main_icon\",\"fault\":null}" })
+            assertThrows(IllegalArgumentException.class, () -> parse(prefix + fields));
+    }
+
+    @Test
     public void acceptsOnlyTheListedCommands() {
         for (var command : new Command[] { Command.STATUS, Command.LAB_VIEW, Command.RELOAD, Command.SHUTDOWN })
             assertEquals(

@@ -56,6 +56,7 @@ public final class ClientDevelopmentControl {
     private boolean submissionPending;
     private HeadBindingProbe.Result unwrittenHeadBinding;
     private GpuMatrixProbe.Result unwrittenGpuMatrix;
+    private HeldItemGpuProbe.Result unwrittenHeldGpu;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
@@ -79,6 +80,8 @@ public final class ClientDevelopmentControl {
         flushHeadBinding();
         GpuMatrixProbe.tickEnd();
         flushGpuMatrix();
+        HeldItemGpuProbe.tickEnd();
+        flushHeldGpu();
         if (!AnimationLab.isLab(minecraft.theWorld)) restorePauseSetting();
         var submission = RenderSubmissionProbe.poll();
         if (submission != null) {
@@ -131,6 +134,10 @@ public final class ClientDevelopmentControl {
                 && request.command != ClientDevelopmentRequest.Command.STATUS
                 && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
                 throw new IllegalStateException("Finish the active GPU matrix probe before another operation");
+            if ((HeldItemGpuProbe.isPending() || unwrittenHeldGpu != null)
+                && request.command != ClientDevelopmentRequest.Command.STATUS
+                && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
+                throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
@@ -159,6 +166,8 @@ public final class ClientDevelopmentControl {
                         "headBindingPending",
                         HeadBindingProbe.isPending() || unwrittenHeadBinding != null);
                     response.addProperty("gpuMatrixPending", GpuMatrixProbe.isPending() || unwrittenGpuMatrix != null);
+                    response
+                        .addProperty("heldItemGpuPending", HeldItemGpuProbe.isPending() || unwrittenHeldGpu != null);
                     if (minecraft.thePlayer != null) {
                         var player = minecraft.thePlayer;
                         response.addProperty("dimension", player.dimension);
@@ -263,12 +272,20 @@ public final class ClientDevelopmentControl {
                     var observed = MaidModelUiProbe.perform(request.action, request.model);
                     for (var entry : observed.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
+                case HELD_ITEM_GPU_PROBE:
+                    if (submissionPending || !captures.isEmpty())
+                        throw new IllegalStateException("Finish the active submission or screenshot first");
+                    HeldItemGpuProbe.arm(name, request.model, request.action);
+                    response.addProperty("status", "pending-render");
+                    break;
                 case GECKO_LIBRARY_PROBE:
                     response.add("library", com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe.capture());
                     break;
                 case SHUTDOWN:
                     HeadBindingProbe.cancel("Client shutdown requested during capture");
                     GpuMatrixProbe.cancel("Client shutdown requested during GPU capture");
+                    HeldItemGpuProbe.cancel("Client shutdown requested during held GPU capture");
+                    flushHeldGpu();
                     restorePauseSetting();
                     shutdownAfterWrites = true;
                     break;
@@ -291,7 +308,9 @@ public final class ClientDevelopmentControl {
 
     @SubscribeEvent
     public void render(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || captures.isEmpty()) return;
+        if (event.phase != TickEvent.Phase.END) return;
+        HeldItemGpuProbe.renderEnd(event.renderTickTime);
+        if (captures.isEmpty()) return;
         var capture = captures.poll();
         var response = new JsonObject();
         response.addProperty("version", Tags.VERSION);
@@ -390,6 +409,21 @@ public final class ClientDevelopmentControl {
                 GSON.toJson(response)
                     .getBytes(StandardCharsets.UTF_8)));
         flushResponses();
+    }
+
+    private void flushHeldGpu() {
+        if (unwrittenHeldGpu == null) unwrittenHeldGpu = HeldItemGpuProbe.poll();
+        var result = unwrittenHeldGpu;
+        if (result == null) return;
+        result.report.addProperty("version", Tags.VERSION);
+        result.report.addProperty("request", result.request);
+        result.report.addProperty("command", "HELD_ITEM_GPU_PROBE");
+        try {
+            writeResponse(result.request, result.report);
+            unwrittenHeldGpu = null;
+        } catch (IOException failure) {
+            TLMNotHard.LOG.error("Cannot save held GPU response", failure);
+        }
     }
 
     private void flushResponses() {

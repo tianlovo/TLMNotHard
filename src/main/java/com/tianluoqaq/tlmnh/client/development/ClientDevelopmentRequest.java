@@ -91,6 +91,13 @@ public final class ClientDevelopmentRequest {
             if (json.has("fault"))
                 throw new IllegalArgumentException("GPU matrix probe uses a fixed five-draw sequence");
         }
+        if (command == Command.HELD_ITEM_GPU_PROBE) {
+            model = text(json, "model");
+            action = text(json, "action");
+            if (!Arrays.asList("touhou_little_maid:hakurei_reimu", "geckolib:winefox")
+                .contains(model) || !heldGpuActions().contains(action) || json.has("fault"))
+                throw new IllegalArgumentException("Unreviewed held GPU fixture");
+        }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
             if (!Arrays.asList("status", "open", "select", "back", "next", "previous", "winefox", "all")
@@ -108,6 +115,21 @@ public final class ClientDevelopmentRequest {
             throw new IllegalArgumentException("Missing string " + name);
         return json.get(name)
             .getAsString();
+    }
+
+    public static java.util.List<String> heldGpuActions() {
+        return Arrays.asList(
+            "shield_wood",
+            "shield_hide",
+            "shield_iron",
+            "shield_diamond",
+            "shield_gold",
+            "shield_round",
+            "shield_heater",
+            "main_icon",
+            "main_bow",
+            "main_block",
+            "main_tool");
     }
 
     private static float number(JsonObject json, String name, double minimum, double maximum) {
@@ -132,6 +154,7 @@ public final class ClientDevelopmentRequest {
         RENDER_PROBE,
         HEAD_BINDING_PROBE,
         GPU_MATRIX_PROBE,
+        HELD_ITEM_GPU_PROBE,
         GECKO_LIBRARY_PROBE,
         MODELS_UI,
         MODELS_UI_CAPTURE,
