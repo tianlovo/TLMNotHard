@@ -17,31 +17,41 @@ REFERENCE_REQUIRED = {
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoMesh",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawBoneGroup",
     "com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubeBox",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubePerFace",
     "com.tianluoqaq.tlmnh.geometry.GeometrySnapshots",
+    "com.tianluoqaq.tlmnh.geometry.GeometryTrace",
     "com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe",
     "com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$Sink",
+    "com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$1",
+    "com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$2",
 }
 PORT_REQUIRED = {
     "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels",
     "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel",
     "com.tianluoqaq.tlmnh.client.render.LegacyPoseStack",
     "com.tianluoqaq.tlmnh.client.render.BedrockPose",
+    "com.tianluoqaq.tlmnh.client.render.GeometryBoneObserver",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoMesh",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree",
+    "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawBoneGroup",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPart",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubeBox",
     "com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubePerFace",
     "com.tianluoqaq.tlmnh.geometry.GeometrySnapshots",
+    "com.tianluoqaq.tlmnh.geometry.GeometryTrace",
     "com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay",
     "com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$Sink",
+    "com.tianluoqaq.tlmnh.geometry.replay.GeometryPortReplay$PlainSink",
 }
 
 
@@ -123,11 +133,11 @@ def validate_tree(tree, backend):
 def validate_identity(report, reference):
     identity = report["identity"]
     build = identity["build"]
-    expected_schema = "geometry-build-identity-v1" if reference else "port-geometry-build-v1"
+    expected_schema = "geometry-build-identity-v2" if reference else "port-geometry-build-v2"
     require(build["schema"] == expected_schema, "Unsupported definition manifest")
     require(build["contractSha256"] == CONTRACT_SHA, "Definition manifest has different contract")
     require(digest(identity["buildManifestSha256"]) and digest(build["agentSha256"]), "Missing identity digests")
-    require(identity["runtimePolicy"] == ("geometry-v1-two-passive-observers" if reference else "geometry-v1-single-passive-observer"), "Wrong observer policy")
+    require(identity["runtimePolicy"] == ("geometry-v2-two-passive-observers" if reference else "geometry-v2-single-passive-observer"), "Wrong observer policy")
     compiled = build["compiledClasses"]
     actual = identity["actualFirstDefinitions"]
     required = REFERENCE_REQUIRED if reference else PORT_REQUIRED
@@ -154,8 +164,58 @@ def validate_identity(report, reference):
                 and digest(build["baseReferenceBuildIdentitySha256"]), "Missing approved original build chain")
 
 
+def semantic_key(value):
+    return (value["bone"], value["cube"], value["face"], value["corner"])
+
+
+def validate_trace(sample):
+    require(sample["mapping"] == "actual-bone-cube-face-corner", "Missing actual bone mapping")
+    nodes = sample["bindTree"]["nodes"]
+    masks = sample["boneFaces"]
+    require(isinstance(masks, dict) and set(masks) == set(nodes), "Actual bone callbacks do not cover bind tree")
+    expected = set()
+    local_order = {}
+    for bone, node in nodes.items():
+        require(node["hidden"] is False and node["cubesHidden"] is False and node["childrenHidden"] is False
+                and node["scale"] == [1, 1, 1], "Unsupported bind visibility/scale")
+        values = masks[bone]
+        require(isinstance(values, list) and len(values) == node["cubeCount"], "Actual mesh cube coverage differs")
+        local_order[bone] = []
+        for cube, mask in enumerate(values):
+            require(type(mask) is int and 0 <= mask <= 127, "Unknown actual mesh face mask")
+            for face, name in enumerate(CONTRACT["faceOrder"]):
+                if mask & (1 << face):
+                    items = [(bone, cube, name, corner) for corner in range(4)]
+                    expected.update(items)
+                    local_order[bone].extend(items)
+    keys = sample["vertexKeys"]
+    require(isinstance(keys, list) and len(keys) == len(sample["vertices"]), "Key/vertex coverage differs")
+    observed = set()
+    actual_local = {bone: [] for bone in masks}
+    completed_bones = set()
+    current_bone = None
+    for index, key in enumerate(keys):
+        require(isinstance(key, dict) and set(key) == {"bone", "cube", "face", "corner", "drawIndex"}, "Incomplete semantic key")
+        require(isinstance(key["bone"], str) and type(key["cube"]) is int and key["cube"] >= 0
+                and isinstance(key["face"], str) and key["face"] in CONTRACT["faceOrder"]
+                and type(key["corner"]) is int and 0 <= key["corner"] < 4
+                and type(key["drawIndex"]) is int and key["drawIndex"] == index, "Invalid actual draw identity")
+        identity = semantic_key(key)
+        require(identity not in observed, "Duplicate semantic vertex key")
+        require(key["bone"] in actual_local, "Vertex has no actual bone callback")
+        if key["bone"] != current_bone:
+            require(key["bone"] not in completed_bones, "Interleaved actual bone emissions")
+            if current_bone is not None:
+                completed_bones.add(current_bone)
+            current_bone = key["bone"]
+        actual_local[key["bone"]].append(identity)
+        observed.add(identity)
+    require(observed == expected, "Semantic face/corner coverage is incomplete or excessive")
+    require(actual_local == local_order, "Actual cube/face/corner order within a bone differs from native emission contract")
+
+
 def validate(report, reference):
-    require(report["schema"] == ("geometry-reference-v1" if reference else "port-geometry-v1"), "Wrong geometry schema")
+    require(report["schema"] == ("geometry-reference-v2" if reference else "port-geometry-v2"), "Wrong geometry schema")
     require(report["contract"] == CONTRACT["contract"] and report["contractSha256"] == CONTRACT_SHA, "Wrong bind contract")
     require(report["coordinateContract"] == CONTRACT["coordinateContract"], "Undeclared coordinate conversion")
     require(report["coordinateSpace"] == ("upstream-native-bind" if reference else "port-modelbase-bind"), "Wrong coordinate space")
@@ -170,9 +230,11 @@ def validate(report, reference):
         require(digest(approved) and digest(report[key]), "Missing approved/actual asset identity: " + key)
         allowed = set(variants.values()) if reference and key == "geometrySha256" else {approved}
         require(report[key] in allowed, "Actual asset differs from approved fixed upstream: " + key)
-    for key in ("worldRendererVerified", "gpuVerified", "dynamicAnimationVerified", "materialAttributesCompared"):
+    for key in ("worldRendererVerified", "gpuVerified", "dynamicAnimationVerified", "materialAttributesCompared", "orderDependentRenderingVerified"):
         require(report[key] is False, "Overclaimed geometry scope: " + key)
     validate_identity(report, reference)
+    require(report["rawAAStable"] is True and report["observerNeutralityVerified"] is True,
+            "Separate raw stability and observation neutrality evidence required")
     samples = report["samples"]
     require(isinstance(samples, list) and len(samples) == 3, "Three fresh builds required")
     for i, sample in enumerate(samples):
@@ -182,6 +244,13 @@ def validate(report, reference):
         vertices = sample["vertices"]
         require(isinstance(vertices, list) and 4 <= len(vertices) <= 50000 and len(vertices) % 4 == 0, "Missing/incomplete vertex stream")
         require(all(isinstance(row, list) and len(row) == 8 and all(number(v) for v in row) for row in vertices), "Invalid vertex values")
+        require(sample["freshPlainParse"] is True and sample["observerNeutral"] is True
+                and sample["plainVertices"] == vertices, "Fresh plain/traced raw outputs differ or are missing")
+        if report["backend"] == "gecko":
+            validate_trace(sample)
+        else:
+            require(sample["mapping"] == "ordered-bedrock" and "vertexKeys" not in sample and "boneFaces" not in sample,
+                    "Bedrock must retain its ordered path")
         if reference:
             require(sample["nativeNormalBranch"] in ("transformed-edge-cross", "pose-normal-matrix"), "Unknown original normal branch")
     first = samples[0]
@@ -189,6 +258,8 @@ def validate(report, reference):
         require(first["bindTree"] == other["bindTree"] and first["vertices"] == other["vertices"], "A/A bind output is unstable")
         if reference:
             require(first["nativeNormalBranch"] == other["nativeNormalBranch"], "Original normal branch changed during A/A")
+        if report["backend"] == "gecko":
+            require(first["vertexKeys"] == other["vertexKeys"] and first["boneFaces"] == other["boneFaces"], "A/A actual bone mapping is unstable")
 
 
 def first_difference(a, b, tolerance, path="tree"):
@@ -221,12 +292,22 @@ def canonical_vertex(row, backend):
     return [-x, 1.5 - y, z, -nx, -ny, nz, u, v] if backend == "gecko" else list(row)
 
 
+def tree_geometry_view(tree):
+    # Sort semantic node names only; never sort coordinates, cube indices or corners
+    return {"roots": sorted(tree["roots"]), "nodes": {
+        name: {key: sorted(value) if key == "children" else value for key, value in node.items()}
+        for name, node in tree["nodes"].items()}}
+
+
 def compare(reference, port):
-    result = {"schema": "geometry-comparison-v1", "matched": False,
-              "scope": "two reviewed bind meshes, ordered positions/normals/UV and static tree; no animation/world/GPU acceptance"}
+    result = {"schema": "geometry-comparison-v2", "matched": False,
+              "orderDependentRenderingVerified": False,
+              "scope": "actual semantic Gecko faces/corners or ordered Bedrock values; static topology only, no draw-order/material/animation/world/GPU acceptance"}
     try:
         validate(reference, True)
         validate(port, False)
+        result["rawAAStable"] = True
+        result["observerNeutralityVerified"] = True
         require(reference["model"] == port["model"], "Different model")
         result["model"] = reference["model"]
         model = CONTRACT["models"][reference["model"]]
@@ -240,7 +321,10 @@ def compare(reference, port):
                         "referenceActualSha256": reference["textureSha256"],
                         "portActualSha256": port["textureSha256"]}}
         a, b = reference["samples"][0], port["samples"][0]
-        tree_diff = first_difference(a["bindTree"], b["bindTree"], CONTRACT["absoluteTolerance"]["tree"])
+        gecko = reference["backend"] == "gecko"
+        at = tree_geometry_view(a["bindTree"]) if gecko else a["bindTree"]
+        bt = tree_geometry_view(b["bindTree"]) if gecko else b["bindTree"]
+        tree_diff = first_difference(at, bt, CONTRACT["absoluteTolerance"]["tree"])
         result["bindTreeMatched"] = tree_diff is None
         result["firstTreeDifference"] = tree_diff
         av, bv = a["vertices"], b["vertices"]
@@ -249,20 +333,45 @@ def compare(reference, port):
             result["verdict"] = "GEOMETRY_DIFFERENCE"
             result["error"] = "Vertex count differs"
             return result
+        if gecko:
+            mesh_diff = first_difference(a["boneFaces"], b["boneFaces"], 0, "actualMeshFaces")
+            result["firstMeshDifference"] = mesh_diff
+            ak = [semantic_key(key) for key in a["vertexKeys"]]
+            bk = [semantic_key(key) for key in b["vertexKeys"]]
+            if mesh_diff is not None or set(ak) != set(bk):
+                result["verdict"] = "GEOMETRY_DIFFERENCE"
+                result["error"] = "Actual bone/cube/face identities differ"
+                return result
+            lookup = {key: index for index, key in enumerate(bk)}
+            pairs = [(index, lookup[key], av[index], bv[lookup[key]], key) for index, key in enumerate(ak)]
+            sibling_changes = []
+            for name, node in a["bindTree"]["nodes"].items():
+                other = b["bindTree"]["nodes"].get(name)
+                if other is not None and node["children"] != other["children"]:
+                    sibling_changes.append({"bone": name, "reference": node["children"], "port": other["children"]})
+            result["drawOrder"] = {"matched": ak == bk, "firstDifference": next((
+                {"drawIndex": i, "reference": list(x), "port": list(y)} for i, (x, y) in enumerate(zip(ak, bk)) if x != y), None),
+                "siblingOrderDifferences": sibling_changes,
+                "rootOrderMatched": a["bindTree"]["roots"] == b["bindTree"]["roots"],
+                "orderDependentRenderingVerified": False}
+        else:
+            pairs = [(i, i, raw, actual, None) for i, (raw, actual) in enumerate(zip(av, bv))]
+            result["drawOrder"] = {"scope": "ordered Bedrock stream; no semantic bone mapping", "orderDependentRenderingVerified": False}
         for label, columns in (("position", range(3)), ("normal", range(3, 6)), ("uv", range(6, 8))):
             maximum = 0.0
             first = None
             tolerance = CONTRACT["absoluteTolerance"][label]
-            for index, (raw, actual) in enumerate(zip(av, bv)):
+            for index, port_index, raw, actual, key in pairs:
                 expected = canonical_vertex(raw, reference["backend"])
                 for column in columns:
                     error = abs(expected[column] - actual[column])
                     maximum = max(maximum, error)
                     if error > tolerance and first is None:
-                        first = {"vertex": index, "field": CONTRACT["vertexFields"][column], "expected": expected[column], "actual": actual[column], "error": error}
+                        first = {"referenceDrawIndex": index, "portDrawIndex": port_index, "semanticKey": list(key) if key else None,
+                                 "field": CONTRACT["vertexFields"][column], "expected": expected[column], "actual": actual[column], "error": error}
             result[label] = {"matched": first is None, "maximumAbsoluteError": maximum, "tolerance": tolerance, "firstDifference": first}
         result["matched"] = result["bindTreeMatched"] and all(result[k]["matched"] for k in ("position", "normal", "uv"))
-        result["verdict"] = "BOUNDED_BIND_GEOMETRY_MATCH" if result["matched"] else "GEOMETRY_DIFFERENCE"
+        result["verdict"] = "BOUNDED_BIND_GEOMETRY_V2_MATCH" if result["matched"] else "GEOMETRY_DIFFERENCE"
     except (ValueError, KeyError, TypeError, IndexError) as failure:
         result["verdict"] = "INCONCLUSIVE"
         result["error"] = str(failure)

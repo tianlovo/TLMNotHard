@@ -12,7 +12,7 @@ import compare as subject
 def identity(reference):
     names = subject.REFERENCE_REQUIRED if reference else subject.PORT_REQUIRED
     definitions = {name: {"sha256": "a" * 64, "count": 1, "stage": subject.STAGE, "loaderClass": "synthetic-fixture-only"} for name in names}
-    build = {"schema": "geometry-build-identity-v1" if reference else "port-geometry-build-v1",
+    build = {"schema": "geometry-build-identity-v2" if reference else "port-geometry-build-v2",
              "contractSha256": subject.CONTRACT_SHA, "agentSha256": "b" * 64,
              "compiledClasses": {name: "a" * 64 for name in names}}
     if reference:
@@ -21,7 +21,7 @@ def identity(reference):
         build.update(upstreamCommit=subject.CONTRACT["upstreamCommit"], baseReferenceBuildIdentitySha256="c" * 64,
                      baseReferenceBuildIdentity={"schema": "reference-build-identity-v1", "status": "LOCK_VERIFIED", "upstreamCommit": subject.CONTRACT["upstreamCommit"], "java": {"synthetic": True}})
     result = {"build": build, "actualFirstDefinitions": definitions, "buildManifestSha256": "d" * 64,
-              "runtimePolicy": "geometry-v1-two-passive-observers" if reference else "geometry-v1-single-passive-observer"}
+              "runtimePolicy": "geometry-v2-two-passive-observers" if reference else "geometry-v2-single-passive-observer"}
     if reference:
         result.update(baseReferenceRuntimeVerified=False, baseReferenceBuildIdentityAnchored=True, runtimeJava={"synthetic": True})
     return result
@@ -41,18 +41,133 @@ def fixture(reference, backend="gecko"):
     if not reference:
         vertices = [subject.canonical_vertex(row, backend) for row in vertices]
     samples = [{"repetition": i, "freshNativeParse": True, "nativeNormalBranch": "pose-normal-matrix",
-                "bindTree": copy.deepcopy(tree), "vertices": copy.deepcopy(vertices)} for i in range(3)]
-    return {"schema": "geometry-reference-v1" if reference else "port-geometry-v1", "contract": subject.CONTRACT["contract"],
+                "bindTree": copy.deepcopy(tree), "vertices": copy.deepcopy(vertices), "plainVertices": copy.deepcopy(vertices),
+                "freshPlainParse": True, "observerNeutral": True,
+                "mapping": "actual-bone-cube-face-corner" if backend == "gecko" else "ordered-bedrock"} for i in range(3)]
+    if backend == "gecko":
+        for sample in samples:
+            sample["boneFaces"] = {"root": [1]}
+            sample["vertexKeys"] = [{"bone": "root", "cube": 0, "face": "down", "corner": i, "drawIndex": i} for i in range(4)]
+    return {"schema": "geometry-reference-v2" if reference else "port-geometry-v2", "contract": subject.CONTRACT["contract"],
             "contractSha256": subject.CONTRACT_SHA, "model": model, "backend": backend,
             "coordinateContract": subject.CONTRACT["coordinateContract"],
             "coordinateSpace": "upstream-native-bind" if reference else "port-modelbase-bind",
             "geometrySha256": subject.CONTRACT["models"][model]["geometrySha256"],
             "textureSha256": subject.CONTRACT["models"][model]["textureSha256"], "worldRendererVerified": False,
             "gpuVerified": False, "dynamicAnimationVerified": False, "materialAttributesCompared": False,
+            "orderDependentRenderingVerified": False, "rawAAStable": True, "observerNeutralityVerified": True,
             "samples": samples, "identity": identity(reference)}
 
 
+def sync_plain(report):
+    for sample in report["samples"]:
+        sample["plainVertices"] = copy.deepcopy(sample["vertices"])
+
+
+def siblings_fixture(reference, reverse=False):
+    report = fixture(reference)
+    source = fixture(True)["samples"][0]["vertices"]
+    groups = {"A": copy.deepcopy(source), "B": [[v + 4 if i == 0 else v for i, v in enumerate(row)] for row in source]}
+    order = ["B", "A"] if reverse else ["A", "B"]
+    for sample in report["samples"]:
+        template = copy.deepcopy(sample["bindTree"]["nodes"]["root"])
+        sample["bindTree"]["nodes"]["root"]["cubeCount"] = 0
+        sample["bindTree"]["nodes"]["root"]["children"] = list(order)
+        for name in ("A", "B"):
+            sample["bindTree"]["nodes"][name] = copy.deepcopy(template)
+            sample["bindTree"]["nodes"][name]["parent"] = "root"
+        sample["boneFaces"] = {"root": [], "A": [1], "B": [1]}
+        sample["vertices"] = [list(row) if reference else subject.canonical_vertex(row, "gecko") for name in order for row in groups[name]]
+        sample["vertexKeys"] = [{"bone": name, "cube": 0, "face": "down", "corner": corner, "drawIndex": index * 4 + corner}
+                                for index, name in enumerate(order) for corner in range(4)]
+    sync_plain(report)
+    return report
+
+
 class CompareTests(unittest.TestCase):
+    def test_sibling_draw_order_is_separate_from_semantic_geometry(self):
+        result = subject.compare(siblings_fixture(True), siblings_fixture(False, reverse=True))
+        self.assertTrue(result["matched"])
+        self.assertFalse(result["drawOrder"]["matched"])
+        self.assertEqual(1, len(result["drawOrder"]["siblingOrderDifferences"]))
+        self.assertFalse(result["orderDependentRenderingVerified"])
+
+    def test_corner_swap_keeps_keys_but_changes_actual_written_values(self):
+        for backend in ("gecko", "bedrock"):
+            with self.subTest(backend=backend):
+                port = fixture(False, backend)
+                for sample in port["samples"]:
+                    sample["vertices"][0], sample["vertices"][1] = sample["vertices"][1], sample["vertices"][0]
+                sync_plain(port)
+                result = subject.compare(fixture(True, backend), port)
+                self.assertEqual("GEOMETRY_DIFFERENCE", result["verdict"])
+                self.assertFalse(result["position"]["matched"])
+
+    def test_missing_duplicate_or_invalid_semantic_vertices_rejected(self):
+        for mode in ("duplicate", "missing", "face", "corner", "index", "bone"):
+            with self.subTest(mode=mode):
+                port = fixture(False)
+                for sample in port["samples"]:
+                    if mode == "duplicate":
+                        sample["vertexKeys"][1]["corner"] = 0
+                    elif mode == "missing":
+                        sample["vertexKeys"].pop()
+                    elif mode == "face":
+                        sample["vertexKeys"][0]["face"] = "unknown"
+                    elif mode == "corner":
+                        sample["vertexKeys"][0]["corner"] = 4
+                    elif mode == "index":
+                        sample["vertexKeys"][0]["drawIndex"] = 1
+                    else:
+                        sample["vertexKeys"][0]["bone"] = "unknown"
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_mesh_masks_require_all_and_only_real_faces(self):
+        for mask in (0, 3, 128):
+            with self.subTest(mask=mask):
+                port = fixture(False)
+                for sample in port["samples"]:
+                    sample["boneFaces"]["root"] = [mask]
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_face_corner_order_is_not_silently_canonicalized(self):
+        port = fixture(False)
+        for sample in port["samples"]:
+            sample["vertexKeys"][0]["corner"] = 1
+            sample["vertexKeys"][1]["corner"] = 0
+        self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_missing_actual_bone_callback_rejected_even_for_zero_cube_root(self):
+        port = siblings_fixture(False)
+        for sample in port["samples"]:
+            del sample["boneFaces"]["root"]
+        self.assertEqual("INCONCLUSIVE", subject.compare(siblings_fixture(True), port)["verdict"])
+
+    def test_raw_stability_and_neutrality_labels_do_not_replace_evidence(self):
+        for field in ("rawAAStable", "observerNeutralityVerified"):
+            with self.subTest(field=field):
+                port = fixture(False)
+                del port[field]
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_plain_trace_neutrality_is_checked_independently_of_aa(self):
+        for mode in ("missing", "values", "flag"):
+            with self.subTest(mode=mode):
+                port = fixture(False)
+                for sample in port["samples"]:
+                    if mode == "missing":
+                        del sample["plainVertices"]
+                    elif mode == "values":
+                        sample["plainVertices"][0][0] += 1
+                    else:
+                        sample["observerNeutral"] = False
+                self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
+
+    def test_old_v1_schema_is_not_retagged_as_v2(self):
+        reference = fixture(True)
+        reference["schema"] = "geometry-reference-v1"
+        self.assertEqual("INCONCLUSIVE", subject.compare(reference, fixture(False))["verdict"])
+
     def test_only_provenance_verified_lf_and_mechanically_derived_crlf_are_approved(self):
         project = Path(__file__).resolve().parents[2]
         provenance = json.loads((project / "src/main/resources/assets/tlmnh/builtin-assets-provenance.json").read_text(encoding="utf-8"))
@@ -193,6 +308,7 @@ class CompareTests(unittest.TestCase):
         for sample in port["samples"]:
             for row in sample["vertices"]:
                 row[0] *= -1
+        sync_plain(port)
         result = subject.compare(fixture(True), port)
         self.assertEqual("GEOMETRY_DIFFERENCE", result["verdict"])
         self.assertFalse(result["position"]["matched"])
@@ -202,6 +318,7 @@ class CompareTests(unittest.TestCase):
         for sample in port["samples"]:
             for row in sample["vertices"]:
                 row[6] += 0.125
+        sync_plain(port)
         result = subject.compare(fixture(True), port)
         self.assertFalse(result["uv"]["matched"])
         self.assertTrue(result["position"]["matched"])
@@ -230,7 +347,8 @@ class CompareTests(unittest.TestCase):
         port = fixture(False)
         for sample in port["samples"]:
             sample["vertices"] *= 2
-        self.assertEqual("GEOMETRY_DIFFERENCE", subject.compare(fixture(True), port)["verdict"])
+        sync_plain(port)
+        self.assertEqual("INCONCLUSIVE", subject.compare(fixture(True), port)["verdict"])
 
     def test_bind_pivot_difference_not_overwritten(self):
         port = fixture(False)

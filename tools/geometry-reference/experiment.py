@@ -36,13 +36,14 @@ def replay(launcher, original, destination, mode):
 def run(game_directory, launcher_file, evidence):
     # This output directory must be new; no old reference or rejection is overwritten
     evidence.mkdir(parents=True, exist_ok=False)
-    result = {"schema": "geometry-experiment-v1", "passed": False, "cases": [],
+    result = {"schema": "geometry-experiment-v2", "passed": False, "cases": [],
               "scope": "two reviewed fresh bind meshes through original native and port production geometry methods",
               "worldRendererVerified": False, "dynamicAnimationVerified": False, "gpuEquivalenceVerified": False,
+              "orderDependentRenderingVerified": False,
               "evidenceDirectory": str(evidence.resolve()), "launcherSha256": sha(launcher_file)}
     try:
         launcher = json.loads(launcher_file.read_text(encoding="utf-8"))
-        require(launcher["schema"] == "geometry-replay-launcher-v1", "Unsupported production launcher")
+        require(launcher["schema"] == "geometry-replay-launcher-v2", "Unsupported production launcher")
         state = send(game_directory, "status")
         require(state["worldLoaded"] is True and state["spectator"] is True, "Original protected spectator lab must be open")
         result["originalStatus"] = state
@@ -55,7 +56,7 @@ def run(game_directory, launcher_file, evidence):
             validate(original, True)
             case = {"model": model, "originalSha256": sha(original_file), "originalAA": "three fresh native parses exactly stable", "runs": {}}
             result["cases"].append(case)
-            for label, mode in (("normal", "none"), ("mirror_x", "mirror_x"), ("uv_shift", "uv_shift"), ("recovery", "none")):
+            for label, mode in (("normal", "none"), ("mirror_x", "mirror_x"), ("uv_shift", "uv_shift"), ("corner_swap", "corner_swap"), ("recovery", "none")):
                 port_file = evidence / (str(index) + "-port-" + label + ".json")
                 port = replay(launcher, original_file, port_file, mode)
                 comparison = compare(original, port)
@@ -64,13 +65,15 @@ def run(game_directory, launcher_file, evidence):
             normal = case["runs"]["normal"]["comparison"]
             mirror = case["runs"]["mirror_x"]["comparison"]
             uv = case["runs"]["uv_shift"]["comparison"]
+            corner = case["runs"]["corner_swap"]["comparison"]
             recovery = case["runs"]["recovery"]["comparison"]
             case["passed"] = (normal["matched"] and recovery["matched"]
                               and mirror["verdict"] == "GEOMETRY_DIFFERENCE" and not mirror["position"]["matched"]
+                              and corner["verdict"] == "GEOMETRY_DIFFERENCE" and not corner["position"]["matched"]
                               and uv["verdict"] == "GEOMETRY_DIFFERENCE" and not uv["uv"]["matched"]
                               and uv["position"]["matched"] and uv["normal"]["matched"] and uv["bindTreeMatched"])
         result["passed"] = len(result["cases"]) == 2 and all(case["passed"] for case in result["cases"])
-        result["verdict"] = "PASS_BOUNDED_BIND_GEOMETRY_EXPERIMENT" if result["passed"] else "BIND_GEOMETRY_EXPERIMENT_FAILED"
+        result["verdict"] = "PASS_BOUNDED_BIND_GEOMETRY_V2_EXPERIMENT" if result["passed"] else "BIND_GEOMETRY_V2_EXPERIMENT_FAILED"
     except (Exception, KeyboardInterrupt) as failure:
         result["verdict"] = "INCONCLUSIVE"
         result["error"] = str(failure)

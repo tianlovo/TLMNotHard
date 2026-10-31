@@ -18,8 +18,10 @@ import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.GeometryBoneObserver;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.geometry.GeometrySnapshots;
+import com.tianluoqaq.tlmnh.geometry.GeometryTrace;
 
 import net.minecraft.util.ResourceLocation;
 
@@ -29,15 +31,15 @@ public final class GeometryPortReplay {
     private GeometryPortReplay() {}
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) throw new IllegalArgumentException("Expected reference capture, new output, and none|mirror_x|uv_shift");
+        if (args.length != 3) throw new IllegalArgumentException("Expected reference capture, new output, and none|mirror_x|uv_shift|corner_swap");
         Path input = Paths.get(args[0]).toRealPath();
         Path output = Paths.get(args[1]).toAbsolutePath().normalize();
         String fault = args[2];
         require(!Files.exists(output) && !input.equals(output), "Refusing to overwrite geometry evidence");
-        require("none".equals(fault) || "mirror_x".equals(fault) || "uv_shift".equals(fault), "Unreviewed geometry fault");
+        require("none".equals(fault) || "mirror_x".equals(fault) || "uv_shift".equals(fault) || "corner_swap".equals(fault), "Unreviewed geometry fault");
         var reference = new JsonParser().parse(new String(Files.readAllBytes(input), StandardCharsets.UTF_8)).getAsJsonObject();
-        require("geometry-reference-v1".equals(reference.get("schema").getAsString()), "Unsupported geometry capture");
-        require("native-bind-geometry-v1".equals(reference.get("contract").getAsString()), "Unsupported bind contract");
+        require("geometry-reference-v2".equals(reference.get("schema").getAsString()), "Unsupported geometry capture");
+        require("native-bind-geometry-v2".equals(reference.get("contract").getAsString()), "Unsupported bind contract");
         var contractBytes = resourceBytes("/tlmnh-geometry/contract.json");
         var contract = new JsonParser().parse(new String(contractBytes, StandardCharsets.UTF_8)).getAsJsonObject();
         require(sha(contractBytes).equals(reference.get("contractSha256").getAsString()), "Different geometry contract");
@@ -47,8 +49,8 @@ public final class GeometryPortReplay {
         var choice = BuiltinModelCatalog.get(id);
         require(choice != null && id.equals(choice.getId()), "Missing actual production model");
         var result = new JsonObject();
-        result.addProperty("schema", "port-geometry-v1");
-        result.addProperty("contract", "native-bind-geometry-v1");
+        result.addProperty("schema", "port-geometry-v2");
+        result.addProperty("contract", "native-bind-geometry-v2");
         result.addProperty("contractSha256", sha(contractBytes));
         result.addProperty("referenceSha256", sha(Files.readAllBytes(input)));
         result.addProperty("model", id);
@@ -62,29 +64,64 @@ public final class GeometryPortReplay {
         result.addProperty("gpuVerified", false);
         result.addProperty("dynamicAnimationVerified", false);
         result.addProperty("materialAttributesCompared", false);
+        result.addProperty("orderDependentRenderingVerified", false);
         var samples = new JsonArray();
         for (int repetition = 0; repetition < 3; repetition++) {
             // New manager forces the production parser to run again, not just a mutable-pose clone
             var model = new BuiltinMaidModels(location -> verifiedResource(location, choice.getGeometry(),
                 contract.getAsJsonObject("models").getAsJsonObject(id).get("geometrySha256").getAsString())).create(choice);
+            var plainModel = new BuiltinMaidModels(location -> verifiedResource(location, choice.getGeometry(),
+                contract.getAsJsonObject("models").getAsJsonObject(id).get("geometrySha256").getAsString())).create(choice);
             var before = choice.isGecko() ? GeometrySnapshots.gecko(model.getGecko())
                 : GeometrySnapshots.bedrock(model.getBedrock().getModelMap());
-            var sink = new Sink("uv_shift".equals(fault));
+            var plainBefore = choice.isGecko() ? GeometrySnapshots.gecko(plainModel.getGecko())
+                : GeometrySnapshots.bedrock(plainModel.getBedrock().getModelMap());
+            require(before.equals(plainBefore), "Fresh production models differ before observation");
+            var sink = new Sink(fault, choice.isGecko());
+            var plain = new PlainSink(fault);
             var poses = new LegacyPoseStack();
             if ("mirror_x".equals(fault)) poses.scale(-1, 1, 1);
             model.renderGeometry(poses, sink, 0x00f000f0);
+            var plainPoses = new LegacyPoseStack();
+            if ("mirror_x".equals(fault)) plainPoses.scale(-1, 1, 1);
+            plainModel.renderGeometry(plainPoses, plain, 0x00f000f0);
+            sink.finish();
+            plain.finish();
             var after = choice.isGecko() ? GeometrySnapshots.gecko(model.getGecko())
                 : GeometrySnapshots.bedrock(model.getBedrock().getModelMap());
             require(before.equals(after), "Production geometry draw mutated bind pose");
+            var plainAfter = choice.isGecko() ? GeometrySnapshots.gecko(plainModel.getGecko())
+                : GeometrySnapshots.bedrock(plainModel.getBedrock().getModelMap());
+            require(plainBefore.equals(plainAfter), "Plain production draw mutated bind pose");
             require(sink.vertices.size() > 0 && sink.vertices.size() % 4 == 0, "Empty/incomplete production quads");
+            require(sink.vertices.equals(plain.vertices), "Production observer changed actual raw vertices");
+            require(!"corner_swap".equals(fault) || (sink.swapped && plain.swapped), "No actual face available for corner swap");
             var sample = new JsonObject();
             sample.addProperty("repetition", repetition);
             sample.addProperty("freshNativeParse", true);
             sample.add("bindTree", before);
             sample.add("vertices", sink.vertices);
+            sample.add("plainVertices", plain.vertices);
+            sample.addProperty("freshPlainParse", true);
+            sample.addProperty("observerNeutral", true);
+            sample.addProperty("cornerSwapApplied", sink.swapped);
+            if (sink.trace != null) {
+                sink.trace.finish(sink.vertices.size());
+                sink.trace.addTo(sample);
+            } else sample.addProperty("mapping", "ordered-bedrock");
             samples.add(sample);
         }
         result.add("samples", samples);
+        var firstSample = samples.get(0).getAsJsonObject();
+        for (int i = 1; i < samples.size(); i++) {
+            var next = samples.get(i).getAsJsonObject();
+            require(firstSample.get("vertices").equals(next.get("vertices"))
+                && firstSample.get("bindTree").equals(next.get("bindTree")), "Production raw A/A output is unstable");
+            if (choice.isGecko()) require(firstSample.get("vertexKeys").equals(next.get("vertexKeys"))
+                && firstSample.get("boneFaces").equals(next.get("boneFaces")), "Production actual bone trace is unstable");
+        }
+        result.addProperty("rawAAStable", true);
+        result.addProperty("observerNeutralityVerified", true);
         result.add("identity", identity());
         Files.createDirectories(output.getParent());
         Files.write(output, GSON.toJson(result).getBytes(StandardCharsets.UTF_8));
@@ -94,7 +131,7 @@ public final class GeometryPortReplay {
     private static JsonObject identity() throws Exception {
         Path file = Paths.get(System.getProperty("tlmnh.geometry.buildIdentity")).toRealPath();
         var build = new JsonParser().parse(new String(Files.readAllBytes(file), StandardCharsets.UTF_8)).getAsJsonObject();
-        require("port-geometry-build-v1".equals(build.get("schema").getAsString()), "Unsupported port geometry identity");
+        require("port-geometry-build-v2".equals(build.get("schema").getAsString()), "Unsupported port geometry identity");
         var arguments = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments();
         var diagnostic = java.lang.management.ManagementFactory.getPlatformMXBean(com.sun.management.HotSpotDiagnosticMXBean.class);
         require("25".equals(System.getProperty("java.specification.version"))
@@ -125,7 +162,7 @@ public final class GeometryPortReplay {
         result.add("build", build);
         result.add("actualFirstDefinitions", definitions);
         result.addProperty("buildManifestSha256", startup.get("manifestSha256"));
-        result.addProperty("runtimePolicy", "geometry-v1-single-passive-observer");
+        result.addProperty("runtimePolicy", "geometry-v2-single-passive-observer");
         result.addProperty("scope", "selected production geometry definitions only");
         return result;
     }
@@ -168,14 +205,46 @@ public final class GeometryPortReplay {
     }
     private static void require(boolean condition, String message) { if (!condition) throw new IllegalStateException(message); }
 
-    private static final class Sink implements LegacyVertexConsumer {
+    private static class PlainSink implements LegacyVertexConsumer {
         final JsonArray vertices = new JsonArray();
-        final boolean shiftUv;
-        Sink(boolean shiftUv) { this.shiftUv = shiftUv; }
+        final String fault;
+        final JsonArray[] face = new JsonArray[4];
+        int pending;
+        boolean swapped;
+        PlainSink(String fault) { this.fault = fault; }
         @Override public void vertex(float x, float y, float z, float red, float green, float blue, float alpha,
             float u, float v, int overlay, int light, float nx, float ny, float nz) {
             require(vertices.size() < 50000, "Excessive production vertices");
-            vertices.add(GeometrySnapshots.vector(x,y,z,nx,ny,nz,shiftUv ? u + 0.125F : u,v));
+            face[pending++] = GeometrySnapshots.vector(x,y,z,nx,ny,nz,"uv_shift".equals(fault) ? u + 0.125F : u,v);
+            if (pending != 4) return;
+            // The actual sink writes this face in the wrong corner order, before any report is saved
+            if ("corner_swap".equals(fault) && !swapped && !face[0].equals(face[1])) {
+                var value = face[0]; face[0] = face[1]; face[1] = value;
+                swapped = true;
+            }
+            for (var value : face) {
+                vertices.add(value);
+                emitted(vertices.size() - 1);
+            }
+            pending = 0;
+        }
+        void emitted(int index) {}
+        void finish() { require(pending == 0, "Incomplete production face"); }
+    }
+
+    private static final class Sink extends PlainSink implements GeometryBoneObserver {
+        final GeometryTrace trace;
+        Sink(String fault, boolean gecko) { super(fault); trace = gecko ? new GeometryTrace() : null; }
+        @Override public void beginBone(String name, int[] actualMasks) {
+            require(trace != null && pending == 0, "Unexpected production bone observation");
+            trace.beginBone(name, actualMasks);
+        }
+        @Override public void endBone() {
+            require(pending == 0, "Bone ended inside a face");
+            trace.endBone();
+        }
+        @Override void emitted(int index) {
+            if (trace != null) trace.emittedVertex(index);
         }
     }
 }

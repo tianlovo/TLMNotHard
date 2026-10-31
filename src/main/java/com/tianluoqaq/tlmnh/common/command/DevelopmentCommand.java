@@ -31,6 +31,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleProbe;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleRestartProbe;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 只在显式 JVM 开关下注册，供真实 Forge 环境验证实体和 NBT */
@@ -53,6 +54,16 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (args.length == 1 && "lifecycle-persist-create".equals(args[0])) {
+            MaidLifecycleRestartProbe.create((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_restart_pending"));
+            return;
+        }
+        if (args.length == 1 && "lifecycle-persist-check".equals(args[0])) {
+            MaidLifecycleRestartProbe.verify((WorldServer) sender.getEntityWorld());
+            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_restart_passed"));
+            return;
+        }
         if (args.length == 1 && "lifecycle-test".equals(args[0])) {
             MaidLifecycleProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_passed"));

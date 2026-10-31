@@ -290,3 +290,16 @@ common/lifecycle参考固定上游初始魂符、ItemFilm、BlockShrine和Entity
 四份魂符与胶片资产保留原Git blob字节及CC BY-NC-SA 4.0许可，见assets/tlmnh/core-assets-provenance.json
 源目录为固定上游textures/item，目标为1.7的textures/items；原650份内置资产清单不变，校验器额外核对这四份资产
 新方块与墓碑当前外观仅供Indev链路测试，最终素材、GTNH配方与科技门槛继续待验和讨论
+
+
+## 独立几何语义观测与真实重启夹具
+
+新geometry v2合同通过实际骨骼发射边界记录bone/cube/face/corner和drawIndex，逐项核对位置、法线与UV
+port新增可选GeometryBoneObserver，IGeoRenderer仅在consumer实现该接口时复制实际mesh面mask并通知开始/结束；普通绘制不创建观察数据
+原版wrapper委托原IGeoRenderer方法，移植端仍调用生产BuiltinMaidModel.renderGeometry；两边分别新建plain/traced模型检查观察器中性
+共享工具只记录身份和公开状态，不计算预期几何；绘制次序另行报告，几何数值相等不表示材质或共面覆盖已通过
+此前严格顺序流第四轮整体失败保持原判，不能用只读重新对应的诊断补标为通过；新合同须重新采集和执行实际故障
+
+MaidLifecycleRestartProbe仅在开发开关下建立隔离夹具，实际区块保存女仆、墓碑和神龛，世界账本保存凭证状态
+校验要求不同JVM从磁盘载入，固定公式核对十二槽78物品而不从测试快照复制权威库存
+这项检查不包含真实玩家player.dat和异常掉电的跨文件原子事务，结果须与自然行为和客户端网络交互分别记录

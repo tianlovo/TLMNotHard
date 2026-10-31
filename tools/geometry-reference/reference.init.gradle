@@ -20,6 +20,7 @@ def selected = [
     'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoBone',
     'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter',
     'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree',
+    'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawBoneGroup',
     'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel',
     'com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoBone',
     'com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel',
@@ -29,9 +30,11 @@ def selected = [
     'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubeBox',
     'com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockCubePerFace',
     'com.tianluoqaq.tlmnh.geometry.GeometrySnapshots',
+    'com.tianluoqaq.tlmnh.geometry.GeometryTrace',
     'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe',
     'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$Sink',
-    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$1'
+    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$1',
+    'com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$2'
 ].sort()
 
 gradle.projectsEvaluated {
@@ -71,7 +74,7 @@ gradle.projectsEvaluated {
                 include '**/*.java', '**/*.gradle', '*.json', '*.py'
                 exclude '**/__pycache__/**'
             }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
-            def value = [schema: 'geometry-build-identity-v1', upstreamCommit: '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6',
+            def value = [schema: 'geometry-build-identity-v2', upstreamCommit: '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6',
                 baseReferenceBuildIdentitySha256: sha(base.bytes), baseReferenceBuildIdentity: new JsonSlurper().parse(base),
                 contractSha256: sha(new File(tool, 'contract.json').bytes), compiledClasses: classes,
                 agentSha256: sha(agent.get().archiveFile.get().asFile.bytes), toolInputs: inputs,

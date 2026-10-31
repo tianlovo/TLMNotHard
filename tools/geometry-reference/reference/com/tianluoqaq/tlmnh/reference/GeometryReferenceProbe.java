@@ -20,6 +20,7 @@ import com.github.tartaricacid.touhoulittlemaid.TouhouLittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.BedrockModel;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoBone;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree;
@@ -33,6 +34,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tianluoqaq.tlmnh.geometry.GeometrySnapshots;
+import com.tianluoqaq.tlmnh.geometry.GeometryTrace;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -60,7 +62,7 @@ public final class GeometryReferenceProbe {
             if (root == null) {
                 root = Minecraft.getInstance().gameDirectory.toPath().resolve("tlmnh-geometry-reference");
                 for (String child : new String[] { "control", "responses", "captures" }) Files.createDirectories(root.resolve(child));
-                TouhouLittleMaid.LOGGER.info("TLMNH_GEOMETRY_REFERENCE_READY contract=native-bind-geometry-v1");
+                TouhouLittleMaid.LOGGER.info("TLMNH_GEOMETRY_REFERENCE_READY contract=native-bind-geometry-v2");
             }
             try (var stream = Files.newDirectoryStream(root.resolve("control"), "*.json")) {
                 var pending = new ArrayList<Path>();
@@ -87,7 +89,7 @@ public final class GeometryReferenceProbe {
                     response.addProperty("worldLoaded", minecraft.level != null);
                     response.addProperty("spectator", minecraft.player != null && minecraft.player.isSpectator());
                     response.add("scene", ReferenceScene.status());
-                    response.addProperty("contract", "native-bind-geometry-v1");
+                    response.addProperty("contract", "native-bind-geometry-v2");
                 }
                 case "lab_create" -> response = ReferenceScene.createLab();
                 case "lab_open" -> response = ReferenceScene.openLab();
@@ -130,8 +132,8 @@ public final class GeometryReferenceProbe {
         require(info.getModel().equals(geometry) && info.getTexture().equals(texture) && info.isGeckoModel() == gecko,
             "Loaded original model metadata differs from the reviewed contract");
         var result = new JsonObject();
-        result.addProperty("schema", "geometry-reference-v1");
-        result.addProperty("contract", "native-bind-geometry-v1");
+        result.addProperty("schema", "geometry-reference-v2");
+        result.addProperty("contract", "native-bind-geometry-v2");
         result.addProperty("model", modelId);
         result.addProperty("backend", gecko ? "gecko" : "bedrock");
         result.addProperty("coordinateSpace", "upstream-native-bind");
@@ -143,16 +145,40 @@ public final class GeometryReferenceProbe {
         result.addProperty("gpuVerified", false);
         result.addProperty("dynamicAnimationVerified", false);
         result.addProperty("materialAttributesCompared", false);
+        result.addProperty("orderDependentRenderingVerified", false);
         result.add("coordinateContract", spec.get("coordinateContract"));
         var samples = new JsonArray();
         var renderer = new IGeoRenderer<Object>() {
             @Override public MultiBufferSource getCurrentRTB() { return null; }
             @Override public ResourceLocation getTextureLocation(Object ignored) { return texture; }
         };
+        var tracedRenderer = new IGeoRenderer<Object>() {
+            @Override public MultiBufferSource getCurrentRTB() { return null; }
+            @Override public ResourceLocation getTextureLocation(Object ignored) { return texture; }
+            @Override public void renderCubesOfBone(AnimatedGeoBone bone, PoseStack poses, VertexConsumer buffer,
+                int light, int overlay, float red, float green, float blue, float alpha) {
+                if (bone.isHidden() || bone.cubesAreHidden()) {
+                    IGeoRenderer.super.renderCubesOfBone(bone, poses, buffer, light, overlay, red, green, blue, alpha);
+                    return;
+                }
+                var trace = ((Sink) buffer).trace;
+                require(trace != null, "Actual reference bone boundary has no trace sink");
+                var mesh = bone.geoBone().cubes();
+                int[] masks = new int[mesh.getCubeCount()];
+                for (int i = 0; i < masks.length; i++) masks[i] = mesh.faces(i);
+                trace.beginBone(bone.geoBone().name(), masks);
+                try {
+                    IGeoRenderer.super.renderCubesOfBone(bone, poses, buffer, light, overlay, red, green, blue, alpha);
+                } finally {
+                    trace.endBone();
+                }
+            }
+        };
         for (int repetition = 0; repetition < 3; repetition++) {
             byte[] bytes = asset(geometry);
             require(sha(bytes).equals(result.get("geometrySha256").getAsString()), "Geometry resource changed");
-            var sink = new Sink();
+            var sink = new Sink(gecko);
+            var plain = new Sink(false);
             var sample = new JsonObject();
             sample.addProperty("repetition", repetition);
             sample.addProperty("freshNativeParse", true);
@@ -163,24 +189,52 @@ public final class GeometryReferenceProbe {
                 var raw = Converter.fromInputStream(new ByteArrayInputStream(bytes));
                 var built = GeoBuilder.getGeoBuilder().constructGeoModel(RawGeometryTree.parseHierarchy(raw));
                 var nativeModel = new AnimatedGeoModel(built);
+                var plainRaw = Converter.fromInputStream(new ByteArrayInputStream(bytes));
+                var plainModel = new AnimatedGeoModel(GeoBuilder.getGeoBuilder().constructGeoModel(RawGeometryTree.parseHierarchy(plainRaw)));
                 var before = GeometrySnapshots.gecko(nativeModel);
+                require(before.equals(GeometrySnapshots.gecko(plainModel)), "Fresh original bind models differ");
                 sample.add("bindTree", before);
                 var poses = new PoseStack();
-                for (var bone : nativeModel.topLevelBones()) renderer.renderRecursively(bone, poses, sink, 0x00f000f0, 0, 1, 1, 1, 1);
+                for (var bone : nativeModel.topLevelBones()) tracedRenderer.renderRecursively(bone, poses, sink, 0x00f000f0, 0, 1, 1, 1, 1);
+                var plainPoses = new PoseStack();
+                for (var bone : plainModel.topLevelBones()) renderer.renderRecursively(bone, plainPoses, plain, 0x00f000f0, 0, 1, 1, 1, 1);
                 require(before.equals(GeometrySnapshots.gecko(nativeModel)), "Native draw mutated bind pose");
+                require(before.equals(GeometrySnapshots.gecko(plainModel)), "Plain native draw mutated bind pose");
+                sink.trace.finish(sink.vertices.size());
+                sink.trace.addTo(sample);
             } else {
                 var pojo = BedrockModelUtil.GSON.fromJson(new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8), BedrockModelPOJO.class);
                 var nativeModel = new BedrockModel<Mob>(pojo, BedrockVersion.getVersion(pojo));
+                var plainPojo = BedrockModelUtil.GSON.fromJson(new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8), BedrockModelPOJO.class);
+                var plainModel = new BedrockModel<Mob>(plainPojo, BedrockVersion.getVersion(plainPojo));
                 var before = GeometrySnapshots.bedrock(nativeModel.getModelMap());
+                require(before.equals(GeometrySnapshots.bedrock(plainModel.getModelMap())), "Fresh original Bedrock models differ");
                 sample.add("bindTree", before);
                 nativeModel.renderToBuffer(new PoseStack(), sink, 0x00f000f0, 0, 1, 1, 1, 1);
+                plainModel.renderToBuffer(new PoseStack(), plain, 0x00f000f0, 0, 1, 1, 1, 1);
                 require(before.equals(GeometrySnapshots.bedrock(nativeModel.getModelMap())), "Native draw mutated bind pose");
+                require(before.equals(GeometrySnapshots.bedrock(plainModel.getModelMap())), "Plain native Bedrock draw mutated bind pose");
+                sample.addProperty("mapping", "ordered-bedrock");
             }
             require(sink.vertices.size() > 0 && sink.vertices.size() % 4 == 0, "Empty/incomplete native quads");
+            require(plain.vertices.equals(sink.vertices), "Reference tracing changed actual raw vertices");
             sample.add("vertices", sink.vertices);
+            sample.add("plainVertices", plain.vertices);
+            sample.addProperty("freshPlainParse", true);
+            sample.addProperty("observerNeutral", true);
             samples.add(sample);
         }
         result.add("samples", samples);
+        var firstSample = samples.get(0).getAsJsonObject();
+        for (int i = 1; i < samples.size(); i++) {
+            var next = samples.get(i).getAsJsonObject();
+            require(firstSample.get("vertices").equals(next.get("vertices"))
+                && firstSample.get("bindTree").equals(next.get("bindTree")), "Original raw A/A output is unstable");
+            if (gecko) require(firstSample.get("vertexKeys").equals(next.get("vertexKeys"))
+                && firstSample.get("boneFaces").equals(next.get("boneFaces")), "Original actual bone trace is unstable");
+        }
+        result.addProperty("rawAAStable", true);
+        result.addProperty("observerNeutralityVerified", true);
         result.add("identity", identity());
         return result;
     }
@@ -189,7 +243,7 @@ public final class GeometryReferenceProbe {
     private static JsonObject identity() throws Exception {
         Path path = Path.of(System.getProperty("tlmnh.geometry.buildIdentity")).toRealPath();
         var manifest = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
-        require("geometry-build-identity-v1".equals(manifest.get("schema").getAsString()), "Unsupported geometry identity");
+        require("geometry-build-identity-v2".equals(manifest.get("schema").getAsString()), "Unsupported geometry identity");
         require(!Boolean.getBoolean("tlmnh.referenceProbe"), "Animation v1 profile must be inactive in this geometry run");
         var base = manifest.getAsJsonObject("baseReferenceBuildIdentity");
         require("LOCK_VERIFIED".equals(base.get("status").getAsString()), "Approved original build provenance required");
@@ -254,7 +308,7 @@ public final class GeometryReferenceProbe {
         result.add("build", manifest);
         result.add("actualFirstDefinitions", actual);
         result.addProperty("buildManifestSha256", startup.get("manifestSha256"));
-        result.addProperty("runtimePolicy", "geometry-v1-two-passive-observers");
+        result.addProperty("runtimePolicy", "geometry-v2-two-passive-observers");
         result.addProperty("baseReferenceRuntimeVerified", false);
         result.addProperty("baseReferenceBuildIdentityAnchored", true);
         result.add("runtimeJava", javaIdentity);
@@ -295,6 +349,8 @@ public final class GeometryReferenceProbe {
     /** 只记录原生 VertexConsumer 的真实输出，默认 bulk 方法仍由 Minecraft 实现 */
     private static final class Sink implements VertexConsumer {
         final JsonArray vertices = new JsonArray();
+        final GeometryTrace trace;
+        Sink(boolean traced) { trace = traced ? new GeometryTrace() : null; }
         double x, y, z;
         float nx, ny, nz, u, v;
         int fields;
@@ -307,6 +363,7 @@ public final class GeometryReferenceProbe {
         @Override public void endVertex() {
             require(fields == 7 && vertices.size() < 50000, "Incomplete/excessive native vertex");
             vertices.add(GeometrySnapshots.vector(x,y,z,nx,ny,nz,u,v));
+            if (trace != null) trace.emittedVertex(vertices.size() - 1);
             fields=0;
         }
         @Override public void defaultColor(int r, int g, int b, int a) { throw new IllegalStateException("Unreviewed default vertex color path"); }
