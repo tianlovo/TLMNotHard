@@ -223,6 +223,13 @@ public class ClientDevelopmentRequestTest {
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
         assertEquals("winefox", parse("{\"command\":\"models_ui\",\"action\":\"search\",\"model\":\"winefox\"}").model);
         assertEquals("geckolib", parse("{\"command\":\"models_ui\",\"action\":\"pack\",\"model\":\"geckolib\"}").model);
+        assertEquals(
+            "geckolib:winefox",
+            parse("{\"command\":\"models_ui\",\"action\":\"details\",\"model\":\"geckolib:winefox\"}").model);
+        assertEquals("beg", parse("{\"command\":\"models_ui\",\"action\":\"details_toggle\",\"model\":\"beg\"}").model);
+        assertEquals(
+            "rotate",
+            parse("{\"command\":\"models_ui\",\"action\":\"details_view\",\"model\":\"rotate\"}").model);
         var selection = parse("{\"command\":\"models_ui\",\"action\":\"select\",\"model\":\"geckolib:winefox_hanfu\"}");
         assertEquals("geckolib:winefox_hanfu", selection.model);
         assertEquals(

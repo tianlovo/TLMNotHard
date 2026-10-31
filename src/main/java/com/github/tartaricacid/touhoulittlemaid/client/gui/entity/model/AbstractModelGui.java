@@ -220,6 +220,18 @@ public abstract class AbstractModelGui extends GuiScreen {
         return true;
     }
 
+    public boolean openDetails(int index) {
+        if (mc.currentScreen != this || !container.canInteractWith(mc.thePlayer)
+            || mc.thePlayer.inventory.getItemStack() != null
+            || !getVisibleModelIndices().contains(index)) return false;
+        mc.displayGuiScreen(
+            new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui(
+                container,
+                BuiltinModelCatalog.choices()
+                    .get(index)));
+        return true;
+    }
+
     public boolean returnToMaid() {
         if (mc.currentScreen != this || !container.canInteractWith(mc.thePlayer)) return false;
         mc.playerController
@@ -260,7 +272,8 @@ public abstract class AbstractModelGui extends GuiScreen {
     protected void actionPerformed(GuiButton button) {
         if (!button.enabled) return;
         if (button.id >= CHOICE) {
-            if (!isShiftKeyDown()) selectVisibleModel(button.id - CHOICE);
+            if (isShiftKeyDown()) openDetails(button.id - CHOICE);
+            else selectVisibleModel(button.id - CHOICE);
         } else if (button.id >= TAB && button.id < TAB + 7) {
             selectPack(packs.get(guiNumber.tabToPackIndex(button.id - TAB, getPageIndex())).id);
         } else switch (button.id) {
@@ -399,7 +412,6 @@ public abstract class AbstractModelGui extends GuiScreen {
                     lines.add(names.name(choice));
                     for (String line : choice.getDescription()) lines.add(names.text(line));
                     lines.add(text("gui.touhou_little_maid.skin.tooltips.show_details"));
-                    lines.add(text("gui.tlmnh.original.model_details_pending"));
                     if (mc.gameSettings.advancedItemTooltips) lines.add("\u00a78" + choice.getId());
                     for (var pack : packs)
                         if (pack.id.equals(choice.getPackId())) lines.add("\u00a79" + names.text(pack.name));

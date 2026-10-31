@@ -33,13 +33,13 @@
       "path": "assets/touhou_little_maid/lang/zh_CN.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "590743ee7ee0d342773ae79530060abea1d028ec9d674513a97d74fa2cd4929f"
+      "sha256": "b4f47b55e8c0e2a6aafd43782e38e5142e97b100894bc93d31bab18162a24d81"
     },
     {
       "path": "assets/touhou_little_maid/lang/en_US.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "65698e1eb216233ef411806d103500316ab109e3b98d400f04e4d229de01cc43"
+      "sha256": "c05a9a1c28644e62423c9022937d12b5a2fff2f79bfc8ac7c3ce08bc2c85751b"
     },
     {
       "path": "assets/touhou_little_maid/textures/gui/bauble_button.png",
@@ -65,6 +65,26 @@
       "path": "assets/touhou_little_maid/textures/gui/empty_model_pack_icon.png",
       "source": "src/main/resources/assets/touhou_little_maid/textures/gui/empty_model_pack_icon.png",
       "sha256": "37e5fc534b48b23d5bfd3229949dea12ccca334e58e95d25f77851a3fe5f05f4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/skin_detail.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/skin_detail.png",
+      "sha256": "2cdcaa2dc009393de37f2fbcbb74b84d2a153a538507b67462a6bfc3b6f2d308"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/debug_floor.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/debug_floor.png",
+      "sha256": "1abbe4674657a86db5671dba240fd476c9753f31e681a8c91b24f42406d17283"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/low_stool.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/low_stool.json",
+      "sha256": "1d0bec88beb9a5222eb6b9d1c9549b753b965ad8355a778f3b9f2e900b4e0402"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/low_stool.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/low_stool.png",
+      "sha256": "295b3e6683d00c8aee63501e4816956b27f0f724250ce746219a888d8a2c96e7"
     }
   ]
 }

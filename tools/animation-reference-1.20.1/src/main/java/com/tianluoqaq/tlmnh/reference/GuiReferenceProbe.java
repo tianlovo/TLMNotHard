@@ -18,6 +18,8 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIco
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.AbstractModelGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.AbstractModelDetailsGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.pojo.IModelInfo;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.GsonBuilder;
@@ -66,9 +68,10 @@ public final class GuiReferenceProbe {
         var minecraft = Minecraft.getInstance();
         var actualScreen = minecraft.screen;
         var screen = actualScreen instanceof CacheScreen<?, ?> ? (net.minecraft.client.gui.screens.Screen) field(CacheScreen.class, actualScreen, "parent") : actualScreen;
-        if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui) || minecraft.player == null)
+        if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui || screen instanceof MaidModelDetailsGui) || minecraft.player == null)
             throw new IllegalStateException("Actual original maid GUI required");
         var maid = screen instanceof AbstractMaidContainerGui<?> main ? main.getMenu().getMaid()
+            : screen instanceof MaidModelDetailsGui ? (EntityMaid) field(AbstractModelDetailsGui.class, screen, "sourceEntity")
             : (EntityMaid) field(AbstractModelGui.class, screen, "entity");
         if (!ReferenceScene.isCurrent(maid) || !maid.isOwnedBy(minecraft.player) || !minecraft.player.isSpectator())
             throw new IllegalStateException("Owned reference lab maid and spectator required");
@@ -117,6 +120,27 @@ public final class GuiReferenceProbe {
                 throw new IllegalStateException("Cannot observe original model list", error);
             }
         }
+        if (screen instanceof MaidModelDetailsGui details) {
+            var view = new JsonObject();
+            var entity = (EntityMaid) field(AbstractModelDetailsGui.class, details, "guiEntity");
+            view.addProperty("model", entity.getModelId());
+            view.addProperty("previewUuid", entity.getUUID().toString());
+            view.addProperty("sourceUuid", maid.getUUID().toString());
+            for (String name : new String[] { "posX", "posY", "scale", "yaw", "pitch" })
+                view.addProperty(name, (Number) field(AbstractModelDetailsGui.class, details, name));
+            view.addProperty("floor", (Boolean) field(AbstractModelDetailsGui.class, details, "showFloor"));
+            view.addProperty("previewTicks", entity.tickCount);
+            view.addProperty("previewBegging", entity.isBegging());
+            view.addProperty("previewSitting", entity.isInSittingPose());
+            view.addProperty("previewRiding", entity.isPassenger());
+            view.addProperty("previewMainHand", entity.getMainHandItem().isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(entity.getMainHandItem().getItem()).toString());
+            view.addProperty("previewOffhand", entity.getOffhandItem().isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(entity.getOffhandItem().getItem()).toString());
+            view.addProperty("previewRegistered", minecraft.level.getEntity(entity.getId()) == entity);
+            view.addProperty("sourceMainHand", maid.getMainHandItem().isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(maid.getMainHandItem().getItem()).toString());
+            view.addProperty("sourceOffhand", maid.getOffhandItem().isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(maid.getOffhandItem().getItem()).toString());
+            view.addProperty("sourceSitting", maid.isInSittingPose());
+            result.add("details", view);
+        }
         return result;
     }
 
@@ -138,6 +162,49 @@ public final class GuiReferenceProbe {
         com.github.tartaricacid.touhoulittlemaid.config.subconfig.MiscConfig.MODEL_ICON_CACHE.set(false);
         com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.openMaidModelGui(main.getMenu().getMaid());
         return status();
+    }
+
+    static JsonObject details(JsonObject request) {
+        var state = status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelGui screen)) throw new IllegalStateException("Original model screen required");
+        String model = request.get("model").getAsString();
+        if (!state.getAsJsonArray("visibleModels").asList().stream().anyMatch(value -> value.getAsString().equals(model)))
+            throw new IllegalArgumentException("Visible builtin model required");
+        var info = com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader.MAID_MODELS.getInfo(model).orElseThrow();
+        try {
+            var method = MaidModelGui.class.getDeclaredMethod("openDetailsGui", EntityMaid.class, com.github.tartaricacid.touhoulittlemaid.client.resource.pojo.MaidModelInfo.class);
+            method.setAccessible(true);
+            method.invoke(screen, field(AbstractModelGui.class, screen, "entity"), info);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Cannot invoke original Shift-click details branch", failure);
+        }
+        return status();
+    }
+
+    static JsonObject detailsAction(JsonObject request) {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelDetailsGui screen)) throw new IllegalStateException("Original details screen required");
+        String action = request.get("action").getAsString();
+        var keys = java.util.Arrays.asList("beg", "walk", "sit", "ride", "helmet", "chest_plate", "leggings", "boots", "main_hand", "off_hand");
+        int index = keys.indexOf(action);
+        boolean applied = true;
+        if (index >= 0) screen.mouseClicked(10, 17 + 13 * index + 5, 0);
+        else switch (action) {
+            case "back" -> screen.mouseClicked(screen.width - 40, 5, 0);
+            case "floor" -> screen.mouseClicked(screen.width - 25, 5, 0);
+            case "rotate" -> applied = screen.mouseDragged(200, 100, 0, 40, 10);
+            case "pan" -> applied = screen.mouseDragged(200, 100, 1, 15, -10);
+            case "zoom_in" -> applied = screen.mouseScrolled(200, 100, 1);
+            case "zoom_min" -> applied = screen.mouseScrolled(200, 100, -100);
+            case "zoom_max" -> applied = screen.mouseScrolled(200, 100, 1000);
+            case "outside" -> applied = screen.mouseDragged(132, 100, 0, 100, 100) || screen.mouseScrolled(200, 15, 1);
+            default -> throw new IllegalArgumentException("Unknown details action");
+        }
+        var result = status();
+        result.addProperty("actionApplied", applied);
+        return result;
     }
 
     static JsonObject cacheToggle() {

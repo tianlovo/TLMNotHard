@@ -32,6 +32,10 @@
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen",
     "com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture",
-    "com.github.tartaricacid.touhoulittlemaid.util.IconCache"
+    "com.github.tartaricacid.touhoulittlemaid.util.IconCache",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.AbstractModelDetailsGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton",
+    "com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel"
   ]
 }

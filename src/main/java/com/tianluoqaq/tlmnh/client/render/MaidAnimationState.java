@@ -72,6 +72,7 @@ public final class MaidAnimationState {
     }
 
     private static String animationEntityId(Entity entity) {
+        if (entity instanceof com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat) return "touhou_little_maid:chair";
         if (entity instanceof EntityPlayer) return "minecraft:player";
         if (entity instanceof EntityBoat) return "minecraft:boat";
         if (entity instanceof EntityMinecart) return "minecraft:minecart";

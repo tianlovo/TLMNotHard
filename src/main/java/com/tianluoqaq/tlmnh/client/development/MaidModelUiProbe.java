@@ -5,6 +5,7 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -36,15 +37,47 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
         if (!action.equals("status")) {
-            if (minecraft.currentScreen instanceof MaidModelGui models) {
+            if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
                 switch (action) {
-                    case "select" -> {
+                    case "back" -> requested = details.pressButton(2);
+                    case "details_toggle" -> {
+                        var keys = java.util.Arrays.asList(
+                            "beg",
+                            "walk",
+                            "sit",
+                            "ride",
+                            "helmet",
+                            "chest_plate",
+                            "leggings",
+                            "boots",
+                            "main_hand",
+                            "off_hand");
+                        int index = keys.indexOf(model);
+                        if (index < 0 && !"floor".equals(model))
+                            throw new IllegalArgumentException("Unknown details toggle");
+                        requested = details.pressButton(index < 0 ? 1 : 10 + index);
+                    }
+                    case "details_view" -> requested = switch (model) {
+                            case "rotate" -> details.dragView(200, 100, 0, 40, 10);
+                            case "pan" -> details.dragView(200, 100, 1, 15, -10);
+                            case "zoom_in" -> details.scrollView(200, 100, 1);
+                            case "zoom_min" -> details.scrollView(200, 100, -100);
+                            case "zoom_max" -> details.scrollView(200, 100, 1000);
+                            case "outside" -> details.dragView(132, 100, 0, 100, 100) || details.scrollView(200, 15, 1);
+                            default -> throw new IllegalArgumentException("Unknown details view fixture");
+                        };
+                    default -> throw new IllegalArgumentException("Action does not apply to the details screen");
+                }
+            } else if (minecraft.currentScreen instanceof MaidModelGui models) {
+                switch (action) {
+                    case "select", "details" -> {
                         for (int index : models.getVisibleModelIndices()) if (BuiltinModelCatalog.choices()
                             .get(index)
                             .getId()
                             .equals(model)) {
-                                requested = models.selectVisibleModel(index);
-                                network = requested;
+                                requested = action.equals("details") ? models.openDetails(index)
+                                    : models.selectVisibleModel(index);
+                                network = requested && !action.equals("details");
                                 break;
                             }
                     }
@@ -159,6 +192,11 @@ public final class MaidModelUiProbe {
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("clientReplicaOnly", true);
         response.add("iconCache", CacheIconManager.INSTANCE.observation());
+        if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
+            response.add("details", details.observation());
+            response.addProperty("scaledWidth", details.width);
+            response.addProperty("scaledHeight", details.height);
+        }
         if (minecraft.currentScreen instanceof MaidModelGui models) {
             response.addProperty("pack", models.getPackId());
             response.addProperty("row", models.getRow());
@@ -239,7 +277,8 @@ public final class MaidModelUiProbe {
     public static void requireCaptureScreen() {
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
-        if (!(screen instanceof CacheScreen) && !(screen instanceof MaidModelGui)
+        if (!(screen instanceof MaidModelDetailsGui) && !(screen instanceof CacheScreen)
+            && !(screen instanceof MaidModelGui)
             && !(screen instanceof AbstractMaidContainerGui<?>)
             && !(screen instanceof GuiMaidModels)
             && !(screen instanceof GuiMaid main && main.isHomeSettingsPage()))
@@ -256,12 +295,14 @@ public final class MaidModelUiProbe {
             || !player.noClip) throw new IllegalStateException("Safe lab observer required");
         var actual = minecraft.currentScreen instanceof GuiContainer screen ? screen.inventorySlots
             : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
-                : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer() : null;
+                : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer()
+                    : minecraft.currentScreen instanceof MaidModelDetailsGui details ? details.getContainer() : null;
         if (actual == null || actual != player.openContainer
             || !actual.canInteractWith(player)
             || !(minecraft.currentScreen instanceof AbstractMaidContainerGui<?>
                 && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
-                || (minecraft.currentScreen instanceof MaidModelGui || minecraft.currentScreen instanceof CacheScreen)
+                || (minecraft.currentScreen instanceof MaidModelGui || minecraft.currentScreen instanceof CacheScreen
+                    || minecraft.currentScreen instanceof MaidModelDetailsGui)
                     && player.openContainer instanceof ContainerMaidModels
                 || minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
                 || minecraft.currentScreen instanceof GuiMaidModels

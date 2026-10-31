@@ -27,7 +27,8 @@ def git(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("command", choices=("status", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_details", "gui_details_action", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("--action")
     parser.add_argument("--pack", type=int)
     parser.add_argument("--query")
     parser.add_argument("--name")
@@ -46,6 +47,12 @@ def main():
     if not controls.is_dir():
         raise ValueError("Reference probe is not ready")
     request = {"command": args.command}
+    if args.command == "gui_details":
+        if not args.model:parser.error("gui_details requires --model")
+        request["model"]=args.model
+    if args.command == "gui_details_action":
+        if not args.action:parser.error("gui_details_action requires --action")
+        request["action"]=args.action
     if args.command == "gui_models_pack":
         if args.pack is None or not 0 <= args.pack < 7:
             parser.error("gui_models_pack requires --pack from 0 to 6")
