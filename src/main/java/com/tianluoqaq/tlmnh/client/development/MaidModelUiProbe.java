@@ -321,7 +321,10 @@ public final class MaidModelUiProbe {
         var actual = minecraft.currentScreen instanceof GuiContainer screen ? screen.inventorySlots
             : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
                 : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer()
-                    : minecraft.currentScreen instanceof MaidModelDetailsGui details ? details.getContainer() : null;
+                    : minecraft.currentScreen instanceof MaidModelDetailsGui details ? details.getContainer()
+                        : minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds
+                            ? sounds.getContainer()
+                            : null;
         if (actual == null || actual != player.openContainer
             || !actual.canInteractWith(player)
             || !(minecraft.currentScreen instanceof AbstractMaidContainerGui<?>
