@@ -132,7 +132,7 @@ public class ContainerMaid extends Container {
                 maid.setAttackTarget(null);
             }
             case ACTION_MODELS -> player
-                .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_MODELS, maid.worldObj, maid.getEntityId(), 0, 0);
+                .openGui(TLMNotHard.INSTANCE, modelGuiId(), maid.worldObj, maid.getEntityId(), 0, 0);
             case ACTION_HOME -> {
                 return maid.getHomeArea()
                     .setEnabled(
@@ -160,6 +160,10 @@ public class ContainerMaid extends Container {
             }
         }
         return true;
+    }
+
+    protected int modelGuiId() {
+        return CommonProxy.GUI_MAID_MODELS;
     }
 
     @Override

@@ -33,13 +33,13 @@
       "path": "assets/touhou_little_maid/lang/zh_CN.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "d9eaf8b87b41715480ebd1aba6408640fa4a812cc84c5c03b36d7d96bcb1b323"
+      "sha256": "590743ee7ee0d342773ae79530060abea1d028ec9d674513a97d74fa2cd4929f"
     },
     {
       "path": "assets/touhou_little_maid/lang/en_US.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "618ba3fc33d187b0fc6063a11c417dfa82e965702a30dc675cfc412df4e168a3"
+      "sha256": "65698e1eb216233ef411806d103500316ab109e3b98d400f04e4d229de01cc43"
     },
     {
       "path": "assets/touhou_little_maid/textures/gui/bauble_button.png",
@@ -50,6 +50,21 @@
       "path": "assets/touhou_little_maid/textures/slot/empty_back_show_slot.png",
       "source": "src/main/resources/assets/touhou_little_maid/textures/slot/empty_back_show_slot.png",
       "sha256": "f1cb3810b16df27c42b387356e7d061f17555df9f92d17bbfdd4b25e172cdfe3"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/skin_select.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/skin_select.png",
+      "sha256": "f0b7fbeafdb7b75a562e565df6a841c23efd16efeab7192c76266c88e38b58df"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/skin_select_side.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/skin_select_side.png",
+      "sha256": "bc633d32138c579d38afe76bc6a68fd72bc99beb7f0f805f0a89a28d0e8af1ae"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/empty_model_pack_icon.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/empty_model_pack_icon.png",
+      "sha256": "37e5fc534b48b23d5bfd3229949dea12ccca334e58e95d25f77851a3fe5f05f4"
     }
   ]
 }

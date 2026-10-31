@@ -102,3 +102,5 @@ gui.tlmnh.home.back=Status
 gui.tlmnh.original.pending=This page is not ported yet; the original icon is retained
 gui.tlmnh.original.model_prototype=Indev currently opens the model selection prototype
 gui.tlmnh.original.bauble_excluded=Baubles are outside the first release scope; the original icon is retained
+gui.tlmnh.original.model_details_pending=The model details page is not ported yet
+gui.tlmnh.original.model_cache_pending=Live previews are used; thumbnail caching is not available yet

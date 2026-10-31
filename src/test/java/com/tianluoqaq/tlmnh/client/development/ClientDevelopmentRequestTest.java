@@ -221,6 +221,8 @@ public class ClientDevelopmentRequestTest {
             "home_toggle", "home_work", "home_idle", "home_rest", "home_reset", "tasks", "idle", "attack", "ranged",
             "pointer", "schedule", "pickup" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
+        assertEquals("winefox", parse("{\"command\":\"models_ui\",\"action\":\"search\",\"model\":\"winefox\"}").model);
+        assertEquals("geckolib", parse("{\"command\":\"models_ui\",\"action\":\"pack\",\"model\":\"geckolib\"}").model);
         var selection = parse("{\"command\":\"models_ui\",\"action\":\"select\",\"model\":\"geckolib:winefox_hanfu\"}");
         assertEquals("geckolib:winefox_hanfu", selection.model);
         assertEquals(

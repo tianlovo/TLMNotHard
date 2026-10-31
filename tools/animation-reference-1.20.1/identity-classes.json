@@ -25,6 +25,9 @@
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen",
     "com.github.tartaricacid.touhoulittlemaid.inventory.container.MaidMainContainer",
-    "com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer"
+    "com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.AbstractModelGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui",
+    "com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.SkinGuiNumber"
   ]
 }

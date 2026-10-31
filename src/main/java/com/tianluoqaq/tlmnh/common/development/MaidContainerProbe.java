@@ -247,6 +247,16 @@ public final class MaidContainerProbe {
         require(
             proxy.getClientGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
             "model common side has no client GUI");
+        var original = proxy
+            .getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, owner, world, maid.getEntityId(), 0, 0);
+        require(
+            original instanceof ContainerMaidModels && ((ContainerMaidModels) original).isOriginalView()
+                && !models.isOriginalView(),
+            "original model route and isolated prototype");
+        require(
+            proxy.getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, stranger, world, maid.getEntityId(), 0, 0)
+                == null,
+            "original model stranger route");
         String before = maid.getModelId();
         require(!models.enchantItem(stranger, 0) && before.equals(maid.getModelId()), "model non-owner change denial");
         for (int invalid : new int[] { -129, 128, 255, 256, -1 }) require(
@@ -260,6 +270,10 @@ public final class MaidContainerProbe {
                 proxy.getServerGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
                 "model routed cursor denial");
             require(!models.enchantItem(owner, 0), "model selection cursor denial");
+            require(
+                proxy.getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, owner, world, maid.getEntityId(), 0, 0)
+                    == null,
+                "original model routed cursor denial");
             require(
                 models.slotClick(-999, 0, 0, owner) == null && models.transferStackInSlot(owner, 0) == null
                     && owner.inventory.getItemStack().stackSize == 3,

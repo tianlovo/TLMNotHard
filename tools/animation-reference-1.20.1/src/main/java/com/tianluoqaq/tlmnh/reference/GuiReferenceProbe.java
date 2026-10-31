@@ -14,6 +14,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.AbstractModelGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
+import com.github.tartaricacid.touhoulittlemaid.client.resource.pojo.IModelInfo;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -59,16 +62,17 @@ public final class GuiReferenceProbe {
 
     static JsonObject status() {
         var minecraft = Minecraft.getInstance();
-        if (!(minecraft.screen instanceof AbstractMaidContainerGui<?> screen) || minecraft.player == null
-            || screen.getMenu() != minecraft.player.containerMenu)
+        var screen = minecraft.screen;
+        if (!(screen instanceof AbstractMaidContainerGui<?> || screen instanceof MaidModelGui) || minecraft.player == null)
             throw new IllegalStateException("Actual original maid GUI required");
-        var maid = screen.getMenu().getMaid();
+        var maid = screen instanceof AbstractMaidContainerGui<?> main ? main.getMenu().getMaid()
+            : (EntityMaid) field(AbstractModelGui.class, screen, "entity");
         if (!ReferenceScene.isCurrent(maid) || !maid.isOwnedBy(minecraft.player) || !minecraft.player.isSpectator())
             throw new IllegalStateException("Owned reference lab maid and spectator required");
         var result = new JsonObject();
         result.addProperty("screen", screen.getClass().getName());
         result.addProperty("model", maid.getModelId());
-        result.addProperty("windowId", screen.getMenu().containerId);
+        result.addProperty("windowId", minecraft.player.containerMenu.containerId);
         result.addProperty("language", minecraft.options.languageCode);
         result.addProperty("guiScale", minecraft.getWindow().getGuiScale());
         result.addProperty("scaledWidth", screen.width);
@@ -81,7 +85,7 @@ public final class GuiReferenceProbe {
         result.addProperty("home", maid.isHomeModeEnable());
         result.addProperty("pickup", maid.isPickup());
         var slots = new JsonArray();
-        for (var slot : screen.getMenu().slots) {
+        for (var slot : minecraft.player.containerMenu.slots) {
             var entry = new JsonObject();
             entry.addProperty("index", slot.index);
             entry.addProperty("x", slot.x);
@@ -89,7 +93,70 @@ public final class GuiReferenceProbe {
             slots.add(entry);
         }
         result.add("slots", slots);
+        if (screen instanceof MaidModelGui) {
+            int pack = (Integer) field(MaidModelGui.class, null, "PACK_INDEX");
+            int row = (Integer) field(MaidModelGui.class, null, "ROW_INDEX");
+            result.addProperty("pack", com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader.MAID_MODELS.getPackList().get(pack).getId());
+            result.addProperty("row", row);
+            result.addProperty("searchMode", (Boolean) field(AbstractModelGui.class, screen, "isSearchMode"));
+            result.addProperty("searchText", (String) field(AbstractModelGui.class, screen, "searchText"));
+            result.addProperty("iconCache", com.github.tartaricacid.touhoulittlemaid.config.subconfig.MiscConfig.MODEL_ICON_CACHE.get());
+            try {
+                var method = AbstractModelGui.class.getDeclaredMethod("getDisplayModelList");
+                method.setAccessible(true);
+                var models = (java.util.List<?>) method.invoke(screen);
+                var visible = new JsonArray();
+                for (int index = row * 11; index < Math.min(models.size(), row * 11 + 55); index++)
+                    visible.add(((IModelInfo) models.get(index)).getModelId().toString());
+                result.add("visibleModels", visible);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Cannot observe original model list", error);
+            }
+        }
         return result;
+    }
+
+    private static Object field(Class<?> type, Object owner, String name) {
+        try {
+            var field = type.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(owner);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot read original GUI field: " + name, error);
+        }
+    }
+
+    static JsonObject models() {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof AbstractMaidContainerGui<?> main))
+            throw new IllegalStateException("Original main window required");
+        com.github.tartaricacid.touhoulittlemaid.config.subconfig.MiscConfig.MODEL_ICON_CACHE.set(false);
+        com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.openMaidModelGui(main.getMenu().getMaid());
+        return status();
+    }
+
+    static JsonObject modelsPack(JsonObject request) {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelGui screen)) throw new IllegalStateException("Original model screen required");
+        int pack = request.get("pack").getAsInt();
+        if (pack < 0 || pack >= Math.min(7, com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader.MAID_MODELS.getPackList().size()))
+            throw new IllegalArgumentException("Invalid builtin pack tab");
+        screen.mouseClicked(screen.width / 2 + 50 - 98 + 28 * pack + 14, screen.height / 2 - 100, 0);
+        return status();
+    }
+
+    static JsonObject modelsSearch(JsonObject request) {
+        status();
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.screen instanceof MaidModelGui screen)) throw new IllegalStateException("Original model screen required");
+        String query = request.get("query").getAsString();
+        if (query.length() > 48) throw new IllegalArgumentException("Search query too long");
+        if (!(Boolean) field(AbstractModelGui.class, screen, "isSearchMode"))
+            screen.mouseClicked(screen.width / 2 + 50 - 121 + 12, screen.height / 2 + 105, 0);
+        ((net.minecraft.client.gui.components.EditBox) field(AbstractModelGui.class, screen, "searchBox")).setValue(query);
+        return status();
     }
 
     static JsonObject capture(JsonObject request, Path root, String name) {

@@ -62,6 +62,9 @@ public final class ClientProxy extends CommonProxy {
                 original);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
-        return container instanceof ContainerMaidModels modelContainer ? new GuiMaidModels(modelContainer) : null;
+        if (container instanceof ContainerMaidModels modelContainer) return modelContainer.isOriginalView()
+            ? new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui(modelContainer)
+            : new GuiMaidModels(modelContainer);
+        return null;
     }
 }

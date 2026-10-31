@@ -19,6 +19,11 @@ public final class MaidGuiPreview {
     private MaidGuiPreview() {}
 
     public static void draw(EntityMaid maid, int left, int top, int mouseX, int mouseY) {
+        draw(maid, left + 40, top + 100, 40, left + 40 - mouseX, top + 50 - mouseY, left + 6, top + 12, 67, 95);
+    }
+
+    public static void draw(EntityMaid maid, int x, int y, int size, float lookX, float lookY, int clipX, int clipY,
+        int clipWidth, int clipHeight) {
         var minecraft = Minecraft.getMinecraft();
         var resolution = new ScaledResolution(minecraft, minecraft.displayWidth, minecraft.displayHeight);
         int scale = resolution.getScaleFactor();
@@ -33,11 +38,11 @@ public final class MaidGuiPreview {
         try {
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
             GL11.glScissor(
-                (left + 6) * scale,
-                (resolution.getScaledHeight() - top - 107) * scale,
-                67 * scale,
-                95 * scale);
-            GuiInventory.func_147046_a(left + 40, top + 100, 40, left + 40 - mouseX, top + 50 - mouseY, maid);
+                clipX * scale,
+                (resolution.getScaledHeight() - clipY - clipHeight) * scale,
+                clipWidth * scale,
+                clipHeight * scale);
+            GuiInventory.func_147046_a(x, y, size, lookX, lookY, maid);
         } finally {
             maid.renderYawOffset = body;
             maid.rotationYaw = yaw;

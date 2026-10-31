@@ -16,11 +16,21 @@ public final class ContainerMaidModels extends Container {
 
     private final EntityMaid maid;
     private final EntityPlayer viewer;
+    private final boolean originalView;
     private int lastActionTick = Integer.MIN_VALUE;
 
     public ContainerMaidModels(InventoryPlayer inventory, EntityMaid maid) {
+        this(inventory, maid, false);
+    }
+
+    public ContainerMaidModels(InventoryPlayer inventory, EntityMaid maid, boolean originalView) {
         this.viewer = inventory.player;
         this.maid = maid;
+        this.originalView = originalView;
+    }
+
+    public boolean isOriginalView() {
+        return originalView;
     }
 
     public EntityMaid getMaid() {
@@ -40,7 +50,13 @@ public final class ContainerMaidModels extends Container {
         int index = BuiltinModelSelection.decodeAction(action);
         if (index == BuiltinModelSelection.BACK) {
             lastActionTick = maid.ticksExisted;
-            player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, maid.worldObj, maid.getEntityId(), 0, 0);
+            player.openGui(
+                TLMNotHard.INSTANCE,
+                originalView ? CommonProxy.GUI_MAID_ORIGINAL : CommonProxy.GUI_MAID,
+                maid.worldObj,
+                maid.getEntityId(),
+                0,
+                0);
             return true;
         }
         var choice = BuiltinModelSelection.choiceForAction(action);

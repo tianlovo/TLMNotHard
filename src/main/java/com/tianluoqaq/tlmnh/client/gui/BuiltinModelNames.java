@@ -64,6 +64,13 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
         return raw.isEmpty() ? fallback : raw;
     }
 
+    public String text(String raw) {
+        ensureLanguage();
+        String fallback = raw.startsWith("{") && raw.endsWith("}") ? raw.substring(1, raw.length() - 1) : raw;
+        if (StatCollector.canTranslate(fallback)) return StatCollector.translateToLocal(fallback);
+        return resolve(raw, translations, fallback);
+    }
+
     private void ensureLanguage() {
         var minecraft = Minecraft.getMinecraft();
         String current = minecraft.gameSettings.language.toLowerCase(Locale.ROOT);

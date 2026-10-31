@@ -101,3 +101,5 @@ gui.tlmnh.home.back=返回状态
 gui.tlmnh.original.pending=此页尚未移植，当前仅保留原版图标
 gui.tlmnh.original.model_prototype=开发版暂时打开模型选择原型
 gui.tlmnh.original.bauble_excluded=首版不移植饰品功能，保留原版入口图标
+gui.tlmnh.original.model_details_pending=模型详情页尚未移植
+gui.tlmnh.original.model_cache_pending=当前使用实时预览，缩略图缓存尚未接入

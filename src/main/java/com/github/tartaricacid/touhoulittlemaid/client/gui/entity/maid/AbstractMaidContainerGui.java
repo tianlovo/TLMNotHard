@@ -295,7 +295,6 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         }
         if (!button.enabled && button.id != MAIN_TAB && button.id != SKIN && button.id != 113 && button.id != 114)
             lines.add(text("gui.tlmnh.original.pending"));
-        if (button.id == SKIN) lines.add(text("gui.tlmnh.original.model_prototype"));
         return lines;
     }
 

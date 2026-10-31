@@ -164,6 +164,9 @@ public final class ReferenceObservationProbe {
                     response.addProperty("status", "waiting-render");
                 }
                 case "gui_open" -> response = GuiReferenceProbe.open();
+                case "gui_models" -> response = GuiReferenceProbe.models();
+                case "gui_models_pack" -> response = GuiReferenceProbe.modelsPack(request);
+                case "gui_models_search" -> response = GuiReferenceProbe.modelsSearch(request);
                 case "gui_status" -> response = GuiReferenceProbe.status();
                 case "gui_capture" -> response = GuiReferenceProbe.capture(request, root, name);
                 case "create_lab" -> response = ReferenceScene.createLab();

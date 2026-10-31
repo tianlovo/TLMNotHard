@@ -14,6 +14,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.OriginalMaidTransfers;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 public abstract class AbstractMaidContainer extends ContainerMaid {
 
@@ -29,6 +30,11 @@ public abstract class AbstractMaidContainer extends ContainerMaid {
         for (int row = 0; row < 3; row++) for (int col = 0; col < 9; col++)
             addSlotToContainer(new Slot(inventory, col + row * 9 + 9, 88 + col * 18, 174 + row * 18));
         for (int col = 0; col < 9; col++) addSlotToContainer(new Slot(inventory, col, 88 + col * 18, 232));
+    }
+
+    @Override
+    protected int modelGuiId() {
+        return CommonProxy.GUI_MAID_ORIGINAL_MODELS;
     }
 
     @Override

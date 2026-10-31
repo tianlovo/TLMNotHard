@@ -132,9 +132,12 @@ public final class ClientDevelopmentRequest {
                     "ranged",
                     "pointer",
                     "schedule",
-                    "pickup")
+                    "pickup",
+                    "pack",
+                    "search")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
-            if (action.equals("select")) model = text(json, "model");
+            if (action.equals("select") || action.equals("pack") || action.equals("search"))
+                model = text(json, "model");
         }
         return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }
