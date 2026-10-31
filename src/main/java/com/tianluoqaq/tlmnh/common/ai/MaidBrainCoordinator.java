@@ -6,7 +6,6 @@ import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAIBase;
-import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.world.World;
@@ -14,6 +13,7 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
@@ -37,6 +37,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidLifeController life;
     private final MaidTelemetryChannel telemetry;
     private final MaidOwnerSensor ownerSensor;
+    private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
@@ -51,13 +52,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner();
     private boolean suspended;
     private long decisionTick;
-    private long nextDangerScan;
-    private boolean visibleDanger;
 
     public MaidBrainCoordinator(EntityMaid maid) {
         this.maid = maid;
         telemetry = new MaidTelemetryChannel(maid);
         ownerSensor = new MaidOwnerSensor(maid, telemetry);
+        dangerSensor = new MaidDangerSensor(maid, telemetry);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
@@ -65,7 +65,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         life = new MaidLifeController(maid, follow::cancel, ownerSensor::findOwner);
         combatActor = new CombatActor();
         combat = new MaidCombatController(combatActor, maid.getEntityId());
-        lifePermission = () -> !suspended && !hasVisibleDanger();
+        lifePermission = () -> !suspended && !dangerSensor.hasKnownDanger();
         setMutexBits(7);
     }
 
@@ -143,6 +143,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
         ownerSensor.beginFrame(runtime.getContext(), decisionTick);
+        dangerSensor.beginFrame(runtime.getContext(), decisionTick);
         targetMemory.beginFrame(maid.worldObj, runtime.getContext(), maid.worldObj.getTotalWorldTime());
         boolean recording = telemetry.isEnabled();
         long started = recording ? System.nanoTime() : 0;
@@ -327,8 +328,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private void refreshLifecycleObservations() {
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
-        nextDangerScan = 0;
-        visibleDanger = false;
+        dangerSensor.clear();
         lastPolicyState = null;
     }
 
@@ -376,6 +376,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     private void cancelControllers() {
         ownerSensor.clear();
+        dangerSensor.clear();
         combatActor.forgetOwner();
         targetMemory.clear();
         Throwable failure = cancel(combat::cancel, null);
@@ -445,38 +446,6 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public boolean isSuspended() {
         return suspended;
-    }
-
-    /** 生活中断不依赖所选战斗任务或武器，扫描有界且不提交路径 */
-    private boolean hasVisibleDanger() {
-        if (maid.hurtTime > 0) return true;
-        if (decisionTick < nextDangerScan) return visibleDanger;
-        nextDangerScan = decisionTick + 10;
-        visibleDanger = false;
-        boolean recording = telemetry.isEnabled();
-        long started = recording ? System.nanoTime() : 0;
-        var candidates = maid.worldObj.getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8));
-        int inspected = 0;
-        for (Object value : candidates) {
-            if (++inspected > 32) break;
-            boolean accepted = value instanceof EntityLivingBase entity && entity instanceof IMob
-                && entity.isEntityAlive()
-                && maid.getEntitySenses()
-                    .canSee(entity);
-            if (value instanceof EntityLivingBase entity)
-                telemetry.candidate("danger", entity, accepted, "visible_hostile_filter");
-            if (accepted) {
-                visibleDanger = true;
-                break;
-            }
-        }
-        telemetry.scan(
-            "danger",
-            candidates.size(),
-            Math.min(inspected, 32),
-            "native_aabb_returned_list;partial=" + (candidates.size() > Math.min(inspected, 32)));
-        if (recording) telemetry.work("danger", WorkComponent.SENSOR, System.nanoTime() - started);
-        return visibleDanger;
     }
 
     private final class CombatActor implements MaidCombatController.Actor {

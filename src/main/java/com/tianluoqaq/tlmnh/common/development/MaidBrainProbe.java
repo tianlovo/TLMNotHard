@@ -1,8 +1,12 @@
 package com.tianluoqaq.tlmnh.common.development;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
+import net.minecraft.entity.monster.EntityZombie;
+import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldServer;
@@ -14,6 +18,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
@@ -21,6 +26,63 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 public final class MaidBrainProbe {
 
     private MaidBrainProbe() {}
+
+    public static void runDangerSensor(WorldServer world) {
+        var spawn = world.getSpawnPoint();
+        int x = (spawn.posX >> 4 << 4) + 8, z = (spawn.posZ >> 4 << 4) + 8, y = 200;
+        require(
+            world.getChunkProvider()
+                .chunkExists(x >> 4, z >> 4),
+            "danger fixture chunk unloaded");
+        for (int dy = 0; dy < 3; dy++) for (int dz = -1; dz <= 1; dz++)
+            require(world.isAirBlock(x + 2, y + dy, z + dz), "danger fixture wall must replace only air");
+        var maid = new EntityMaid(world);
+        maid.setPosition(x + 0.5, y, z + 0.5);
+        var brain = maid.getBrainCoordinator();
+        var sensor = new MaidDangerSensor(maid, brain.getTelemetry());
+        var mobs = new ArrayList<EntityZombie>();
+        try {
+            for (int dy = 0; dy < 3; dy++) for (int dz = -1; dz <= 1; dz++)
+                require(world.setBlock(x + 2, y + dy, z + dz, Blocks.stone, 0, 2), "danger fixture wall placement");
+            for (int i = 0; i < 33; i++) {
+                var mob = new EntityZombie(world);
+                mobs.add(mob);
+                mob.setPosition(x + 4.5, y, z + 0.5);
+                require(world.spawnEntityInWorld(mob), "danger fixture mob spawn rejected");
+            }
+            var query = world.getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8));
+            require(query.size() == 33, "danger fixture must have exactly 33 native candidates");
+            for (Object value : query) require(mobs.contains(value), "unexpected native candidate in danger fixture");
+            var visible = (EntityZombie) query.get(32);
+            visible.setPosition(x - 3.5, y, z + 0.5);
+            sensor.beginFrame(
+                brain.getPolicyRuntime()
+                    .getContext(),
+                1);
+            require(!sensor.hasKnownDanger(), "first bounded batch is hidden by the actual wall");
+            sensor.beginFrame(
+                brain.getPolicyRuntime()
+                    .getContext(),
+                11);
+            require(sensor.hasKnownDanger(), "next bounded batch must find candidate 33");
+            visible.setDead();
+            require(!sensor.hasKnownDanger(), "dead threat must be discarded without waiting for the next scan");
+        } finally {
+            sensor.clear();
+            brain.resetTask();
+            for (var mob : mobs) {
+                mob.setDead();
+                world.removeEntity(mob);
+            }
+            for (int dy = 0; dy < 3; dy++) for (int dz = -1; dz <= 1; dz++) {
+                world.setBlockToAir(x + 2, y + dy, z + dz);
+                require(world.isAirBlock(x + 2, y + dy, z + dz), "danger fixture wall cleanup");
+            }
+            maid.setDead();
+        }
+        TLMNotHard.LOG.info(
+            "TLMNH_DANGER_SENSOR_TEST_PASS candidates=33 first_batch=32_hidden next_batch=visible_33 dead=discarded wall=restored fixture=manual_native_adapter natural_tick=unverified");
+    }
 
     public static void runOwnerSensor(WorldServer world) {
         var owner = new EntityPlayerMP(
