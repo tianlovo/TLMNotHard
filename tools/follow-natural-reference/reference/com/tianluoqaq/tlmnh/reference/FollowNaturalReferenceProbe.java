@@ -166,11 +166,50 @@ public final class FollowNaturalReferenceProbe {
         } catch (Exception | LinkageError failure) {
             if (session != null) session.finish("setup_failed", failure);
             else {
+                TouhouLittleMaid.LOGGER.error("TLMNH_FOLLOW_NATURAL_REFERENCE_SETUP_FAILED request=" + name, failure);
                 var response = new JsonObject(); response.addProperty("status", "inconclusive");
                 response.addProperty("errorType", failure.getClass().getSimpleName()); response.addProperty("request", name);
+                response.addProperty("reason", safeReason(failure));
+                response.add("serverPreflight", serverPreflight(server, ownerId));
                 try { write(root.resolve("responses").resolve(name), response); } catch (Exception writing) { ioFailed = true; }
             }
         } finally { queued = false; }
+    }
+
+    /** Failure evidence only: no mode, inventory, position, protection or world changes */
+    private static JsonObject serverPreflight(MinecraftServer server, UUID ownerId) {
+        var result = new JsonObject();
+        try {
+            result.addProperty("serverThread", server.isSameThread());
+            result.addProperty("worldName", server.getWorldData().getLevelName());
+            result.addProperty("overworldDimension", server.overworld().dimension().location().toString());
+            result.addProperty("playerCount", server.getPlayerList().getPlayerCount());
+            var player = server.getPlayerList().getPlayer(ownerId);
+            result.addProperty("ownerPresent", player != null);
+            if (player != null) {
+                result.addProperty("ownerDimension", player.serverLevel().dimension().location().toString());
+                result.addProperty("ownerInOverworld", player.serverLevel() == server.overworld());
+                result.addProperty("mode", player.gameMode.getGameModeForPlayer().getName());
+                result.addProperty("spectator", player.isSpectator());
+                result.addProperty("abilityInvulnerable", player.getAbilities().invulnerable);
+                result.addProperty("entityInvulnerable", player.isInvulnerable());
+                result.addProperty("cameraSelf", player.getCamera() == player);
+                result.addProperty("passenger", player.isPassenger());
+                result.addProperty("sleeping", player.isSleeping());
+                result.add("mainHand", handPreflight(player.getMainHandItem()));
+                result.add("offHand", handPreflight(player.getOffhandItem()));
+            }
+        } catch (RuntimeException | LinkageError failure) {
+            result.addProperty("diagnosticErrorType", failure.getClass().getSimpleName());
+        }
+        return result;
+    }
+
+    private static JsonObject handPreflight(net.minecraft.world.item.ItemStack stack) {
+        var result = new JsonObject();
+        var id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        result.addProperty("registryId", id == null ? null : id.toString());
+        result.addProperty("count", stack.getCount()); result.addProperty("empty", stack.isEmpty()); return result;
     }
 
     @SubscribeEvent
