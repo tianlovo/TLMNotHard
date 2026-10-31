@@ -198,6 +198,43 @@ public final class MaidModelUiProbe {
         return response;
     }
 
+    private static JsonObject fontObservation() {
+        var minecraft = Minecraft.getMinecraft();
+        var renderer = minecraft.fontRenderer;
+        var result = new JsonObject();
+        result.addProperty(
+            "renderer",
+            renderer.getClass()
+                .getName());
+        result.addProperty("unicode", renderer.getUnicodeFlag());
+        result.addProperty("forcedUnicode", minecraft.gameSettings.forceUnicodeFont);
+        result.addProperty(
+            "localeUnicode",
+            minecraft.getLanguageManager()
+                .isCurrentLocaleUnicode());
+        result.addProperty("lineHeight", renderer.FONT_HEIGHT);
+        var widths = new JsonObject();
+        for (String sample : new String[] { "90%", "100%", "女仆声音频率", "LittleMaid PECO 音效包", "▷", "♫" })
+            widths.addProperty(sample, renderer.getStringWidth(sample));
+        result.add("widths", widths);
+        var resources = new JsonObject();
+        for (String path : new String[] { "textures/font/ascii.png", "textures/font/unicode_page_00.png" }) {
+            try (var input = minecraft.getResourceManager()
+                .getResource(new net.minecraft.util.ResourceLocation(path))
+                .getInputStream()) {
+                resources.addProperty(
+                    path,
+                    com.google.common.hash.Hashing.sha256()
+                        .hashBytes(com.google.common.io.ByteStreams.toByteArray(input))
+                        .toString());
+            } catch (java.io.IOException failure) {
+                resources.addProperty(path, failure.toString());
+            }
+        }
+        result.add("resourceSha256", resources);
+        return result;
+    }
+
     private static JsonObject snapshot() {
         var minecraft = Minecraft.getMinecraft();
         var container = minecraft.thePlayer.openContainer;
@@ -219,6 +256,7 @@ public final class MaidModelUiProbe {
         response.addProperty("maidSoundPack", maid.getSoundPackId());
         if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds)
             response.add("sounds", sounds.observation());
+        response.add("font", fontObservation());
         response.addProperty("clientReplicaOnly", true);
         response.add("iconCache", CacheIconManager.INSTANCE.observation());
         if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {

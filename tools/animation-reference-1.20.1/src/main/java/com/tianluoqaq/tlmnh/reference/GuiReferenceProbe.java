@@ -82,6 +82,19 @@ public final class GuiReferenceProbe {
         result.addProperty("model", maid.getModelId());
         result.addProperty("windowId", minecraft.player.containerMenu.containerId);
         result.addProperty("language", minecraft.options.languageCode);
+        var font = new JsonObject();
+        font.addProperty("renderer", minecraft.font.getClass().getName());
+        font.addProperty("forcedUnicode", minecraft.options.forceUnicodeFont().get());
+        font.addProperty("lineHeight", minecraft.font.lineHeight);
+        var widths = new JsonObject();
+        for (String sample : new String[] { "90%", "100%", "女仆声音频率", "LittleMaid PECO 音效包", "▷", "♫" }) widths.addProperty(sample, minecraft.font.width(sample));
+        font.add("widths", widths);
+        var resources = new JsonObject();
+        try (var input = minecraft.getResourceManager().getResource(new net.minecraft.resources.ResourceLocation("minecraft", "textures/font/ascii.png")).orElseThrow().open()) {
+            resources.addProperty("textures/font/ascii.png", com.google.common.hash.Hashing.sha256().hashBytes(com.google.common.io.ByteStreams.toByteArray(input)).toString());
+        } catch (java.io.IOException failure) { resources.addProperty("textures/font/ascii.png", failure.toString()); }
+        font.add("resourceSha256", resources);
+        result.add("font", font);
         result.addProperty("guiScale", minecraft.getWindow().getGuiScale());
         result.addProperty("scaledWidth", screen.width);
         result.addProperty("scaledHeight", screen.height);
