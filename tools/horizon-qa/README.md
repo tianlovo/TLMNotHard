@@ -280,3 +280,11 @@ GUI 场景保持真实容器打开 25 tick，确认 Brain TTL 和 Sensor 不推�
 标准 FakePlayer.openGui 为空，曾导致 25 tick 失败；最终直接调用 FMLNetworkHandler.openGui，仍使用标准 FakePlayer 和原有内存通道，不冒充真实客户端连接
 两候选的实体/容器/协调器七类有变化，其他 1130 类和全部资源一致；原刷新与日程组件字节相同，保留分批边界，不拼成最终单轮四绿
 没有真实 GUI 输入/成像、多人、完整 F/N 或原版自然 benchmark 结论
+
+## 原门与同类让门试点
+
+Indev114 新增 `tlmnhqapilot:ModernDoorTests`，全部由真实实体 tick、原 PATH 和原门任务驱动，不手动调用开关门任务
+窄廊分别关闭两项权限，再逐项开启，检查木门与栅栏门通行及实际 Malisis CLOSED 动画状态；另一场景使用两名自然跟随女仆，检查刷新记忆保留、让门不提前关闭及后行关闭
+首轮关联 Follow 在 190 tick 通过，两个门场景因夹具限制半径 24 令主人未达到原跟随启动距离而超时，原始报告保留
+按原 start/teleport 距离调整夹具半径与主人位置后，只复测两项门场景，分别 199/128 tick 通过，JSON/XML/process 0 一致
+玩法 JAR 未变，ModernCoreTests 两个检查类字节相同；这是分批结果，没有单轮三项全绿，也不代表客户端、多人与所有门变体通过
