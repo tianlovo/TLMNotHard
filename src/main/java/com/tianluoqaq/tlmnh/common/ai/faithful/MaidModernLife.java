@@ -66,7 +66,7 @@ final class MaidModernLife {
         if (sleepingBed != null || !world.blockExists(point.x, point.y, point.z)) return;
         var raw = world.getTileEntity(point.x, point.y, point.z);
         if (!(raw instanceof TileEntityMaidBed bed) || !bed.complete()
-            || (world.getBlockMetadata(point.x, point.y, point.z) & 4) != 0) return;
+            || (world.getBlockMetadata(point.x, point.y, point.z) & 4) != 0 && !bed.isOwnedBy(maid)) return;
         sleepingBed = bed;
         if (!bed.claim(maid) || sleepingBed != bed || !current.getAsBoolean()) {
             if (sleepingBed == bed) wake();

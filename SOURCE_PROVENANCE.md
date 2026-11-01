@@ -1136,3 +1136,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - MaidPathNavigator只在实际增强profile的查询边界取得世界额度，覆盖root、呼吸预检和导航模式切换，F的原nullable查询与随机调用合同保持
 - 平台actor新增增强专用同步结果入口，区分没有导航条件、预算等待、实际路径和无路径；实例仍受既有世界/身份/授权保护
 - 初包与最终包只增强控制器及编译辅助类不同；MaidFaithfulBrain、FollowCoreMoveDriver及移植MaidNavigationManager的字节相同，旧F运行证据不改写为最终包新执行
+
+## 增强家园与生活决策
+
+- EnhancedLifeController为本工程独立实现，复用只读MaidLifeSensor、共享床租约与已有受保护蛋糕执行，不调用F或Legacy root
+- 增强家园/生活合法性、分组选择、候选重查与租约生命周期在独立组件内完成；家园活动变化通过协调器原有失效边界处理
+- 共享MaidModernLife允许实际持有床租约的同一女仆完成入睡，其他占用者仍拒绝；固定上游任务的原包与来源保持
+- 同块更换床TE以实际对象身份重新判断；替换后同tick合法重新入睡无需人工等待帧
+- 初/最终131玩法包只增强生活类字节变化，F自然睡眠44tick与租约CPU按其原执行层复用，不改写为最终包新执行

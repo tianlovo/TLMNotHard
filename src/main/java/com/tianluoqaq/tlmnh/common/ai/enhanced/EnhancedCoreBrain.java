@@ -26,6 +26,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final MaidModernPerception perception;
     private final MaidIntentArbiter arbiter = new MaidIntentArbiter();
     private final EnhancedNavigationController navigation;
+    private final EnhancedLifeController life;
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private Kind selectedKind;
@@ -41,6 +42,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         var budget = com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget.forWorld(maid.worldObj);
         var identity = maid.getUniqueID();
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
+        life = new EnhancedLifeController(maid, actor);
     }
 
     @Override
@@ -52,10 +54,13 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                 .peekPolicyRuntime();
             actor.beginFrame(runtime, token);
             perception.tick();
+            actor.maintainSleep();
             decisions++;
-            // 本切片尚无家园/战斗/骑乘/睡眠动作；不借原型或F补齐未实现活动
-            if (!maid.isTamed() || !actor.canBrainMoving()
-                || actor.isHomeModeEnable()
+            // 战斗和骑乘尚未接入；本组件持有的睡眠继续接受生活合法性/日程检查
+            var home = maid.getHomeArea();
+            boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
+            if (!maid.isTamed() || !actor.canBrainMoving() && !sleeping
+                || home.enabled() && !home.sameDimension()
                 || maid.getTask() != MaidTask.IDLE
                 || perception.nearestHostile() != null) {
                 stopSelected();
@@ -66,8 +71,21 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             boolean lowAir = actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
             if (lowAir || actor.isGoingToBreath() || actor.isEatBreatheItem())
                 frame.offer(Group.EMERGENCY, Kind.BREATHE, "air", 1, null);
+            if (home.enabled() && !home.containsMaid()) {
+                var center = home.center();
+                frame.offer(
+                    Group.COMMAND,
+                    Kind.HOME,
+                    "home:" + home.settings().dimension + ":" + center,
+                    1,
+                    new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
+                        center.x,
+                        center.y,
+                        center.z));
+            }
             var owner = actor.getOwner();
-            if (owner != null && !owner.isSpectator()
+            if (!home.enabled() && owner != null
+                && !owner.isSpectator()
                 && !owner.isDeadOrDying()
                 && owner.getWorldIdentity() == actor.getWorldIdentity()) {
                 double start = selectedKind == Kind.FOLLOW ? 2 : 6;
@@ -82,7 +100,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     "meal",
                     Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
                     null);
-            if (maid.isPickup()) {
+            life.offer(frame, runtime.getContext());
+            if (maid.isPickup() && !actor.isSleeping()) {
                 int count = 0;
                 for (var entity : perception.pickupEntities()) {
                     if (++count > 64) break;
@@ -114,6 +133,13 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     (com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload,
                     .5F,
                     2);
+                case HOME -> actor.setPositionWalkAndLook(
+                    (com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point) selected.payload,
+                    .7F,
+                    1);
+                case SLEEP, SNACK -> life.execute(
+                    (com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent) selected.payload,
+                    runtime.getContext());
                 case HEAL -> {
                     // 活跃进食不重复调用开始效果，紧急组仍可取消当前物品租约
                     if (!maid.getMealController()
@@ -161,7 +187,11 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     private void stopSelected() {
         navigation.cancel();
-        actor.cancelOwnedResources();
+        try {
+            life.cancel();
+        } finally {
+            actor.cancelOwnedResources();
+        }
         selectedKind = null;
         selectedTarget = null;
     }
@@ -192,6 +222,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public long transitions() {
         return transitions;
+    }
+
+    public EnhancedLifeController life() {
+        return life;
     }
 
     public EnhancedNavigationController navigation() {
