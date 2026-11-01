@@ -15,6 +15,7 @@ public final class MaidClientPreferences {
     private static Configuration configuration;
     private static boolean modelIconCache;
     private static int globalMaidSoundFrequency = 100;
+    private static boolean showChatBubbles = true;
 
     private MaidClientPreferences() {}
 
@@ -24,7 +25,13 @@ public final class MaidClientPreferences {
         modelIconCache = configuration.getBoolean("EnableModelIconCache", "model", false, "Cache builtin model icons");
         globalMaidSoundFrequency = configuration
             .getInt("GlobalMaidSoundFrequency", "sound", 100, 0, 100, "Global maid sound frequency percent");
+        showChatBubbles = configuration
+            .getBoolean("GlobalMaidShowChatBubble", "render", true, "显示普通聊天气泡 / Show ordinary maid chat bubbles");
         if (configuration.hasChanged()) configuration.save();
+    }
+
+    public static boolean showChatBubbles() {
+        return showChatBubbles;
     }
 
     public static int globalMaidSoundFrequency() {

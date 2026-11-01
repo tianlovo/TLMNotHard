@@ -70,6 +70,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
+    private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
+        this);
     private ItemStack offhand;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
 
@@ -97,6 +99,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.addObject(DATA_SOUND_PACK, DefaultMaidSoundPack.getInitSoundPackId());
         MaidHomeArea.register(dataWatcher);
         MaidConfigManager.defineSynchedData(dataWatcher);
+        com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager.defineSynchedData(dataWatcher);
     }
 
     @Override
@@ -122,7 +125,17 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             pickup.tick();
             syncOffhand();
             syncBackpackShowItem();
+            chatBubbleManager.tick();
         }
+    }
+
+    @Override
+    protected void damageEntity(DamageSource source, float amount) {
+        float before = getHealth();
+        super.damageEntity(source, amount);
+        // 目标版没有LivingDamageEvent，在原生护甲/吸收处理完成后响应实际扣血
+        if (worldObj != null && !worldObj.isRemote && chatBubbleManager != null && getHealth() < before)
+            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.RandomEmoji.addHurtChatText(this);
     }
 
     @Override
@@ -211,6 +224,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     public void tryPlayMaidPickupSound() {
         if (!worldObj.isRemote) worldSounds.tryPickup();
+    }
+
+    public com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager getChatBubbleManager() {
+        return chatBubbleManager;
     }
 
     public MaidItemUseState getItemUseState() {

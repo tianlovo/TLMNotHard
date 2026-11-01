@@ -33,13 +33,13 @@
       "path": "assets/touhou_little_maid/lang/zh_CN.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "6b70254a9584ab7df753429787cd32d425c32f0a7292d73cb5e7f21d43ac16b4"
+      "sha256": "6ef20752e16a90206454300fdfd46743db4acdb36625d82e3db60483f03b67f3"
     },
     {
       "path": "assets/touhou_little_maid/lang/en_US.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "56b941413c1ce318550dfc71118c8a472c1ecc8e6d3b46e22c7933563bac0ae9"
+      "sha256": "3820edf9de04a45487dd2f3dff01396ffe02b2c17b21393c17136e7ea19f0e64"
     },
     {
       "path": "assets/touhou_little_maid/textures/gui/bauble_button.png",
@@ -90,6 +90,116 @@
       "path": "assets/touhou_little_maid/textures/gui/maid_gui_config.png",
       "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_gui_config.png",
       "sha256": "f99babc401f67e19039743ce0fe258bdd8a28ad14a9a050d850244accd5ce0fd"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_01.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_01.png",
+      "sha256": "ec00c48e42636747199d01f032e308b52dc90375827ca7bab476414ced93053a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_02.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_02.png",
+      "sha256": "2a694780f1fc7b9fa19d44f4b441eb0f9ba7804f4fa3b69d034394743b5662b5"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_03.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_03.png",
+      "sha256": "55a90a967aae4311ae31e47e2e88fd3b81f2960ffb9d092e7ab8d46b5ea4cc53"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_04.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_04.png",
+      "sha256": "6f6ad1be7820ebf67a069ea0ce1a77e3d2d64f3517b425d6655363e97df43fce"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_05.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_05.png",
+      "sha256": "3dabf4218e859bc8b374907697febf10ef62de64f26dc0097b2e53f03e958e8d"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_06.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_06.png",
+      "sha256": "a39507d064f4cfc7f663e413bdd96c278069731ddc3e0fddc30157b97d19fa79"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_07.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_07.png",
+      "sha256": "02ce06ba0f22c380a602a5ce01c244fecaff4f9d6a43f0916c94d4ad1396cddb"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_08.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_08.png",
+      "sha256": "25dd8a6806fabaf94cea8b0e78291dcb05f8cb5c2490ad449839e3394b0b637a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_09.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_09.png",
+      "sha256": "23d62a4485c40bc65ee801c839e2023725db91c768f169617a065a9f21f4351e"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_10.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_10.png",
+      "sha256": "8b9d4635b1629fe6a50b2e0fc80e1416294e24fa8e7205b25c9e81aaa1d25979"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_11.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_11.png",
+      "sha256": "a45be849065e393d3025e2b7f7eca02209e3abad078a3bb942f9b01954454b82"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_12.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_12.png",
+      "sha256": "0479ccfd76a6dbb96fc1bf0d9b4aa0b5567f93d50dbefe01e472e567b7afc685"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_13.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_13.png",
+      "sha256": "5220eb4070b1d49d324182bc9337e38ee8e20719150457d22351fc3491fbebc5"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_14.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_14.png",
+      "sha256": "c9cc7043dcf21f638ba33d12e70112452ada9bae2bf3852935f4017fa11ce2cd"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_15.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_15.png",
+      "sha256": "11da5f3b8c1c1d2b88eb00d77bdcf36b9325d0f4c74236ca636bfa27a18e82c8"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_16.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_16.png",
+      "sha256": "426dc37701d61e0943a45e475f613e98b4680a9044a42eeb551b5043e936f380"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_17.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_17.png",
+      "sha256": "767c0ac57246c3a90380c5fb5ff04147d3f05526e27f17d7b0bcec71fb5d2e6e"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_18.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_18.png",
+      "sha256": "9aa1d2ea4ea26ca45687276932c53ffc952b194f73dab423eb6d8cfd71992558"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_19.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_19.png",
+      "sha256": "6175b2e45bc03958f4c88c342ecc6e30aaf5e8f8e1947cc8e34e3ee9c8adf8a1"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_20-24x24.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/chat_bubble/maid_emoji/emoji_20-24x24.png",
+      "sha256": "bd6a39497d221d8406830b4e5edbd8425e7322d91b5c5c788e9c0caa9e132924"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/chat_bubble/type2.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/chat_bubble/type2.png",
+      "sha256": "f2f850b76d2cdc10d68373308cf2d424a31a7f9a6efd28857c4a1b8dcefabcd3"
+    },
+    {
+      "path": "data/touhou_little_maid/chat_bubble/kaomoji.json",
+      "source": "src/main/resources/data/touhou_little_maid/chat_bubble/kaomoji.json",
+      "sha256": "fe297b1707c0df1ddcc3c8d7ccc9c5509a8e4a32b6563b3ca47370e2f56a7cd3"
     }
   ]
 }

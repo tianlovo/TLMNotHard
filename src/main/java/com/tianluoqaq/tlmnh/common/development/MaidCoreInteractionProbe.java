@@ -165,6 +165,8 @@ public final class MaidCoreInteractionProbe {
 
     public static void runBackItem(WorldServer world) {
         try (var f = new Fixture(world)) {
+            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
+            require(world.spawnEntityInWorld(f.maid), "registered production menu maid");
             var inventory = f.maid.getMaidInventory();
             inventory.setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
             var actual = f.maid.getBackpackShowItem();
@@ -213,8 +215,6 @@ public final class MaidCoreInteractionProbe {
                     .getWatchableObjectItemStack(18) == null,
                 "cleared tracker item");
             var proxy = new com.tianluoqaq.tlmnh.common.proxy.CommonProxy();
-            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
-            require(world.spawnEntityInWorld(f.maid), "registered production menu maid");
             var previous = System.getProperty("tlmnh.devCommands");
             try {
                 System.setProperty("tlmnh.devCommands", "false");
@@ -234,6 +234,148 @@ public final class MaidCoreInteractionProbe {
             TLMNotHard.LOG.info(
                 "TLMNH_BACK_ITEM_TEST_PASS tracker=copy-mutate-clear nbt=roundtrip metadata=v2-compatible menus=production-access-and-owner-guard rendering=unverified");
         }
+    }
+
+    public static void runBubbles(WorldServer world) {
+        boolean enabled = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji;
+        int rate = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate;
+        int image = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight;
+        int text = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight;
+        try (var f = new Fixture(world)) {
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji = true;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate = 20;
+            f.maid.ticksExisted = (int) Math.floorMod(
+                -(f.maid.getUniqueID()
+                    .getLeastSignificantBits() % 20),
+                20L);
+            var manager = f.maid.getChatBubbleManager();
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = 1;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 0;
+            manager.tick();
+            var decoded = com.tianluoqaq.tlmnh.common.network.MaidBubbleCodec.decode(
+                f.maid.getDataWatcher()
+                    .getWatchableObjectString(19));
+            require(
+                decoded.size() == 1 && decoded.entries()
+                    .firstEntry()
+                    .getValue()
+                    .isImage(),
+                "native routine image metadata");
+            manager.clear();
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = 0;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 1;
+            manager.tick();
+            require(
+                manager.getChatBubbleDataCollection()
+                    .size() == 1
+                    && !manager.getChatBubbleDataCollection()
+                        .entries()
+                        .firstEntry()
+                        .getValue()
+                        .text()
+                        .isEmpty(),
+                "native routine kaomoji loaded");
+            manager.clear();
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 0;
+            manager.tick();
+            require(
+                manager.getChatBubbleDataCollection()
+                    .isEmpty(),
+                "zero weights safely disable routine generation");
+            f.maid.hurtResistantTime = 0;
+            f.maid.attackEntityFrom(DamageSource.generic, 1);
+            require(
+                !manager.getChatBubbleDataCollection()
+                    .isEmpty(),
+                "actual native damage creates hurt bubble");
+            manager.clear();
+            manager.getChatBubbleDataCollection()
+                .put(
+                    System.currentTimeMillis() - 1,
+                    com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData
+                        .type2("expired"));
+            manager.forceUpdateChatBubble();
+            f.maid.ticksExisted = 5;
+            manager.tick();
+            require(
+                manager.getChatBubbleDataCollection()
+                    .isEmpty()
+                    && f.maid.getDataWatcher()
+                        .getWatchableObjectString(19)
+                        .equals("1;[]"),
+                "server expiry clears tracked metadata");
+            TLMNotHard.LOG.info(
+                "TLMNH_BUBBLES_TEST_PASS routine=image-and-text zero-weights=disabled native-hurt=observed expired-metadata=cleared client=unverified");
+        } finally {
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji = enabled;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate = rate;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = image;
+            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = text;
+        }
+    }
+
+    public static void setVisualFixture(EntityPlayerMP player, String action) {
+        var maid = AnimationLab.ownedSceneMaid(player);
+        maid.getChatBubbleManager()
+            .clear();
+        if (action.equals("clear")) maid.getMaidInventory()
+            .setInventorySlotContents(5, null);
+        else {
+            require(action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
+            maid.setModelId(action.equals("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
+            maid.setSitting(false);
+            maid.setPose(MaidPose.SLEEPING, false);
+            maid.getMaidInventory()
+                .setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
+            maid.getConfigManager()
+                .setShowBackItem(true);
+            maid.getConfigManager()
+                .setShowChatBubble(true);
+            long now = System.currentTimeMillis();
+            var bubbles = maid.getChatBubbleManager()
+                .getChatBubbleDataCollection();
+            bubbles.put(
+                now + 120000,
+                com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData
+                    .type2("(๑>◡<๑)"));
+            bubbles.put(
+                now + 120001,
+                com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData.create());
+            maid.getChatBubbleManager()
+                .forceUpdateChatBubble();
+        }
+        TLMNotHard.LOG.info(
+            "TLMNH_VISUAL_FIXTURE action={} bubbles={} back={}",
+            action,
+            maid.getChatBubbleManager()
+                .getChatBubbleDataCollection()
+                .size(),
+            maid.getBackpackShowItem() != null);
+    }
+
+    public static void openDefaultGui(EntityPlayerMP player) {
+        var maid = AnimationLab.ownedSceneMaid(player);
+        var mode = player.theItemInWorldManager.getGameType();
+        int slot = player.inventory.currentItem;
+        var held = player.inventory.getStackInSlot(slot);
+        boolean sneaking = player.isSneaking();
+        try {
+            player.theItemInWorldManager.setGameType(GameType.CREATIVE);
+            player.inventory.setInventorySlotContents(slot, null);
+            player.setSneaking(false);
+            require(
+                maid.interact(player)
+                    && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer,
+                "actual owner right-click opens original main");
+        } finally {
+            player.inventory.setInventorySlotContents(slot, held);
+            player.setSneaking(sneaking);
+            player.theItemInWorldManager.setGameType(mode);
+            player.sendPlayerAbilities();
+        }
+        AnimationLab.verifyObserver(player);
+        TLMNotHard.LOG
+            .info("TLMNH_DEFAULT_GUI_TEST_PASS route=actual-owned-interact original-main=true observer=restored");
     }
 
     public static void runEffects(WorldServer world) {

@@ -314,6 +314,22 @@ public final class MaidModelUiProbe {
                 "backItem",
                 maid.getBackpackShowItem() == null ? ""
                     : com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.itemId(maid.getBackpackShowItem()));
+            response.addProperty(
+                "chatBubbles",
+                maid.getChatBubbleManager()
+                    .getChatBubbleDataCollection()
+                    .size());
+            response.addProperty(
+                "showChatBubble",
+                maid.getConfigManager()
+                    .isChatBubbleShow());
+            response.addProperty(
+                "drawnChatBubbles",
+                com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.ChatBubbleRenderer
+                    .drawnCount(maid));
+            response.addProperty(
+                "backItemNativeCalls",
+                com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer.drawnCount(maid));
             response.addProperty("taskListOpen", original.isTaskListOpen());
             response.addProperty(
                 "maidSoundFrequency",

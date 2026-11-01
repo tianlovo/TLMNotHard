@@ -20,6 +20,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class LayerMaidBackItem {
 
     public void render(EntityMaid maid, BuiltinMaidModel model, ItemRenderer renderer) {
+        MaidBackItemRenderer.beginFrame(maid);
         ItemStack stack = maid.getBackpackShowItem();
         if (stack == null || stack.stackSize <= 0
             || stack.getMaxDamage() <= 0

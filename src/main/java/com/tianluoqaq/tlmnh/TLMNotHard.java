@@ -58,6 +58,7 @@ public final class TLMNotHard {
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();
         MaidAcquisitionConfig.load(event.getSuggestedConfigurationFile());
+        com.github.tartaricacid.touhoulittlemaid.datapack.KaomojiData.load();
         ModEntities.register(this);
         MaidLifeContent.register();
         MaidResurrectionContent.register();

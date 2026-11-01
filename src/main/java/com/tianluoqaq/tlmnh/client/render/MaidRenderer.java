@@ -34,6 +34,7 @@ public final class MaidRenderer extends RenderLiving {
     private final Map<EntityMaid, CachedModel> entities = new WeakHashMap<>();
     private final Set<String> failures = new HashSet<>();
     private int generation = -1;
+    private final com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.ChatBubbleRenderer chatBubbles = new com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.ChatBubbleRenderer();
 
     public MaidRenderer(BuiltinMaidModels models) {
         super(new ModelBase() {}, 0.5F);
@@ -49,6 +50,7 @@ public final class MaidRenderer extends RenderLiving {
             HeldItemGpuProbe.beforeMaidBody((EntityMaid) entity, model);
             mainModel = model;
             super.doRender(entity, x, y, z, yaw, partialTick);
+            chatBubbles.render((EntityMaid) entity, x, y, z, partialTick);
         } finally {
             mainModel = previous;
         }

@@ -16,7 +16,7 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
 
     public static final int FREQUENCY_DOWN = 24, FREQUENCY_UP = 25;
     public static final int PICK_TYPE_PREVIOUS = 26, PICK_TYPE_NEXT = 27, TOGGLE_DOOR = 28, TOGGLE_FENCE_GATE = 29,
-        TOGGLE_CLIMBING = 30, TOGGLE_BACK_ITEM = 31;
+        TOGGLE_CLIMBING = 30, TOGGLE_BACK_ITEM = 31, TOGGLE_CHAT_BUBBLE = 32;
 
     public MaidConfigContainer(InventoryPlayer inventory, EntityMaid maid) {
         super(inventory, maid);
@@ -24,7 +24,7 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
 
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
-        if (action < FREQUENCY_DOWN || action > TOGGLE_BACK_ITEM) return super.enchantItem(player, action);
+        if (action < FREQUENCY_DOWN || action > TOGGLE_CHAT_BUBBLE) return super.enchantItem(player, action);
         if (maid.worldObj.isRemote || !canInteractWith(player) || player.inventory.getItemStack() != null) return false;
         var config = maid.getConfigManager();
         switch (action) {
@@ -39,6 +39,7 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
             case TOGGLE_DOOR -> config.setOpenDoor(!config.isOpenDoor());
             case TOGGLE_FENCE_GATE -> config.setOpenFenceGate(!config.isOpenFenceGate());
             case TOGGLE_CLIMBING -> config.setActiveClimbing(!config.isActiveClimbing());
+            case TOGGLE_CHAT_BUBBLE -> config.setShowChatBubble(!config.isChatBubbleShow());
             case TOGGLE_BACK_ITEM -> config.setShowBackItem(!config.isShowBackItem());
             default -> {
                 return false;

@@ -151,6 +151,8 @@ public final class ClientDevelopmentRequest {
                     "config_door",
                     "config_gate",
                     "config_climb",
+                    "config_back_item",
+                    "config_bubble",
                     "sound_play",
                     "details",
                     "details_toggle",

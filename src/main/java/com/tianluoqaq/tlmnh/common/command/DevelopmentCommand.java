@@ -223,6 +223,20 @@ public final class DevelopmentCommand extends CommandBase {
                 .runBackItem((net.minecraft.world.WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "bubbles-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .runBubbles((WorldServer) sender.getEntityWorld());
+            return;
+        }
+        if (args.length == 3 && "lab-visual-fixture".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .setVisualFixture(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
+        if (args.length == 2 && "lab-open-default-gui".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe.openDefaultGui(getPlayer(sender, args[1]));
+            return;
+        }
         if (args.length == 1 && "effects-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runEffects((WorldServer) sender.getEntityWorld());

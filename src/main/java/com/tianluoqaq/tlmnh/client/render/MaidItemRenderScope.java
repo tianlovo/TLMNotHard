@@ -11,7 +11,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 /** 已支持物品的GL边界，矩阵栈与attrib分开恢复，不修改FBO或program */
-final class MaidItemRenderScope implements AutoCloseable {
+public final class MaidItemRenderScope implements AutoCloseable {
 
     private final int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
     private final int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
@@ -19,7 +19,7 @@ final class MaidItemRenderScope implements AutoCloseable {
     private final List<TextureState> textures = new ArrayList<>();
     private boolean attributesPushed, clientAttributesPushed, closed;
 
-    MaidItemRenderScope() {
+    public MaidItemRenderScope() {
         try {
             modelView = MatrixState.capture(GL11.GL_MODELVIEW);
             projection = MatrixState.capture(GL11.GL_PROJECTION);

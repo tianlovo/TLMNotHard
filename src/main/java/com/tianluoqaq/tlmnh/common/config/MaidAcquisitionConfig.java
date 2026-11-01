@@ -43,6 +43,7 @@ public final class MaidAcquisitionConfig {
             .get("acquisition", "naturalDimensions", new int[] { 0 }, "自然生成维度数字ID / Natural spawning dimension IDs")
             .getIntList();
         MaidHomeConfig.load(config);
+        MaidChatConfig.load(config);
         if (config.hasChanged()) config.save();
     }
 

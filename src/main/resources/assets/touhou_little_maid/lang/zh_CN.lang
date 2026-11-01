@@ -126,3 +126,4 @@ gui.touhou_little_maid.activity.work=工作
 gui.touhou_little_maid.activity.rest=睡觉
 gui.touhou_little_maid.activity.idle=休息
 tooltips.touhou_little_maid.schedule.desc=§7点击切换日程表
+gui.tlmnh.original.backpack_excluded=首版不包含扩容背包，当前使用原版无背包状态

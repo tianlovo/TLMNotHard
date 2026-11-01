@@ -126,3 +126,4 @@ gui.touhou_little_maid.activity.work=Work
 gui.touhou_little_maid.activity.rest=Rest
 gui.touhou_little_maid.activity.idle=Idle
 tooltips.touhou_little_maid.schedule.desc=§7Click to switch schedule
+gui.tlmnh.original.backpack_excluded=Expanded backpacks are outside the first release; the original empty backpack is used

@@ -55,6 +55,8 @@ public final class ClientProxy extends CommonProxy {
         ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
         ((IReloadableResourceManager) manager).registerReloadListener(
             com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE);
+        ((IReloadableResourceManager) manager).registerReloadListener(
+            new com.github.tartaricacid.touhoulittlemaid.client.resource.listener.EmojiReloadListener());
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
         RenderingRegistry.registerEntityRenderingHandler(MaidTombstoneEntity.class, new TombstoneRenderer());
         if (Boolean.getBoolean("tlmnh.devCommands")) {

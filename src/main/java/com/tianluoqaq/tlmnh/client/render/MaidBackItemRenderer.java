@@ -21,6 +21,16 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidBackItemRenderer {
 
+    private static final java.util.Map<EntityMaid, Integer> LAST_DRAWN = new java.util.WeakHashMap<>();
+
+    public static void beginFrame(EntityMaid maid) {
+        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 0);
+    }
+
+    public static int drawnCount(EntityMaid maid) {
+        return LAST_DRAWN.getOrDefault(maid, 0);
+    }
+
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
 
     private MaidBackItemRenderer() {}
@@ -77,6 +87,7 @@ public final class MaidBackItemRenderer {
                 int color = item.getColorFromItemStack(stack, pass);
                 GL11.glColor4f((color >> 16 & 255) / 255F, (color >> 8 & 255) / 255F, (color & 255) / 255F, 1);
                 renderer.renderItem(maid, stack, pass);
+                if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, pass + 1);
             }
         }
     }
