@@ -357,3 +357,11 @@ Indev120 的 ProtectionTests 在显式客户端范围注入故障，检查服务
 Indev121 的 MaidStepPhysicsTests 使用未登记的局部实体调用实际 Entity.moveEntity，避免随机 AI 或测试主人驱动掩盖碰撞差异
 新默认 0.6 可迈上原生床的 0.5625 碰撞面，旧 0.5 对照受阻；另用全新实体检查完整方块仍不可迈过，避免上次迈步的原生 ySize 平滑值污染场景
 该单项 L2 测试 1 tick 通过，JSON/XML/process 0；不声称自然世界 tick、完整导航、客户端或原版水域比较已通过
+
+## 相同水域的移植侧采集
+
+NaturalWaterPortTests独立选择水域，NaturalFollowPortTests继续保留历史平坦入口，共用合同驱动的Collector
+pilot资源中放置原字节合同，输出实际SHA；每轮新实体、20tick预热和自然START/END相位保持，不手动tick Brain、不强制姿态或重置RNG
+水域前后检查真实水源/玻璃及metadata，先清水后清壁，再还原模板外方块；子清理提前登记，父Fixture最后释放其主人/区块及模板
+最终候选121的水域单项1320tick通过，6次/1200帧完整，JSON/XML/process 0；首轮清理顺序错误原记录保留
+采集通过只用于控制与观察，不准入完整F/N、严格轨迹等价、多人或统计收益

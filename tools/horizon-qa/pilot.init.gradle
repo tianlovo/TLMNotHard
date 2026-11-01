@@ -16,6 +16,12 @@ gradle.projectsEvaluated {
         resources.srcDir(new File(tool, 'resources'))
         compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath + project.files(devJar)
     }
+    project.tasks.named(sources.processResourcesTaskName).configure {
+        from(project.file('tools/follow-natural-reference')) {
+            include 'contract.json', 'flat-contract-v1.json'
+            into 'tlmnh-follow-contracts'
+        }
+    }
     project.tasks.named(sources.compileJavaTaskName).configure {
         options.annotationProcessorPath = project.tasks.named('compileJava').get().options.annotationProcessorPath
     }
