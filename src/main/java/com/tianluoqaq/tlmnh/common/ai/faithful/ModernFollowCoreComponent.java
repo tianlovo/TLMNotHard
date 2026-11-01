@@ -27,7 +27,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
-/** 真实现代导航上的Follow/Move/Look核心，尚不包含完整Brain活动/感知/工作任务 */
+/** 原Brain首版保留活动的开发组件；完整忠实模式的原版对照准入仍待验收 */
 public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterNavigationActions {
 
     private final EntityMaid maid;
@@ -51,6 +51,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
+    private final MaidAbsentContentChecks absentContent = new MaidAbsentContentChecks();
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private MaidModernRanged rangedWork = new MaidModernRanged(false), rangedRide = new MaidModernRanged(true);
     private MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
@@ -96,6 +97,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         priority99.put("work", MaidActivityState.Activity.WORK);
         priority99.put("rest", MaidActivityState.Activity.REST);
         priority5.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
+        priority5.put("tlm_ride_idle", MaidActivityState.Activity.RIDE_IDLE);
         priority5.put("idle", MaidActivityState.Activity.IDLE);
         priority5.put("work", MaidActivityState.Activity.WORK);
         priority5.put("rest", MaidActivityState.Activity.REST);
@@ -183,6 +185,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                         idleBegRunning = true;
                         actor.nextWorldInt(1);
                     }
+                } else if (group == MaidActivityState.Activity.RIDE_IDLE) {
+                    absentContent.visitHomeMeal(actor::nextWorldInt);
                 } else if (group == MaidActivityState.Activity.REST) {
                     if (!actor.hasLifeWalkTarget() && actor.workTarget() == null
                         && bed.checkExtraStartConditions(actor)) {
@@ -210,6 +214,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 }
             }
             if (activities.active() == MaidActivityState.Activity.RIDE_IDLE) rideIdleLook.tryStart(actor, true);
+            if (activities.active() == MaidActivityState.Activity.IDLE) absentContent
+                .visitFindHomeMeal(!actor.hasLifeWalkTarget() && actor.workTarget() == null, actor::nextWorldInt);
             if (activities.active() == MaidActivityState.Activity.WORK
                 && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE
                 && actor.attackTarget() == null
@@ -236,6 +242,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 snowThrow.start(actor);
                 if (!actor.isCurrent()) return;
             }
+            if (activities.active() == MaidActivityState.Activity.IDLE)
+                absentContent.visitJoy(!actor.hasLifeWalkTarget() && actor.workTarget() == null, actor::nextWorldInt);
             var meal = activities.active() == MaidActivityState.Activity.WORK ? workMeal
                 : activities.active() == MaidActivityState.Activity.RIDE_WORK ? rideWorkMeal : null;
             if (meal != null && meal.checkExtraStartConditions(actor)) {
@@ -361,6 +369,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             if (snowRunning) snowThrow.stop(actor);
             if (vehicleRunning) vehicle.stop();
             heal.reset();
+            absentContent.reset();
             workMeal.reset();
             rideWorkMeal.reset();
             bed.reset();
@@ -401,6 +410,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             perception.clear();
             activities.reset();
             heal.reset();
+            absentContent.reset();
             workMeal.reset();
             rideWorkMeal.reset();
             bed.reset();

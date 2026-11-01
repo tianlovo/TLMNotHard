@@ -717,6 +717,13 @@ DOORS_TO_CLOSE 是跨 Brain 刷新的临时记忆；同类女仆通过缓存附�
 自然独立权限与实际关闭 199 tick、双女仆让门/刷新保留/后行关闭 128 tick 在同一玩法 JAR 通过，关联 Follow 190 tick 来自前轮未变检查类
 首轮夹具半径令跟随未启动，原始失败记录保留；只修夹具并复测两项，不能声称单轮三项全绿或客户端动画已验收
 提交前 import/注释整理影响六个类的调试行号，指令/描述符/常量一致，其余 1139 类与资源字节相同；最终字节 JAR 未另启运行
+
+## 原活动中的空内容检查
+
+Indev115 为未移植的野餐垫、游乐设施保留原任务查找失败前的检查计数与实体随机数消耗
+IDLE 两项只在原 WALK/TARGET_POS 前提满足时推进，RIDE_IDLE 用餐独立推进；行为刷新与取消重置这些计数，不新增内容或记忆
+原骑乘生命周期末尾的头/身体对齐已接入 updateRidden，两个可选 Create 类型保留精确排除
+完整忠实模式仍需原箭飞行基线、复杂水域和原版自然对照；这些局部修正不直接启用完整 F/N
 同一实现随运行环境升级时保持类型名稳定，第三方适配按提供方或能力区分
 当前门状态读取使用 `NativeDoorState`，原生导航反馈使用 `NativeNavigationStopSource` / `NativeNavigationStopState`
 限定干燥平台的开发适配为 `DryPlatformFollowActor` / `DryPlatformFollowTeleport`，名称保持其能力范围

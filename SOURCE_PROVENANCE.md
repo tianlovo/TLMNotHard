@@ -1002,3 +1002,15 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
   实读 GTNH 2.9.0 的 MalisisDoors `1.19.13-GTNH` 门、栅栏门与 TileEntity 字节码及 modifyVanillaDoors 配置
 - 木门通过原生开关入口保留锁定规则，动画栅栏门通过自身 TileEntity toggle；原生 OPENING 期间可能不接受关闭，适配层保留待关记录等待后续原任务，不强改动画状态
 - 现代分支关闭原型 Traversal 的门处理，旧原型入口保留；当前自然服务端证据不替代客户端动画、所有门变体、多人或完整 F/N 验收
+
+## 未保留内容的调度影响与骑乘朝向
+
+- Indev115 实读同一固定上游 MaidBrain、MaidCheckRateTask、MaidFindHomeMealTask、MaidJoyTask、MaidHomeMealTask
+- 首版无野餐垫与游乐设施，自有 `MaidAbsentContentChecks` 保留空查找之前的计数和随机数消耗，不注册未请求内容
+- IDLE 的 priority 6/7 分别按 WALK_TARGET 与 TARGET_POS 都不存在的前提推进两个独立 10+nextInt(10) 计数
+  RIDE_IDLE priority 5 的用餐检查无记忆前提，推进独立 50+nextInt(50) 计数；刷新与取消重置计数
+- 原 canAdd 为只读冷却查询；没有相应原方块、TileEntity 与座椅类型时，三个任务不启动，也没有后续随机数或有效记忆写入
+- 实读原 EntityMaid.rideTick 及生成的 maid_vehicle_rotate_blocklist：在 super 之后对齐载具头/身体朝向
+  两个可选排除 ID 为 Create 的 carriage_contraption 与 seat
+- 目标平台使用原生 updateRidden 生命周期，先执行 super，再写 rotationYawHead/renderYawOffset；保留两个精确注册 ID 排除，不按模组名扩大排除
+- 此项服务端朝向检查不代表客户端骑乘姿态与装备渲染已验收；原箭飞行基线、复杂水域与保留活动自然对照仍是完整 F 的准入项

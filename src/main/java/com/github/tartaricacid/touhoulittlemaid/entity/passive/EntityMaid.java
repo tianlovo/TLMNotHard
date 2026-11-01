@@ -164,6 +164,19 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         }
     }
 
+    /** 原rideTick在原生骑乘更新之后对齐头部/身体，保留上游两个可选Create类型排除 */
+    @Override
+    public void updateRidden() {
+        super.updateRidden();
+        var vehicle = ridingEntity;
+        if (vehicle == null) return;
+        String type = net.minecraft.entity.EntityList.getEntityString(vehicle);
+        if (!"create:carriage_contraption".equals(type) && !"create:seat".equals(type)) {
+            rotationYawHead = vehicle.rotationYaw;
+            renderYawOffset = vehicle.rotationYaw;
+        }
+    }
+
     @Override
     public void moveEntityWithHeading(float strafe, float forward) {
         if (brain != null && brain.getBreathController()
