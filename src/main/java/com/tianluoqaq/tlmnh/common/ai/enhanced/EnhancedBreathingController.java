@@ -18,6 +18,7 @@ public final class EnhancedBreathingController {
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final EnhancedNavigationController navigation;
+    private final EnhancedFollowController follow;
     private final MaidBreathAirStopTask stop = new MaidBreathAirStopTask();
     private Entity attemptedMount;
     private boolean attemptedSit;
@@ -28,10 +29,11 @@ public final class EnhancedBreathingController {
     private long nextSearch, nextNearbySearch, lastTick = Long.MIN_VALUE;
 
     public EnhancedBreathingController(EntityMaid maid, ModernFollowCoreActor actor,
-        EnhancedNavigationController navigation) {
+        EnhancedNavigationController navigation, EnhancedFollowController follow) {
         this.maid = maid;
         this.actor = actor;
         this.navigation = navigation;
+        this.follow = follow;
     }
 
     public void stopIfRecovered() {
@@ -125,6 +127,10 @@ public final class EnhancedBreathingController {
         candidates.clear();
         candidateIndex = 0;
         nextSearch = now + EXHAUSTED_RETRY_TICKS;
+        if (follow.recoverForAir() && actor.isCurrent()) {
+            actor.setGoingToBreath(false);
+            actor.eraseTargetPos();
+        }
     }
 
     private static double distanceSquared(Point a, Point b) {

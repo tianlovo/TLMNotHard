@@ -19,6 +19,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.potion.Potion;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
@@ -42,6 +43,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -678,7 +680,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public boolean teleportToOwner(Owner value) {
-        return teleportToOwner(value, () -> true, false);
+        return teleportToOwner(value, () -> true, false, false);
     }
 
     public boolean ownerMatchesEntity(Owner value, EntityLivingBase entity) {
@@ -686,11 +688,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 增强恢复使用实际落点身体空间，并在Forge传送回调后复核本次权限和地形 */
-    public boolean teleportEnhancedToOwner(Owner value, java.util.function.BooleanSupplier authorized) {
-        return teleportToOwner(value, authorized, true);
+    public boolean teleportEnhancedToOwner(Owner value, java.util.function.BooleanSupplier authorized,
+        boolean requireAir) {
+        return teleportToOwner(value, authorized, true, requireAir);
     }
 
-    private boolean teleportToOwner(Owner value, java.util.function.BooleanSupplier authorized, boolean enhanced) {
+    private boolean teleportToOwner(Owner value, java.util.function.BooleanSupplier authorized, boolean enhanced,
+        boolean requireAir) {
         var player = owner(value).player;
         navigationLease();
         teleportAttempts = 0;
@@ -722,7 +726,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     z - MathHelper.floor_double(maid.posZ));
             if (!world.getCollidingBoundingBoxes(maid, translated)
                 .isEmpty()) continue;
+            if (requireAir && !safeAirLanding(x, y, z)) continue;
             if (enhanced) {
+                if (!authorized.getAsBoolean()) return false;
                 var event = new EnderTeleportEvent(maid, x + .5, y, z + .5, 0);
                 if (MinecraftForge.EVENT_BUS.post(event) || !authorized.getAsBoolean()
                     || event.targetX != x + .5
@@ -742,6 +748,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                                 .getOffsetBoundingBox(x + .5 - maid.posX, y - maid.posY, z + .5 - maid.posZ))
                         .isEmpty())
                     return false;
+                if (requireAir && !safeAirLanding(x, y, z)) return false;
             }
             if (!authorized.getAsBoolean()) return false;
             navigationLease();
@@ -753,6 +760,24 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return true;
         }
         return false;
+    }
+
+    private boolean safeAirLanding(int x, int y, int z) {
+        // 低氧恢复后会站起，不能只验证当前游泳姿态的眼高与身体盒
+        double width = Math.max(maid.width, MaidEntityPose.STANDING.width);
+        double height = Math.max(maid.height, MaidEntityPose.STANDING.height);
+        for (int level = y; level < y + height; level++) if (!givesAir(new Point(x, level, z))) return false;
+        return world
+            .getCollidingBoundingBoxes(
+                maid,
+                AxisAlignedBB.getBoundingBox(
+                    x + .5 - width / 2,
+                    y,
+                    z + .5 - width / 2,
+                    x + .5 + width / 2,
+                    y + height,
+                    z + .5 + width / 2))
+            .isEmpty();
     }
 
     public boolean isLookTargetRegistered() {

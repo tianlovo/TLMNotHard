@@ -67,12 +67,12 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         combat = new EnhancedCombatController(maid, actor, perception);
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
-        breathing = new EnhancedBreathingController(maid, actor, navigation);
+        follow = new EnhancedFollowController(maid, actor);
+        breathing = new EnhancedBreathingController(maid, actor, navigation, follow);
         climb = new EnhancedClimbController(actor);
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
         snowball = new EnhancedSnowballController(maid, actor, perception);
         buoyancy = new EnhancedBuoyancyController(maid, actor);
-        follow = new EnhancedFollowController(maid, actor);
     }
 
     @Override
