@@ -60,6 +60,11 @@ public interface FollowMoveActor {
 
         BlockPos currentBlockPosition();
 
+        default Vec3 currentPosition() {
+            var pos = currentBlockPosition();
+            return new Vec3(pos.x + .5, pos.y + .5, pos.z + .5);
+        }
+
         float getSpeedModifier();
 
         int getCloseEnoughDistance();

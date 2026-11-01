@@ -7,6 +7,7 @@ import java.util.UUID;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
@@ -586,9 +587,61 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void setAirWalkAndLook(Point pos, float speed, int closeDistance) {
+        setPositionWalkAndLook(pos, speed, closeDistance);
+    }
+
+    public void setPositionWalkAndLook(Point pos, float speed, int closeDistance) {
         guard();
         look = pos;
         walk = new PositionWalk(pos, speed, closeDistance);
+    }
+
+    public boolean isWithinHome(BlockPos pos) {
+        guard();
+        return maid.getHomeArea()
+            .contains(pos.x, pos.y, pos.z);
+    }
+
+    public Vec3 entityPosition() {
+        guard();
+        return new Vec3(maid.posX, maid.posY, maid.posZ);
+    }
+
+    public Vec3 dangerPosition() {
+        guard();
+        var entity = perception.nearestHostile();
+        return entity == null ? null : new Vec3(entity.posX, entity.posY, entity.posZ);
+    }
+
+    public Vec3 findLandAway(int radius, int vertical, Vec3 avoid) {
+        guard();
+        return MaidLandRandomSampler.getPosAway(new WorldFallback(), radius, vertical, avoid);
+    }
+
+    public void setVectorWalkTarget(Vec3 pos, float speed, int closeDistance) {
+        guard();
+        walk = new PositionWalk(
+            new Point(MathHelper.floor_double(pos.x), MathHelper.floor_double(pos.y), MathHelper.floor_double(pos.z)),
+            speed,
+            closeDistance);
+    }
+
+    public void leaveMountOrSitForDanger() {
+        guard();
+        var mount = maid.ridingEntity;
+        if (mount != null && mount.riddenByEntity instanceof EntityPlayer) return;
+        if (maid.isSitting()) maid.setSitting(false);
+        if (maid.ridingEntity != null) maid.mountEntity(null);
+    }
+
+    public void clearSleepingIfPresent() {
+        guard();
+        if (!maid.hasPose(MaidPose.SLEEPING)) return;
+        var life = maid.getBrainCoordinator()
+            .getLifeController();
+        if (life.isSleeping()) life.cancel();
+        guard();
+        maid.setPose(MaidPose.SLEEPING, false);
     }
 
     public boolean activeClimbing() {
@@ -849,6 +902,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return speed;
         }
 
+        public Vec3 currentPosition() {
+            guard();
+            return new Vec3(entity.posX, entity.posY, entity.posZ);
+        }
+
         public int getCloseEnoughDistance() {
             guard();
             return closeEnough;
@@ -879,6 +937,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 MathHelper.floor_double(owner.player.posX),
                 MathHelper.floor_double(owner.player.posY),
                 MathHelper.floor_double(owner.player.posZ));
+        }
+
+        public Vec3 currentPosition() {
+            guard();
+            return new Vec3(owner.player.posX, owner.player.posY, owner.player.posZ);
         }
 
         public float getSpeedModifier() {
@@ -921,7 +984,24 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
     }
 
-    private final class WorldFallback implements FollowFallbackSampler.Actor {
+    private final class WorldFallback implements MaidLandRandomSampler.Actor {
+
+        public boolean solid(BlockPos pos) {
+            guard();
+            if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
+            var block = world.getBlock(pos.x, pos.y, pos.z);
+            block.setBlockBoundsBasedOnState(world, pos.x, pos.y, pos.z);
+            var box = block.getCollisionBoundingBoxFromPool(world, pos.x, pos.y, pos.z);
+            if (box == null) return false;
+            double x = box.maxX - box.minX, y = box.maxY - box.minY, z = box.maxZ - box.minZ;
+            return (x + y + z) / 3 >= .7291666666666666D || y >= 1;
+        }
+
+        public boolean water(BlockPos pos) {
+            guard();
+            return world.blockExists(pos.x, pos.y, pos.z) && world.getBlock(pos.x, pos.y, pos.z)
+                .getMaterial() == Material.water;
+        }
 
         public Vec3 position() {
             guard();

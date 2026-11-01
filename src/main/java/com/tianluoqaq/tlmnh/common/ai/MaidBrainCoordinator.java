@@ -134,7 +134,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             runtime.invalidate(InvalidationReason.OWNER_CHANGED);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
-        if (maid.getHomeArea()
+        if (!runtime.requiresAfterNativeNavigation() && maid.getHomeArea()
             .refreshActivity()) {
             runtime.invalidate(InvalidationReason.HOME_ACTIVITY_CHANGED);
             home.requestReturn();

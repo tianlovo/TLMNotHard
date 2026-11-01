@@ -92,7 +92,7 @@ public final class FollowFallbackSampler {
         return best == null ? null : new Vec3(best.x + 0.5D, best.y, best.z + 0.5D);
     }
 
-    private static boolean mobRestricted(Actor actor, int range) {
+    static boolean mobRestricted(Actor actor, int range) {
         if (!actor.hasRestriction()) return false;
         BlockPos center = Objects.requireNonNull(actor.restrictionCenter(), "restriction center");
         Vec3 position = Objects.requireNonNull(actor.position(), "actor position");
@@ -103,8 +103,7 @@ public final class FollowFallbackSampler {
         return x * x + y * y + z * z < distance * distance;
     }
 
-    private static BlockPos direction(Actor actor, int horizontalRange, int verticalRange, double x, double z,
-        double angle) {
+    static BlockPos direction(Actor actor, int horizontalRange, int verticalRange, double x, double z, double angle) {
         double base = mappedAtan2(z, x) - HALF_PI_FLOAT;
         // 两个乘减先在 float 完成，随后才拓宽为 double
         double heading = base + (double) (2.0F * entityFloat(actor) - 1.0F) * angle;
@@ -116,7 +115,7 @@ public final class FollowFallbackSampler {
         return new BlockPos(mappedFloor(dx), dy, mappedFloor(dz));
     }
 
-    private static BlockPos absolutePosition(Actor actor, int range, BlockPos offset) {
+    static BlockPos absolutePosition(Actor actor, int range, BlockPos offset) {
         int x = offset.x, z = offset.z;
         if (actor.hasRestriction() && range > 1) {
             BlockPos center = Objects.requireNonNull(actor.restrictionCenter(), "restriction center");

@@ -1,10 +1,16 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidAwaitTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearHurtTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearSleepTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunAwayTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -15,6 +21,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
+    private final MaidActivityState activities;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
@@ -22,6 +29,13 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private final MaidClimbTask climb = new MaidClimbTask();
     private final MaidPickupEntitiesTask pickup = new MaidPickupEntitiesTask(.6F);
+    private final MaidPanicTask panic = new MaidPanicTask();
+    private final MaidAwaitTask await = new MaidAwaitTask();
+    private final MaidClearHurtTask clearHurt = new MaidClearHurtTask();
+    private final MaidRunAwayTask runAway = new MaidRunAwayTask(.7F, false);
+    private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
+    private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
+    private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
     private boolean climbRunning;
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
@@ -35,6 +49,15 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         actor = new ModernFollowCoreActor(maid);
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
+        activities = new MaidActivityState(maid, actor, perception);
+        // 原Activity.hashCode为name.hashCode；保持原HashMap组顺序与注册顺序
+        priority99.put("core", null);
+        priority99.put("tlm_ride_idle", MaidActivityState.Activity.RIDE_IDLE);
+        priority99.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
+        priority99.put("tlm_ride_rest", MaidActivityState.Activity.RIDE_REST);
+        priority99.put("idle", MaidActivityState.Activity.IDLE);
+        priority99.put("work", MaidActivityState.Activity.WORK);
+        priority99.put("rest", MaidActivityState.Activity.REST);
     }
 
     @Override
@@ -53,6 +76,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lastEntityTick = maid.ticksExisted;
             hasTick = true;
             perception.tick();
+            activities.initialize();
             if (!actor.canBrainMoving()) {
                 actor.stopNavigation();
                 actor.eraseWalkTarget();
@@ -74,6 +98,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 breathStop.start(actor);
             }
             if (lookState.getStatus() == FollowCoreLookDriver.Status.STOPPED) look.tryStart(actor, lookState, time);
+            actor.nextWorldInt(1);
+            panic.start(activities);
+            actor.nextWorldInt(1);
+            await.start(actor);
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
@@ -81,10 +109,29 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }
+            // 原Brain只在活动组入口检查active；ClearHurt切换活动后同组后项仍会继续尝试启动
+            if (activities.active() == MaidActivityState.Activity.PANIC) {
+                actor.nextWorldInt(1);
+                clearHurt.start(activities);
+                var danger = actor.dangerPosition();
+                if (runAway.checkExtraStartConditions(actor, danger)) {
+                    actor.nextWorldInt(1);
+                    runAway.start(actor, actor.dangerPosition());
+                }
+            }
             if (!perception.pickupEntities()
                 .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
                 actor.nextWorldInt(1);
                 pickup.start(maid, perception, actor);
+            }
+            for (var entry : priority99.entrySet()) {
+                if (entry.getValue() == null) {
+                    actor.nextWorldInt(1);
+                    clearSleep.start(activities, actor);
+                } else if (activities.active() == entry.getValue()) {
+                    actor.nextWorldInt(1);
+                    schedule.start(activities);
+                }
             }
             if (climbRunning) {
                 if (time > climbDeadline || !climb.canStillUse(actor)) {
@@ -106,6 +153,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             actor.cancelOwnedResources();
         } finally {
             perception.clear();
+            activities.reset();
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
@@ -119,6 +167,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
 
     public MaidModernPerception getPerception() {
         return perception;
+    }
+
+    public MaidActivityState getActivities() {
+        return activities;
     }
 
     public FollowCoreLookDriver.State getLookState() {

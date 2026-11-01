@@ -878,3 +878,12 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - HurtBy 的环境伤害/空源与旧攻击者保留相位，以及活体 LOOK 的可见缓存依赖均按读取合同适配；完整活动与原版自然运行对照继续待办
 
 - 拾取夹具同时核对目标版 `EntityItem` 半高 yOffset 与 Horizon-QA 出生位置 API，使用有效出生高度和实体实时坐标；实际观察失败与定向纠正单独保留
+
+- Indev104 从固定 TLM 提交移植 Panic、ClearHurt、Await、RunAway/SetWalkTargetAwayFrom、UpdateActivityFromSchedule 与 ClearSleep
+  保留原包名及 MIT 来源头
+- 已实读原 Brain 优先级、Task 的 enablePanic 与坐骑危险离座条件、三种日程；当前首版保留任务没有 workPointTask，特殊多乘客载具接口未引入
+- 固定 mapped LandRandomPos/RandomPos/GoalUtils/Behavior/Brain/Activity/BlockPosTracker 用于核对候选、生命周期及活动组遍历，新增适配位于自有包
+- Activity 的 hashCode 来自名称字符串，优先级 99 按原注册顺序放入同等 HashMap；保留同帧切换后后续活动组再次检查，而不是固定 CORE 先于活动
+- 原 BlockStateBase.calculateSolid 默认按碰撞包围盒平均尺寸或高度判断，目标版据实际 AABB 映射；现代强制 solid 属性尚无同名目标元数据
+
+- 补读原 `SchedulePos` 确认独立的 40 tick 实体侧限制区/返回/传送流程；本批仅原日程活动 Task 与既有锚点适配，该实体流程及限制区锁存留作下一批
