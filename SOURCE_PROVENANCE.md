@@ -963,3 +963,17 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 自有 `MaidSnowballAnimation` 保存非 NBT 计时与观测序号，用实体事件 47 向实际跟踪端同步，不强行在 Bedrock 新增原源没有的特殊动作
 - 实读正式版 EndlessIDs 1.7.4 的 ChunkBiomeHook JAR API，HQA 使用 getBiomeShortArray 并恢复原数组；生产不引入该测试依赖
 - 原版随机输入复现、第一次 650 tick 超时原因、完整任务刷新工作记忆、特殊座椅和实际 Gecko 雪球画面仍待后续验收
+
+## 原弓箭活动与目标平台箭执行
+
+- Indev112 从固定 TLM 提交移植 `IRangedAttackTask`、`TaskBowAttack`、`MaidRangedWalkToTarget`、`MaidAttackStrafingTask`、`MaidShootTargetTask`，保留原包名与来源头
+- 实读原选敌先 lastHurtBy、再 NEAREST_LIVING 的顺序；远程 TargetingConditions 每帧独立使用配置范围、隐身/盔甲和原生视线，不借用固定 16 格可见缓存作选敌列表
+- 实读原 Shoot 的任意物品使用检查、停止使用后发射、20 tick 蓄力和属性冷却；共享使用计数在 living 开头推进，默认使用速度 1、射击冷却 2
+- WORK/RIDE_WORK 独立持有射击 Behavior；地面组增加原 Walk/Strafe，骑乘组没有它们；1200 tick 期限、原活动切换后运行保留和停止重置规则保持
+- 实读映射 BowItem 的默认射程 15、Mth.rotateIfNecessary 的零角限制及 LivingEntity 可见性条件；走位使用已有 MaidMoveControl 的实际 STRAFE 操作
+- 自有 `MaidModernRanged`、`MaidRangedActor` 适配相位与当前帧目标；持续使用租约绑定策略代数、主人、任务和手持身份，不按上一帧 tick 自动失效
+- 与原型共用原生箭求解、安全检查和生成后资源结算；原型保留 12 格、独立 draw20、移动提前量与暴击规则，现代入口不继承这些准入
+- 本批目标平台基础箭固定速度 3、无随机散布、无额外暴击，补偿原生重力/阻力并瞄准目标当前中心，保留 Power/Punch/Flame/Infinity、双手优先弹药和原好感基础伤害倍率
+- 原 O 的无重力、距离相关速度/散布、现代箭随机基础伤害与该目标平台执行配置不同；此处不是 O 等价证明，也不是完整 F/N 或同物理 F-R/N 收益结论
+- 当前武器支持目标平台 ItemBow 与原生基础箭；QuickCharge 默认适配为 0，实装 JAR 名称扫描未发现对应符号，不据此声称所有模组都没有语义相似附魔
+- 全工作记忆刷新、真实 GUI Brain 暂停、完整分类界面、现代额外弹药/自定义箭接口及完整原版对照仍待后续实现或验收

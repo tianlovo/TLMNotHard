@@ -13,11 +13,24 @@ public final class MaidCombatAttributes {
     public static final IAttribute ENTITY_REACH = new RangedAttribute("tlmnh.entityReach", 2, 0, 1024)
         .setShouldWatch(true);
 
+    public static final IAttribute SHOOT_COOLDOWN = new RangedAttribute(
+        "tlmnh.maidShootCooldown",
+        2,
+        0,
+        Integer.MAX_VALUE).setShouldWatch(true);
+    public static final IAttribute USE_ITEM_SPEED = new RangedAttribute(
+        "tlmnh.maidUseItemSpeed",
+        1,
+        Integer.MIN_VALUE,
+        Integer.MAX_VALUE).setShouldWatch(true);
+
     private MaidCombatAttributes() {}
 
     public static void register(BaseAttributeMap attributes) {
         registerIfAbsent(attributes, ATTACK_SPEED);
         registerIfAbsent(attributes, ENTITY_REACH);
+        registerIfAbsent(attributes, SHOOT_COOLDOWN);
+        registerIfAbsent(attributes, USE_ITEM_SPEED);
     }
 
     private static void registerIfAbsent(BaseAttributeMap attributes, IAttribute attribute) {

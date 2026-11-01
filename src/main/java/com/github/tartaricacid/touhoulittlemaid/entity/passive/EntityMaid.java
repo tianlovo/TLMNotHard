@@ -143,6 +143,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void onLivingUpdate() {
+        if (!worldObj.isRemote && itemUses != null) itemUses.advanceUse(
+            (int) getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.USE_ITEM_SPEED)
+                .getAttributeValue());
         if (aquatic != null) aquatic.beforeLivingUpdate();
         super.onLivingUpdate();
         if (aquatic != null) aquatic.afterLivingUpdate();

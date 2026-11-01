@@ -1,12 +1,12 @@
 # Touhou Little Maid (Not Hard) _(TLMNotHard)_
 
-将 Touhou Little Maid 移植到 GTNH 2.9.0 RC2，保留女仆核心玩法，改进行为 AI
+将 Touhou Little Maid 移植到 GTNH 2.9.0，保留女仆核心玩法，改进行为 AI
 
 **Indev**：正在开发，尚无正式版本，当前构建用于开发和测试
 
 简体中文 | [English](README.en.md)
 
-本仓库是 Minecraft 1.20.1 版 Touhou Little Maid 的移植工程，目标为 GTNH 2.9.0 RC2 的客户端与独立服务端
+本仓库是 Minecraft 1.20.1 版 Touhou Little Maid 的移植工程，目标为 GTNH 2.9.0 的客户端与独立服务端
 本页记录开发版的范围、进度和构建方式，完整玩法、安装更新说明及发布验收结果将在正式版发布前补齐
 
 ## 目录
@@ -31,7 +31,7 @@
 - 可配置自然生成及初始绑定魂符，神龛复活并保留上游生命代价
 - 偷吃与最小零食柜，睡觉与女仆床，核心配方融入 GTNH 科技进度
 - 改进非生成式行为 AI，覆盖感知记忆、指令约束、动作中断和失败恢复，与原版 TLM 1.20.1 做对照测评
-- 非魔法远程预瞄，首版先支持弓箭，按 RC2 实际重力与阻力补偿目标移动和下坠
+- 非魔法远程预瞄，首版先支持弓箭，按 2.9.0 实际重力与阻力补偿目标移动和下坠
 
 首版不包含 LLM、空闲和战斗之外的工作、其他非核心 TLM 物品、换主人或 YSM 等额外内容模组联动
 GTNH 维护仓和 CropsNH 育种留作后续扩展，简体中文优先，英文补齐
@@ -48,13 +48,13 @@ $env:VERSION = "0.1.0-indev.local"
 ./gradlew.bat build
 ```
 
-构建产物位于 `build/libs/`；部署到独立的 RC2 测试客户端和服务端时，使用同一候选版本
+构建产物位于 `build/libs/`；部署到独立的 2.9.0 正式版测试客户端和服务端时，使用同一候选版本
 本项目尚未完成正式发布验收，实际游玩的 Prism 实例在正式分发前保持原样
 
 ### 依赖
 
-- 目标整合包：GTNH 2.9.0 RC2，Minecraft 1.7.10，Forge 10.13.4.1614
-- UniMixins：使用 RC2 自带版本，提供原生导航停止反馈所需的 Mixin 引导
+- 目标整合包：GTNH 2.9.0，Minecraft 1.7.10，Forge 10.13.4.1614
+- UniMixins：使用 2.9.0 自带版本，提供原生导航停止反馈所需的 Mixin 引导
 - JDK 25：启动 Gradle、运行测试及游戏；JDK 17：供 Jabel 编译，目标字节码为 Java 8
 - Gradle Wrapper 固定 9.7.1，GTNHGradle 固定 2.0.33，Blowdryer 固定 0.2.2
 - Python 3：运行独立校验脚本；Node.js 22 或更新版本：运行 README 格式检查
@@ -77,7 +77,7 @@ npx --yes markdownlint-cli2@0.24.0
 
 IntelliJ IDEA 请打开源码根目录，以 Gradle 工程导入，构建和测试委托给 Gradle
 项目 SDK 与 Gradle JVM 使用 Java 25，源码语言级别为 17，目标字节码为 8
-本机专用 RC2 测试服和客户端的运行入口见 [IDEA 配置](DEVELOPMENT.md#intellij-idea-本机配置)
+本机专用 2.9.0 正式版测试服和客户端的运行入口见 [IDEA 配置](DEVELOPMENT.md#intellij-idea-本机配置)
 
 ## 开发状态
 
@@ -95,7 +95,7 @@ IntelliJ IDEA 请打开源码根目录，以 Gradle 工程导入，构建和测�
 ## 参与贡献
 
 问题和建议请提交到 [Issues](https://github.com/tianlovo/TLMNotHard/issues)，欢迎提交 PR
-较大的玩法或架构改动请先讨论范围，并附复现条件、验证方式及所用 RC2 环境
+较大的玩法或架构改动请先讨论范围，并附复现条件、验证方式及所用 2.9.0 环境
 
 新增独立适配文件使用 `com.tianluoqaq.tlmnh` 根包名；移植的上游文件保留原包名、来源与适用许可
 提交使用简体中文约定式提交，新增中文说明保持自然、准确，中文句尾不加句号

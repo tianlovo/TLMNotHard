@@ -1,12 +1,12 @@
 # Touhou Little Maid (Not Hard) _(TLMNotHard)_
 
-A Touhou Little Maid port for GTNH 2.9.0 RC2, retaining core maid gameplay and improving behaviour AI
+A Touhou Little Maid port for GTNH 2.9.0, retaining core maid gameplay and improving behaviour AI
 
 **Indev**: under development, with no stable release; current builds are for development and testing
 
 [简体中文](README.md) | English
 
-This project ports the Minecraft 1.20.1 version of Touhou Little Maid to GTNH 2.9.0 RC2,
+This project ports the Minecraft 1.20.1 version of Touhou Little Maid to GTNH 2.9.0,
 with support for the client and dedicated server.
 This page covers the development scope, progress and build instructions.
 Complete gameplay, installation, update instructions and acceptance results will be added before the stable release.
@@ -36,7 +36,7 @@ The first stable release is planned to include the following; this is a scope li
 - Improved non-generative behaviour AI, covering perception, memory, command constraints, interruption and failure recovery,
   benchmarked against the original TLM 1.20.1
 - Predictive aiming for non-magical ranged weapons, starting with bows and compensating for target motion and arrow drop
-  using RC2's actual gravity and drag
+  using 2.9.0's actual gravity and drag
 
 The first release excludes LLMs, jobs beyond idle and combat, other non-core TLM items, ownership transfer,
 and integrations with other content mods such as YSM.
@@ -54,13 +54,13 @@ $env:VERSION = "0.1.0-indev.local"
 ./gradlew.bat build
 ```
 
-Artifacts are written to `build/libs/`. Use the same candidate on the separate RC2 test client and server.
+Artifacts are written to `build/libs/`. Use the same candidate on the separate 2.9.0 test client and server.
 Release acceptance is incomplete; the Prism instance used for regular play remains untouched until formal distribution.
 
 ### Dependencies
 
-- Target pack: GTNH 2.9.0 RC2, Minecraft 1.7.10, Forge 10.13.4.1614
-- UniMixins as included in RC2, for the native navigation stop feedback hook
+- Target pack: GTNH 2.9.0, Minecraft 1.7.10, Forge 10.13.4.1614
+- UniMixins as included in 2.9.0, for the native navigation stop feedback hook
 - JDK 25 for Gradle, tests and the game; JDK 17 for Jabel compilation targeting Java 8 bytecode
 - Gradle Wrapper 9.7.1, GTNHGradle 2.0.33 and Blowdryer 0.2.2, pinned in the build
 - Python 3 for standalone verification scripts; Node.js 22 or newer for README linting
@@ -85,7 +85,7 @@ Ordinary commits do not receive individual tags.
 
 Open the source root in IntelliJ IDEA as a Gradle project and delegate builds and tests to Gradle.
 Use Java 25 for the project SDK and Gradle JVM, language level 17 and target bytecode 8.
-The local RC2 test server and client entries are described in [IDEA setup](DEVELOPMENT.md#intellij-idea-本机配置).
+The local 2.9.0 test server and client entries are described in [IDEA setup](DEVELOPMENT.md#intellij-idea-本机配置).
 
 ## Development status
 
@@ -105,7 +105,7 @@ See [Development notes](DEVELOPMENT.md), [Source provenance](SOURCE_PROVENANCE.m
 ## Contributing
 
 Use [Issues](https://github.com/tianlovo/TLMNotHard/issues) for questions and suggestions. PRs are welcome.
-Discuss substantial gameplay or architecture changes first, and include reproduction steps, validation and the RC2 setup.
+Discuss substantial gameplay or architecture changes first, and include reproduction steps, validation and the 2.9.0 setup.
 
 New standalone adaptation files use the `com.tianluoqaq.tlmnh` package root.
 Ported upstream files keep their original packages, provenance and applicable licences.

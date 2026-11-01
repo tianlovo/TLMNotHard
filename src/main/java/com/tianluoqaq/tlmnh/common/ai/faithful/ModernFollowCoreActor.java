@@ -48,7 +48,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
     MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
-    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor {
+    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -57,6 +57,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final MaidCakeAction cake;
     private final TaskAttack attack = new TaskAttack();
     private Object shieldOwner;
+    private final com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack ranged = new com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack();
+    private final com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow;
+    private MaidItemUseState.Lease rangedUseLease;
     private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
     private long randomLookSelections, randomWalkSelections, snowballThrows;
     private EntityLivingBase ownedSnowballTarget;
@@ -91,6 +94,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigation = modern;
         life = new MaidModernLife(maid, this::isCurrent);
         cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
+        rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid);
     }
 
     public void beginFrame(MaidPolicyRuntime runtime, Token token) {
@@ -552,6 +556,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
             stopOwnedShield();
+            rangedBow.cancel();
+            maid.getItemUseState()
+                .release(rangedUseLease);
+            rangedUseLease = null;
             if (ownedSnowballTarget != null && maid.getModernCombatMemory()
                 .target() == ownedSnowballTarget) maid.getModernCombatMemory()
                     .target(null);
@@ -569,6 +577,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             breathItemLease = null;
             mealItemLease = null;
             if (ownsTarget) {
+                maid.setPose(MaidPose.SWINGING_ARMS, false);
+                maid.moveStrafing = 0;
+                maid.moveForward = 0;
                 maid.setPose(MaidPose.BEGGING, false);
                 maid.setCanClimb(false);
                 maid.setSneaking(false);
@@ -1427,6 +1438,198 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         return maid.getShieldController()
             .activeTaskDeadline();
+    }
+
+    public boolean hasRangedWalkTarget() {
+        guard();
+        return walk != null;
+    }
+
+    public int nextRangedWorldInt(int bound) {
+        return nextWorldInt(bound);
+    }
+
+    public boolean hasBowAndArrow() {
+        guard();
+        return ranged.hasBow(maid) && ranged.hasArrow(maid);
+    }
+
+    public MaidCombatActor.Target findFirstValidRangedTarget() {
+        guard();
+        return com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask
+            .findFirstValidAttackTarget(maid, perception.nearby(), ranged)
+            .map(AttackTargetView::new)
+            .orElse(null);
+    }
+
+    public boolean rangedTargetTooFar(MaidCombatActor.Target value) {
+        return ranged.farAway(attackTarget(value).entity, maid);
+    }
+
+    public boolean mainHandProjectileWeapon() {
+        guard();
+        return ranged.hasBow(maid);
+    }
+
+    public boolean holdingProjectileWeapon() {
+        guard();
+        return ranged.isWeapon(maid.getHeldItem()) || ranged.isWeapon(maid.getOffhandItem());
+    }
+
+    public boolean canSeeRanged(MaidCombatActor.Target value) {
+        return ranged.canSee(maid, attackTarget(value).entity);
+    }
+
+    public void lookDirectlyAtRangedTarget(MaidCombatActor.Target value) {
+        var entity = attackTarget(value).entity;
+        maid.getLookHelper()
+            .setLookPosition(entity.posX, entity.posY, entity.posZ, 30, 30);
+    }
+
+    public boolean rangedUsingItem() {
+        guard();
+        var state = maid.getItemUseState();
+        state.reconcile();
+        return state.peek() != null;
+    }
+
+    public int rangedUsedTicks() {
+        guard();
+        return maid.getItemUseState()
+            .getUsedTicks();
+    }
+
+    public int quickChargeLevel() {
+        guard();
+        return 0;
+    }
+
+    public void startRangedMainUse() {
+        guard();
+        var item = maid.getHeldItem();
+        if (!ranged.isWeapon(item)) return;
+        var capturedRuntime = runtime;
+        var capturedToken = token;
+        var capturedOwner = ownerId;
+        var capturedTask = task;
+        rangedUseLease = maid.getItemUseState()
+            .tryAcquire(
+                this,
+                item,
+                MaidItemUseState.Hand.MAIN,
+                MaidItemUseState.Kind.BOW,
+                () -> maid.worldObj == world && !world.isRemote
+                    && maid.isEntityAlive()
+                    && !MaidBrainLifecycle.isWorldUnloading(world)
+                    && maid.getHeldItem() == item
+                    && item.stackSize > 0
+                    && maid.getTask() == capturedTask
+                    && Objects.equals(capturedOwner, maid.func_152113_b())
+                    && maid.getBrainCoordinator()
+                        .peekPolicyRuntime() == capturedRuntime
+                    && capturedRuntime.isReady()
+                    && capturedRuntime.requiresAfterNativeNavigation()
+                    && capturedRuntime.getContext()
+                        .isCurrent(capturedToken)
+                    && !maid.getBrainCoordinator()
+                        .isSuspended());
+        if (!isCurrent()) {
+            maid.getItemUseState()
+                .release(rangedUseLease);
+            rangedUseLease = null;
+        }
+    }
+
+    public void stopRangedItemUse() {
+        guard();
+        // 原stopUsingItem停止当前任意手/种类，身份捕获防止回调擦掉后来持有者
+        var state = maid.getItemUseState();
+        var current = state.peek();
+        state.release(current);
+        rangedUseLease = null;
+    }
+
+    public void performRangedAttack(MaidCombatActor.Target value, float charge) {
+        var view = attackTarget(value);
+        var item = maid.getHeldItem();
+        var before = item == null ? null : item.copy();
+        rangedBow.fireForModern(
+            view.entity,
+            () -> view.current() && maid.getTask() == MaidTask.RANGED_ATTACK
+                && maid.getModernCombatMemory()
+                    .target() == view.entity
+                && ranged.hasBow(maid)
+                && maid.getHeldItem() == item
+                && ItemStack.areItemStacksEqual(item, before)
+                && view.entity.worldObj == world
+                && view.entity.isEntityAlive()
+                && ranged.canSee(maid, view.entity));
+    }
+
+    public int shootCooldown() {
+        guard();
+        return (int) maid.getEntityAttribute(MaidCombatAttributes.SHOOT_COOLDOWN)
+            .getAttributeValue();
+    }
+
+    public void setSwingingArms(boolean value) {
+        guard();
+        maid.setPose(MaidPose.SWINGING_ARMS, value);
+    }
+
+    public float rangedSearchRadius() {
+        return perception.taskSearchRadius();
+    }
+
+    public int defaultProjectileRange() {
+        guard();
+        return 15; // 固定1.20.1 BowItem.getDefaultProjectileRange，目标平台基础弓没有此API
+    }
+
+    public float nextRangedFloat() {
+        guard();
+        return maid.getRNG()
+            .nextFloat();
+    }
+
+    public boolean ownerOutsideStrafeRestriction() {
+        guard();
+        var owner = maid.getOwner();
+        return !isHomeModeEnable() && owner instanceof EntityPlayer
+            && maid.getDistanceToEntity(owner) >= getRestrictRadius();
+    }
+
+    public void strafe(float forwards, float sideways) {
+        guard();
+        ((com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl) maid.getMoveHelper())
+            .strafe(forwards, sideways);
+    }
+
+    public void stopRangedInPlace() {
+        stopNavigation();
+        maid.moveStrafing = 0;
+        maid.setAIMoveSpeed(0);
+    }
+
+    public void alignRangedBodyToHead() {
+        guard();
+        maid.rotationYaw = maid.rotationYawHead;
+    }
+
+    public double targetDistanceToRestrictionCenter(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        var center = restrictionCenter();
+        return Math.sqrt(target.getDistanceSq(center.x, center.y, center.z));
+    }
+
+    public Double targetDistanceToOwner(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        var owner = maid.getOwner();
+        return owner == null ? null : (double) target.getDistanceToEntity(owner);
+    }
+
+    public com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow() {
+        return rangedBow;
     }
 
     private AttackTargetView attackTarget(MaidCombatActor.Target value) {

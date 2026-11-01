@@ -50,6 +50,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
+    private MaidModernRanged rangedWork = new MaidModernRanged(false), rangedRide = new MaidModernRanged(true);
     private final MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
         restRandom = new MaidRunOne(true), rideWorkRandom = new MaidRunOne(false), rideIdleLook = new MaidRunOne(false);
     private final MaidStartSnowballAttacking snowFind = new MaidStartSnowballAttacking();
@@ -119,6 +120,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             hasTick = true;
             perception.tick();
             if (registeredTask != maid.getTask()) {
+                rangedWork.stop(actor);
+                rangedRide.stop(actor);
+                rangedWork = new MaidModernRanged(false);
+                rangedRide = new MaidModernRanged(true);
                 if (snowRunning) snowThrow.stop(actor);
                 snowRunning = false;
                 snowThrow = new MaidSnowballTargetTask(50);
@@ -193,6 +198,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 } else if (group == MaidActivityState.Activity.WORK || group == MaidActivityState.Activity.RIDE_WORK) {
                     if (maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK) {
                         combat.startTasks(actor, group == MaidActivityState.Activity.RIDE_WORK);
+                        if (!actor.isCurrent()) return;
+                    } else if (maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.RANGED_ATTACK) {
+                        (group == MaidActivityState.Activity.RIDE_WORK ? rangedRide : rangedWork)
+                            .startTasks(actor, actor.hasVisibleLivingMemory());
                         if (!actor.isCurrent()) return;
                     }
                 } else {
@@ -293,6 +302,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 }
             }
             combat.runShield(actor);
+            rangedWork.runTasks(actor);
+            if (!actor.isCurrent()) return;
+            rangedRide.runTasks(actor);
+            if (!actor.isCurrent()) return;
             if (idleBegRunning) {
                 if (idleBeg.canStillUse(actor)) idleBeg.tick(actor);
                 else {
@@ -350,6 +363,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             rideIdleLook.cancel();
             snowRunning = false;
             snowThrow.cancelUseState();
+            rangedWork.reset();
+            rangedRide.reset();
             idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();

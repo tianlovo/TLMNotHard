@@ -24,6 +24,7 @@ public final class MaidItemUseState {
         private final Kind kind;
         private final BooleanSupplier valid;
         private final long generation;
+        private int usedTicks;
 
         private Lease(Object owner, Object item, Hand hand, Kind kind, BooleanSupplier valid, long generation) {
             this.owner = owner;
@@ -131,6 +132,18 @@ public final class MaidItemUseState {
             release(lease);
             throw failure;
         }
+    }
+
+    /** 原LivingEntity物品使用在Brain之前推进，GUI暂停Brain时仍推进 */
+    public void advanceUse(int amount) {
+        reconcile();
+        var lease = current;
+        if (lease != null) lease.usedTicks += amount;
+    }
+
+    public int getUsedTicks() {
+        var lease = current;
+        return lease != null && isCurrent(lease) ? lease.usedTicks : 0;
     }
 
     public void invalidate() {
