@@ -61,8 +61,10 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
                 .isLiquid()
                 || !maid.worldObj.getBlock(x, y + 1, z)
                     .getBlocksMovement(maid.worldObj, x, y + 1, z));
-        if (!waterMode && inWater() && (waterNodes(path, 5) || stuck || submergedGoal || breath.isSwimming()))
-            waterMode = true;
+        // 原版无当前路径的切换分支不写入WATER模式；不能让闲置落地女仆永远关闭上浮物理
+        boolean hasPath = path != null && !path.isFinished();
+        if (!waterMode && inWater()
+            && (breath.isSwimming() || hasPath && (waterNodes(path, 5) || stuck || submergedGoal))) waterMode = true;
         boolean want = manager.wantToSwim();
         boolean ready = false;
         if (waterMode) {
@@ -90,7 +92,11 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
     }
 
     public boolean travelWater(float strafe, float forward) {
-        if (maid.worldObj.isRemote || !inWater() || !manager.wantToSwim()) return false;
+        if (maid.worldObj.isRemote || !inWater()) return false;
+        if (!manager.wantToSwim()) {
+            MaidWaterPhysics.travel(maid, strafe, forward, manager.isReadyToLand() || underWater());
+            return true;
+        }
         var path = maid.getNavigator()
             .getPath();
         if (path != null && !path.isFinished()) {

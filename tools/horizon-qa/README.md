@@ -22,7 +22,7 @@
 
 ```text
 -Dhorizonqa.mode=ci
--Dhorizonqa.tests=tlmnhqapilot:AquaticLifecycleTests.liveSwimmingBody
+-Dhorizonqa.tests=tlmnhqapilot:WaterTravelTests
 -Dhorizonqa.gridOrigin=0,100,0
 -Dhorizonqa.turbo=1
 -Dhorizonqa.reportDir=<独立报告目录>
@@ -30,8 +30,13 @@
 
 使用 RFG 的 `runServer` 时，每个参数分别通过 `--mcJvmArgs` 转交，不能把这些 `-D` 参数设置到 Gradle JVM
 
-正常用例应退出 0；加上 `-Dtlmnh.qa.injectPoseFault=true` 后，应因真实泳姿身体被改成 1.5 高而退出 1
-故障模式用于核对检查器，不能作为正常通过运行
+Indev95 的三个水域用例应退出 0：自然闲置上浮、封顶持续接触和受控岸边碰撞
+涉及动物开关的用例分批运行；岸边演员不注册世界，直接驱动真实实体物理，不冒充自然 Root 行为
+
+历史 Indev94 接入试点使用 `tlmnhqapilot:AquaticLifecycleTests.liveSwimmingBody`
+仅在该候选上，加上 `-Dtlmnh.qa.injectPoseFault=true` 后，应因真实泳姿身体被改成 1.5 高而退出 1
+该试点保留用于复查历史框架接入；95 修正无路径闲置语义后，不能沿用它“闲置自动进入主动泳姿”的前提
+不要选择全部历史用例来判断当前候选，故障模式也不能作为正常通过运行
 
 ## 试点结论与边界
 
@@ -44,5 +49,6 @@ Horizon-QA 的 CI 默认会调用 `setCanSpawnAnimals(false)`；旧 WorldServer 
 改变这个全局状态的测试须独立批次运行，不能靠测试格距离获得隔离
 
 本用例只完成一次自然入水观测和受控状态转换；睡眠、醒来请求在同一 END 阶段完成，不代表真实床行为或长期稳定性
+Indev95 的常规上浮实际运行 169 tick、封顶 60 tick、受控岸边 39 步；封顶起点后来提高并单独重跑，确认持续触顶，无穿透或空气恢复
 后续新增服务端用例可复用其调度、场景与报告，逐步接入，不批量重写已有测试
 客户端画面、完整水域行为和原版 1.20.1 的 O/F/N 对照仍使用各自验证流程

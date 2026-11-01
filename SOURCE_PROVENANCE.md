@@ -762,3 +762,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 当前旧导航上的模式判断与主动水中执行只是执行投影；完整现代 Amphibious 节点器、全部导航管理器语义与非主动游泳的现代 travel 仍待实现，不能据此称完整水域或完整 F 已完成
 
 - EntityMaid.setScaleForAge 阻止旧 EntityAgeable 客户端每 tick 以年龄重新设置站立尺寸；仅在尺寸与同步 Pose 不同时恢复，保留现代眼高缓存的刷新边界
+
+## 默认水中非主动移动
+
+- Indev95 依据同一固定上游 EntityMaid.java:2635–2648 的非主动游泳分支，将水平输入乘 1.2，并在准备上岸或头部入水时增加 0.5 垂直输入，否则增加 0.05
+- MC 1.20.1 实际 LivingEntity.travel/getFluidFallingAdjustedMovement 字节码用于核对三轴归一化、0.02 默认加速度、0.8 阻力、0.08/16 默认水中重力、奔跑和墙边脱困；新增独立 MaidWaterPhysics，不把原生水平二维加速和 0.02 水中重力当作现代行为
+- 固定上游 MaidNavigationManager.switchToNavigation 的无路径分支切换导航但不写 mode；原版 tick 随后按 GROUND 取消 wantToSwim，旧投影修正为无路径闲置不锁定主动水中模式
+- 正式版 Et Futurum 2.6.65-GTNH 的 living-base 鞘翅钩子和水相关代码已核对，未补足这段非主动水中 travel；这不等于审计了整包所有水中附魔或重力来源
+- 当前仅接默认物理，现代特殊附魔/效果、环境重力、完整 Amphibious 节点器和导航切换仍待补齐；服务端真实碰撞实测不替代自然寻路、客户端或完整原版 benchmark
