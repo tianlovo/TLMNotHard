@@ -740,6 +740,51 @@ public class MaidPolicyRuntimeTest {
         events(actor, "cancel", "faithful_cancel");
     }
 
+    @Test
+    public void enhancedCoreHasIndependentBindingAndCannotQualifyAsFullEnhancedOrFaithful() {
+        var actor = new TestActions();
+        var component = new MaidPolicyRuntime.EnhancedCoreActions() {
+
+            @Override
+            public void tick(MaidPolicyContext.Token token) {
+                actor.events.add("enhanced_core");
+            }
+
+            @Override
+            public void cancel() {
+                actor.events.add("enhanced_cancel");
+            }
+        };
+        var runtime = new MaidPolicyRuntime(UUID.randomUUID(), actor, component);
+        assertEquals(SelectionResult.SELECTED, runtime.select(MaidBrainProfile.ENHANCED_CORE_COMPONENT));
+        actor.events.clear();
+        assertEquals(TickResult.WRONG_PHASE, runtime.tick(() -> true));
+        assertEquals(TickResult.COMPLETED, runtime.tickAfterNativeNavigation());
+        events(actor, "enhanced_core");
+        assertEquals(SelectionResult.UNAVAILABLE, runtime.select(MaidBrainProfile.ENHANCED));
+        assertEquals(TickResult.UNAVAILABLE, runtime.tickAfterNativeNavigation());
+        assertEquals(SelectionResult.UNAVAILABLE, runtime.select(MaidBrainProfile.FAITHFUL_TLM));
+    }
+
+    @Test
+    public void ordinaryCallbackCannotQualifyAsEnhancedCore() {
+        var actor = new TestActions();
+        var component = new MaidPolicyRuntime.AfterNavigationActions() {
+
+            @Override
+            public void tick(MaidPolicyContext.Token token) {
+                fail("Untyped callback acquired enhanced authority");
+            }
+
+            @Override
+            public void cancel() {}
+        };
+        var runtime = new MaidPolicyRuntime(UUID.randomUUID(), actor, component);
+        assertEquals(SelectionResult.UNAVAILABLE, runtime.select(MaidBrainProfile.ENHANCED_CORE_COMPONENT));
+        assertEquals(TickResult.UNAVAILABLE, runtime.tickAfterNativeNavigation());
+        events(actor, "cancel");
+    }
+
     private static void events(TestActions actor, String... expected) {
         assertEquals(Arrays.asList(expected), actor.events);
     }
