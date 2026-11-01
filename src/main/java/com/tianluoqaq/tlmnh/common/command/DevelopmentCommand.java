@@ -238,6 +238,10 @@ public final class DevelopmentCommand extends CommandBase {
                 .startPanicRuntime((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "breath-runtime-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidBreathProbe.start((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "self-care-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runSelfCare((WorldServer) sender.getEntityWorld());

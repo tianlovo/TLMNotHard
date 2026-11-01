@@ -21,6 +21,30 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.TickResult;
 public class MaidPolicyRuntimeTest {
 
     @Test
+    public void survivalPreemptsPanicCombatAndFollowButStillCleansLife() {
+        var actor = new TestActions();
+        actor.surviving = true;
+        actor.panicking = true;
+        actor.runtime.tick(() -> { throw new AssertionError("Survival cannot evaluate ordinary life permission"); });
+        events(actor, "life:false");
+        assertEquals(0, actor.panicCalls);
+        actor.events.clear();
+        actor.surviving = actor.panicking = false;
+        actor.runtime.tick(() -> true);
+        events(actor, "combat", "life:true", "follow");
+        assertEquals(1, actor.panicCalls);
+    }
+
+    @Test
+    public void survivalInvalidationCannotContinueWithTheOldToken() {
+        var actor = new TestActions();
+        actor.onSurvival = () -> actor.runtime.invalidate(InvalidationReason.OWNER_CHANGED);
+        assertEquals(TickResult.INVALIDATED, actor.runtime.tick(() -> true));
+        events(actor, "cancel");
+        assertEquals(0, actor.panicCalls);
+    }
+
+    @Test
     public void panicRunsLifeCleanupAndSuppressesCombatFollowAndPermission() {
         var actor = new TestActions();
         actor.panicking = true;
@@ -588,13 +612,21 @@ public class MaidPolicyRuntimeTest {
 
         private final List<String> events = new ArrayList<>();
         private final MaidPolicyRuntime runtime = new MaidPolicyRuntime(UUID.randomUUID(), this);
-        private boolean fighting, living, panicking;
+        private boolean fighting, living, panicking, surviving;
+        private int panicCalls;
         private MaidPolicyContext lifeContext;
         private MaidPolicyContext.Token lifeToken;
-        private Runnable onCombat, onLife, onFollow, onCancel;
+        private Runnable onCombat, onLife, onFollow, onCancel, onSurvival;
+
+        @Override
+        public boolean tickSurvival() {
+            if (onSurvival != null) onSurvival.run();
+            return surviving;
+        }
 
         @Override
         public boolean tickPanic() {
+            panicCalls++;
             return panicking;
         }
 

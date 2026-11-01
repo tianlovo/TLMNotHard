@@ -43,6 +43,10 @@ public final class MaidPolicyRuntime {
 
     public interface LegacyActions {
 
+        default boolean tickSurvival() {
+            return false;
+        }
+
         default boolean tickPanic() {
             return false;
         }
@@ -109,15 +113,17 @@ public final class MaidPolicyRuntime {
                 afterNavigation.tick(token);
                 return context.isCurrent(token) ? TickResult.COMPLETED : invalidatedTickResult();
             }
-            boolean panicking = actions.tickPanic();
+            boolean surviving = actions.tickSurvival();
             if (!context.isCurrent(token)) return invalidatedTickResult();
-            boolean fighting = !panicking && actions.tickCombat();
+            boolean panicking = !surviving && actions.tickPanic();
             if (!context.isCurrent(token)) return invalidatedTickResult();
-            boolean permitted = !panicking && !fighting && lifePermission.getAsBoolean();
+            boolean fighting = !surviving && !panicking && actions.tickCombat();
+            if (!context.isCurrent(token)) return invalidatedTickResult();
+            boolean permitted = !surviving && !panicking && !fighting && lifePermission.getAsBoolean();
             if (!context.isCurrent(token)) return invalidatedTickResult();
             boolean living = actions.tickLife(context, token, permitted);
             if (!context.isCurrent(token)) return invalidatedTickResult();
-            if (!panicking && !fighting && !living) {
+            if (!surviving && !panicking && !fighting && !living) {
                 actions.tickFollow();
                 if (!context.isCurrent(token)) return invalidatedTickResult();
             }

@@ -138,6 +138,19 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     @Override
+    public void moveEntityWithHeading(float strafe, float forward) {
+        if (brain != null && brain.getBreathController()
+            .travelWater()) return;
+        super.moveEntityWithHeading(strafe, forward);
+    }
+
+    @Override
+    public boolean isPushedByWater() {
+        return (brain == null || !brain.getBreathController()
+            .isSwimming()) && super.isPushedByWater();
+    }
+
+    @Override
     @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
     public void handleHealthUpdate(byte state) {
         if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);

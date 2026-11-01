@@ -10,6 +10,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.EnumAction;
 import net.minecraft.item.ItemFood;
+import net.minecraft.item.ItemPotion;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
@@ -107,6 +108,27 @@ public final class MaidFoodProfile {
             }
             return null;
         }
+    }
+
+    /** 上游呼吸任务先选双手，再查背包；普通药水不参与日常进食 */
+    public static MaidFoodProfile inspectBreathing(ItemStack stack) {
+        if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return null;
+        if (stack.getItem() == Items.potionitem && !ItemPotion.isSplash(stack.getItemDamage())) {
+            var effects = Items.potionitem.getEffects(stack);
+            if (effects == null) return null;
+            var profile = new MaidFoodProfile(stack, 0, 0);
+            profile.container = new ItemStack(Items.glass_bottle);
+            for (PotionEffect effect : effects) profile
+                .effect(effect.getPotionID(), effect.getDuration(), effect.getAmplifier(), 1, effect.getIsAmbient());
+            return profile.providesAir() ? profile : null;
+        }
+        var profile = inspect(stack);
+        return profile != null && profile.providesAir() ? profile : null;
+    }
+
+    private boolean providesAir() {
+        for (Effect effect : effects) if (effect.id == Potion.waterBreathing.id) return true;
+        return false;
     }
 
     private static boolean inherited(Class<?> type, String mcp, String srg) {

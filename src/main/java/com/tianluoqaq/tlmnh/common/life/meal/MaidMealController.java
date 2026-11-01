@@ -17,6 +17,7 @@ public final class MaidMealController {
     private MaidFoodProfile profile;
     private ItemStack food, expected, displaced;
     private int handSlot, sourceSlot = -1, remaining, nextCheck;
+    private boolean breathing;
 
     public MaidMealController(EntityMaid maid) {
         this.maid = maid;
@@ -24,7 +25,7 @@ public final class MaidMealController {
 
     public void tick() {
         if (maid.worldObj.isRemote) return;
-        if (!permitted()) {
+        if (!permitted(breathing)) {
             cancel();
             return;
         }
@@ -37,6 +38,9 @@ public final class MaidMealController {
             if (--remaining <= 0) finish();
             return;
         }
+        if (maid.getBrainCoordinator()
+            .getBreathController()
+            .isActive()) return;
         if (nextCheck-- > 0 || maid.getItemUseState()
             .peek() != null) return;
         nextCheck = 50 + maid.getRNG()
@@ -50,10 +54,25 @@ public final class MaidMealController {
     }
 
     private boolean start(int slot, boolean healing) {
+        return start(slot, healing, false);
+    }
+
+    public boolean tryStartBreathing() {
+        if (!permitted(true)) return false;
+        if (isEating()) return breathing;
+        if (maid.getItemUseState()
+            .peek() != null) return false;
+        for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
+            if (start(slot, true, true)) return true;
+        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) if (start(slot, true, true)) return true;
+        return false;
+    }
+
+    private boolean start(int slot, boolean healing, boolean forBreathing) {
         var inventory = maid.getMaidInventory();
         var stack = inventory.getStackInSlot(slot);
-        if (stack == null || MaidMealConfig.blocked(stack, healing)) return false;
-        var selected = MaidFoodProfile.inspect(stack);
+        if (stack == null || !forBreathing && MaidMealConfig.blocked(stack, healing)) return false;
+        var selected = forBreathing ? MaidFoodProfile.inspectBreathing(stack) : MaidFoodProfile.inspect(stack);
         if (selected == null) return false;
         handSlot = slot;
         sourceSlot = -1;
@@ -68,6 +87,7 @@ public final class MaidMealController {
         food = stack;
         expected = stack.copy();
         profile = selected;
+        breathing = forBreathing;
         remaining = profile.duration;
         lease = maid.getItemUseState()
             .tryAcquire(
@@ -93,17 +113,17 @@ public final class MaidMealController {
         return true;
     }
 
-    private boolean permitted() {
+    private boolean permitted(boolean breathingUse) {
         return maid.isEntityAlive()
             && !com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
             && !maid.hasPose(MaidPose.SLEEPING)
             && !maid.getBrainCoordinator()
                 .isSuspended()
-            && maid.ridingEntity == null;
+            && (breathingUse || maid.ridingEntity == null);
     }
 
     private boolean valid() {
-        return permitted() && maid.getMaidInventory()
+        return permitted(breathing) && maid.getMaidInventory()
             .getStackInSlot(handSlot) == food && ItemStack.areItemStacksEqual(food, expected);
     }
 
@@ -150,12 +170,17 @@ public final class MaidMealController {
         food = expected = displaced = null;
         profile = null;
         remaining = 0;
+        breathing = false;
         inventory.markDirty();
     }
 
     public boolean isEating() {
         return lease != null && maid.getItemUseState()
             .isCurrent(lease);
+    }
+
+    public boolean isBreathing() {
+        return breathing && isEating();
     }
 
     public void save(NBTTagCompound tag) {

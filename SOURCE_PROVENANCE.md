@@ -715,3 +715,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - MC 1.20.1 原始 client JAR 的 HurtBySensor 与 LivingEntity.getLastDamageSource 已按官方映射和实际字节码核对，最后伤害来源在世界时间差大于 40 tick 后清除
 - 新增 com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory，记录原生接受攻击后的短期事实；世界变化、回退时间与策略生命周期取消清除，不进入存档
 - 原型按事实到期直接结束中断，尚未声称与现代 HURT_BY 传感器分频相位逐 tick 一致；完整忠实 F 与增强 N 继续独立待验
+
+## 低氧保全与水中移动
+
+- 固定上游 8a3ac5e 的 entity/ai/brain/task/MaidBreathAirTask.java、MaidBreathAirStopTask.java：低于 100 空气启动、恢复到 290 或获得水下呼吸效果后结束；先检查双手与背包的呼吸物品，再找可呼吸位置
+- 同提交 entity/passive/MaidPathFindingBFS.java、entity/ai/control/MaidMoveControl.java 和 EntityMaid.travel/isPushedByFluid：核对三维搜索、0.5 目标速度、三倍基础前进、水中加速度及 0.9 阻力；新增独立 MaidBreathController 适配旧版服务端生命周期和碰撞移动，未整文件改包移植
+- 普通饮用药水读取目标 ItemPotion.getEffects，拒绝喷溅药水，按原生效果 NBT 应用，饮用结束才消耗一份并归还玻璃瓶；GT 呼吸食物沿用已核食物效果适配，不执行玩家回调
+- Root 优先交接低氧保全，当前仍是原型中的保全策略；暂未声称完整忠实 F 的物品使用等待相位或全部现代游泳姿态/碰撞箱一致
+- 空气搜索以现有实体尺寸核对已加载方块及碰撞，水平/垂直范围各 16，每 tick 最多处理 128 节点，不加载区块；这些是本项目适配边界，不能据此声称完整世界级调度预算已完成
+
+- 实际封顶水域暴露了旧引擎差异：1.7.10 EntityLivingBase.onLivingUpdate 将小于 0.005 的速度归零，1.20.1 对应阈值为 0.003；原版水中水平余速约 0.0045 在旧版无法积累
+- 新增条件 Mixin，仅对正在执行呼吸路线且位于水中的女仆使用 0.003 阈值，其余实体和普通女仆仍返回原值；不提高水中目标速度、不改全局碰撞或其他生物规则
