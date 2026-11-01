@@ -1,0 +1,13 @@
+{
+  "format_version": 2,
+  "size": [5, 5, 5],
+  "palette": {"A": {"name": "minecraft:air", "meta": 0}},
+  "layers": [
+    ["AAAAA", "AAAAA", "AAAAA", "AAAAA", "AAAAA"],
+    ["AAAAA", "AAAAA", "AAAAA", "AAAAA", "AAAAA"],
+    ["AAAAA", "AAAAA", "AAAAA", "AAAAA", "AAAAA"],
+    ["AAAAA", "AAAAA", "AAAAA", "AAAAA", "AAAAA"],
+    ["AAAAA", "AAAAA", "AAAAA", "AAAAA", "AAAAA"]
+  ],
+  "annotations": {"labels": {"maid": [2, 1, 2]}}
+}

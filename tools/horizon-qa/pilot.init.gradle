@@ -1,0 +1,42 @@
+// Optional non-published test mod; main/release source sets and dependencies remain independent
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def tool = project.file('tools/horizon-qa')
+    project.extensions.getByName('spotless').java {
+        target('tools/horizon-qa/pilot/**/*.java')
+    }
+    def devPath = System.getenv('TLMNH_HQA_DEV_JAR')
+    if (!devPath) throw new GradleException('TLMNH_HQA_DEV_JAR must point to the pinned Horizon-QA 0.15.0 dev JAR')
+    def devJar = new File(devPath)
+    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(devJar.bytes).encodeHex().toString()
+    if (digest != '08b92af1425183da42439024811f5377b66b902f3cf185e1831c18b843980f4b')
+        throw new GradleException('Horizon-QA dev artifact differs from the reviewed 0.15.0 release')
+    def sources = project.sourceSets.create('horizonQaPilot') {
+        java.srcDir(new File(tool, 'pilot'))
+        resources.srcDir(new File(tool, 'resources'))
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath + project.files(devJar)
+    }
+    project.tasks.named(sources.compileJavaTaskName).configure {
+        options.annotationProcessorPath = project.tasks.named('compileJava').get().options.annotationProcessorPath
+    }
+    def developmentJar = project.tasks.register('horizonQaPilotJar', Jar) {
+        dependsOn sources.classesTaskName
+        from sources.output
+        archiveFileName.set('tlmnh-horizonqa-pilot-dev.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+    def base = project.tasks.named('reobfJar').get()
+    def reobfType = Class.forName('com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar', true, base.class.classLoader)
+    project.tasks.register('reobfHorizonQaPilot', reobfType) {
+        dependsOn developmentJar
+        inputJar.set(developmentJar.flatMap { it.archiveFile })
+        for (name in ['mcVersion','srg','fieldCsv','methodCsv','exceptorCfg','recompMcJar','extraSrgEntries'])
+            delegate.getProperty(name).set(base.getProperty(name))
+        extraSrgFiles.from(base.extraSrgFiles)
+        referenceClasspath.from(base.referenceClasspath, sources.compileClasspath)
+        archiveFileName.set('tlmnh-horizonqa-pilot.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
+    }
+}
