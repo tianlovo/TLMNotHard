@@ -513,3 +513,10 @@ Indev143 的 `tlmnhqapilot:EnhancedWaterTests` 保留实际世界tick，核无�
 Indev145 的 `tlmnhqapilot:EnhancedFollowRecoveryTests` 核超64格的实际恢复、坐下/家园拒绝及原双手NBT保持11tick，以及实际未加载区块不生成、20tick限频和Forge取消/改目的地/改坐姿后的拒绝及恢复81tick
 同包F原分支实际传送1tick、N玻璃闲逛68tick通过，四项一次JSON/XML/process0一致；本批无新CPU单测，前述144轨迹仍只对应143包
 空闲夹具用明确主人不可用输入，近距抢占输入落在步行范围；最终pilot只有未选择的EnhancedCoreTests.class变化，四个实际场景字节相同，没有将该观察器重编译当成重新运行
+
+### 增强缺氧恢复
+
+`EnhancedAirRecoveryTests` 的前两项运行独立增强Root：封闭水域中真实耗尽空气候选后才恢复，Home及水下主人阻止恢复；未被拒绝后，女仆实际到达干燥位置并恢复原生空气，双手NBT和生命保持
+落点场景分别检查事前水下候选、Forge回调填水后的再次拒绝、20tick限频和后续合法恢复；原生动作项受控设游泳姿态，直接调用平台入口，证明站立头部仍有水时拒绝，同候选序列清空后才实际落位，不称自然Root救援
+146最终包三项3/34/51tick与既有F传送1tick同轮通过；初包空气扫描等待7tick、导航预检等待5tick均零恢复尝试，按仅actor落点验证变化的源范围保留，不拼成最终单轮六绿
+两包各自绑定实际JAR和pilot摘要，正常退出。没有新CPU单测或主客户端运行；完整N、多人和发布验收仍未通过

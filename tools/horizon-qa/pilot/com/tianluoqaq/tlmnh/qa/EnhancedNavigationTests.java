@@ -31,7 +31,7 @@ public final class EnhancedNavigationTests {
             MaidWorldNavigationBudget.unload(helper.getWorld());
         });
         var f = new ModernCoreTests.Fixture(helper, true);
-        f.owner.setPosition(f.x + 2.5, f.y + 1, f.z + 4.5);
+        f.owner.setPosition(f.x + 11.5, f.y + 11, f.z + 4.5);
         helper.assertTrue(
             f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED_CORE_COMPONENT)
                 == MaidPolicyRuntime.SelectionResult.SELECTED,
@@ -68,7 +68,9 @@ public final class EnhancedNavigationTests {
                     && core.actor()
                         .peekCantReachSince() == null
                     && !f.maid.getMealController()
-                        .isEating(),
+                        .isEating()
+                    && core.follow()
+                        .attempts() == 0,
                 "Budget deferral became failure or began unrelated item use");
             return true;
         });

@@ -177,7 +177,7 @@ public final class EnhancedSensingTests {
         var f = fixture(helper, true);
         for (int x = 5; x <= 7; x++)
             for (int y = 4; y < 10; y++) for (int z = 1; z < 8; z++) helper.setBlock(x, y, z, Blocks.air);
-        f.owner.setPosition(f.x + 5.5, f.y + 2, f.z + 4.5);
+        f.owner.setPosition(f.x + 11.5, f.y + 11, f.z + 4.5);
         var core = select(helper, f.maid);
         var budget = MaidWorldSensingBudget.forWorld(helper.getWorld());
         UUID foreignScope = UUID.randomUUID();
@@ -214,7 +214,9 @@ public final class EnhancedSensingTests {
                         && budget.admitted(Kind.AIR) == airGrants[0]
                         && f.navigation.searchCount() == searches[0]
                         && core.actor()
-                            .peekWalkTarget() == null,
+                            .peekWalkTarget() == null
+                        && core.follow()
+                            .attempts() == 0,
                     "Deferred air scan fell through to BFS, fallback path or false failure");
                 budget.cancelScope(foreignScope);
                 phase[0] = 2;
@@ -256,6 +258,8 @@ public final class EnhancedSensingTests {
                 || f.navigation.noPath()) return false;
             helper.assertTrue(
                 budget.admitted(Kind.AIR) > airGrants[0] && !f.navigation.noPath()
+                    && core.follow()
+                        .attempts() == 0
                     && budget.used(
                         helper.getWorld()
                             .getTotalWorldTime())
