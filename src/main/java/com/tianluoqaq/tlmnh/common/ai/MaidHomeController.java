@@ -146,8 +146,11 @@ public final class MaidHomeController {
         var stopped = run;
         try {
             if (stopped != null) stopped.cancel();
-            if (ownedPath != null && maid.getNavigator()
-                .getPath() == ownedPath) maid.getNavigator()
+            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+                maid.getNavigator()
+                    .getPath(),
+                ownedPath))
+                maid.getNavigator()
                     .clearPathEntity();
         } finally {
             ownedPath = null;

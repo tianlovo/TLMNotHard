@@ -973,8 +973,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public boolean hasPath() {
-            return ownedPath != null && maid.getNavigator()
-                .getPath() == ownedPath
+            return ownedPath != null
+                && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+                    maid.getNavigator()
+                        .getPath(),
+                    ownedPath)
                 && !maid.getNavigator()
                     .noPath();
         }
@@ -997,8 +1000,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public void stopNavigation() {
-            if (ownedPath != null && maid.getNavigator()
-                .getPath() == ownedPath) maid.getNavigator()
+            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+                maid.getNavigator()
+                    .getPath(),
+                ownedPath))
+                maid.getNavigator()
                     .clearPathEntity();
             ownedPath = null;
         }
@@ -1187,7 +1193,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         public void stopNavigation() {
             var current = maid.getNavigator()
                 .getPath();
-            if (current != null && current == ownedPath) {
+            if (com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(current, ownedPath)) {
                 maid.getNavigator()
                     .clearPathEntity();
             }

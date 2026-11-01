@@ -5,6 +5,27 @@ public interface MaidPathRegion {
 
     MaidPathType rawType(int x, int y, int z);
 
+    default MaidPathType groundRawType(int x, int y, int z) {
+        return rawType(x, y, z);
+    }
+
+    default boolean climbable(int x, int y, int z) {
+        return false;
+    }
+
+    default boolean landPassable(int x, int y, int z) {
+        var type = rawType(x, y, z);
+        return type == MaidPathType.OPEN || type == MaidPathType.DOOR_OPEN || type == MaidPathType.RAIL;
+    }
+
+    default boolean air(int x, int y, int z) {
+        return rawType(x, y, z) == MaidPathType.OPEN;
+    }
+
+    default boolean solid(int x, int y, int z) {
+        return rawType(x, y, z) == MaidPathType.BLOCKED;
+    }
+
     boolean water(int x, int y, int z);
 
     boolean fluidEmpty(int x, int y, int z);

@@ -88,22 +88,30 @@ public final class MaidPanicController {
         }
         // 原版仅以 NEAREST_HOSTILE 选择逃离点，HURT_BY 自身不泄露攻击者位置
         if (threat == null) {
-            if (ownedPath != null && maid.getNavigator()
-                .getPath() == ownedPath) maid.getNavigator()
+            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+                maid.getNavigator()
+                    .getPath(),
+                ownedPath))
+                maid.getNavigator()
                     .clearPathEntity();
             ownedPath = null;
             setStatus("hurt_pause");
             return true;
         }
-        if (ownedPath != null && maid.getNavigator()
-            .getPath() == ownedPath && !ownedPath.isFinished() && away(ownedPath)) {
+        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            maid.getNavigator()
+                .getPath(),
+            ownedPath) && !ownedPath.isFinished() && away(ownedPath)) {
             setStatus("retreating");
             return true;
         }
         if (now < nextPath) return true;
         nextPath = now + PATH_RETRY;
-        if (ownedPath != null && maid.getNavigator()
-            .getPath() == ownedPath) maid.getNavigator()
+        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            maid.getNavigator()
+                .getPath(),
+            ownedPath))
+            maid.getNavigator()
                 .clearPathEntity();
         ownedPath = null;
         int radius = maid.getHomeArea()
@@ -202,8 +210,11 @@ public final class MaidPanicController {
         var stopped = run;
         run = null;
         if (stopped != null) stopped.cancel();
-        if (ownedPath != null && maid.getNavigator()
-            .getPath() == ownedPath) maid.getNavigator()
+        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            maid.getNavigator()
+                .getPath(),
+            ownedPath))
+            maid.getNavigator()
                 .clearPathEntity();
         ownedPath = null;
         runner.release(stopped);

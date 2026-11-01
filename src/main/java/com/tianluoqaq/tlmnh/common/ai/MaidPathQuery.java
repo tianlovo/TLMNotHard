@@ -19,9 +19,8 @@ public final class MaidPathQuery {
 
     public static PathEntity create(EntityMaid maid, int x, int y, int z, float range, boolean enterDoors,
         boolean closedDoors, boolean avoidWater, boolean swim) {
-        if (maid.isInWater()
-            && maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
-            return navigator.createWaterPath(x, y, z, range, 0);
+        if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
+            return navigator.createPath(x, y, z, range, 0);
         var vertical = ladderPath(maid, x, y, z, range);
         if (vertical != null) return vertical;
         int ox = MathHelper.floor_double(maid.posX), oy = MathHelper.floor_double(maid.posY),

@@ -802,3 +802,20 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 目标世界按实际方块、门/栅栏/轨道、流体及碰撞读取；Et Futurum 2.6.65-GTNH 的 BlockHoney、BlockMagma、BlockWitherRose 分别映射蜂蜜、火伤和谨慎伤害类型，不引入新硬依赖
 - 当前仅单目标，仍受原型每次 16 格查询范围和世界准入预算约束，部分路线不谎报 canReach；完整现代地面节点、导航管理器切换、缓存、多目标/API 相位和原版运行对照继续待办，完整 F/N 不启用
 - 旧 World 没有现代生成器海平面 API，当前使用主世界 63；特殊维度海平面、复杂模组方块与完整环境适配仍待验，不能把有限水池结果泛化为全部地形通过
+
+## 地面专用节点、导航模式与移动控制
+
+- Indev97 移植同一固定提交的 entity/ai/navigation/MaidNodeEvaluator.java、entity/passive/MaidNavigationManager.java、
+  entity/ai/control/MaidMoveControl.java，保留原包名；平台事实分别由 Region、NavigationActor 和目标原生实体提供
+- 地面节点补入家园限制、独立木门/栅栏门权限、启用攀爬时的上下节点和自身零食柜避让；现代可选外部模组标签尚未完成目标映射，不猜测旧物品注册名
+- 管理器依照 EntityMaid.java:617–620 在原生 living 更新后运行，保留有路径时重规划、检查 canReach、推进首节点及无路径切换不写 mode 的实际分支
+- 同一 MC 1.20.1、Forge 47.2.0 映射包的 GroundPathNavigation、MoveControl、Mth 用于核对地面目标归一化、浮水临时高度、
+  移动操作生命周期、90 度转向及查表 atan2；横移检查单格类型，不混用寻路身体占据类型
+- MaidPathSearch、MaidModernPath、MaidNavigationActor、MaidPathOwnership、MaidMovementAngles 为本项目独立文件；
+  旧 AmphibiousSearch/Path 保留水查询兼容入口，地面和水中状态各自维护路径、速度及 watchdog
+- 动作面对同一个导航器；模式续接保留原动作的取消凭据，未沿用凭据的无关路线不能由旧动作撤销；凭据不授予新动作执行权限
+- MixinEntityNavigator 同时替换女仆实际 navigator/moveHelper 字段；主动游泳由原移动控制器施加转向和速度，删除旧水中投影的重复加速
+- 移动控制器对目标距离恰为零增加停止保护，避免原算法除零；原型低氧的独立执行器暂由 AquaticController 桥接，不宣称已接完整现代呼吸任务
+- 新控制器在原型低氧执行器持有移动时让出驱动；低氧路线每 tick 重核终点的当前眼高与空气事实，避免站姿规划的终点在泳姿下仍处于水中
+- 站姿浅水回归暴露旧水检测上下各缩 0.4 的另一影响，Indev97 将 MixinEntityAquatic 的完整内缩身体扩展到所有女仆姿态；其他实体及目标世界的原生流体/水流方法保持，不宣称已移植完整现代流体系统
+- 仍缺完整动态 Brain WALK_TARGET、MoveToTargetSink 相位、快速缓存、多目标和完整攀爬任务；窄水槽的 WATER_BORDER 竖直恢复也须处理，完整 F/N 与自然原版对照继续待办

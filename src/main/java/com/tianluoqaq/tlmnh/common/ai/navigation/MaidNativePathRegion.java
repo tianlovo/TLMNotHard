@@ -19,9 +19,73 @@ import net.minecraft.world.World;
 public final class MaidNativePathRegion implements MaidPathRegion {
 
     private final World world;
+    private final com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid;
 
     public MaidNativePathRegion(World world) {
+        this(world, null);
+    }
+
+    public MaidNativePathRegion(World world, com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
         this.world = world;
+        this.maid = maid;
+    }
+
+    @Override
+    public MaidPathType groundRawType(int x, int y, int z) {
+        if (!loaded(x, y, z)) return BLOCKED;
+        if (maid != null) {
+            var home = maid.getHomeArea();
+            if (home.enabled() && home.containsMaid() && !home.contains(x, y, z)) return BLOCKED;
+        }
+        var block = world.getBlock(x, y, z);
+        if (block == com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet) return DAMAGE_OTHER;
+        if (block.isAir(world, x, y, z)) return OPEN;
+        MaidPathType type;
+        if (block instanceof BlockFenceGate)
+            type = (world.getBlockMetadata(x, y, z) & 4) != 0 ? DOOR_OPEN : DOOR_WOOD_CLOSED;
+        else if (climbable(x, y, z)) type = WALKABLE;
+        else {
+            type = rawType(x, y, z);
+            if (type != DOOR_OPEN && type != DOOR_WOOD_CLOSED && type != BLOCKED && floor(x, y + 1, z) - y > .5)
+                type = BLOCKED;
+        }
+        if (type == DOOR_WOOD_CLOSED && maid != null
+            && (block instanceof BlockDoor ? !maid.getConfigManager()
+                .isOpenDoor()
+                : block instanceof BlockFenceGate && !maid.getConfigManager()
+                    .isOpenFenceGate()))
+            type = DOOR_IRON_CLOSED;
+        return type;
+    }
+
+    @Override
+    public boolean climbable(int x, int y, int z) {
+        return maid != null && maid.getConfigManager()
+            .isActiveClimbing()
+            && loaded(x, y, z)
+            && world.getBlock(x, y, z)
+                .isLadder(world, x, y, z, maid);
+    }
+
+    @Override
+    public boolean landPassable(int x, int y, int z) {
+        return loaded(x, y, z) && !world.getBlock(x, y, z)
+            .getMaterial()
+            .isLiquid()
+            && world.getBlock(x, y, z)
+                .getBlocksMovement(world, x, y, z);
+    }
+
+    @Override
+    public boolean air(int x, int y, int z) {
+        return loaded(x, y, z) && world.isAirBlock(x, y, z);
+    }
+
+    @Override
+    public boolean solid(int x, int y, int z) {
+        return loaded(x, y, z) && world.getBlock(x, y, z)
+            .getMaterial()
+            .isSolid();
     }
 
     private boolean loaded(int x, int y, int z) {

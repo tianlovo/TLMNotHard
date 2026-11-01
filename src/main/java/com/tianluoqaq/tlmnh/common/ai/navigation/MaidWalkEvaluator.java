@@ -34,6 +34,10 @@ public class MaidWalkEvaluator {
         return false;
     }
 
+    protected MaidPathType raw(int x, int y, int z) {
+        return region.rawType(x, y, z);
+    }
+
     public MaidPathNode node(int x, int y, int z) {
         return nodes.computeIfAbsent(MaidPathNode.key(x, y, z), ignored -> new MaidPathNode(x, y, z));
     }
@@ -45,7 +49,7 @@ public class MaidWalkEvaluator {
             y--;
         } else if (actor.onGround) y = floor(actor.y + .5);
         else {
-            while (y > region.minY() && (region.rawType(x, y, z) == OPEN || landPassable(x, y, z))) y--;
+            while (y > region.minY() && (region.air(x, y, z) || region.landPassable(x, y, z))) y--;
             y++;
         }
         if (!canStart(x, y, z)) {
@@ -55,11 +59,6 @@ public class MaidWalkEvaluator {
             for (var corner : corners) if (canStart(corner[0], y, corner[1])) return startNode(corner[0], y, corner[1]);
         }
         return startNode(x, y, z);
-    }
-
-    private boolean landPassable(int x, int y, int z) {
-        var raw = region.rawType(x, y, z);
-        return raw == OPEN || raw == DOOR_OPEN || raw == RAIL;
     }
 
     private boolean canStart(int x, int y, int z) {
@@ -218,6 +217,11 @@ public class MaidWalkEvaluator {
         return types.computeIfAbsent(key, ignored -> occupiedType(x, y, z));
     }
 
+    /** MoveControl checks one cell; path search separately checks the whole occupied body */
+    public MaidPathType cellType(int x, int y, int z) {
+        return blockType(x, y, z);
+    }
+
     private MaidPathType occupiedType(int x, int y, int z) {
         var found = EnumSet.noneOf(MaidPathType.class);
         var first = BLOCKED;
@@ -242,9 +246,9 @@ public class MaidWalkEvaluator {
     }
 
     protected MaidPathType blockType(int x, int y, int z) {
-        var type = region.rawType(x, y, z);
+        var type = raw(x, y, z);
         if (type == OPEN && y >= region.minY() + 1) {
-            var below = region.rawType(x, y - 1, z);
+            var below = raw(x, y - 1, z);
             type = below != WALKABLE && below != OPEN && below != WATER && below != LAVA ? WALKABLE : OPEN;
             if (below == DAMAGE_FIRE || below == DAMAGE_OTHER || below == STICKY_HONEY || below == DAMAGE_CAUTIOUS)
                 type = below;

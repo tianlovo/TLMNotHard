@@ -63,7 +63,8 @@ public class MaidAmphibiousSearchTest {
             return x >= 0 && x <= 12 && y >= 100 && y <= 106 && z >= 0 && z <= 6;
         }
 
-        boolean solid(int x, int y, int z) {
+        @Override
+        public boolean solid(int x, int y, int z) {
             return inside(x, y, z) && (x == 0 || x == 12
                 || y == 100
                 || y == 106

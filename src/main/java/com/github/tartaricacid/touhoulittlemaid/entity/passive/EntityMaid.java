@@ -93,6 +93,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
             .tlmnh$setNavigator(new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator(this, world));
         getNavigator().setCanSwim(true);
+        ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
+            .tlmnh$setMoveHelper(new com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl(this));
         tasks.addTask(0, brain);
     }
 
@@ -135,6 +137,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void onLivingUpdate() {
         if (aquatic != null) aquatic.beforeLivingUpdate();
         super.onLivingUpdate();
+        if (aquatic != null) aquatic.afterLivingUpdate();
         if (!worldObj.isRemote) {
             favorabilityManager.tick();
             shield.tickAfterLivingUpdate();

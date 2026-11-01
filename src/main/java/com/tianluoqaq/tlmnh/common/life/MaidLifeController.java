@@ -289,8 +289,10 @@ public final class MaidLifeController {
         // 只补完本动作已走到的安全邻格，继续使用原生移动与碰撞，不扩大交互半径或传送
         if (action != Action.BED && approachPoint != null
             && ownedPath != null
-            && maid.getNavigator()
-                .getPath() == ownedPath
+            && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+                maid.getNavigator()
+                    .getPath(),
+                ownedPath)
             && maid.getNavigator()
                 .noPath()
             && maid.getDistanceSq(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord)
@@ -752,8 +754,11 @@ public final class MaidLifeController {
     }
 
     private void stopNavigation() {
-        if (ownedPath != null && maid.getNavigator()
-            .getPath() == ownedPath) maid.getNavigator()
+        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            maid.getNavigator()
+                .getPath(),
+            ownedPath))
+            maid.getNavigator()
                 .clearPathEntity();
         ownedPath = null;
         approachPoint = null;

@@ -129,7 +129,15 @@ public final class MaidBreathProbe {
                 probe.setPosition(x + .5, 108, z + .5);
                 require(!probe.handleWaterMovement(), "Small dry body has no fabricated water");
             }
-            TLMNotHard.LOG.info("TLMNH_AQUATIC_FLUID_BOUNDS_PASS poses=2 fractions=10 dry=2 native_water_method=true");
+            probe.setEntityPose(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING);
+            for (double feet : new double[] { 103.5, 103.75 }) {
+                probe.setPosition(x + .5, feet, z + .5);
+                require(probe.handleWaterMovement(), "Standing feet still contact shallow water below the surface");
+            }
+            probe.setPosition(x + .5, 104.01, z + .5);
+            require(!probe.handleWaterMovement(), "Standing dry feet have no fabricated water");
+            TLMNotHard.LOG.info(
+                "TLMNH_AQUATIC_FLUID_BOUNDS_PASS small_pose_checks=22 standing_shallow_checks=3 native_water_method=true");
         } finally {
             probe.setDead();
         }

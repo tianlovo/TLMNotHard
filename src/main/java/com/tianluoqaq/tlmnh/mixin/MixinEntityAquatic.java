@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
-/** 现代小尺寸身体使用完整内缩碰撞箱，旧版上下各减0.4会把0.6高泳姿检测框倒置 */
+/** 女仆各姿态使用现代完整内缩身体，旧版上下各减0.4还会漏掉站姿脚边浅水 */
 @Mixin(Entity.class)
 public abstract class MixinEntityAquatic {
 
@@ -22,8 +22,6 @@ public abstract class MixinEntityAquatic {
         require = 1,
         allow = 1)
     private AxisAlignedBB tlmnh$smallPoseWaterBounds(AxisAlignedBB original) {
-        return (Object) this instanceof EntityMaid maid && maid.height < .8F
-            ? maid.boundingBox.contract(.001, .001, .001)
-            : original;
+        return (Object) this instanceof EntityMaid maid ? maid.boundingBox.contract(.001, .001, .001) : original;
     }
 }

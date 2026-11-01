@@ -121,7 +121,8 @@ public final class MaidBreathController {
         }
         if (!route.isEmpty()) {
             var next = route.peek();
-            if (!passable(next)) clearSearch();
+            // 泳姿会改变眼高；起初可呼吸的终点不能继续沿用站姿的空气判断
+            if (!passable(next) || !givesAir(route.peekLast())) clearSearch();
             else {
                 double dy = next.posY - maid.boundingBox.minY;
                 if (maid.getDistanceSq(next.posX + .5, maid.posY, next.posZ + .5) + dy * dy < .09) route.remove();

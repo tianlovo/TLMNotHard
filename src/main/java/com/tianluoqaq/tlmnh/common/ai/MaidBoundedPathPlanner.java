@@ -135,7 +135,9 @@ public final class MaidBoundedPathPlanner {
         }
         final boolean canNavigate;
         try {
-            canNavigate = NATIVE.canNavigate(navigator);
+            canNavigate = navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
+                ? modern.canUpdatePath()
+                : NATIVE.canNavigate(navigator);
         } catch (RuntimeException failure) {
             return creation(
                 context,
@@ -453,6 +455,7 @@ public final class MaidBoundedPathPlanner {
         private final UUID identity;
         private final World world;
         private final PathNavigate navigator;
+        private final long navigationGeneration;
         private final String owner;
         private final MaidTask command;
         private final int entityTick;
@@ -465,6 +468,9 @@ public final class MaidBoundedPathPlanner {
             identity = maid.getUniqueID();
             world = maid.worldObj;
             this.navigator = navigator;
+            navigationGeneration = navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
+                ? modern.generation()
+                : 0;
             owner = maid.func_152113_b();
             command = maid.getTask();
             entityTick = maid.ticksExisted;
@@ -482,6 +488,8 @@ public final class MaidBoundedPathPlanner {
                 || candidate.isDead
                 || !candidate.isEntityAlive()
                 || candidate.getNavigator() != navigator
+                || navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
+                    && modern.generation() != navigationGeneration
                 || !Objects.equals(owner, candidate.func_152113_b())
                 || candidate.getTask() != command
                 || candidate.ticksExisted != entityTick

@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.mixin;
 
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.ai.EntityMoveHelper;
 import net.minecraft.pathfinding.PathNavigate;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,4 +13,7 @@ public interface MixinEntityNavigator {
 
     @Accessor("navigator")
     void tlmnh$setNavigator(PathNavigate navigator);
+
+    @Accessor("moveHelper")
+    void tlmnh$setMoveHelper(EntityMoveHelper helper);
 }
