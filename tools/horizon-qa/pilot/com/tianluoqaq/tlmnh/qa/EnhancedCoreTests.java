@@ -33,7 +33,8 @@ public final class EnhancedCoreTests {
             assertIndependent(helper, f, core);
             int age = f.maid.ticksExisted;
             if (phase[0] == 0) {
-                if (core.selectedKind() != Kind.PICKUP) return false;
+                if (core.selectedKind() != Kind.PICKUP || f.navigation.noPath() || f.navigation.searchCount() < 1)
+                    return false;
                 helper.assertTrue(item.isEntityAlive(), "Observed pickup after target was gone");
                 f.owner.setPosition(f.x + 15.5, f.y + 1, f.z + 4.5);
                 changedAt[0] = age;
