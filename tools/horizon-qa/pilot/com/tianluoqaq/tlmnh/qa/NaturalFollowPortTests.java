@@ -66,6 +66,12 @@ public final class NaturalFollowPortTests {
         final List<SavedBlock> outside = new ArrayList<>();
         EntityMaid maid;
         MaidFaithfulBrain core;
+        final com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile expectedProfile = Boolean
+            .getBoolean("tlmnh.qaFaithfulProfile") ? com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM
+                : com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FOLLOW_CORE_COMPONENT;
+        com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime boundRuntime;
+        String bindingEntry;
+        String selectionResult;
         JsonArray frames;
         JsonObject row;
         int caseIndex, repetition, warmup, frame, total;
@@ -134,7 +140,25 @@ public final class NaturalFollowPortTests {
                 helper.setBlock(x, 0, z, Blocks.stone);
                 for (int y = 1; y <= 10; y++) helper.setBlock(x, y, z, Blocks.air);
             }
-            output.addProperty("schema", "follow-natural-port-observation-v1");
+            output.addProperty("schema", "follow-natural-port-observation-v2");
+            output.addProperty("expectedProfile", expectedProfile.getId());
+            try {
+                output.add(
+                    "productionArtifact",
+                    com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity.capture(
+                        EntityMaid.class,
+                        MaidFaithfulBrain.class,
+                        com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.class));
+                output.add(
+                    "observerArtifact",
+                    com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity.capture(
+                        NaturalFollowPortTests.class,
+                        Collector.class,
+                        NaturalWaterPortTests.class,
+                        ModernCoreTests.Fixture.class));
+            } catch (Exception failure) {
+                throw new IllegalStateException("Cannot bind actual natural observation artifacts", failure);
+            }
             output.addProperty(
                 "contract",
                 contract.get("contract")
@@ -239,8 +263,9 @@ public final class NaturalFollowPortTests {
             if (failure != null) return;
             try {
                 observe(event);
-            } catch (RuntimeException exception) {
-                failure = exception;
+            } catch (RuntimeException | AssertionError | LinkageError exception) {
+                com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(exception);
+                failure = new IllegalStateException("Natural observation failed", exception);
             }
         }
 
@@ -270,6 +295,7 @@ public final class NaturalFollowPortTests {
                     && Math.abs(fixture.owner.posY - plannedY) < .001,
                 "Natural owner input did not land");
             var sample = new JsonObject();
+            sample.add("policy", policySnapshot());
             sample.addProperty("index", frame);
             sample.addProperty("age", maid.ticksExisted);
             sample.add("position", vector(maid.posX - fixture.x, maid.posY - fixture.y - 1, maid.posZ - fixture.z));
@@ -356,9 +382,25 @@ public final class NaturalFollowPortTests {
                     .getAsDouble() + 1,
                 spawn.get(2)
                     .getAsDouble());
-            core = new MaidFaithfulBrain(maid);
-            maid.getBrainCoordinator()
-                .setAfterNavigationActionsForDevelopment(core);
+            if (expectedProfile == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM) {
+                var selected = maid.selectBrainProfileForDevelopment(expectedProfile);
+                helper.assertTrue(
+                    selected == com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.SELECTED,
+                    "Natural actor F factory selection failed");
+                core = maid.getBrainCoordinator()
+                    .peekFaithfulBrain();
+                bindingEntry = "entity_protected_profile_selection";
+                selectionResult = selected.name();
+            } else {
+                core = new MaidFaithfulBrain(maid);
+                maid.getBrainCoordinator()
+                    .setAfterNavigationActionsForDevelopment(core);
+                bindingEntry = "explicit_development_component";
+                selectionResult = "NOT_APPLICABLE";
+            }
+            boundRuntime = maid.getBrainCoordinator()
+                .peekPolicyRuntime();
+            helper.assertTrue(core != null && boundRuntime != null, "Natural actor has no bound Brain or runtime");
             core.getActor()
                 .rangedBow()
                 .setFlightProfileForDevelopment(ModernFlightProfile.SOURCE_ORIGINAL);
@@ -380,11 +422,55 @@ public final class NaturalFollowPortTests {
                 "ownerUuid",
                 fixture.owner.getUniqueID()
                     .toString());
+            row.addProperty("bindingEntry", bindingEntry);
+            row.addProperty("selectionResult", selectionResult);
+            row.add("initialPolicy", policySnapshot());
             row.addProperty("pickup", maid.isPickup());
             row.addProperty("complete", false);
             row.addProperty("actorRemoved", false);
             row.add("frames", frames);
             runs.add(row);
+        }
+
+        private JsonObject policySnapshot() {
+            var brain = maid.getBrainCoordinator();
+            var runtime = brain.peekPolicyRuntime();
+            boolean stable = runtime == boundRuntime && brain.peekFaithfulBrain() == core;
+            helper.assertTrue(
+                stable && runtime != null
+                    && runtime.isReady()
+                    && runtime.getProfile() == expectedProfile
+                    && runtime.requiresAfterNativeNavigation()
+                    && runtime.getContext()
+                        .getMaidId()
+                        .equals(maid.getUniqueID()),
+                "Natural capture policy, runtime, Brain or actor identity changed");
+            var value = new JsonObject();
+            value.addProperty(
+                "profile",
+                runtime.getProfile()
+                    .getId());
+            value.addProperty("ready", runtime.isReady());
+            value.addProperty("afterNativeNavigation", runtime.requiresAfterNativeNavigation());
+            value.addProperty(
+                "developmentOnly",
+                runtime.getProfile()
+                    .isDevelopmentOnly());
+            value.addProperty(
+                "contextMaidUuid",
+                runtime.getContext()
+                    .getMaidId()
+                    .toString());
+            value.addProperty(
+                "epoch",
+                runtime.getContext()
+                    .getEpoch());
+            value.addProperty("bindingStable", stable);
+            value.addProperty(
+                "brainClass",
+                core.getClass()
+                    .getName());
+            return value;
         }
 
         private void moveOwner(int at) {

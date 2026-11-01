@@ -398,3 +398,11 @@ WithoutOptionalApis同时隔离业务壳及其Battlegear、AppleCore、TConstruc
 FaithfulPolicyTests用真实命令切到不可用N，观察旧授权退休且不调原型，再显式恢复F并执行原生NBT读写，等待自然tick重建新运行实例
 另一场景使旧清理抛出接口错误，核新F工厂不启动、故障只停一次、普通选择不能绕过停用、原附魔苹果保留
 同最终127五项通过：生命周期13/9tick，实际F跟随45、进食/乘船32、箭盾70tick；仅证明这些行为与边界，不授予完整O/F/N或跨世界/客户端验收
+
+## 自然采集的实际策略身份
+
+NaturalFollowPortTests每轮删除并重建女仆，不能从Fixture初始实体的F选择推断后续actor身份
+v2采集每轮从实际实体保护入口选择F，记录初始和逐帧profile、ready、上下文UUID、epoch与运行实例稳定性；默认组件采集仍保留明确的开发入口标签
+捕获绑定三个玩法类和四个观察器类的实际打包资源与JAR摘要，明确不验证运行时变换后类定义
+异步观察的RuntimeException、AssertionError和LinkageError交回HQA判定，fatal因果链继续抛出
+本轮复用127玩法包，实际两个合同1980/1320tick、15轮3000帧通过；没有新生产包、CPU执行或主客户端启动
