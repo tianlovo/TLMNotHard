@@ -72,5 +72,15 @@ public interface MaidNavigationActor {
             this.y = y;
             this.z = z;
         }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Point point && x == point.x && y == point.y && z == point.z;
+        }
+
+        @Override
+        public int hashCode() {
+            return (y + z * 31) * 31 + x;
+        }
     }
 }

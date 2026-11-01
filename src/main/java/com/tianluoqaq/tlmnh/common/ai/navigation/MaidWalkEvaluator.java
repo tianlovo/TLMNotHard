@@ -24,7 +24,10 @@ public class MaidWalkEvaluator {
         height = floor(actor.height + 1F);
     }
 
-    public void prepare() {}
+    public void prepare() {
+        nodes.clear();
+        types.clear();
+    }
 
     public void done() {
         types.clear();

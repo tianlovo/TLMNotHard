@@ -13,6 +13,7 @@ public class MaidAmphibiousEvaluator extends MaidWalkEvaluator {
 
     @Override
     public void prepare() {
+        super.prepare();
         actor.cost(WATER, 0);
         oldWalkable = actor.cost(WALKABLE);
         oldBorder = actor.cost(WATER_BORDER);

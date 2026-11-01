@@ -3,6 +3,9 @@ package com.tianluoqaq.tlmnh.common.ai.navigation;
 import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext.floor;
 import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType.*;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
@@ -12,6 +15,7 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
 import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Navigation;
@@ -160,6 +164,13 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         return path == null ? null : new BrainPath(this, owner, path);
     }
 
+    /** 集合重载与现代PathNavigation一致，不套用Ground单坐标重载的目标归一化 */
+    public BrainPath createBrainPath(Object owner, Collection<Point> targets, int accuracy) {
+        requireBrainOwner(owner);
+        var path = active.brainQuery(targets, accuracy);
+        return path == null ? null : new BrainPath(this, owner, path);
+    }
+
     public boolean installBrainPath(Object owner, BrainPath created, double speed) {
         requireBrainOwner(owner);
         if (created == null) return active.install(null, speed, false);
@@ -194,13 +205,16 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         var region = region();
         var requested = new Point(x, y, z);
         var normalized = normalize(state, requested, region);
-        x = normalized.x;
-        y = normalized.y;
-        z = normalized.z;
-        var context = context(region);
+        return query(state, Collections.singleton(normalized), range, accuracy, requested);
+    }
+
+    private MaidModernPath query(State state, Collection<Point> targets, float range, int accuracy, Point requested) {
+        if (targets.isEmpty()) return null;
         searches++;
         var result = MaidPathSearch
-            .find(context, state.water, x, y, z, range, accuracy, floor(getPathSearchRange() * 16));
+            .find(context(region()), state.water, targets, range, accuracy, floor(getPathSearchRange() * 16));
+        if (result == null) return null;
+        if (requested == null) requested = new Point(result.targetX, result.targetY, result.targetZ);
         return state.water ? new MaidAmphibiousPath(result, requested) : new MaidModernPath(result, requested);
     }
 
@@ -243,6 +257,11 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             ? new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidUnderWaterNodeEvaluator(
                 context(region()))
             : new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator(context(region()));
+    }
+
+    /** 调用方必须在当前任务查询结束时finish/close，不能跨tick复用地形和能力快照 */
+    public MaidPathFindingBFS createArrivalMap(Point center, float range, int verticalRange) {
+        return new MaidPathFindingBFS(evaluator(), center, range, verticalRange);
     }
 
     public boolean canUpdatePath() {
@@ -461,14 +480,16 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
 
         MaidModernPath brainQuery(Point target, int accuracy) {
-            if (maid.posY < region().minY() || !canUpdate()) return null;
             var normalized = normalize(this, target, region());
+            return brainQuery(Collections.singleton(normalized), accuracy);
+        }
+
+        MaidModernPath brainQuery(Collection<Point> targets, int accuracy) {
+            if (targets.isEmpty() || maid.posY < region().minY() || !canUpdate()) return null;
             if (path instanceof MaidModernPath modern && !path.isFinished()
                 && targetPos != null
-                && targetPos.x == normalized.x
-                && targetPos.y == normalized.y
-                && targetPos.z == normalized.z) return modern;
-            var created = query(this, target.x, target.y, target.z, getPathSearchRange(), accuracy);
+                && targets.contains(targetPos)) return modern;
+            var created = query(this, targets, getPathSearchRange(), accuracy, null);
             if (created != null) {
                 // 原createPath立即更新查询目标，即使调用方之后没有安装；不能改成已安装路径的终点
                 targetPos = new Point(created.result.targetX, created.result.targetY, created.result.targetZ);

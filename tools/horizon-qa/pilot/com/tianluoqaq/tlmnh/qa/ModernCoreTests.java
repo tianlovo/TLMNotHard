@@ -246,7 +246,7 @@ public final class ModernCoreTests {
         helper.succeedWhen(() -> checked[0]);
     }
 
-    private static final class Fixture {
+    static final class Fixture {
 
         final GameTestHelper helper;
         final EntityMaid maid;

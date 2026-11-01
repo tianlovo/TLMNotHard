@@ -7,17 +7,16 @@ package com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation;
 
 import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext.floor;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import com.github.tartaricacid.touhoulittlemaid.util.CenterOffsetBlockPosSet;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidAmphibiousEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNode;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
 
-public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator {
+public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator implements ICachedEvaluator {
 
-    private final Set<Long> visited = new HashSet<>();
+    private CenterOffsetBlockPosSet visited;
 
     public MaidUnderWaterNodeEvaluator(MaidPathContext actor) {
         super(actor);
@@ -29,13 +28,19 @@ public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator {
         return startNode(floor(actor.x - actor.width / 2), floor(actor.y + .5), floor(actor.z - actor.width / 2));
     }
 
-    public void markVisited(int x, int y, int z) {
-        visited.add(key(x, y, z));
+    @Override
+    public void init(int x, int y, int z, int cx, int cy, int cz) {
+        visited = new CenterOffsetBlockPosSet(x, y, z, cx, cy, cz);
+    }
+
+    @Override
+    public void markVis(Point pos) {
+        visited.markVis(pos);
     }
 
     @Override
     public void done() {
-        visited.clear();
+        visited = null;
         super.done();
     }
 
@@ -54,7 +59,7 @@ public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator {
 
     @Override
     protected boolean valid(MaidPathNode next, MaidPathNode from) {
-        if (next != null && visited.contains(key(next.x, next.y, next.z))) return false;
+        if (next != null && visited != null && visited.isVis(next.x, next.y, next.z)) return false;
         if (next != null && region.water(from.x, from.y, from.z)
             && region.fluidEmpty(next.x, next.y, next.z)
             && from.y != next.y
@@ -64,10 +69,6 @@ public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator {
 
     @Override
     protected MaidPathNode accepted(int x, int y, int z, int step, double floor, int dx, int dz, MaidPathType from) {
-        return visited.contains(key(x, y, z)) ? null : super.accepted(x, y, z, step, floor, dx, dz, from);
-    }
-
-    private static long key(int x, int y, int z) {
-        return ((long) x & 67108863) << 38 | ((long) z & 67108863) << 12 | (long) y & 4095;
+        return visited != null && visited.isVis(x, y, z) ? null : super.accepted(x, y, z, step, floor, dx, dz, from);
     }
 }

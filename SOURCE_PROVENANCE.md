@@ -830,3 +830,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原版 MoveToTargetSink 的 150～250 tick 时限保留，重规划不延长时限；动态跟随停止不一律等于已到达，watchdog 必须从实际导航记录判断
 - 独立 QA 夹具使用 Forge FakePlayer，并把它登记到真实全局在线列表；核对目标 ServerUtilities 2.4.22 的 Universe.getPlayer/ServerUtils.isFake 分支，避免普通合成玩家缺失登录档案造成启动崩溃
 - 本批是 Follow/Move/Look 组件接线；完整感知、Brain 活动和工作记忆、快速可达缓存/多目标、完整 F/N 与原版 O/F/N 继续待办
+
+## 导航多目标与可达 BFS
+
+- Indev99 从同一固定 TLM 提交移植 entity/passive/MaidPathFindingBFS、util/CenterOffsetBlockPosSet、entity/ai/navigation/ICachedEvaluator，保留原包名与来源头
+- BFS 保留中心/竖直半径、候选点或其上方已访问即通过、增量队列及水节点访问排除；`isVis` 域外返回 true 是上游事实，不擅自改成 false
+- 平台适配将 BlockPos/Node 换为现有整数 Point/现代节点与 Region 边界，新增 AutoCloseable 和幂等释放，Evaluator.prepare 清除前次节点及类型缓存
+- 多目标 A* 对照 MC1.20.1 映射 PathFinder，首个命中集合按节点数选结果，部分路线按末节点 Manhattan 距离再节点数选；同键目标按整数值去重
+- 核对 MaidSelectivePathFinding/MaidUnderWaterBoardingPathFinder，任一目标流体为空即对整个查询采用上岸启发式；相同评分的目标不承诺跨平台固定选择次序
+- 集合查询按 PathNavigation 原重载直接使用目标坐标，单坐标入口才执行 GroundPathNavigation 的归一化；不把目标元数据缓存误写成已安装路线目标
+- 这些查询基础尚未完成原 MaidBreathAirTask/生活任务接线、全活动和感知，也不等于新增原版自然运行对照或完整 F/N
