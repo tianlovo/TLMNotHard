@@ -651,6 +651,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 maid.moveForward = 0;
                 maid.setPose(MaidPose.BEGGING, false);
                 maid.setCanClimb(false);
+                maid.getAquaticController()
+                    .clearPendingJump();
                 maid.setSneaking(false);
                 var swim = maid.getAquaticController()
                     .getManager();

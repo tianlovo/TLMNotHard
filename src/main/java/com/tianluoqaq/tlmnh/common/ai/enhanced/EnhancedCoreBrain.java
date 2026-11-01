@@ -34,6 +34,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedClimbController climb;
     private final EnhancedAmbientController ambient;
     private final EnhancedSnowballController snowball;
+    private final EnhancedBuoyancyController buoyancy;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
@@ -69,6 +70,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         climb = new EnhancedClimbController(actor);
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
         snowball = new EnhancedSnowballController(maid, actor, perception);
+        buoyancy = new EnhancedBuoyancyController(maid, actor);
     }
 
     @Override
@@ -173,7 +175,11 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                 selectedTarget = nextTarget;
                 transitions++;
             }
-            if (selected == null || !frame.accepts(selected)) return;
+            if (selected == null) {
+                if (actor.isCurrent()) buoyancy.tick();
+                return;
+            }
+            if (!frame.accepts(selected)) return;
             switch (selected.kind) {
                 case BREATHE -> breathing.execute();
                 case FOLLOW -> actor.setWalkAndLookTargetMemories(
@@ -222,6 +228,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             navigation.tick();
             if (actor.isCurrent()) climb.tick();
             if (actor.isCurrent()) doors.trigger(actor);
+            if (actor.isCurrent()) buoyancy.tick();
         } finally {
             ticking = false;
         }
@@ -291,7 +298,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     @Override
     public void afterLivingUpdate(Token token) {
-        // 无选择/指令限制时本tick已经清理actor，不应恢复其移动后授权
+        // 仅沿用本tick仍有效的actor相位，不能复活已取消动作
         if (actor.isCurrent()) actor.afterLivingFrame(token);
     }
 
@@ -333,6 +340,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedSnowballController snowball() {
         return snowball;
+    }
+
+    public EnhancedBuoyancyController buoyancy() {
+        return buoyancy;
     }
 
     public ModernFollowCoreActor actor() {
