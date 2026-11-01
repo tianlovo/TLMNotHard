@@ -64,7 +64,7 @@ public final class MaidTraversalController {
     }
 
     public void clear() {
-        opened.clear();
+        // 动作交接后仍在后续 tick 关闭自己打开的门，换世界时才丢弃旧世界坐标
         stopClimbing();
     }
 
@@ -84,7 +84,7 @@ public final class MaidTraversalController {
     }
 
     private boolean isOpen(Block block, int x, int y, int z) {
-        return block instanceof BlockDoor door ? door.func_150015_f(maid.worldObj, x, y, z)
+        return block instanceof BlockDoor door ? Rc2DoorState.isOpenOrOpening(door, maid.worldObj, x, y, z)
             : (maid.worldObj.getBlockMetadata(x, y, z) & 4) != 0;
     }
 
@@ -137,10 +137,13 @@ public final class MaidTraversalController {
                 }
             }
             if (occupied) continue;
-            if (!maid.worldObj.isBlockIndirectlyGettingPowered(p.posX, p.posY, p.posZ)
-                && !maid.worldObj.isBlockIndirectlyGettingPowered(p.posX, p.posY + 1, p.posZ))
+            if (maid.worldObj.isBlockIndirectlyGettingPowered(p.posX, p.posY, p.posZ)
+                || maid.worldObj.isBlockIndirectlyGettingPowered(p.posX, p.posY + 1, p.posZ)) entries.remove();
+            else {
                 setOpen(entry.getValue(), p.posX, p.posY, p.posZ, false);
-            entries.remove();
+                // Malisis 开门动画尚未结束时会忽略关门请求，保留记录到下一次 tick
+                if (!isOpen(entry.getValue(), p.posX, p.posY, p.posZ)) entries.remove();
+            }
         }
     }
 

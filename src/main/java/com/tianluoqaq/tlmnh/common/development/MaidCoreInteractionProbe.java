@@ -354,8 +354,12 @@ public final class MaidCoreInteractionProbe {
                     1);
             traversal.tick();
             require(
-                ((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door)
-                    .func_150015_f(world, x + 1, y, z),
+                com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                    (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
+                    world,
+                    x + 1,
+                    y,
+                    z),
                 "wood door opens on current path; actual=" + world.getBlock(x + 1, y, z)
                     + ";meta="
                     + world.getBlockMetadata(x + 1, y, z)
@@ -365,10 +369,33 @@ public final class MaidCoreInteractionProbe {
             maid.setPosition(x + 4.5, y, z + 0.5);
             maid.getNavigator()
                 .clearPathEntity();
+            var animated = world.getTileEntity(x + 1, y, z);
+            if (animated != null && animated.getClass()
+                .getName()
+                .startsWith("net.malisis.doors.")) {
+                traversal.tick();
+                require(
+                    com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                        (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
+                        world,
+                        x + 1,
+                        y,
+                        z),
+                    "pending open animation retained for later close");
+                // 本同步夹具用已读存档接口给定动画完成态，不在服务端命令中阻塞等待动画计时
+                var completed = new NBTTagCompound();
+                animated.writeToNBT(completed);
+                completed.setInteger("state", 2);
+                animated.readFromNBT(completed);
+            }
             traversal.tick();
             require(
-                !((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door)
-                    .func_150015_f(world, x + 1, y, z),
+                !com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                    (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
+                    world,
+                    x + 1,
+                    y,
+                    z),
                 "passed wood door closes");
             maid.setPosition(x + 0.5, y, z + 0.5);
             world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.iron_door, 0, 2);
