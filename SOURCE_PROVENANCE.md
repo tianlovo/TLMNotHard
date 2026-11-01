@@ -1052,3 +1052,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 对照实装 Forge 的 MapStorage.loadData：其异常后可能返回已构造但未完成读取的对象，因此检查完成状态，拒绝覆盖既有不可读基线
 - 重力箭模组数字 ID 调整为 2，墓碑沿用 1，实体存档名称保持原值；修复此前两者同时使用 1 的网络注册冲突
 - ProtectionTests 的类缺失验证仅隔离载入本模组适配器，不物理移除实际整包依赖，也不冒充修改过的完整 GTNH 重启验收
+
+## 原生数值持久化边界
+
+- 实读目标 Forge ItemStack：writeToNBT 将 stackSize 转为 byte、itemDamage 转为 short；readFromNBT 将负 itemDamage 改为零
+  getItemDamage 转调 Item.getDamage，不能在保护快照中当成原始字段读取
+- schema 2 另存完整整数、核对原生投影；写出深复制，槽位接收不再直接 Math.min 裁剪超限数量
+  读取原始字段使用已知名称的只读反射，不新增对 ItemStack 的强制 Mixin 注入或未知字段修复
+- Hodgepodge 2.7.221 实装 MixinMapStorage_threadedIO 将存档提交 WorldDataSaverHook，再进入原生 ThreadedFileIOBase 队列
+  跨进程夹具等待磁盘完整 NBT 与预期相同，不能把 saveAllData 返回当作落盘完成，也不修改全局保存配置
+- 新增测试提供方 Canary 仅属于非发布 pilot 模组，保持 mod version 1；变体只修改其类中 API 方法名称，原调用方保持旧方法引用
+  此范围用于验证真实提供方代码摘要变化与缺失方法回退，不代表全部 GTNH 第三方升级组合已验证

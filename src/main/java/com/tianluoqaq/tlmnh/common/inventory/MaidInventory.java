@@ -71,9 +71,7 @@ public final class MaidInventory implements IInventory {
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack) {
         checkSlot(slot);
-        if (stack != null && (stack.stackSize <= 0 || stack.getItem() == null)) stack = null;
-        if (stack != null)
-            stack.stackSize = Math.min(stack.stackSize, Math.min(getInventoryStackLimit(), stack.getMaxStackSize()));
+        stack = ProtectedItemCodec.admit(stack, getInventoryStackLimit());
         if (slot < BACKPACK_SIZE) backpack[slot] = stack;
         else if (slot == MAIN_HAND) maid.setCurrentItemOrArmor(0, stack);
         else if (slot == OFF_HAND) maid.setOffhandItem(stack);

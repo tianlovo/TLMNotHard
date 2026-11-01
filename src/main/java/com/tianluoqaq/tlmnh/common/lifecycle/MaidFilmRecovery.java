@@ -6,7 +6,8 @@ import net.minecraft.entity.item.EntityItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 /** 神龛拆除先保管再交付，掉落取消或回调破坏时可在原区块重试 */
 public final class MaidFilmRecovery {
@@ -47,11 +48,10 @@ public final class MaidFilmRecovery {
     }
 
     private static void attemptSafely(World world, UUID id) {
-        try {
+        IntegrationGuard.call(ExternalFeature.ITEM_DELIVERY, () -> {
             attempt(world, id);
-        } catch (RuntimeException exception) {
-            TLMNotHard.LOG.error("Shrine film delivery failed; retained in world data", exception);
-        }
+            return true;
+        }, () -> false);
     }
 
     private static void attempt(World world, UUID id) {

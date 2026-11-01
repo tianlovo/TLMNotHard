@@ -9,7 +9,8 @@ public enum ExternalFeature {
     GREGTECH_FOOD("gregtech_food", "gregtech"),
     ANIMATED_DOORS("animated_doors", "malisisdoors", "malisiscore"),
     VEHICLES("vehicles", "etfuturum"),
-    ARROW_GRAVITY("arrow_gravity", "GalacticraftCore");
+    ARROW_GRAVITY("arrow_gravity", "GalacticraftCore"),
+    ITEM_DELIVERY("item_delivery");
 
     public final String id;
     public final int contractRevision = 1;

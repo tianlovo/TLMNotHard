@@ -558,7 +558,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         var held = player == null ? null
             : com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
                 com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PLAYER_OFFHAND,
-                player::getCurrentEquippedItem,
+                () -> player.getCurrentEquippedItem(),
                 () -> null);
         boolean nameTag = held != null && held.getItem() == Items.name_tag;
         // 返回未处理会进入ItemNameTag原生分支，拒绝时也要阻止它绕过女仆权限
@@ -791,7 +791,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return worldObj.isRemote ? dataWatcher.getWatchableObjectItemStack(DATA_OFFHAND) : offhand;
     }
 
+    @Override
+    public void setCurrentItemOrArmor(int slot, ItemStack stack) {
+        if (worldObj != null && !worldObj.isRemote) stack = ProtectedItemCodec.admit(stack, 64);
+        super.setCurrentItemOrArmor(slot, stack);
+    }
+
     public void setOffhandItem(ItemStack stack) {
+        if (!worldObj.isRemote) stack = ProtectedItemCodec.admit(stack, 64);
         offhand = stack;
         dataWatcher.updateObject(DATA_OFFHAND, stack == null ? null : stack.copy());
         if (!worldObj.isRemote && shield != null) shield.equipmentChanged();

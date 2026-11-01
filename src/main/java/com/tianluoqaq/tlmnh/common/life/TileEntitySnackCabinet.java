@@ -50,10 +50,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack) {
-        if (stack != null) {
-            if (stack.stackSize <= 0) stack = null;
-            else stack.stackSize = Math.min(stack.stackSize, Math.min(64, stack.getMaxStackSize()));
-        }
+        stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.admit(stack, getInventoryStackLimit());
         items[slot] = stack;
         markDirty();
     }
