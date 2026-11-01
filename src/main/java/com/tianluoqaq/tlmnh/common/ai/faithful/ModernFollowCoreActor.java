@@ -131,7 +131,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         behaviorIdentity = new Object();
     }
 
-    void bindPerception(MaidModernPerception memory) {
+    public void bindPerception(MaidModernPerception memory) {
         if (perception != null) throw new IllegalStateException("Perception already bound");
         perception = Objects.requireNonNull(memory, "memory");
     }

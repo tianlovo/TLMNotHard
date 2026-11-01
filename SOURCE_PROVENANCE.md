@@ -1122,3 +1122,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 本工程 ModernFollowCoreComponent 改为 MaidFaithfulBrain，新增 FaithfulActions 绑定标识；去除类型名/标识变化后，任务体源码 token 与改名前一致
 - F 工厂、实体保护选择、世界/UUID 绑定及 NBT 后重建为本工程独立生命周期实现，不把旧原型作为 F 的缺失能力回退
 - 保留上游 EntityMaid 包名，仅增加经既有实体保护的显式开发选择入口；上游任务文件的原包、来源和既有合同继续保留
+
+## 独立增强核心切片
+
+- EnhancedCoreBrain为本工程独立决策实现，不包装或调用MaidFaithfulBrain、旧原型root
+- 复用已有移植的呼吸动作、移动sink、平台actor和感知；原移植来源及各自合同保持，不宣称增强策略属于上游原版
+- 平台actor只新增跨职责的感知绑定可见性，F任务体与原随机调用顺序未改
+- 协调器按请求类型创建独立实例，增强切片与F共用既有受保护生命周期；专用切片标识不能取得完整N资格

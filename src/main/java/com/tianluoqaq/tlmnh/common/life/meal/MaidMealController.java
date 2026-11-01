@@ -47,7 +47,10 @@ public final class MaidMealController {
         var policy = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         // 现代组件由对应行为显式开始物品使用，此处只推进已持有的使用生命周期
-        if (policy != null && policy.requiresAfterNativeNavigation()) return;
+        if (policy != null
+            && (policy.getProfile() != com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.LEGACY_PROTOTYPE
+                || !policy.isReady()))
+            return;
         if (maid.getBrainCoordinator()
             .getBreathController()
             .isActive()) return;

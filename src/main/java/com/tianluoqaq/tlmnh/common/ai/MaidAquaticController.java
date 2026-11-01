@@ -40,13 +40,14 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
             .getBreathController();
         var policy = maid.getBrainCoordinator()
             .peekPolicyRuntime();
-        if (policy == null || !policy.requiresAfterNativeNavigation()) manager.setGoingToBreath(breath.isActive());
+        boolean prototype = policy == null || policy.isReady()
+            && policy.getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.LEGACY_PROTOTYPE;
+        if (prototype) manager.setGoingToBreath(breath.isActive());
         manager.setEatBreatheItem(
             maid.getMealController()
                 .isBreathing());
         manager.updateSwimming();
-        if (policy == null || !policy.requiresAfterNativeNavigation())
-            jump.tick(this, maid.worldObj.getTotalWorldTime());
+        if (prototype) jump.tick(this, maid.worldObj.getTotalWorldTime());
     }
 
     /** Original EntityMaid.aiStep ticks its navigation manager after super.aiStep */

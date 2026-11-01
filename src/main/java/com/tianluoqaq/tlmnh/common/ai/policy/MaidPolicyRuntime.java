@@ -85,6 +85,10 @@ public final class MaidPolicyRuntime {
     public interface FaithfulActions extends AfterNavigationActions {
     }
 
+    /** 独立增强核心切片，不授予完整ENHANCED执行资格 */
+    public interface EnhancedCoreActions extends AfterNavigationActions {
+    }
+
     private final LegacyActions actions;
     private final MaidPolicyContext context;
     private final AfterNavigationActions afterNavigation;
@@ -269,11 +273,13 @@ public final class MaidPolicyRuntime {
     private boolean hasImplementation(MaidBrainProfile profile) {
         return profile.isAvailable() && (profile == MaidBrainProfile.LEGACY_PROTOTYPE
             || profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT && afterNavigation != null
-            || profile == MaidBrainProfile.FAITHFUL_TLM && afterNavigation instanceof FaithfulActions);
+            || profile == MaidBrainProfile.FAITHFUL_TLM && afterNavigation instanceof FaithfulActions
+            || profile == MaidBrainProfile.ENHANCED_CORE_COMPONENT && afterNavigation instanceof EnhancedCoreActions);
     }
 
     public boolean requiresAfterNativeNavigation() {
-        return profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT || profile == MaidBrainProfile.FAITHFUL_TLM;
+        return profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT || profile == MaidBrainProfile.FAITHFUL_TLM
+            || profile == MaidBrainProfile.ENHANCED_CORE_COMPONENT;
     }
 
     public MaidBrainProfile getProfile() {

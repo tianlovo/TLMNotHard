@@ -66,7 +66,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidAfterNavigationGate afterLivingGate = new MaidAfterNavigationGate();
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
     private World observedWorld, policyWorld;
-    private boolean faithfulRequested;
+    private MaidBrainProfile requestedBrainProfile;
     private String observedOwner;
     private String lastPolicyState;
     private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed, behaviorProtected;
@@ -289,7 +289,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)) return policy;
         if (policy != null && (!policy.getContext()
             .getMaidId()
-            .equals(maid.getUniqueID()) || faithfulRequested && policyWorld != maid.worldObj)) {
+            .equals(maid.getUniqueID()) || requestedBrainProfile != null && policyWorld != maid.worldObj)) {
             retireCurrent(
                 policy.getContext()
                     .getMaidId()
@@ -299,8 +299,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             afterNavigationActions = null;
         }
         if (policy == null) {
-            if (faithfulRequested)
+            if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
                 afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(maid);
+            else if (requestedBrainProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(maid);
             policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
 
                 @Override
@@ -388,9 +390,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 }
             }, afterNavigationActions);
             policyWorld = maid.worldObj;
-            if (faithfulRequested
-                && policy.select(MaidBrainProfile.FAITHFUL_TLM) != MaidPolicyRuntime.SelectionResult.SELECTED)
-                throw new IllegalStateException("Canonical faithful Brain binding failed");
+            if (requestedBrainProfile != null
+                && policy.select(requestedBrainProfile) != MaidPolicyRuntime.SelectionResult.SELECTED)
+                throw new IllegalStateException("Requested Brain binding failed");
         }
         return policy;
     }
@@ -409,7 +411,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             throw new IllegalStateException("Development component cannot be installed at this lifecycle boundary");
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
-        faithfulRequested = false;
+        requestedBrainProfile = null;
         afterNavigationActions = actions;
         var runtime = getPolicyRuntime();
         if (runtime == null) throw new IllegalStateException("No development policy runtime");
@@ -432,14 +434,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || transitioningPolicy) return MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE;
         if (policy != null && policy.getProfile() == requested
             && policy.isReady()
-            && (requested != MaidBrainProfile.FAITHFUL_TLM || faithfulRequested))
+            && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested == MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+                || requestedBrainProfile == requested))
             return MaidPolicyRuntime.SelectionResult.UNCHANGED;
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
         afterNavigationActions = null;
-        faithfulRequested = requested == MaidBrainProfile.FAITHFUL_TLM;
+        requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM
+            || requested == MaidBrainProfile.ENHANCED_CORE_COMPONENT ? requested : null;
         var runtime = getPolicyRuntime();
-        if (faithfulRequested) return runtime.isReady() ? MaidPolicyRuntime.SelectionResult.SELECTED
+        if (requestedBrainProfile != null) return runtime.isReady() ? MaidPolicyRuntime.SelectionResult.SELECTED
             : MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
         return requested == MaidBrainProfile.LEGACY_PROTOTYPE ? MaidPolicyRuntime.SelectionResult.SELECTED
             : runtime.select(requested);
@@ -448,9 +452,18 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     /** 观察当前已绑定的原版保留Brain，不创建状态或恢复失效策略 */
     public com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain peekFaithfulBrain() {
         return policy != null && policy.isReady()
-            && (!faithfulRequested || policyWorld == maid.worldObj)
+            && (requestedBrainProfile == null || policyWorld == maid.worldObj)
             && policy.requiresAfterNativeNavigation()
             && afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain brain ? brain
+                : null;
+    }
+
+    /** 只观察独立增强切片，不创建或恢复实现 */
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain peekEnhancedCore() {
+        return policy != null && policy.isReady()
+            && policyWorld == maid.worldObj
+            && policy.getProfile() == MaidBrainProfile.ENHANCED_CORE_COMPONENT
+            && afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain brain ? brain
                 : null;
     }
 
@@ -733,12 +746,22 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 .peekPathMemory();
             return path == null ? null : (PathEntity) path.getIdentity();
         }
+        var enhanced = peekEnhancedCore();
+        if (enhanced != null) {
+            var path = enhanced.actor()
+                .peekPathMemory();
+            return path == null ? null : (PathEntity) path.getIdentity();
+        }
         return null;
     }
 
     /** 原refresh只停运行行为、重建Behavior/Sensor，不能用策略取消擦掉工作记忆 */
     public boolean refreshModernBrain() {
         var runtime = policy;
+        if (peekEnhancedCore() != null && !suspended && !transitioningPolicy && persistentReadDepth == 0) {
+            runtime.invalidate(InvalidationReason.RESET);
+            return true;
+        }
         if (maid.worldObj == null || maid.worldObj.isRemote
             || persistentReadDepth > 0
             || suspended
@@ -749,7 +772,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || runtime == null
             || !runtime.isReady()
             || !runtime.requiresAfterNativeNavigation()
-            || faithfulRequested && policyWorld != maid.worldObj
+            || requestedBrainProfile != null && policyWorld != maid.worldObj
             || !(afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain core))
             return false;
         core.refreshBrain(

@@ -9,6 +9,7 @@ import java.util.Objects;
 public final class MaidIntentFrame {
 
     public enum Group {
+        EMERGENCY,
         COMMAND,
         CARE,
         AUTONOMOUS
@@ -19,7 +20,9 @@ public final class MaidIntentFrame {
         HOME,
         SLEEP,
         SNACK,
-        PICKUP
+        PICKUP,
+        BREATHE,
+        HEAL
     }
 
     private final MaidPolicyContext context;
