@@ -48,16 +48,26 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
                 guiTop + 52 + 13 * row,
                 StatCollector.translateToLocal("gui.touhou_little_maid.maid_config." + KEYS[row]),
                 value(row));
-            button.enabled = row == 3;
+            button.enabled = row >= 3;
             buttonList.add(button);
         }
     }
 
     private String value(int row) {
-        return row == 3 ? "§e" + Math.round(
-            maid.getConfigManager()
-                .getSoundFreq() * 100)
-            + "%" : "§7" + StatCollector.translateToLocal("gui.tlmnh.original.config_pending");
+        var config = maid.getConfigManager();
+        return switch (row) {
+            case 3 -> "§e" + Math.round(config.getSoundFreq() * 100) + "%";
+            case 4 -> "§4" + StatCollector.translateToLocal(
+                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.getTransKey(config.getPickupType()));
+            case 5 -> booleanValue(config.isOpenDoor());
+            case 6 -> booleanValue(config.isOpenFenceGate());
+            case 7 -> booleanValue(config.isActiveClimbing());
+            default -> "§7" + StatCollector.translateToLocal("gui.tlmnh.original.config_pending");
+        };
+    }
+
+    private static String booleanValue(boolean value) {
+        return StatCollector.translateToLocal("gui.touhou_little_maid.maid_config.value." + value);
     }
 
     @Override
@@ -69,15 +79,22 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
     @Override
     protected void actionPerformed(GuiButton button) {
         if (button instanceof MaidConfigButton setting) {
-            if (setting.id != 203 || !setting.enabled
-                || mc.currentScreen != this
+            if (!setting.enabled || mc.currentScreen != this
                 || mc.thePlayer.openContainer != inventorySlots
                 || !inventorySlots.canInteractWith(mc.thePlayer)
                 || mc.thePlayer.inventory.getItemStack() != null) return;
             frequencyClicks++;
-            mc.playerController.sendEnchantPacket(
-                inventorySlots.windowId,
-                setting.isLeftClicked() ? MaidConfigContainer.FREQUENCY_DOWN : MaidConfigContainer.FREQUENCY_UP);
+            int action = switch (setting.id) {
+                case 203 -> setting.isLeftClicked() ? MaidConfigContainer.FREQUENCY_DOWN
+                    : MaidConfigContainer.FREQUENCY_UP;
+                case 204 -> setting.isLeftClicked() ? MaidConfigContainer.PICK_TYPE_PREVIOUS
+                    : MaidConfigContainer.PICK_TYPE_NEXT;
+                case 205 -> MaidConfigContainer.TOGGLE_DOOR;
+                case 206 -> MaidConfigContainer.TOGGLE_FENCE_GATE;
+                case 207 -> MaidConfigContainer.TOGGLE_CLIMBING;
+                default -> -1;
+            };
+            if (action >= 0) mc.playerController.sendEnchantPacket(inventorySlots.windowId, action);
         } else super.actionPerformed(button);
     }
 
@@ -111,14 +128,21 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
     /** 开发探针走真实鼠标分发，标题点击不能误当成箭头操作 */
     public boolean requestFrequency(String action) {
         int x = guiLeft + 86 + switch (action) {
-            case "config_down" -> 125;
-            case "config_up" -> 159;
+            case "config_down", "config_type_previous" -> 125;
+            case "config_up", "config_type_next", "config_door", "config_gate", "config_climb" -> 159;
             case "config_label" -> 40;
             default -> throw new IllegalArgumentException("Unknown frequency action");
         };
         int before = frequencyClicks;
-        mouseClicked(x, guiTop + 97, 0);
-        mouseMovedOrUp(x, guiTop + 97, 0);
+        int row = switch (action) {
+            case "config_type_previous", "config_type_next" -> 4;
+            case "config_door" -> 5;
+            case "config_gate" -> 6;
+            case "config_climb" -> 7;
+            default -> 3;
+        };
+        mouseClicked(x, guiTop + 52 + row * 13 + 6, 0);
+        mouseMovedOrUp(x, guiTop + 52 + row * 13 + 6, 0);
         return frequencyClicks != before;
     }
 }

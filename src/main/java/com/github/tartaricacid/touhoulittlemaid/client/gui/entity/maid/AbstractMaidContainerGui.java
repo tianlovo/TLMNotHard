@@ -128,7 +128,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 case CONFIG_TAB -> isConfigPage();
                 case ContainerMaid.ACTION_HOME -> maid.getHomeArea()
                     .enabled();
-                case ContainerMaid.ACTION_PICKUP_ALL -> maid.canPickupItems() || maid.canPickupExperience();
+                case ContainerMaid.ACTION_PICKUP_ALL -> maid.isPickup();
                 case RIDE -> true;
                 default -> false;
             };

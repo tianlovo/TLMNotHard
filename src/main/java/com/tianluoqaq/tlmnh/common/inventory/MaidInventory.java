@@ -94,6 +94,37 @@ public final class MaidInventory implements IInventory {
         maid.syncOffhand();
     }
 
+    /** 按上游顺序合并背包和双手，再占空位；不自动穿甲，不修改输入物品 */
+    public ItemStack insertAvailable(ItemStack input, boolean simulate) {
+        if (input == null || input.getItem() == null || input.stackSize <= 0) return null;
+        var remaining = input.copy();
+        for (int pass = 0; pass < 2 && remaining.stackSize > 0; pass++) {
+            for (int slot = 0; slot <= OFF_HAND && remaining.stackSize > 0; slot++) {
+                var existing = getStackInSlot(slot);
+                int limit = Math.min(getInventoryStackLimit(), remaining.getMaxStackSize());
+                int capacity;
+                if (pass == 0 && existing != null
+                    && remaining.isStackable()
+                    && remaining.isItemEqual(existing)
+                    && ItemStack.areItemStackTagsEqual(remaining, existing))
+                    capacity = Math.max(0, limit - existing.stackSize);
+                else if (pass == 1 && existing == null) capacity = limit;
+                else continue;
+                int moved = Math.min(capacity, remaining.stackSize);
+                if (!simulate && moved > 0) {
+                    if (existing == null) {
+                        var inserted = remaining.copy();
+                        inserted.stackSize = moved;
+                        setInventorySlotContents(slot, inserted);
+                    } else existing.stackSize += moved;
+                }
+                remaining.stackSize -= moved;
+            }
+        }
+        if (!simulate && remaining.stackSize != input.stackSize) markDirty();
+        return remaining.stackSize > 0 ? remaining : null;
+    }
+
     @Override
     public boolean isUseableByPlayer(EntityPlayer player) {
         return maid.isEntityAlive() && player != null

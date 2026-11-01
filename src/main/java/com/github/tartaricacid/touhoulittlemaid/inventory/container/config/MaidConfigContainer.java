@@ -15,6 +15,8 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaid
 public final class MaidConfigContainer extends AbstractMaidContainer {
 
     public static final int FREQUENCY_DOWN = 24, FREQUENCY_UP = 25;
+    public static final int PICK_TYPE_PREVIOUS = 26, PICK_TYPE_NEXT = 27, TOGGLE_DOOR = 28, TOGGLE_FENCE_GATE = 29,
+        TOGGLE_CLIMBING = 30;
 
     public MaidConfigContainer(InventoryPlayer inventory, EntityMaid maid) {
         super(inventory, maid);
@@ -22,10 +24,25 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
 
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
-        if (action != FREQUENCY_DOWN && action != FREQUENCY_UP) return super.enchantItem(player, action);
+        if (action < FREQUENCY_DOWN || action > TOGGLE_CLIMBING) return super.enchantItem(player, action);
         if (maid.worldObj.isRemote || !canInteractWith(player) || player.inventory.getItemStack() != null) return false;
         var config = maid.getConfigManager();
-        config.setSoundFreq(config.getSoundFreq() + (action == FREQUENCY_DOWN ? -0.1F : 0.1F));
+        switch (action) {
+            case FREQUENCY_DOWN -> config.setSoundFreq(config.getSoundFreq() - 0.1F);
+            case FREQUENCY_UP -> config.setSoundFreq(config.getSoundFreq() + 0.1F);
+            case PICK_TYPE_PREVIOUS -> config.setPickupType(
+                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType
+                    .getPreviousPickType(config.getPickupType()));
+            case PICK_TYPE_NEXT -> config.setPickupType(
+                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType
+                    .getNextPickType(config.getPickupType()));
+            case TOGGLE_DOOR -> config.setOpenDoor(!config.isOpenDoor());
+            case TOGGLE_FENCE_GATE -> config.setOpenFenceGate(!config.isOpenFenceGate());
+            case TOGGLE_CLIMBING -> config.setActiveClimbing(!config.isActiveClimbing());
+            default -> {
+                return false;
+            }
+        }
         return true;
     }
 

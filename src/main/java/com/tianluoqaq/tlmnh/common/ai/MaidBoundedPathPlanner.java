@@ -165,7 +165,7 @@ public final class MaidBoundedPathPlanner {
         telemetry.navigation(Kind.NAV_SUBMITTED, "navigation", "", "native_world_path_query", 0);
         long startedAt = recording ? System.nanoTime() : 0;
         try {
-            path = maid.worldObj.getEntityPathToXYZ(
+            path = MaidPathQuery.create(
                 maid,
                 MathHelper.floor_double(x),
                 (int) y,

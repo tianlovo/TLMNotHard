@@ -124,9 +124,7 @@ public class ContainerMaid extends Container {
             case ACTION_NIGHT -> maid.setSchedule(MaidSchedule.NIGHT);
             case ACTION_ALL_DAY -> maid.setSchedule(MaidSchedule.ALL);
             case ACTION_PICKUP_ALL -> {
-                boolean enabled = !(maid.canPickupItems() || maid.canPickupExperience());
-                maid.setPickupItems(enabled);
-                maid.setPickupExperience(enabled);
+                maid.setPickup(!maid.isPickup());
             }
             case ACTION_PICKUP_ITEMS -> maid.setPickupItems(!maid.canPickupItems());
             case ACTION_PICKUP_EXPERIENCE -> maid.setPickupExperience(!maid.canPickupExperience());

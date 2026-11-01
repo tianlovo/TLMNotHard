@@ -592,3 +592,19 @@ Shift 详情、关联音包及完整输入矩阵仍待补齐，本段不表示�
 字体诊断包只在本机参考环境保存，Minecraft 和整合包字体文件均未加入源码仓库；实际界面继续使用当前 GTNH 字体和资源包
 同字体的选定数值字形位置一致，原始颜色差异仍记录；原版文字着色器采样全亮光照贴图，不能仅凭不同环境的截图像素数推断移植有误
 用户已明确字体接近即可，后续以原版布局、控件和功能为重点，关联功能批量实现后统一实机核对
+
+## 拾取与通行设置批次
+
+固定上游仍为 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`
+`entity/passive/PickType.java` 和 `api/event/MaidPickupEvent.java` 保留原包名，后者改为旧 Forge 事件类型，排除首版不移植的 PowerPoint 实体
+`MaidConfigManager` 扩展拾取类型及 OpenDoor/OpenFenceGate/ActiveClimbing 原 NBT 键，继续保留未知子配置和旧声音元数据；元数据升级为一个带版本字符串，不增加实体槽位
+`MaidConfigContainerGui`、容器和主页面接入服务端相对动作 26～30，拾取总开关与偏好类型分开保存；前三项视觉设置继续禁用，不用无效果开关冒充移植
+
+新增独立文件 `MaidPickupService`、`MaidTraversalController`、`MaidPathQuery` 位于 `com.tianluoqaq.tlmnh`
+拾取服务参考原实体的 pickupItem/pickupXPOrb/pickupArrow：支持模拟插入、取消事件、余量、拾取通知与原五次计数语音，按原版可用库存顺序填背包和双手，不自动穿甲
+经验修补读取 RC2 实际注册的 `enchantment.mending`，沿用 TLM 从双手和护甲随机选择一件装备、每点经验修复两点耐久的规则；未引入饰品或其他内容联动
+普通箭回收检查实际落地 NBT、拾取权限和摇晃时间，创造专用箭及未知自定义箭不转成普通弹药
+
+通行控制参考上游 `MaidInteractWithDoor` 与 `MaidClimbTask`，沿已安装路径处理，不创建第二套移动目标
+闭合栅栏门和木门在女仆的局部原生寻路视图中按配置放行，世界碰撞保持真实；沿途开门，通过后关闭，避让仍在通行的实体和红石供电，不打开铁门
+爬梯接入已有梯柱的局部竖直路径和原生移动，保留目标版本自身的运动限制；远处找梯、复杂跨层路线和主动寻找物品仍待后续导航实现，不表示完整 F/N 或原版 AI 对照已通过

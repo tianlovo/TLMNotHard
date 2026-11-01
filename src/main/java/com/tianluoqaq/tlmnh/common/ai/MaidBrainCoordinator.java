@@ -44,6 +44,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidTelemetryChannel telemetry;
     private final MaidActionRunner actionRunner = new MaidActionRunner();
     private final MaidHomeController home;
+    private final MaidTraversalController traversal;
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
@@ -70,6 +71,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         observedOwner = maid.func_152113_b();
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         home = new MaidHomeController(maid, actionRunner);
+        traversal = new MaidTraversalController(maid);
         bow = new MaidBowAttack(maid);
         life = new MaidLifeController(
             maid,
@@ -100,6 +102,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             return;
         }
         if (unloaded && !onRegistered()) return;
+        traversal.configureNavigator();
         decisionTick++;
         var runtime = getPolicyRuntime();
         if (runtime == null) {
@@ -175,6 +178,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         long started = recording ? System.nanoTime() : 0;
         try {
             var result = afterNativeNavigation ? runtime.tickAfterNativeNavigation() : runtime.tick(lifePermission);
+            traversal.tick();
             if (recording) {
                 String state = runtime.getProfile()
                     .getId() + ":"
@@ -408,6 +412,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        traversal.clear();
         ownerSensor.clear();
         dangerSensor.clear();
         combatActor.forgetOwner();

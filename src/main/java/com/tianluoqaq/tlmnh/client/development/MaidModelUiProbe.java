@@ -313,6 +313,24 @@ public final class MaidModelUiProbe {
                     .enabled());
             response.addProperty("pickupItems", maid.canPickupItems());
             response.addProperty("pickupExperience", maid.canPickupExperience());
+            response.addProperty("pickupEnabled", maid.isPickup());
+            response.addProperty(
+                "pickupType",
+                maid.getConfigManager()
+                    .getPickupType()
+                    .name());
+            response.addProperty(
+                "openDoor",
+                maid.getConfigManager()
+                    .isOpenDoor());
+            response.addProperty(
+                "openFenceGate",
+                maid.getConfigManager()
+                    .isOpenFenceGate());
+            response.addProperty(
+                "activeClimbing",
+                maid.getConfigManager()
+                    .isActiveClimbing());
         }
         if (minecraft.currentScreen instanceof GuiMaid main) {
             response.addProperty("homePage", main.isHomeSettingsPage());

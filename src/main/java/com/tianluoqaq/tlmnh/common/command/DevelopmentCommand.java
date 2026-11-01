@@ -218,6 +218,11 @@ public final class DevelopmentCommand extends CommandBase {
                 .runConfig((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "pickup-traversal-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .runPickupAndTraversal((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "world-sound-test".equals(args[0])) {
             MaidCoreInteractionProbe.runWorldSound((WorldServer) sender.getEntityWorld());
             return;

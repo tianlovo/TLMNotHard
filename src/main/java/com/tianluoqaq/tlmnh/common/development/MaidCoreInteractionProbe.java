@@ -80,6 +80,60 @@ public final class MaidCoreInteractionProbe {
                     .getSoundFreq() == 1,
                 "upper clamp");
             require(!menu.enchantItem(f.stranger, 24), "foreign viewer denied");
+            var config = f.maid.getConfigManager();
+            require(
+                menu.enchantItem(f.owner, 27) && config.getPickupType()
+                    == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM,
+                "pickup type next wraps");
+            f.maid.setPickup(false);
+            require(
+                !f.maid.isPickup() && config.getPickupType()
+                    == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM,
+                "master switch preserves preferred type");
+            f.maid.setPickup(true);
+            require(f.maid.canPickupItems() && !f.maid.canPickupExperience(), "type effective after reenabling");
+            require(
+                menu.enchantItem(f.owner, 26)
+                    && config.getPickupType() == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL,
+                "pickup type previous wraps");
+            for (int action = 28; action <= 30; action++)
+                require(menu.enchantItem(f.owner, action), "navigation setting toggle");
+            require(
+                !config.isOpenDoor() && !config.isOpenFenceGate() && !config.isActiveClimbing(),
+                "navigation flags independent");
+            var saved = new NBTTagCompound();
+            f.maid.writeEntityToNBT(saved);
+            saved.getCompoundTag("MaidSubConfig")
+                .setString("FutureSetting", "preserve");
+            var restored = new EntityMaid(world);
+            restored.readEntityFromNBT(saved);
+            require(
+                !restored.getConfigManager()
+                    .isOpenDoor()
+                    && !restored.getConfigManager()
+                        .isOpenFenceGate()
+                    && !restored.getConfigManager()
+                        .isActiveClimbing(),
+                "navigation NBT roundtrip");
+            var roundtrip = new NBTTagCompound();
+            restored.writeEntityToNBT(roundtrip);
+            require(
+                "preserve".equals(
+                    roundtrip.getCompoundTag("MaidSubConfig")
+                        .getString("FutureSetting")),
+                "unknown subconfig retained");
+            restored.getDataWatcher()
+                .updateObject(31, "1;0.4");
+            require(
+                Math.abs(
+                    restored.getConfigManager()
+                        .getSoundFreq() - 0.4F)
+                    < 0.00001
+                    && restored.getConfigManager()
+                        .isOpenDoor(),
+                "old metadata readable");
+            for (int action = 28; action <= 30; action++)
+                require(!menu.enchantItem(f.stranger, action), "foreign navigation toggle denied");
             f.owner.inventory.setItemStack(new ItemStack(Items.stick));
             require(!menu.enchantItem(f.owner, 24), "held cursor denied");
             f.owner.inventory.setItemStack(null);
@@ -105,7 +159,256 @@ public final class MaidCoreInteractionProbe {
                 menu.transferStackInSlot(f.stranger, 0) == null && f.owner.inventory.getStackInSlot(9).stackSize == 5,
                 "foreign move denied");
             TLMNotHard.LOG.info(
-                "TLMNH_CONFIG_TEST_PASS frequency=step-and-clamps owner=checked cursor=denied slots=36 player-transfer=conserved client=unverified");
+                "TLMNH_CONFIG_TEST_PASS frequency=step-and-clamps pickup-type=wrap-and-master navigation=independent nbt=roundtrip-and-unknown owner=checked cursor=denied slots=36 player-transfer=conserved client=unverified");
+        }
+    }
+
+    public static void runPickupAndTraversal(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            pickupBatch(f);
+            traversalBatch(f);
+            TLMNotHard.LOG.info(
+                "TLMNH_PICKUP_TRAVERSAL_TEST_PASS inventory=partial-full-simulated events=cancelled nbt=preserved xp=type-and-mending contact=actual-tick gates=path-open-close iron=denied ladder=up-down-toggle world=restored benchmark=unverified");
+        }
+    }
+
+    private static void pickupBatch(Fixture f) {
+        var maid = f.maid;
+        var inv = maid.getMaidInventory();
+        for (int i = 0; i < inv.getSizeInventory(); i++) inv.setInventorySlotContents(i, null);
+        for (int i = 0; i <= com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND; i++)
+            inv.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
+        var tagged = new ItemStack(Items.arrow, 62);
+        tagged.setTagCompound(new NBTTagCompound());
+        tagged.getTagCompound()
+            .setString("Probe", "kept");
+        inv.setInventorySlotContents(0, tagged);
+        var input = tagged.copy();
+        input.stackSize = 5;
+        var item = new EntityItem(f.world, maid.posX, maid.posY, maid.posZ, input);
+        item.delayBeforeCanPickup = 0;
+        require(
+            maid.pickupItem(item, true) && inv.getStackInSlot(0).stackSize == 62 && item.getEntityItem().stackSize == 5,
+            "simulation leaves both sides unchanged");
+        require(
+            maid.pickupItem(item, false) && inv.getStackInSlot(0).stackSize == 64
+                && item.getEntityItem().stackSize == 3
+                && !item.isDead,
+            "partial pickup conserves remainder");
+        require(
+            "kept".equals(
+                item.getEntityItem()
+                    .getTagCompound()
+                    .getString("Probe")),
+            "remainder NBT preserved");
+        require(
+            !maid.pickupItem(item, false) && item.getEntityItem().stackSize == 3,
+            "full inventory leaves ground stack");
+        inv.setInventorySlotContents(1, null);
+        var cancel = new Object() {
+
+            @SubscribeEvent
+            public void before(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent.ItemResultPre event) {
+                if (event.getMaid() == maid) event.setCanceled(true);
+            }
+        };
+        MinecraftForge.EVENT_BUS.register(cancel);
+        try {
+            require(
+                !maid.pickupItem(item, false) && item.getEntityItem().stackSize == 3 && inv.getStackInSlot(1) == null,
+                "cancelled pickup has no mutation");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(cancel);
+        }
+        require(
+            maid.pickupItem(item, false) && item.isDead && inv.getStackInSlot(1).stackSize == 3,
+            "remaining stack inserted once");
+        item.setDead();
+        var orb = new net.minecraft.entity.item.EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 7);
+        orb.ticksExisted = 3;
+        maid.setExperience(0);
+        maid.getConfigManager()
+            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM);
+        maid.pickupXPOrb(orb);
+        require(!orb.isDead && maid.getExperience() == 0, "item-only rejects XP");
+        maid.getConfigManager()
+            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_XP);
+        maid.pickupXPOrb(orb);
+        require(orb.isDead && maid.getExperience() == 7, "XP-only collects orb");
+        net.minecraft.enchantment.Enchantment mending = null;
+        for (var enchantment : net.minecraft.enchantment.Enchantment.enchantmentsList)
+            if (enchantment != null && "enchantment.mending".equals(enchantment.getName())) {
+                mending = enchantment;
+                break;
+            }
+        require(mending != null, "RC2 mending enchantment present");
+        var tool = new ItemStack(Items.iron_pickaxe);
+        tool.setItemDamage(10);
+        tool.addEnchantment(mending, 1);
+        maid.setOffhandItem(tool);
+        var repairOrb = new net.minecraft.entity.item.EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 8);
+        repairOrb.ticksExisted = 3;
+        maid.pickupXPOrb(repairOrb);
+        require(
+            repairOrb.isDead && tool.getItemDamage() == 0 && maid.getExperience() == 10,
+            "offhand mending consumes five XP and stores three");
+        maid.getConfigManager()
+            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL);
+        inv.setInventorySlotContents(3, null);
+        var arrow = new net.minecraft.entity.projectile.EntityArrow(f.world);
+        var arrowState = new NBTTagCompound();
+        arrow.writeToNBT(arrowState);
+        arrowState.setBoolean("inGround", true);
+        arrowState.setByte("pickup", (byte) 1);
+        arrowState.setByte("shake", (byte) 0);
+        arrow.readFromNBT(arrowState);
+        require(
+            maid.pickupArrow(arrow, true) && !arrow.isDead && inv.getStackInSlot(3) == null,
+            "ground arrow simulation");
+        arrow.canBePickedUp = 2;
+        require(!maid.pickupArrow(arrow, false), "creative-only arrow cannot create ammunition");
+        arrow.canBePickedUp = 1;
+        require(
+            maid.pickupArrow(arrow, false) && arrow.isDead
+                && inv.getStackInSlot(3)
+                    .getItem() == Items.arrow,
+            "ground arrow recovered once");
+        maid.getConfigManager()
+            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL);
+        inv.setInventorySlotContents(2, null);
+        var contact = new EntityItem(f.world, maid.posX, maid.posY, maid.posZ, new ItemStack(Items.apple));
+        contact.delayBeforeCanPickup = 0;
+        require(f.world.spawnEntityInWorld(contact), "contact item registered");
+        maid.onLivingUpdate();
+        require(
+            contact.isDead && inv.getStackInSlot(2)
+                .getItem() == Items.apple,
+            "normal living tick collects contact item");
+        f.world.removeEntity(contact);
+    }
+
+    private static void traversalBatch(Fixture f) {
+        var world = f.world;
+        var maid = f.maid;
+        int x = (int) Math.floor(maid.posX), z = (int) Math.floor(maid.posZ), y = 100;
+        var backup = new java.util.LinkedHashMap<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block>();
+        var metadata = new java.util.HashMap<net.minecraft.util.ChunkCoordinates, Integer>();
+        try {
+            for (int bx = x - 1; bx <= x + 5; bx++)
+                for (int bz = z - 1; bz <= z + 1; bz++) for (int by = y - 1; by <= y + 4; by++) {
+                    var p = new net.minecraft.util.ChunkCoordinates(bx, by, bz);
+                    backup.put(p, world.getBlock(bx, by, bz));
+                    metadata.put(p, world.getBlockMetadata(bx, by, bz));
+                    world.setBlock(
+                        bx,
+                        by,
+                        bz,
+                        by == y - 1 || bz != z ? net.minecraft.init.Blocks.stone : net.minecraft.init.Blocks.air,
+                        0,
+                        2);
+                }
+            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.fence_gate, 0, 2);
+            maid.setPosition(x + 0.5, y, z + 0.5);
+            maid.onGround = true;
+            maid.getBrainCoordinator()
+                .setSuspended(false);
+            var config = maid.getConfigManager();
+            config.setOpenDoor(true);
+            config.setOpenFenceGate(true);
+            config.setActiveClimbing(true);
+            var traversal = new com.tianluoqaq.tlmnh.common.ai.MaidTraversalController(maid);
+            traversal.configureNavigator();
+            var path = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
+                .create(maid, x + 5, y, z + 1, 8, true, true, false, true);
+            require(path != null && path.getFinalPathPoint().xCoord >= x + 3, "closed gate can be planned through");
+            maid.getNavigator()
+                .setPath(path, 1);
+            path.setCurrentPathIndex(1);
+            traversal.tick();
+            require((world.getBlockMetadata(x + 1, y, z) & 4) != 0, "path execution opens gate");
+            maid.setPosition(x + 4.5, y, z + 0.5);
+            maid.getNavigator()
+                .clearPathEntity();
+            traversal.tick();
+            require((world.getBlockMetadata(x + 1, y, z) & 4) == 0, "passed gate closes");
+            config.setOpenFenceGate(false);
+            maid.setPosition(x + 0.5, y, z + 0.5);
+            var blocked = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
+                .create(maid, x + 5, y, z + 1, 8, true, true, false, true);
+            require(blocked == null || blocked.getFinalPathPoint().xCoord <= x, "disabled gate blocks corridor");
+            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.wooden_door, 0, 2);
+            world.setBlock(x + 1, y + 1, z, net.minecraft.init.Blocks.wooden_door, 8, 2);
+            maid.getNavigator()
+                .setPath(
+                    new net.minecraft.pathfinding.PathEntity(
+                        new net.minecraft.pathfinding.PathPoint[] {
+                            new net.minecraft.pathfinding.PathPoint(x + 1, y, z) }),
+                    1);
+            traversal.tick();
+            require(
+                ((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door)
+                    .func_150015_f(world, x + 1, y, z),
+                "wood door opens on current path");
+            maid.setPosition(x + 4.5, y, z + 0.5);
+            maid.getNavigator()
+                .clearPathEntity();
+            traversal.tick();
+            require(
+                !((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door)
+                    .func_150015_f(world, x + 1, y, z),
+                "passed wood door closes");
+            maid.setPosition(x + 0.5, y, z + 0.5);
+            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.iron_door, 0, 2);
+            world.setBlock(x + 1, y + 1, z, net.minecraft.init.Blocks.iron_door, 8, 2);
+            maid.getNavigator()
+                .setPath(
+                    new net.minecraft.pathfinding.PathEntity(
+                        new net.minecraft.pathfinding.PathPoint[] {
+                            new net.minecraft.pathfinding.PathPoint(x + 1, y, z) }),
+                    1);
+            traversal.tick();
+            require(
+                !((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.iron_door)
+                    .func_150015_f(world, x + 1, y, z),
+                "iron door never forced open");
+            for (int by = y; by <= y + 3; by++) {
+                world.setBlock(x + 1, by, z, net.minecraft.init.Blocks.stone, 0, 2);
+                world.setBlock(x, by, z, net.minecraft.init.Blocks.ladder, 4, 2);
+            }
+            maid.setPosition(x + 0.5, y, z + 0.5);
+            maid.motionX = maid.motionY = maid.motionZ = 0;
+            var up = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
+                .create(maid, x + 1, y + 3, z + 1, 8, true, true, false, true);
+            require(up != null && up.getFinalPathPoint().yCoord == y + 3, "existing ladder column has vertical route");
+            maid.getNavigator()
+                .setPath(up, 1);
+            traversal.tick();
+            maid.moveEntityWithHeading(0, 0);
+            require(maid.posY > y, "ladder ascent reaches native movement");
+            maid.setPosition(x + 0.5, y + 3, z + 0.5);
+            maid.motionX = maid.motionY = maid.motionZ = 0;
+            var down = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
+                .create(maid, x + 1, y, z + 1, 8, true, true, false, true);
+            require(down != null && down.getFinalPathPoint().yCoord == y, "ladder descent route");
+            maid.getNavigator()
+                .setPath(down, 1);
+            traversal.tick();
+            maid.moveEntityWithHeading(0, 0);
+            require(maid.posY < y + 3 && maid.isSneaking(), "controlled descent reaches native movement");
+            config.setActiveClimbing(false);
+            traversal.tick();
+            require(!maid.isSneaking(), "disabled climbing clears owned sneak");
+            maid.getNavigator()
+                .clearPathEntity();
+            traversal.clear();
+        } finally {
+            maid.getNavigator()
+                .clearPathEntity();
+            maid.getBrainCoordinator()
+                .setSuspended(true);
+            var positions = new ArrayList<>(backup.keySet());
+            Collections.reverse(positions);
+            for (var p : positions) world.setBlock(p.posX, p.posY, p.posZ, backup.get(p), metadata.get(p), 2);
         }
     }
 

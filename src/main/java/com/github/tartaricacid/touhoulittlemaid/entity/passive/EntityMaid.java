@@ -63,6 +63,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState worldSounds = new com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState(
         this);
     private final MaidInventory inventory = new MaidInventory(this);
+    private final com.tianluoqaq.tlmnh.common.inventory.MaidPickupService pickup = new com.tianluoqaq.tlmnh.common.inventory.MaidPickupService(
+        this);
     private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
@@ -115,6 +117,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super.onLivingUpdate();
         if (!worldObj.isRemote) {
             shield.tickAfterLivingUpdate();
+            pickup.tick();
             syncOffhand();
         }
     }
@@ -371,11 +374,36 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     public boolean canPickupItems() {
-        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_ITEMS) != 0;
+        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_ITEMS) != 0
+            && configManager.getPickupType()
+                .canPickItem();
     }
 
     public boolean canPickupExperience() {
-        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_EXPERIENCE) != 0;
+        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_EXPERIENCE) != 0
+            && configManager.getPickupType()
+                .canPickXp();
+    }
+
+    public boolean isPickup() {
+        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE)) != 0;
+    }
+
+    public void setPickup(boolean enabled) {
+        setPickupItems(enabled);
+        setPickupExperience(enabled);
+    }
+
+    public boolean pickupItem(net.minecraft.entity.item.EntityItem item, boolean simulate) {
+        return pickup.pickupItem(item, simulate);
+    }
+
+    public void pickupXPOrb(net.minecraft.entity.item.EntityXPOrb orb) {
+        pickup.pickupExperience(orb);
+    }
+
+    public boolean pickupArrow(net.minecraft.entity.projectile.EntityArrow arrow, boolean simulate) {
+        return pickup.pickupArrow(arrow, simulate);
     }
 
     public void setPickupItems(boolean enabled) {
@@ -433,8 +461,11 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         tag.setInteger(EXPERIENCE_TAG, getExperience());
         tag.setInteger("MaidHunger", getHunger());
         tag.setInteger("MaidFavorability", getFavorability());
-        tag.setBoolean("PickupItems", canPickupItems());
-        tag.setBoolean("PickupExperience", canPickupExperience());
+        tag.setBoolean("MaidIsPickup", isPickup());
+        tag.setBoolean("PickupItems", (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_ITEMS) != 0);
+        tag.setBoolean(
+            "PickupExperience",
+            (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_EXPERIENCE) != 0);
         home.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
         if (offhand != null) tag.setTag(OFFHAND_TAG, offhand.writeToNBT(new NBTTagCompound()));
@@ -488,6 +519,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             setFavorability(tag.getInteger("MaidFavorability"));
             if (tag.hasKey("PickupItems")) setPickupItems(tag.getBoolean("PickupItems"));
             if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
+            if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience") && tag.hasKey("MaidIsPickup", 1))
+                setPickup(tag.getBoolean("MaidIsPickup"));
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
             setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
             home.load(tag);
