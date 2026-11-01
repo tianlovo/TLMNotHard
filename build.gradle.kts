@@ -29,22 +29,22 @@ tasks.withType<Test>().configureEach {
     doFirst { workingDir.mkdirs() }
 }
 
-val gsonRc2Client = configurations.create("gsonRc2Client") {
+val gsonClientRuntime = configurations.create("gsonClientRuntime") {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
 dependencies {
-    add(gsonRc2Client.name, "com.google.code.gson:gson:2.10.1")
+    add(gsonClientRuntime.name, "com.google.code.gson:gson:2.10.1")
 }
 
-val testRc2ClientGson = tasks.register<Test>("testRc2ClientGson") {
-    description = "Runs model and development protocol checks with the Gson version used by the RC2 client"
+val testClientGson = tasks.register<Test>("testClientGson") {
+    description = "Runs model and development protocol checks with the Gson version used by the client runtime"
     group = "verification"
     testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath.filter { !it.name.startsWith("gson-") } + gsonRc2Client
+    classpath = sourceSets.test.get().runtimeClasspath.filter { !it.name.startsWith("gson-") } + gsonClientRuntime
     include("**/BedrockGeometryTest.class", "**/GeckoGeometryTest.class", "**/BuiltinMaidModelsTest.class", "**/BedrockPoseTest.class", "**/BuiltinBedrockAnimationsTest.class", "**/GeckoAnimationTest.class", "**/GeckoControllerTest.class", "**/BuiltinGeckoPlayerTest.class", "**/ClientDevelopmentRequestTest.class", "**/RenderSubmissionTraceTest.class", "**/BuiltinModelSelectionTest.class", "**/BuiltinModelNamesTest.class")
     useJUnit()
 }
 tasks.named("check") {
-    dependsOn(testRc2ClientGson)
+    dependsOn(testClientGson)
 }

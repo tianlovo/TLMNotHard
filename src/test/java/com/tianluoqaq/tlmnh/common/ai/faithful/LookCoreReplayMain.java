@@ -63,7 +63,7 @@ public final class LookCoreReplayMain {
         }
     }
 
-    // 与现有MoveCoreReplayMain同样拒绝重复键；仅使用RC2 Gson 2.2.4已有API
+    // 与现有MoveCoreReplayMain同样拒绝重复键；仅使用native Gson 2.2.4已有API
     static JsonObject parseStrict(Reader input) throws IOException {
         JsonReader reader = new JsonReader(input);
         reader.setLenient(false);

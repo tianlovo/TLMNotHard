@@ -234,7 +234,7 @@ connect_local 返回 complete 仅表示已请求连接，仍须用 status 核对
 `GeckoGeometryTest` 覆盖 26 份内置 Gecko 几何与独立骨骼姿态，检查酒狐 19 个基础条目和 33 个 Gecko 选择的几何输入、镜像、逐面 UV、隐藏控制、定位骨骼、快照及异常矩阵清理；
 AnimatedGeoModel 保存每只女仆的可变姿态，关键帧、Molang 与核心状态控制器已接入，实际画面仍需验收
 
-模板默认测试类路径使用 Gson 2.2.4，`testRc2ClientGson` 以 RC2 客户端的 Gson 2.10.1 再运行几何、模型、动画控制器与测试协议检查；两组测试都使用 Java 25，均由
+模板默认测试类路径使用 Gson 2.2.4，`testClientGson` 以 RC2 客户端的 Gson 2.10.1 再运行几何、模型、动画控制器与测试协议检查；两组测试都使用 Java 25，均由
 `check` / `build` 执行，兼容性测试依赖不会打包进模组，也不会替换整包的 Gson
 
 `MaidRenderer` 继承 RC2 的 RenderLiving，将同步的模型 ID、原贴图和实体缩放接入生物渲染；解析后的几何按资源缓存，可变姿态按女仆持有弱引用缓存，资源重载后两者失效；
@@ -704,3 +704,12 @@ Indev113 在现代组件中区分原 Brain 刷新与策略撤销：刷新只调�
 标准 FakePlayer.openGui 空覆盖导致的 25 tick 测试失败保留；修正测试入口后直接执行真实 FML 服务端流程，使用内存玩家，不代表真实客户端网络或画面
 最终只修改实体/容器/协调器共七个类，其他 1130 类和全部资源字节一致；源输入及各轮 JSON/XML/process 状态分别保留，不拼成最终单轮全绿
 45 项局部 CPU 检查、1137 类 major46/52 与资源检查通过；完整 F/N、门交互记忆、原版自然测评和首版跨模块继续
+
+## 代码命名
+
+通用类型、接口、检查任务与诊断来源按职责命名，整合包版本保存在元数据和验证记录
+同一实现随运行环境升级时保持类型名稳定，第三方适配按提供方或能力区分
+当前门状态读取使用 `NativeDoorState`，原生导航反馈使用 `NativeNavigationStopSource` / `NativeNavigationStopState`
+限定干燥平台的开发适配为 `DryPlatformFollowActor` / `DryPlatformFollowTeleport`，名称保持其能力范围
+客户端 Gson 检查任务为 `testClientGson`；开发物品检查组为 `native-items`，均同步到当前调用方
+历史会话和已冻结验证记录保留当时的名称与目标版本，不作为当前入口

@@ -15,7 +15,7 @@ import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
 public class MaidHeldItemTransformsTest {
 
     private static final float EPSILON = 2E-6F;
-    // 行主序golden：直接从RC2 RenderBiped/BG入口常数以独立double矩阵计算
+    // 行主序golden：直接从native RenderBiped/BG入口常数以独立double矩阵计算
     private static final double[] SHIELD = { .40053523878486785, -.1867726492063249, -.44194173824159216, .375,
         -.3296758022606207, -.5254041043829405, -.07674237748060803, .8671875, .34858340163491, -.2822968377541823,
         .4352276502000118, .0234375, 0, 0, 0, 1 };

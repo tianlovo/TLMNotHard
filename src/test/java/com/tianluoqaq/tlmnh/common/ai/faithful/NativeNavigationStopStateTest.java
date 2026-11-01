@@ -12,7 +12,7 @@ import org.junit.Test;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
-public class Rc2NavigationStopStateTest {
+public class NativeNavigationStopStateTest {
 
     @Test
     public void completedNativeCallOnlyMatchesTheOwnedInstallationAndExactFrame() {

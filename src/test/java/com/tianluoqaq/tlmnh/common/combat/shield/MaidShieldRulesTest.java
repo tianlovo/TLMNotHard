@@ -11,7 +11,7 @@ import org.junit.Test;
 public class MaidShieldRulesTest {
 
     @Test
-    public void blockConeUsesStrictRc2EdgesAndYawWrapping() {
+    public void blockConeUsesNativeEdgesAndYawWrapping() {
         assertTrue(MaidShieldRules.withinAngle(59.999F, 60));
         assertTrue(MaidShieldRules.withinAngle(-59.999F, 60));
         assertFalse(MaidShieldRules.withinAngle(60, 60));
@@ -21,7 +21,7 @@ public class MaidShieldRulesTest {
     }
 
     @Test
-    public void coincidentSourceConsumesRc2SeparationSamplesInsteadOfAssumingFront() {
+    public void coincidentSourceConsumesNativeSeparationSamplesInsteadOfAssumingFront() {
         double[] samples = { .99, .01, .99, .01 };
         var cursor = new AtomicInteger();
         float yaw = MaidShieldRules.relativeYaw(1, 1, 1, 1, 0, () -> samples[cursor.getAndIncrement()]);
