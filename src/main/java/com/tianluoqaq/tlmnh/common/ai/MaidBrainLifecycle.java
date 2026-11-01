@@ -60,6 +60,7 @@ public final class MaidBrainLifecycle {
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         if (event.world.isRemote) return;
+        MaidWorldNavigationBudget.unload(event.world);
         UNLOADING_WORLDS.add(event.world);
         visit(
             new ArrayList<>(event.world.loadedEntityList),

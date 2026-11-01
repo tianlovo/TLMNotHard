@@ -19,15 +19,16 @@ public final class MaidHomeController {
         BLOCKED,
         WRONG_DIMENSION,
         TELEPORTED,
-        PATH_UNAVAILABLE
+        PATH_UNAVAILABLE,
+        NAVIGATION_PENDING
     }
 
     private final EntityMaid maid;
     private final MaidActionRunner runner;
-    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
     private MaidActionRun run;
     private PathEntity ownedPath;
-    private long tick, nextPath;
+    private long tick, nextPath, nextTeleport;
     private boolean requested, returning, stopping;
     private Status status = Status.IDLE;
 
@@ -93,7 +94,8 @@ public final class MaidHomeController {
         double by = (double) MathHelper.floor_double(maid.posY) - center.y;
         double bz = (double) MathHelper.floor_double(maid.posZ) - center.z;
         int teleportRange = home.radius() + 4;
-        if (bx * bx + by * by + bz * bz > (double) teleportRange * teleportRange) {
+        if (tick >= nextTeleport && bx * bx + by * by + bz * bz > (double) teleportRange * teleportRange) {
+            nextTeleport = tick + 40;
             var teleport = MaidHomeTeleport.tryReturn(maid, runner, run);
             if (teleport != MaidHomeTeleport.Result.NO_SAFE_DESTINATION) {
                 cancel();
@@ -114,7 +116,10 @@ public final class MaidHomeController {
             0.7);
         if (result == PathResult.STARTED) ownedPath = maid.getNavigator()
             .getPath();
-        else status = Status.PATH_UNAVAILABLE;
+        else if (result.isDeferred()) {
+            nextPath = tick + 1;
+            status = Status.NAVIGATION_PENDING;
+        } else status = Status.PATH_UNAVAILABLE;
     }
 
     public void cancel() {
@@ -131,6 +136,7 @@ public final class MaidHomeController {
             run = null;
             requested = returning = false;
             nextPath = 0;
+            nextTeleport = 0;
             status = Status.IDLE;
             runner.release(stopped);
             stopping = false;

@@ -32,6 +32,7 @@ public final class MaidCombatController {
         CHASING,
         PATH_COOLDOWN,
         PATH_FAILED,
+        NAVIGATION_PENDING,
         STUCK,
         ATTACKING,
         PREPARING_ATTACK,
@@ -199,9 +200,16 @@ public final class MaidCombatController {
             status = actor.hasPath() ? Status.CHASING : Status.PATH_COOLDOWN;
             return true;
         }
-        pathRequests++;
         nextPath = tick + PATH_INTERVAL;
         lastPathResult = actor.approachTarget();
+        if (lastPathResult.isDeferred()) {
+            nextPath = tick + 1;
+            pursuitStarted++;
+            markProgress();
+            status = Status.NAVIGATION_PENDING;
+            return true;
+        }
+        pathRequests++;
         if (lastPathResult == PathResult.STARTED) {
             consecutivePathFailures = 0;
             status = Status.CHASING;

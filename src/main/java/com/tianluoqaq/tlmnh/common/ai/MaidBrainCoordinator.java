@@ -65,8 +65,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed;
     private int persistentReadDepth;
     private final BooleanSupplier lifePermission;
-    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
-    private final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner();
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
+    private final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner(true);
     private boolean suspended;
     private long decisionTick;
 
@@ -458,6 +458,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        MaidWorldNavigationBudget.cancel(maid);
         traversal.clear();
         ownerSensor.clear();
         dangerSensor.clear();

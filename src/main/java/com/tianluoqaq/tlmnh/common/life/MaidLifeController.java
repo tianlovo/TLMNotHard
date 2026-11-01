@@ -63,7 +63,7 @@ public final class MaidLifeController {
     private final Supplier<EntityPlayer> ownerSource;
     private final Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector;
     private final MaidLifeSensor sensor;
-    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
     private TileEntity target;
     private Action action;
     private MaidTask selectedTask;
@@ -205,17 +205,22 @@ public final class MaidLifeController {
         if (tick >= nextPath) {
             nextPath = tick + 20;
             Vec3 stand = standBeside(target);
-            pathRequests++;
             lastPathResult = stand == null ? PathResult.UNREACHABLE
                 : planner.request(maid, stand.xCoord, stand.yCoord, stand.zCoord, 0.6D);
-            if (lastPathResult == PathResult.STARTED) {
-                ownedPath = maid.getNavigator()
-                    .getPath();
-                approachPoint = stand;
-                failures = 0;
-            } else if (++failures >= 3) {
-                stop(Status.PATH_FAILED);
-                return false;
+            if (lastPathResult.isDeferred()) {
+                nextPath = tick + 1;
+                selectedAt++;
+            } else {
+                pathRequests++;
+                if (lastPathResult == PathResult.STARTED) {
+                    ownedPath = maid.getNavigator()
+                        .getPath();
+                    approachPoint = stand;
+                    failures = 0;
+                } else if (++failures >= 3) {
+                    stop(Status.PATH_FAILED);
+                    return false;
+                }
             }
         }
         // 1.7导航在距终点一个实体宽度内就结束；邻格路径结束不一定进入柜上蛋糕的原2格交互球

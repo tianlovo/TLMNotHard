@@ -227,6 +227,24 @@ public class MaidFollowControllerTest {
         for (int i = 0; i < ticks; i++) controller.tick();
     }
 
+    @Test
+    public void budgetWaitingPreservesRouteAndDoesNotEnterFailureBackoff() {
+        var actor = new TestActor();
+        var controller = new MaidFollowController(actor, 0);
+        run(controller, 10);
+        assertTrue(actor.path);
+        actor.result = PathResult.WAITING_BUDGET;
+        run(controller, 90);
+        assertTrue(actor.path);
+        assertEquals(0, controller.getPathFailures());
+        assertEquals(1, controller.getPathRequests());
+        assertEquals(Status.NAVIGATION_PENDING, controller.getStatus());
+        actor.result = PathResult.STARTED;
+        controller.tick();
+        assertEquals(2, controller.getPathRequests());
+        assertEquals(Status.FOLLOWING, controller.getStatus());
+    }
+
     private static final class TestActor implements MaidFollowController.Actor {
 
         private double x, ownerX = 8;
@@ -304,7 +322,7 @@ public class MaidFollowControllerTest {
         @Override
         public PathResult requestPath() {
             requests++;
-            path = result == PathResult.STARTED;
+            if (!result.isDeferred()) path = result == PathResult.STARTED;
             return result;
         }
 

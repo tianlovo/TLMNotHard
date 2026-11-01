@@ -26,6 +26,7 @@ public final class MaidFollowController {
         DESTINATION_UNLOADED,
         NOT_NAVIGABLE,
         ADAPTER_UNSUPPORTED,
+        NAVIGATION_PENDING,
         STUCK,
         SITTING,
         RIDING,
@@ -40,11 +41,18 @@ public final class MaidFollowController {
     }
 
     public enum PathResult {
+
         STARTED,
         UNREACHABLE,
         UNLOADED,
         NOT_NAVIGABLE,
-        ADAPTER_UNSUPPORTED
+        ADAPTER_UNSUPPORTED,
+        WAITING_BUDGET,
+        STALE_REQUEST;
+
+        public boolean isDeferred() {
+            return this == WAITING_BUDGET || this == STALE_REQUEST;
+        }
     }
 
     /** 所有调用都来自实体所属世界的服务端线程，不在后台访问世界 */
@@ -163,10 +171,16 @@ public final class MaidFollowController {
             status = actor.hasPath() ? Status.FOLLOWING : Status.PATH_COOLDOWN;
             return;
         }
-        pathRequests++;
         nextPathRequest = tick + PATH_INTERVAL;
         var result = actor.requestPath();
         lastPathResult = result;
+        if (result.isDeferred()) {
+            nextPathRequest = tick + 1;
+            markProgress();
+            status = Status.NAVIGATION_PENDING;
+            return;
+        }
+        pathRequests++;
         if (result == PathResult.STARTED) {
             failureUntil = 0;
             status = Status.FOLLOWING;

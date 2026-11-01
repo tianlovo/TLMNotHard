@@ -735,3 +735,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 地形守卫使用已加载方块、身体碰撞、下方支撑、家园范围及液体/火/仙人掌排除；前方也不可走时停下，这是目标环境的保守适配，不声称等价于全部现代 WalkNodeEvaluator 类型
 - MaidShootTargetTask.java:72–113 的行走/使用物品并行关系用于修正追击时每 tick 清空蓄力的问题；隐藏目标仍按真实 canStillUse 可见性条件取消，未套用脱离 Behavior 生命周期的 60 tick 保持假设
 - 当前仍保留原型的 12 格发射半径、目标选择、路径与冷却门槛；完整原版走近/家园语义、原版射击 profile、完整 F/N 和原版 benchmark 均未由本批完成
+
+## 世界级导航预算
+
+- MaidNavigationBudget、MaidWorldNavigationBudget 和 MaidNavigationConfig 是本项目独立实现，不是上游 TLM 的原版行为；生产导航显式启用，原版对照核心的调用节奏保持独立
+- 现有 MC 1.7.10 PathNavigate/PathFinder 的创建与安装仍由 MaidBoundedPathPlanner 适配；新增准入只限制每世界每 tick 的原生调用数，不能限制一次 A* 内部耗时
+- FIFO 队列只保存女仆 UUID 与最后轮询时间，获准后调用方读取当前目标重新创建，不延迟执行旧世界回调；取消不退回已用额度，过期身份和世界时间回退可清理
+- WAITING_BUDGET 与 STALE_REQUEST 不作为不可达，不清已有路径或加入失败缓存；生产安装另核创建时的世界、实体、主人、任务和策略身份，失效不获得新授权
+- 默认每世界每 tick 8 次是 Indev 可配置起点，范围 1～256、重启生效，尚未称为性能最优值；原版测评、感知预算、失败缓存、完整 F/N 和最终长时压力验收继续待办

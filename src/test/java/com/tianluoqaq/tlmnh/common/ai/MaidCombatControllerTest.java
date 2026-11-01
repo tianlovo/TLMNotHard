@@ -214,6 +214,22 @@ public class MaidCombatControllerTest {
         assertEquals(0, actor.preparation);
     }
 
+    @Test
+    public void budgetWaitingDoesNotBecomeUnreachableOrExpirePursuit() {
+        var actor = new TestActor();
+        actor.pathResult = PathResult.WAITING_BUDGET;
+        var controller = new MaidCombatController(actor, 0);
+        run(controller, 250);
+        assertEquals(Status.NAVIGATION_PENDING, controller.getStatus());
+        assertEquals(0, controller.getPathRequests());
+        assertEquals(0, controller.getPathFailures());
+        assertTrue(actor.target);
+        actor.pathResult = PathResult.STARTED;
+        controller.tick();
+        assertEquals(Status.CHASING, controller.getStatus());
+        assertEquals(1, controller.getPathRequests());
+    }
+
     private static final class TestActor implements MaidCombatController.Actor {
 
         private final StringBuilder events = new StringBuilder();
@@ -279,7 +295,7 @@ public class MaidCombatControllerTest {
         @Override
         public PathResult approachTarget() {
             events.append("path,");
-            path = pathResult == PathResult.STARTED;
+            if (!pathResult.isDeferred()) path = pathResult == PathResult.STARTED;
             return pathResult;
         }
 

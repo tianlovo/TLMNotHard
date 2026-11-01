@@ -26,7 +26,7 @@ public final class MaidPickupController {
     private final EntityMaid maid;
     private final MaidActionRunner runner;
     private final Supplier<EntityPlayer> findOwner;
-    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
     private MaidActionRun run;
     private PathEntity ownedPath;
     private Entity target;
@@ -34,7 +34,7 @@ public final class MaidPickupController {
     private UUID ignored;
     private long nextScan, nextPath, expires, ignoreUntil;
     private double plannedX, plannedY, plannedZ;
-    private boolean stopping;
+    private boolean stopping, waitingPath;
 
     public MaidPickupController(EntityMaid maid, MaidActionRunner runner, Supplier<EntityPlayer> findOwner) {
         this.maid = maid;
@@ -74,6 +74,7 @@ public final class MaidPickupController {
             cancel();
             return false;
         }
+        if (waitingPath) expires++;
         if (target != null && (now >= expires || !eligible(target, owner, now)
             || !runner.isOwned(run, maid.worldObj, maid.getTask()))) {
             if (now >= expires) ignore(target, now);
@@ -91,10 +92,14 @@ public final class MaidPickupController {
         maid.getLookHelper()
             .setLookPosition(target.posX, target.posY, target.posZ, 20, maid.getVerticalFaceSpeed());
         boolean moved = target.getDistanceSq(plannedX, plannedY, plannedZ) > 0.25;
-        if (now >= nextPath && (moved || maid.getNavigator()
-            .noPath())) {
+        if (now >= nextPath && (waitingPath || moved
+            || maid.getNavigator()
+                .noPath())) {
             nextPath = now + 20;
-            if (!pathTo(target)) {
+            var result = pathTo(target);
+            waitingPath = result.isDeferred();
+            if (waitingPath) nextPath = now + 1;
+            else if (result != PathResult.STARTED) {
                 ignore(target, now);
                 cancel();
                 return false;
@@ -144,10 +149,12 @@ public final class MaidPickupController {
                 Math.min(inspected, CANDIDATE_BUDGET),
                 "bounded_scan;partial=" + (returned.size() > CANDIDATE_BUDGET));
         for (var candidate : candidates) {
-            if (pathTo(candidate)) {
+            var result = pathTo(candidate);
+            if (result == PathResult.STARTED || result.isDeferred()) {
                 target = candidate;
                 expires = now + 120;
-                nextPath = now + 20;
+                waitingPath = result.isDeferred();
+                nextPath = now + (waitingPath ? 1 : 20);
                 return true;
             }
             ignore(candidate, now);
@@ -156,30 +163,38 @@ public final class MaidPickupController {
         return false;
     }
 
-    private boolean pathTo(Entity entity) {
+    private PathResult pathTo(Entity entity) {
         var proposed = run == null ? runner.newRun(maid.worldObj, maid.getTask()) : run;
-        if (proposed == null || !proposed.isCurrent(maid.worldObj, maid.getTask())) return false;
+        if (proposed == null || !proposed.isCurrent(maid.worldObj, maid.getTask())) return PathResult.STALE_REQUEST;
         // 原生整数重载先加0.5再减实体半宽，直接传掉落物所在格
         var created = planner
             .create(maid, Math.floor(entity.posX), Math.floor(entity.boundingBox.minY), Math.floor(entity.posZ), 0.6);
+        if (created.preflightFailure != null && created.preflightFailure.isDeferred()) {
+            if (run == null) {
+                if (!runner.claim(Owner.PICKUP, proposed, this::cancel)) return PathResult.STALE_REQUEST;
+                run = proposed;
+            }
+            return created.preflightFailure;
+        }
         var path = created.path;
-        if (path == null || path.getCurrentPathLength() == 0 || !proposed.isCurrent(maid.worldObj, maid.getTask()))
-            return false;
+        if (!proposed.isCurrent(maid.worldObj, maid.getTask())) return PathResult.STALE_REQUEST;
+        if (path == null || path.getCurrentPathLength() == 0) return PathResult.UNREACHABLE;
         var end = path.getFinalPathPoint();
         double dx = end.xCoord + 0.5 - entity.posX, dz = end.zCoord + 0.5 - entity.posZ;
-        if (dx * dx + dz * dz > 0.5 || Math.abs(end.yCoord - entity.boundingBox.minY) > 1) return false;
+        if (dx * dx + dz * dz > 0.5 || Math.abs(end.yCoord - entity.boundingBox.minY) > 1)
+            return PathResult.UNREACHABLE;
         if (run == null) {
-            if (!runner.claim(Owner.PICKUP, proposed, this::cancel)) return false;
+            if (!runner.claim(Owner.PICKUP, proposed, this::cancel)) return PathResult.STALE_REQUEST;
             run = proposed;
         }
-        if (!runner.isOwned(run, maid.worldObj, maid.getTask())) return false;
+        if (!runner.isOwned(run, maid.worldObj, maid.getTask())) return PathResult.STALE_REQUEST;
         var installed = planner.install(maid, created);
-        if (installed.result != PathResult.STARTED) return false;
+        if (installed.result != PathResult.STARTED) return installed.result;
         ownedPath = installed.installedPath;
         plannedX = entity.posX;
         plannedY = entity.posY;
         plannedZ = entity.posZ;
-        return runner.isOwned(run, maid.worldObj, maid.getTask());
+        return runner.isOwned(run, maid.worldObj, maid.getTask()) ? PathResult.STARTED : PathResult.STALE_REQUEST;
     }
 
     private void ignore(Entity entity, long now) {
@@ -201,6 +216,7 @@ public final class MaidPickupController {
             ownedPath = null;
             run = null;
             nextPath = 0;
+            waitingPath = false;
             runner.release(stopped);
             stopping = false;
         }
@@ -208,5 +224,9 @@ public final class MaidPickupController {
 
     public Entity getTarget() {
         return target;
+    }
+
+    public boolean isWaitingForPath() {
+        return waitingPath;
     }
 }

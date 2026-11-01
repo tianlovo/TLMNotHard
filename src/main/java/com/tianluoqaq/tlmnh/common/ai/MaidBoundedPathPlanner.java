@@ -16,6 +16,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.Kind;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
@@ -25,10 +26,20 @@ public final class MaidBoundedPathPlanner {
     private static final float MAX_SEARCH_RANGE = 16;
     private static final NativeAccess NATIVE = NativeAccess.resolve(PathNavigate.class);
     private Attempt lastAttempt;
+    private final boolean budgeted;
 
-    /** legacy入口保留原查询和立即安装行为，包括null路径清理原导航的副作用 */
+    /** 原生对照与只读探针不改变其调用节奏；生产执行器必须显式启用世界预算 */
+    public MaidBoundedPathPlanner() {
+        this(false);
+    }
+
+    public MaidBoundedPathPlanner(boolean budgeted) {
+        this.budgeted = budgeted;
+    }
+
+    /** 即时查询/安装；预算等待不写原生导航，生产请求须核对创建时的身份与指令 */
     public PathResult request(EntityMaid maid, double x, double y, double z, double speed) {
-        var result = install(maid, create(maid, x, y, z, speed), false).result;
+        var result = install(maid, create(maid, x, y, z, speed), budgeted).result;
         maid.getBrainCoordinator()
             .getTelemetry()
             .navigation(Kind.NAV_PROCESSED, "navigation", "", "planner_adapter_finalized:" + result, 0);
@@ -157,6 +168,21 @@ public final class MaidBoundedPathPlanner {
             breakDoors,
             avoidWater,
             "native_canNavigate=false");
+        if (budgeted && !MaidWorldNavigationBudget.acquire(maid)) return creation(
+            context,
+            queryTarget,
+            nativeTarget,
+            speed,
+            null,
+            false,
+            PathResult.WAITING_BUDGET,
+            nativeRange,
+            searchRange,
+            options,
+            true,
+            breakDoors,
+            avoidWater,
+            "waiting_world_navigation_budget");
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
@@ -218,7 +244,7 @@ public final class MaidBoundedPathPlanner {
         Objects.requireNonNull(created, "created");
         if (guardContext && !created.context.matches(maid)) return installation(
             created,
-            PathResult.ADAPTER_UNSUPPORTED,
+            PathResult.STALE_REQUEST,
             false,
             false,
             null,
@@ -243,7 +269,7 @@ public final class MaidBoundedPathPlanner {
         boolean changed = guardContext && !created.context.matches(maid);
         return installation(
             created,
-            changed ? PathResult.ADAPTER_UNSUPPORTED : started ? PathResult.STARTED : PathResult.UNREACHABLE,
+            changed ? PathResult.STALE_REQUEST : started ? PathResult.STARTED : PathResult.UNREACHABLE,
             true,
             started,
             actual,
@@ -428,6 +454,7 @@ public final class MaidBoundedPathPlanner {
         private final World world;
         private final PathNavigate navigator;
         private final String owner;
+        private final MaidTask command;
         private final int entityTick;
         private final long worldTick;
         private final MaidPolicyRuntime runtime;
@@ -439,6 +466,7 @@ public final class MaidBoundedPathPlanner {
             world = maid.worldObj;
             this.navigator = navigator;
             owner = maid.func_152113_b();
+            command = maid.getTask();
             entityTick = maid.ticksExisted;
             worldTick = world == null ? 0 : world.getTotalWorldTime();
             runtime = maid.getBrainCoordinator()
@@ -455,6 +483,7 @@ public final class MaidBoundedPathPlanner {
                 || !candidate.isEntityAlive()
                 || candidate.getNavigator() != navigator
                 || !Objects.equals(owner, candidate.func_152113_b())
+                || candidate.getTask() != command
                 || candidate.ticksExisted != entityTick
                 || world == null
                 || world.isRemote

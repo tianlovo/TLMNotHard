@@ -24,7 +24,7 @@ public final class MaidPanicController {
     private final MaidActionRunner runner;
     private final BooleanSupplier suspended;
     private final BooleanSupplier recentlyHurt;
-    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
+    private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
     private EntityCreeper threat;
     private MaidActionRun run;
     private PathEntity ownedPath;
@@ -122,12 +122,22 @@ public final class MaidPanicController {
                 .contains(point.xCoord, point.yCoord, point.zCoord)) continue;
             var created = planner
                 .create(maid, Math.floor(point.xCoord), Math.floor(point.yCoord), Math.floor(point.zCoord), SPEED);
+            if (created.preflightFailure != null && created.preflightFailure.isDeferred()) {
+                nextPath = now + 1;
+                setStatus("navigation_pending");
+                return true;
+            }
             if (created.path == null || created.path.getCurrentPathLength() == 0 || !away(created.path)) continue;
             if (!validThreat() || !runner.isOwned(run, maid.worldObj, maid.getTask())) {
                 clearControl();
                 return true;
             }
             var installed = planner.install(maid, created);
+            if (installed.result.isDeferred()) {
+                nextPath = now + 1;
+                setStatus("navigation_pending");
+                return true;
+            }
             if (installed.result == MaidFollowController.PathResult.STARTED) {
                 ownedPath = installed.installedPath;
                 setStatus("retreating");
