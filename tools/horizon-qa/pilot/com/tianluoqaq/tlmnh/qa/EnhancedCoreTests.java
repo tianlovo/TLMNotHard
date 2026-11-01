@@ -36,7 +36,7 @@ public final class EnhancedCoreTests {
                 if (core.selectedKind() != Kind.PICKUP || f.navigation.noPath() || f.navigation.searchCount() < 1)
                     return false;
                 helper.assertTrue(item.isEntityAlive(), "Observed pickup after target was gone");
-                f.owner.setPosition(f.x + 15.5, f.y + 1, f.z + 4.5);
+                f.owner.setPosition(f.x + 12.5, f.y + 1, f.z + 4.5);
                 changedAt[0] = age;
                 phase[0] = 1;
                 return false;

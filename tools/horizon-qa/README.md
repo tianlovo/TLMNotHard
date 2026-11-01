@@ -509,3 +509,7 @@ Indev143 的 `tlmnhqapilot:EnhancedWaterTests` 保留实际世界tick，核无�
 不为N设置qaFaithfulProfile，初始/逐帧验证实际N Brain、context、决策数和原N弹道profile
 平坦1980tick与水域1320tick同进程通过，分别9轮1800帧、6轮1200帧；生产/观察器实际工件和打包类资源与比较器核对，三种损坏样本拒绝，旧F描述指标复算保持
 本批没有新生产构建或CPU单测；完整N、原版等价、统计收益和执行成本仍未准入，真实连接原O与移植FakePlayer及其他采集限制见自然跟随工具说明
+
+Indev145 的 `tlmnhqapilot:EnhancedFollowRecoveryTests` 核超64格的实际恢复、坐下/家园拒绝及原双手NBT保持11tick，以及实际未加载区块不生成、20tick限频和Forge取消/改目的地/改坐姿后的拒绝及恢复81tick
+同包F原分支实际传送1tick、N玻璃闲逛68tick通过，四项一次JSON/XML/process0一致；本批无新CPU单测，前述144轨迹仍只对应143包
+空闲夹具用明确主人不可用输入，近距抢占输入落在步行范围；最终pilot只有未选择的EnhancedCoreTests.class变化，四个实际场景字节相同，没有将该观察器重编译当成重新运行

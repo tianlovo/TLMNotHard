@@ -99,6 +99,7 @@ public final class EnhancedAmbientTests {
         f.previousY = f.maid.posY;
         f.previousZ = f.maid.posZ;
         f.owner.setPosition(f.x + 80.5, f.y + 1, f.z + 4.5);
+        f.owner.setDead();
         var core = select(helper, f);
         int[] phase = { 0 }, changed = { 0 };
         long[] samples = { 0 }, searches = { 0 };
@@ -168,6 +169,7 @@ public final class EnhancedAmbientTests {
     public static void naturalObservationRejectsActualOcclusionAndPreservesAnotherHandLease(GameTestHelper helper) {
         var f = new ModernCoreTests.Fixture(helper, false);
         f.owner.setPosition(f.x + 80.5, f.y + 1, f.z + 4.5);
+        f.owner.setDead();
         var wolf = new EntityWolf(f.maid.worldObj);
         wolf.setTamed(true);
         wolf.func_152115_b(
