@@ -2130,9 +2130,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void throwSnowballAt(MaidCombatActor.Target value) {
+        throwSnowballAt(value, () -> true);
+    }
+
+    /** 增强动作在出生回调前后额外复核手部和本次动作身份；原F入口保持原条件 */
+    public void throwSnowballAt(MaidCombatActor.Target value, java.util.function.BooleanSupplier authorized) {
         var view = attackTarget(value);
-        if (maid.getTask() != MaidTask.IDLE || maid.getModernCombatMemory()
-            .target() != view.entity) return;
+        if (!authorized.getAsBoolean() || maid.getTask() != MaidTask.IDLE
+            || maid.getModernCombatMemory()
+                .target() != view.entity)
+            return;
         var ball = new EntitySnowball(world, maid.posX, maid.posY, maid.posZ);
         double x = view.entity.posX - maid.posX, z = view.entity.posZ - maid.posZ;
         double y = view.entity.boundingBox.minY + view.entity.height / 3.0F - ball.posY;
@@ -2142,12 +2149,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .5F,
             .4F / (maid.getRNG()
                 .nextFloat() * .4F + .8F));
-        if (!view.current()) {
+        if (!view.current() || !authorized.getAsBoolean()) {
             ball.setDead();
             return;
         }
         boolean spawned = world.spawnEntityInWorld(ball);
         if (spawned && view.current()
+            && authorized.getAsBoolean()
             && maid.getModernCombatMemory()
                 .target() == view.entity)
             snowballThrows++;

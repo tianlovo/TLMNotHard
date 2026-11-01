@@ -34,7 +34,8 @@ public final class MaidIntentFrame {
         MEAL,
         BEG,
         OBSERVE,
-        WANDER
+        WANDER,
+        SNOWBALL
     }
 
     private final MaidPolicyContext context;

@@ -14,7 +14,8 @@ public final class MaidItemUseState {
     public enum Kind {
         BOW,
         SHIELD,
-        FOOD
+        FOOD,
+        SNOWBALL
     }
 
     public static final class Lease {

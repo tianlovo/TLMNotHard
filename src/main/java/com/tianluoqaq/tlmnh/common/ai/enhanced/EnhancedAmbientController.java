@@ -54,12 +54,6 @@ public final class EnhancedAmbientController {
             sensing.cancel(MaidSensingBudget.Kind.AMBIENT);
             return;
         }
-        var owner = temptingOwner();
-        if (owner != null) {
-            sensing.cancel(MaidSensingBudget.Kind.AMBIENT);
-            frame.offer(Group.AMBIENT, Kind.BEG, "owner", 1, null);
-            return;
-        }
         if (watching != null || destination != null) {
             boolean legal = now < until && (watching != null ? legalLook(watching)
                 : legalWalk(destination) && actor.distanceToBlockCenterSquared(destination) > 1
@@ -123,6 +117,13 @@ public final class EnhancedAmbientController {
             .3,
             watching);
         else offerWalk(frame, destination);
+    }
+
+    public boolean offerBeg(MaidIntentFrame frame) {
+        if (frame.kindMask() != 0) return false;
+        boolean wanted = temptingOwner() != null;
+        if (wanted && permitted()) frame.offer(Group.AMBIENT, Kind.BEG, "owner", 1, null);
+        return wanted;
     }
 
     private void offerWalk(MaidIntentFrame frame, Point point) {

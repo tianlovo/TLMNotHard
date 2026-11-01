@@ -33,6 +33,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedBreathingController breathing;
     private final EnhancedClimbController climb;
     private final EnhancedAmbientController ambient;
+    private final EnhancedSnowballController snowball;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
@@ -67,6 +68,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         breathing = new EnhancedBreathingController(maid, actor, navigation);
         climb = new EnhancedClimbController(actor);
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
+        snowball = new EnhancedSnowballController(maid, actor, perception);
     }
 
     @Override
@@ -158,6 +160,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                         entity);
                 }
             }
+            boolean foodRequest = ambient.offerBeg(frame);
+            if (!foodRequest) snowball.offer(frame);
             ambient.offer(frame);
             var selected = arbiter.choose(frame);
             Kind nextKind = selected == null ? null : selected.kind;
@@ -206,6 +210,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     if (legalPickup(entity)) actor.setEntityWalkAndLook(entity, .6F, 0);
                 }
                 case BEG, OBSERVE, WANDER -> ambient.execute(selected);
+                case SNOWBALL -> snowball.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
                 default -> throw new IllegalStateException("Unsupported enhanced core intent");
             }
             if (!actor.isCurrent()) return;
@@ -253,6 +258,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         selectedTarget = null;
         panic.cancel();
         ambient.cancel();
+        snowball.cancel();
         breathing.cancel();
         sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
         climb.cancel();
@@ -323,6 +329,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedAmbientController ambient() {
         return ambient;
+    }
+
+    public EnhancedSnowballController snowball() {
+        return snowball;
     }
 
     public ModernFollowCoreActor actor() {
