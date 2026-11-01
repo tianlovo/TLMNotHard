@@ -1,6 +1,6 @@
 entity.tlmnh.maid.name=Maid
 container.tlmnh.maid=Maid
-commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|core-interactions-test|brain-test|naming-test|combat-core-test|arrow-physics-test|follow-runtime-test <player>|model-test|persist-create|persist-check|spawn [player] [model-id]|lab-world-test|lab-enter [player] [model-id]|lab-exit [player]|lab-observer-test player|lab-open-gui player>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|core-interactions-test|brain-test|naming-test|combat-core-test|arrow-physics-test|follow-runtime-test <player>|model-test|persist-create|persist-check|spawn [player] [model-id]|lab-world-test|lab-enter [player] [model-id]|lab-exit [player]|lab-observer-test player|lab-open-gui player|brain-profile <entityId> <legacy_prototype|faithful_tlm|enhanced>>
 commands.tlmnhdev.passed=Maid state round-trip passed; gameplay and multiplayer sync remain untested
 commands.tlmnhdev.persist_created=Maid fixture created; save and restart the server, then run persist-check
 commands.tlmnhdev.persist_passed=Maid persistence check passed; verify the restart against both server process records
@@ -118,3 +118,4 @@ commands.tlmnhprotect.owner=Stand near a living maid that you own
 tooltip.tlmnh.protection.parcel=Original item data retained. Right-click after restoring the compatible environment
 
 chat.tlmnh.protection.client_fallback=[TLMNH %s] Local compatibility protection: %s disabled; server gameplay and item data are unaffected by this fault. See the client log
+commands.tlmnhdev.brain_profile=Development behavior profile %s: %s

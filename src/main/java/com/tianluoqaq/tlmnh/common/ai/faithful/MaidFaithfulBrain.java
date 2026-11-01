@@ -28,8 +28,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
-/** 原Brain首版保留活动的开发组件；完整忠实模式的原版对照准入仍待验收 */
-public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterNavigationActions {
+/** 固定原版首版保留活动的Brain实现；原版对照和完整测评准入另行验收 */
+public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulActions {
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
@@ -84,7 +84,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private long lastWorldTick;
     private int lastEntityTick;
 
-    public ModernFollowCoreComponent(EntityMaid maid) {
+    public MaidFaithfulBrain(EntityMaid maid) {
         this.maid = java.util.Objects.requireNonNull(maid, "maid");
         actor = new ModernFollowCoreActor(maid);
         perception = new MaidModernPerception(maid, actor::isCurrent);

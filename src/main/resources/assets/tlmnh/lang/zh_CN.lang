@@ -1,6 +1,6 @@
 entity.tlmnh.maid.name=女仆
 container.tlmnh.maid=女仆
-commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|core-interactions-test|brain-test|naming-test|combat-core-test|arrow-physics-test|follow-runtime-test <玩家>|model-test|persist-create|persist-check|spawn [玩家] [模型ID]|lab-world-test|lab-enter [玩家] [模型ID]|lab-exit [玩家]|lab-observer-test 玩家|lab-open-gui 玩家>
+commands.tlmnhdev.usage=/tlmnhdev <state-test|container-test|interaction-test|core-interactions-test|brain-test|naming-test|combat-core-test|arrow-physics-test|follow-runtime-test <玩家>|model-test|persist-create|persist-check|spawn [玩家] [模型ID]|lab-world-test|lab-enter [玩家] [模型ID]|lab-exit [玩家]|lab-observer-test 玩家|lab-open-gui 玩家|brain-profile <entityId> <legacy_prototype|faithful_tlm|enhanced>>
 commands.tlmnhdev.passed=女仆状态往返检查通过，尚未验证玩法和多人同步
 commands.tlmnhdev.persist_created=已建立女仆保存夹具，请正常保存、重启服务器后执行 persist-check
 commands.tlmnhdev.persist_passed=女仆保存夹具检查通过，重启证据仍需结合两次服务器进程记录
@@ -117,3 +117,4 @@ commands.tlmnhprotect.owner=请站在自己拥有且存活的女仆附近
 tooltip.tlmnh.protection.parcel=已保留原始物品数据，恢复兼容环境后右键尝试取回
 
 chat.tlmnh.protection.client_fallback=[TLMNH %s] 本地兼容保护：%s 已停用，服务端玩法和物品数据不受此故障影响，详情见客户端日志
+commands.tlmnhdev.brain_profile=开发行为策略 %s：%s

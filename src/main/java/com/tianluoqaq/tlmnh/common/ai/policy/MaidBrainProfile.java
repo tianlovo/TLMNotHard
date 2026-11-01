@@ -5,7 +5,7 @@ public enum MaidBrainProfile {
 
     LEGACY_PROTOTYPE("legacy_prototype", true),
     FOLLOW_CORE_COMPONENT("follow_core_component", true, true),
-    FAITHFUL_TLM("faithful_tlm", false),
+    FAITHFUL_TLM("faithful_tlm", true, true),
     ENHANCED("enhanced", false);
 
     private final String id;

@@ -23,7 +23,8 @@ public final class MaidPolicyRuntime {
         UNAVAILABLE,
         REFUSED_REENTRANT,
         INVALIDATED_DURING_CANCELLATION,
-        RETIRED
+        RETIRED,
+        REFUSED_LIFECYCLE
     }
 
     public enum InvalidationReason {
@@ -69,7 +70,7 @@ public final class MaidPolicyRuntime {
         void cancelAll();
     }
 
-    /** 只供已显式安装的开发组件，不代表完整忠实策略 */
+    /** 现代行为的世界阶段合同，窄开发组件和已绑定的原版保留Brain共用相位 */
     public interface AfterNavigationActions {
 
         void tick(MaidPolicyContext.Token token);
@@ -78,6 +79,10 @@ public final class MaidPolicyRuntime {
 
         /** 旧 token 已先失效；清理只依据本动作实际持有的资源身份 */
         void cancel();
+    }
+
+    /** 标明已绑定完整首版保留活动实现，普通开发回调不能据此变成F */
+    public interface FaithfulActions extends AfterNavigationActions {
     }
 
     private final LegacyActions actions;
@@ -263,11 +268,12 @@ public final class MaidPolicyRuntime {
 
     private boolean hasImplementation(MaidBrainProfile profile) {
         return profile.isAvailable() && (profile == MaidBrainProfile.LEGACY_PROTOTYPE
-            || profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT && afterNavigation != null);
+            || profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT && afterNavigation != null
+            || profile == MaidBrainProfile.FAITHFUL_TLM && afterNavigation instanceof FaithfulActions);
     }
 
     public boolean requiresAfterNativeNavigation() {
-        return profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT;
+        return profile == MaidBrainProfile.FOLLOW_CORE_COMPONENT || profile == MaidBrainProfile.FAITHFUL_TLM;
     }
 
     public MaidBrainProfile getProfile() {

@@ -1115,3 +1115,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原 NativeDoorState、MaidDoorAccess、MaidVehiclePlatform、NativeArrowGravity 与渲染平台状态改包，提供方接口和已有安全回退保持；反射绑定、纹理/批次查询与工具构造按实际提供方抽取
 - 保留上游 MaidModelDetailsGui 包名，盾牌预览只改为经 Battlegear 适配查询原有木盾物品
 - 16处搬移及抽取的关键源码 token 相同，公开访问只为原调用跨包；源码比较不代替实际运行证据
+
+## 原版保留 Brain 的专用 F 绑定
+
+- 实核固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 MaidBrain CORE/活动与 TaskIdle、TaskAttack、TaskBowAttack 普通/骑乘注册；范围继续遵循首版保留内容
+- 本工程 ModernFollowCoreComponent 改为 MaidFaithfulBrain，新增 FaithfulActions 绑定标识；去除类型名/标识变化后，任务体源码 token 与改名前一致
+- F 工厂、实体保护选择、世界/UUID 绑定及 NBT 后重建为本工程独立生命周期实现，不把旧原型作为 F 的缺失能力回退
+- 保留上游 EntityMaid 包名，仅增加经既有实体保护的显式开发选择入口；上游任务文件的原包、来源和既有合同继续保留

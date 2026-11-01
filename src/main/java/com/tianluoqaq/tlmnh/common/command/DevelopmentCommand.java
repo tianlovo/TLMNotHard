@@ -313,6 +313,19 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.core_interactions_passed"));
             return;
         }
+        if (args.length == 3 && "brain-profile".equals(args[0])) {
+            var entity = sender.getEntityWorld()
+                .getEntityByID(parseInt(sender, args[1]));
+            if (!(entity instanceof EntityMaid maid)) throw new WrongUsageException(getCommandUsage(sender));
+            com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile selected = null;
+            for (var profile : com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.values()) if (profile.getId()
+                .equals(args[2])) selected = profile;
+            if (selected == null) throw new WrongUsageException(getCommandUsage(sender));
+            var result = maid.selectBrainProfileForDevelopment(selected);
+            sender.addChatMessage(
+                new ChatComponentTranslation("commands.tlmnhdev.brain_profile", selected.getId(), result.name()));
+            return;
+        }
         if (args.length == 1 && "brain-test".equals(args[0])) {
             MaidBrainProbe.run((WorldServer) sender.getEntityWorld());
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
