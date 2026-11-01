@@ -365,6 +365,26 @@ public class MaidPolicyRuntimeTest {
     }
 
     @Test
+    public void worldFailureRetirementDoesNotRepeatFailedCleanup() {
+        var actor = new TestActions();
+        var original = new IllegalStateException("provider failed");
+        var cleanup = new IllegalArgumentException("provider cleanup failed");
+        actor.onCombat = () -> { throw original; };
+        actor.onCancel = () -> { throw cleanup; };
+        try {
+            actor.runtime.tick(() -> true);
+            fail("Action failure must reach the world boundary");
+        } catch (IllegalStateException actual) {
+            assertSame(original, actual);
+        }
+        actor.runtime.retireAfterFailure();
+        actor.runtime.retireAfterFailure();
+        assertTrue(actor.runtime.isRetired());
+        assertEquals(TickResult.RETIRED, actor.runtime.tick(() -> true));
+        events(actor, "combat", "cancel");
+    }
+
+    @Test
     public void failedCancellationCannotInstallOrRunTheRequestedPolicy() {
         var actor = new TestActions();
         var failure = new IllegalStateException("cleanup failed");

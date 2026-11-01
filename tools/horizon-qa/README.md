@@ -372,3 +372,14 @@ SwimJumpPhaseTests通过既有AfterNavigationActions开发入口包装真实现�
 最终124同JAR两项HQA通过：相位/取消1tick、水域1320tick；首轮相位探针事件过早且漏接AssertionError造成的无最终报告失败保留
 HQA GameTestAssertException继承AssertionError，异步探针需显式交回框架，不能在Forge事件里直接抛出导致整服终止
 本单元不准入完整F/N、客户端或最终跨模块验收
+
+## 实际 AI 世界边界
+
+BehaviorProtectionTests 选择三种故障机制并使用独立 batch，因为同一 batch 的 fixture 实际并行运行
+先让实体自然预热三 tick，再注入策略回调/清理双失败、原生导航方法缺失或 Brain 后阶段字段缺失，避免将首次世界登记的正常取消当作故障后重试
+同一最终候选125三项各15tick通过，核旧授权退休、清理一次、健康女仆继续、正常下落、全部物品槽与三轮NBT、警告受众和去重
+导航场景在存档重读后再置部分浸水，核停用行为不会从水域原型旁路重新产生跳跃请求
+
+Forge FakePlayer 的聊天方法为空实现；AI主人继续用既有FakePlayer，聊天使用同身份但未登记的标准EntityPlayerMP与EmbeddedChannel读取真实S02包
+不把这个接收端加入整合包在线玩家列表，避免绕过ServerUtilities等模组的完整登录注册；不声称真实网络登录/客户端显示已覆盖
+初轮三种夹具错误的JSON/XML或缺失报告状态均保留，最终完整JSON/XML与process0才作为本单元通过
