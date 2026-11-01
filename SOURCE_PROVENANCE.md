@@ -1071,3 +1071,9 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 平台适配读取实际 TextureUtil 字段及 Angelica GLSM 的方法、上下文与字段类型；按需初始化，API 缺失不转成假的矩阵深度
 - CompatibilityLedger 区分已构造的新基线与 MapStorage 未读完的对象；新建实例完成检查后标记可用，损坏的既有文件不替换
 - ProtectionTests 使用既有 Hodgepodge 异步落盘观察方式，等待完整 NBT，再核同一缓存对象的再次验证；不更改全局保存设置
+
+## 迈步高度默认值
+
+- 固定原版 EntityMaid 的 TYPE 声明尺寸为 0.6/1.5，构造器未单独设置迈步高度；真实原版自然采样的出生与 1800 帧前后状态均记录 stepHeight 为 0.6
+- 目标反编译 EntityLivingBase 构造将 stepHeight 设为 0.5；本工程保留 EntityMaid 原包名，在构造器显式采用原版观察值 0.6
+- MaidStepPhysicsTests 不推进 Brain 或手写移动公式，直接用实际 Entity.moveEntity 和 BlockBed 的 0.5625 碰撞高度验证差异；此证据仅覆盖所列碰撞边界

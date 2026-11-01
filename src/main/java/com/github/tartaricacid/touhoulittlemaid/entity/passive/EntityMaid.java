@@ -100,6 +100,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public EntityMaid(World world) {
         super(world);
         setSize(0.6F, 1.5F);
+        // 原版真实实体沿用0.6的迈步高度，1.7.10 LivingEntity的默认值仅为0.5
+        stepHeight = 0.6F;
         func_110163_bv();
         ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
             .tlmnh$setNavigator(new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator(this, world));
