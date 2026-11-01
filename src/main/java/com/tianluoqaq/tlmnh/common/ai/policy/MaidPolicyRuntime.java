@@ -57,6 +57,14 @@ public final class MaidPolicyRuntime {
 
         void tickFollow();
 
+        default boolean usesOrdinaryIntents() {
+            return false;
+        }
+
+        default void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+            throw new IllegalStateException("Ordinary intent execution is not installed");
+        }
+
         /** 取消各动作持有的资源；一项失败时仍应尝试其余清理，再汇总异常 */
         void cancelAll();
     }
@@ -121,6 +129,10 @@ public final class MaidPolicyRuntime {
             if (!context.isCurrent(token)) return invalidatedTickResult();
             boolean permitted = !surviving && !panicking && !fighting && lifePermission.getAsBoolean();
             if (!context.isCurrent(token)) return invalidatedTickResult();
+            if (!surviving && !panicking && !fighting && actions.usesOrdinaryIntents()) {
+                actions.tickOrdinaryIntents(context, token, permitted);
+                return context.isCurrent(token) ? TickResult.COMPLETED : invalidatedTickResult();
+            }
             boolean living = actions.tickLife(context, token, permitted);
             if (!context.isCurrent(token)) return invalidatedTickResult();
             if (!surviving && !panicking && !fighting && !living) {

@@ -1,7 +1,9 @@
 package com.tianluoqaq.tlmnh.common.ai;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -35,6 +37,58 @@ public final class MaidPickupController {
     private long nextScan, nextPath, expires, ignoreUntil;
     private double plannedX, plannedY, plannedZ;
     private boolean stopping, waitingPath;
+    private Entity preferredIntent;
+    private long nextIntentScan;
+    private long lastIntentTime = Long.MIN_VALUE;
+
+    /** 发现不创建路径或认领动作，执行端仍重检当前实体与主人的边界 */
+    public List<Entity> prepareIntents() {
+        long now = maid.worldObj.getTotalWorldTime();
+        if (now < lastIntentTime) nextIntentScan = 0;
+        lastIntentTime = now;
+        var home = maid.getHomeArea();
+        if (!movementAllowed()) return Collections.emptyList();
+        EntityPlayer owner = home.enabled() ? null : findOwner.get();
+        if (!home.enabled() && (!MaidOwnerSensor.isValid(maid, owner)
+            || maid.getDistanceSqToEntity(owner) > MaidFollowController.START_DISTANCE_SQ))
+            return Collections.emptyList();
+        if (target != null) {
+            if (now >= expires && !waitingPath) {
+                ignore(target, now);
+                return Collections.emptyList();
+            }
+            return eligible(target, owner, now) ? Collections.singletonList(target) : Collections.emptyList();
+        }
+        if (now < nextIntentScan) return Collections.emptyList();
+        nextIntentScan = now + SCAN_INTERVAL;
+        return candidates(owner, now);
+    }
+
+    public boolean tickSelected(Entity selected) {
+        if (target != null && target != selected) cancel();
+        preferredIntent = selected;
+        try {
+            return tick(true);
+        } finally {
+            preferredIntent = null;
+        }
+    }
+
+    private boolean movementAllowed() {
+        var home = maid.getHomeArea();
+        return !maid.worldObj.isRemote && maid.isEntityAlive()
+            && maid.isTamed()
+            && maid.isPickup()
+            && !maid.isSitting()
+            && maid.ridingEntity == null
+            && maid.riddenByEntity == null
+            && !maid.getLeashed()
+            && !maid.hasPose(MaidPose.SLEEPING)
+            && !maid.getBrainCoordinator()
+                .isSuspended()
+            && maid.getAttackTarget() == null
+            && (!home.enabled() || home.sameDimension() && home.containsMaid() && home.activity() != Activity.REST);
+    }
 
     public MaidPickupController(EntityMaid maid, MaidActionRunner runner, Supplier<EntityPlayer> findOwner) {
         this.maid = maid;
@@ -52,19 +106,7 @@ public final class MaidPickupController {
         }
         long now = maid.worldObj.getTotalWorldTime();
         var home = maid.getHomeArea();
-        if (!permitted || maid.worldObj.isRemote
-            || !maid.isEntityAlive()
-            || !maid.isTamed()
-            || !maid.isPickup()
-            || maid.isSitting()
-            || maid.ridingEntity != null
-            || maid.riddenByEntity != null
-            || maid.getLeashed()
-            || maid.hasPose(MaidPose.SLEEPING)
-            || maid.getBrainCoordinator()
-                .isSuspended()
-            || maid.getAttackTarget() != null
-            || home.enabled() && (!home.sameDimension() || !home.containsMaid() || home.activity() == Activity.REST)) {
+        if (!permitted || !movementAllowed()) {
             cancel();
             return false;
         }
@@ -81,7 +123,7 @@ public final class MaidPickupController {
             cancel();
         }
         if (target == null) {
-            if (now < nextScan) return false;
+            if (now < nextScan && preferredIntent == null) return false;
             nextScan = now + SCAN_INTERVAL;
             if (!select(owner, now)) return false;
         }
@@ -122,6 +164,25 @@ public final class MaidPickupController {
     }
 
     private boolean select(EntityPlayer owner, long now) {
+        var options = preferredIntent == null ? candidates(owner, now)
+            : eligible(preferredIntent, owner, now) ? Collections.singletonList(preferredIntent)
+                : Collections.<Entity>emptyList();
+        for (var candidate : options) {
+            var result = pathTo(candidate);
+            if (result == PathResult.STARTED || result.isDeferred()) {
+                target = candidate;
+                expires = now + 120;
+                waitingPath = result.isDeferred();
+                nextPath = now + (waitingPath ? 1 : 20);
+                return true;
+            }
+            ignore(candidate, now);
+            cancel();
+        }
+        return false;
+    }
+
+    private List<Entity> candidates(EntityPlayer owner, long now) {
         int radius = maid.getHomeArea()
             .enabled()
                 ? Math.min(
@@ -148,19 +209,7 @@ public final class MaidPickupController {
                 returned.size(),
                 Math.min(inspected, CANDIDATE_BUDGET),
                 "bounded_scan;partial=" + (returned.size() > CANDIDATE_BUDGET));
-        for (var candidate : candidates) {
-            var result = pathTo(candidate);
-            if (result == PathResult.STARTED || result.isDeferred()) {
-                target = candidate;
-                expires = now + 120;
-                waitingPath = result.isDeferred();
-                nextPath = now + (waitingPath ? 1 : 20);
-                return true;
-            }
-            ignore(candidate, now);
-            cancel();
-        }
-        return false;
+        return candidates;
     }
 
     private PathResult pathTo(Entity entity) {
@@ -216,6 +265,8 @@ public final class MaidPickupController {
             ownedPath = null;
             run = null;
             nextPath = 0;
+            nextIntentScan = 0;
+            lastIntentTime = Long.MIN_VALUE;
             waitingPath = false;
             runner.release(stopped);
             stopping = false;

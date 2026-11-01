@@ -41,6 +41,24 @@ public final class MaidHomeController {
         requested = true;
     }
 
+    public boolean wantsReturn() {
+        var home = maid.getHomeArea();
+        if (!home.enabled() || !home.sameDimension()
+            || maid.worldObj.isRemote
+            || !maid.isEntityAlive()
+            || !maid.isTamed()
+            || maid.getBrainCoordinator()
+                .isSuspended()
+            || maid.isSitting()
+            || maid.ridingEntity != null
+            || maid.riddenByEntity != null
+            || maid.getLeashed()
+            || maid.hasPose(MaidPose.SLEEPING)) return false;
+        var center = home.center();
+        double distance = maid.getDistanceSq(center.x + .5, center.y, center.z + .5);
+        return !home.containsMaid() || distance > 9 && (returning || requested);
+    }
+
     public void tick() {
         if (stopping) return;
         tick++;

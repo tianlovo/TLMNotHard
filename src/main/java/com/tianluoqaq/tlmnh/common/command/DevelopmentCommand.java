@@ -252,6 +252,10 @@ public final class DevelopmentCommand extends CommandBase {
                 .start((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "intent-runtime-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidIntentRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "self-care-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runSelfCare((WorldServer) sender.getEntityWorld());

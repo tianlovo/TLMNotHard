@@ -11,6 +11,7 @@ public final class MaidPolicyContext {
     private Token token;
     private boolean active = true;
     private boolean retired;
+    private Object decisionFrame;
 
     MaidPolicyContext(UUID maidId) {
         this.maidId = Objects.requireNonNull(maidId, "maidId");
@@ -34,6 +35,7 @@ public final class MaidPolicyContext {
     }
 
     void invalidate() {
+        decisionFrame = null;
         active = false;
         if (epoch < Long.MAX_VALUE) epoch++;
         token = new Token(maidId, epoch);
@@ -44,8 +46,19 @@ public final class MaidPolicyContext {
     }
 
     void retire() {
+        decisionFrame = null;
         retired = true;
         active = false;
+    }
+
+    Object beginDecisionFrame(Token expected) {
+        if (!isCurrent(expected)) return null;
+        decisionFrame = new Object();
+        return decisionFrame;
+    }
+
+    boolean isDecisionFrame(Token expected, Object frame) {
+        return frame != null && decisionFrame == frame && isCurrent(expected);
     }
 
     public static final class Token {

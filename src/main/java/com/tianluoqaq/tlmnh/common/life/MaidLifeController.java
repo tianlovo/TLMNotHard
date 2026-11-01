@@ -26,6 +26,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent.Action;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
@@ -78,6 +79,66 @@ public final class MaidLifeController {
     private boolean ticking, stopping;
     private MaidActionRun run;
     private double wakeX, wakeY, wakeZ;
+    private List<MaidLifeIntent> preparedOptions;
+    private MaidPolicyContext preparedContext;
+    private MaidPolicyContext.Token preparedToken;
+    private long preparedTick, preparedWorldTime;
+    private boolean preparedPlace, preparedRest;
+    private MaidLifeIntent preferredIntent;
+
+    /** 只准备合法候选，不认领床、路径、动作或提交物品 */
+    public List<MaidLifeIntent> prepareIntents(MaidPolicyContext context, MaidPolicyContext.Token token) {
+        preparedOptions = null;
+        if (stopping || ticking || !context.isCurrent(token) || !hardAllowed()) return Collections.emptyList();
+        if (!maid.getHomeArea()
+            .enabled() && tick + 1 >= nextOwnerScan) {
+            owner = ownerSource.get();
+            nextOwnerScan = tick + 1 + SCAN_INTERVAL;
+        }
+        if (!scopeAllowed()) return Collections.emptyList();
+        boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
+        if (target != null) {
+            if (!validTarget() || maid.getTask() != selectedTask || rest != (action == Action.BED))
+                return Collections.emptyList();
+            var observation = new MaidLifeCandidate(
+                action == Action.BED ? MaidLifeCandidate.Kind.BED : MaidLifeCandidate.Kind.SNACK,
+                maid.dimension,
+                target.xCoord,
+                target.yCoord,
+                target.zCoord,
+                maid.worldObj.getTotalWorldTime(),
+                maid.worldObj,
+                context,
+                target);
+            return Collections.singletonList(
+                new MaidLifeIntent(
+                    action,
+                    observation,
+                    maid.getDistanceSq(target.xCoord + .5, target.yCoord + .5, target.zCoord + .5)));
+        }
+        if (tick + 1 < nextScan || !rest && tick + 1 < nextSnack) return Collections.emptyList();
+        preparedContext = context;
+        preparedToken = token;
+        preparedTick = tick + 1;
+        preparedWorldTime = maid.worldObj.getTotalWorldTime();
+        preparedRest = rest;
+        preparedPlace = !rest && tryPlaceNext && cakeSlot() >= 0;
+        nextScan = tick + 1 + SCAN_INTERVAL;
+        preparedOptions = collectOptions(context, rest, preparedPlace);
+        return Collections.unmodifiableList(preparedOptions);
+    }
+
+    public boolean tickSelected(MaidPolicyContext context, MaidPolicyContext.Token token, MaidLifeIntent intent) {
+        if (intent == null || context == null || !context.isCurrent(token)) return false;
+        if (target != null
+            && (intent.getAction() != action || sensor.resolve(intent.getCandidate(), context) != target)) return false;
+        preferredIntent = intent;
+        try {
+            return tick(context, token, true);
+        } finally {
+            preferredIntent = null;
+        }
+    }
 
     public MaidLifeController(EntityMaid maid, Runnable claimControl, Supplier<EntityPlayer> ownerSource) {
         this(maid, claimControl, ownerSource, MaidLifeSelector::nearest);
@@ -126,6 +187,7 @@ public final class MaidLifeController {
             return tickActive(context, token, permitted);
         } finally {
             ticking = false;
+            preparedOptions = null;
         }
     }
 
@@ -168,7 +230,7 @@ public final class MaidLifeController {
         if (target != null && (maid.getTask() != selectedTask || rest != (action == Action.BED)))
             stop(Status.CANCELLED);
         if (target == null) {
-            if (tick < nextScan || !rest && tick < nextSnack) {
+            if (tick < nextScan && !hasPrepared(context, token, rest) || !rest && tick < nextSnack) {
                 status = Status.COOLDOWN;
                 return false;
             }
@@ -265,28 +327,12 @@ public final class MaidLifeController {
         TileEntityMaidBed claimedBed = null;
         boolean adopted = false;
         try {
-            var options = new ArrayList<MaidLifeIntent>();
-            boolean place = !rest && tryPlaceNext && cakeSlot() >= 0;
-            scans++;
-            for (var observation : sensor.scan(context, rest)) {
-                var candidate = sensor.resolve(observation, context);
-                if (candidate == null) continue;
-                String reason;
-                if (rest) {
-                    var bed = (TileEntityMaidBed) candidate;
-                    reason = !bed.available(maid) ? "bed_unavailable" : !bedClear(bed) ? "bed_obstructed" : "eligible";
-                } else reason = !snackWithinOwnerRange(candidate) ? "snack_outside_owner_range"
-                    : snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
-                boolean usable = "eligible".equals(reason);
-                if (recording) telemetry.candidate("life_tile", tileId(candidate), usable, reason);
-                if (usable) options.add(
-                    new MaidLifeIntent(
-                        rest ? Action.BED : place ? Action.PLACE : Action.STEAL,
-                        observation,
-                        maid.getDistanceSq(candidate.xCoord + 0.5, candidate.yCoord + 0.5, candidate.zCoord + 0.5)));
-            }
+            boolean prepared = hasPrepared(context, token, rest);
+            boolean place = prepared ? preparedPlace : !rest && tryPlaceNext && cakeSlot() >= 0;
+            var options = prepared ? preparedOptions : collectOptions(context, rest, place);
             if (!rest) tryPlaceNext = !place;
-            var choice = selector.apply(Collections.unmodifiableList(options));
+            var choice = preferredIntent == null ? selector.apply(Collections.unmodifiableList(options))
+                : new MaidLifeSelector.Selection(preferredIntent, MaidLifeSelector.Reason.POLICY_CHOICE);
             if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())) {
                 return rejectIntent(Status.CANCELLED, "selection_cancelled");
             }
@@ -354,6 +400,37 @@ public final class MaidLifeController {
         status = reason;
         telemetry().state("life_intent_rejected", "", detail);
         return false;
+    }
+
+    private List<MaidLifeIntent> collectOptions(MaidPolicyContext context, boolean rest, boolean place) {
+        var options = new ArrayList<MaidLifeIntent>();
+        scans++;
+        for (var observation : sensor.scan(context, rest)) {
+            var candidate = sensor.resolve(observation, context);
+            if (candidate == null) continue;
+            String reason;
+            if (rest) {
+                var bed = (TileEntityMaidBed) candidate;
+                reason = !bed.available(maid) ? "bed_unavailable" : !bedClear(bed) ? "bed_obstructed" : "eligible";
+            } else reason = !snackWithinOwnerRange(candidate) ? "snack_outside_owner_range"
+                : snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
+            boolean usable = "eligible".equals(reason);
+            if (telemetry().isEnabled()) telemetry().candidate("life_tile", tileId(candidate), usable, reason);
+            if (usable) options.add(
+                new MaidLifeIntent(
+                    rest ? Action.BED : place ? Action.PLACE : Action.STEAL,
+                    observation,
+                    maid.getDistanceSq(candidate.xCoord + .5, candidate.yCoord + .5, candidate.zCoord + .5)));
+        }
+        return options;
+    }
+
+    private boolean hasPrepared(MaidPolicyContext context, MaidPolicyContext.Token token, boolean rest) {
+        return preparedOptions != null && preparedContext == context
+            && preparedToken == token
+            && preparedTick == tick
+            && preparedWorldTime == maid.worldObj.getTotalWorldTime()
+            && preparedRest == rest;
     }
 
     private boolean validTarget() {
@@ -596,6 +673,7 @@ public final class MaidLifeController {
     }
 
     public void cancel() {
+        preparedOptions = null;
         sensor.clear();
         owner = null;
         nextOwnerScan = 0;

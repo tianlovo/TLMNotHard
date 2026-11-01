@@ -604,6 +604,27 @@ public class MaidPolicyRuntimeTest {
         events(actor, "combat", "cancel");
     }
 
+    @Test
+    public void ordinaryIntentsReplaceFallbackButCannotRunDuringEmergency() {
+        var actor = new TestActions();
+        actor.intentMode = true;
+        assertEquals(TickResult.COMPLETED, actor.runtime.tick(() -> true));
+        events(actor, "combat", "ordinary:true");
+        actor.events.clear();
+        actor.panicking = true;
+        actor.runtime.tick(() -> true);
+        events(actor, "life:false");
+    }
+
+    @Test
+    public void ordinaryCallbackInvalidationCannotFallThroughToAnotherAction() {
+        var actor = new TestActions();
+        actor.intentMode = true;
+        actor.onOrdinary = () -> actor.runtime.invalidate(InvalidationReason.OWNER_CHANGED);
+        assertEquals(TickResult.INVALIDATED, actor.runtime.tick(() -> true));
+        events(actor, "combat", "ordinary:true", "cancel");
+    }
+
     private static void events(TestActions actor, String... expected) {
         assertEquals(Arrays.asList(expected), actor.events);
     }
@@ -612,11 +633,22 @@ public class MaidPolicyRuntimeTest {
 
         private final List<String> events = new ArrayList<>();
         private final MaidPolicyRuntime runtime = new MaidPolicyRuntime(UUID.randomUUID(), this);
-        private boolean fighting, living, panicking, surviving;
+        private boolean fighting, living, panicking, surviving, intentMode;
         private int panicCalls;
         private MaidPolicyContext lifeContext;
         private MaidPolicyContext.Token lifeToken;
-        private Runnable onCombat, onLife, onFollow, onCancel, onSurvival;
+        private Runnable onCombat, onLife, onFollow, onCancel, onSurvival, onOrdinary;
+
+        @Override
+        public boolean usesOrdinaryIntents() {
+            return intentMode;
+        }
+
+        @Override
+        public void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+            events.add("ordinary:" + permitted);
+            if (onOrdinary != null) onOrdinary.run();
+        }
 
         @Override
         public boolean tickSurvival() {

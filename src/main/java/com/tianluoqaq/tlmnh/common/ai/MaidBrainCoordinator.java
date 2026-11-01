@@ -18,6 +18,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
@@ -25,6 +26,10 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentArbiter;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -69,6 +74,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner(true);
     private boolean suspended;
     private long decisionTick;
+    private final MaidIntentArbiter ordinaryArbiter = new MaidIntentArbiter();
+    private Kind ordinaryIntent;
+    private int ordinaryOffers;
+    private String lastIntentState;
 
     public MaidBrainCoordinator(EntityMaid maid) {
         this.maid = maid;
@@ -239,6 +248,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             public boolean tickSurvival() {
                 boolean breathing = breath.tick();
                 if (breathing) {
+                    ordinaryArbiter.clear();
+                    ordinaryIntent = null;
                     panic.cancel();
                     combat.cancel();
                     bow.cancel();
@@ -251,6 +262,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             public boolean tickPanic() {
                 boolean panicking = panic.tick();
                 if (panicking) {
+                    ordinaryArbiter.clear();
+                    ordinaryIntent = null;
                     combat.cancel();
                     bow.cancel();
                     pickup.cancel();
@@ -261,6 +274,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             @Override
             public boolean tickCombat() {
                 boolean fighting = combat.tick();
+                if (fighting) {
+                    ordinaryArbiter.clear();
+                    ordinaryIntent = null;
+                }
                 maid.getShieldController()
                     .updateActiveTarget(maid.getAttackTarget());
                 return fighting;
@@ -293,6 +310,17 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                     if (pickup.tick(!dangerSensor.hasKnownDanger())) follow.cancel();
                     else follow.tick();
                 }
+            }
+
+            @Override
+            public boolean usesOrdinaryIntents() {
+                return true;
+            }
+
+            @Override
+            public void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token,
+                boolean permitted) {
+                executeOrdinaryIntents(context, token, permitted);
             }
 
             @Override
@@ -458,6 +486,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        ordinaryArbiter.clear();
+        ordinaryIntent = null;
         MaidWorldNavigationBudget.cancel(maid);
         traversal.clear();
         ownerSensor.clear();
@@ -580,6 +610,98 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public boolean isSuspended() {
         return suspended;
+    }
+
+    public Kind getOrdinaryIntent() {
+        return ordinaryIntent;
+    }
+
+    public boolean offeredOrdinaryIntent(Kind kind) {
+        return (ordinaryOffers & 1 << kind.ordinal()) != 0;
+    }
+
+    private void executeOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
+        var frame = new MaidIntentFrame(context, token, maid.worldObj.getTotalWorldTime());
+        if (home.wantsReturn()) frame.offer(Group.COMMAND, Kind.HOME, "home", 1, null);
+        var owner = ownerSensor.findOwner();
+        var lifeOptions = permitted ? life.prepareIntents(context, token)
+            : java.util.Collections.<MaidLifeIntent>emptyList();
+        // 合法生活保留现有委托范围，不用5格跟随起距截断8格食物活动
+        if (lifeOptions.isEmpty() && !maid.getHomeArea()
+            .enabled()
+            && MaidOwnerSensor.isValid(maid, owner)
+            && !suspended
+            && maid.isTamed()
+            && maid.isEntityAlive()
+            && !maid.isSitting()
+            && maid.ridingEntity == null
+            && !maid.getLeashed()
+            && !maid.hasPose(MaidPose.SLEEPING)
+            && maid.getAttackTarget() == null) {
+            double distance = maid.getDistanceSqToEntity(owner);
+            double threshold = actionRunner.getOwner() == Owner.FOLLOW ? MaidFollowController.STOP_DISTANCE_SQ
+                : MaidFollowController.START_DISTANCE_SQ;
+            if (distance > threshold && distance <= MaidFollowController.MAX_DISTANCE_SQ) frame.offer(
+                Group.COMMAND,
+                Kind.FOLLOW,
+                owner.getUniqueID()
+                    .toString(),
+                1,
+                null);
+        }
+        if (permitted) {
+            for (var intent : lifeOptions) {
+                var candidate = intent.getCandidate();
+                boolean bed = intent.getAction() == MaidLifeIntent.Action.BED;
+                frame.offer(
+                    bed ? Group.CARE : Group.AUTONOMOUS,
+                    bed ? Kind.SLEEP : Kind.SNACK,
+                    candidate.getDimension() + ":"
+                        + candidate.getX()
+                        + ":"
+                        + candidate.getY()
+                        + ":"
+                        + candidate.getZ()
+                        + ":"
+                        + intent.getAction(),
+                    proximity(intent.getDistanceSq()),
+                    intent);
+            }
+            for (var entity : pickup.prepareIntents()) frame.offer(
+                Group.AUTONOMOUS,
+                Kind.PICKUP,
+                entity.getUniqueID()
+                    .toString(),
+                proximity(maid.getDistanceSqToEntity(entity)),
+                entity);
+        }
+        ordinaryOffers = frame.kindMask();
+        var selected = ordinaryArbiter.choose(frame);
+        ordinaryIntent = selected == null ? null : selected.kind;
+        String state = selected == null ? "none"
+            : selected.kind + ":" + selected.target + ":" + ordinaryArbiter.reason();
+        if (!state.equals(lastIntentState)) {
+            telemetry.state("ordinary_intent", selected == null ? "" : selected.target, state);
+            lastIntentState = state;
+        }
+        boolean living = selected != null && (selected.kind == Kind.SLEEP || selected.kind == Kind.SNACK);
+        if (!living) life.tick(context, token, false);
+        if (selected == null || selected.kind != Kind.FOLLOW) follow.cancel();
+        if (selected == null || selected.kind != Kind.HOME) home.cancel();
+        if (selected == null || selected.kind != Kind.PICKUP) {
+            if (pickup.getTarget() != null) pickup.cancel();
+        }
+        if (!frame.accepts(selected)) return;
+        switch (selected.kind) {
+            case SLEEP, SNACK -> life.tickSelected(context, token, (MaidLifeIntent) selected.payload);
+            case PICKUP -> pickup.tickSelected((net.minecraft.entity.Entity) selected.payload);
+            case FOLLOW -> follow.tick();
+            case HOME -> home.tick();
+        }
+    }
+
+    private static double proximity(double distanceSq) {
+        return 1 / (1 + Math.sqrt(Math.max(0, distanceSq)));
     }
 
     /** 在原生 move helper 之后投递当 tick 的走位输入，仍由原生 travel/collision 执行 */
