@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.client.render;
+package com.tianluoqaq.tlmnh.compat.angelica.client.render;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -9,12 +9,14 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 
 import org.lwjgl.opengl.GL11;
 
+import com.tianluoqaq.tlmnh.client.render.MaidRenderProtection;
+
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
 /** 目标渲染平台的窄状态适配，缓存成员查找，不引入Angelica打包依赖 */
-final class MaidRenderPlatformState {
+public final class MaidRenderPlatformState {
 
     private static Bindings bindings;
     private static ClassLoader providerLoader = MaidRenderPlatformState.class.getClassLoader();
@@ -26,13 +28,13 @@ final class MaidRenderPlatformState {
         return bindings;
     }
 
-    static void preflight() {
+    public static void preflight() {
         var state = bindings();
         matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH);
         new FilterWindow(state);
     }
 
-    static int matrixDepth(int compatibilityName) {
+    public static int matrixDepth(int compatibilityName) {
         try {
             var angelica = bindings().angelica;
             int depth;
@@ -50,7 +52,7 @@ final class MaidRenderPlatformState {
         }
     }
 
-    static FilterWindow captureFilterWindow() {
+    public static FilterWindow captureFilterWindow() {
         try {
             return new FilterWindow(bindings());
         } catch (RuntimeException | LinkageError | AssertionError failure) {
@@ -77,7 +79,7 @@ final class MaidRenderPlatformState {
         return field;
     }
 
-    static final class FilterWindow implements AutoCloseable {
+    public static final class FilterWindow implements AutoCloseable {
 
         private final Bindings state;
         private final Object vanillaMin, vanillaMag, vanillaAniso;
@@ -103,7 +105,7 @@ final class MaidRenderPlatformState {
             restore();
         }
 
-        void restore() {
+        public void restore() {
             Throwable failure = null;
             failure = restoreField(state.vanillaMin, null, vanillaMin, failure);
             failure = restoreField(state.vanillaMag, null, vanillaMag, failure);

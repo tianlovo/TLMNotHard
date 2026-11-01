@@ -44,6 +44,9 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.MaidVehiclePlatform;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.MaidDoorAccess;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
@@ -953,9 +956,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
         var block = world.getBlock(pos.x, pos.y, pos.z);
-        boolean bubble = block.getClass()
-            .getName()
-            .equals("ganymedes01.etfuturum.blocks.BlockBubbleColumn");
+        boolean bubble = EtFuturumBlocks.isBubbleColumn(block);
         if (block.getMaterial()
             .isLiquid() && !bubble) return false;
         var box = block.getCollisionBoundingBoxFromPool(world, pos.x, pos.y, pos.z);

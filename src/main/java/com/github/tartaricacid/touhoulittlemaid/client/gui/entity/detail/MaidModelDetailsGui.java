@@ -16,7 +16,6 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
-import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -63,7 +62,8 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
                 .setCurrentItemOrArmor(8 - state, active ? new ItemStack(Items.golden_helmet) : null);
             case 8 -> guiEntity.setCurrentItemOrArmor(0, active ? new ItemStack(Items.diamond_sword) : null);
             case 9 -> {
-                var shield = GameRegistry.findItem("battlegear2", "shield.wood");
+                var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess
+                    .woodenShieldItem();
                 if (active && shield == null) throw new IllegalStateException("native wood shield missing");
                 guiEntity.setOffhandItem(active ? new ItemStack(shield) : null);
             }

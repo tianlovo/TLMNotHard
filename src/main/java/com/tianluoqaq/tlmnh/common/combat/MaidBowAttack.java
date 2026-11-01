@@ -25,6 +25,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 
 /** 原生弓箭执行器：观察、拉弓、真实弹道安全检查和成功生成后的资源结算 */
 public final class MaidBowAttack {

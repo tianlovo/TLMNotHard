@@ -833,3 +833,12 @@ Indev125 将原生 AI tick、水域行为前后阶段和 Brain 实体后阶段�
 
 本批 L3 的三种真实自然 tick 故障各 15 tick 通过，含三轮 NBT、健康个体隔离与真实聊天包；37 项定向策略检查通过
 主双端仅安装候选，客户端最近实际仍为120；完整 F34 与跨模块发布验收保持待完成
+
+## 外部模组按提供方与职责分类
+
+Indev126 将独立模组的适配集中到 `com.tianluoqaq.tlmnh.compat`，每个模组目录下继续按 `common`、`client`、`development` 和具体职责分层，Java 文件不平铺在模组名下
+现有九个模组共19个文件，目录和职责见[适配分类说明](src/main/java/com/tianluoqaq/tlmnh/compat/README.md)
+Minecraft/Forge、GregTech/GTNH 核心及通用核心库保持原层次；通用 AI、物品所有权、存档和失效保护仍由业务层负责
+
+本批按 L2 验证包可见性、反射身份与惰性 API 加载：5项既有盾牌规则通过，实际动画门95tick、进食/乘船32tick、接口缺失与保管1tick通过
+16处源码 token 比较用于核对搬移/抽取，JAR内旧类清除及公共适配无客户端依赖另行检查；没有重新执行历史全集或客户端渲染

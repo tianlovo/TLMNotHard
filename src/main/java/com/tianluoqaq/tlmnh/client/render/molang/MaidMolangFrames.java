@@ -67,7 +67,8 @@ public final class MaidMolangFrames {
         equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(2));
         equipment(frame, Slot.FEET, maid.getEquipmentInSlot(1));
         var chest = frame.equipment(Slot.CHEST);
-        frame.hasElytra = chest != null && "etfuturum:elytra".equals(chest.itemId);
+        frame.hasElytra = chest != null
+            && com.tianluoqaq.tlmnh.compat.etfuturum.common.item.EtFuturumItems.isElytra(chest.itemId);
         return frame;
     }
 

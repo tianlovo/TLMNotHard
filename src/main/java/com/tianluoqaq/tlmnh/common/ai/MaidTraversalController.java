@@ -16,6 +16,7 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState;
 
 /** 沿当前动作已安装的路径开关门和爬梯，不另行抢占移动目标或创建路径 */
 public final class MaidTraversalController {

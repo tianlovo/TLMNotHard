@@ -15,6 +15,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 
 /** 低氧物品使用与三维找空气，复用 Root 动作所有权，不加载区块或改变空气值 */
 public final class MaidBreathController {
@@ -205,9 +206,7 @@ public final class MaidBreathController {
         if (!passable(p)) return false;
         var eye = maid.worldObj.getBlock(p.posX, MathHelper.floor_double(p.posY + maid.getEyeHeight()), p.posZ);
         return !eye.getMaterial()
-            .isLiquid() || eye.getClass()
-                .getName()
-                .equals("ganymedes01.etfuturum.blocks.BlockBubbleColumn");
+            .isLiquid() || EtFuturumBlocks.isBubbleColumn(eye);
     }
 
     /** 采用上游 MaidMoveControl 与 travel 的水中加速度/阻力，在原生碰撞移动阶段执行 */

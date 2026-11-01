@@ -10,6 +10,8 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+
 /** 已支持物品的GL边界，矩阵栈与attrib分开恢复，不修改FBO或program */
 public final class MaidItemRenderScope implements AutoCloseable {
 

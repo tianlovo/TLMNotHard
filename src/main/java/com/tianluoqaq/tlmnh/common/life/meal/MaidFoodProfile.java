@@ -46,7 +46,7 @@ public final class MaidFoodProfile {
         if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return null;
         EnumAction action = stack.getItemUseAction();
         if (action != EnumAction.eat && action != EnumAction.drink) return null;
-        var values = Nutrition.values(stack);
+        var values = com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition.values(stack);
         if (values == null || values[0] < 0 || !Float.isFinite(values[1])) return null;
         var profile = new MaidFoodProfile(stack, (int) values[0], values[1]);
         if (!Float.isFinite(profile.total) || profile.total < 0 || profile.duration <= 0 || profile.duration > 1200)
@@ -112,14 +112,6 @@ public final class MaidFoodProfile {
         for (int i = 3; i < potions.length; i += 4)
             profile.effect(potions[i - 3], potions[i - 2], potions[i - 1], potions[i] / 100F, ambient);
         return profile;
-    }
-
-    private static final class Nutrition {
-
-        static float[] values(ItemStack stack) {
-            var values = squeek.applecore.api.AppleCoreAPI.accessor.getFoodValues(stack);
-            return values == null ? null : new float[] { values.hunger, values.saturationModifier };
-        }
     }
 
     /** 上游呼吸任务先选双手，再查背包；普通药水不参与日常进食 */

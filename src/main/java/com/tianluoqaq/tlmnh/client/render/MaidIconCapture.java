@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL12;
 
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

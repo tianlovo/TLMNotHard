@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.combat;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.world.World;
 
+import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 import com.tianluoqaq.tlmnh.mixin.MixinArrowFlightState;
 
 /** 原飞行基线的独立箭类型，保留原生碰撞、拾取与存档，仅在自身更新中调整飞行物理 */

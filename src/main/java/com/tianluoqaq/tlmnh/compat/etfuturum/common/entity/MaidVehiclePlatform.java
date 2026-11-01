@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.compat.etfuturum.common.entity;
 
 import java.lang.reflect.Method;
 import java.util.List;

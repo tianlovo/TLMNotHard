@@ -96,8 +96,7 @@ public final class MaidShieldController {
             requestedWear = wear;
             wearCallbackInvoked = wearInvoked;
             stackSizeAfter = shield == null ? 0 : shield.stackSize;
-            var data = MaidShieldItems.toolData(shield);
-            brokenAfter = data != null && data.getBoolean("Broken");
+            brokenAfter = com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData.broken(shield);
             equipmentChangedDuringCallback = equipmentChanged;
             cooldownApplied = cooldown;
         }
@@ -502,7 +501,10 @@ public final class MaidShieldController {
                 return;
             }
             event.setCanceled(true);
-            maid.playSound("battlegear2:shield", 1, 1);
+            maid.playSound(
+                com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.BLOCK_SOUND,
+                1,
+                1);
             // NPC箭捕获另做原生碰撞时序验收，此切片不调用EntityPlayer专用catchArrow
             if (wear >= 0) {
                 wore = true;

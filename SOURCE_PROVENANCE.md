@@ -1108,3 +1108,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - MaidBehaviorProtection、按 UUID 的故障范围、物主受众与策略失败退休为本工程独立实现；不以快照补发撤销外部回调的任意副作用
 - EntityMaid 原生物理继续运行，水域管理前后阶段与 Brain.afterLivingUpdate 使用同一边界，避免存档读取后从旁路重新运行旧原型行为
 - MaidPolicyRuntime 原回调仍抛出主异常，世界入口接住可恢复错误；已失败清理不重复，原错误与 suppressed 清理证据保持
+
+## 独立模组适配分类
+
+- Indev126 将本工程适配与专用开发夹具移入 `com.tianluoqaq.tlmnh.compat`，按模组及侧/用途、职责继续分类，不搬入第三方模组源码
+- 原 NativeDoorState、MaidDoorAccess、MaidVehiclePlatform、NativeArrowGravity 与渲染平台状态改包，提供方接口和已有安全回退保持；反射绑定、纹理/批次查询与工具构造按实际提供方抽取
+- 保留上游 MaidModelDetailsGui 包名，盾牌预览只改为经 Battlegear 适配查询原有木盾物品
+- 16处搬移及抽取的关键源码 token 相同，公开访问只为原调用跨包；源码比较不代替实际运行证据

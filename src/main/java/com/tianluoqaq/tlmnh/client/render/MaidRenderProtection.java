@@ -4,6 +4,7 @@ import java.util.function.Supplier;
 
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -31,7 +32,7 @@ public final class MaidRenderProtection {
         return IntegrationGuard.call(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, operation, fallback);
     }
 
-    static void failed(Throwable failure) {
+    public static void failed(Throwable failure) {
         IntegrationGuard.trip(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, failure);
     }
 }

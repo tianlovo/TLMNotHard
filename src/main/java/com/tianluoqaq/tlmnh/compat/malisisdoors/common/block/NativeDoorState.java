@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai;
+package com.tianluoqaq.tlmnh.compat.malisisdoors.common.block;
 
 import java.lang.reflect.Method;
 

@@ -26,7 +26,7 @@ public final class MaidCombatEntities {
     }
 
     public static boolean isArmorStand(Entity entity) {
-        return inherits(entity, "ganymedes01.etfuturum.entities.EntityArmourStand");
+        return com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities.isArmorStand(entity);
     }
 
     public static boolean isMaidItemEntity(Entity entity) {

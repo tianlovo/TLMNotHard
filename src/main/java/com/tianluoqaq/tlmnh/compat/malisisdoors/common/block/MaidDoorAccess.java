@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.compat.malisisdoors.common.block;
 
 import java.lang.reflect.Method;
 
@@ -7,7 +7,6 @@ import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFenceGate;
 import net.minecraft.world.World;
 
-import com.tianluoqaq.tlmnh.common.ai.NativeDoorState;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 

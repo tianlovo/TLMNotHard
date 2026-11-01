@@ -9,6 +9,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GLContext;
 
+import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+
 /** 保存本次物品图集采样与caller临时窗口，不调用会清掉caller窗口的全局restore函数 */
 final class MaidItemFilterScope implements AutoCloseable {
 

@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.combat;
+package com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics;
 
 import java.lang.reflect.Method;
 

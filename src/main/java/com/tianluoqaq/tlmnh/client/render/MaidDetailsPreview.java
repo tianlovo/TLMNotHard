@@ -17,6 +17,7 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrock
 import com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
+import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
