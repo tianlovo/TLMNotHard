@@ -111,10 +111,11 @@ public class EnhancedNavigationControllerTest {
     private static final class Fixture {
 
         long time;
-        boolean hasTarget = true;
+        boolean hasTarget = true, done, stuck, reachable = true;
         int requests;
         Long since;
         BlockPos target = new BlockPos(8, 0, 0), requested;
+        BlockPos position = new BlockPos(0, 0, 0);
         Path installed, memory;
         Result result = Result.FOUND;
         final WalkTarget walk = new WalkTarget() {
@@ -154,9 +155,10 @@ public class EnhancedNavigationControllerTest {
                         yield null;
                     }
                     case "getWalkTarget" -> hasTarget ? walk : null;
-                    case "blockPosition" -> new BlockPos(0, 0, 0);
+                    case "blockPosition" -> position;
                     case "navigationPath" -> installed;
-                    case "navigationIsDone", "navigationIsStuck" -> false;
+                    case "navigationIsDone" -> done;
+                    case "navigationIsStuck" -> stuck;
                     case "moveTo" -> {
                         installed = (Path) args[0];
                         yield true;
@@ -182,6 +184,8 @@ public class EnhancedNavigationControllerTest {
             requests++;
             Path path = result == Result.FOUND ? new Path() {
 
+                final boolean reaches = reachable;
+
                 @Override
                 public Object getIdentity() {
                     return this;
@@ -189,10 +193,106 @@ public class EnhancedNavigationControllerTest {
 
                 @Override
                 public boolean canReach() {
-                    return true;
+                    return reaches;
                 }
             } : null;
             return new MaidPathCreation(result, path);
         }, () -> {});
+    }
+
+    @Test
+    public void exhaustedZeroProgressPartialRouteWaitsWithoutErasingGoalOrRefundingFailureMemory() {
+        var f = new Fixture();
+        f.reachable = false;
+        assertEquals(Outcome.PARTIAL_PATH, f.controller.tick());
+        f.done = true;
+        f.time = 1;
+        assertEquals(Outcome.RECOVERY_WAIT, f.controller.tick());
+        assertTrue(f.hasTarget);
+        assertNull(f.installed);
+        assertNull(f.memory);
+        assertEquals(Long.valueOf(0), f.since);
+        assertEquals(1, f.controller.recoveryCount());
+        int before = f.requests;
+        f.time = 20;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        assertEquals(before, f.requests);
+        f.time = 21;
+        f.done = false;
+        f.reachable = true;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertNull(f.since);
+    }
+
+    @Test
+    public void completedPartialWithActualProgressCanContinueWithoutDelay() {
+        var f = new Fixture();
+        f.reachable = false;
+        assertEquals(Outcome.PARTIAL_PATH, f.controller.tick());
+        f.position = new BlockPos(4, 0, 0);
+        f.time = 1;
+        f.done = true;
+        assertEquals(Outcome.PARTIAL_PATH, f.controller.tick());
+        assertEquals(2, f.requests);
+        assertEquals(0, f.controller.recoveryCount());
+    }
+
+    @Test
+    public void stationaryLiveRouteRecoversThenQuotaWaitingIsNotAnotherFailure() {
+        var f = new Fixture();
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.time = 39;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.time = 40;
+        assertEquals(Outcome.RECOVERY_WAIT, f.controller.tick());
+        assertEquals(Long.valueOf(40), f.since);
+        f.result = Result.WAITING_BUDGET;
+        f.time = 60;
+        assertEquals(Outcome.WAITING_BUDGET, f.controller.tick());
+        assertEquals(0, f.controller.failureCount());
+        assertEquals(Long.valueOf(40), f.since);
+        f.target = new BlockPos(14, 0, 0);
+        f.result = Result.FOUND;
+        f.time++;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertNull(f.since);
+    }
+
+    @Test
+    public void actualUnreachableResultStopsOldRouteButRetainsCurrentGoal() {
+        var f = new Fixture();
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.target = new BlockPos(12, 0, 0);
+        f.time = 1;
+        f.result = Result.UNREACHABLE;
+        assertEquals(Outcome.UNREACHABLE, f.controller.tick());
+        assertTrue(f.hasTarget);
+        assertNull(f.installed);
+        assertNull(f.memory);
+    }
+
+    @Test
+    public void sameFrameReachablePreflightInstallsWithoutASecondQueryAndOldFrameCannotInstall() {
+        var f = new Fixture();
+        Path prepared = new Path() {
+
+            public Object getIdentity() {
+                return this;
+            }
+
+            public boolean canReach() {
+                return true;
+            }
+        };
+        f.controller.acceptPreflight(f.target, new MaidPathCreation(Result.FOUND, prepared), 0);
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertEquals(0, f.requests);
+        assertSame(prepared, f.installed);
+        f.target = new BlockPos(14, 0, 0);
+        f.controller.acceptPreflight(f.target, new MaidPathCreation(Result.FOUND, prepared), 0);
+        f.time = 1;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertEquals(1, f.requests);
+        assertNotSame(prepared, f.installed);
     }
 }
