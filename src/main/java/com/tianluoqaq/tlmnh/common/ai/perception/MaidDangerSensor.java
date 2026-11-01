@@ -37,7 +37,8 @@ public final class MaidDangerSensor {
 
     /** UNKNOWN 保留原型无明确威胁时允许生活的规则，不把它当作完整阴性观测 */
     public boolean hasKnownDanger() {
-        if (maid.hurtTime > 0) return true;
+        if (maid.hurtTime > 0 || maid.getBrainCoordinator()
+            .hasRecentHurt()) return true;
         if (!state.isFrame(maid.worldObj, maid.worldObj.getTotalWorldTime()) || maid.worldObj.isRemote) return false;
         if (frame >= nextScan) {
             nextScan = frame + SCAN_INTERVAL;

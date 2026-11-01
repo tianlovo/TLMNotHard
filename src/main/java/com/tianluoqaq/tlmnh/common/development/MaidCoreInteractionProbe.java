@@ -805,7 +805,7 @@ public final class MaidCoreInteractionProbe {
         private net.minecraft.entity.monster.EntityCreeper creeper;
         private final net.minecraft.world.EnumDifficulty difficulty;
         private int ticks, phase, phaseStart;
-        private boolean finished;
+        private boolean finished, rejectNextHurt;
         private double x, z, initialDistance;
 
         PanicRuntime(WorldServer world) {
@@ -814,6 +814,7 @@ public final class MaidCoreInteractionProbe {
         }
 
         private void begin() {
+            MinecraftForge.EVENT_BUS.register(this);
             f.world.difficultySetting = net.minecraft.world.EnumDifficulty.NORMAL;
             int bx = (int) Math.floor(f.maid.posX), bz = (int) Math.floor(f.maid.posZ);
             x = bx + .5;
@@ -919,16 +920,55 @@ public final class MaidCoreInteractionProbe {
                         controller.getThreat() == null && brain.getActionRunner()
                             .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
                         "removed threat releases panic");
-                    finish(true, "escape;attack-disabled;cancel-resume;threat-removed");
+                    rejectNextHurt = true;
+                    require(
+                        !f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1) && !brain.hasRecentHurt(),
+                        "LivingAttack cancellation does not create hurt memory");
+                    require(
+                        f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1) && brain.hasRecentHurt(),
+                        "accepted native attack records hurt memory");
+                    phase = 6;
+                    phaseStart = ticks;
+                } else if (phase == 6 && ticks - phaseStart >= 25) {
+                    require(
+                        f.maid.hurtTime == 0 && brain.hasRecentHurt()
+                            && "hurt_pause".equals(controller.getStatus())
+                            && brain.getActionRunner()
+                                .getOwner() == com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC
+                            && f.maid.getNavigator()
+                                .noPath(),
+                        "hurt memory interrupts activity beyond the native hurt animation without invented escape");
+                    phase = 7;
+                } else if (phase == 7 && ticks - phaseStart >= 43) {
+                    require(
+                        !brain.hasRecentHurt() && brain.getActionRunner()
+                            .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                        "expired hurt memory releases panic");
+                    require(f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1), "new accepted attack");
+                    require(brain.hasRecentHurt(), "new hurt memory before lifecycle cancellation");
+                    brain.setSuspended(true);
+                    require(!brain.hasRecentHurt(), "policy cancellation clears hurt memory");
+                    finish(
+                        true,
+                        "escape;attack-disabled;cancel-resume;threat-removed;hurt-cancel;hurt-expiry;hurt-cleanup");
                 }
             } catch (RuntimeException | Error error) {
                 finish(false, error.toString());
             }
         }
 
+        @SubscribeEvent
+        public void rejectHurt(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+            if (event.entityLiving == f.maid && rejectNextHurt) {
+                rejectNextHurt = false;
+                event.setCanceled(true);
+            }
+        }
+
         private void finish(boolean success, String detail) {
             if (finished) return;
             finished = true;
+            MinecraftForge.EVENT_BUS.unregister(this);
             cpw.mods.fml.common.FMLCommonHandler.instance()
                 .bus()
                 .unregister(this);

@@ -708,3 +708,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - Angelica 2.2.43 固定提交 2b46b4f602dfd7c6b5dd67f42acd853adfa1d9c6：反射矩阵、客户端纹理单元与绘制计数分别改从 GLSMMatrices、GLSMTextures、GLSMDraws 读取，保留旧 API 回退
 - Et Futurum 2.6.65-GTNH 固定提交 ff1a4717b22fa16da0d986deb3c59d0d4c9ff9db：核对变更路径，旁观保护仍须在正式版实机确认
 - 正式版依赖审计与运行证据单列，旧 RC2 结果不迁为正式版通过
+
+## 受伤事实与活动中断
+
+- 固定上游 TLM 的 MaidPanicTask、MaidClearHurtTask、MaidRunAwayTask 与 MaidBrain.registerPanicGoals：受伤触发 PANIC 活动，逃离点仍来自 NEAREST_HOSTILE，不凭伤害来源推断不可见攻击者的位置
+- MC 1.20.1 原始 client JAR 的 HurtBySensor 与 LivingEntity.getLastDamageSource 已按官方映射和实际字节码核对，最后伤害来源在世界时间差大于 40 tick 后清除
+- 新增 com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory，记录原生接受攻击后的短期事实；世界变化、回退时间与策略生命周期取消清除，不进入存档
+- 原型按事实到期直接结束中断，尚未声称与现代 HURT_BY 传感器分频相位逐 tick 一致；完整忠实 F 与增强 N 继续独立待验

@@ -15,7 +15,7 @@ import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
-/** 原版空闲任务的苦力怕逃离，移动和取消仍由同一动作所有者管理 */
+/** 原版空闲任务的苦力怕逃离和受伤活动中断，移动与取消由同一动作所有者管理 */
 public final class MaidPanicController {
 
     private static final int SCAN_INTERVAL = 20, PATH_RETRY = 20, ATTEMPTS = 10;
@@ -23,6 +23,7 @@ public final class MaidPanicController {
     private final EntityMaid maid;
     private final MaidActionRunner runner;
     private final BooleanSupplier suspended;
+    private final BooleanSupplier recentlyHurt;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner();
     private EntityCreeper threat;
     private MaidActionRun run;
@@ -30,10 +31,12 @@ public final class MaidPanicController {
     private long nextScan, nextPath, lastTime = Long.MIN_VALUE;
     private String status = "idle";
 
-    public MaidPanicController(EntityMaid maid, MaidActionRunner runner, BooleanSupplier suspended) {
+    public MaidPanicController(EntityMaid maid, MaidActionRunner runner, BooleanSupplier suspended,
+        BooleanSupplier recentlyHurt) {
         this.maid = maid;
         this.runner = runner;
         this.suspended = suspended;
+        this.recentlyHurt = recentlyHurt;
     }
 
     public String getStatus() {
@@ -62,7 +65,7 @@ public final class MaidPanicController {
             nextScan = now + SCAN_INTERVAL;
             scan();
         }
-        if (threat == null) {
+        if (threat == null && !recentlyHurt.getAsBoolean()) {
             clearControl();
             setStatus("idle");
             return false;
@@ -71,14 +74,25 @@ public final class MaidPanicController {
             var proposed = runner.newRun(maid.worldObj, maid.getTask());
             if (proposed == null || !runner.claim(MaidActionRunner.Owner.PANIC, proposed, this::cancel)) return true;
             run = proposed;
-            maid.setSitting(false);
-            maid.setPose(MaidPose.SLEEPING, false);
-            if (maid.ridingEntity != null) maid.mountEntity(null);
+            if (threat != null) {
+                maid.setSitting(false);
+                maid.setPose(MaidPose.SLEEPING, false);
+                if (maid.ridingEntity != null) maid.mountEntity(null);
+            }
             maid.getShieldController()
                 .cancelUse("panic");
         }
         if (!runner.isOwned(run, maid.worldObj, maid.getTask())) {
             clearControl();
+            return true;
+        }
+        // 原版仅以 NEAREST_HOSTILE 选择逃离点，HURT_BY 自身不泄露攻击者位置
+        if (threat == null) {
+            if (ownedPath != null && maid.getNavigator()
+                .getPath() == ownedPath) maid.getNavigator()
+                    .clearPathEntity();
+            ownedPath = null;
+            setStatus("hurt_pause");
             return true;
         }
         if (ownedPath != null && maid.getNavigator()

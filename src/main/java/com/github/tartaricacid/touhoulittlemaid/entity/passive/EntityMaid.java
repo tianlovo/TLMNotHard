@@ -175,7 +175,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         var previous = worldSounds == null ? null : worldSounds.beginDamage(source);
         try {
             if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
-            return super.attackEntityFrom(source, amount);
+            boolean accepted = super.attackEntityFrom(source, amount);
+            if (accepted && brain != null) brain.recordAcceptedHurt();
+            return accepted;
         } finally {
             if (worldSounds != null) worldSounds.endDamage(previous);
         }

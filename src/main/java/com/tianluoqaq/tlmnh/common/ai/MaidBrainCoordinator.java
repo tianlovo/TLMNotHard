@@ -14,6 +14,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
@@ -50,6 +51,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
+    private final MaidHurtMemory hurtMemory = new MaidHurtMemory();
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
@@ -74,7 +76,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         home = new MaidHomeController(maid, actionRunner);
         traversal = new MaidTraversalController(maid);
-        panic = new MaidPanicController(maid, actionRunner, () -> suspended);
+        panic = new MaidPanicController(maid, actionRunner, () -> suspended, this::hasRecentHurt);
         pickup = new MaidPickupController(maid, actionRunner, ownerSensor::findOwner);
         bow = new MaidBowAttack(maid);
         life = new MaidLifeController(
@@ -444,6 +446,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         dangerSensor.clear();
         combatActor.forgetOwner();
         targetMemory.clear();
+        hurtMemory.clear();
         Throwable failure = cancel(panic::cancel, null);
         failure = cancel(combat::cancel, failure);
         failure = cancel(pickup::cancel, failure);
@@ -466,6 +469,17 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             failure);
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
+    }
+
+    /** 只在原生伤害入口确实接受攻击后记录；取消/免疫的攻击不刷新记忆 */
+    public void recordAcceptedHurt() {
+        if (maid.worldObj != null && !maid.worldObj.isRemote && maid.isEntityAlive())
+            hurtMemory.record(maid.worldObj, maid.worldObj.getTotalWorldTime());
+    }
+
+    public boolean hasRecentHurt() {
+        return maid.worldObj != null && !maid.worldObj.isRemote
+            && hurtMemory.isRecent(maid.worldObj, maid.worldObj.getTotalWorldTime());
     }
 
     private static Throwable cancel(Runnable action, Throwable first) {
