@@ -256,3 +256,15 @@ Indev111 选择 `tlmnhqapilot:ModernLeisureTests`，并在首轮关联近战回�
 后轮三项实际 197/29/17 tick，JSON/XML/process 0；此前未变类的近战 56 与 Follow 172 tick 单独保留并按 pilot 类字节绑定
 最终只修两个客户端动画类的原计时/空动画规则，其余 1128 类与资源字节不变；没有重跑通过场景或改写原始 JAR 哈希
 客户端连续画面、多人、全部随机输入和完整 O/F/N 仍须后续合并验证
+
+## 原弓箭活动试点
+
+Indev112 新增 `tlmnhqapilot:ModernRangedTests`，关联既有 `ModernCombatTests.realFlyingArrowAndActiveShieldStartStopPhases`
+三项新场景覆盖自然远距离射击与属性/耗材、实际 EntityJoinWorld 撤权与恢复、真实矿车上的独立骑乘射击
+全部采用实际现代组件和原生箭，没有手动调用射击 tick 代替自然任务
+
+同一玩法候选分批通过自然射击 94、撤权/恢复 50、矿车 43 tick，关联木盾 74 tick
+自然射击原完整间隔 22 tick，使用速度 2、冷却 5 后为 15；同时检查真实伤害、双手优先取箭、有限耐久和 Infinity 资源语义
+首轮撤权测试漏调用逐帧运动检查，矿车初始乘客高度与地板相交；按原生负坐高修正出生净空后仅复测两项失败测试
+后轮两项 JSON/XML/process 0 全通过，保留首轮失败；首轮已过方法及共享夹具/目标/Hook 源码未变、木盾类字节相同，不称作单轮四项全绿
+本批没有客户端成像、多人、完整原版 O/F/N 或移动预瞄统计收益结论

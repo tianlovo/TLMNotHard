@@ -20,6 +20,28 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 public class MaidItemUseStateTest {
 
     @Test
+    public void useClockContinuesForSameLeaseAndStartsFreshAfterAnotherHandTakesOver() {
+        var state = new MaidItemUseState(() -> {});
+        var owner = new Object();
+        var item = new Object();
+        var valid = new AtomicBoolean(true);
+        var bow = state.tryAcquire(owner, item, Hand.MAIN, Kind.BOW, valid::get);
+        for (int i = 0; i < 10; i++) state.advanceUse(2);
+        assertEquals(20, state.getUsedTicks());
+        assertSame(bow, state.tryAcquire(owner, item, Hand.MAIN, Kind.BOW, valid::get));
+        assertEquals(20, state.getUsedTicks());
+        valid.set(false);
+        state.advanceUse(1);
+        assertNull(state.peek());
+        var shield = state.tryAcquire(new Object(), new Object(), Hand.OFF, Kind.SHIELD, () -> true);
+        assertEquals(0, state.getUsedTicks());
+        state.advanceUse(1);
+        assertFalse(state.release(bow));
+        assertSame(shield, state.peek());
+        assertEquals(1, state.getUsedTicks());
+    }
+
+    @Test
     public void sustainedBowAndShieldCannotUseDifferentHandsAtOnce() {
         var state = new MaidItemUseState(() -> {});
         var bow = state.tryAcquire(new Object(), new Object(), Hand.MAIN, Kind.BOW, () -> true);
