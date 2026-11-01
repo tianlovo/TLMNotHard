@@ -15,8 +15,9 @@ public class MaidSensingBudgetTest {
     @Test
     public void allActorsAndChannelsGetTurnWithoutFastRequesterExceedingQuota() {
         var budget = new MaidSensingBudget(1);
-        var requests = new Request[] { request(Kind.LIVING), request(Kind.PICKUP), request(Kind.LIFE),
-            request(Kind.AIR) };
+        var requests = java.util.Arrays.stream(Kind.values())
+            .map(MaidSensingBudgetTest::request)
+            .toArray(Request[]::new);
         var admitted = new HashSet<Request>();
         for (long tick = 0; tick < 16; tick++) {
             int actual = 0;

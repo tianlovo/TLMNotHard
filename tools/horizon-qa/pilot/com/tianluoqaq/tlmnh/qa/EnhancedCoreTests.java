@@ -56,9 +56,9 @@ public final class EnhancedCoreTests {
             }
             if (age <= changedAt[0]) return false;
             helper.assertTrue(
-                core.selectedKind() == null && core.actor()
-                    .peekWalkTarget() == null && f.navigation.noPath(),
-                "Dead pickup was retained by hysteresis or old route survived cancellation");
+                core.selectedKind() == null || core.selectedKind() == Kind.OBSERVE
+                    || core.selectedKind() == Kind.WANDER,
+                "Dead pickup or completed follow was retained instead of allowing ambient activity");
             return age >= changedAt[0] + 5;
         });
     }

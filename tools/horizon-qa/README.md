@@ -487,3 +487,8 @@ Indev139 的 `tlmnhqapilot:ProgressionTests` 分五个独立batch，覆盖实际
 首轮因HQA关闭动物而经原生更新删除旧夹具，失败保留；增加实际磁盘区块检查并在全新世界重跑，没有改玩法包补偿测试环境
 运行器只在自有QA子目录切换冻结旧/新JAR与最小兼容pilot，前后核主安装摘要，正常停止后恢复原QA安装和配置；旧版写入后备份整个专用世界
 这些测试不覆盖player.dat、真实多客户端、崩溃原子性、自然AI或画面；新版本仍需完整首版跨模块验收
+
+Indev141 的 `tlmnhqapilot:EnhancedAmbientTests` 分三个batch，保留自然世界tick及注册女仆，核实时可见食物请求/遮挡/恢复/跟随抢占与物品保持10tick、观察遮挡及其他手部授权26tick、玻璃承重实际闲逛/落点失效/暂停恢复66tick
+同包 `ModernLeisureTests.naturalRandomLookAndWalkUseNativeMotionThenRideWorkOnlyLooks` 322tick通过，四项一次JSON/XML/process0一致；所有者仍使用既有隔离FakePlayer夹具，不代表实际客户端输入或多人网络
+新增AMBIENT渠道由既有扫描FIFO限制，公平性检查遍历全部五种渠道；原拾取失效观察器允许合法空闲活动出现，不能再要求增强女仆永远无动作
+这里没有性能、完整N或全部活动验收结论，雪地玩耍仍待增强接入
