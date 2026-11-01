@@ -332,6 +332,20 @@ public final class MaidCoreInteractionProbe {
             require(blocked == null || blocked.getFinalPathPoint().xCoord <= x, "disabled gate blocks corridor");
             world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.wooden_door, 0, 2);
             world.setBlock(x + 1, y + 1, z, net.minecraft.init.Blocks.wooden_door, 8, 2);
+            TLMNotHard.LOG.info(
+                "TLMNH_DOOR_FIXTURE block={} upper={} meta={}/{} wood={} enabled={} tame={} sitting={} riding={} leash={} sleep={}",
+                world.getBlock(x + 1, y, z),
+                world.getBlock(x + 1, y + 1, z),
+                world.getBlockMetadata(x + 1, y, z),
+                world.getBlockMetadata(x + 1, y + 1, z),
+                world.getBlock(x + 1, y, z)
+                    .getMaterial() == net.minecraft.block.material.Material.wood,
+                config.isOpenDoor(),
+                maid.isTamed(),
+                maid.isSitting(),
+                maid.ridingEntity,
+                maid.getLeashed(),
+                maid.hasPose(MaidPose.SLEEPING));
             maid.getNavigator()
                 .setPath(
                     new net.minecraft.pathfinding.PathEntity(
@@ -342,7 +356,12 @@ public final class MaidCoreInteractionProbe {
             require(
                 ((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door)
                     .func_150015_f(world, x + 1, y, z),
-                "wood door opens on current path");
+                "wood door opens on current path; actual=" + world.getBlock(x + 1, y, z)
+                    + ";meta="
+                    + world.getBlockMetadata(x + 1, y, z)
+                    + ";path="
+                    + maid.getNavigator()
+                        .getPath());
             maid.setPosition(x + 4.5, y, z + 0.5);
             maid.getNavigator()
                 .clearPathEntity();
