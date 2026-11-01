@@ -160,6 +160,11 @@ public final class ModernRangedTests {
         boolean[] done = { false };
         helper.onEachTick("real minecart and source ride shoot behavior", () -> {
             f.check();
+            if (f.maid.ticksExisted > 1) helper.assertTrue(
+                f.maid.rotationYawHead == cart.rotationYaw && f.maid.renderYawOffset == cart.rotationYaw,
+                "Source post-ride head/body alignment lost to native update or look sink");
+            // 帧末改变载具方向，下一次自然updateRidden必须重新对齐，不能只在mount时复制一次
+            if (f.maid.ticksExisted == 5 || f.maid.ticksExisted == 15) cart.rotationYaw += 45;
             if (f.core.getActor()
                 .rangedBow()
                 .getShots() >= 2 && target.getHealth() < 200) {
