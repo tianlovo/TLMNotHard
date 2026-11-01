@@ -15,6 +15,7 @@ public final class MaidConfigManager {
     private static final String SOUND_FREQ_TAG = "SoundFreq";
     private static final String PICKUP_TYPE_TAG = "PickupType";
     private static final String[] NAVIGATION_TAGS = { "OpenDoor", "OpenFenceGate", "ActiveClimbing" };
+    private static final String[] VISUAL_TAGS = { "BackpackShow", "BackItemShow", "ChatBubbleShow" };
     private final DataWatcher entityData;
     private NBTTagCompound unreadConfig = new NBTTagCompound();
 
@@ -32,6 +33,7 @@ public final class MaidConfigManager {
         sub.setFloat(SOUND_FREQ_TAG, getSoundFreq());
         sub.setInteger(PICKUP_TYPE_TAG, getPickupType().ordinal());
         for (int i = 0; i < NAVIGATION_TAGS.length; i++) sub.setBoolean(NAVIGATION_TAGS[i], flag(1 << i));
+        for (int i = 0; i < VISUAL_TAGS.length; i++) sub.setBoolean(VISUAL_TAGS[i], (visualFlags() & (1 << i)) != 0);
         compound.setTag(MAID_SUB_CONFIG_TAG, sub);
     }
 
@@ -48,6 +50,40 @@ public final class MaidConfigManager {
         }
         for (int i = 0; i < NAVIGATION_TAGS.length; i++) if (unreadConfig.hasKey(NAVIGATION_TAGS[i], 1))
             setFlag(1 << i, unreadConfig.getBoolean(NAVIGATION_TAGS[i]));
+        for (int i = 0; i < VISUAL_TAGS.length; i++)
+            if (unreadConfig.hasKey(VISUAL_TAGS[i], 1)) setVisualFlag(1 << i, unreadConfig.getBoolean(VISUAL_TAGS[i]));
+    }
+
+    public boolean isShowBackpack() {
+        return (visualFlags() & 1) != 0;
+    }
+
+    public boolean isShowBackItem() {
+        return (visualFlags() & 2) != 0;
+    }
+
+    public boolean isChatBubbleShow() {
+        return (visualFlags() & 4) != 0;
+    }
+
+    public void setShowBackpack(boolean value) {
+        setVisualFlag(1, value);
+    }
+
+    public void setShowBackItem(boolean value) {
+        setVisualFlag(2, value);
+    }
+
+    public void setShowChatBubble(boolean value) {
+        setVisualFlag(4, value);
+    }
+
+    private int visualFlags() {
+        return field(4, 7) & 7;
+    }
+
+    private void setVisualFlag(int mask, boolean value) {
+        write(getSoundFreq(), getPickupType(), flags(), value ? visualFlags() | mask : visualFlags() & ~mask);
     }
 
     public float getSoundFreq() {
@@ -55,7 +91,8 @@ public final class MaidConfigManager {
         if (raw.length() > 80) return 1;
         try {
             String[] fields = raw.split(";", -1);
-            if (!(fields.length == 2 && fields[0].equals("1") || fields.length == 4 && fields[0].equals("2"))) return 1;
+            if (!(fields.length == 2 && fields[0].equals("1") || fields.length == 4 && fields[0].equals("2")
+                || fields.length == 5 && fields[0].equals("3"))) return 1;
             float frequency = Float.parseFloat(fields[1]);
             return Float.isFinite(frequency) ? Math.max(0, Math.min(1, frequency)) : 1;
         } catch (NumberFormatException invalid) {
@@ -117,7 +154,8 @@ public final class MaidConfigManager {
         String raw = entityData.getWatchableObjectString(DATA_CONFIG);
         if (raw.length() > 80) return fallback;
         String[] fields = raw.split(";", -1);
-        if (fields.length != 4 || !fields[0].equals("2")) return fallback;
+        if (!(fields.length == 4 && fields[0].equals("2") || fields.length == 5 && fields[0].equals("3"))
+            || index >= fields.length) return fallback;
         try {
             return Integer.parseInt(fields[index]);
         } catch (NumberFormatException invalid) {
@@ -126,6 +164,10 @@ public final class MaidConfigManager {
     }
 
     private void write(float frequency, PickType type, int flags) {
-        entityData.updateObject(DATA_CONFIG, "2;" + frequency + ";" + type.ordinal() + ";" + flags);
+        write(frequency, type, flags, visualFlags());
+    }
+
+    private void write(float frequency, PickType type, int flags, int visuals) {
+        entityData.updateObject(DATA_CONFIG, "3;" + frequency + ";" + type.ordinal() + ";" + flags + ";" + visuals);
     }
 }

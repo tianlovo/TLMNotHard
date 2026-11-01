@@ -42,6 +42,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public static final String MAID_INVENTORY_TAG = "MaidInventory";
     public static final String EXPERIENCE_TAG = "MaidExperience";
     public static final int SAVE_VERSION = 1;
+    private static final int DATA_BACK_ITEM = 18;
     private static final int DATA_MODEL = 20;
     private static final int DATA_TASK = 21;
     private static final int DATA_SCHEDULE = 22;
@@ -83,6 +84,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     protected void entityInit() {
         super.entityInit();
+        dataWatcher.addObjectByDataType(DATA_BACK_ITEM, 5);
         dataWatcher.addObject(DATA_MODEL, DEFAULT_MODEL_ID);
         dataWatcher.addObject(DATA_TASK, MaidTask.IDLE.getId());
         dataWatcher.addObject(DATA_SCHEDULE, (byte) MaidSchedule.DAY.ordinal());
@@ -119,6 +121,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             shield.tickAfterLivingUpdate();
             pickup.tick();
             syncOffhand();
+            syncBackpackShowItem();
         }
     }
 
@@ -296,7 +299,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                     setAttackTarget(null);
                 }
             } else {
-                player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, worldObj, getEntityId(), 0, 0);
+                player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, worldObj, getEntityId(), 0, 0);
             }
         }
         return true;
@@ -430,6 +433,19 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void setSoundPackId(String id) {
         if (com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.get(id) != null)
             dataWatcher.updateObject(DATA_SOUND_PACK, id);
+    }
+
+    /** 原版背包第六格的显示副本，随实体元数据同步给全部追踪玩家 */
+    public ItemStack getBackpackShowItem() {
+        return worldObj.isRemote ? dataWatcher.getWatchableObjectItemStack(DATA_BACK_ITEM)
+            : inventory.getStackInSlot(MaidInventory.BACKPACK_SHOW_SLOT);
+    }
+
+    public void syncBackpackShowItem() {
+        if (worldObj == null || worldObj.isRemote || inventory == null) return;
+        var actual = inventory.getStackInSlot(MaidInventory.BACKPACK_SHOW_SLOT);
+        if (!ItemStack.areItemStacksEqual(actual, dataWatcher.getWatchableObjectItemStack(DATA_BACK_ITEM)))
+            dataWatcher.updateObject(DATA_BACK_ITEM, actual == null ? null : actual.copy());
     }
 
     public ItemStack getOffhandItem() {

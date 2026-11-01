@@ -30,6 +30,7 @@ public final class MaidRenderer extends RenderLiving {
     private static final String DEFAULT_MODEL = "touhou_little_maid:hakurei_reimu";
     private final BuiltinMaidModels models;
     private final MaidHeldItemLayer heldItems = new MaidHeldItemLayer();
+    private final com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBackItem backItems = new com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBackItem();
     private final Map<EntityMaid, CachedModel> entities = new WeakHashMap<>();
     private final Set<String> failures = new HashSet<>();
     private int generation = -1;
@@ -115,6 +116,7 @@ public final class MaidRenderer extends RenderLiving {
                 partialTick,
                 () -> heldItems.render(maid, model, renderManager.itemRenderer, partialTick))) return;
             heldItems.render(maid, model, renderManager.itemRenderer, partialTick);
+            backItems.render(maid, model, renderManager.itemRenderer);
         }
     }
 

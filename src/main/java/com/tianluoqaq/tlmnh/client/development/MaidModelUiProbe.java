@@ -306,6 +306,14 @@ public final class MaidModelUiProbe {
                 effectValues.add(value);
             }
             response.add("displayedEffects", effectValues);
+            response.addProperty(
+                "showBackItem",
+                maid.getConfigManager()
+                    .isShowBackItem());
+            response.addProperty(
+                "backItem",
+                maid.getBackpackShowItem() == null ? ""
+                    : com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.itemId(maid.getBackpackShowItem()));
             response.addProperty("taskListOpen", original.isTaskListOpen());
             response.addProperty(
                 "maidSoundFrequency",

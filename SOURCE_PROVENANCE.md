@@ -633,3 +633,13 @@ RC2 实际原版木门为 MalisisDoors `1.19.11-GTNH` 的替换类，源码固�
 
 `MaidModelGui.notifyModelChange` 的 use_sound_pack_id 行为在现有模型容器交易中补齐：只有声明非空且已安装的声音包才应用，未知声音包不改当前选择
 核对当前固定目录的全部 254 个内置选择，source_info 均未声明此字段；这些内置模型切换时保留当前配音符合原版，不把尚无声明的数据写成酒狐的自动配音功能
+
+## 背部显示与原版页面默认入口
+
+`client/renderer/entity/layer/LayerMaidBackItem.java` 保留原包名，合并固定上游 Bedrock 与 Gecko 两个背部物品层的核心条件与定位
+`MaidBackItemRenderer` 位于本工程包，读取本体已完成姿态和 Gecko BackpackLocator；保留 EmptyBackpack 的偏移、模型 show_backpack 与睡眠/隐身隐藏条件，不引入枪械、拔刀剑或其他联动
+目标版本以有最大耐久的物品对应基础可背挂物品；普通图标按 1.20.1 item/generated 的 FIXED 姿态桥接 RC2 ItemRenderer，已有自定义渲染器走 RC2 EQUIPPED 入口，外观待集中实机检查，不宣称其跨版本模型完全一致
+第六背包格沿用上游 MaidBackpackHandler.BACKPACK_ITEM_SLOT=5，使用已核空闲的 DataWatcher 18 号 ItemStack 同步给实体追踪玩家；变化比较使用副本，原地耐久变化和清空也会更新
+MaidConfigManager 沿用 BackpackShow/BackItemShow/ChatBubbleShow 三个 NBT 键，元数据升级到版本 3，继续读取版本 1/2；本批只开放已接实际渲染的背部物品开关，其余两项仍待接入
+默认主人右键改为原版主页面；模型、配音和设置入口解除开发开关限制，保留归属/距离/状态/光标检查，旧自制页面和模型列表只在开发开关下开放
+本批先合并编译与静态检查，实机与下一组关联视觉功能一起验证；不把待验渲染写成通过

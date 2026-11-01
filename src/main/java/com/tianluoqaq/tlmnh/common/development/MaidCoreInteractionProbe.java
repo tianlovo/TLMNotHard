@@ -163,6 +163,79 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    public static void runBackItem(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            var inventory = f.maid.getMaidInventory();
+            inventory.setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
+            var actual = f.maid.getBackpackShowItem();
+            var synced = f.maid.getDataWatcher()
+                .getWatchableObjectItemStack(18);
+            require(
+                actual != synced && ItemStack.areItemStacksEqual(actual, synced),
+                "back slot copied to tracker metadata");
+            actual.setItemDamage(17);
+            f.maid.syncBackpackShowItem();
+            require(
+                f.maid.getDataWatcher()
+                    .getWatchableObjectItemStack(18)
+                    .getItemDamage() == 17,
+                "in-place durability refresh");
+            var config = f.maid.getConfigManager();
+            var menu = new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
+                f.owner.inventory,
+                f.maid);
+            f.owner.openContainer = menu;
+            require(
+                config.isShowBackItem() && menu.enchantItem(f.owner, 31) && !config.isShowBackItem(),
+                "owner display toggle");
+            require(!menu.enchantItem(f.stranger, 31), "foreign display toggle denied");
+            var saved = new NBTTagCompound();
+            f.maid.writeEntityToNBT(saved);
+            var restored = new EntityMaid(world);
+            restored.readEntityFromNBT(saved);
+            require(
+                !restored.getConfigManager()
+                    .isShowBackItem()
+                    && restored.getBackpackShowItem()
+                        .getItemDamage() == 17,
+                "flag and back slot persisted");
+            restored.getDataWatcher()
+                .updateObject(31, "2;0.4;0;0");
+            require(
+                restored.getConfigManager()
+                    .isShowBackItem()
+                    && !restored.getConfigManager()
+                        .isOpenDoor(),
+                "v2 metadata default visuals and preserved navigation");
+            inventory.setInventorySlotContents(5, null);
+            require(
+                f.maid.getDataWatcher()
+                    .getWatchableObjectItemStack(18) == null,
+                "cleared tracker item");
+            var proxy = new com.tianluoqaq.tlmnh.common.proxy.CommonProxy();
+            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
+            require(world.spawnEntityInWorld(f.maid), "registered production menu maid");
+            var previous = System.getProperty("tlmnh.devCommands");
+            try {
+                System.setProperty("tlmnh.devCommands", "false");
+                for (int id : new int[] { 3, 4, 5, 6 }) require(
+                    proxy.getServerGuiElement(id, f.owner, world, f.maid.getEntityId(), 0, 0) != null,
+                    "original menu available without development mode");
+                require(
+                    proxy.getServerGuiElement(0, f.owner, world, f.maid.getEntityId(), 0, 0) == null,
+                    "prototype remains development-only");
+                require(
+                    proxy.getServerGuiElement(3, f.stranger, world, f.maid.getEntityId(), 0, 0) == null,
+                    "foreign original menu denied");
+            } finally {
+                if (previous == null) System.clearProperty("tlmnh.devCommands");
+                else System.setProperty("tlmnh.devCommands", previous);
+            }
+            TLMNotHard.LOG.info(
+                "TLMNH_BACK_ITEM_TEST_PASS tracker=copy-mutate-clear nbt=roundtrip metadata=v2-compatible menus=production-access-and-owner-guard rendering=unverified");
+        }
+    }
+
     public static void runEffects(WorldServer world) {
         try (var f = new Fixture(world)) {
             f.maid.addPotionEffect(new PotionEffect(Potion.moveSpeed.id, 72000, 1));

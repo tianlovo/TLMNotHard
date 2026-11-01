@@ -12,6 +12,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 public final class MaidInventory implements IInventory {
 
     public static final int BACKPACK_SIZE = 6;
+    public static final int BACKPACK_SHOW_SLOT = 5;
     public static final int MAIN_HAND = 6;
     public static final int OFF_HAND = 7;
     public static final int ARMOR_START = 8;
@@ -92,6 +93,7 @@ public final class MaidInventory implements IInventory {
     public void markDirty() {
         // DataWatcher 比较副本，捕获使用道具时对副手 ItemStack 的原地修改
         maid.syncOffhand();
+        maid.syncBackpackShowItem();
     }
 
     /** 按上游顺序合并背包和双手，再占空位；不自动穿甲，不修改输入物品 */

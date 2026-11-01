@@ -49,21 +49,18 @@ public class CommonProxy implements IGuiHandler {
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
-        if (id == GUI_MAID_CONFIG)
-            return Boolean.getBoolean("tlmnh.devCommands") && player.inventory.getItemStack() == null
-                ? new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
-                    player.inventory,
-                    maid)
-                : null;
-        if (id == GUI_MAID_SOUNDS)
-            return Boolean.getBoolean("tlmnh.devCommands") && player.inventory.getItemStack() == null
-                ? new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
-                : null;
-        if (id == GUI_MAID_ORIGINAL)
-            return Boolean.getBoolean("tlmnh.devCommands") ? new EmptyBackpackContainer(player.inventory, maid) : null;
+        if ((id == GUI_MAID || id == GUI_MAID_MODELS) && !Boolean.getBoolean("tlmnh.devCommands")) return null;
+        if (id == GUI_MAID_CONFIG) return player.inventory.getItemStack() == null
+            ? new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
+                player.inventory,
+                maid)
+            : null;
+        if (id == GUI_MAID_SOUNDS) return player.inventory.getItemStack() == null
+            ? new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
+            : null;
+        if (id == GUI_MAID_ORIGINAL) return new EmptyBackpackContainer(player.inventory, maid);
         if (id == GUI_MAID_ORIGINAL_MODELS)
-            return Boolean.getBoolean("tlmnh.devCommands") && player.inventory.getItemStack() == null
-                ? new ContainerMaidModels(player.inventory, maid, true)
+            return player.inventory.getItemStack() == null ? new ContainerMaidModels(player.inventory, maid, true)
                 : null;
         if (id == GUI_MAID_NAMING) {
             long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);

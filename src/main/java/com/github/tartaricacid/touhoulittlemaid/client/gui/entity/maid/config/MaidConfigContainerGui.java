@@ -48,7 +48,7 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
                 guiTop + 52 + 13 * row,
                 StatCollector.translateToLocal("gui.touhou_little_maid.maid_config." + KEYS[row]),
                 value(row));
-            button.enabled = row >= 3;
+            button.enabled = row == 1 || row >= 3;
             buttonList.add(button);
         }
     }
@@ -56,6 +56,7 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
     private String value(int row) {
         var config = maid.getConfigManager();
         return switch (row) {
+            case 1 -> booleanValue(config.isShowBackItem());
             case 3 -> "§e" + Math.round(config.getSoundFreq() * 100) + "%";
             case 4 -> "§4" + StatCollector.translateToLocal(
                 com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.getTransKey(config.getPickupType()));
@@ -85,6 +86,7 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
                 || mc.thePlayer.inventory.getItemStack() != null) return;
             frequencyClicks++;
             int action = switch (setting.id) {
+                case 201 -> MaidConfigContainer.TOGGLE_BACK_ITEM;
                 case 203 -> setting.isLeftClicked() ? MaidConfigContainer.FREQUENCY_DOWN
                     : MaidConfigContainer.FREQUENCY_UP;
                 case 204 -> setting.isLeftClicked() ? MaidConfigContainer.PICK_TYPE_PREVIOUS
@@ -132,13 +134,14 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
     public boolean requestFrequency(String action) {
         int x = guiLeft + 86 + switch (action) {
             case "config_down", "config_type_previous" -> 125;
-            case "config_up", "config_type_next", "config_door", "config_gate", "config_climb" -> 159;
+            case "config_up", "config_type_next", "config_door", "config_gate", "config_climb", "config_back_item" -> 159;
             case "config_label" -> 40;
             default -> throw new IllegalArgumentException("Unknown frequency action");
         };
         int before = frequencyClicks;
         int row = switch (action) {
             case "config_type_previous", "config_type_next" -> 4;
+            case "config_back_item" -> 1;
             case "config_door" -> 5;
             case "config_gate" -> 6;
             case "config_climb" -> 7;
