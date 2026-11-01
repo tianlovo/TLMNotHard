@@ -472,3 +472,6 @@ Indev136 的 `tlmnhqapilot:EnhancedRecoveryTests` 包含四项增强实际场景
 Indev137 在原 `EnhancedPanicTests.visibleCreeperLeavesSitMovesCancelsResumesAndHiddenCacheCannotContinue` 中保留玻璃地板，实际逃离/取消恢复/隐藏失效28tick通过；F危险代表63tick通过
 新增 `collisionLandingRejectsUnsafeTerrainAndChangedDestinationRetiresItsRoute` 核实际玻璃/半砖承重、无承重/阻塞/水/火拒绝及目标支撑拆除，108tick通过
 首轮火焰夹具放在玻璃上后被原生规则移除，改在石头上放火并确认实际方块后只重测该方法；玩法包不变，两个观察器分别归档，失败保留
+
+Indev138 的 `tlmnhqapilot:EnhancedDoorTests` 覆盖实际门/栅栏独立权限、通过后动画关闭104tick，以及暂停撤销路线/记忆/请求、拒绝旧DoorPath能力并恢复通行关闭45tick
+同包 `ModernDoorTests.naturalDoorAndGateUseIndependentPermissionsAndActualAnimatedClosure` 102tick通过，三项同轮JSON/XML/process0一致；本轮无新CPU执行，单女仆范围不推导多人或全部门型

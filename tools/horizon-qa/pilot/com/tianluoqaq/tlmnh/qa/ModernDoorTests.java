@@ -147,7 +147,7 @@ public final class ModernDoorTests {
         helper.succeedWhen(() -> done[0]);
     }
 
-    private static ModernCoreTests.Fixture corridor(GameTestHelper helper) {
+    static ModernCoreTests.Fixture corridor(GameTestHelper helper) {
         var f = new ModernCoreTests.Fixture(helper, false, 1, 12);
         place(f, 1.5);
         f.owner.setPosition(f.x + 14.5, f.y + 1, f.z + 3.5);
@@ -179,7 +179,7 @@ public final class ModernDoorTests {
         f.previousZ = f.maid.posZ;
     }
 
-    private static void door(GameTestHelper helper, int x) {
+    static void door(GameTestHelper helper, int x) {
         var p = helper.absolute(x, 1, 3);
         helper.getWorld()
             .setBlock(p.x(), p.y(), p.z(), Blocks.wooden_door, 0, 2);
@@ -187,11 +187,11 @@ public final class ModernDoorTests {
             .setBlock(p.x(), p.y() + 1, p.z(), Blocks.wooden_door, 8, 2);
     }
 
-    private static boolean open(String state) {
+    static boolean open(String state) {
         return state.equals("OPENED") || state.equals("OPENING");
     }
 
-    private static String state(GameTestHelper helper, int x) {
+    static String state(GameTestHelper helper, int x) {
         var p = helper.absolute(x, 1, 3);
         var tile = helper.getWorld()
             .getTileEntity(p.x(), p.y(), p.z());
