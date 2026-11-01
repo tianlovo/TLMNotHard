@@ -141,6 +141,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void moveEntityWithHeading(float strafe, float forward) {
         if (brain != null && brain.getBreathController()
             .travelWater()) return;
+        if (brain != null && brain.applyCombatMovement()) {
+            strafe = moveStrafing * .98F;
+            forward = moveForward * .98F;
+            // 本次投递不能在任务切换后残留于旧引擎的横移字段
+            moveStrafing = moveForward = 0;
+        }
         super.moveEntityWithHeading(strafe, forward);
     }
 

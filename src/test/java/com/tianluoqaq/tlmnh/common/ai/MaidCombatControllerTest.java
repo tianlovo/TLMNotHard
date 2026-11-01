@@ -189,10 +189,35 @@ public class MaidCombatControllerTest {
         assertFalse(actor.target);
     }
 
+    @Test
+    public void rangedDrawSurvivesMovingAcrossRangeButNotLosingSightOrOwnership() {
+        var actor = new TestActor();
+        actor.ranged = true;
+        actor.requiredPreparation = 20;
+        var controller = new MaidCombatController(actor, 0);
+        run(controller, 10);
+        assertEquals(10, actor.preparation);
+        assertEquals(0, controller.getAttackAttempts());
+        actor.distance = 1;
+        run(controller, 9);
+        assertEquals(0, controller.getAttackAttempts());
+        controller.tick();
+        assertEquals(1, controller.getAttackAttempts());
+        actor.visible = false;
+        controller.tick();
+        assertEquals(0, actor.preparation);
+        actor.visible = true;
+        actor.distance = 36;
+        controller.tick();
+        assertEquals(1, actor.preparation);
+        controller.cancel();
+        assertEquals(0, actor.preparation);
+    }
+
     private static final class TestActor implements MaidCombatController.Actor {
 
         private final StringBuilder events = new StringBuilder();
-        private boolean target, path, suppressed, valid = true, visible = true, hit = true, breakWeapon;
+        private boolean target, path, suppressed, valid = true, visible = true, hit = true, breakWeapon, ranged;
         private double distance = 36;
         private int releases;
         private int preparation, requiredPreparation, interval = MaidCombatController.ATTACK_INTERVAL;
@@ -283,6 +308,11 @@ public class MaidCombatControllerTest {
         @Override
         public int attackInterval() {
             return interval;
+        }
+
+        @Override
+        public boolean prepareWhileChasing() {
+            return ranged;
         }
 
         @Override

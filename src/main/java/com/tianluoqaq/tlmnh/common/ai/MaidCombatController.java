@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 
-/** 近战动作的有界生命周期；执行端提供感知、目标规则、原生导航与攻击 */
+/** 战斗动作的有界生命周期；执行端提供感知、目标规则、原生导航与攻击 */
 public final class MaidCombatController {
 
     public static final int SCAN_INTERVAL = 10;
@@ -73,6 +73,14 @@ public final class MaidCombatController {
         PathResult approachTarget();
 
         void stopNavigation();
+
+        default void positionInRange() {}
+
+        default void stopPositioning() {}
+
+        default boolean prepareWhileChasing() {
+            return false;
+        }
 
         boolean attack();
 
@@ -146,6 +154,7 @@ public final class MaidCombatController {
         if (!Double.isFinite(distance)) return stop(Status.TARGET_LOST, false);
         if (visible && distance <= actor.reachSq()) {
             actor.stopNavigation();
+            actor.positionInRange();
             pursuitStarted = tick;
             markProgress();
             if (tick < nextAttack) {
@@ -162,7 +171,10 @@ public final class MaidCombatController {
             status = Status.ATTACKING;
             return true;
         }
-        actor.interruptAttack();
+        actor.stopPositioning();
+        // 弓手行走和使用物品是并行行为，离开发射距离不等于中断蓄力
+        if (visible && actor.prepareWhileChasing()) actor.prepareAttack();
+        else actor.interruptAttack();
         if (!visible && distance <= LAST_SEEN_REACH_SQ) {
             actor.stopNavigation();
             status = Status.SEARCHING_LAST_SEEN;
@@ -213,6 +225,7 @@ public final class MaidCombatController {
         stopping = true;
         try {
             actor.revokeControl();
+            actor.stopPositioning();
             actor.interruptAttack();
             if (active || actor.hasTarget()) {
                 actor.release(suppressTarget);

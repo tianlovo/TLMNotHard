@@ -726,3 +726,12 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 
 - 实际封顶水域暴露了旧引擎差异：1.7.10 EntityLivingBase.onLivingUpdate 将小于 0.005 的速度归零，1.20.1 对应阈值为 0.003；原版水中水平余速约 0.0045 在旧版无法积累
 - 新增条件 Mixin，仅对正在执行呼吸路线且位于水中的女仆使用 0.003 阈值，其余实体和普通女仆仍返回原值；不提高水中目标速度、不改全局碰撞或其他生物规则
+
+## 弓手横移与追击蓄力
+
+- 固定 TLM 提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 entity/ai/brain/task/MaidAttackStrafingTask.java:54–105：每 20 tick 各以 0.3 概率翻转方向，距离大于弓默认射程一半时前进、小于五分之一时后退；主人范围边界抑制走位，停止时清输入但保留任务方向状态
+- 新增独立 MaidStrafingState 投影该方向状态，原始文件未改包复制；MC 1.20.1 实际 BowItem 字节码的默认范围为 15，MoveControl.strafe 使用 0.25 倍移动属性并在不可走侧向时退回前方
+- MaidBrainCoordinator 与 EntityMaid.moveEntityWithHeading 适配旧版没有 strafe 控件且原生 move helper 会清前进输入的差异：仅当前世界 tick、有效 COMBAT 身份可投递一次输入，保留原生加速、摩擦和碰撞，不直接改位置
+- 地形守卫使用已加载方块、身体碰撞、下方支撑、家园范围及液体/火/仙人掌排除；前方也不可走时停下，这是目标环境的保守适配，不声称等价于全部现代 WalkNodeEvaluator 类型
+- MaidShootTargetTask.java:72–113 的行走/使用物品并行关系用于修正追击时每 tick 清空蓄力的问题；隐藏目标仍按真实 canStillUse 可见性条件取消，未套用脱离 Behavior 生命周期的 60 tick 保持假设
+- 当前仍保留原型的 12 格发射半径、目标选择、路径与冷却门槛；完整原版走近/家园语义、原版射击 profile、完整 F/N 和原版 benchmark 均未由本批完成

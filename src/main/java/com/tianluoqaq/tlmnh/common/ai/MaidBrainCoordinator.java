@@ -5,9 +5,12 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -578,6 +581,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return suspended;
     }
 
+    /** 在原生 move helper 之后投递当 tick 的走位输入，仍由原生 travel/collision 执行 */
+    public boolean applyCombatMovement() {
+        return combatActor.applyMovement();
+    }
+
     private final class CombatActor implements MaidCombatController.Actor {
 
         private EntityPlayer owner;
@@ -587,6 +595,81 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         private long ignoreUntil, nextOwnerScan;
         private MaidTask selectedTask;
         private MaidActionRun controlRun;
+        private final MaidStrafingState strafing = new MaidStrafingState();
+        private long movementWorldTick = Long.MIN_VALUE;
+
+        @Override
+        public void positionInRange() {
+            if (maid.getTask() != MaidTask.RANGED_ATTACK || !controlValid()) return;
+            var area = maid.getHomeArea();
+            boolean boundary = !area.enabled() && owner != null
+                && maid.getDistanceSqToEntity(owner) >= area.radius() * area.radius();
+            strafing.tick(
+                Math.sqrt(distanceSq()),
+                16,
+                boundary,
+                () -> maid.getRNG()
+                    .nextFloat());
+            movementWorldTick = maid.worldObj.getTotalWorldTime();
+        }
+
+        @Override
+        public void stopPositioning() {
+            strafing.stop();
+            movementWorldTick = Long.MIN_VALUE;
+        }
+
+        @Override
+        public boolean prepareWhileChasing() {
+            return maid.getTask() == MaidTask.RANGED_ATTACK;
+        }
+
+        private boolean applyMovement() {
+            if (maid.worldObj == null || maid.worldObj.isRemote
+                || movementWorldTick != maid.worldObj.getTotalWorldTime()) return false;
+            movementWorldTick = Long.MIN_VALUE;
+            if (suspended || unloaded || !controlValid() || !targetValid() || blockedReason() != null) return false;
+            maid.rotationYaw = maid.rotationYawHead;
+            float forward = strafing.forward(), strafe = strafing.strafe();
+            if (!safeStep(forward, strafe)) {
+                // 现代 MoveControl 对不可走侧向退回正前方；前方也不可走时保留原地
+                forward = safeStep(1, 0) ? 1 : 0;
+                strafe = 0;
+            }
+            maid.setAIMoveSpeed(
+                (float) maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                    .getAttributeValue() * .25F);
+            maid.moveForward = forward;
+            maid.moveStrafing = strafe;
+            return true;
+        }
+
+        private boolean safeStep(float forward, float strafe) {
+            if (forward == 0 && strafe == 0) return true;
+            double yaw = maid.rotationYaw * Math.PI / 180;
+            double dx = (strafe * Math.cos(yaw) - forward * Math.sin(yaw)) * .5;
+            double dz = (forward * Math.cos(yaw) + strafe * Math.sin(yaw)) * .5;
+            var box = maid.boundingBox.copy()
+                .offset(dx, 0, dz);
+            if (!maid.getHomeArea()
+                .contains(maid.posX + dx, maid.posY, maid.posZ + dz)) return false;
+            for (int x = MathHelper.floor_double(box.minX); x <= MathHelper.floor_double(box.maxX); x++)
+                for (int z = MathHelper.floor_double(box.minZ); z <= MathHelper.floor_double(box.maxZ); z++)
+                    for (int y = MathHelper.floor_double(box.minY) - 1; y <= MathHelper.floor_double(box.maxY); y++) {
+                        if (!maid.worldObj.blockExists(x, y, z)) return false;
+                        var block = maid.worldObj.getBlock(x, y, z);
+                        if (block.getMaterial()
+                            .isLiquid() || block == Blocks.fire
+                            || block == Blocks.cactus) return false;
+                    }
+            return maid.worldObj.getCollidingBoundingBoxes(maid, box)
+                .isEmpty()
+                && !maid.worldObj.getCollidingBoundingBoxes(
+                    maid,
+                    box.copy()
+                        .offset(0, -.6, 0))
+                    .isEmpty();
+        }
 
         private void forgetOwner() {
             owner = null;
