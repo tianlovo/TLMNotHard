@@ -268,3 +268,15 @@ Indev112 新增 `tlmnhqapilot:ModernRangedTests`，关联既有 `ModernCombatTes
 首轮撤权测试漏调用逐帧运动检查，矿车初始乘客高度与地板相交；按原生负坐高修正出生净空后仅复测两项失败测试
 后轮两项 JSON/XML/process 0 全通过，保留首轮失败；首轮已过方法及共享夹具/目标/Hook 源码未变、木盾类字节相同，不称作单轮四项全绿
 本批没有客户端成像、多人、完整原版 O/F/N 或移动预瞄统计收益结论
+
+## 原任务刷新与窗口暂停试点
+
+Indev113 新增 `tlmnhqapilot:ModernRefreshTests`，检查运行移动的停止、复制后的工作/战斗记忆、相同任务不重复刷新、日程刷新与旧动作引用
+GUI 场景保持真实容器打开 25 tick，确认 Brain TTL 和 Sensor 不推进、同一持续使用计数继续，关闭后实际箭命中并支付有限资源
+另跨实体 40 tick 检查限制区在 Brain 暂停期间仍锁存新日程，关闭后活动恢复，关联既有动态 Follow
+
+初始四项过程全过，任务刷新 37、实体日程 41、GUI 47、Follow 172 tick
+核对目标 Forge 的构造新窗口/关闭旧窗口顺序后，以最终候选补实际 FML 切页、旧关闭回调、持续使用与释放 44 tick，关联 Follow 172 tick
+标准 FakePlayer.openGui 为空，曾导致 25 tick 失败；最终直接调用 FMLNetworkHandler.openGui，仍使用标准 FakePlayer 和原有内存通道，不冒充真实客户端连接
+两候选的实体/容器/协调器七类有变化，其他 1130 类和全部资源一致；原刷新与日程组件字节相同，保留分批边界，不拼成最终单轮四绿
+没有真实 GUI 输入/成像、多人、完整 F/N 或原版自然 benchmark 结论
