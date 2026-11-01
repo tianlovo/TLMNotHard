@@ -205,13 +205,7 @@ public final class MaidCoreInteractionProbe {
             !maid.pickupItem(item, false) && item.getEntityItem().stackSize == 3,
             "full inventory leaves ground stack");
         inv.setInventorySlotContents(1, null);
-        var cancel = new Object() {
-
-            @SubscribeEvent
-            public void before(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent.ItemResultPre event) {
-                if (event.getMaid() == maid) event.setCanceled(true);
-            }
-        };
+        var cancel = new CancelPickup(maid);
         MinecraftForge.EVENT_BUS.register(cancel);
         try {
             require(
@@ -409,6 +403,21 @@ public final class MaidCoreInteractionProbe {
             var positions = new ArrayList<>(backup.keySet());
             Collections.reverse(positions);
             for (var p : positions) world.setBlock(p.posX, p.posY, p.posZ, backup.get(p), metadata.get(p), 2);
+        }
+    }
+
+    /** 旧 Forge 的 ASM 分发器从独立类加载器访问监听器，监听类须为 public */
+    public static final class CancelPickup {
+
+        private final EntityMaid maid;
+
+        public CancelPickup(EntityMaid maid) {
+            this.maid = maid;
+        }
+
+        @SubscribeEvent
+        public void before(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent.ItemResultPre event) {
+            if (event.getMaid() == maid) event.setCanceled(true);
         }
     }
 
