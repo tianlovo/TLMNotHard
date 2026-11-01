@@ -1175,3 +1175,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 增强生活控制器在实际MaidLifeSensor扫描前取得配额，缺额保留尚合法候选；持有床的当前对象检查与续租继续走原受保护平台
 - 固定上游MaidBreathAirTask在实际找空气前增加默认允许的准入检查，F默认true；增强缺额直接返回等待，原BFS/空气判断/路径和物品执行保持
 - 世界卸载同时移除感知配额，增强生命周期取消按构造时实例scope清队，不返还已使用额度；不改变原A*配额
+
+## 增强缺氧和复杂移动恢复
+
+- EnhancedBreathingController为本工程独立实现，负责低氧离座、空气候选重试和预算等待；复用固定上游MaidBreathAirStopTask停止动作、平台BFS和既有物品生命周期
+- EnhancedNavigationController新增同帧预检交接、无推进检测与局部路径退避；实际路径创建/安装继续通过原平台身份检查和世界配额，不修改F的MoveToTargetSink
+- EnhancedClimbController独立持有增强攀爬生命周期，复用固定上游MaidClimbTask动作原语；上游原包、许可证及动作数值保持
+- 增强root取消空气请求与本实例候选，旧权限清理仍由ModernFollowCoreActor按自有资源执行，不释放其他动作持有的手部租约

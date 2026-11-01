@@ -3,8 +3,6 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
-import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -31,8 +29,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedCombatController combat;
     private final EnhancedPanicController panic;
     private final EnhancedRideController ride;
-    private final MaidBreathAirTask breath = new MaidBreathAirTask();
-    private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
+    private final EnhancedBreathingController breathing;
+    private final EnhancedClimbController climb;
     private Kind selectedKind;
     private String selectedTarget;
     private boolean ticking;
@@ -63,6 +61,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         combat = new EnhancedCombatController(maid, actor, perception);
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
+        breathing = new EnhancedBreathingController(maid, actor, navigation);
+        climb = new EnhancedClimbController(actor);
     }
 
     @Override
@@ -93,12 +93,12 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             var frame = new MaidIntentFrame(runtime.getContext(), token, actor.worldGameTime());
             boolean danger = panic.offer(frame);
             boolean stationary = EnhancedRideController.stationary(maid);
-            if (!actor.canBrainMoving() && !sleeping && !danger && (!stationary || maid.getLeashed())) {
+            boolean lowAir = actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
+            if (!actor.canBrainMoving() && !sleeping && !danger && !lowAir && (!stationary || maid.getLeashed())) {
                 stopSelected();
                 return;
             }
-            if (breathStop.checkExtraStartConditions(actor)) breathStop.start(actor);
-            boolean lowAir = actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
+            breathing.stopIfRecovered();
             if (lowAir || actor.isGoingToBreath() || actor.isEatBreatheItem())
                 frame.offer(Group.EMERGENCY, Kind.BREATHE, "air", 1, null);
             boolean vehicle = ride.offerVehicle(frame);
@@ -166,9 +166,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             }
             if (selected == null || !frame.accepts(selected)) return;
             switch (selected.kind) {
-                case BREATHE -> {
-                    if (breath.checkExtraStartConditions(actor)) breath.start(actor);
-                }
+                case BREATHE -> breathing.execute();
                 case FOLLOW -> actor.setWalkAndLookTargetMemories(
                     (com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload,
                     .5F,
@@ -211,6 +209,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             }
             if (actor.hasLookTarget()) actor.lookAtCurrentTargetIfPresent();
             navigation.tick();
+            if (actor.isCurrent()) climb.tick();
         } finally {
             ticking = false;
         }
@@ -246,6 +245,9 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         selectedKind = null;
         selectedTarget = null;
         panic.cancel();
+        breathing.cancel();
+        sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
+        climb.cancel();
         navigation.cancel();
         try {
             try {
@@ -304,6 +306,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedNavigationController navigation() {
         return navigation;
+    }
+
+    public EnhancedBreathingController breathing() {
+        return breathing;
     }
 
     public ModernFollowCoreActor actor() {
