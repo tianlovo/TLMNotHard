@@ -208,7 +208,7 @@ public final class MaidLifecycleRestartProbe {
                 .equals(MODEL)
                 && revived.getCustomNameTag()
                     .equals(name(data, "revived"))
-                && revived.getFavorability() == 23,
+                && revived.getFavorability() == 21,
             "persisted maid identity");
         require(
             data.run.equals(

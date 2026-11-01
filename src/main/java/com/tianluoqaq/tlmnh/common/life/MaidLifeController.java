@@ -57,7 +57,6 @@ public final class MaidLifeController {
     }
 
     private static final int SCAN_INTERVAL = 20, MAX_ACTION_TICKS = 200;
-    private static final String REWARD_AT = "TLMNHStealEdibleRewardAt";
     private final EntityMaid maid;
     private final Predicate<MaidActionRun> claimControl;
     private final Consumer<MaidActionRun> releaseControl;
@@ -421,6 +420,8 @@ public final class MaidLifeController {
             wakeX = maid.posX;
             wakeY = maid.posY;
             wakeZ = maid.posZ;
+            maid.getMealController()
+                .cancel();
             sleeping = true;
             maid.setPose(MaidPose.SLEEPING, true);
             maid.setPositionAndUpdate(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
@@ -429,6 +430,7 @@ public final class MaidLifeController {
                 if (run == attempt) stop(Status.CANCELLED);
                 return false;
             }
+            maid.onMaidStartSleeping();
             sleepEntries++;
             telemetry().terminal(
                 "sleep_entry",
@@ -448,13 +450,8 @@ public final class MaidLifeController {
             if (success) {
                 bites++;
                 if (executionCurrent(attempt)) maid.playSound("random.eat", 1.0F, 1.0F);
-                long time = maid.worldObj.getTotalWorldTime();
-                if (executionCurrent(attempt) && time >= maid.getEntityData()
-                    .getLong(REWARD_AT)) {
-                    if (maid.getFavorability() < Integer.MAX_VALUE) maid.setFavorability(maid.getFavorability() + 1);
-                    maid.getEntityData()
-                        .setLong(REWARD_AT, time + MaidLifeRules.REWARD_INTERVAL);
-                }
+                if (executionCurrent(attempt)) maid.getFavorabilityManager()
+                    .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK, 1);
             }
         } else success = placeCake(x, y, z, attempt);
         boolean committed = attempt.finishCommit(success);

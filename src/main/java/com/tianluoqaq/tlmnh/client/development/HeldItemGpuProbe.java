@@ -656,7 +656,7 @@ public final class HeldItemGpuProbe {
         return result;
     }
 
-    /** actual RC2 2.2.28只读查询，绝不flush/suspend或切换全局Java batch队列 */
+    /** 只读查询实际 Angelica 队列，不 flush/suspend 或切换全局 Java batch 队列 */
     private static final class BatchReader {
 
         final Class<?> batcherType, instancerType, glsmType;
@@ -681,7 +681,13 @@ public final class HeldItemGpuProbe {
                 batcherType.getMethod("statRedrawnInstances") };
             itemCounters = new Method[] { instancerType.getMethod("statInstanced"),
                 instancerType.getMethod("statGlintInstanced"), instancerType.getMethod("statFallback") };
-            drawCalls = glsmType.getField("drawCalls");
+            Class<?> draws;
+            try {
+                draws = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMDraws");
+            } catch (ClassNotFoundException legacy) {
+                draws = glsmType;
+            }
+            drawCalls = draws.getField("drawCalls");
         }
 
         JsonObject snapshot() {

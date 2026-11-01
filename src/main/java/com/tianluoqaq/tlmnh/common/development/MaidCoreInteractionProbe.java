@@ -583,6 +583,145 @@ public final class MaidCoreInteractionProbe {
         return count;
     }
 
+    public static void runFavorability(WorldServer world, String group) {
+        try (var f = new Fixture(world)) {
+            require(world.spawnEntityInWorld(f.maid), "favorability actor registered");
+            var maid = f.maid;
+            var manager = maid.getFavorabilityManager();
+            if ("levels".equals(group)) {
+                int[] points = { 64, 192, 384 }, health = { 30, 40, 80 }, damage = { 3, 4, 6 };
+                for (int i = 0; i < points.length; i++) {
+                    maid.setFavorability(points[i] - 1);
+                    manager.refreshAttributes();
+                    maid.setHealth(2);
+                    manager.add(1);
+                    require(
+                        manager.getLevel() == i + 1 && maid.getMaxHealth() == health[i]
+                            && maid.getEntityAttribute(net.minecraft.entity.SharedMonsterAttributes.attackDamage)
+                                .getBaseValue() == damage[i]
+                            && maid.getHealth() == 2,
+                        "level changes base stats without free heal: " + i);
+                }
+                manager.add(Integer.MAX_VALUE);
+                manager.reduce(999);
+                require(maid.getFavorability() == 384, "max clamp and normal reduction level floor");
+                maid.setHealth(80);
+                manager.reduceWithoutLevel(384);
+                require(
+                    manager.getLevel() == 0 && maid.getMaxHealth() == 20 && maid.getHealth() == 20,
+                    "explicit level reduction clamps health");
+                maid.setFavorability(65);
+                manager.reduce(2);
+                require(maid.getFavorability() == 64, "ordinary loss cannot cross earned level");
+            } else if ("care".equals(group)) {
+                maid.setHealth(2);
+                maid.onMaidStartSleeping();
+                require(maid.getHealth() == 20 && maid.getFavorability() == 2, "sleep heals and grants two points");
+                maid.setHealth(3);
+                maid.onMaidStartSleeping();
+                require(
+                    maid.getHealth() == 20 && maid.getFavorability() == 2,
+                    "sleep heal independent from reward cooldown");
+                manager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK);
+                require(maid.getFavorability() == 3, "steal independent cooldown");
+                maid.getMaidInventory()
+                    .setInventorySlotContents(6, new ItemStack(Items.bread, 2));
+                maid.getBrainCoordinator()
+                    .setSuspended(false);
+                maid.getMealController()
+                    .tick();
+                require(
+                    maid.getMealController()
+                        .isEating() && !manager.canAdd("WorkMeal")
+                        && maid.getFavorability() >= 3
+                        && maid.getFavorability() <= 4,
+                    "work meal uses same manager even zero point");
+                var saved = new NBTTagCompound();
+                maid.writeEntityToNBT(saved);
+                require(
+                    !maid.getMealController()
+                        .isEating()
+                        && saved.getCompoundTag("FavorabilityManagerCounter")
+                            .getInteger("Sleep") == 24000
+                        && saved.getCompoundTag("FavorabilityManagerCounter")
+                            .getInteger("StealEdibleBlock") == 3600
+                        && saved.getCompoundTag("FavorabilityManagerCounter")
+                            .getInteger("WorkMeal") == 3600,
+                    "cooldowns persisted independently");
+                for (int i = 0; i < 3599; i++) manager.tick();
+                require(
+                    !manager.canAdd("StealEdibleBlock") && !manager.canAdd("WorkMeal"),
+                    "one tick before meal cooldown");
+                manager.tick();
+                require(
+                    manager.canAdd("StealEdibleBlock") && manager.canAdd("WorkMeal") && !manager.canAdd("Sleep"),
+                    "cooldown boundary distinct from sleep");
+            } else if ("persistence".equals(group)) {
+                var legacy = new NBTTagCompound();
+                maid.writeToNBT(legacy);
+                legacy.setInteger("MaidFavorability", 192);
+                legacy.setInteger("TLMNHWorkMealCooldown", 77);
+                var counters = new NBTTagCompound();
+                counters.setInteger("FutureReward", 1234);
+                legacy.setTag("FavorabilityManagerCounter", counters);
+                legacy.getCompoundTag("ForgeData")
+                    .setLong("TLMNHStealEdibleRewardAt", world.getTotalWorldTime() + 20);
+                // ForgeData可能原先不存在，显式挂回真实完整NBT
+                var forgeData = legacy.getCompoundTag("ForgeData");
+                forgeData.setLong("TLMNHStealEdibleRewardAt", world.getTotalWorldTime() + 20);
+                legacy.setTag("ForgeData", forgeData);
+                var restored = f.newMaid();
+                restored.readFromNBT(legacy);
+                require(
+                    restored.getMaxHealth() == 40 && restored.getFavorabilityManager()
+                        .getLevel() == 2,
+                    "legacy point/stat mismatch repaired");
+                var migrated = new NBTTagCompound();
+                restored.writeToNBT(migrated);
+                var after = migrated.getCompoundTag("FavorabilityManagerCounter");
+                require(
+                    after.getInteger("WorkMeal") == 77 && after.getInteger("StealEdibleBlock") == 20
+                        && after.getInteger("FutureReward") == 1234
+                        && !migrated.hasKey("TLMNHWorkMealCooldown"),
+                    "legacy cooldown migration and future counter preserved");
+                boolean fire = world.getGameRules()
+                    .getGameRuleBooleanValue("doFireTick");
+                try {
+                    world.getGameRules()
+                        .setOrCreateGameRule("doFireTick", "false");
+                    var bolt = new net.minecraft.entity.effect.EntityLightningBolt(
+                        world,
+                        restored.posX,
+                        restored.posY,
+                        restored.posZ);
+                    restored.setHealth(restored.getMaxHealth());
+                    restored.onStruckByLightning(bolt);
+                    float maximum = restored.getMaxHealth();
+                    restored.onStruckByLightning(bolt);
+                    require(
+                        restored.isStruckByLightning() && maximum == 60 && restored.getMaxHealth() == maximum,
+                        "actual lightning callback grants twenty only once");
+                    restored.getFavorabilityManager()
+                        .max();
+                    require(restored.getMaxHealth() == 100, "level three retains lightning bonus");
+                    var save = new NBTTagCompound();
+                    restored.writeToNBT(save);
+                    var reloaded = f.newMaid();
+                    reloaded.readFromNBT(save);
+                    require(
+                        reloaded.getMaxHealth() == 100 && reloaded.isStruckByLightning(),
+                        "lightning and level survive reload");
+                } finally {
+                    world.getGameRules()
+                        .setOrCreateGameRule("doFireTick", Boolean.toString(fire));
+                }
+            } else throw new IllegalArgumentException("Unknown favorability group: " + group);
+            TLMNotHard.LOG.info(
+                "TLMNH_FAVORABILITY_TEST_PASS group={} callbacks=actual-runtime natural-ticks=unverified client=unverified",
+                group);
+        }
+    }
+
     public static void runSelfCare(WorldServer world) {
         try (var f = new Fixture(world)) {
             world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));

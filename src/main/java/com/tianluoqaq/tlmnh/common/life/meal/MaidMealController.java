@@ -16,7 +16,7 @@ public final class MaidMealController {
     private MaidItemUseState.Lease lease;
     private MaidFoodProfile profile;
     private ItemStack food, expected, displaced;
-    private int handSlot, sourceSlot = -1, remaining, nextCheck, workCooldown;
+    private int handSlot, sourceSlot = -1, remaining, nextCheck;
 
     public MaidMealController(EntityMaid maid) {
         this.maid = maid;
@@ -24,7 +24,6 @@ public final class MaidMealController {
 
     public void tick() {
         if (maid.worldObj.isRemote) return;
-        if (workCooldown > 0) workCooldown--;
         if (!permitted()) {
             cancel();
             return;
@@ -43,7 +42,8 @@ public final class MaidMealController {
         nextCheck = 50 + maid.getRNG()
             .nextInt(50);
         boolean healing = maid.getMaxHealth() - maid.getHealth() >= 2;
-        if (!healing && workCooldown > 0) return;
+        if (!healing && !maid.getFavorabilityManager()
+            .canAdd(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL.getTypeName())) return;
         for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
             if (start(slot, healing)) return;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) if (start(slot, healing)) return;
@@ -87,9 +87,8 @@ public final class MaidMealController {
         } else {
             int point = maid.getRNG()
                 .nextInt(100) < profile.total ? 0 : 1;
-            maid.setFavorability(maid.getFavorability() + point);
-            workCooldown = 3 * 60 * 20;
-            if (point > 0) maid.worldObj.setEntityState(maid, (byte) 7);
+            maid.getFavorabilityManager()
+                .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL, point);
         }
         return true;
     }
@@ -161,11 +160,9 @@ public final class MaidMealController {
 
     public void save(NBTTagCompound tag) {
         cancel();
-        tag.setInteger("TLMNHWorkMealCooldown", workCooldown);
     }
 
     public void load(NBTTagCompound tag) {
-        workCooldown = Math.max(0, Math.min(3600, tag.getInteger("TLMNHWorkMealCooldown")));
         nextCheck = 0;
     }
 }

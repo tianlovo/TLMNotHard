@@ -21,7 +21,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import squeek.applecore.api.AppleCoreAPI;
 
-/** RC2食物数据适配，不把女仆伪装成玩家执行onEaten */
+/** GTNH食物数据适配，不把女仆伪装成玩家执行onEaten */
 public final class MaidFoodProfile {
 
     public final float total;
@@ -82,7 +82,7 @@ public final class MaidFoodProfile {
                 }
                 return profile;
             }
-            // GT5的食物表是公开字段，效果与容器没有NPC接口，按RC2固定字段读数据
+            // 已核 GT5 5.09.54.265：食物表公开，效果与容器沿用固定字段，没有 NPC 接口
             Class<?> meta = Class.forName("gregtech.api.items.MetaGeneratedItem");
             if (!meta.isInstance(stack.getItem())) return null;
             var stats = (Map<?, ?>) meta.getField("mFoodStats")

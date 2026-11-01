@@ -278,7 +278,7 @@ public final class MaidLifecycleProbe {
                 .equals("geckolib:winefox_hanfu")
                 && revived.getCustomNameTag()
                     .equals("生命周期 酒狐")
-                && revived.getFavorability() == 23,
+                && revived.getFavorability() == 21,
             "resurrection preserves owner and identity");
         require(
             revived.getExperience() == 0 && revived.getHealth() == revived.getMaxHealth(),

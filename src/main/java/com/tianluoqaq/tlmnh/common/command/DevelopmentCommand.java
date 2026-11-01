@@ -223,6 +223,11 @@ public final class DevelopmentCommand extends CommandBase {
                 .runBackItem((net.minecraft.world.WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 2 && "favorability-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .runFavorability((WorldServer) sender.getEntityWorld(), args[1]);
+            return;
+        }
         if (args.length == 2 && "meal-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runMeals((WorldServer) sender.getEntityWorld(), args[1]);

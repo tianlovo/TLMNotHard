@@ -234,6 +234,8 @@ public final class MaidLifeProbe {
             require(
                 !tick(interrupted, maid) && !interrupted.isSleeping() && bed.available(other),
                 "Invalidation during adoption must release the bed and refuse the old observation");
+            maid.setHealth(2);
+            int sleepFavor = maid.getFavorability();
             life = new MaidLifeController(maid, () -> {}, () -> owner);
             require(
                 tick(life, maid) && life.isSleeping()
@@ -241,6 +243,11 @@ public final class MaidLifeProbe {
                     && bed.isOwnedBy(maid)
                     && (world.getBlockMetadata(x, y, z + 3) & 4) != 0,
                 "Bed-owned sleep at DAY rest boundary");
+            require(
+                maid.getHealth() == maid.getMaxHealth() && maid.getFavorability() == sleepFavor + 2
+                    && !maid.getFavorabilityManager()
+                        .canAdd("Sleep"),
+                "Actual bed entry heals and rewards once");
             competitor = new MaidLifeController(other, () -> {}, () -> owner);
             drive(competitor, other, 25);
             require(!competitor.isSleeping() && bed.isOwnedBy(maid), "Second maid cannot share occupied bed");

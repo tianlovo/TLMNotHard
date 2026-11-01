@@ -58,10 +58,13 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final int FLAG_PICKUP_ITEMS = 1;
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
     private static final int FLAG_SILENT = 4;
+    private static final int FLAG_STRUCK_LIGHTNING = 8;
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidConfigManager configManager = new MaidConfigManager(dataWatcher);
     private final com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState worldSounds = new com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState(
+        this);
+    private final com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager favorabilityManager = new com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager(
         this);
     private final MaidInventory inventory = new MaidInventory(this);
     private final com.tianluoqaq.tlmnh.common.inventory.MaidPickupService pickup = new com.tianluoqaq.tlmnh.common.inventory.MaidPickupService(
@@ -123,6 +126,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void onLivingUpdate() {
         super.onLivingUpdate();
         if (!worldObj.isRemote) {
+            favorabilityManager.tick();
             shield.tickAfterLivingUpdate();
             meals.tick();
             pickup.tick();
@@ -416,12 +420,39 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.updateObject(DATA_HUNGER, Math.max(0, value));
     }
 
+    public com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager getFavorabilityManager() {
+        return favorabilityManager;
+    }
+
+    public boolean isStruckByLightning() {
+        return (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_STRUCK_LIGHTNING) != 0;
+    }
+
+    public void setStruckByLightning(boolean struck) {
+        setMaidFlag(FLAG_STRUCK_LIGHTNING, struck);
+    }
+
+    @Override
+    public void onStruckByLightning(net.minecraft.entity.effect.EntityLightningBolt lightning) {
+        super.onStruckByLightning(lightning);
+        if (!worldObj.isRemote && !isStruckByLightning()) {
+            var health = getEntityAttribute(SharedMonsterAttributes.maxHealth);
+            health.setBaseValue(health.getBaseValue() + 20);
+            setStruckByLightning(true);
+        }
+    }
+
+    public void onMaidStartSleeping() {
+        setHealth(getMaxHealth());
+        favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.SLEEP);
+    }
+
     public int getFavorability() {
         return dataWatcher.getWatchableObjectInt(DATA_FAVORABILITY);
     }
 
     public void setFavorability(int value) {
-        dataWatcher.updateObject(DATA_FAVORABILITY, Math.max(0, value));
+        dataWatcher.updateObject(DATA_FAVORABILITY, Math.max(0, Math.min(384, value)));
     }
 
     public boolean canPickupItems() {
@@ -530,6 +561,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         tag.setInteger(EXPERIENCE_TAG, getExperience());
         tag.setInteger("MaidHunger", getHunger());
         tag.setInteger("MaidFavorability", getFavorability());
+        tag.setBoolean("StruckByLightning", isStruckByLightning());
+        favorabilityManager.addAdditionalSaveData(tag);
         tag.setBoolean("MaidIsPickup", isPickup());
         tag.setBoolean("PickupItems", (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_ITEMS) != 0);
         tag.setBoolean(
@@ -586,6 +619,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             setExperience(tag.getInteger(EXPERIENCE_TAG));
             setHunger(tag.getInteger("MaidHunger"));
             setFavorability(tag.getInteger("MaidFavorability"));
+            setStruckByLightning(tag.getBoolean("StruckByLightning"));
+            favorabilityManager.readAdditionalSaveData(tag);
+            favorabilityManager.refreshAttributes();
             if (tag.hasKey("PickupItems")) setPickupItems(tag.getBoolean("PickupItems"));
             if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
             if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience") && tag.hasKey("MaidIsPickup", 1))
@@ -609,6 +645,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void onDeath(DamageSource source) {
         super.onDeath(source);
         if (!worldObj.isRemote && dead) {
+            favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.DEATH);
             MaidDeathService.preserve(this);
             brain.resetTask();
         }
@@ -627,6 +664,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     protected void dropEquipment(boolean recentlyHit, int looting) {
         meals.cancel();
+        if (!worldObj.isRemote && dead)
+            favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.DEATH);
         if (MaidDeathService.preserve(this)) return;
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             var stack = inventory.getStackInSlot(slot);

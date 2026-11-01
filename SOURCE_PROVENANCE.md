@@ -685,3 +685,26 @@ GT5-Unofficial `5.09.54.205`（`a3e1e11241a814c9fa0dd0973d5699548428f689`）的
 MetaGeneratedItem.mFoodStats 与 GTFoodStat 用于核对 RC2 食物数据布局
 本模组自行读取常规 GTFoodStat 的容器、药效和牛奶标记，不复制 GT 源文件，也不调用要求 EntityPlayer 的 onEaten
 爆炸食物、未知 IFoodStat、自定义 ItemFood 进食回调暂不自动食用；不能据此宣称兼容所有整合包食物
+
+## 好感、睡眠照料与雷击
+
+从固定 TLM 提交移植 entity/favorability/FavorabilityManager.java、Type.java 与
+api/event/MaidFavorabilityLevelChangeEvent.java，保留原包名和 MIT 署名
+按原版 64/192/384 分级，基础生命为 20/30/40/80，基础攻击为 2/3/4/6
+进食、睡眠、偷吃及死亡共用原版类别和独立冷却，计数使用原版 FavorabilityManagerCounter 存档键
+旧 Indev 的日常进食剩余冷却和偷吃时间戳迁入该计数；未知类别保留
+等级变化沿用 Forge 事件；未带入饰品、非首版活动或高版本进度触发器
+
+EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入睡和 1.7.10 雷击回调
+入睡先恢复当前生命上限，再发放最多每日一次的 2 点好感；升级当次增加的上限不会额外补满，沿用原版顺序
+雷击只增加一次 20 点基础生命上限，不直接治疗
+死亡确认后最多扣 2 点好感、不跨越已取得等级；在死亡物品及魂符身份保存前写入，取消死亡不扣分
+本批未把好感的攻击距离、横扫参数接入完整战斗 AI，后续随战斗移植统一验证
+
+## GTNH 2.9.0 正式版环境迁移
+
+- GT5 5.09.54.265 固定提交 bb00f3f1023e20d3cce84cf09abb442d22a3a5a5：GTFoodStat 和 MetaGeneratedItem 与原基线源码及实装类字节一致，保留现有食物字段适配
+- Backhand 1.8.18 固定提交 a18c3ab5dc15009beeb45716c0493912be55dbca：核对实装常用副手 API；不借此声明玩家交互或女仆盾牌组合已通过
+- Angelica 2.2.43 固定提交 2b46b4f602dfd7c6b5dd67f42acd853adfa1d9c6：反射矩阵、客户端纹理单元与绘制计数分别改从 GLSMMatrices、GLSMTextures、GLSMDraws 读取，保留旧 API 回退
+- Et Futurum 2.6.65-GTNH 固定提交 ff1a4717b22fa16da0d986deb3c59d0d4c9ff9db：核对变更路径，旁观保护仍须在正式版实机确认
+- 正式版依赖审计与运行证据单列，旧 RC2 结果不迁为正式版通过

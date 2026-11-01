@@ -107,8 +107,14 @@ final class MaidRenderPlatformState {
         private final Field[] filterFields;
 
         private Angelica(Class<?> manager) throws ReflectiveOperationException {
-            matrixStack = manager.getMethod("getMatrixStack");
-            matrixDepth = manager.getMethod("getMatrixStackDepth", matrixStack.getReturnType());
+            Class<?> matrices;
+            try {
+                matrices = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMMatrices");
+            } catch (ClassNotFoundException legacy) {
+                matrices = manager;
+            }
+            matrixStack = matrices.getMethod("getMatrixStack");
+            matrixDepth = matrices.getMethod("getMatrixStackDepth", matrixStack.getReturnType());
             context = manager.getMethod("ctx");
             Class<?> contextType = context.getReturnType();
             filterFields = new Field[] { contextType.getField("savedFilterTextureId"),
