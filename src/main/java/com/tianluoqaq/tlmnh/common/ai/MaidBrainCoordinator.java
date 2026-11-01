@@ -198,7 +198,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         long started = recording ? System.nanoTime() : 0;
         try {
             var result = afterNativeNavigation ? runtime.tickAfterNativeNavigation() : runtime.tick(lifePermission);
-            traversal.tick();
+            traversal.tick(!afterNativeNavigation);
             if (recording) {
                 String state = runtime.getProfile()
                     .getId() + ":"

@@ -255,8 +255,14 @@ public final class ModernCoreTests {
         final MaidPathNavigator navigation;
         final int x, y, z;
         double previousX, previousY, previousZ;
+        final double maxDisplacementSquared;
 
         Fixture(GameTestHelper helper, boolean wet) {
+            this(helper, wet, 1);
+        }
+
+        Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared) {
+            this.maxDisplacementSquared = maxDisplacementSquared;
             this.helper = helper;
             var origin = helper.absolute(0, 0, 0);
             x = origin.x();
@@ -341,7 +347,7 @@ public final class ModernCoreTests {
                     .isReady(),
                 "Modern core policy faulted");
             double dx = maid.posX - previousX, dy = maid.posY - previousY, dz = maid.posZ - previousZ;
-            helper.assertTrue(dx * dx + dy * dy + dz * dz < 1, "Discontinuous core movement");
+            helper.assertTrue(dx * dx + dy * dy + dz * dz < maxDisplacementSquared, "Discontinuous core movement");
             previousX = maid.posX;
             previousY = maid.posY;
             previousZ = maid.posZ;

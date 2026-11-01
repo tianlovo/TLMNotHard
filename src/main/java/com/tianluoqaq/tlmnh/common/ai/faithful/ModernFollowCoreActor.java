@@ -31,7 +31,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
-    MaidPathNavigator.BrainTarget, MaidAirActor {
+    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -368,6 +368,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         } finally {
             breathItemLease = null;
             if (ownsTarget) {
+                maid.setCanClimb(false);
+                maid.setSneaking(false);
                 var swim = maid.getAquaticController()
                     .getManager();
                 swim.setGoingToBreath(false);
@@ -439,7 +441,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean isCurrentLookTargetVisible() {
         guard();
-        if (look instanceof Point) return true;
+        if (look instanceof Point || look instanceof Vec3) return true;
         return look instanceof OwnerView target && target.player.worldObj == world
             && target.player.isEntityAlive()
             && maid.getEntitySenses()
@@ -457,6 +459,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 maid.getVerticalFaceSpeed());
         else if (look instanceof Point target) maid.getLookHelper()
             .setLookPosition(target.x + .5, target.y + .5, target.z + .5, 10, maid.getVerticalFaceSpeed());
+        else if (look instanceof Vec3 target) maid.getLookHelper()
+            .setLookPosition(target.x, target.y, target.z, 10, maid.getVerticalFaceSpeed());
     }
 
     public boolean isEatBreatheItem() {
@@ -552,6 +556,120 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         look = pos;
         walk = new PositionWalk(pos, speed, closeDistance);
+    }
+
+    public boolean activeClimbing() {
+        guard();
+        return maid.getConfigManager()
+            .isActiveClimbing();
+    }
+
+    public boolean onClimbable() {
+        navigationLease();
+        return maid.isOnLadder();
+    }
+
+    public Point climbFeet() {
+        return airSearchPosition();
+    }
+
+    public boolean feetAreLadder() {
+        guard();
+        var pos = climbFeet();
+        return world.blockExists(pos.x, pos.y, pos.z) && world.getBlock(pos.x, pos.y, pos.z)
+            .isLadder(world, pos.x, pos.y, pos.z, maid);
+    }
+
+    public void centerOnBlock(Point pos) {
+        navigationLease();
+        maid.setLocationAndAngles(pos.x + .5, pos.y, pos.z + .5, maid.rotationYaw, maid.rotationPitch);
+    }
+
+    public void setCanClimb(boolean value) {
+        guard();
+        maid.setCanClimb(value);
+    }
+
+    public void setShiftDown(boolean value) {
+        guard();
+        maid.setSneaking(value);
+    }
+
+    public void setClimbMotion(double x, double y, double z) {
+        navigationLease();
+        maid.motionX = x;
+        maid.motionY = y;
+        maid.motionZ = z;
+    }
+
+    public double climbMotionY() {
+        guard();
+        return maid.motionY;
+    }
+
+    public void lookAtClimbNode(Point pos) {
+        guard();
+        look = new Vec3(pos.x, pos.y, pos.z);
+    }
+
+    public ClimbPath climbPath() {
+        navigationLease();
+        var actual = navigation.getPath();
+        return actual == null ? null : new ClimbView(actual);
+    }
+
+    private final class ClimbView implements ClimbPath {
+
+        final PathEntity raw;
+        final Token lease = token;
+        final long createdWorldTick = worldTick;
+        final int createdEntityTick = entityTick;
+        final Point[] nodes;
+
+        ClimbView(PathEntity raw) {
+            this.raw = raw;
+            nodes = new Point[raw.getCurrentPathLength()];
+            for (int i = 0; i < nodes.length; i++) {
+                var node = raw.getPathPointFromIndex(i);
+                nodes[i] = new Point(node.xCoord, node.yCoord, node.zCoord);
+            }
+        }
+
+        void check() {
+            navigationLease();
+            if (token != lease || worldTick != createdWorldTick
+                || entityTick != createdEntityTick
+                || navigation.getPath() != raw) throw new IllegalStateException("Expired climbing path view");
+        }
+
+        public boolean done() {
+            check();
+            return raw.isFinished();
+        }
+
+        public int index() {
+            check();
+            return raw.getCurrentPathIndex();
+        }
+
+        public int length() {
+            check();
+            return raw.getCurrentPathLength();
+        }
+
+        public Point node(int index) {
+            check();
+            return nodes[index];
+        }
+
+        public Point end() {
+            return node(length() - 1);
+        }
+
+        public void index(int value) {
+            check();
+            raw.setCurrentPathIndex(value);
+        }
     }
 
     public void eraseLookTarget() {

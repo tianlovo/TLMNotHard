@@ -84,6 +84,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
         this);
     private ItemStack offhand;
+    private boolean canClimb;
+    private int climbFallDelayTicks;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
 
     public EntityMaid(World world) {
@@ -289,7 +291,80 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     public void onEntityUpdate() {
         super.onEntityUpdate();
+        if (climbFallDelayTicks > 0) {
+            climbFallDelayTicks--;
+            fallDistance = 0;
+        }
         if (worldSounds != null) worldSounds.tick();
+    }
+
+    public boolean usesModernCoreNavigation() {
+        var policy = brain == null ? null : brain.peekPolicyRuntime();
+        return policy != null && policy.requiresAfterNativeNavigation() && policy.isReady();
+    }
+
+    public boolean isCanClimb() {
+        return canClimb;
+    }
+
+    public void setCanClimb(boolean value) {
+        canClimb = value;
+    }
+
+    public int getClimbFallDelayTicks() {
+        return climbFallDelayTicks;
+    }
+
+    @Override
+    public boolean isOnLadder() {
+        if (!usesModernCoreNavigation()) return super.isOnLadder();
+        var path = getNavigator().getPath();
+        boolean vertical = false;
+        if (path != null && !path.isFinished()) {
+            for (int i = Math.max(0, path.getCurrentPathIndex() - 3); i
+                < Math.min(path.getCurrentPathLength(), path.getCurrentPathIndex() + 3) - 1; i++) {
+                var first = path.getPathPointFromIndex(i);
+                var next = path.getPathPointFromIndex(i + 1);
+                if (first.xCoord == next.xCoord && first.zCoord == next.zCoord) {
+                    vertical = true;
+                    break;
+                }
+            }
+        }
+        if (!vertical) return false;
+        int x = net.minecraft.util.MathHelper.floor_double(posX);
+        int y = net.minecraft.util.MathHelper.floor_double(boundingBox.minY);
+        int z = net.minecraft.util.MathHelper.floor_double(posZ);
+        // 固定现代Forge默认只判当前格；目标整包运行时可能强制全身体扫描，不能继承其提前触发
+        boolean ladder = modernLadderAt(x, y, z);
+        int ladderY = y;
+        if (!ladder && worldObj.blockExists(x, y - 1, z)) {
+            ladder = modernLadderAt(x, y - 1, z);
+            ladderY = y - 1;
+        }
+        if (ladder) {
+            climbFallDelayTicks = 30;
+            if (worldObj.getBlock(x, ladderY, z) instanceof net.minecraft.block.BlockLadder) {
+                int meta = worldObj.getBlockMetadata(x, ladderY, z);
+                int yaw = switch (meta) {
+                    case 2 -> 0;
+                    case 3 -> 180;
+                    case 4 -> 270;
+                    case 5 -> 90;
+                    default -> -1;
+                };
+                if (yaw >= 0) {
+                    rotationYaw = yaw;
+                    rotationYawHead = yaw;
+                }
+            }
+        }
+        return ladder;
+    }
+
+    private boolean modernLadderAt(int x, int y, int z) {
+        return worldObj.blockExists(x, y, z) && worldObj.getBlock(x, y, z)
+            .isLadder(worldObj, x, y, z, this);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.ai.faithful;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
@@ -17,6 +18,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
+    private final MaidClimbTask climb = new MaidClimbTask();
+    private boolean climbRunning;
+    private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
     private FollowMoveState moveState = new FollowMoveState();
     private boolean followRunning, ticking, hasTick;
@@ -50,6 +54,11 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 moveState = new FollowMoveState();
             }
             // 原Brain先启动全部STOPPED行为，再按look0、move2、follow3运行
+            if (!climbRunning && climb.checkExtraStartConditions(actor)) {
+                climbRunning = true;
+                climbDeadline = time + 60 + actor.nextWorldInt(1);
+                climb.start(actor);
+            }
             if (breath.checkExtraStartConditions(actor)) {
                 actor.nextWorldInt(1);
                 breath.start(actor);
@@ -65,6 +74,12 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 actor.nextWorldInt(1); // 默认Behavior 60 + nextInt(1)，本任务canStillUse=false
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
+            }
+            if (climbRunning) {
+                if (time > climbDeadline || !climb.canStillUse(actor)) {
+                    climbRunning = false;
+                    climb.stop(actor);
+                } else climb.tick(actor);
             }
             if (lookState.getStatus() == FollowCoreLookDriver.Status.RUNNING) look.tickOrStop(actor, lookState, time);
             if (moveState.getStatus() == FollowMoveState.Status.RUNNING) move.tickOrStop(actor, moveState, time);
@@ -82,6 +97,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
+            climbRunning = false;
         }
     }
 

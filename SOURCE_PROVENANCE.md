@@ -850,3 +850,15 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原 givesAir 实际判断目标单格的空流体或气泡柱以及空碰撞形状，未按注释改成两格空气，也未沿用原型按当前眼高验证终点的另一算法
 - 目标 Et Futurum 2.6.65 的 BlockBubbleColumn 碰撞为空且对 Living 实体恢复 300 氧，按已核实际类识别；现代 MobEffectUtil 还检查 CONDUIT_POWER，该效果目标映射仍待办
 - 原 TARGET_POS 工作记忆、完整感知/活动与原攀爬任务尚未接本组件，完整 F/N 和新增原版自然运行对照继续待办
+
+## 原攀爬与物理相位
+
+- Indev101 从固定 TLM 提交移植 entity/ai/brain/task/MaidClimbTask，保留原包名和来源；外层组件负责原默认 Behavior 的 60 tick 期限及 `nextInt(1)`
+- 核对原 EntityMaid.onClimbable/handleOnClimbable/handleRelativeFrictionAndCalculateMovement/baseTick，
+  保留路径窗口、脚下梯子、居中/水平归零和 30 tick 跌落距离复位
+- MaidClimbActor 为新增平台边界，帧内路径 view 保留端节点身份，修改索引前核当前策略、tick 与路线；取消按现有 Brain 绑定身份清理，保留外来后继状态
+- 目标 EntityLivingBase 地面第三次 moveEntity 和第二次 isOnLadder 分别接居中与抑制原生上冲，重定向仅对现代组件生效；服务端实际加载验证注入匹配
+- 已读目标 ForgeHooks/BlockLadder 与固定现代 ForgeHooks/ForgeConfig.Server 字节码，现代默认 fullBoundingBoxLadders=false，逐格调用 BlockState.isLadder
+- 实测 QA 运行字段为 true，尽管文件配置 false，导致在邻格触发后居中回原格；现代分支用当前/下格的 Block.isLadder 映射默认合同，全局字段/其他实体不改，未宣称已查明运行值覆盖来源
+- 运行类导出和相关 GTNHLib/BugTorch/Catwalks 字节码仅作诊断证据；不将读取、Mixin 加载或局部服务器夹具等同完整原版运行相等
+- 地形场景区分三格安全跌落与六格强制下梯，保持实际跌落能力与算法；复杂模组梯子、全部动画和完整 F/N/原版 O/F/N 仍待验

@@ -37,7 +37,12 @@ public final class MaidTraversalController {
                     .isOpenDoor());
     }
 
+    /** 既有原型控制器探针仍使用该入口 */
     public void tick() {
+        tick(true);
+    }
+
+    public void tick(boolean prototypeClimbing) {
         if (maid.worldObj.isRemote) return;
         if (observedWorld != maid.worldObj) {
             opened.clear();
@@ -58,7 +63,8 @@ public final class MaidTraversalController {
             int index = path.getCurrentPathIndex();
             if (index > 0) open(path.getPathPointFromIndex(index - 1));
             open(path.getPathPointFromIndex(index));
-            climb(path);
+            if (prototypeClimbing) climb(path);
+            else stopClimbing();
         } else stopClimbing();
         closePassedDoors(active ? path : null);
     }
