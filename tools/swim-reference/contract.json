@@ -1,0 +1,7 @@
+{
+  "schema": "swim-core-contract-v1",
+  "id": "SWIM_POSE_JUMP_CORE_V1",
+  "scope": "controlled original manager/Swim/Behavior with explicit ground/sitting/passenger/sleep/fluid/navigation/RNG; not natural Brain or amphibious pathfinding",
+  "pose_repetitions": 3,
+  "jump_repetitions": 3
+}

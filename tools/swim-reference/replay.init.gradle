@@ -1,0 +1,19 @@
+// Launcher paths belong only to ignored build output
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    project.tasks.register('prepareSwimReplay') {
+        group = 'verification'
+        dependsOn project.tasks.named('testClasses')
+        doLast {
+            def launcher = project.javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }.get()
+            def destination = project.file('build/swim-reference/launcher.json')
+            destination.parentFile.mkdirs()
+            destination.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+                schema: 'swim-core-replay-launcher-v1', executable: launcher.executablePath.asFile.absolutePath,
+                classpath: project.sourceSets.test.runtimeClasspath.files.collect { it.absolutePath },
+                mainClass: 'com.tianluoqaq.tlmnh.common.ai.faithful.SwimCoreReplayMain',
+                workingDirectory: project.layout.buildDirectory.dir('swim-reference').get().asFile.absolutePath
+            ])) + '\n', 'UTF-8')
+        }
+    }
+}

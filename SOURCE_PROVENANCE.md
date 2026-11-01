@@ -751,3 +751,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 生活候选的原版范围、作息、STEAL/PLACE 交替及真实床/食物操作沿用前述固定上游来源；新增只读准备和明确采用入口，原版对照选择器仍独立保留
 - 组内距离效用为 `1 / (1 + distance)`，最短保持 20 tick、切换差 0.05，仅作为 Indev 起点；更高分组和当前目标失效立即重新选择，未称为已校准的智能程度或性能收益
 - 返家、跟随、休息、偷吃和拾取的普通竞争已接 Root，但完整 F/N、全部现代核心语义与原版 O/F/N 仍需后续验收，不能把原型重命名充数
+
+## 游泳姿态、尺寸与被动跳跃
+
+- 固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 entity/passive/MaidSwimManager.java 原包名保留，平台类型改为独立 actor；服务端按想游泳、落地、坐下和骑乘更新标志与实际姿态，停止游泳不覆盖睡眠姿态
+- entity/ai/brain/task/MaidSwimJumpTask.java 保留原包名；其原生 Swim/Behavior 生命周期映射为显式世界时间、流体、导航和两路 RNG 输入，仍使用 60 tick 生命周期和严格小于 0.8 的跳跃概率
+- EntityMaid.java:1818–1819、2652–2653、2635–2648 的眼高、游泳尺寸和主动游泳 travel 为适配依据；MC 1.20.1 实际 Entity.refreshDimensions、LivingEntity 眼高及 CollisionGetter.findFreePosition 字节码补齐引擎行为，尺寸增长以方块碰撞体膨胀后查找自由中心
+- MaidEntityPose、MaidPoseDimensions、MaidAquaticController 与两个 actor 是本项目独立文件；实际姿态使用 DataWatcher 同步，避免旧 setSize 在宽度增长时平移实体
+- MixinEntityAquatic 只为小于 0.8 高的女仆修正水检测框，现代 Entity.updateFluidHeightAndDoFluidPushing 使用完整身体内缩 0.001；旧版上下各减 0.4 会倒置 0.6/0.2 高身体的范围，原生水流、入水效果和其他实体保持原方法
+- 当前旧导航上的模式判断与主动水中执行只是执行投影；完整现代 Amphibious 节点器、全部导航管理器语义与非主动游泳的现代 travel 仍待实现，不能据此称完整水域或完整 F 已完成
+
+- EntityMaid.setScaleForAge 阻止旧 EntityAgeable 客户端每 tick 以年龄重新设置站立尺寸；仅在尺寸与同步 Pose 不同时恢复，保留现代眼高缓存的刷新边界

@@ -1,0 +1,32 @@
+{
+  "schema": "swim-reference-identity-classes-v1",
+  "compiledClasses": [
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSwimJumpTask",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceIdentity",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$ProbeMaid",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$ControlledNavigation",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$Feed"
+  ],
+  "classes": [
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSwimJumpTask",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceIdentity",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$ProbeMaid",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$ControlledNavigation",
+    "com.tianluoqaq.tlmnh.reference.SwimReferenceProbe$Feed",
+    "net.minecraft.world.entity.Entity",
+    "net.minecraft.world.entity.LivingEntity",
+    "net.minecraft.world.entity.Mob",
+    "net.minecraft.world.entity.ai.behavior.Behavior",
+    "net.minecraft.world.entity.ai.behavior.Swim",
+    "net.minecraft.world.entity.ai.control.JumpControl",
+    "net.minecraft.world.entity.EntityDimensions",
+    "net.minecraft.world.entity.Pose",
+    "net.minecraft.world.level.CollisionGetter"
+  ]
+}

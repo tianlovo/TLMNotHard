@@ -52,6 +52,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final int DATA_FLAGS = 26;
     private static final int DATA_OFFHAND = 27;
     private static final int DATA_POSE = 28;
+    private static final int ENTITY_POSE_SHIFT = 8;
+    private static final int ENTITY_POSE_MASK = 3 << ENTITY_POSE_SHIFT;
+    private com.tianluoqaq.tlmnh.common.entity.MaidEntityPose appliedEntityPose = com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING;
+    private float poseEyeHeight = 1.5F * .85F;
     // 29 由 MaidHomeArea 使用，声音占用 30
     private static final int DATA_SOUND_PACK = 30;
     public static final String SOUND_PACK_ID_TAG = "SoundPackId";
@@ -75,6 +79,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
+    private final com.tianluoqaq.tlmnh.common.ai.MaidAquaticController aquatic = new com.tianluoqaq.tlmnh.common.ai.MaidAquaticController(
+        this);
     private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
         this);
     private ItemStack offhand;
@@ -100,7 +106,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.addObject(DATA_FAVORABILITY, 0);
         dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE));
         dataWatcher.addObjectByDataType(DATA_OFFHAND, 5);
-        dataWatcher.addObject(DATA_POSE, (byte) 0);
+        // 原有动作位与独立实体姿态共享整数，不再占用额外元数据槽
+        dataWatcher.addObject(DATA_POSE, 0);
         dataWatcher.addObject(DATA_SOUND_PACK, DefaultMaidSoundPack.getInitSoundPackId());
         MaidHomeArea.register(dataWatcher);
         MaidConfigManager.defineSynchedData(dataWatcher);
@@ -124,6 +131,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void onLivingUpdate() {
+        if (aquatic != null) aquatic.beforeLivingUpdate();
         super.onLivingUpdate();
         if (!worldObj.isRemote) {
             favorabilityManager.tick();
@@ -141,6 +149,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void moveEntityWithHeading(float strafe, float forward) {
         if (brain != null && brain.getBreathController()
             .travelWater()) return;
+        if (aquatic != null && aquatic.travelWater(strafe, forward)) return;
         if (brain != null && brain.applyCombatMovement()) {
             strafe = moveStrafing * .98F;
             forward = moveForward * .98F;
@@ -152,8 +161,51 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public boolean isPushedByWater() {
-        return (brain == null || !brain.getBreathController()
-            .isSwimming()) && super.isPushedByWater();
+        return (aquatic == null || !aquatic.getManager()
+            .wantToSwim()) && super.isPushedByWater();
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.MaidAquaticController getAquaticController() {
+        return aquatic;
+    }
+
+    public com.tianluoqaq.tlmnh.common.entity.MaidEntityPose getEntityPose() {
+        return com.tianluoqaq.tlmnh.common.entity.MaidEntityPose
+            .decode((byte) ((dataWatcher.getWatchableObjectInt(DATA_POSE) & ENTITY_POSE_MASK) >>> ENTITY_POSE_SHIFT));
+    }
+
+    public void setEntityPose(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose pose) {
+        if (!worldObj.isRemote) dataWatcher.updateObject(
+            DATA_POSE,
+            (dataWatcher.getWatchableObjectInt(DATA_POSE) & ~ENTITY_POSE_MASK) | pose.ordinal() << ENTITY_POSE_SHIFT);
+    }
+
+    @Override
+    public void func_145781_i(int index) {
+        super.func_145781_i(index);
+        if (index == DATA_POSE && appliedEntityPose != getEntityPose()) {
+            appliedEntityPose = getEntityPose();
+            com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions.refresh(this, appliedEntityPose);
+        }
+    }
+
+    @Override
+    public float getEyeHeight() {
+        return poseEyeHeight > 0 ? poseEyeHeight : height * .85F;
+    }
+
+    /** 原版女仆没有幼体；旧 EntityAgeable 每个客户端 tick 的缩放不能覆盖物理 Pose */
+    @Override
+    public void setScaleForAge(boolean child) {
+        var pose = getEntityPose();
+        if (width != pose.width || height != pose.height)
+            com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions.refresh(this, pose);
+    }
+
+    /** 现代引擎在 refreshDimensions 时缓存眼高，单改坐姿标志不刷新 */
+    public void refreshPoseEyeHeight(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose pose) {
+        poseEyeHeight = pose == com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING ? .2F
+            : pose.height * (isSitting() ? .65F : .85F);
     }
 
     @Override
@@ -314,6 +366,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     protected void updateAITick() {
         super.updateAITick();
         if (hasServerBrain()) brain.afterNativeNavigationTick();
+        if (aquatic != null) aquatic.afterNativeAiTick();
     }
 
     public MaidInventory getMaidInventory() {
@@ -334,13 +387,16 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     public boolean hasPose(MaidPose pose) {
-        return (dataWatcher.getWatchableObjectByte(DATA_POSE) & pose.getMask()) != 0;
+        return (dataWatcher.getWatchableObjectInt(DATA_POSE) & pose.getMask()) != 0;
     }
 
     public void setPose(MaidPose pose, boolean active) {
         if (worldObj.isRemote) return;
-        int flags = dataWatcher.getWatchableObjectByte(DATA_POSE);
-        dataWatcher.updateObject(DATA_POSE, (byte) (active ? flags | pose.getMask() : flags & ~pose.getMask()));
+        int flags = dataWatcher.getWatchableObjectInt(DATA_POSE);
+        dataWatcher.updateObject(DATA_POSE, active ? flags | pose.getMask() : flags & ~pose.getMask());
+        if (pose == MaidPose.SLEEPING && ((flags & pose.getMask()) != 0) != active) setEntityPose(
+            active ? com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING
+                : com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING);
     }
 
     @Override

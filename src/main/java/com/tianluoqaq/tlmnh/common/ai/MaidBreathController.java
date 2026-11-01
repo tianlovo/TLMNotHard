@@ -44,6 +44,15 @@ public final class MaidBreathController {
         return active;
     }
 
+    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager.Target nextSwimTarget() {
+        var point = route.peek();
+        return point == null ? null
+            : new com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager.Target(
+                point.posX,
+                point.posY,
+                point.posZ);
+    }
+
     public String getStatus() {
         return status;
     }

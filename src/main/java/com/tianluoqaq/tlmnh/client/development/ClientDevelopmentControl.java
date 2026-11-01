@@ -151,6 +151,33 @@ public final class ClientDevelopmentControl {
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
+                    var aquatic = new com.google.gson.JsonArray();
+                    if (AnimationLab.isLab(minecraft.theWorld))
+                        for (Object entity : minecraft.theWorld.loadedEntityList) {
+                            if (!(entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid))
+                                continue;
+                            // 自定义NBT不由追踪器同步，范围限于实际展台中的女仆并列出UUID供服务器绑定
+                            var shape = new JsonObject();
+                            shape.addProperty(
+                                "uuid",
+                                maid.getUniqueID()
+                                    .toString());
+                            shape.addProperty(
+                                "pose",
+                                maid.getEntityPose()
+                                    .name());
+                            shape.addProperty(
+                                "swimming",
+                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SWIMMING));
+                            shape.addProperty("width", maid.width);
+                            shape.addProperty("height", maid.height);
+                            shape.addProperty("boxWidth", maid.boundingBox.maxX - maid.boundingBox.minX);
+                            shape.addProperty("boxHeight", maid.boundingBox.maxY - maid.boundingBox.minY);
+                            shape.addProperty("eye", maid.getEyeHeight());
+                            aquatic.add(shape);
+                            if (aquatic.size() >= 32) break;
+                        }
+                    response.add("labMaidShapes", aquatic);
                     response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
                     response.add(
                         "worldSounds",

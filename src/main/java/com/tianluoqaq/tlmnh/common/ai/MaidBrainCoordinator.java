@@ -486,6 +486,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        if (maid.getAquaticController() != null) maid.getAquaticController()
+            .clear();
         ordinaryArbiter.clear();
         ordinaryIntent = null;
         MaidWorldNavigationBudget.cancel(maid);

@@ -242,6 +242,11 @@ public final class DevelopmentCommand extends CommandBase {
             com.tianluoqaq.tlmnh.common.development.MaidBreathProbe.start((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 3 && "aquatic-pose-stage".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidPoseRuntimeProbe
+                .stage(net.minecraft.command.CommandBase.getPlayer(sender, args[1]), args[2]);
+            return;
+        }
         if (args.length == 1 && "ranged-movement-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidRangedMovementProbe
                 .start((WorldServer) sender.getEntityWorld());

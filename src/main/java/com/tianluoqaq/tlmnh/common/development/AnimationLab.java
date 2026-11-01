@@ -307,8 +307,8 @@ public final class AnimationLab {
     public void rejectEntities(EntityJoinWorldEvent event) {
         if (!isLab(event.world) || event.world.isRemote) return;
         if (event.entity instanceof EntityPlayer) return;
-        if (event.entity instanceof EntityMaid maid && maid.getEntityData()
-            .getBoolean(MAID_MARKER)) return;
+        if (event.entity instanceof EntityMaid maid && (maid.getEntityData()
+            .getBoolean(MAID_MARKER) || MaidPoseRuntimeProbe.isRegistered(maid))) return;
         event.setCanceled(true);
     }
 

@@ -90,6 +90,7 @@ public final class MaidBreathProbe {
         prepare(true, false);
         require(world.spawnEntityInWorld(maid), "Registered breath actor required");
         verifyThresholdScope();
+        verifyFluidBounds();
         TLMNotHard.LOG
             .info("TLMNH_BREATH_RUNTIME_STARTED natural_world_ticks=true initial_air=90 aquatic_motion=production");
     }
@@ -112,6 +113,26 @@ public final class MaidBreathProbe {
         require(idle.motionX == 0, "Non-swimming maid retains native motion threshold");
         idle.setDead();
         TLMNotHard.LOG.info("TLMNH_BREATH_THRESHOLD_SCOPE_PASS ordinary_mob=native idle_maid=native");
+    }
+
+    private void verifyFluidBounds() {
+        var probe = new EntityMaid(world);
+        try {
+            for (var pose : new com.tianluoqaq.tlmnh.common.entity.MaidEntityPose[] {
+                com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SWIMMING,
+                com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING }) {
+                probe.setEntityPose(pose);
+                for (int fraction = 0; fraction < 10; fraction++) {
+                    probe.setPosition(x + .5, 100 + fraction / 10.0, z + .5);
+                    require(probe.handleWaterMovement(), "Small body remains wet across fractional block heights");
+                }
+                probe.setPosition(x + .5, 108, z + .5);
+                require(!probe.handleWaterMovement(), "Small dry body has no fabricated water");
+            }
+            TLMNotHard.LOG.info("TLMNH_AQUATIC_FLUID_BOUNDS_PASS poses=2 fractions=10 dry=2 native_water_method=true");
+        } finally {
+            probe.setDead();
+        }
     }
 
     private void prepare(boolean roof, boolean opening) {
