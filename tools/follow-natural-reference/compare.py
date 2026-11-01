@@ -180,8 +180,10 @@ def check_snapshot(snapshot, row):
 
 def verified_rows(capture, manifest_path):
     contract = load(TOOL / "contract.json")
-    assert capture["schema"] == "follow-natural-reference-v1" and capture["contract"] == "FOLLOW_NATURAL_O_V1"
+    assert capture["schema"] == "follow-natural-reference-v1" and capture["contract"] == contract["contract"] == "FOLLOW_NATURAL_WATER_O_V1"
     assert capture["complete"] is True and capture["cleanupComplete"] is True and capture["remainingActorRegistered"] is False
+    assert capture["expectedRuns"] == len(contract["cases"]) * contract["rebuilds"]
+    assert capture["expectedFrames"] == capture["observedFrames"] == sum(scene["ticks"] for scene in contract["cases"]) * contract["rebuilds"]
     assert capture["observationComplete"] is True and capture["observationFailure"] is None and capture["cleanupFailure"] is None
     assert [stage["stage"] for stage in capture["cleanupStages"]] == ["maid", "platform", "world", "owner", "owner_actual_verification", "actor_removal_verification"]
     assert all(stage["success"] is True for stage in capture["cleanupStages"])
@@ -215,6 +217,9 @@ def verified_rows(capture, manifest_path):
     assert platform["preflightAirCells"] == 65 * 65 * 6
     assert platform["placedBlocks"] == platform["restoredBlocks"] == 65 * 65
     assert platform["forcedChunksAdded"] is False
+    assert len(platform["terrains"]) == len(contract["cases"]) * 3
+    for terrain in platform["terrains"]:
+        assert terrain["cleanupComplete"] is True and terrain["restoredBlocks"] == terrain["initial"]["cells"]
     specs = {case["id"]: case for case in contract["cases"]}
     rows = {}
     actors = set()
@@ -226,6 +231,14 @@ def verified_rows(capture, manifest_path):
         actors.add(row["maidUuid"])
         owners.add(row["ownerUuid"])
         spec = specs[row["id"]]
+        terrain = row["terrainBefore"]
+        assert terrain == row["terrainAfter"] and terrain["kind"] == spec["terrain"]
+        expected_cells = {"submerged_channel": (153, 176), "submerged_low_tunnel": (129, 212)}
+        assert (terrain["waterCells"], terrain["glassCells"]) == expected_cells[spec["terrain"]]
+        assert terrain["cells"] == terrain["waterCells"] + terrain["glassCells"]
+        record = platform["terrains"][list(specs).index(row["id"]) * 3 + row["rebuild"]]
+        assert record["initial"] == terrain
+        assert len(terrain["sha256"]) == 64
         assert row["input"] == spec and len(row["frames"]) == spec["ticks"]
         assert row["worldRngAndSensorPhaseUncontrolled"] is True
         assert row["samplingSelectedSlot"] == sampling_slot

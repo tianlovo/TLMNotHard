@@ -1077,3 +1077,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 固定原版 EntityMaid 的 TYPE 声明尺寸为 0.6/1.5，构造器未单独设置迈步高度；真实原版自然采样的出生与 1800 帧前后状态均记录 stepHeight 为 0.6
 - 目标反编译 EntityLivingBase 构造将 stepHeight 设为 0.5；本工程保留 EntityMaid 原包名，在构造器显式采用原版观察值 0.6
 - MaidStepPhysicsTests 不推进 Brain 或手写移动公式，直接用实际 Entity.moveEntity 和 BlockBed 的 0.5625 碰撞高度验证差异；此证据仅覆盖所列碰撞边界
+
+## 原版水域观察器
+
+- 开发单元122继续使用固定原版 checkout 与已审查的独立 probe 注入，不修改原版女仆/Brain/导航运行逻辑
+- 原版 MaidFollowOwnerTask.start 按活动半径减2开始跟随，再加4决定常规远距传送；低通道的大位移仅作为观察保留，不从END位置反推实际传送调用
+- Platform 仅在预检为原始空气的区域放置水源和玻璃，核真实方块状态与摘要后按水源、外壁顺序清理；原平台依旧独立核4225个方块恢复
+- 身份集合补入原水下导航、节点评估、boarding路径、游泳管理/跳跃与Minecraft两栖类，实际路径节点只读取已生成的type和costMalus，不触发额外搜索
+- 历史平坦合同、旧水域失败采集和新水域有效采集分别保留；改后的解析检查器通过配对冻结身份分层核证据，不宣称其重新生成了原采集构建身份

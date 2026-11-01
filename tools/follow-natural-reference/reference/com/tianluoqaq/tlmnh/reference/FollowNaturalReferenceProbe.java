@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -56,6 +57,7 @@ import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.phys.AABB;
@@ -94,7 +96,7 @@ public final class FollowNaturalReferenceProbe {
             if (root == null) {
                 root = minecraft.gameDirectory.toPath().resolve("tlmnh-follow-natural-reference");
                 for (String child : List.of("control", "responses", "captures")) Files.createDirectories(root.resolve(child));
-                TouhouLittleMaid.LOGGER.info("TLMNH_FOLLOW_NATURAL_REFERENCE_READY contract=FOLLOW_NATURAL_O_V1");
+                TouhouLittleMaid.LOGGER.info("TLMNH_FOLLOW_NATURAL_REFERENCE_READY contract=FOLLOW_NATURAL_WATER_O_V1");
             }
             try (var stream = Files.newDirectoryStream(root.resolve("control"), "*.json")) {
                 var requests = new ArrayList<Path>(); stream.forEach(requests::add); requests.sort(Path::compareTo);
@@ -119,7 +121,7 @@ public final class FollowNaturalReferenceProbe {
             var current = active;
             switch (command) {
                 case "status" -> {
-                    response.addProperty("contract", "FOLLOW_NATURAL_O_V1");
+                    response.addProperty("contract", "FOLLOW_NATURAL_WATER_O_V1");
                     response.addProperty("queued", queued); response.addProperty("active", current != null);
                     response.addProperty("stage", current == null ? "idle" : current.status);
                     response.addProperty("worldLoaded", minecraft.getSingleplayerServer() != null);
@@ -291,7 +293,7 @@ public final class FollowNaturalReferenceProbe {
             this.server = server; this.owner = owner; this.name = name; ownerId = owner.getUUID(); level = server.overworld();
             contract = JsonParser.parseString(new String(FollowNaturalReferenceIdentity.resource("contract.json"), StandardCharsets.UTF_8)).getAsJsonObject();
             require(contract.get("schema").getAsString().equals("follow-natural-contract-v1")
-                && contract.get("contract").getAsString().equals("FOLLOW_NATURAL_O_V1")
+                && contract.get("contract").getAsString().equals("FOLLOW_NATURAL_WATER_O_V1")
                 && contract.get("rebuilds").getAsInt() == 3, "unsupported_natural_contract");
             var slotPolicy = contract.getAsJsonObject("ownerSlotPreparation");
             require(slotPolicy != null && slotPolicy.get("allowSelectExistingEmptyHotbar").getAsBoolean()
@@ -318,7 +320,7 @@ public final class FollowNaturalReferenceProbe {
             require(mods.equals(Set.of("minecraft", "forge", "touhou_little_maid"))
                 && ModList.get().getModContainerById("forge").orElseThrow().getModInfo().getVersion().toString().equals("47.2.0"),
                 "minimal_original_forge_47_2_0_required");
-            report.addProperty("schema", "follow-natural-reference-v1"); report.addProperty("contract", "FOLLOW_NATURAL_O_V1");
+            report.addProperty("schema", "follow-natural-reference-v1"); report.addProperty("contract", "FOLLOW_NATURAL_WATER_O_V1");
             report.addProperty("contractSha256", sha(FollowNaturalReferenceIdentity.resource("contract.json")));
             report.addProperty("scope", contract.get("scope").getAsString());
             report.addProperty("worldNatural", true); report.addProperty("completeOriginalBrain", true);
@@ -373,6 +375,7 @@ public final class FollowNaturalReferenceProbe {
         }
 
         void beginWarmup() {
+            platform.prepareTerrain(spec().get("terrain").getAsString());
             status = "warmup:" + spec().get("id").getAsString() + ":" + rebuild;
             warmup = 0; frameIndex = 0; frame = null; paths.clear(); behaviors.clear(); behaviorIds.clear();
             applyOwner(plannedOwner(0));
@@ -438,6 +441,7 @@ public final class FollowNaturalReferenceProbe {
             require(owner.position().distanceToSqr(plannedOwner(frameIndex)) <= tolerance * tolerance, "actual_owner_trajectory_drift");
             frame = null; frameIndex++;
             if (frameIndex == spec().get("ticks").getAsInt()) {
+                row.add("terrainAfter", platform.verifyTerrain());
                 row.addProperty("complete", true); removeMaid();
                 if (++rebuild == 3) { rebuild = 0; caseIndex++; }
                 if (caseIndex == contract.getAsJsonArray("cases").size()) finish(null, null); else beginWarmup();
@@ -461,6 +465,7 @@ public final class FollowNaturalReferenceProbe {
             row.addProperty("samplingSelectedSlot", samplingSelectedSlot);
             row.addProperty("maidRandomClass", maid.getRandom().getClass().getName());
             row.addProperty("worldRngAndSensorPhaseUncontrolled", true); row.addProperty("warmupBeforeSpawnTicks", warmup);
+            row.add("terrainBefore", platform.verifyTerrain());
             row.add("brainRegistration", registration()); row.add("spawnState", snapshot());
             status = "capturing:" + row.get("id").getAsString() + ":" + rebuild;
             TouhouLittleMaid.LOGGER.info("TLMNH_FOLLOW_NATURAL_RUN_BEGIN case={} rebuild={}", row.get("id").getAsString(), rebuild);
@@ -514,7 +519,21 @@ public final class FollowNaturalReferenceProbe {
                 report.addProperty("remainingActorUuid", maid == null ? null : maid.getUUID().toString());
                 require(maid == null || level.getEntity(maid.getUUID()) != maid, "remaining_actor_registered_after_cleanup");
             }, cleanupFailure);
-            boolean observationComplete = reason == null && failure == null && runs.size() == 9;
+            int expectedRuns = contract.getAsJsonArray("cases").size() * contract.get("rebuilds").getAsInt();
+            int expectedFrames = 0, observedFrames = 0;
+            for (var scene : contract.getAsJsonArray("cases"))
+                expectedFrames += scene.getAsJsonObject().get("ticks").getAsInt() * contract.get("rebuilds").getAsInt();
+            boolean allRowsComplete = true;
+            for (var run : runs) {
+                var sample = run.getAsJsonObject();
+                observedFrames += sample.getAsJsonArray("frames").size();
+                allRowsComplete &= sample.get("complete").getAsBoolean() && sample.get("cleanupComplete").getAsBoolean()
+                    && sample.getAsJsonArray("frames").size() == sample.getAsJsonObject("input").get("ticks").getAsInt();
+            }
+            report.addProperty("expectedRuns", expectedRuns); report.addProperty("expectedFrames", expectedFrames);
+            report.addProperty("observedFrames", observedFrames);
+            boolean observationComplete = reason == null && failure == null && runs.size() == expectedRuns
+                && observedFrames == expectedFrames && allRowsComplete;
             report.addProperty("observationComplete", observationComplete);
             report.addProperty("cleanupComplete", cleanupFailure == null);
             report.addProperty("complete", observationComplete && cleanupFailure == null);
@@ -565,9 +584,13 @@ public final class FollowNaturalReferenceProbe {
         final List<BlockPos> placed = new ArrayList<>();
         final JsonObject report = new JsonObject();
         boolean closed;
+        final Map<BlockPos, BlockState> terrain = new LinkedHashMap<>();
+        final JsonArray terrainRecords = new JsonArray();
+        JsonObject terrainRecord;
+        String terrainKind;
 
         Platform(ServerLevel level, JsonObject contract, JsonObject parent) {
-            this.level = level; parent.add("platform", report);
+            this.level = level; parent.add("platform", report); report.add("terrains", terrainRecords);
             var origin = vector(contract.getAsJsonArray("origin"));
             int radius = contract.get("platformRadius").getAsInt();
             require(radius == 32 && origin.y == Math.floor(origin.y), "bounded_integer_platform_required");
@@ -606,6 +629,59 @@ public final class FollowNaturalReferenceProbe {
             }
         }
 
+        void prepareTerrain(String kind) {
+            require(kind.equals("submerged_channel") || kind.equals("submerged_low_tunnel"), "unsupported_water_terrain");
+            clearTerrain();
+            terrainKind = kind; terrainRecord = new JsonObject(); terrainRecords.add(terrainRecord);
+            terrainRecord.addProperty("kind", kind); terrainRecord.addProperty("cleanupComplete", false);
+            int ox = (minX + maxX) / 2, oz = (minZ + maxZ) / 2;
+            // 水源下方为原有整块平台，四壁高于水面；全部改动在已核对的空气体积内
+            for (int x = -2; x <= 16; x++) for (int z = -2; z <= 2; z++) for (int y = 0; y <= 3; y++) {
+                boolean wall = x == -2 || x == 16 || z == -2 || z == 2;
+                boolean roof = kind.equals("submerged_low_tunnel") && x >= 4 && x <= 7 && y >= 1;
+                if (!wall && !roof && y == 3) continue;
+                var at = new BlockPos(ox + x, footY + y, oz + z);
+                var state = wall || roof ? Blocks.GLASS.defaultBlockState() : Blocks.WATER.defaultBlockState();
+                require(air(at), "water_terrain_requires_original_air");
+                terrain.put(at, state);
+                require(level.setBlock(at, state, 2) && level.getBlockState(at).equals(state), "water_terrain_placement_failed");
+            }
+            terrainRecord.add("initial", verifyTerrain());
+        }
+
+        JsonObject verifyTerrain() {
+            var evidence = new JsonObject(); int water = 0, glass = 0;
+            var encoded = new StringBuilder();
+            for (var entry : terrain.entrySet()) {
+                var at = entry.getKey();
+                require(level.getBlockEntity(at) == null && level.getBlockState(at).equals(entry.getValue()),
+                    "owned_water_terrain_changed");
+                if (entry.getValue().is(Blocks.WATER)) water++; else glass++;
+                encoded.append(at.toShortString()).append('=').append(entry.getValue()).append(';');
+            }
+            evidence.addProperty("kind", terrainKind); evidence.addProperty("waterCells", water);
+            evidence.addProperty("glassCells", glass); evidence.addProperty("cells", terrain.size());
+            try {
+                evidence.addProperty("sha256", sha(encoded.toString().getBytes(StandardCharsets.UTF_8)));
+            } catch (Exception failure) {
+                throw new IllegalStateException("water_terrain_digest_unavailable", failure);
+            }
+            return evidence;
+        }
+
+        void clearTerrain() {
+            if (terrain.isEmpty()) return;
+            verifyTerrain();
+            // 先移水源，最后移外壁，避免清理中向展台外放流
+            for (var block : List.of(Blocks.WATER, Blocks.GLASS)) for (var entry : terrain.entrySet())
+                if (entry.getValue().is(block)) {
+                    require(level.setBlock(entry.getKey(), Blocks.AIR.defaultBlockState(), 2), "water_terrain_restore_rejected");
+                    require(air(entry.getKey()), "water_terrain_air_not_restored");
+                }
+            terrainRecord.addProperty("restoredBlocks", terrain.size()); terrainRecord.addProperty("cleanupComplete", true);
+            terrain.clear();
+        }
+
         boolean air(BlockPos at) { return level.getBlockState(at).equals(Blocks.AIR.defaultBlockState()) && level.getBlockEntity(at) == null; }
         boolean contains(Vec3 at) { return at.x >= minX + .4 && at.x <= maxX + .6 && at.z >= minZ + .4 && at.z <= maxZ + .6 && at.y >= footY - .2 && at.y <= footY + 5; }
         void assertEmpty(Entity permitted) {
@@ -615,6 +691,7 @@ public final class FollowNaturalReferenceProbe {
 
         @Override public void close() {
             if (closed) return;
+            clearTerrain();
             Throwable failure = null; int restored = 0;
             for (int i = placed.size() - 1; i >= 0; i--) {
                 var at = placed.get(i);
@@ -896,7 +973,12 @@ public final class FollowNaturalReferenceProbe {
         result.addProperty("canReach", path.canReach()); result.addProperty("nodeCount", path.getNodeCount()); result.addProperty("nextNodeIndex", path.getNextNodeIndex());
         result.addProperty("done", path.isDone()); result.add("target", block(path.getTarget()));
         require(path.getNodeCount() <= 256, "natural_path_node_capacity"); var nodes = new JsonArray();
-        for (int i = 0; i < path.getNodeCount(); i++) nodes.add(block(path.getNode(i).asBlockPos())); result.add("nodes", nodes); return result;
+        var types = new JsonArray(); var costs = new JsonArray();
+        for (int i = 0; i < path.getNodeCount(); i++) {
+            var node = path.getNode(i); nodes.add(block(node.asBlockPos()));
+            types.add(node.type.name()); costs.add(node.costMalus);
+        }
+        result.add("nodes", nodes); result.add("nodeTypes", types); result.add("nodeCosts", costs); return result;
     }
 
     private static String memoryName(MemoryModuleType<?> type) {

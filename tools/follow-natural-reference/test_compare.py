@@ -90,7 +90,7 @@ class EvidenceChecks(unittest.TestCase):
         self.assertIsNotNone(compare.first_difference(compare.normalise(a, row, [0, 0, 0], 0), compare.normalise(b, row, [0, 0, 0], 0)))
 
     def test_boundary_scene_is_a_real_input_jump(self):
-        contract = compare.load(Path(__file__).with_name("contract.json"))
+        contract = compare.load(Path(__file__).with_name("flat-contract-v1.json"))
         scene = next(case for case in contract["cases"] if case["id"] == "N03_teleport_boundary")
         a = compare.planned(scene, 39, contract["origin"])
         b = compare.planned(scene, 40, contract["origin"])
@@ -150,8 +150,8 @@ class CapturedEvidenceChecks(unittest.TestCase):
             self.verify(document)
 
     def test_retained_evidence_body_passes_with_explicit_identity_scope(self):
-        _, rows = self.verify(self.capture)
-        self.assertEqual(len(rows), 9)
+        contract, rows = self.verify(self.capture)
+        self.assertEqual(len(rows), len(contract["cases"]) * contract["rebuilds"])
 
     def test_frame_and_living_tick_corruption_are_rejected(self):
         value = self.changed_row()
