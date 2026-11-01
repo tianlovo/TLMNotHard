@@ -36,6 +36,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedSnowballController snowball;
     private final EnhancedBuoyancyController buoyancy;
     private final EnhancedFollowController follow;
+    private final EnhancedHomeController homeReturn;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
@@ -68,6 +69,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
         follow = new EnhancedFollowController(maid, actor);
+        homeReturn = new EnhancedHomeController(maid, actor);
         breathing = new EnhancedBreathingController(maid, actor, navigation, follow);
         climb = new EnhancedClimbController(actor);
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
@@ -185,10 +187,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                 case BREATHE -> breathing.execute();
                 case FOLLOW -> follow
                     .execute((com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload);
-                case HOME -> actor.setPositionWalkAndLook(
-                    (com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point) selected.payload,
-                    .7F,
-                    1);
+                case HOME -> homeReturn
+                    .execute((com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point) selected.payload);
                 case SLEEP, SNACK -> life.execute(
                     (com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent) selected.payload,
                     runtime.getContext());
@@ -347,6 +347,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedFollowController follow() {
         return follow;
+    }
+
+    public EnhancedHomeController homeReturn() {
+        return homeReturn;
     }
 
     public ModernFollowCoreActor actor() {

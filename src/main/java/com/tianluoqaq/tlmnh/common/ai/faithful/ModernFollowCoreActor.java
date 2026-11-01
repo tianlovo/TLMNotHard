@@ -780,6 +780,101 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .isEmpty();
     }
 
+    /** 增强返家不使用F的临时移位探测；全部验证完成后才提交实际位置 */
+    public boolean teleportEnhancedToHome(Point center, java.util.function.BooleanSupplier authorized) {
+        navigationLease();
+        int minimumY = Math.max(
+            1,
+            center.y - maid.getHomeArea()
+                .radius());
+        for (int attempt = 0; attempt < 10; attempt++) {
+            if (!authorized.getAsBoolean()) return false;
+            int x = center.x + maid.getRNG()
+                .nextInt(7) - 3;
+            int y = center.y + maid.getRNG()
+                .nextInt(4);
+            int z = center.z + maid.getRNG()
+                .nextInt(7) - 3;
+            homeTeleportAttempts++;
+            if (y < minimumY || y + Math.max(maid.height, MaidEntityPose.STANDING.height) > world.getHeight()) continue;
+            var body = enhancedHomeBody(x, y, z);
+            if (!recoveryAreaLoaded(body)) continue;
+            while (y >= minimumY) {
+                if (!authorized.getAsBoolean()) return false;
+                if (!world.blockExists(x, y - 1, z)) break;
+                if (MaidModernBlockRules.blocksMotion(world, x, y - 1, z)) break;
+                y--;
+            }
+            if (y < minimumY || !safeHomeLanding(x, y, z)) continue;
+            if (!authorized.getAsBoolean()) return false;
+            var event = new EnderTeleportEvent(maid, x + .5, y, z + .5, 0);
+            if (MinecraftForge.EVENT_BUS.post(event) || !authorized.getAsBoolean()
+                || event.targetX != x + .5
+                || event.targetY != y
+                || event.targetZ != z + .5
+                || event.attackDamage != 0) return false;
+            if (!safeHomeLanding(x, y, z) || !authorized.getAsBoolean()) return false;
+            navigationLease();
+            maid.setLocationAndAngles(x + .5, y, z + .5, maid.rotationYaw, maid.rotationPitch);
+            stopNavigation();
+            walk = null;
+            look = null;
+            pathMemory = null;
+            homeTeleportSuccesses++;
+            return true;
+        }
+        return false;
+    }
+
+    private AxisAlignedBB enhancedHomeBody(int x, int y, int z) {
+        double width = Math.max(maid.width, MaidEntityPose.STANDING.width);
+        double height = Math.max(maid.height, MaidEntityPose.STANDING.height);
+        return AxisAlignedBB.getBoundingBox(
+            x + .5 - width / 2,
+            y,
+            z + .5 - width / 2,
+            x + .5 + width / 2,
+            y + height,
+            z + .5 + width / 2);
+    }
+
+    private boolean recoveryAreaLoaded(AxisAlignedBB body) {
+        // 原生碰撞查询会读取水平边缘邻格，先核其完整区块包围
+        for (int x = MathHelper.floor_double(body.minX - 1) >> 4, maxX = MathHelper.floor_double(body.maxX + 1) >> 4; x
+            <= maxX; x++)
+            for (int z = MathHelper.floor_double(body.minZ - 1) >> 4,
+                maxZ = MathHelper.floor_double(body.maxZ + 1) >> 4; z <= maxZ; z++)
+                if (!world.getChunkProvider()
+                    .chunkExists(x, z)) return false;
+        return true;
+    }
+
+    private boolean safeHomeLanding(int x, int y, int z) {
+        var body = enhancedHomeBody(x, y, z);
+        if (!maid.getHomeArea()
+            .contains(x + .5, y, z + .5) || !recoveryAreaLoaded(body)
+            || !world.blockExists(x, y - 1, z)
+            || !world.blockExists(x, MathHelper.ceiling_double_int(body.maxY), z)) return false;
+        var ground = world.getBlock(x, y - 1, z);
+        if (ground == Blocks.cactus || ground == MaidLifeContent.snackCabinet || ground.isBurning(world, x, y - 1, z))
+            return false;
+        var support = ground.getCollisionBoundingBoxFromPool(world, x, y - 1, z);
+        if (support == null || support.maxY != y
+            || support.minX > body.minX
+            || support.maxX < body.maxX
+            || support.minZ > body.minZ
+            || support.maxZ < body.maxZ) return false;
+        var type = new MaidWalkEvaluator(navigation.context(new MaidNativePathRegion(world))).cellType(x, y, z);
+        if (type != MaidPathType.WALKABLE || navigation.pathfindingCost(type) != 0) return false;
+        if (!world.getCollidingBoundingBoxes(maid, body)
+            .isEmpty() || world.isAnyLiquid(body) || !world.checkNoEntityCollision(body, maid)) return false;
+        for (int level = y; level < body.maxY; level++) {
+            var block = world.getBlock(x, level, z);
+            if (block == Blocks.cactus || block.isBurning(world, x, level, z)) return false;
+        }
+        return true;
+    }
+
     public boolean isLookTargetRegistered() {
         guard();
         return true;
