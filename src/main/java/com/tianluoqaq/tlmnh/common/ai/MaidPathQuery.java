@@ -4,7 +4,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFenceGate;
 import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.pathfinding.PathFinder;
 import net.minecraft.pathfinding.PathPoint;
@@ -25,24 +24,43 @@ public final class MaidPathQuery {
         int ox = MathHelper.floor_double(maid.posX), oy = MathHelper.floor_double(maid.posY),
             oz = MathHelper.floor_double(maid.posZ);
         int pad = (int) (range + 8);
-        var cache = new ChunkCache(maid.worldObj, ox - pad, oy - pad, oz - pad, ox + pad, oy + pad, oz + pad, 0) {
-
-            @Override
-            public Block getBlock(int bx, int by, int bz) {
-                var actual = super.getBlock(bx, by, bz);
-                if (actual instanceof BlockFenceGate && maid.getConfigManager()
-                    .isOpenFenceGate()) return Blocks.air;
-                if (actual instanceof BlockDoor && actual.getMaterial() == Material.wood
-                    && maid.getConfigManager()
-                        .isOpenDoor())
-                    return Blocks.wooden_door;
-                return actual;
-            }
-        };
+        var cache = new ChunkCache(maid.worldObj, ox - pad, oy - pad, oz - pad, ox + pad, oy + pad, oz + pad, 0);
         maid.worldObj.theProfiler.startSection("pathfind");
         try {
-            return new PathFinder(cache, enterDoors, closedDoors, avoidWater, swim)
-                .createEntityPathTo(maid, x, y, z, range);
+            return new PathFinder(cache, enterDoors, closedDoors, avoidWater, swim) {
+
+                @Override
+                public int getVerticalOffset(net.minecraft.entity.Entity actor, int bx, int by, int bz,
+                    PathPoint size) {
+                    boolean adapted = false;
+                    for (int dx = 0; dx < size.xCoord; dx++)
+                        for (int dy = 0; dy < size.yCoord; dy++) for (int dz = 0; dz < size.zCoord; dz++)
+                            adapted |= passable(actor.worldObj.getBlock(bx + dx, by + dy, bz + dz));
+                    if (!adapted) return super.getVerticalOffset(actor, bx, by, bz, size);
+                    // 旧版静态判定直接读 entity.worldObj，替换 ChunkCache 不能改变门的判定
+                    boolean special = false;
+                    var unit = new PathPoint(1, 1, 1);
+                    for (int dx = 0; dx < size.xCoord; dx++)
+                        for (int dy = 0; dy < size.yCoord; dy++) for (int dz = 0; dz < size.zCoord; dz++) {
+                            int px = bx + dx, py = by + dy, pz = bz + dz;
+                            if (passable(actor.worldObj.getBlock(px, py, pz))) continue;
+                            int result = super.getVerticalOffset(actor, px, py, pz, unit);
+                            if (result <= 0) return result;
+                            special |= result == 2;
+                        }
+                    return special ? 2 : 1;
+                }
+
+                private boolean passable(Block block) {
+                    return block instanceof BlockFenceGate && maid.getConfigManager()
+                        .isOpenFenceGate()
+                        || block instanceof BlockDoor && block.getMaterial() == Material.wood
+                            && enterDoors
+                            && closedDoors
+                            && maid.getConfigManager()
+                                .isOpenDoor();
+                }
+            }.createEntityPathTo(maid, x, y, z, range);
         } finally {
             maid.worldObj.theProfiler.endSection();
         }
