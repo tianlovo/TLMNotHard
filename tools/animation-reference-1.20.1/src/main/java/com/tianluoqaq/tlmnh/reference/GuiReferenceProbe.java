@@ -94,6 +94,11 @@ public final class GuiReferenceProbe {
             resources.addProperty("textures/font/ascii.png", com.google.common.hash.Hashing.sha256().hashBytes(com.google.common.io.ByteStreams.toByteArray(input)).toString());
         } catch (java.io.IOException failure) { resources.addProperty("textures/font/ascii.png", failure.toString()); }
         font.add("resourceSha256", resources);
+        var selectedFontPacks = new JsonArray();
+        minecraft.getResourcePackRepository().getSelectedIds().forEach(selectedFontPacks::add);
+        font.add("selectedPacks", selectedFontPacks);
+        var pixels = (com.mojang.blaze3d.platform.NativeImage) field(net.minecraft.client.renderer.LightTexture.class, minecraft.gameRenderer.lightTexture(), "lightPixels");
+        font.addProperty("fullBrightRgba", Integer.toUnsignedString(pixels.getPixelRGBA(15, 15), 16));
         result.add("font", font);
         result.addProperty("guiScale", minecraft.getWindow().getGuiScale());
         result.addProperty("scaledWidth", screen.width);

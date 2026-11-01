@@ -184,6 +184,27 @@ public final class ReferenceObservationProbe {
                     if (active != null || pendingReload != null) throw new IllegalStateException("Finish the current experiment first");
                     response = ReferenceScene.clear();
                 }
+                case "font_pack" -> {
+                    if (active != null || pendingReload != null || maidCount() != 0) throw new IllegalStateException("Clear scene before changing the reference font pack");
+                    String mode = request.get("action").getAsString();
+                    if (!Set.of("default", "rc2").contains(mode)) throw new IllegalArgumentException("Unknown fixed font pack mode");
+                    String pack = "file/tlmnh-rc2-font-probe.zip";
+                    var repository = minecraft.getResourcePackRepository();
+                    var selected = new ArrayList<>(repository.getSelectedIds());
+                    selected.remove(pack);
+                    repository.reload();
+                    if (mode.equals("rc2")) {
+                        if (repository.getPack(pack) == null) throw new IllegalStateException("Local RC2 font diagnostic pack required");
+                        selected.add(pack);
+                    }
+                    repository.setSelected(selected);
+                    minecraft.options.resourcePacks.remove(pack);
+                    if (mode.equals("rc2")) minecraft.options.resourcePacks.add(pack);
+                    minecraft.options.incompatibleResourcePacks.remove(pack);
+                    minecraft.options.save();
+                    pendingReload = new Reload(name, minecraft.reloadResourcePacks());
+                    response.addProperty("status", "waiting-reload");
+                }
                 case "reload" -> {
                     if (active != null || pendingReload != null || maidCount() != 0) throw new IllegalStateException("Clear the scene before reloading reference resources");
                     pendingReload = new Reload(name, minecraft.reloadResourcePacks());
