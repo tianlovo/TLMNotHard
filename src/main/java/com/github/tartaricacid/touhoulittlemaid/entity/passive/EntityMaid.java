@@ -170,7 +170,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super.updateRidden();
         var vehicle = ridingEntity;
         if (vehicle == null) return;
-        String type = net.minecraft.entity.EntityList.getEntityString(vehicle);
+        var id = com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities.id(vehicle);
+        String type = id == null ? null : id.toString();
         if (!"create:carriage_contraption".equals(type) && !"create:seat".equals(type)) {
             rotationYawHead = vehicle.rotationYaw;
             renderYawOffset = vehicle.rotationYaw;

@@ -1738,6 +1738,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         var before = item == null ? null : item.copy();
         rangedBow.fireForModern(
             view.entity,
+            charge,
             () -> view.current() && maid.getTask() == MaidTask.RANGED_ATTACK
                 && maid.getModernCombatMemory()
                     .target() == view.entity

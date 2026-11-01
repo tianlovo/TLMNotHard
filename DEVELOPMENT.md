@@ -724,6 +724,16 @@ Indev115 为未移植的野餐垫、游乐设施保留原任务查找失败前�
 IDLE 两项只在原 WALK/TARGET_POS 前提满足时推进，RIDE_IDLE 用餐独立推进；行为刷新与取消重置这些计数，不新增内容或记忆
 原骑乘生命周期末尾的头/身体对齐已接入 updateRidden，两个可选 Create 类型保留精确排除
 完整忠实模式仍需原箭飞行基线、复杂水域和原版自然对照；这些局部修正不直接启用完整 F/N
+
+## 开发飞行对照
+
+Indev116 的 SOURCE_ORIGINAL 仅供显式开发入口选择，保留固定上游的距离速度、散布、随机伤害与无重力；默认 NATIVE_STATIC_COMPENSATION 继续使用原生箭物理与静态补偿
+专用箭在自身更新中处理物理，Mixin 仅只读 ticksInAir；实装 Galacticraft 的普通箭处理保留，不修改共享重力常量
+原生碰撞/拾取/NBT 与生成事件后的授权和物品重核属于平台适配，不把该入口冒充完整 F 或严格等价的取消事件时序
+
+48 项定向检查和同一最终候选三项 HQA 通过：专用/原生空气水中物理 4 tick、自然原飞行及有限/Infinity/附魔 79 tick、原生生成撤权/恢复 59 tick
+首次共享常量注入与 Galacticraft 冲突导致启动失败，该实现已移除，原记录保留
+七组实际 1.20.1 数值 oracle 的生成范围见 [原飞行数学对照](tools/source-bow-reference/README.md)，不替代自然 benchmark 或客户端验证
 同一实现随运行环境升级时保持类型名稳定，第三方适配按提供方或能力区分
 当前门状态读取使用 `NativeDoorState`，原生导航反馈使用 `NativeNavigationStopSource` / `NativeNavigationStopState`
 限定干燥平台的开发适配为 `DryPlatformFollowActor` / `DryPlatformFollowTeleport`，名称保持其能力范围

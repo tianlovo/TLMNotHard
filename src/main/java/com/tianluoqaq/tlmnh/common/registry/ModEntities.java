@@ -11,5 +11,13 @@ public final class ModEntities {
 
     public static void register(Object mod) {
         EntityRegistry.registerModEntity(EntityMaid.class, "maid", 0, mod, 80, 3, true);
+        EntityRegistry.registerModEntity(
+            com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class,
+            "gravity_free_arrow",
+            1,
+            mod,
+            80,
+            20,
+            true);
     }
 }

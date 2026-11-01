@@ -11,7 +11,8 @@
     "MixinEntityLivingBase",
     "MixinEntityPose",
     "MixinPathNavigate",
-    "MixinEntityPlayerVehicle"
+    "MixinEntityPlayerVehicle",
+    "MixinArrowFlightState"
   ],
   "client": [],
   "server": []

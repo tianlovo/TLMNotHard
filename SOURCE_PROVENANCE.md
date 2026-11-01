@@ -1014,3 +1014,19 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
   两个可选排除 ID 为 Create 的 carriage_contraption 与 seat
 - 目标平台使用原生 updateRidden 生命周期，先执行 super，再写 rotationYawHead/renderYawOffset；保留两个精确注册 ID 排除，不按模组名扩大排除
 - 此项服务端朝向检查不代表客户端骑乘姿态与装备渲染已验收；原箭飞行基线、复杂水域与保留活动自然对照仍是完整 F 的准入项
+
+## 原弓箭飞行数值与独立对照箭
+
+- Indev116 实读固定 TLM TaskBowAttack.performRangedAttack/getArrow 与 MaidShootTargetTask 的 charge 传递
+  依据实际 1.20.1 映射 Projectile.shoot、Vec3.normalize、RandomSource.triangle 和 AbstractArrow 的构造/附魔伤害方法适配基础箭
+- 自有 SourceBowShot 保留 float 距离速度/散布、1e-4 归一化边界、先归一化加三个 triangle 再乘速度及伤害随机数顺序
+- MaidGravityFreeArrow 使用原眼部发射点与方向，保留目标原生碰撞/拾取/NBT；原生已执行飞行分支后，撤回实装重力并调整为原水阻力
+  此平台处理有浮点舍入差异，实际空气/水中检查使用位置 1e-10、速度 1e-12 容差，不声称完整弹丸生命周期逐位相同
+- 实读 Galacticraft 3.4.37-GTNH 的 EntityArrowMixin 与 WorldUtil.getArrowGravity：该只读查询在其维度返回 .005F，其余 .05F
+  最终仅用 MixinArrowFlightState 只读原生 ticksInAir；没有重力常量注入、局部槽位依赖或其他箭类型的行为改写
+- 显式开发 profile SOURCE_ORIGINAL 不使用原生预瞄 solver/safety 插入；默认仍为 NATIVE_STATIC_COMPENSATION
+  基础箭保留手优先、有限/Infinity 资源、原拾取标记、Power/Punch/Flame 和好感基础攻击倍率
+- 共享生成事件后的授权/资源重核作为目标平台安全适配保留；不声明与上游取消事件的资源时序完全相同，也不支持所有现代自定义箭接口
+- tools/source-bow-reference 在实际 Minecraft 数学类上生成七组记录，包含实际加载类 SHA，SourceBowShotTest 逐位重放
+  这只证明列出的数值输入，不替代原实体、自然 O/F/N、同物理预瞄收益、客户端或最终验收
+- 骑乘可选类型排除改走已有 MaidCombatEntities 的规范模组实体 ID，避免原生 EntityList 字符串格式差异

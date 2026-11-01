@@ -33,6 +33,11 @@ public final class MaidBowAttack {
     public static final int MAX_FLIGHT_TICKS = 60;
     public static final double RANGE_SQ = 144;
 
+    public enum ModernFlightProfile {
+        NATIVE_STATIC_COMPENSATION,
+        SOURCE_ORIGINAL
+    }
+
     public enum Status {
         IDLE,
         DRAWING,
@@ -59,6 +64,7 @@ public final class MaidBowAttack {
     private boolean firing;
     private Lease useLease;
     private long generation;
+    private ModernFlightProfile modernFlightProfile = ModernFlightProfile.NATIVE_STATIC_COMPENSATION;
 
     public MaidBowAttack(EntityMaid maid) {
         this.maid = maid;
@@ -153,11 +159,12 @@ public final class MaidBowAttack {
                 && drawingBow == maid.getHeldItem()
                 && maid.getItemUseState()
                     .isCurrent(useLease),
-            true);
+            true,
+            1F);
     }
 
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
-    public boolean fireForModern(EntityLivingBase target, BooleanSupplier admitted) {
+    public boolean fireForModern(EntityLivingBase target, float charge, BooleanSupplier admitted) {
         if (firing || !admitted.getAsBoolean()) return false;
         int slot = modernArrowSlot(maid);
         if (slot < 0) return false;
@@ -166,42 +173,69 @@ public final class MaidBowAttack {
             .releaseAttempt(target);
         firing = true;
         try {
-            return release(target, maid.getHeldItem(), slot, admitted, false);
+            return release(target, maid.getHeldItem(), slot, admitted, false, charge);
         } finally {
             firing = false;
         }
     }
 
+    /** 只供显式开发对照，不改变默认玩法的箭物理，也不代表完整忠实策略已经准入 */
+    public void setFlightProfileForDevelopment(ModernFlightProfile profile) {
+        if (!Boolean.getBoolean("tlmnh.devCommands") || firing)
+            throw new IllegalStateException("Development flight profile cannot change in this context");
+        interrupt();
+        modernFlightProfile = java.util.Objects.requireNonNull(profile, "profile");
+    }
+
     private boolean release(EntityLivingBase target, ItemStack bow, int slot, BooleanSupplier admitted,
-        boolean prototype) {
+        boolean prototype, float charge) {
         if (bow == null || slot < 0 || !admitted.getAsBoolean()) return false;
-        var origin = new BallisticVector(maid.posX, maid.posY + maid.getEyeHeight() - 0.1, maid.posZ);
+        boolean original = !prototype && modernFlightProfile == ModernFlightProfile.SOURCE_ORIGINAL;
+        var origin = new BallisticVector(
+            maid.posX,
+            maid.posY + maid.getEyeHeight() - (original ? (double) .1F : .1),
+            maid.posZ);
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
         long startedAt = recording ? System.nanoTime() : 0;
-        try {
-            lastSolution = ArrowInterceptSolver.solve(
-                origin,
-                aimPoint(target),
-                prototype ? motion.velocity() : new BallisticVector(0, 0, 0),
-                3.0,
-                MAX_FLIGHT_TICKS,
-                ArrowPhysics.OVERWORLD_AIR);
-        } finally {
-            if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
+        EntityArrow arrow;
+        if (original) {
+            var sourceArrow = new MaidGravityFreeArrow(maid.worldObj, origin.x, origin.y, origin.z);
+            sourceArrow.initializeSourceShot(
+                new BallisticVector(
+                    target.posX - maid.posX,
+                    (target.posY + target.getEyeHeight()) - (maid.posY + maid.getEyeHeight()),
+                    target.posZ - maid.posZ),
+                maid.getDistanceToEntity(target),
+                charge,
+                maid.worldObj.difficultySetting.getDifficultyId());
+            arrow = sourceArrow;
+            lastSolution = null;
+        } else {
+            try {
+                lastSolution = ArrowInterceptSolver.solve(
+                    origin,
+                    aimPoint(target),
+                    prototype ? motion.velocity() : new BallisticVector(0, 0, 0),
+                    3.0,
+                    MAX_FLIGHT_TICKS,
+                    ArrowPhysics.OVERWORLD_AIR);
+            } finally {
+                if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
+            }
+            if (!lastSolution.isSolved()) return reject(Status.NO_SOLUTION);
+            arrow = new EntityArrow(maid.worldObj, origin.x, origin.y, origin.z);
+            // 使用原生定向接口，零随机散布使预瞄误差可归因；保留其实际浮点归一化结果
+            var velocity = lastSolution.initialVelocity;
+            arrow.setThrowableHeading(velocity.x, velocity.y, velocity.z, 3.0F, 0.0F);
+            var safety = safePath(arrow, target, lastSolution.flightTicks);
+            if (safety != null) {
+                arrow.setDead();
+                return reject(safety);
+            }
         }
-        if (!lastSolution.isSolved()) return reject(Status.NO_SOLUTION);
-        var arrow = new EntityArrow(maid.worldObj, origin.x, origin.y, origin.z);
         arrow.shootingEntity = maid;
-        // 使用原生定向接口，零随机散布使预瞄误差可归因；保留其实际浮点归一化结果
-        var velocity = lastSolution.initialVelocity;
-        arrow.setThrowableHeading(velocity.x, velocity.y, velocity.z, 3.0F, 0.0F);
-        var safety = safePath(arrow, target, lastSolution.flightTicks);
-        if (safety != null) {
-            arrow.setDead();
-            return reject(safety);
-        }
 
         var ammunition = maid.getMaidInventory()
             .getStackInSlot(slot);
@@ -209,7 +243,7 @@ public final class MaidBowAttack {
         var ammunitionBefore = ammunition.copy();
         long transaction = generation;
         boolean infinite = EnchantmentHelper.getEnchantmentLevel(Enchantment.infinity.effectId, bow) > 0;
-        arrow.canBePickedUp = infinite ? 2 : 1;
+        arrow.canBePickedUp = infinite ? original ? 0 : 2 : 1;
         arrow.setIsCritical(prototype);
         int power = EnchantmentHelper.getEnchantmentLevel(Enchantment.power.effectId, bow);
         if (power > 0) arrow.setDamage(arrow.getDamage() + power * 0.5 + 0.5);
@@ -249,7 +283,12 @@ public final class MaidBowAttack {
             .decrStackSize(slot, 1);
         bow.damageItem(1, maid);
         if (bow.stackSize <= 0) maid.setCurrentItemOrArmor(0, null);
-        maid.worldObj.playSoundAtEntity(maid, "random.bow", 1, 1);
+        maid.worldObj.playSoundAtEntity(
+            maid,
+            "random.bow",
+            1,
+            original ? 1F / (maid.getRNG()
+                .nextFloat() * .4F + .8F) : 1F);
         shots++;
         lastArrow = arrow;
         telemetry.releaseConfirmed(arrow, target);
