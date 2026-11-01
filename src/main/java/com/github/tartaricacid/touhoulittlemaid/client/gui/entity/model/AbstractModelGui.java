@@ -412,6 +412,13 @@ public abstract class AbstractModelGui extends GuiScreen {
                     lines.add(names.name(choice));
                     for (String line : choice.getDescription()) lines.add(names.text(line));
                     lines.add(text("gui.touhou_little_maid.skin.tooltips.show_details"));
+                    if (!choice.getPreferredSoundPack()
+                        .trim()
+                        .isEmpty())
+                        lines.add(
+                            "§6" + net.minecraft.util.StatCollector.translateToLocalFormatted(
+                                "gui.touhou_little_maid.skin.tooltips.maid_use_sound_pack_id",
+                                choice.getPreferredSoundPack()));
                     if (mc.gameSettings.advancedItemTooltips) lines.add("\u00a78" + choice.getId());
                     for (var pack : packs)
                         if (pack.id.equals(choice.getPackId())) lines.add("\u00a79" + names.text(pack.name));

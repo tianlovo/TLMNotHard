@@ -620,3 +620,16 @@ RC2 实际原版木门为 MalisisDoors `1.19.11-GTNH` 的替换类，源码固�
 保留 30 tick 感知、可见/非水中/可放入筛选、先确认可达性及跟随优先；目标版本没有直接复用高版本 Brain API
 移动接入现有 `MaidActionRunner`，新 PICKUP 身份参与原动作交接；坐下、抱起、拴绳、休息、危险和任务失效均退出，清理只处理自己持有的路径
 当前实现限制每次处理 64 个候选、查询最近 3 个候选，并记录截断，不能把这项有界原型写成完整忠实 F、增强 N 或 benchmark 达标
+
+## 界面信息、日程与药水效果
+
+`AbstractMaidContainerGui` 补上原 owner/model_name/experience/favorability 提示的顺序和格式，日程内容参考固定上游 `ScheduleButton.getTooltips`，不添加首版排除的五子棋行
+药水列表保留左侧位置、分类颜色、等级和时长格式，任务列表打开时隐藏，额外绘图在 tooltip 之前完成；没有改字体或全局资源包
+`network/message/SendEffectMessage.java` 保留上游原包名、EffectData 原四个字段及 MIT 来源，另传目标版本药水 ID，避免把可重复的翻译键当成类型标识；改用旧 FML 编码，限制条目与键长，附维度、UUID、实体号和窗口号
+旧版原生追踪不能持续向这个界面提供完整药水列表，因此改由已打开的女仆容器每 20 tick 向仍合法查看它的主人推送，不接收任意实体查询
+新增 `MaidEffectNetwork` 和 `MaidEffectDisplay` 位于本工程包，网络线程只入队，客户端核世界/实体/UUID/窗口后更新 GUI 副本，不写原生药水或实体属性
+1.7.10 的 getIsPotionDurationMax/isBadEffect 是客户端专属，公共快照只取实际整数时长，好坏颜色在客户端根据同一整合包药水注册表解析，未知类型保留中性色
+新增活动/日程文本从固定上游语言文件提取，保留已有语言文件字节与换行，只追加缺少的原文并更新派生摘要
+
+`MaidModelGui.notifyModelChange` 的 use_sound_pack_id 行为在现有模型容器交易中补齐：只有声明非空且已安装的声音包才应用，未知声音包不改当前选择
+核对当前固定目录的全部 254 个内置选择，source_info 均未声明此字段；这些内置模型切换时保留当前配音符合原版，不把尚无声明的数据写成酒狐的自动配音功能

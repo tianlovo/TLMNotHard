@@ -122,3 +122,7 @@ gui.touhou_little_maid.maid_config.value.false=关闭
 gui.touhou_little_maid.maid_config.value.item=物品
 gui.touhou_little_maid.maid_config.value.xp=经验
 gui.touhou_little_maid.maid_config.value.all=全部
+gui.touhou_little_maid.activity.work=工作
+gui.touhou_little_maid.activity.rest=睡觉
+gui.touhou_little_maid.activity.idle=休息
+tooltips.touhou_little_maid.schedule.desc=§7点击切换日程表

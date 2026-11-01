@@ -19,6 +19,10 @@ import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 public abstract class AbstractMaidContainer extends ContainerMaid {
 
     protected final EntityMaid maid;
+    private int effectCounter;
+    private java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> displayedEffects = java.util.Collections
+        .emptyList();
+    private boolean displayedInvulnerable;
 
     protected AbstractMaidContainer(InventoryPlayer inventory, EntityMaid maid) {
         super(inventory, maid, false);
@@ -40,6 +44,29 @@ public abstract class AbstractMaidContainer extends ContainerMaid {
     @Override
     public boolean canInteractWith(EntityPlayer player) {
         return super.canInteractWith(player) && !maid.hasPose(MaidPose.SLEEPING);
+    }
+
+    @Override
+    public void detectAndSendChanges() {
+        super.detectAndSendChanges();
+        if (maid.worldObj.isRemote || effectCounter++ % 20 != 0) return;
+        for (Object listener : crafters) if (listener instanceof net.minecraft.entity.player.EntityPlayerMP viewer)
+            com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork.send(this, viewer);
+    }
+
+    public void setDisplayedEffects(
+        java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> effects,
+        boolean invulnerable) {
+        displayedEffects = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(effects));
+        displayedInvulnerable = invulnerable;
+    }
+
+    public java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> getDisplayedEffects() {
+        return displayedEffects;
+    }
+
+    public boolean isDisplayedInvulnerable() {
+        return displayedInvulnerable;
     }
 
     @Override

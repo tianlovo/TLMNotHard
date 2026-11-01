@@ -78,6 +78,7 @@ public final class BuiltinModelCatalog {
         private final String baseId;
         private final String packId;
         private final String name;
+        private final String preferredSoundPack;
         private final List<String> description;
         private final ResourceLocation geometry;
         private final ResourceLocation texture;
@@ -94,6 +95,10 @@ public final class BuiltinModelCatalog {
             this.packId = packId;
             this.name = json.get("name")
                 .getAsString();
+            var source = json.getAsJsonObject("source_info");
+            this.preferredSoundPack = source.has("use_sound_pack_id") && !source.get("use_sound_pack_id")
+                .isJsonNull() ? source.get("use_sound_pack_id")
+                    .getAsString() : "";
             this.geometry = new ResourceLocation(
                 json.get("geometry")
                     .getAsString());
@@ -161,6 +166,10 @@ public final class BuiltinModelCatalog {
 
         public boolean isWinefox() {
             return baseId.contains("winefox") || baseId.contains("wine_fox");
+        }
+
+        public String getPreferredSoundPack() {
+            return preferredSoundPack;
         }
     }
 }

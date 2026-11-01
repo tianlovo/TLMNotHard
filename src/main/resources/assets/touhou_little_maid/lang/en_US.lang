@@ -122,3 +122,7 @@ gui.touhou_little_maid.maid_config.value.false=OFF
 gui.touhou_little_maid.maid_config.value.item=Item
 gui.touhou_little_maid.maid_config.value.xp=XP
 gui.touhou_little_maid.maid_config.value.all=All
+gui.touhou_little_maid.activity.work=Work
+gui.touhou_little_maid.activity.rest=Rest
+gui.touhou_little_maid.activity.idle=Idle
+tooltips.touhou_little_maid.schedule.desc=§7Click to switch schedule

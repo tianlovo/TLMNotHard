@@ -108,14 +108,17 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTick) {
-        super.drawScreen(mouseX, mouseY, partialTick);
+    protected void renderAddition(float partialTick, int mouseX, int mouseY) {
         drawCenteredString(
             fontRendererObj,
             StatCollector.translateToLocal("gui.touhou_little_maid.button.maid_config"),
             guiLeft + 167,
             guiTop + 41,
             0xFFFFFF);
+    }
+
+    @Override
+    protected void renderAdditionTooltips(int mouseX, int mouseY) {
         for (var raw : buttonList)
             if (raw instanceof MaidConfigButton setting && !setting.enabled && setting.contains(mouseX, mouseY))
                 drawHoveringText(

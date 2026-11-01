@@ -38,6 +38,11 @@ public final class ClientProxy extends CommonProxy {
             .bus()
             .register(worldSounds);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(worldSounds);
+        var effects = com.tianluoqaq.tlmnh.client.gui.MaidEffectDisplay.INSTANCE;
+        FMLCommonHandler.instance()
+            .bus()
+            .register(effects);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(effects);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS
             .register(new com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent());
         com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
@@ -67,6 +72,11 @@ public final class ClientProxy extends CommonProxy {
     public void enqueueMaidSound(
         com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {
         com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.enqueue(message);
+    }
+
+    @Override
+    public void enqueueMaidEffects(com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage message) {
+        com.tianluoqaq.tlmnh.client.gui.MaidEffectDisplay.INSTANCE.enqueue(message);
     }
 
     @Override

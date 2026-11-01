@@ -63,6 +63,9 @@ public final class ContainerMaidModels extends Container {
         if (choice == null || !BuiltinModelCatalog.contains(choice.getId())) return false;
         lastActionTick = maid.ticksExisted;
         maid.setModelId(choice.getId());
+        if (!choice.getPreferredSoundPack()
+            .trim()
+            .isEmpty()) maid.setSoundPackId(choice.getPreferredSoundPack());
         return true;
     }
 

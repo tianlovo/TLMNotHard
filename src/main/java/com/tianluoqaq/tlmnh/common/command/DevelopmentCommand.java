@@ -218,6 +218,16 @@ public final class DevelopmentCommand extends CommandBase {
                 .runConfig((WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "effects-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .runEffects((WorldServer) sender.getEntityWorld());
+            return;
+        }
+        if (args.length == 3 && "lab-gui-effects".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .setGuiEffectFixture(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
         if (args.length == 1 && "pickup-traversal-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runPickupAndTraversal((WorldServer) sender.getEntityWorld());

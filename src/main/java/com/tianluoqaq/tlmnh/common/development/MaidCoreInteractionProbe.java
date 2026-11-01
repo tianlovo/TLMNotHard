@@ -163,6 +163,49 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    public static void runEffects(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            f.maid.addPotionEffect(new PotionEffect(Potion.moveSpeed.id, 72000, 1));
+            f.maid.addPotionEffect(new PotionEffect(Potion.moveSlowdown.id, 900, 0));
+            var message = new com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage(f.maid, 7);
+            require(
+                message.effects()
+                    .size() == 2,
+                "native effects snapshot contains both effects");
+            require(
+                message.effects()
+                    .stream()
+                    .anyMatch(
+                        e -> e.descriptionId.equals(Potion.moveSpeed.getName()) && e.duration == 72000
+                            && e.amplifier == 1),
+                "full integer duration retained");
+            f.maid.removePotionEffect(Potion.moveSpeed.id);
+            f.maid.removePotionEffect(Potion.moveSlowdown.id);
+            require(
+                new com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage(f.maid, 7).effects()
+                    .isEmpty(),
+                "empty native snapshot clears display");
+            TLMNotHard.LOG.info(
+                "TLMNH_EFFECTS_TEST_PASS native-snapshot=2 duration=untruncated clear=empty server-client-symbols=not-loaded");
+        }
+    }
+
+    public static void setGuiEffectFixture(EntityPlayerMP player, String action) {
+        var maid = AnimationLab.ownedSceneMaid(player);
+        if (action.equals("add")) {
+            maid.addPotionEffect(new PotionEffect(Potion.moveSpeed.id, 72000, 1));
+            maid.addPotionEffect(new PotionEffect(Potion.moveSlowdown.id, 900, 0));
+        } else if (action.equals("clear")) {
+            maid.removePotionEffect(Potion.moveSpeed.id);
+            maid.removePotionEffect(Potion.moveSlowdown.id);
+        } else throw new IllegalArgumentException("Unknown GUI effect fixture action");
+        TLMNotHard.LOG.info(
+            "TLMNH_GUI_EFFECTS_FIXTURE action={} actual_effects={}",
+            action,
+            maid.getActivePotionEffects()
+                .size());
+    }
+
     public static void runPickupAndTraversal(WorldServer world) {
         try (var f = new Fixture(world)) {
             pickupBatch(f);

@@ -28,10 +28,14 @@ public class CommonProxy implements IGuiHandler {
     public void init() {
         MaidNamingNetwork.init();
         com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.init();
+        com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork.init();
     }
 
     public void enqueueMaidSound(
         com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {}
+
+    public void enqueueMaidEffects(
+        com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage message) {}
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,

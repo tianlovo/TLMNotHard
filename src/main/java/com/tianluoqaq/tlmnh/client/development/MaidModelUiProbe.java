@@ -286,6 +286,26 @@ public final class MaidModelUiProbe {
             response.add("visibleModels", visible);
         }
         if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
+            var infoLines = new JsonArray();
+            for (String line : original.informationTooltips()) infoLines.add(new com.google.gson.JsonPrimitive(line));
+            response.add("informationTooltip", infoLines);
+            var scheduleLines = new JsonArray();
+            for (String line : original.scheduleTooltips()) scheduleLines.add(new com.google.gson.JsonPrimitive(line));
+            response.add("scheduleTooltip", scheduleLines);
+            var effectLines = new JsonArray();
+            for (String line : original.getDrawnEffectLines()) effectLines.add(new com.google.gson.JsonPrimitive(line));
+            response.add("drawnEffects", effectLines);
+            var effectValues = new JsonArray();
+            var actualMenu = (com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer) original.inventorySlots;
+            for (var effect : actualMenu.getDisplayedEffects()) {
+                var value = new JsonObject();
+                value.addProperty("key", effect.descriptionId);
+                value.addProperty("amplifier", effect.amplifier);
+                value.addProperty("duration", effect.duration);
+                value.addProperty("category", effect.category);
+                effectValues.add(value);
+            }
+            response.add("displayedEffects", effectValues);
             response.addProperty("taskListOpen", original.isTaskListOpen());
             response.addProperty(
                 "maidSoundFrequency",
