@@ -78,6 +78,17 @@ Python解析器/归一化测试只能验证这些工具函数，不是原版 AI 
 观察失败但实际清理成功时cleanupComplete可以为true，complete仍为false
 硬杀进程、掉电、多文件原子回滚不在本工具保证内
 
+## 移植侧的相同输入观察
+
+Indev117 的独立 Horizon-QA 模组提供 NaturalFollowPortTests，按本合同的三个主人轨迹和各三次全新实体采集
+观察器在真实 START/END 相位施加输入/记录结果，世界与实体 RNG 不重置；原版真实连接主人和移植标准 FakePlayer 分开标识
+输出 `follow-natural-port.json.gz` 仍须与该轮 JSON/XML/process 结果共同核对，采集完成不是能力验收通过
+
+`compare_port.py` 接收原始 O、原版身份清单、该次原版冻结工具目录、移植捕获、HQA 结果与预期玩法 SHA
+历史源码发生变动时，使用对应冻结工具校验其全部输入 SHA，不放宽断言或用当前工具的文件差异否定历史数据
+它核对原身份/输入/清理和移植九实体/1800帧/同一主人/自然年龄/输入/属性/移除/进程结果，再输出距离与组内/组间 RMS 描述
+三个未固定随机重复、不同主人实现与不同游戏物理不准入严格等价或统计收益；完整 F/N、复杂场景、成本和预瞄对照继续独立验收
+
 ## 维护者
 
 [tianlovo](https://github.com/tianlovo)
