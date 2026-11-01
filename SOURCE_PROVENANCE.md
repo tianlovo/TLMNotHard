@@ -1129,3 +1129,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 复用已有移植的呼吸动作、移动sink、平台actor和感知；原移植来源及各自合同保持，不宣称增强策略属于上游原版
 - 平台actor只新增跨职责的感知绑定可见性，F任务体与原随机调用顺序未改
 - 协调器按请求类型创建独立实例，增强切片与F共用既有受保护生命周期；专用切片标识不能取得完整N资格
+
+## 增强导航预算与明确查询结果
+
+- EnhancedNavigationController与MaidPathCreation为本工程独立实现，不调用F的MoveToTargetSink调度
+- MaidPathNavigator只在实际增强profile的查询边界取得世界额度，覆盖root、呼吸预检和导航模式切换，F的原nullable查询与随机调用合同保持
+- 平台actor新增增强专用同步结果入口，区分没有导航条件、预算等待、实际路径和无路径；实例仍受既有世界/身份/授权保护
+- 初包与最终包只增强控制器及编译辅助类不同；MaidFaithfulBrain、FollowCoreMoveDriver及移植MaidNavigationManager的字节相同，旧F运行证据不改写为最终包新执行

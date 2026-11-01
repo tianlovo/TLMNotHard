@@ -6,8 +6,6 @@ import net.minecraft.util.MathHelper;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreMoveDriver;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentArbiter;
@@ -27,10 +25,9 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
     private final MaidIntentArbiter arbiter = new MaidIntentArbiter();
-    private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
+    private final EnhancedNavigationController navigation;
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
-    private FollowMoveState moveState = new FollowMoveState();
     private Kind selectedKind;
     private String selectedTarget;
     private boolean ticking;
@@ -41,6 +38,9 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         actor = new ModernFollowCoreActor(maid);
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
+        var budget = com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget.forWorld(maid.worldObj);
+        var identity = maid.getUniqueID();
+        navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
     }
 
     @Override
@@ -127,9 +127,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             }
             if (!actor.isCurrent()) return;
             if (actor.hasLookTarget()) actor.lookAtCurrentTargetIfPresent();
-            long time = actor.worldGameTime();
-            if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
-            if (moveState.getStatus() == FollowMoveState.Status.RUNNING) move.tickOrStop(actor, moveState, time);
+            navigation.tick();
         } finally {
             ticking = false;
         }
@@ -162,8 +160,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     }
 
     private void stopSelected() {
+        navigation.cancel();
         actor.cancelOwnedResources();
-        moveState = new FollowMoveState();
         selectedKind = null;
         selectedTarget = null;
     }
@@ -194,6 +192,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public long transitions() {
         return transitions;
+    }
+
+    public EnhancedNavigationController navigation() {
+        return navigation;
     }
 
     public ModernFollowCoreActor actor() {

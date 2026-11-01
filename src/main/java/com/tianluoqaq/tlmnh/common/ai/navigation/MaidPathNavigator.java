@@ -37,7 +37,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     private BrainTarget brainTarget;
     private boolean tickingMode;
     private Stop lastStop;
-    private long searches;
+    private long searches, budgetDeferrals;
 
     /** 动态WALK_TARGET由持有者读取，导航管理器不能冻结最近一次创建路径的坐标 */
     public interface BrainTarget {
@@ -196,6 +196,17 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         return searches;
     }
 
+    public long budgetDeferrals() {
+        return budgetDeferrals;
+    }
+
+    private boolean enhancedBudgeted() {
+        var policy = maid.getBrainCoordinator()
+            .peekPolicyRuntime();
+        return policy != null && policy.isReady()
+            && policy.getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT;
+    }
+
     /** Pure query used by the guarded production create/install boundary */
     public MaidModernPath createPath(int x, int y, int z, float range, int accuracy) {
         return query(active, x, y, z, range, accuracy);
@@ -214,6 +225,11 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     private MaidModernPath query(State state, Collection<Point> targets, float range, int accuracy, Point requested) {
         if (targets.isEmpty()) return null;
+        // 增强root和水陆切换共用此边界；F保留原无预算查询合同
+        if (enhancedBudgeted() && !MaidWorldNavigationBudget.acquire(maid)) {
+            budgetDeferrals++;
+            return null;
+        }
         searches++;
         var result = MaidPathSearch
             .find(context(region()), state.water, targets, range, accuracy, floor(getPathSearchRange() * 16));
@@ -513,7 +529,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 && modern.result.targetX == target.x
                 && modern.result.targetY == target.y
                 && modern.result.targetZ == target.z) return modern;
-            if (!MaidWorldNavigationBudget.acquire(maid)) return null;
+            if (!enhancedBudgeted() && !MaidWorldNavigationBudget.acquire(maid)) return null;
             var created = query(this, target.x, target.y, target.z, Math.min(16, getPathSearchRange()), 0);
             resetTimeout();
             return created;

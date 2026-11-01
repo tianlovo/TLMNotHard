@@ -519,6 +519,23 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return lastCreated;
     }
 
+    /** 增强调用者需要区分预算等待，原F的nullable createPath合同保持 */
+    public com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation requestEnhancedPath(BlockPos target) {
+        guard();
+        if (runtime.getProfile() != com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+            throw new IllegalStateException("Enhanced query requires its actual component profile");
+        var result = com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.NOT_NAVIGABLE;
+        if (!navigation.canUpdatePath())
+            return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, null);
+        long before = navigation.budgetDeferrals();
+        var path = createPath(target, 0);
+        result = path != null ? com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.FOUND
+            : navigation.budgetDeferrals() > before
+                ? com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.WAITING_BUDGET
+                : com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.UNREACHABLE;
+        return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, path);
+    }
+
     public Path createPath(Vec3 target, int accuracy) {
         return createPath(
             new BlockPos(
