@@ -95,7 +95,7 @@ public final class EnhancedPanicController {
         if (now >= nextSample) {
             nextSample = now + RETRY_TICKS;
             samples++;
-            var sampled = actor.findLandAway(10, 3, new Vec3(threat.posX, threat.posY, threat.posZ));
+            var sampled = actor.findEnhancedLandAway(10, 3, new Vec3(threat.posX, threat.posY, threat.posZ));
             if (!actor.isCurrent()) return;
             if (sampled != null) {
                 var point = new Point(
@@ -114,6 +114,7 @@ public final class EnhancedPanicController {
             && maid.worldObj.blockExists(point.x, point.y + 1, point.z)
             && maid.getHomeArea()
                 .withinRestriction(point.x, point.y, point.z)
+            && actor.isEnhancedLandDestination(point)
             && threat.getDistanceSq(point.x + .5, point.y, point.z + .5) > maid.getDistanceSqToEntity(threat);
     }
 

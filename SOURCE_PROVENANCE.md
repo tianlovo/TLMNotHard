@@ -1182,3 +1182,9 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - EnhancedNavigationController新增同帧预检交接、无推进检测与局部路径退避；实际路径创建/安装继续通过原平台身份检查和世界配额，不修改F的MoveToTargetSink
 - EnhancedClimbController独立持有增强攀爬生命周期，复用固定上游MaidClimbTask动作原语；上游原包、许可证及动作数值保持
 - 增强root取消空气请求与本实例候选，旧权限清理仍由ModernFollowCoreActor按自有资源执行，不释放其他动作持有的手部租约
+
+## 增强危险落点承重
+
+- ModernFollowCoreActor新增显式增强陆地入口，使用本工程已有MaidNativePathRegion的实际碰撞、脚下高度及固定上游MaidNodeEvaluator的陆地成本判断
+- MaidLandRandomSampler的有限候选生成与随机顺序保持，增强显式选择碰撞承重条件；F的默认WorldFallback继续读取原导航稳定点条件
+- EnhancedPanicController在采样与继续使用目标时都核实际落点，原固定上游Panic/RunAway任务与F调度不变

@@ -1168,6 +1168,33 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return MaidLandRandomSampler.getPosAway(new WorldFallback(), radius, vertical, avoid);
     }
 
+    public Vec3 findEnhancedLandAway(int radius, int vertical, Vec3 avoid) {
+        guard();
+        return MaidLandRandomSampler.getPosAway(new WorldFallback(true), radius, vertical, avoid);
+    }
+
+    /** 增强落点按实际脚下碰撞承重和当前身体空间判断，透明度不提供通行或安全保证 */
+    public boolean isEnhancedLandDestination(Point point) {
+        guard();
+        var region = new MaidNativePathRegion(world, maid);
+        if (point.y < 1 || point.y + Math.ceil(maid.height) >= region.maxY()
+            || !world.blockExists(point.x, point.y, point.z)
+            || !world.blockExists(point.x, point.y - 1, point.z)
+            || !region.fluidEmpty(point.x, point.y, point.z)
+            || !isWithinHome(new BlockPos(point.x, point.y, point.z))) return false;
+        double floor = region.floor(point.x, point.y, point.z);
+        double half = maid.width * .5, x = point.x + .5, z = point.z + .5;
+        boolean clear = floor > point.y - 1 && floor <= point.y
+            && !region.collides(x - half, floor + .001, z - half, x + half, floor + maid.height, z + half)
+            && region.collides(x - half, floor - .0625, z - half, x + half, floor, z + half)
+            && navigation.pathfindingCost(
+                new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator(
+                    navigation.context(region)).cellType(point.x, point.y, point.z))
+                == 0;
+        guard();
+        return clear;
+    }
+
     public void setVectorWalkTarget(Vec3 pos, float speed, int closeDistance) {
         guard();
         walk = new PositionWalk(
@@ -2341,6 +2368,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     private final class WorldFallback implements MaidLandRandomSampler.Actor {
 
+        private final boolean collisionSupport;
+
+        WorldFallback() {
+            this(false);
+        }
+
+        WorldFallback(boolean collisionSupport) {
+            this.collisionSupport = collisionSupport;
+        }
+
         public boolean solid(BlockPos pos) {
             guard();
             if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
@@ -2411,6 +2448,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         public boolean isStableDestination(BlockPos point) {
             guard();
+            if (collisionSupport) return isEnhancedLandDestination(new Point(point.x, point.y, point.z));
             return navigation.isStableDestination(point.x, point.y, point.z);
         }
 
