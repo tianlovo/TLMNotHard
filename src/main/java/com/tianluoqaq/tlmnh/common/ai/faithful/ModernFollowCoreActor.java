@@ -34,7 +34,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
-    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor {
+    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -588,6 +588,122 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .tryStartMeal(healing, this::isCurrent) && isCurrent())
             mealItemLease = maid.getItemUseState()
                 .peek();
+    }
+
+    public boolean canFollowOwnerVehicle() {
+        guard();
+        return !maid.getHomeArea()
+            .enabled() && !maid.isSitting()
+            && !maid.hasPose(MaidPose.SLEEPING)
+            && !maid.getLeashed()
+            && maid.isRideable();
+    }
+
+    public boolean vehicleOwnerPresent() {
+        guard();
+        var player = resolveOwner();
+        return player != null && player.worldObj == world
+            && !player.isDead
+            && player.isEntityAlive()
+            && player.theItemInWorldManager.getGameType()
+                .getID() != 3;
+    }
+
+    public Vehicle ownerControlledVehicle() {
+        guard();
+        var player = resolveOwner();
+        var controlled = player == null ? null : MaidVehiclePlatform.controlledVehicle(player);
+        guard();
+        return controlled == null || controlled.worldObj != world ? null : new VehicleView(controlled);
+    }
+
+    public boolean sameMaidVehicle(Vehicle value) {
+        var expected = vehicle(value).entity;
+        var actual = MaidVehiclePlatform.vehicle(maid);
+        guard();
+        return actual == expected;
+    }
+
+    public boolean canAddPassenger(Vehicle value) {
+        var expected = vehicle(value).entity;
+        boolean allowed = MaidVehiclePlatform.canAddPassenger(expected);
+        guard();
+        return allowed;
+    }
+
+    public boolean maidIsPassenger() {
+        guard();
+        return maid.ridingEntity != null;
+    }
+
+    public boolean ownerInDismountCooldown() {
+        guard();
+        var player = resolveOwner();
+        return player != null && ((MaidPlayerVehicleState) player).tlmnh$inDismountCooldown();
+    }
+
+    public boolean maidWithinOwnerRange(float range) {
+        guard();
+        var player = resolveOwner();
+        return player != null && maid.getDistanceToEntity(player) < range;
+    }
+
+    public boolean maidWithinVehicleRange(Vehicle value, float range) {
+        return maid.getDistanceSqToEntity(vehicle(value).entity) < range * range;
+    }
+
+    public boolean hasVehicleWalkTarget() {
+        guard();
+        return walk != null;
+    }
+
+    public void walkToVehicle(Vehicle value, float speed, int closeDistance) {
+        var target = vehicle(value).entity;
+        look = target;
+        walk = new EntityWalk(target, speed, closeDistance);
+    }
+
+    public void startRiding(Vehicle value) {
+        var target = vehicle(value).entity;
+        if (!canFollowOwnerVehicle() || !vehicleOwnerPresent() || !canAddPassenger(value)) return;
+        var controlled = MaidVehiclePlatform.controlledVehicle(resolveOwner());
+        guard();
+        if (controlled == target) MaidVehiclePlatform.mount(maid, target);
+    }
+
+    public void stopRiding() {
+        guard();
+        maid.mountEntity(null);
+    }
+
+    private VehicleView vehicle(Vehicle value) {
+        guard();
+        if (!(value instanceof VehicleView view) || view.actor() != this)
+            throw new IllegalArgumentException("Foreign vehicle view");
+        view.check();
+        return view;
+    }
+
+    private final class VehicleView implements Vehicle {
+
+        final Entity entity;
+        final Token lease = token;
+        final long tick = worldTick;
+        final int age = entityTick;
+
+        VehicleView(Entity entity) {
+            this.entity = entity;
+        }
+
+        ModernFollowCoreActor actor() {
+            return ModernFollowCoreActor.this;
+        }
+
+        void check() {
+            guard();
+            if (lease != token || tick != worldTick || age != entityTick || entity.worldObj != world)
+                throw new IllegalStateException("Expired vehicle frame");
+        }
     }
 
     public Point airSearchPosition() {

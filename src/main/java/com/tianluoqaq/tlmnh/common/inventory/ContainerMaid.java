@@ -40,6 +40,7 @@ public class ContainerMaid extends Container {
     public static final int ACTION_SOUNDS = 16;
     public static final int ACTION_CONFIG = 17;
     public static final int ACTION_ORIGINAL_MAIN = 18;
+    public static final int ACTION_RIDEABLE = 19;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
@@ -106,9 +107,10 @@ public class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_ORIGINAL_MAIN
+            || action > ACTION_RIDEABLE
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
+        if (action == ACTION_RIDEABLE && player.inventory.getItemStack() != null) return false;
         if ((action == ACTION_MODELS || action == ACTION_SOUNDS
             || action == ACTION_CONFIG
             || action == ACTION_ORIGINAL_MAIN) && player.inventory.getItemStack() != null) {
@@ -128,6 +130,10 @@ public class ContainerMaid extends Container {
             }
             case ACTION_PICKUP_ITEMS -> maid.setPickupItems(!maid.canPickupItems());
             case ACTION_PICKUP_EXPERIENCE -> maid.setPickupExperience(!maid.canPickupExperience());
+            case ACTION_RIDEABLE -> {
+                maid.setRideable(!maid.isRideable());
+                if (!maid.isRideable() && maid.ridingEntity != null) maid.mountEntity(null);
+            }
             case ACTION_SIT -> {
                 maid.setSitting(!maid.isSitting());
                 maid.getNavigator()

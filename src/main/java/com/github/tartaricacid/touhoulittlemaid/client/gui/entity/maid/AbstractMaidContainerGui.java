@@ -115,7 +115,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 || button.id == 114 ? taskListOpen : true;
             if (button.id == BAUBLE && isConfigPage()) button.visible = false;
             button.enabled = switch (button.id) {
-                case RIDE, DOWNLOAD, TASK_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case DOWNLOAD, TASK_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case RIDE -> mc.thePlayer.inventory.getItemStack() == null;
                 case MAIN_TAB -> isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case CONFIG_TAB -> !isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case SKIN, SOUND -> mc.thePlayer.inventory.getItemStack() == null;
@@ -132,7 +133,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 case ContainerMaid.ACTION_HOME -> maid.getHomeArea()
                     .enabled();
                 case ContainerMaid.ACTION_PICKUP_ALL -> maid.isPickup();
-                case RIDE -> true;
+                case RIDE -> maid.isRideable();
                 default -> false;
             };
         }
@@ -152,6 +153,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case SCHEDULE -> send(
                 ContainerMaid.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
+            case RIDE -> send(ContainerMaid.ACTION_RIDEABLE);
             default -> send(button.id);
         }
         refreshButtons();
@@ -172,6 +174,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "schedule" -> SCHEDULE;
             case "home_toggle" -> ContainerMaid.ACTION_HOME;
             case "pickup" -> ContainerMaid.ACTION_PICKUP_ALL;
+            case "ride_toggle" -> RIDE;
             case "open" -> SKIN;
             case "sound" -> SOUND;
             case "config" -> CONFIG_TAB;

@@ -10,7 +10,8 @@
     "MixinEntityAquatic",
     "MixinEntityLivingBase",
     "MixinEntityPose",
-    "MixinPathNavigate"
+    "MixinPathNavigate",
+    "MixinEntityPlayerVehicle"
   ],
   "client": [],
   "server": []

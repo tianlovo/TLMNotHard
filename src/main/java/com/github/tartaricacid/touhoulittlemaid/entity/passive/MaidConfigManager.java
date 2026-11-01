@@ -14,6 +14,7 @@ public final class MaidConfigManager {
     private static final String MAID_SUB_CONFIG_TAG = "MaidSubConfig";
     private static final String SOUND_FREQ_TAG = "SoundFreq";
     private static final String PICKUP_TYPE_TAG = "PickupType";
+    private static final String RIDEABLE_TAG = "MaidIsRideable";
     private static final String[] NAVIGATION_TAGS = { "OpenDoor", "OpenFenceGate", "ActiveClimbing" };
     private static final String[] VISUAL_TAGS = { "BackpackShow", "BackItemShow", "ChatBubbleShow" };
     private final DataWatcher entityData;
@@ -29,6 +30,7 @@ public final class MaidConfigManager {
     }
 
     void addAdditionalSaveData(NBTTagCompound compound) {
+        compound.setBoolean(RIDEABLE_TAG, isRideable());
         var sub = (NBTTagCompound) unreadConfig.copy();
         sub.setFloat(SOUND_FREQ_TAG, getSoundFreq());
         sub.setInteger(PICKUP_TYPE_TAG, getPickupType().ordinal());
@@ -38,6 +40,7 @@ public final class MaidConfigManager {
     }
 
     void readAdditionalSaveData(NBTTagCompound compound) {
+        if (compound.hasKey(RIDEABLE_TAG, 1)) setRideable(compound.getBoolean(RIDEABLE_TAG));
         unreadConfig = (NBTTagCompound) compound.getCompoundTag(MAID_SUB_CONFIG_TAG)
             .copy();
         if (unreadConfig.hasKey(SOUND_FREQ_TAG, 99)) {
@@ -92,7 +95,8 @@ public final class MaidConfigManager {
         try {
             String[] fields = raw.split(";", -1);
             if (!(fields.length == 2 && fields[0].equals("1") || fields.length == 4 && fields[0].equals("2")
-                || fields.length == 5 && fields[0].equals("3"))) return 1;
+                || fields.length == 5 && fields[0].equals("3")
+                || fields.length == 6 && fields[0].equals("4"))) return 1;
             float frequency = Float.parseFloat(fields[1]);
             return Float.isFinite(frequency) ? Math.max(0, Math.min(1, frequency)) : 1;
         } catch (NumberFormatException invalid) {
@@ -154,8 +158,8 @@ public final class MaidConfigManager {
         String raw = entityData.getWatchableObjectString(DATA_CONFIG);
         if (raw.length() > 80) return fallback;
         String[] fields = raw.split(";", -1);
-        if (!(fields.length == 4 && fields[0].equals("2") || fields.length == 5 && fields[0].equals("3"))
-            || index >= fields.length) return fallback;
+        if (!(fields.length == 4 && fields[0].equals("2") || fields.length == 5 && fields[0].equals("3")
+            || fields.length == 6 && fields[0].equals("4")) || index >= fields.length) return fallback;
         try {
             return Integer.parseInt(fields[index]);
         } catch (NumberFormatException invalid) {
@@ -168,6 +172,20 @@ public final class MaidConfigManager {
     }
 
     private void write(float frequency, PickType type, int flags, int visuals) {
-        entityData.updateObject(DATA_CONFIG, "3;" + frequency + ";" + type.ordinal() + ";" + flags + ";" + visuals);
+        write(frequency, type, flags, visuals, isRideable());
+    }
+
+    boolean isRideable() {
+        return field(5, 1) == 1;
+    }
+
+    void setRideable(boolean value) {
+        write(getSoundFreq(), getPickupType(), flags(), visualFlags(), value);
+    }
+
+    private void write(float frequency, PickType type, int flags, int visuals, boolean rideable) {
+        entityData.updateObject(
+            DATA_CONFIG,
+            "4;" + frequency + ";" + type.ordinal() + ";" + flags + ";" + visuals + ";" + (rideable ? 1 : 0));
     }
 }

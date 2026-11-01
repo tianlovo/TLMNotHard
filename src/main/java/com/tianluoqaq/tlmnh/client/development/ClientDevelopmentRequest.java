@@ -138,6 +138,7 @@ public final class ClientDevelopmentRequest {
                     "pointer",
                     "schedule",
                     "pickup",
+                    "ride_toggle",
                     "cache",
                     "sound",
                     "sound_apply",

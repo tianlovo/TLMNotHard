@@ -7,6 +7,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearHu
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearSleepTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerVehicleTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSelfTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
@@ -27,6 +28,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
+    private final MaidFollowOwnerVehicleTask vehicle = new MaidFollowOwnerVehicleTask(.5F, 2);
     private final MaidHealSelfTask heal = new MaidHealSelfTask();
     private final MaidWorkMealTask workMeal = new MaidWorkMealTask(), rideWorkMeal = new MaidWorkMealTask();
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
@@ -45,7 +47,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
     private FollowMoveState moveState = new FollowMoveState();
-    private boolean followRunning, ticking, hasTick;
+    private boolean followRunning, vehicleRunning, ticking, hasTick;
     private long lastWorldTick;
     private int lastEntityTick;
 
@@ -115,6 +117,12 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }
+            if (vehicle.checkExtraStartConditions(actor)) {
+                vehicleRunning = true;
+                actor.nextWorldInt(1);
+                vehicle.start(actor);
+                if (!actor.isCurrent()) return;
+            }
             if (heal.checkExtraStartConditions(actor)) {
                 actor.nextWorldInt(1);
                 heal.start(actor);
@@ -160,6 +168,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             if (lookState.getStatus() == FollowCoreLookDriver.Status.RUNNING) look.tickOrStop(actor, lookState, time);
             if (moveState.getStatus() == FollowMoveState.Status.RUNNING) move.tickOrStop(actor, moveState, time);
             if (followRunning) followRunning = false;
+            if (vehicleRunning) {
+                vehicle.stop();
+                vehicleRunning = false;
+            }
         } finally {
             ticking = false;
         }
@@ -178,6 +190,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
+            vehicleRunning = false;
+            vehicle.stop();
             climbRunning = false;
         }
     }

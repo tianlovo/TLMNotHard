@@ -903,3 +903,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原请求事件的 ItemStack 仅表示已转入库存的回执；ItemsUtil 先查背包，缺少才发事件，再查实际库存，目标版在回调后另核当前策略授权
 - 旧 Forge 用可取消事件和 null 空栈适配，未增加其他内容模组的外部存储联动；现代呼吸复用请求，原型呼吸保留旧入口
 - 未映射的现代饰品食用回调、完整持续进食粒子以及未知自定义食物仍有缺口，以上接线不代表完整 F/N 或原版自然 benchmark
+
+- Indev107 从固定 TLM 提交移植 `MaidFollowOwnerVehicleTask`，保留原包名、来源头及核心优先级 3 的注册顺序
+- 实读原 PlayerMixin/IPlayerMixin 的移除载具时间戳、MaidConfigMessage 的骑乘开关与下船、原界面 51/206 的骑乘按钮
+  以及 MaidConfigManager 的顶层 `MaidIsRideable` NBT 和默认 true
+- 原离船窗口按 Util.getMillis 的单调 3000 毫秒处理，目标版在实际玩家 mountEntity 入口记录，不替换为 60 个世界 tick
+- 实读目标正式版 EFR 2.6.65 源码提交 `ff1a4717b22fa16da0d986deb3c59d0d4c9ff9db` 的新船、座位和箱船 API，并核实装 JAR 与座位开关
+  用 getPassengers/getControllingPassenger/getSeat/addToBoat 和 Seat.getBoat 适配容量、驾驶权及代理身份，不用 sitEntity 挤出主人
+- 自有 Actor 的载具引用绑定当前 token/世界及实体 tick，动态 WALK 仍用已有 EntityTracker 路径；回调取消后旧引用不能因新帧重新授权
+- 现有 31 号字符串追加版本 4 骑乘列，兼容 1/2/3 默认值并保留频率、拾取、导航和显示字段；没有新增 DataWatcher 槽或自创配置页行
+- SWarfare、未移植的 EntitySit/飞行扫帚例外、完整原 rideTick 朝向及客户端乘客表现不在本批完成范围，完整 F/N 和原版自然测评继续待办

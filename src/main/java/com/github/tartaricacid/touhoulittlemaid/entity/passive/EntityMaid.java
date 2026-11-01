@@ -178,6 +178,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return aquatic;
     }
 
+    public boolean isRideable() {
+        return configManager.isRideable();
+    }
+
+    public void setRideable(boolean value) {
+        if (!worldObj.isRemote) configManager.setRideable(value);
+    }
+
     public com.tianluoqaq.tlmnh.common.entity.MaidEntityPose getEntityPose() {
         return com.tianluoqaq.tlmnh.common.entity.MaidEntityPose
             .decode((byte) ((dataWatcher.getWatchableObjectInt(DATA_POSE) & ENTITY_POSE_MASK) >>> ENTITY_POSE_SHIFT));
