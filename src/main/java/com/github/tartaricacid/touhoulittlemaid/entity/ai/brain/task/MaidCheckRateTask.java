@@ -13,16 +13,24 @@ public abstract class MaidCheckRateTask {
     private int nextCheckTickCount;
 
     protected boolean checkExtraStartConditions(MaidMealActor maid) {
+        return checkExtraStartConditions(maid::nextMealInt);
+    }
+
+    protected boolean checkExtraStartConditions(java.util.function.IntUnaryOperator random) {
         if (nextCheckTickCount > 0) {
             --nextCheckTickCount;
             return false;
         }
-        nextCheckTickCount = maxCheckRate + maid.nextMealInt(maxCheckRate);
+        nextCheckTickCount = maxCheckRate + random.applyAsInt(maxCheckRate);
         return true;
     }
 
     protected void setMaxCheckRate(int rate) {
         maxCheckRate = rate;
+    }
+
+    protected void setNextCheckTickCount(int count) {
+        nextCheckTickCount = count;
     }
 
     public void reset() {

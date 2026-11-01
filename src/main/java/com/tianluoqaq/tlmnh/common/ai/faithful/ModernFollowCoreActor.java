@@ -33,12 +33,15 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
-public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
-    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor {
+public final class ModernFollowCoreActor
+    implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor, MaidPathNavigator.BrainTarget,
+    MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor, MaidLifeActor {
 
     private final EntityMaid maid;
     private final World world;
     private final MaidPathNavigator navigation;
+    private final MaidModernLife life;
+    private Point workTarget;
     private MaidModernPerception perception;
     private MaidPolicyRuntime runtime;
     private Token token;
@@ -66,6 +69,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (!(maid.getNavigator() instanceof MaidPathNavigator modern))
             throw new IllegalArgumentException("Modern maid navigation required");
         navigation = modern;
+        life = new MaidModernLife(maid, this::isCurrent);
     }
 
     public void beginFrame(MaidPolicyRuntime runtime, Token token) {
@@ -230,7 +234,85 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void eraseTargetPos() {
         guard();
-        /* 此组件不建立工作TARGET_POS，完整工作记忆由后续Brain接入 */ }
+        workTarget = null;
+    }
+
+    public Point workTarget() {
+        guard();
+        return workTarget;
+    }
+
+    public void setWorkTarget(Point point) {
+        guard();
+        workTarget = point;
+    }
+
+    public boolean hasLifeWalkTarget() {
+        guard();
+        return walk != null;
+    }
+
+    public int nextLifeInt(int bound) {
+        guard();
+        return maid.getRNG()
+            .nextInt(bound);
+    }
+
+    public Point findNearestBed() {
+        guard();
+        return life.findBed(isHomeModeEnable() ? restrictionCenter() : airSearchPosition(), (int) getRestrictRadius());
+    }
+
+    public boolean withinLifeRestriction(Point point) {
+        return isWithinHome(new BlockPos(point.x, point.y, point.z));
+    }
+
+    public double distanceToBlockCenterSquared(Point point) {
+        guard();
+        return maid.getDistanceSq(point.x + .5, point.y + .5, point.z + .5);
+    }
+
+    public void sleepAt(Point point) {
+        guard();
+        life.sleepAt(point);
+    }
+
+    public void maintainSleep() {
+        guard();
+        life.maintain();
+    }
+
+    public int sleepEntries() {
+        return life.sleepEntries();
+    }
+
+    public Owner temptingVisibleOwner() {
+        guard();
+        var visible = perception.visible();
+        if (visible == null) return null;
+        var entity = visible.findClosest(
+            e -> e.getUniqueID()
+                .toString()
+                .equals(maid.func_152113_b()));
+        if (!(entity instanceof EntityPlayerMP player) || !player.isEntityAlive()
+            || maid.getDistanceSqToEntity(player) >= 36
+            || !maid.getHomeArea()
+                .withinRestriction(
+                    MathHelper.floor_double(player.posX),
+                    MathHelper.floor_double(player.posY),
+                    MathHelper.floor_double(player.posZ))
+            || !com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig.matches(player.getHeldItem())) return null;
+        return new OwnerView(player);
+    }
+
+    public void lookAtOwner(Owner value) {
+        look = owner(value);
+    }
+
+    public void setBegging(boolean value) {
+        guard();
+        maid.setPose(MaidPose.BEGGING, value);
+    }
 
     public void stopFollowingTask() {
         guard();
@@ -373,6 +455,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void cancelOwnedResources() {
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
+            life.wake();
             if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
             if (breathItemLease != null && maid.getItemUseState()
                 .peek() == breathItemLease) maid.getMealController()
@@ -384,6 +467,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             breathItemLease = null;
             mealItemLease = null;
             if (ownsTarget) {
+                maid.setPose(MaidPose.BEGGING, false);
                 maid.setCanClimb(false);
                 maid.setSneaking(false);
                 var swim = maid.getAquaticController()
@@ -399,6 +483,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             pathMemory = null;
             lastCreated = null;
             walk = null;
+            workTarget = null;
             look = null;
             cantReachSince = null;
             followStop = false;
@@ -908,6 +993,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void clearSleepingIfPresent() {
         guard();
+        life.wake();
         if (!maid.hasPose(MaidPose.SLEEPING)) return;
         var life = maid.getBrainCoordinator()
             .getLifeController();

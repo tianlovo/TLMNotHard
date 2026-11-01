@@ -913,3 +913,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 自有 Actor 的载具引用绑定当前 token/世界及实体 tick，动态 WALK 仍用已有 EntityTracker 路径；回调取消后旧引用不能因新帧重新授权
 - 现有 31 号字符串追加版本 4 骑乘列，兼容 1/2/3 默认值并保留频率、拾取、导航和显示字段；没有新增 DataWatcher 槽或自创配置页行
 - SWarfare、未移植的 EntitySit/飞行扫帚例外、完整原 rideTick 朝向及客户端乘客表现不在本批完成范围，完整 F/N 和原版自然测评继续待办
+
+## 原床、乞食与工作目标
+
+- Indev108 从固定 TLM 提交移植 `MaidBedTask`、`MaidBegTask` 与 `MaidRideBegTask`，保留原包名和来源头；`MaidCheckRateTask` 补回可设置的下次检查计数
+- 实读原 Brain 的 REST5、IDLE5/WORK6 与 RIDE_IDLE4/RIDE_WORK6 注册、跨活动运行行为；原床 POI 只登记 HEAD 且未占用的状态
+- 实读原 EntityMaid 的睡眠全回血/好感、限制区、搜索点及诱惑物配置解析；参考固定映射原生 LivingEntity 的睡眠/床存在检查、PoiManager 的整数球形范围
+- 自有 `MaidLifeActor`、`MaidModernLife` 适配帧守卫、独立工作记忆、已加载区块床头索引和既有床租约，不搬用原型生活选择逻辑
+- 1.7 目标缺少现代 POI 持久记录，当前不加载未加载床区块；醒来用本平台站立碰撞挑邻位，现代原生出口逐项等价尚未核验
+- 诱惑物支持原注册 ID/默认蛋糕，现代标签无对应时按未知项回退；乞食仍只检查主人主手和已缓存可见实体
+- 已实读后续偷吃移动/使用、父 MoveToBlock、CakeEdible 与 IMaidEdibleBlock 的关键合同；本批只接床和乞食，偷吃动作记忆与原两阶段尚待移植，不以源码阅读冒充已实现

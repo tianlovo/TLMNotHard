@@ -1,6 +1,9 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.ride.MaidRideBegTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidAwaitTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBedTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBegTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearHurtTask;
@@ -41,8 +44,13 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidRunAwayTask runAway = new MaidRunAwayTask(.7F, false);
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
+    private final MaidBedTask bed = new MaidBedTask(.6F, 2);
+    private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
+    private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
+    private boolean idleBegRunning, workBegRunning, rideIdleBegRunning, rideWorkBegRunning;
     private final com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos schedulePos = new com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos();
     private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
+    private final java.util.Map<String, MaidActivityState.Activity> priority5 = new java.util.HashMap<>();
     private boolean climbRunning;
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
@@ -65,6 +73,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         priority99.put("idle", MaidActivityState.Activity.IDLE);
         priority99.put("work", MaidActivityState.Activity.WORK);
         priority99.put("rest", MaidActivityState.Activity.REST);
+        priority5.put("idle", MaidActivityState.Activity.IDLE);
+        priority5.put("rest", MaidActivityState.Activity.REST);
+        priority5.put("panic", MaidActivityState.Activity.PANIC);
     }
 
     @Override
@@ -84,6 +95,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             hasTick = true;
             perception.tick();
             activities.initialize();
+            actor.maintainSleep();
             if (!actor.canBrainMoving()) {
                 actor.stopNavigation();
                 actor.eraseWalkTarget();
@@ -129,14 +141,44 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 if (!actor.isCurrent()) return;
             }
             // 原Brain只在活动组入口检查active；ClearHurt切换活动后同组后项仍会继续尝试启动
-            if (activities.active() == MaidActivityState.Activity.PANIC) {
+            if (activities.active() == MaidActivityState.Activity.RIDE_IDLE && !rideIdleBegRunning
+                && rideIdleBeg.checkExtraStartConditions(actor)) {
+                rideIdleBegRunning = true;
                 actor.nextWorldInt(1);
-                clearHurt.start(activities);
-                var danger = actor.dangerPosition();
-                if (runAway.checkExtraStartConditions(actor, danger)) {
+            }
+            for (var group : priority5.values()) {
+                if (activities.active() != group) continue;
+                if (group == MaidActivityState.Activity.IDLE) {
+                    if (!idleBegRunning && idleBeg.checkExtraStartConditions(actor)) {
+                        idleBegRunning = true;
+                        actor.nextWorldInt(1);
+                    }
+                } else if (group == MaidActivityState.Activity.REST) {
+                    if (!actor.hasLifeWalkTarget() && actor.workTarget() == null
+                        && bed.checkExtraStartConditions(actor)) {
+                        actor.nextWorldInt(1);
+                        bed.start(actor);
+                        if (!actor.isCurrent()) return;
+                    }
+                } else {
                     actor.nextWorldInt(1);
-                    runAway.start(actor, actor.dangerPosition());
+                    clearHurt.start(activities);
+                    var danger = actor.dangerPosition();
+                    if (runAway.checkExtraStartConditions(actor, danger)) {
+                        actor.nextWorldInt(1);
+                        runAway.start(actor, actor.dangerPosition());
+                    }
                 }
+            }
+            if (activities.active() == MaidActivityState.Activity.WORK && !workBegRunning
+                && workBeg.checkExtraStartConditions(actor)) {
+                workBegRunning = true;
+                actor.nextWorldInt(1);
+            }
+            if (activities.active() == MaidActivityState.Activity.RIDE_WORK && !rideWorkBegRunning
+                && rideWorkBeg.checkExtraStartConditions(actor)) {
+                rideWorkBegRunning = true;
+                actor.nextWorldInt(1);
             }
             var meal = activities.active() == MaidActivityState.Activity.WORK ? workMeal
                 : activities.active() == MaidActivityState.Activity.RIDE_WORK ? rideWorkMeal : null;
@@ -167,6 +209,35 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             }
             if (lookState.getStatus() == FollowCoreLookDriver.Status.RUNNING) look.tickOrStop(actor, lookState, time);
             if (moveState.getStatus() == FollowMoveState.Status.RUNNING) move.tickOrStop(actor, moveState, time);
+            // 原Brain的已运行行为跨活动保留，直到自身canStillUse失败；乞食不超时
+            if (rideIdleBegRunning) {
+                if (rideIdleBeg.canStillUse(actor)) rideIdleBeg.tick(actor);
+                else {
+                    rideIdleBegRunning = false;
+                    rideIdleBeg.stop(actor);
+                }
+            }
+            if (idleBegRunning) {
+                if (idleBeg.canStillUse(actor)) idleBeg.tick(actor);
+                else {
+                    idleBegRunning = false;
+                    idleBeg.stop(actor);
+                }
+            }
+            if (workBegRunning) {
+                if (workBeg.canStillUse(actor)) workBeg.tick(actor);
+                else {
+                    workBegRunning = false;
+                    workBeg.stop(actor);
+                }
+            }
+            if (rideWorkBegRunning) {
+                if (rideWorkBeg.canStillUse(actor)) rideWorkBeg.tick(actor);
+                else {
+                    rideWorkBegRunning = false;
+                    rideWorkBeg.stop(actor);
+                }
+            }
             if (followRunning) followRunning = false;
             if (vehicleRunning) {
                 vehicle.stop();
@@ -187,6 +258,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             heal.reset();
             workMeal.reset();
             rideWorkMeal.reset();
+            bed.reset();
+            idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
