@@ -45,7 +45,8 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
             maid.getMealController()
                 .isBreathing());
         manager.updateSwimming();
-        jump.tick(this, maid.worldObj.getTotalWorldTime());
+        if (policy == null || !policy.requiresAfterNativeNavigation())
+            jump.tick(this, maid.worldObj.getTotalWorldTime());
     }
 
     /** Original EntityMaid.aiStep ticks its navigation manager after super.aiStep */
@@ -188,6 +189,10 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
     @Override
     public void requestJump() {
         pendingJump = true;
+    }
+
+    public void clearPendingJump() {
+        pendingJump = false;
     }
 
     public void afterNativeAiTick() {

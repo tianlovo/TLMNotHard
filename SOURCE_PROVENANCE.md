@@ -1093,3 +1093,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - HQA实际清理栈及ModernCoreTests.Fixture的模板清除确认子清理需提前登记，prepared标识防止未完成子构造时触发清理
 - 新观察读取实际MaidModernPath的节点type/cost，不额外调用寻路；原版配对冻结工具与原身份保持，比较器的后续变化不冒充原采集器重编译
 - END样本缺少移植首帧前状态，其位移保持未观测；原版首帧使用真实before/after，不因按END相邻帧比较而漏记初始大位移
+
+## 原版跳水的Brain相位
+
+- 固定上游MaidBrain.registerCoreGoals将MaidSwimJumpTask置CORE优先级0首项；其继承Swim的启动/运行生命周期，原版附加水下和导航结束条件
+- 保留原MaidSwimJumpTask包名，适配器拆tryStart/tickOrStop，旧tick仅顺序调用两者；现代组件按整个Brain启动/运行pass分别调用
+- MaidAquaticController.beforeLivingUpdate不再提前运行现代组件的被动跳水，旧原型入口保持；刷新及取消清现代任务待发请求
+- 实读目标EntityLivingBase.onUpdate：Forge LivingUpdate事件早于super.onUpdate及流体刷新，不能据该事件冒充Brain前已刷新流体的观察点
+- 实装HQA GameTestAssertException字节码继承AssertionError，探针改用既有AfterNavigationActions真实回调，并把断言等非致命失败交回HQA

@@ -21,6 +21,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSnowbal
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStartSnowballAttacking;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleUseTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSwimJumpTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -42,6 +43,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidWorkMealTask workMeal = new MaidWorkMealTask(), rideWorkMeal = new MaidWorkMealTask();
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
+    private final MaidSwimJumpTask swimJump = new MaidSwimJumpTask(.8F);
     private final MaidClimbTask climb = new MaidClimbTask();
     private final MaidPickupEntitiesTask pickup = new MaidPickupEntitiesTask(.6F);
     private final MaidPanicTask panic = new MaidPanicTask();
@@ -133,6 +135,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 moveState = new FollowMoveState();
             }
             // 原Brain先启动全部STOPPED行为，再按look0、move2、follow3运行
+            swimJump.tryStart(maid.getAquaticController(), time);
             if (!climbRunning && climb.checkExtraStartConditions(actor)) {
                 climbRunning = true;
                 climbDeadline = time + 60 + actor.nextWorldInt(1);
@@ -288,6 +291,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     schedule.start(activities);
                 }
             }
+            swimJump.tickOrStop(maid.getAquaticController(), time);
             if (climbRunning) {
                 if (time > climbDeadline || !climb.canStillUse(actor)) {
                     climbRunning = false;
@@ -368,6 +372,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             rangedRide.stop(actor);
             if (snowRunning) snowThrow.stop(actor);
             if (vehicleRunning) vehicle.stop();
+            swimJump.cancel();
+            maid.getAquaticController()
+                .clearPendingJump();
             heal.reset();
             absentContent.reset();
             workMeal.reset();
@@ -409,6 +416,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         } finally {
             doors = new MaidInteractWithDoor();
             perception.clear();
+            swimJump.cancel();
+            maid.getAquaticController()
+                .clearPendingJump();
             activities.reset();
             heal.reset();
             absentContent.reset();
