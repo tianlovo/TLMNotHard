@@ -734,6 +734,14 @@ Indev116 的 SOURCE_ORIGINAL 仅供显式开发入口选择，保留固定上游
 48 项定向检查和同一最终候选三项 HQA 通过：专用/原生空气水中物理 4 tick、自然原飞行及有限/Infinity/附魔 79 tick、原生生成撤权/恢复 59 tick
 首次共享常量注入与 Galacticraft 冲突导致启动失败，该实现已移除，原记录保留
 七组实际 1.20.1 数值 oracle 的生成范围见 [原飞行数学对照](tools/source-bow-reference/README.md)，不替代自然 benchmark 或客户端验证
+
+## 自然跟随的属性与输入控制
+
+Indev117 将新实体移动属性从早期原型 .3 对齐实际原版默认 `(double).7F`；读取旧存档时保留已有属性 NBT
+原版有效历史轨迹使用当时冻结工具验证，移植侧由真实世界 tick 运行相同三个主人轨迹，每场景三个全新女仆，不重置 RNG
+两侧各 1800 帧的控制检查通过，首次进入 2.5 格均为第 21 帧；尾段游走与传送边界仍有差异，不声称等价或统计优越
+同一候选的自然近战 79、弓箭 92 tick 关联通过；策略取消还重建门任务局部状态，不新增取消后的世界关门行为
+输入、身份、清理和描述性比较流程见 [自然跟随观察器](tools/follow-natural-reference/README.md)
 同一实现随运行环境升级时保持类型名稳定，第三方适配按提供方或能力区分
 当前门状态读取使用 `NativeDoorState`，原生导航反馈使用 `NativeNavigationStopSource` / `NativeNavigationStopState`
 限定干燥平台的开发适配为 `DryPlatformFollowActor` / `DryPlatformFollowTeleport`，名称保持其能力范围

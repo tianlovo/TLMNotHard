@@ -1030,3 +1030,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - tools/source-bow-reference 在实际 Minecraft 数学类上生成七组记录，包含实际加载类 SHA，SourceBowShotTest 逐位重放
   这只证明列出的数值输入，不替代原实体、自然 O/F/N、同物理预瞄收益、客户端或最终验收
 - 骑乘可选类型排除改走已有 MaidCombatEntities 的规范模组实体 ID，避免原生 EntityList 字符串格式差异
+
+## 默认移动属性与自然跟随观察
+
+- Indev117 实读固定 TLM EntityMaid.createAttributes；该构建器使用 LivingEntity 的基础属性，不另设移动默认值
+  实际映射 Attributes 的 MOVEMENT_SPEED 默认是 `0.699999988079071`，与原版自然采集的 base/value 一致
+- 目标新实体以 `(double).7F` 对齐该默认值，移除早期原型的 .3；原属性 NBT 读取保持，未批量覆写旧存档或自定义属性
+- ModernFollowCoreComponent.cancel 重建门 OneShot 局部状态，关门集合仍按已有取消/刷新语义处理，不追加世界开关门操作
+- NaturalFollowPortTests 在实际世界 tick 的 START 施加相同主人输入、END 观察全新实体，保留活动、传感器与 RNG；不手动 tick Brain
+- 三场景各三次共 1800 帧，平台外部方块保存并恢复，原全局设置、在线合成主人、内存通道与区块票据随夹具清理
+- compare_port 使用历史原版冻结工具核对原身份、输入和清理，再检查移植输入/年龄/属性/实体移除及 HQA 结果，输出组内/组间描述性轨迹
+  原版真实连接主人与移植标准 FakePlayer 分开标识；此观察不准入完整 F、统计收益、全部场景或执行成本结论

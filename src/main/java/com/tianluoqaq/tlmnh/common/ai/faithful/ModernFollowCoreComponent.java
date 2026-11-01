@@ -407,6 +407,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         try {
             actor.cancelOwnedResources();
         } finally {
+            doors = new MaidInteractWithDoor();
             perception.clear();
             activities.reset();
             heal.reset();

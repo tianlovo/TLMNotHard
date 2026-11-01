@@ -131,7 +131,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     protected void applyEntityAttributes() {
         super.applyEntityAttributes();
         getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(20.0D);
-        getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(0.3D);
+        // 原LivingEntity属性构建器沿用MOVEMENT_SPEED的0.7F默认值，不能保留早期原型的0.3
+        getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue((double) .7F);
         getEntityAttribute(SharedMonsterAttributes.followRange).setBaseValue(64.0D);
         getAttributeMap().registerAttribute(SharedMonsterAttributes.attackDamage)
             .setBaseValue(2.0D);
