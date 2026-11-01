@@ -194,7 +194,7 @@ public final class ModernLeisureTests {
         helper.succeedWhen(() -> done[0]);
     }
 
-    private static ModernCoreTests.Fixture fixture(GameTestHelper helper, boolean snowy) {
+    static ModernCoreTests.Fixture fixture(GameTestHelper helper, boolean snowy) {
         var f = new ModernCoreTests.Fixture(helper, false, 1, 16);
         f.maid.setSchedule(MaidSchedule.ALL);
         f.owner.setPosition(f.x + 3.5, f.y + 1, f.z + 4.5);

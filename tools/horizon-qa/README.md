@@ -492,3 +492,9 @@ Indev141 的 `tlmnhqapilot:EnhancedAmbientTests` 分三个batch，保留自然�
 同包 `ModernLeisureTests.naturalRandomLookAndWalkUseNativeMotionThenRideWorkOnlyLooks` 322tick通过，四项一次JSON/XML/process0一致；所有者仍使用既有隔离FakePlayer夹具，不代表实际客户端输入或多人网络
 新增AMBIENT渠道由既有扫描FIFO限制，公平性检查遍历全部五种渠道；原拾取失效观察器允许合法空闲活动出现，不能再要求增强女仆永远无动作
 这里没有性能、完整N或全部活动验收结论，雪地玩耍仍待增强接入
+
+Indev142 的 `tlmnhqapilot:EnhancedSnowballTests` 观察原生EntitySnowball实际飞行、null thrower和主人健康/仇恨；主副手捡球/保留、玩雪中显示食物、两槽占满物品保持53tick通过
+另一场景在实际EntityJoinWorld回调换掉手持物，核旧雪球撤销、旧帧拒绝、迟到清理不删新授权及释放后新副手投掷，修正夹具授权时序后单项61tick通过
+同玩法包N请求10tick与F原雪仗16tick通过，四项合于两份报告；失败均保留，不称一次四项通过
+新场景把隔离FakePlayer完整登记到WorldServer实体表，结束时原生移除，不为夹具放宽生产目标验证；恢复Brain会统一失效旧能力，外部能力应在恢复后建立再验证局部取消
+原 `ModernLeisureTests.fixture` 仅放宽到同包可复用，F流程保持；没有据此验证真实网络、动画画面或完整N
