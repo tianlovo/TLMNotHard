@@ -862,3 +862,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 实测 QA 运行字段为 true，尽管文件配置 false，导致在邻格触发后居中回原格；现代分支用当前/下格的 Block.isLadder 映射默认合同，全局字段/其他实体不改，未宣称已查明运行值覆盖来源
 - 运行类导出和相关 GTNHLib/BugTorch/Catwalks 字节码仅作诊断证据；不将读取、Mixin 加载或局部服务器夹具等同完整原版运行相等
 - 地形场景区分三格安全跌落与六格强制下梯，保持实际跌落能力与算法；复杂模组梯子、全部动画和完整 F/N/原版 O/F/N 仍待验
+
+- Indev102 从固定 TLM 提交移植 `MaidNearestLivingEntitySensor` 与 `MaidHostilesSensor`，保留原包名与来源头；适配为目标版实体查询与现代组件持有的记忆
+- 实读原 `MaidBrain` 感知先于行为、`EntityMaid.searchDimension`、任务搜索盒与弓默认配置；普通扫描竖直范围 4，弓任务只在主手有弓时改为同半径立体盒
+- 固定 mapped 1.20.1 的 `Sensor`、`TargetingConditions`、`NearestVisibleLivingEntities`、`Brain` 与 `LivingEntity` 字节码
+  用于核对 20 tick/独立随机相位、惰性缓存、16 格/隐形护甲与攻击目标分支；未新增原版自然运行成绩
+- `MaidModernPerception` 与 `MaidVisibleLivingEntities` 位于自有根包，保留正阴性缓存到下次扫描；原生苦力怕类型在目标版映射为原生运行类，未将全部 IMob 当作原版危险
+- 目标版 EntitySenses 提供真实视线；现代 Forge 可见性事件尚无同名目标接口，完整感知/活动消费者及原版运行对照仍待完成

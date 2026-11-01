@@ -46,6 +46,7 @@ public final class MaidAcquisitionConfig {
         MaidChatConfig.load(config);
         MaidMealConfig.load(config);
         MaidNavigationConfig.load(config);
+        MaidPerceptionConfig.load(config);
         if (config.hasChanged()) config.save();
     }
 

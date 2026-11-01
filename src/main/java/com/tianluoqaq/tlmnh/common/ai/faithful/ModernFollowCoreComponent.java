@@ -13,6 +13,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
+    private final MaidModernPerception perception;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
@@ -30,6 +31,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     public ModernFollowCoreComponent(EntityMaid maid) {
         this.maid = java.util.Objects.requireNonNull(maid, "maid");
         actor = new ModernFollowCoreActor(maid);
+        perception = new MaidModernPerception(maid, actor::isCurrent);
     }
 
     @Override
@@ -47,6 +49,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lastWorldTick = time;
             lastEntityTick = maid.ticksExisted;
             hasTick = true;
+            perception.tick();
             if (!actor.canBrainMoving()) {
                 actor.stopNavigation();
                 actor.eraseWalkTarget();
@@ -94,6 +97,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         try {
             actor.cancelOwnedResources();
         } finally {
+            perception.clear();
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;
@@ -103,6 +107,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
 
     public ModernFollowCoreActor getActor() {
         return actor;
+    }
+
+    public MaidModernPerception getPerception() {
+        return perception;
     }
 
     public FollowCoreLookDriver.State getLookState() {
