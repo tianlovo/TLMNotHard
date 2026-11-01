@@ -10,6 +10,7 @@ public final class MaidIntentFrame {
 
     public enum Group {
         EMERGENCY,
+        DANGER,
         COMBAT,
         COMMAND,
         CARE,
@@ -25,7 +26,8 @@ public final class MaidIntentFrame {
         BREATHE,
         HEAL,
         MELEE,
-        RANGED
+        RANGED,
+        PANIC
     }
 
     private final MaidPolicyContext context;

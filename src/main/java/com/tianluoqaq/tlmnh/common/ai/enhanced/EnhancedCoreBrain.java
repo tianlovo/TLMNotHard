@@ -28,6 +28,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedNavigationController navigation;
     private final EnhancedLifeController life;
     private final EnhancedCombatController combat;
+    private final EnhancedPanicController panic;
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private Kind selectedKind;
@@ -50,6 +51,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
         life = new EnhancedLifeController(maid, actor);
         combat = new EnhancedCombatController(maid, actor, perception);
+        panic = new EnhancedPanicController(maid, actor, perception);
     }
 
     @Override
@@ -63,19 +65,22 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             perception.tick();
             actor.maintainSleep();
             decisions++;
-            // 骑乘尚未接入；本组件持有的睡眠继续接受生活合法性/日程检查
+            // 常态骑乘尚未接入，危险逃离可尝试离开坐姿/载具
             var home = maid.getHomeArea();
             boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
-            if (!maid.isTamed() || !actor.canBrainMoving() && !sleeping
-                || home.enabled() && !home.sameDimension()
+            if (!maid.isTamed() || home.enabled() && !home.sameDimension()
                 || maid.getTask() != MaidTask.IDLE && maid.getTask() != MaidTask.ATTACK
-                    && maid.getTask() != MaidTask.RANGED_ATTACK
-                || maid.getTask() == MaidTask.IDLE && perception.nearestHostile() != null) {
+                    && maid.getTask() != MaidTask.RANGED_ATTACK) {
+                stopSelected();
+                return;
+            }
+            var frame = new MaidIntentFrame(runtime.getContext(), token, actor.worldGameTime());
+            boolean danger = panic.offer(frame);
+            if (!actor.canBrainMoving() && !sleeping && !danger) {
                 stopSelected();
                 return;
             }
             if (breathStop.checkExtraStartConditions(actor)) breathStop.start(actor);
-            var frame = new MaidIntentFrame(runtime.getContext(), token, actor.worldGameTime());
             boolean lowAir = actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
             if (lowAir || actor.isGoingToBreath() || actor.isEatBreatheItem())
                 frame.offer(Group.EMERGENCY, Kind.BREATHE, "air", 1, null);
@@ -151,6 +156,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     runtime.getContext());
                 case MELEE, RANGED -> combat
                     .execute((net.minecraft.entity.EntityLivingBase) selected.payload, selected.kind == Kind.RANGED);
+                case PANIC -> panic.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
                 case HEAL -> {
                     // 活跃进食不重复调用开始效果，紧急组仍可取消当前物品租约
                     if (!maid.getMealController()
@@ -199,6 +205,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private void stopSelected() {
         selectedKind = null;
         selectedTarget = null;
+        panic.cancel();
         navigation.cancel();
         try {
             try {
@@ -241,6 +248,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedCombatController combat() {
         return combat;
+    }
+
+    public EnhancedPanicController panic() {
+        return panic;
     }
 
     public EnhancedLifeController life() {
