@@ -30,7 +30,8 @@ public final class ModernVehicleTests {
         var v = new Fixture(helper);
         var f = v.f;
         int[] boarded = { -1 }, ownerLeft = { -1 };
-        boolean[] path = { false }, done = { false };
+        boolean[] path = { false }, done = { false }, vehicleWalk = { false };
+        int[] otherWalkTicks = { 0 };
         helper.onEachTick("actual EFR approach, passenger identity and recent owner departure", () -> {
             f.check();
             int age = f.maid.ticksExisted;
@@ -38,9 +39,13 @@ public final class ModernVehicleTests {
                 var walk = f.core.getActor()
                     .peekWalkTarget();
                 if (walk != null) {
-                    helper.assertTrue(
-                        walk.getSpeedModifier() == .5F && walk.getCloseEnoughDistance() == 2,
-                        "Vehicle approach lost original speed/close range");
+                    // 原任务只在没有WALK时写乘船目标，不能把自然游走/其他任务的WALK当成乘船路径
+                    if (tracksEntity(walk, v.boat)) {
+                        helper.assertTrue(
+                            walk.getSpeedModifier() == .5F && walk.getCloseEnoughDistance() == 2,
+                            "Vehicle approach lost original speed/close range");
+                        vehicleWalk[0] = true;
+                    } else otherWalkTicks[0]++;
                     if (!f.navigation.noPath()) path[0] = true;
                 }
                 if (f.maid.ridingEntity != null) {
@@ -63,7 +68,14 @@ public final class ModernVehicleTests {
                     f.maid.ridingEntity == null && f.owner.ridingEntity == null,
                     "Nearby maid did not leave after the owner's recent dismount");
                 done[0] = true;
-                System.out.println("TLMNH_VEHICLE107_BOARD_PASS tick=" + age + " boarded=" + boarded[0]);
+                System.out.println(
+                    "TLMNH_VEHICLE107_BOARD_PASS tick=" + age
+                        + " boarded="
+                        + boarded[0]
+                        + " vehicleWalkObserved="
+                        + vehicleWalk[0]
+                        + " otherWalkTicks="
+                        + otherWalkTicks[0]);
             }
         });
         helper.succeedWhen(() -> done[0]);
@@ -219,6 +231,20 @@ public final class ModernVehicleTests {
             }
         });
         helper.succeedWhen(() -> done[0]);
+    }
+
+    /** 只读真实目标对象身份，不能凭速度或坐标反推哪项行为持有WALK */
+    private static boolean tracksEntity(Object walk, Entity expected) {
+        try {
+            var field = walk.getClass()
+                .getDeclaredField("entity");
+            field.setAccessible(true);
+            return field.get(walk) == expected;
+        } catch (NoSuchFieldException otherTarget) {
+            return false;
+        } catch (IllegalAccessException failure) {
+            throw new IllegalStateException("Cannot inspect actual WALK target identity", failure);
+        }
     }
 
     private static final class Fixture {
