@@ -500,6 +500,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             lifecycleFailed = true;
             throw failure;
         } finally {
+            maid.getModernCombatMemory()
+                .clear();
             afterNavigationActions = null;
             if (telemetry.isEnabled()) telemetry.invalidate("actor_unloaded_during_recording");
         }

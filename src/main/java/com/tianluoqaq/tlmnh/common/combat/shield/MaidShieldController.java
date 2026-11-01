@@ -114,6 +114,7 @@ public final class MaidShieldController {
     private Lease lease, activeLease, passiveLease;
     private Cause cause = Cause.NONE;
     private boolean activeTaskRunning;
+    private Object activeTaskOwner;
     private int passiveRemaining;
     private long maintenanceTicks, activeEndTime, sequence, reentrantRejections;
     private World lastTickWorld;
@@ -172,27 +173,59 @@ public final class MaidShieldController {
         if (lastActiveWorld == maid.worldObj && lastActiveTime == now) return;
         lastActiveWorld = maid.worldObj;
         lastActiveTime = now;
-        boolean permitted = canUseShield() && !maid.getBrainCoordinator()
+        boolean permitted = activeTargetPermitted(target, false);
+        if (activeTaskRunning) {
+            if (activeTaskOwner == this && (!permitted || MaidShieldRules.activeTimedOut(now, activeEndTime)))
+                stopActiveTask(this, permitted ? "active_timed_out" : "active_condition_lost");
+            return;
+        }
+        if (permitted) startPermittedActiveTask(this);
+    }
+
+    private boolean activeTargetPermitted(EntityLivingBase target, boolean modernDistance) {
+        return canUseShield() && !maid.getBrainCoordinator()
             .isSuspended()
             && maid.getTask() == MaidTask.ATTACK
             && target != null
             && target == maid.getAttackTarget()
             && target.worldObj == maid.worldObj
             && target.isEntityAlive()
-            && maid.getDistanceSqToEntity(target) < 64;
-        if (activeTaskRunning) {
-            if (!permitted || MaidShieldRules.activeTimedOut(now, activeEndTime)) {
-                activeTaskRunning = false;
-                release(activeLease, permitted ? "active_timed_out" : "active_condition_lost");
-                activeLease = null;
-            }
-            return;
-        }
-        if (!permitted) return;
+            && (modernDistance ? maid.getDistanceToEntity(target) < 8 : maid.getDistanceSqToEntity(target) < 64);
+    }
+
+    /** 现代Brain在全部行为的启动相位调用，不能在此提前停止旧行为 */
+    public boolean startActiveTask(EntityLivingBase target, Object owner) {
+        Objects.requireNonNull(owner, "owner");
+        if (activeTaskRunning || !activeTargetPermitted(target, true)) return false;
+        startPermittedActiveTask(owner);
+        return true;
+    }
+
+    private void startPermittedActiveTask(Object owner) {
         // Behavior默认min=max=60，bound=1仍消耗一次世界RNG
-        activeEndTime = now + MaidShieldRules.ACTIVE_DURATION + maid.worldObj.rand.nextInt(1);
+        activeEndTime = maid.worldObj.getTotalWorldTime() + MaidShieldRules.ACTIVE_DURATION
+            + maid.worldObj.rand.nextInt(1);
         activeTaskRunning = true;
+        activeTaskOwner = owner;
         activeLease = beginUse(Cause.ACTIVE);
+    }
+
+    public boolean activeTaskOwnedBy(Object owner) {
+        return activeTaskRunning && owner != null && activeTaskOwner == owner;
+    }
+
+    public long activeTaskDeadline() {
+        return activeEndTime;
+    }
+
+    /** 只撤本行为的使用权，取消旧策略时不能停止后来的行为或其他物品使用 */
+    public void stopActiveTask(Object owner, String reason) {
+        if (!activeTaskOwnedBy(owner)) return;
+        var stoppedLease = activeLease;
+        activeTaskRunning = false;
+        activeTaskOwner = null;
+        activeLease = null;
+        release(stoppedLease, reason);
     }
 
     /** 只由EntityMaid.onLivingUpdate的super之后调用，伤害与AI入口不推进时钟 */
@@ -227,6 +260,7 @@ public final class MaidShieldController {
     /** 普通取消只释放使用权，按Item的冷却不会随任务或新ItemStack重置 */
     public void cancelUse(String reason) {
         activeTaskRunning = false;
+        activeTaskOwner = null;
         activeLease = null;
         release(lease, reason);
     }

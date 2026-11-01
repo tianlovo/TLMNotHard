@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityTameable;
@@ -78,6 +79,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.tianluoqaq.tlmnh.common.life.meal.MaidMealController meals = new com.tianluoqaq.tlmnh.common.life.meal.MaidMealController(
         this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
+    private final com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory modernCombatMemory = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory();
+    private final com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings attackSettings = new com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings();
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private final com.tianluoqaq.tlmnh.common.ai.MaidAquaticController aquatic = new com.tianluoqaq.tlmnh.common.ai.MaidAquaticController(
         this);
@@ -129,6 +132,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         getEntityAttribute(SharedMonsterAttributes.followRange).setBaseValue(64.0D);
         getAttributeMap().registerAttribute(SharedMonsterAttributes.attackDamage)
             .setBaseValue(2.0D);
+        com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.register(getAttributeMap());
     }
 
     @Override
@@ -479,6 +483,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return brain;
     }
 
+    /** 原EntityMaid.getTarget读取Brain ATTACK_TARGET，原型仍使用原生EntityLiving字段 */
+    @Override
+    public EntityLivingBase getAttackTarget() {
+        var policy = brain == null ? null : brain.peekPolicyRuntime();
+        if (modernCombatMemory != null && policy != null && policy.requiresAfterNativeNavigation())
+            return modernCombatMemory.target();
+        return super.getAttackTarget();
+    }
+
     @Override
     public boolean attackEntityAsMob(Entity target) {
         return MaidMeleeAttack.attack(this, target);
@@ -622,6 +635,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.SLEEP);
     }
 
+    public com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory getModernCombatMemory() {
+        return modernCombatMemory;
+    }
+
+    public com.github.tartaricacid.touhoulittlemaid.entity.data.inner.AttackListData getAttackListData() {
+        return attackSettings.data();
+    }
+
     public int getFavorability() {
         return dataWatcher.getWatchableObjectInt(DATA_FAVORABILITY);
     }
@@ -744,6 +765,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             "PickupExperience",
             (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_PICKUP_EXPERIENCE) != 0);
         home.save(tag);
+        attackSettings.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
         if (offhand != null) tag.setTag(OFFHAND_TAG, offhand.writeToNBT(new NBTTagCompound()));
         else tag.removeTag(OFFHAND_TAG);
@@ -767,6 +789,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     public void readEntityFromNBT(NBTTagCompound tag) {
         if (damageHistory != null) damageHistory.clear();
+        if (modernCombatMemory != null) modernCombatMemory.clear();
         boolean managed = hasServerBrain(), entered = false, successful = false;
         try {
             if (managed) {
@@ -805,6 +828,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
             setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
             home.load(tag);
+            attackSettings.load(tag);
             meals.load(tag);
             func_110163_bv();
             successful = true;
@@ -832,6 +856,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         try {
             if (hasServerBrain()) brain.onUnload();
         } finally {
+            if (modernCombatMemory != null) modernCombatMemory.clear();
             super.setDead();
         }
     }

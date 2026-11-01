@@ -16,10 +16,15 @@ import net.minecraft.potion.Potion;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraftforge.common.MinecraftForge;
 
+import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
+import com.tianluoqaq.tlmnh.api.event.MaidAttackTargetEvent;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
+import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNativePathRegion;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
@@ -29,21 +34,25 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidWalkEvaluator;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
-public final class ModernFollowCoreActor
-    implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor, MaidPathNavigator.BrainTarget,
-    MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor, MaidLifeActor, MaidStealActor {
+public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
+    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
+    MaidLifeActor, MaidStealActor, MaidCombatActor {
 
     private final EntityMaid maid;
     private final World world;
     private final MaidPathNavigator navigation;
     private final MaidModernLife life;
     private final MaidCakeAction cake;
+    private final TaskAttack attack = new TaskAttack();
+    private Object shieldOwner;
+    private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
     private Point workTarget;
     private MaidEdibleBlockAction edibleAction;
     private MaidModernPerception perception;
@@ -90,6 +99,8 @@ public final class ModernFollowCoreActor
         if (!navigation.claimBrainTarget(this, token, this))
             throw new IllegalStateException("Foreign WALK_TARGET driver");
         navigationLease();
+        maid.getModernCombatMemory()
+            .beginBrainFrame(world, entityTick, worldTick);
     }
 
     void bindPerception(MaidModernPerception memory) {
@@ -533,6 +544,7 @@ public final class ModernFollowCoreActor
     public void cancelOwnedResources() {
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
+            stopOwnedShield();
             cake.cancel();
             life.wake();
             if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
@@ -1223,6 +1235,222 @@ public final class ModernFollowCoreActor
 
     public int teleportAttempts() {
         return teleportAttempts;
+    }
+
+    public MaidCombatActor.Target attackTarget() {
+        guard();
+        var target = maid.getModernCombatMemory()
+            .target();
+        return target == null ? null : new AttackTargetView(target);
+    }
+
+    public MaidCombatActor.Target findFirstValidAttackTarget() {
+        guard();
+        return IAttackTask.findFirstValidAttackTarget(maid, perception.visible(), attack)
+            .map(AttackTargetView::new)
+            .orElse(null);
+    }
+
+    public boolean setAttackTarget(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        var event = new MaidAttackTargetEvent(
+            maid,
+            maid.getModernCombatMemory()
+                .target(),
+            target);
+        if (MinecraftForge.EVENT_BUS.post(event) || !isCurrent()) return false;
+        perception.setAttackTarget(event.getNewTarget());
+        return true;
+    }
+
+    public void eraseAttackTarget() {
+        guard();
+        perception.setAttackTarget(null);
+    }
+
+    public boolean canAttack(MaidCombatActor.Target value) {
+        return attack.canAttack(maid, attackTarget(value).entity);
+    }
+
+    public boolean targetAlive(MaidCombatActor.Target value) {
+        return attackTarget(value).entity.isEntityAlive();
+    }
+
+    public boolean targetInSameWorld(MaidCombatActor.Target value) {
+        return attackTarget(value).entity.worldObj == world;
+    }
+
+    public boolean hasAssaultWeapon() {
+        guard();
+        return maid.getTask() == MaidTask.ATTACK && attack.hasAssaultWeapon(maid);
+    }
+
+    public boolean targetTooFar(MaidCombatActor.Target value) {
+        return attack.farAway(attackTarget(value).entity, maid);
+    }
+
+    public boolean hasVisibleLivingMemory() {
+        guard();
+        return perception.visible() != null;
+    }
+
+    public boolean targetVisible(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        return perception.visible() != null && perception.visible()
+            .contains(target);
+    }
+
+    public boolean withinMeleeRange(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        double reach = MaidCombatAttributes.entityReach(maid) + maid.getFavorabilityManager()
+            .getAttackDistancePlusByPoint(maid.getFavorability());
+        // 普通LivingEntity的melee reference就是position；现代RiderShieldingMount特例尚未移植
+        return maid.getDistanceSqToEntity(target) <= reach * reach;
+    }
+
+    public boolean holdingUsableProjectileWeapon() {
+        guard();
+        // 原EntityMaid.canFireProjectileWeapon仅在IRangedAttackTask成立，ATTACK不因副手弓禁用近战
+        return false;
+    }
+
+    public void lookAtAttackTarget(MaidCombatActor.Target value) {
+        look = new EntityLook(attackTarget(value).entity);
+    }
+
+    public void walkToAttackTarget(MaidCombatActor.Target value, float speed) {
+        walk = new EntityWalk(attackTarget(value).entity, speed, 0);
+    }
+
+    public boolean attackCoolingDown() {
+        guard();
+        return maid.getModernCombatMemory()
+            .coolingDown();
+    }
+
+    public double attackSpeed() {
+        guard();
+        return MaidCombatAttributes.attackSpeed(maid);
+    }
+
+    public void setAttackCooldown(long ticks) {
+        guard();
+        maid.getModernCombatMemory()
+            .coolDown(ticks);
+    }
+
+    public void hurtTarget(MaidCombatActor.Target value) {
+        var view = attackTarget(value);
+        var weapon = maid.getHeldItem();
+        var before = weapon == null ? null : weapon.copy();
+        java.util.function.BooleanSupplier completion = () -> view.current() && view.entity.worldObj == world
+            && maid.getTask() == MaidTask.ATTACK
+            && maid.getModernCombatMemory()
+                .target() == view.entity
+            && maid.getHeldItem() == weapon
+            && ItemStack.areItemStacksEqual(weapon, before);
+        java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && view.entity.isEntityAlive()
+            && attack.hasAssaultWeapon(maid)
+            && attack.canAttack(maid, view.entity)
+            && targetVisible(view)
+            && withinMeleeRange(view);
+        meleeAttempts++;
+        var result = MaidMeleeAttack.hurtForModern(maid, view.entity, admitted, completion);
+        if (result.nativeAccepted) meleeNativeAccepted++;
+        if (result.preCancelled) meleePreCancelled++;
+    }
+
+    public long meleeAttempts() {
+        return meleeAttempts;
+    }
+
+    public long meleeNativeAccepted() {
+        return meleeNativeAccepted;
+    }
+
+    public long meleePreCancelled() {
+        return meleePreCancelled;
+    }
+
+    public boolean canUseShield() {
+        guard();
+        return maid.canUseShield();
+    }
+
+    public float distanceToTarget(MaidCombatActor.Target value) {
+        return maid.getDistanceToEntity(attackTarget(value).entity);
+    }
+
+    public void startUsingShield(MaidCombatActor.Target value) {
+        var target = attackTarget(value).entity;
+        Object owner = token;
+        shieldOwner = owner;
+        boolean started = maid.getShieldController()
+            .startActiveTask(target, owner);
+        if (!isCurrent()) maid.getShieldController()
+            .stopActiveTask(owner, "expired_modern_shield_start");
+        if ((!started || !isCurrent()) && shieldOwner == owner) shieldOwner = null;
+    }
+
+    public void stopUsingShield() {
+        guard();
+        stopOwnedShield();
+    }
+
+    private void stopOwnedShield() {
+        Object owner = shieldOwner;
+        shieldOwner = null;
+        maid.getShieldController()
+            .stopActiveTask(owner, "modern_behavior_stop");
+    }
+
+    public boolean shieldBehaviorRunning() {
+        guard();
+        return maid.getShieldController()
+            .activeTaskOwnedBy(shieldOwner);
+    }
+
+    public long shieldBehaviorDeadline() {
+        guard();
+        return maid.getShieldController()
+            .activeTaskDeadline();
+    }
+
+    private AttackTargetView attackTarget(MaidCombatActor.Target value) {
+        guard();
+        if (!(value instanceof AttackTargetView view) || view.actor() != this || !view.current())
+            throw new IllegalArgumentException("Foreign or expired attack target view");
+        return view;
+    }
+
+    private final class AttackTargetView implements MaidCombatActor.Target {
+
+        final EntityLivingBase entity;
+        final UUID identity;
+        final int entityId, age;
+        final long tick;
+        final Token lease;
+
+        AttackTargetView(EntityLivingBase entity) {
+            this.entity = entity;
+            identity = entity.getUniqueID();
+            entityId = entity.getEntityId();
+            lease = token;
+            tick = worldTick;
+            age = entityTick;
+        }
+
+        ModernFollowCoreActor actor() {
+            return ModernFollowCoreActor.this;
+        }
+
+        boolean current() {
+            return isCurrent() && lease == token
+                && tick == worldTick
+                && age == entityTick
+                && entityId == entity.getEntityId()
+                && identity.equals(entity.getUniqueID());
+        }
     }
 
     private OwnerView owner(Owner value) {

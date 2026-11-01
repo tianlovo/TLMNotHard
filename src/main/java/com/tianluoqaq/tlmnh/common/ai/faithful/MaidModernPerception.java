@@ -53,6 +53,8 @@ public final class MaidModernPerception {
     public void tick() {
         if (!current.getAsBoolean()) throw new IllegalStateException("Expired perception frame");
         active = true;
+        attackTarget = maid.getModernCombatMemory()
+            .target();
         if (--livingDelay <= 0) {
             livingDelay = SCAN_RATE;
             living.doTick(maid, this);
@@ -172,6 +174,8 @@ public final class MaidModernPerception {
     public void setAttackTarget(EntityLivingBase entity) {
         guard();
         attackTarget = entity;
+        maid.getModernCombatMemory()
+            .target(entity);
     }
 
     private boolean targetable(EntityLivingBase entity) {

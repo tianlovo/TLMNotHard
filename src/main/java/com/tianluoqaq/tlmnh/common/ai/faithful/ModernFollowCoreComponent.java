@@ -46,6 +46,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidRunAwayTask runAway = new MaidRunAwayTask(.7F, false);
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
+    private final MaidModernCombat combat = new MaidModernCombat();
     private final MaidBedTask bed = new MaidBedTask(.6F, 2);
     private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
     private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
@@ -79,7 +80,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         priority99.put("idle", MaidActivityState.Activity.IDLE);
         priority99.put("work", MaidActivityState.Activity.WORK);
         priority99.put("rest", MaidActivityState.Activity.REST);
+        priority5.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
         priority5.put("idle", MaidActivityState.Activity.IDLE);
+        priority5.put("work", MaidActivityState.Activity.WORK);
         priority5.put("rest", MaidActivityState.Activity.REST);
         priority5.put("panic", MaidActivityState.Activity.PANIC);
     }
@@ -166,6 +169,11 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                         bed.start(actor);
                         if (!actor.isCurrent()) return;
                     }
+                } else if (group == MaidActivityState.Activity.WORK || group == MaidActivityState.Activity.RIDE_WORK) {
+                    if (maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK) {
+                        combat.startTasks(actor, group == MaidActivityState.Activity.RIDE_WORK);
+                        if (!actor.isCurrent()) return;
+                    }
                 } else {
                     actor.nextWorldInt(1);
                     clearHurt.start(activities);
@@ -240,6 +248,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     rideIdleBeg.stop(actor);
                 }
             }
+            combat.runShield(actor);
             if (idleBegRunning) {
                 if (idleBeg.canStillUse(actor)) idleBeg.tick(actor);
                 else {

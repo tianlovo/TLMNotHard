@@ -933,3 +933,18 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 目标 MCP BlockCake 的 metadata+1 达到 6 时移除，采用本平台六口而非现代七口；粒子发送走目标 WorldServer 原生包，实际客户端表现待验
 - 放置继续检查零食柜与资源身份，比源 Use 的位置复核更严格；近处已失效的源工作目标没有擅自加入自动清理，后续增强策略单独处理
 - 初生首次搜索与稳定落地后站起的结果不同，原始失败和隔离诊断保留，未用手动搜索冒充自然通过；原版首帧合同仍待对照
+
+## 原选敌、近战与盾牌活动
+
+- Indev110 从固定 TLM 提交移植 `IAttackTask`、`TaskAttack`、`DefaultMonsterType`、`MonsterType`、`AttackListData`
+  以及 `MaidHurtTarget`、`MaidMeleeAttack` 和 `MaidUseShieldTask`，保留原包名、来源头和行为条件
+- 实读原 EntityMaid 的攻击属性、距离、伤害事件、任务刷新记忆、目标 getter 与可用盾牌；实读 TaskData 注册及 Codec 存档
+  保留 `MaidTaskDataMaps/touhou_little_maid:maid_attack_list/attack_groups` 结构与未知数据
+- 实读固定 1.20.1 映射字节码的 StartAttacking、StopAttackingIfTargetInvalid、SetWalkTargetFromAttackTargetIfTargetOutOfReach
+  以及 OneShot、ExpirableValue、Brain 的过期顺序及 BehaviorUtils 攻击范围
+- 自有 `MaidModernCombat` 保留优先级 5 的选敌、失效清理、步行追击、近战、举盾顺序；骑乘版本省略追击，OneShot 不添加 Behavior 的随机时长抽样
+- 自有 `MaidCombatMemory` 按实际 Brain 帧过期，任务取消保留攻击目标与冷却；目标 view 绑定当前策略 token、世界 tick、实体年龄及目标身份，原 getTarget 语义经实体 getter 桥接
+- 自有 `MaidCombatAttributes` 默认速度 4、距离 2，加原好感距离；使用目标平台真实物品修饰符、伤害、附魔与耐久，不虚构现代武器速度修饰符
+- 实读正式版 EFR 2.6.65 的 EntityArmourStand 和原生 FML 注册查询；分类使用实际 IMob/INpc、驯养归属、原生受伤/攻击历史与配置，不把所有模组实体类型宣称为现代 Enemy 的一一映射
+- 现代 Forge 的可取消 BEHAVIOR_TARGET 事件以自有 `MaidAttackTargetEvent` 适配；原 Pre 取消仍为 API true 且无 Post/损耗，回调后继续检查实际授权，致死已接受攻击仍执行原武器损耗
+- ShieldController 拆分 owner 限定的启动与运行结束，保留原型旧入口；普通目标近战参考位置已适配，现代 RiderShieldingMount 特例、分类 GUI/网络和完整任务刷新工作记忆仍待补齐
