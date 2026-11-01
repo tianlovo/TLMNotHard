@@ -84,6 +84,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
         this);
     private ItemStack offhand;
+    private final com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory damageHistory = new com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory();
     private boolean canClimb;
     private int climbFallDelayTicks;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
@@ -254,11 +255,18 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         try {
             if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
             boolean accepted = super.attackEntityFrom(source, amount);
+            if (accepted && damageHistory != null && worldObj != null && !worldObj.isRemote)
+                damageHistory.record(worldObj, worldObj.getTotalWorldTime(), source);
             if (accepted && brain != null) brain.recordAcceptedHurt();
             return accepted;
         } finally {
             if (worldSounds != null) worldSounds.endDamage(previous);
         }
+    }
+
+    public DamageSource getMaidLastDamageSource() {
+        return damageHistory == null || worldObj == null ? null
+            : damageHistory.source(worldObj, worldObj.getTotalWorldTime());
     }
 
     @Override
@@ -748,6 +756,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void readEntityFromNBT(NBTTagCompound tag) {
+        if (damageHistory != null) damageHistory.clear();
         boolean managed = hasServerBrain(), entered = false, successful = false;
         try {
             if (managed) {

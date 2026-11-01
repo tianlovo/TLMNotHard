@@ -7,19 +7,22 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemBow;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.DamageSource;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidHostilesSensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidNearestLivingEntitySensor;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidPickupEntitiesSensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
-/** 现代组件的附近/可见/苦力怕记忆，不与原型危险缓存混用；拾取和受伤传感器尚待接入 */
+/** 现代组件的附近/可见/危险/受伤/拾取记忆，不与原型危险缓存混用 */
 public final class MaidModernPerception {
 
     private static final int SCAN_RATE = 20;
@@ -28,13 +31,19 @@ public final class MaidModernPerception {
     private final EntityMaid maid;
     private final BooleanSupplier current;
     private final MaidNearestLivingEntitySensor living = new MaidNearestLivingEntitySensor();
+    private final MaidHurtBySensor hurt = new MaidHurtBySensor();
     private final MaidHostilesSensor hostile = new MaidHostilesSensor();
-    private int livingDelay = RANDOM.nextInt(SCAN_RATE), hostileDelay = RANDOM.nextInt(SCAN_RATE);
+    private final MaidPickupEntitiesSensor pickup = new MaidPickupEntitiesSensor();
+    private int livingDelay = RANDOM.nextInt(SCAN_RATE), hurtDelay = RANDOM.nextInt(SCAN_RATE),
+        hostileDelay = RANDOM.nextInt(SCAN_RATE), pickupDelay = RANDOM.nextInt(30);
     private boolean active;
-    private long epoch, scans, hostileScans;
+    private long epoch, scans, hostileScans, hurtScans, pickupScans;
     private List<EntityLivingBase> nearby = Collections.emptyList();
     private MaidVisibleLivingEntities visible;
     private EntityLivingBase nearestHostile, attackTarget;
+    private DamageSource hurtBy;
+    private EntityLivingBase hurtByEntity;
+    private List<Entity> pickupEntities = Collections.emptyList();
 
     public MaidModernPerception(EntityMaid maid, BooleanSupplier current) {
         this.maid = Objects.requireNonNull(maid, "maid");
@@ -49,10 +58,20 @@ public final class MaidModernPerception {
             living.doTick(maid, this);
             scans++;
         }
+        if (--hurtDelay <= 0) {
+            hurtDelay = SCAN_RATE;
+            hurt.doTick(maid, this);
+            hurtScans++;
+        }
         if (--hostileDelay <= 0) {
             hostileDelay = SCAN_RATE;
             hostile.doTick(maid, this);
             hostileScans++;
+        }
+        if (--pickupDelay <= 0) {
+            pickupDelay = 30;
+            pickup.doTick(maid, this);
+            pickupScans++;
         }
     }
 
@@ -79,6 +98,55 @@ public final class MaidModernPerception {
             guard();
             if (epoch != snapshotEpoch) throw new IllegalStateException("Retired visible entity memory");
         });
+    }
+
+    public AxisAlignedBB pickupSearchDimension() {
+        guard();
+        var area = maid.getHomeArea();
+        if (area.enabled()) {
+            var p = area.center();
+            return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
+                .expand(area.radius(), 4, area.radius());
+        }
+        return maid.boundingBox.expand(area.radius(), 4, area.radius());
+    }
+
+    public List<Entity> pickupEntities() {
+        guard();
+        return pickupEntities;
+    }
+
+    public void setPickupEntities(List<Entity> entities) {
+        guard();
+        pickupEntities = Collections.unmodifiableList(new ArrayList<>(entities));
+    }
+
+    public DamageSource hurtBy() {
+        guard();
+        return hurtBy;
+    }
+
+    public void setHurtBy(DamageSource source) {
+        guard();
+        hurtBy = source;
+    }
+
+    public EntityLivingBase hurtByEntity() {
+        guard();
+        return hurtByEntity;
+    }
+
+    public void setHurtByEntity(EntityLivingBase entity) {
+        guard();
+        hurtByEntity = entity;
+    }
+
+    public float taskSearchRadius() {
+        guard();
+        return maid.getHomeArea()
+            .activity() == Activity.WORK && maid.getTask() == MaidTask.RANGED_ATTACK ? MaidPerceptionConfig.bowRange
+                : maid.getHomeArea()
+                    .radius();
     }
 
     public List<EntityLivingBase> nearby() {
@@ -136,8 +204,13 @@ public final class MaidModernPerception {
         visible = null;
         nearestHostile = null;
         attackTarget = null;
+        hurtBy = null;
+        hurtByEntity = null;
+        pickupEntities = Collections.emptyList();
         livingDelay = RANDOM.nextInt(SCAN_RATE);
+        hurtDelay = RANDOM.nextInt(SCAN_RATE);
         hostileDelay = RANDOM.nextInt(SCAN_RATE);
+        pickupDelay = RANDOM.nextInt(30);
     }
 
     private void guard() {
@@ -150,5 +223,13 @@ public final class MaidModernPerception {
 
     public long hostileScanCount() {
         return hostileScans;
+    }
+
+    public long hurtScanCount() {
+        return hurtScans;
+    }
+
+    public long pickupScanCount() {
+        return pickupScans;
     }
 }

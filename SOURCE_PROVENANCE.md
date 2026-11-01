@@ -869,3 +869,12 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
   用于核对 20 tick/独立随机相位、惰性缓存、16 格/隐形护甲与攻击目标分支；未新增原版自然运行成绩
 - `MaidModernPerception` 与 `MaidVisibleLivingEntities` 位于自有根包，保留正阴性缓存到下次扫描；原生苦力怕类型在目标版映射为原生运行类，未将全部 IMob 当作原版危险
 - 目标版 EntitySenses 提供真实视线；现代 Forge 可见性事件尚无同名目标接口，完整感知/活动消费者及原版运行对照仍待完成
+
+- Indev103 从固定 TLM 提交移植 `MaidPickupEntitiesSensor` 与 `MaidPickupEntitiesTask`，保留原包名与 MIT 来源头
+  保留原清单过滤顺序、30 tick、优先级 10 和任务局部 BFS
+- 任务 BFS 使用已移植原查询，默认半径为当前任务 searchRadius、竖直 7，动态实体 WALK/LOOK 与实际接触交易分开；未复制新的一套库存事务
+- 固定 mapped `EntityTracker`、`BehaviorUtils`、`HurtBySensor` 与 `LivingEntity` 字节码用于核对目标位置/眼高、可见记忆和受伤寿命；新增适配位于自有包
+- `MaidDamageHistory` 只记录目标版真正接受的 DamageSource；策略取消不擦实体历史，NBT 重读/换世界/时钟回退失效，超过 40 世界 tick 清理
+- HurtBy 的环境伤害/空源与旧攻击者保留相位，以及活体 LOOK 的可见缓存依赖均按读取合同适配；完整活动与原版自然运行对照继续待办
+
+- 拾取夹具同时核对目标版 `EntityItem` 半高 yOffset 与 Horizon-QA 出生位置 API，使用有效出生高度和实体实时坐标；实际观察失败与定向纠正单独保留

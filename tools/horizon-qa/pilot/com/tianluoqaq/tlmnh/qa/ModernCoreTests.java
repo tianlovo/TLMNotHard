@@ -335,7 +335,13 @@ public final class ModernCoreTests {
         }
 
         void check() {
-            helper.assertTrue(maid.isEntityAlive() && maid.getHealth() == 20, "Modern core actor damaged");
+            check(20);
+        }
+
+        void check(float expectedHealth) {
+            helper.assertTrue(
+                maid.isEntityAlive() && maid.getHealth() == expectedHealth,
+                "Modern core actor health differs");
             helper.assertFalse(
                 maid.getBrainCoordinator()
                     .getBreathController()

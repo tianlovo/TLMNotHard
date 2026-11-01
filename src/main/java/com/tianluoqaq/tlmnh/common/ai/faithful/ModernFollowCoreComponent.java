@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathA
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -20,6 +21,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private final MaidClimbTask climb = new MaidClimbTask();
+    private final MaidPickupEntitiesTask pickup = new MaidPickupEntitiesTask(.6F);
     private boolean climbRunning;
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
@@ -32,6 +34,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         this.maid = java.util.Objects.requireNonNull(maid, "maid");
         actor = new ModernFollowCoreActor(maid);
         perception = new MaidModernPerception(maid, actor::isCurrent);
+        actor.bindPerception(perception);
     }
 
     @Override
@@ -77,6 +80,11 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 actor.nextWorldInt(1); // 默认Behavior 60 + nextInt(1)，本任务canStillUse=false
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
+            }
+            if (!perception.pickupEntities()
+                .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
+                actor.nextWorldInt(1);
+                pickup.start(maid, perception, actor);
             }
             if (climbRunning) {
                 if (time > climbDeadline || !climb.canStillUse(actor)) {

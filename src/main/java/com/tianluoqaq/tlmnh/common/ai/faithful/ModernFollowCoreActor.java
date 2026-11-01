@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
@@ -36,6 +38,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final EntityMaid maid;
     private final World world;
     private final MaidPathNavigator navigation;
+    private MaidModernPerception perception;
     private MaidPolicyRuntime runtime;
     private Token token;
     private long worldTick;
@@ -74,6 +77,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (!navigation.claimBrainTarget(this, token, this))
             throw new IllegalStateException("Foreign WALK_TARGET driver");
         navigationLease();
+    }
+
+    void bindPerception(MaidModernPerception memory) {
+        if (perception != null) throw new IllegalStateException("Perception already bound");
+        perception = Objects.requireNonNull(memory, "memory");
     }
 
     @Override
@@ -442,10 +450,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean isCurrentLookTargetVisible() {
         guard();
         if (look instanceof Point || look instanceof Vec3) return true;
-        return look instanceof OwnerView target && target.player.worldObj == world
-            && target.player.isEntityAlive()
-            && maid.getEntitySenses()
-                .canSee(target.player);
+        Entity entity = look instanceof OwnerView target ? target.player
+            : look instanceof EntityLook target ? target.entity : null;
+        if (entity == null) return false;
+        // 原EntityTracker对非活体始终true，不以拾取移除/实时ray提前截断LOOK期限
+        if (!(entity instanceof EntityLivingBase living)) return true;
+        return living.isEntityAlive() && perception.visible() != null
+            && perception.visible()
+                .contains(living);
     }
 
     public void lookAtCurrentTargetIfPresent() {
@@ -461,6 +473,27 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .setLookPosition(target.x + .5, target.y + .5, target.z + .5, 10, maid.getVerticalFaceSpeed());
         else if (look instanceof Vec3 target) maid.getLookHelper()
             .setLookPosition(target.x, target.y, target.z, 10, maid.getVerticalFaceSpeed());
+        else if (look instanceof EntityLook target) maid.getLookHelper()
+            .setLookPosition(
+                target.entity.posX,
+                target.entity.posY + target.entity.getEyeHeight(),
+                target.entity.posZ,
+                10,
+                maid.getVerticalFaceSpeed());
+    }
+
+    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS openPickupSearch() {
+        navigationLease();
+        var area = maid.getHomeArea();
+        var center = area.enabled() ? new Point(area.center().x, area.center().y, area.center().z)
+            : airSearchPosition();
+        return navigation.createArrivalMap(center, perception.taskSearchRadius(), 7);
+    }
+
+    public void setEntityWalkAndLook(Entity entity, float speed, int closeDistance) {
+        guard();
+        look = new EntityLook(entity);
+        walk = new EntityWalk(entity, speed, closeDistance);
     }
 
     public boolean isEatBreatheItem() {
@@ -779,6 +812,52 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean isEntityTrackerSpectator() {
             guard();
             return false;
+        }
+    }
+
+    private static final class EntityLook {
+
+        final Entity entity;
+
+        EntityLook(Entity entity) {
+            this.entity = entity;
+        }
+    }
+
+    private final class EntityWalk implements WalkTarget {
+
+        final Entity entity;
+        final float speed;
+        final int closeEnough;
+
+        EntityWalk(Entity entity, float speed, int closeEnough) {
+            this.entity = entity;
+            this.speed = speed;
+            this.closeEnough = closeEnough;
+        }
+
+        public BlockPos currentBlockPosition() {
+            guard();
+            return new BlockPos(
+                MathHelper.floor_double(entity.posX),
+                MathHelper.floor_double(entity.posY),
+                MathHelper.floor_double(entity.posZ));
+        }
+
+        public float getSpeedModifier() {
+            guard();
+            return speed;
+        }
+
+        public int getCloseEnoughDistance() {
+            guard();
+            return closeEnough;
+        }
+
+        public boolean isEntityTrackerSpectator() {
+            guard();
+            return entity instanceof EntityPlayerMP player && player.theItemInWorldManager.getGameType()
+                .getID() == 3;
         }
     }
 
