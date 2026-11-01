@@ -143,6 +143,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (aquatic != null) aquatic.afterLivingUpdate();
         if (!worldObj.isRemote) {
             favorabilityManager.tick();
+            brain.afterLivingUpdate();
             shield.tickAfterLivingUpdate();
             meals.tick();
             pickup.tick();
@@ -220,6 +221,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
     public void handleHealthUpdate(byte state) {
         if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);
+        else if (state == 46) com.tianluoqaq.tlmnh.common.entity.MaidTeleportParticles.show(this);
         else super.handleHealthUpdate(state);
     }
 

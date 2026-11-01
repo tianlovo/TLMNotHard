@@ -35,6 +35,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidRunAwayTask runAway = new MaidRunAwayTask(.7F, false);
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
+    private final com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos schedulePos = new com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos();
     private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
     private boolean climbRunning;
     private long climbDeadline;
@@ -159,6 +160,12 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             followRunning = false;
             climbRunning = false;
         }
+    }
+
+    @Override
+    public void afterLivingUpdate(Token token) {
+        actor.afterLivingFrame(token);
+        schedulePos.tick(actor);
     }
 
     public ModernFollowCoreActor getActor() {

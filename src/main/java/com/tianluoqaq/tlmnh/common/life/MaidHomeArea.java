@@ -19,6 +19,8 @@ public final class MaidHomeArea {
     private String observed;
     private MaidHomeSettings settings = MaidHomeSettings.EMPTY;
     private Activity observedActivity;
+    private Point restrictionCenter = Point.ZERO;
+    private int restrictionRadius = MaidHomeConfig.nonHomeRange;
     private NBTTagCompound unreadSave;
 
     public MaidHomeArea(EntityMaid maid) {
@@ -26,7 +28,7 @@ public final class MaidHomeArea {
     }
 
     public static void register(DataWatcher watcher) {
-        watcher.addObject(DATA_HOME, MaidHomeSettings.EMPTY.encode());
+        watcher.addObject(DATA_HOME, encode(MaidHomeSettings.EMPTY, Point.ZERO, MaidHomeConfig.nonHomeRange));
     }
 
     public MaidHomeSettings settings() {
@@ -35,9 +37,26 @@ public final class MaidHomeArea {
         if (!encoded.equals(observed)) {
             observed = encoded;
             try {
-                settings = MaidHomeSettings.decode(encoded);
+                var parts = encoded.split("\\|", -1);
+                settings = MaidHomeSettings.decode(parts[0]);
+                if (parts.length == 3) {
+                    var xyz = parts[1].split(",", -1);
+                    if (xyz.length != 3) throw new IllegalArgumentException("Invalid restriction center");
+                    restrictionCenter = new Point(
+                        Integer.parseInt(xyz[0]),
+                        Integer.parseInt(xyz[1]),
+                        Integer.parseInt(xyz[2]));
+                    restrictionRadius = Integer.parseInt(parts[2]);
+                    if (restrictionRadius < 1 || restrictionRadius > 64)
+                        throw new IllegalArgumentException("Invalid restriction radius");
+                } else if (parts.length == 1) {
+                    restrictionCenter = Point.ZERO;
+                    restrictionRadius = MaidHomeConfig.nonHomeRange;
+                } else throw new IllegalArgumentException("Invalid restriction metadata");
             } catch (IllegalArgumentException invalid) {
                 settings = MaidHomeSettings.EMPTY;
+                restrictionCenter = Point.ZERO;
+                restrictionRadius = MaidHomeConfig.nonHomeRange;
                 TLMNotHard.LOG.warn("Invalid synchronized home settings for maid {}", maid.getUniqueID());
             }
         }
@@ -81,6 +100,32 @@ public final class MaidHomeArea {
 
     public boolean containsMaid() {
         return contains(maid.posX, maid.posY, maid.posZ);
+    }
+
+    public Point restrictionCenter() {
+        settings();
+        return restrictionCenter;
+    }
+
+    public int restrictionRadius() {
+        settings();
+        return restrictionRadius;
+    }
+
+    public boolean withinRestriction(int x, int y, int z) {
+        return !enabled() || restrictionCenter().containsBlock(x, y, z, restrictionRadius());
+    }
+
+    /** 原restrictTo只在home开启时更新；关闭home仍保留最后一次半径和中心 */
+    public void restrictToCurrentSchedule() {
+        if (maid.worldObj == null || maid.worldObj.isRemote || !enabled()) return;
+        restrictionCenter = settings().center(activity());
+        restrictionRadius = radius();
+        publish(settings);
+    }
+
+    private static String encode(MaidHomeSettings settings, Point center, int radius) {
+        return settings.encode() + "|" + center + "|" + radius;
     }
 
     public boolean setEnabled(boolean enabled) {
@@ -144,12 +189,13 @@ public final class MaidHomeArea {
         maid.getBrainCoordinator()
             .onHomeCommandChanged();
         publish(next);
+        restrictToCurrentSchedule();
         observedActivity = activity();
     }
 
     private void publish(MaidHomeSettings next) {
         maid.getDataWatcher()
-            .updateObject(DATA_HOME, next.encode());
+            .updateObject(DATA_HOME, encode(next, restrictionCenter, restrictionRadius));
         observed = null;
     }
 
@@ -181,6 +227,7 @@ public final class MaidHomeArea {
         try {
             if (home.getInteger("Schema") != 1) throw new IllegalArgumentException("Unknown home schema");
             publish(MaidHomeSettings.decode(home.getString("Settings")));
+            restrictToCurrentSchedule();
         } catch (IllegalArgumentException invalid) {
             unreadSave = (NBTTagCompound) home.copy();
             TLMNotHard.LOG.warn("Preserving unreadable home settings for maid {}; home disabled", maid.getUniqueID());

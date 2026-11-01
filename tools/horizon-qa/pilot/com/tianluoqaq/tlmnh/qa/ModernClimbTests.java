@@ -141,7 +141,7 @@ public final class ModernClimbTests {
 
     private static ModernCoreTests.Fixture fixture(GameTestHelper helper, int ladderHeight, int range) {
         // 原任务start会将y固定到当前方块底部，最多一个方块的有界居中不算主人传送
-        var f = new ModernCoreTests.Fixture(helper, false, 2.25);
+        var f = new ModernCoreTests.Fixture(helper, false, 2.25, range);
         MaidHomeConfig.workRange = range;
         for (int x = 6; x < 20; x++)
             for (int y = 1; y <= ladderHeight; y++) for (int z = 1; z < 8; z++) helper.setBlock(x, y, z, Blocks.glass);

@@ -3,7 +3,6 @@ package com.tianluoqaq.tlmnh.common.ai.faithful;
 import java.util.EnumMap;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 
@@ -77,9 +76,8 @@ public final class MaidActivityState {
             if (cached == null) scheduleCaches.put(active, scheduled);
             if (cached != null && cached != scheduled && actor.isHomeModeEnable() && actor.canBrainMoving()) {
                 scheduleCaches.put(active, scheduled);
-                var center = maid.getHomeArea()
-                    .center();
-                actor.setPositionWalkAndLook(new Point(center.x, center.y, center.z), .7F, 3);
+                actor.applyScheduleRestriction();
+                actor.setPositionWalkAndLook(actor.restrictionCenter(), .7F, 3);
             }
         }
         updateFromSchedule();

@@ -262,6 +262,10 @@ public final class ModernCoreTests {
         }
 
         Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared) {
+            this(helper, wet, maxDisplacementSquared, 12);
+        }
+
+        Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared, int nonHomeRange) {
             this.maxDisplacementSquared = maxDisplacementSquared;
             this.helper = helper;
             var origin = helper.absolute(0, 0, 0);
@@ -273,15 +277,18 @@ public final class ModernCoreTests {
             long time = helper.getWorld()
                 .getWorldTime();
             int range = MaidHomeConfig.workRange;
+            int oldNonHomeRange = MaidHomeConfig.nonHomeRange;
             server.setCanSpawnAnimals(true);
             helper.getWorld()
                 .setWorldTime(6000);
             MaidHomeConfig.workRange = 12;
+            MaidHomeConfig.nonHomeRange = nonHomeRange;
             helper.afterTest(() -> {
                 server.setCanSpawnAnimals(animals);
                 helper.getWorld()
                     .setWorldTime(time);
                 MaidHomeConfig.workRange = range;
+                MaidHomeConfig.nonHomeRange = oldNonHomeRange;
             });
             var chunks = new GameTestChunkLoader();
             helper.afterTest(chunks::releaseAll);

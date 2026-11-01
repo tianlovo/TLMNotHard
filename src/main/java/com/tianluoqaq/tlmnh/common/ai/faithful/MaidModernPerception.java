@@ -79,11 +79,11 @@ public final class MaidModernPerception {
         guard();
         var area = maid.getHomeArea();
         boolean bowTask = area.activity() == Activity.WORK && maid.getTask() == MaidTask.RANGED_ATTACK;
-        double radius = bowTask ? MaidPerceptionConfig.bowRange : area.radius();
+        double radius = bowTask ? MaidPerceptionConfig.bowRange : area.restrictionRadius();
         var held = maid.getHeldItem();
         double vertical = bowTask && held != null && held.getItem() instanceof ItemBow ? radius : 4;
         if (area.enabled()) {
-            var p = area.center();
+            var p = area.restrictionCenter();
             return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
                 .expand(radius, vertical, radius);
         }
@@ -104,11 +104,11 @@ public final class MaidModernPerception {
         guard();
         var area = maid.getHomeArea();
         if (area.enabled()) {
-            var p = area.center();
+            var p = area.restrictionCenter();
             return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
-                .expand(area.radius(), 4, area.radius());
+                .expand(area.restrictionRadius(), 4, area.restrictionRadius());
         }
-        return maid.boundingBox.expand(area.radius(), 4, area.radius());
+        return maid.boundingBox.expand(area.restrictionRadius(), 4, area.restrictionRadius());
     }
 
     public List<Entity> pickupEntities() {
@@ -143,10 +143,9 @@ public final class MaidModernPerception {
 
     public float taskSearchRadius() {
         guard();
-        return maid.getHomeArea()
-            .activity() == Activity.WORK && maid.getTask() == MaidTask.RANGED_ATTACK ? MaidPerceptionConfig.bowRange
-                : maid.getHomeArea()
-                    .radius();
+        return maid.getTask() == MaidTask.RANGED_ATTACK ? MaidPerceptionConfig.bowRange
+            : maid.getHomeArea()
+                .restrictionRadius();
     }
 
     public List<EntityLivingBase> nearby() {

@@ -174,6 +174,15 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("boxWidth", maid.boundingBox.maxX - maid.boundingBox.minX);
                             shape.addProperty("boxHeight", maid.boundingBox.maxY - maid.boundingBox.minY);
                             shape.addProperty("eye", maid.getEyeHeight());
+                            var restriction = maid.getHomeArea()
+                                .restrictionCenter();
+                            shape.addProperty("restrictionX", restriction.x);
+                            shape.addProperty("restrictionY", restriction.y);
+                            shape.addProperty("restrictionZ", restriction.z);
+                            shape.addProperty(
+                                "restrictionRadius",
+                                maid.getHomeArea()
+                                    .restrictionRadius());
                             aquatic.add(shape);
                             if (aquatic.size() >= 32) break;
                         }

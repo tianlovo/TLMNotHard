@@ -887,3 +887,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原 BlockStateBase.calculateSolid 默认按碰撞包围盒平均尺寸或高度判断，目标版据实际 AABB 映射；现代强制 solid 属性尚无同名目标元数据
 
 - 补读原 `SchedulePos` 确认独立的 40 tick 实体侧限制区/返回/传送流程；本批仅原日程活动 Task 与既有锚点适配，该实体流程及限制区锁存留作下一批
+
+- Indev105 从同一固定 TLM 提交移植 `entity/passive/SchedulePos` 与 `util/TeleportHelper`，保留原包名和来源头
+- 实读原 EntityMaid 的 RESTRICT_CENTER/RADIUS 初值、aiStep 调用位置和限制区判断；实体后移动阶段每 40 tick 施加锁存限制区，独立于 Brain 的日程活动节流
+- 原非家园范围默认 8，关闭 home 后保留最后运行限制区；目标版复用现有 DATA_HOME 字符串后缀同步，不新增槽位或改变旧 NBT Settings 格式
+- 固定 mapped LivingEntity.randomTeleport、事件 46 与 Entity 位置更新字节码，核对整数候选、下探支撑、真实碰撞/液体、失败回原位和 128 个粒子的抽样顺序
+- 原 TeleportHelper 初步方块读取可加载目标区块，randomTeleport 自身再检查区块；不替换为主人传送算法，也不在十次失败后发明 WALK 回退
+- 新增限制区/传送适配位于自有根包，沿实际碰撞 AABB 映射原默认 solid/blocksMotion；现代强制 solid 属性及特殊模组方块兼容仍有限制
+- 这些源码与字节码合同不等于新增原版自然运行或 O/F/N benchmark，完整 F/N 仍未开放

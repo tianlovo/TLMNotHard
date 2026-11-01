@@ -74,6 +74,8 @@ public final class MaidPolicyRuntime {
 
         void tick(MaidPolicyContext.Token token);
 
+        default void afterLivingUpdate(MaidPolicyContext.Token token) {}
+
         /** 旧 token 已先失效；清理只依据本动作实际持有的资源身份 */
         void cancel();
     }
@@ -97,14 +99,18 @@ public final class MaidPolicyRuntime {
 
     /** lifePermission 保持惰性；战斗占用时仍推进一次不被许可的生活清理 */
     public TickResult tick(BooleanSupplier lifePermission) {
-        return tick(false, lifePermission);
+        return tick(false, false, lifePermission);
     }
 
     public TickResult tickAfterNativeNavigation() {
-        return tick(true, () -> false);
+        return tick(true, false, () -> false);
     }
 
-    private TickResult tick(boolean afterNativeNavigation, BooleanSupplier lifePermission) {
+    public TickResult tickAfterLivingUpdate() {
+        return tick(true, true, () -> false);
+    }
+
+    private TickResult tick(boolean afterNativeNavigation, boolean afterLiving, BooleanSupplier lifePermission) {
         if (retired) return TickResult.RETIRED;
         Objects.requireNonNull(lifePermission, "lifePermission");
         if (dispatching || changing) {
@@ -118,7 +124,8 @@ public final class MaidPolicyRuntime {
         var token = context.getToken();
         try {
             if (afterNativeNavigation) {
-                afterNavigation.tick(token);
+                if (afterLiving) afterNavigation.afterLivingUpdate(token);
+                else afterNavigation.tick(token);
                 return context.isCurrent(token) ? TickResult.COMPLETED : invalidatedTickResult();
             }
             boolean surviving = actions.tickSurvival();

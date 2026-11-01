@@ -176,3 +176,14 @@ JSON/XML 与各自进程结果一致，四项结果来自分批证据；本批�
 Indev104 最终同一候选的四项 HQA 一次通过：实际逃离/取消恢复 113 tick、家园活动/Await 106 tick、任务许可/纯受伤/清睡 61 tick、动态 Follow 关联 222 tick
 JSON/XML 与进程退出 0 一致，测试玩家和实体状态按夹具清理；本批未启主专服/客户端，没有新增原版自然运行成绩
 原实体 SchedulePos 每 40 tick 的限制区施加、返回和传送链路尚待移植，当前活动任务使用既有家园锚点适配，不能据此认定完整原家园行为通过
+
+## 实体日程限制区与家园传送
+
+Indev105 选择 `tlmnhqapilot:ModernScheduleTests`，再加 104 的 `ModernActivityTests.scheduleTransitionKeepsPolicyUsesHomeAnchorAndAwaitRejectsOutsideTarget`
+新三组分别检查后移动 40 tick 锁存/自然返家及存档边界、原整数传送/已有同中心 WALK，以及液体拒绝十次/取消 Brain 到实体后阶段之间的预约
+远距组有一次明确的外部位移输入以建立已有返家 WALK 的远距条件，后续移动仍由实际世界 tick 执行
+非家园初始范围由夹具显式设置并恢复，不能依赖当日 home 半径来间接设置；全局日程/范围、玩家和区块票据继续按测试清理
+客户端 DATA_HOME 解码和事件 46 接收另由真实客户端共同入口检查，服务端框架结果不代替粒子画面或完整模型验收
+
+Indev105 同一玩法候选四组一次通过：锁存/自然返家/存档边界 113 tick、远距传送/已有 WALK 80 tick、液体拒绝/取消 83 tick、104 日程/Await 106 tick
+JSON/XML 与进程退出 0 一致，无跳过、未完成或基础设施错误，测试实体、玩家、全局设置和票据按夹具清理

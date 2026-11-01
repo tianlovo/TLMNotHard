@@ -218,7 +218,7 @@ public final class ModernActivityTests {
     }
 
     private static ModernCoreTests.Fixture fixture(GameTestHelper helper) {
-        var f = new ModernCoreTests.Fixture(helper, false);
+        var f = new ModernCoreTests.Fixture(helper, false, 1, 16);
         f.maid.setSchedule(MaidSchedule.DAY);
         MaidHomeConfig.workRange = 16;
         f.owner.setPosition(f.x + 1.5, f.y + 1, f.z + 1.5);

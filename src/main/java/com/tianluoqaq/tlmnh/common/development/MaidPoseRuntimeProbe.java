@@ -74,6 +74,24 @@ public final class MaidPoseRuntimeProbe {
                 case "sleep":
                     maid.setPose(MaidPose.SLEEPING, true);
                     break;
+                case "restriction":
+                    maid.setPosition(5.5, 65, .5);
+                    require(
+                        maid.getHomeArea()
+                            .setEnabled(true),
+                        "Restriction metadata setup required");
+                    var point = maid.getHomeArea()
+                        .restrictionCenter();
+                    TLMNotHard.LOG.info(
+                        "TLMNH_RESTRICTION105_SERVER uuid={} xyz={},{},{} radius={}",
+                        maid.getUniqueID(),
+                        point.x,
+                        point.y,
+                        point.z,
+                        maid.getHomeArea()
+                            .restrictionRadius());
+                    world.setEntityState(maid, (byte) 46);
+                    break;
                 case "wake":
                     maid.setPose(MaidPose.SLEEPING, false);
                     break;

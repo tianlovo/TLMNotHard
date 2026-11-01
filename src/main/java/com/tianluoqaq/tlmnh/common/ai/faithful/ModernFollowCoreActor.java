@@ -34,7 +34,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
-    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor {
+    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -56,6 +56,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private boolean followStop;
     private boolean frameActive;
     private int teleportAttempts;
+    private int homeTeleportAttempts, homeTeleportSuccesses, homeTeleportLiquidRejects;
+    private int lastScheduleEntityTick = -1;
 
     public ModernFollowCoreActor(EntityMaid maid) {
         this.maid = Objects.requireNonNull(maid, "maid");
@@ -178,7 +180,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public float getRestrictRadius() {
         guard();
         return maid.getHomeArea()
-            .radius();
+            .restrictionRadius();
     }
 
     public boolean isGoingToBreath() {
@@ -486,8 +488,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS openPickupSearch() {
         navigationLease();
         var area = maid.getHomeArea();
-        var center = area.enabled() ? new Point(area.center().x, area.center().y, area.center().z)
-            : airSearchPosition();
+        var center = area.enabled() ? restrictionCenter() : airSearchPosition();
         return navigation.createArrivalMap(center, perception.taskSearchRadius(), 7);
     }
 
@@ -560,8 +561,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public Optional<Point> findAirWithBfs(int range) {
         navigationLease();
         var home = maid.getHomeArea();
-        var center = home.enabled() ? new Point(home.center().x, home.center().y, home.center().z)
-            : airSearchPosition();
+        var center = home.enabled() ? restrictionCenter() : airSearchPosition();
         try (var map = navigation.createArrivalMap(center, range, range)) {
             return map.find(this::givesAir);
         }
@@ -599,7 +599,121 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean isWithinHome(BlockPos pos) {
         guard();
         return maid.getHomeArea()
-            .contains(pos.x, pos.y, pos.z);
+            .withinRestriction(pos.x, pos.y, pos.z);
+    }
+
+    public int entityAge() {
+        guard();
+        return maid.ticksExisted;
+    }
+
+    public void applyScheduleRestriction() {
+        guard();
+        maid.getHomeArea()
+            .restrictToCurrentSchedule();
+    }
+
+    public Point restrictionCenter() {
+        guard();
+        var p = maid.getHomeArea()
+            .restrictionCenter();
+        return new Point(p.x, p.y, p.z);
+    }
+
+    public Point scheduleFeet() {
+        return airSearchPosition();
+    }
+
+    public boolean withinCurrentRestriction() {
+        var p = scheduleFeet();
+        return isWithinHome(new BlockPos(p.x, p.y, p.z));
+    }
+
+    public boolean walkTargetsRestrictionCenter() {
+        guard();
+        if (walk == null) return false;
+        var target = walk.currentBlockPosition();
+        var center = restrictionCenter();
+        return target.x == center.x && target.y == center.y && target.z == center.z;
+    }
+
+    public void walkToRestrictionCenter() {
+        setPositionWalkAndLook(restrictionCenter(), .7F, 3);
+    }
+
+    public int nextTeleportInt(int bound) {
+        guard();
+        return maid.getRNG()
+            .nextInt(bound);
+    }
+
+    public boolean teleportAt(double x, double y, double z) {
+        navigationLease();
+        homeTeleportAttempts++;
+        int ix = MathHelper.floor_double(x), iy = MathHelper.floor_double(y), iz = MathHelper.floor_double(z);
+        // 原helper的初步地面查询保留目标世界原生读取语义
+        int support = iy;
+        while (support > 0 && !MaidModernBlockRules.blocksMotion(world, ix, support, iz)) support--;
+        if (!MaidModernBlockRules.blocksMotion(world, ix, support, iz) || world.getBlock(ix, support, iz)
+            .getMaterial() == Material.water) return false;
+        if (!world.getChunkProvider()
+            .chunkExists(ix >> 4, iz >> 4)) return false;
+        double destinationY = y;
+        boolean found = false;
+        while (iy > 0) {
+            if (MaidModernBlockRules.blocksMotion(world, ix, iy - 1, iz)) {
+                found = true;
+                break;
+            }
+            iy--;
+            destinationY--;
+        }
+        guard();
+        double oldX = maid.posX, oldY = maid.posY, oldZ = maid.posZ;
+        if (found) {
+            maid.setPosition(x, destinationY, z);
+            boolean clear = world.getCollidingBoundingBoxes(maid, maid.boundingBox)
+                .isEmpty();
+            guard();
+            if (clear) {
+                boolean liquid = world.isAnyLiquid(maid.boundingBox);
+                guard();
+                if (liquid) homeTeleportLiquidRejects++;
+                clear = !liquid;
+            }
+            if (clear) {
+                world.setEntityState(maid, (byte) 46);
+                stopNavigation();
+                homeTeleportSuccesses++;
+                if (!maid.isSilent()) {
+                    world.playSoundEffect(maid.prevPosX, maid.prevPosY, maid.prevPosZ, "mob.endermen.portal", 1, 1);
+                    maid.playSound("mob.endermen.portal", 1, 1);
+                }
+                return true;
+            }
+        }
+        guard();
+        maid.setPosition(oldX, oldY, oldZ);
+        return false;
+    }
+
+    public void afterLivingFrame(Token expectedToken) {
+        guard();
+        if (token != expectedToken || lastScheduleEntityTick == maid.ticksExisted)
+            throw new IllegalStateException("Duplicate or stale schedule entity phase");
+        lastScheduleEntityTick = maid.ticksExisted;
+    }
+
+    public int homeTeleportAttempts() {
+        return homeTeleportAttempts;
+    }
+
+    public int homeTeleportSuccesses() {
+        return homeTeleportSuccesses;
+    }
+
+    public int homeTeleportLiquidRejects() {
+        return homeTeleportLiquidRejects;
     }
 
     public Vec3 entityPosition() {
@@ -989,12 +1103,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean solid(BlockPos pos) {
             guard();
             if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
-            var block = world.getBlock(pos.x, pos.y, pos.z);
-            block.setBlockBoundsBasedOnState(world, pos.x, pos.y, pos.z);
-            var box = block.getCollisionBoundingBoxFromPool(world, pos.x, pos.y, pos.z);
-            if (box == null) return false;
-            double x = box.maxX - box.minX, y = box.maxY - box.minY, z = box.maxZ - box.minZ;
-            return (x + y + z) / 3 >= .7291666666666666D || y >= 1;
+            return MaidModernBlockRules.solid(world, pos.x, pos.y, pos.z);
         }
 
         public boolean water(BlockPos pos) {
@@ -1035,7 +1144,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public BlockPos restrictionCenter() {
             guard();
             var center = maid.getHomeArea()
-                .center();
+                .restrictionCenter();
             return new BlockPos(center.x, center.y, center.z);
         }
 
@@ -1046,7 +1155,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean isWithinRestriction(BlockPos point) {
             guard();
             return maid.getHomeArea()
-                .contains(point.x, point.y, point.z);
+                .withinRestriction(point.x, point.y, point.z);
         }
 
         public int minBuildHeight() {

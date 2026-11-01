@@ -33,7 +33,7 @@ public final class MaidPickupEntitiesTask {
                     MathHelper.floor_double(entity.posY),
                     MathHelper.floor_double(entity.posZ));
                 if (maid.getHomeArea()
-                    .contains(pos.x, pos.y, pos.z) && entity.isEntityAlive()
+                    .withinRestriction(pos.x, pos.y, pos.z) && entity.isEntityAlive()
                     && !entity.isInWater()
                     && map.canPathReach(pos)) {
                     actor.setEntityWalkAndLook(entity, speedModifier, 0);

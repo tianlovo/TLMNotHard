@@ -25,12 +25,12 @@ public final class MaidPickupEntitiesSensor {
         }
         entities.sort(Comparator.comparingDouble(maid::getDistanceSqToEntity));
         float radius = maid.getHomeArea()
-            .radius();
+            .restrictionRadius();
         var accepted = new ArrayList<Entity>();
         for (var entity : entities) {
             if (maid.canPickup(entity, true) && maid.getDistanceSqToEntity(entity) < (radius + 1) * (radius + 1)
                 && maid.getHomeArea()
-                    .contains(
+                    .withinRestriction(
                         MathHelper.floor_double(entity.posX),
                         MathHelper.floor_double(entity.posY),
                         MathHelper.floor_double(entity.posZ))

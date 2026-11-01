@@ -19,6 +19,26 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.TickResult;
 public class MaidAfterNavigationTest {
 
     @Test
+    public void afterLivingPhaseCannotRunLegacyAndUsesDistinctComponentHook() {
+        var sample = new Sample(true);
+        assertEquals(TickResult.WRONG_PHASE, sample.runtime.tickAfterLivingUpdate());
+        assertTrue(sample.events.isEmpty());
+        sample.runtime.select(MaidBrainProfile.FOLLOW_CORE_COMPONENT);
+        sample.events.clear();
+        assertEquals(TickResult.COMPLETED, sample.runtime.tickAfterNativeNavigation());
+        assertEquals(TickResult.COMPLETED, sample.runtime.tickAfterLivingUpdate());
+        assertEquals(Arrays.asList("component", "after_living"), sample.events);
+    }
+
+    @Test
+    public void afterLivingReentryInvalidatesLeaseAndCannotFallThrough() {
+        var sample = selected();
+        sample.onAfter = () -> assertEquals(TickResult.REFUSED_REENTRANT, sample.runtime.tickAfterLivingUpdate());
+        assertEquals(TickResult.INVALIDATED, sample.runtime.tickAfterLivingUpdate());
+        assertEquals(Arrays.asList("after_living", "legacy_cancel", "component_cancel"), sample.events);
+    }
+
+    @Test
     public void absentComponentCannotFallbackToLegacyAtEitherPhase() {
         var sample = new Sample(false);
         assertEquals(SelectionResult.UNAVAILABLE, sample.runtime.select(MaidBrainProfile.FOLLOW_CORE_COMPONENT));
@@ -183,6 +203,7 @@ public class MaidAfterNavigationTest {
         final List<String> events = new ArrayList<>();
         final MaidPolicyRuntime runtime;
         Runnable onTick = () -> {};
+        Runnable onAfter = () -> {};
         Runnable onCancel = () -> {};
         boolean failLegacyCancel, failComponentCancel;
 
@@ -222,6 +243,14 @@ public class MaidAfterNavigationTest {
                     events.add("component_cancel");
                     onCancel.run();
                     if (failComponentCancel) throw new IllegalStateException("component failure");
+                }
+
+                public void afterLivingUpdate(MaidPolicyContext.Token token) {
+                    assertTrue(
+                        runtime.getContext()
+                            .isCurrent(token));
+                    events.add("after_living");
+                    onAfter.run();
                 }
             });
         }

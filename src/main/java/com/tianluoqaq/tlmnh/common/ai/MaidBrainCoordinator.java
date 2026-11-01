@@ -63,6 +63,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidHurtMemory hurtMemory = new MaidHurtMemory();
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
+    private final MaidAfterNavigationGate afterLivingGate = new MaidAfterNavigationGate();
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
     private World observedWorld;
     private String observedOwner;
@@ -183,6 +184,40 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             executePolicy(runtime, true);
     }
 
+    /** 仅消费本tick成功现代Brain阶段预约；失效或换策略不能执行旧实体移动后动作 */
+    public void afterLivingUpdate() {
+        var runtime = policy;
+        if (runtime == null || maid.worldObj.isRemote
+            || suspended
+            || unloaded
+            || persistentReadDepth > 0
+            || lifecycleFailed
+            || transitioningPolicy
+            || !maid.isEntityAlive()
+            || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)) {
+            afterLivingGate.clear();
+            return;
+        }
+        if (!runtime.getContext()
+            .getMaidId()
+            .equals(maid.getUniqueID())) {
+            retireCurrent(InvalidationReason.IDENTITY_CHANGED);
+            policy = null;
+            afterNavigationActions = null;
+            refreshLifecycleObservations();
+            return;
+        }
+        if (observedWorld != maid.worldObj || !Objects.equals(observedOwner, maid.func_152113_b())) {
+            afterLivingGate.clear();
+            runtime.invalidate(
+                observedWorld != maid.worldObj ? InvalidationReason.WORLD_CHANGED : InvalidationReason.OWNER_CHANGED);
+            refreshLifecycleObservations();
+            return;
+        }
+        if (afterLivingGate.consume(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime))
+            runtime.tickAfterLivingUpdate();
+    }
+
     private void executePolicy(MaidPolicyRuntime runtime, boolean afterNativeNavigation) {
         if (runtime.getProfile() == MaidBrainProfile.LEGACY_PROTOTYPE) actionRunner.beginFrame(
             runtime.getContext(),
@@ -198,6 +233,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         long started = recording ? System.nanoTime() : 0;
         try {
             var result = afterNativeNavigation ? runtime.tickAfterNativeNavigation() : runtime.tick(lifePermission);
+            if (afterNativeNavigation && result == MaidPolicyRuntime.TickResult.COMPLETED)
+                afterLivingGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
             traversal.tick(!afterNativeNavigation);
             if (recording) {
                 String state = runtime.getProfile()
@@ -223,6 +260,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     @Override
     public void resetTask() {
         afterNavigationGate.clear();
+        afterLivingGate.clear();
         var runtime = getPolicyRuntime();
         if (runtime != null) runtime.invalidate(InvalidationReason.RESET);
     }
@@ -469,6 +507,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     private void retireCurrent(InvalidationReason reason) {
         afterNavigationGate.clear();
+        afterLivingGate.clear();
         if (transitioningPolicy) {
             if (policy != null) policy.retire(reason);
             return;
@@ -608,6 +647,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (maid.worldObj.isRemote) return;
         if (this.suspended != suspended) {
             afterNavigationGate.clear();
+            afterLivingGate.clear();
             this.suspended = suspended;
             var runtime = getPolicyRuntime();
             if (runtime != null) runtime.invalidate(InvalidationReason.SUSPENSION_CHANGED);
