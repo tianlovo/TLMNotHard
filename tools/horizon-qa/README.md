@@ -468,3 +468,7 @@ Indev136 的 `tlmnhqapilot:EnhancedRecoveryTests` 包含四项增强实际场景
 `ModernClimbTests.originalTaskClimbsToPlatformAndReturnsDown` 保留F实际攀爬代表回归，不能由增强场景代替
 最终呼吸包两项61/36tick通过；此前包受阻恢复59tick、N攀爬108tick、F攀爬96tick按仅呼吸类变化的字节范围复用，不称最终包新执行
 初包默认配额五项通过，随后单次额度场景及诊断轮84tick溺水失败保留；附近候选重试修正后只重测失败项和关联呼吸物，不改写历史失败
+
+Indev137 在原 `EnhancedPanicTests.visibleCreeperLeavesSitMovesCancelsResumesAndHiddenCacheCannotContinue` 中保留玻璃地板，实际逃离/取消恢复/隐藏失效28tick通过；F危险代表63tick通过
+新增 `collisionLandingRejectsUnsafeTerrainAndChangedDestinationRetiresItsRoute` 核实际玻璃/半砖承重、无承重/阻塞/水/火拒绝及目标支撑拆除，108tick通过
+首轮火焰夹具放在玻璃上后被原生规则移除，改在石头上放火并确认实际方块后只重测该方法；玩法包不变，两个观察器分别归档，失败保留

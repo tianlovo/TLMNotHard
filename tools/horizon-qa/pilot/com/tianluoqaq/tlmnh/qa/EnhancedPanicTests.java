@@ -15,6 +15,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -103,10 +104,6 @@ public final class EnhancedPanicTests {
         helper.assertFalse(
             f.navigation.isStableDestination(f.x + 10, f.y + 1, f.z + 4),
             "Glass fixture floor unexpectedly qualified for native land sampling");
-        for (int x = 1; x < 20; x++) for (int z = 1; z < 8; z++) helper.setBlock(x, 0, z, Blocks.stone);
-        helper.assertTrue(
-            f.navigation.isStableDestination(f.x + 10, f.y + 1, f.z + 4),
-            "Opaque land fixture floor is not stable");
         f.maid.setPosition(f.x + 10.5, f.y + 1, f.z + 4.5);
         f.owner.setPosition(f.x + 10.5, f.y + 1, f.z + 1.5);
         f.maid.setSitting(true);
@@ -199,6 +196,89 @@ public final class EnhancedPanicTests {
                     && f.navigation.noPath(),
                 "Hidden cached threat retained panic or a live route");
             return age >= changed[0] + 3;
+        });
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 200, batch = "enhanced_panic_support")
+    public static void collisionLandingRejectsUnsafeTerrainAndChangedDestinationRetiresItsRoute(GameTestHelper helper) {
+        var f = fixture(helper, false);
+        f.maid.setPosition(f.x + 10.5, f.y + 1, f.z + 4.5);
+        f.owner.setPosition(f.x + 10.5, f.y + 1, f.z + 1.5);
+        var core = select(helper, f);
+        creeper(helper, 14.5, 1);
+        Point[] removed = { null };
+        int[] changed = { -1 };
+        helper.succeedWhen(() -> {
+            ready(helper, f, core);
+            if (removed[0] == null) {
+                var target = core.panic()
+                    .destination();
+                if (core.selectedKind() != Kind.PANIC || target == null
+                    || f.navigation.noPath()
+                    || f.maid.getDistanceSq(target.x + .5, target.y, target.z + .5) < 4) return false;
+                var point = new Point(f.x + 3, f.y + 1, f.z + 4);
+                helper.assertTrue(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Actual glass support was rejected");
+                helper.assertFalse(
+                    f.navigation.isStableDestination(point.x, point.y, point.z),
+                    "F opaque-support contract changed");
+                helper.setBlock(3, 0, 4, Blocks.stone_slab);
+                helper.assertTrue(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Actual half-slab support was rejected");
+                helper.setBlock(3, 0, 4, Blocks.air);
+                helper.assertFalse(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Void provided false support");
+                helper.setBlock(3, 0, 4, Blocks.glass);
+                helper.setBlock(3, 1, 4, Blocks.glass);
+                helper.assertFalse(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Blocked body was admitted");
+                helper.setBlock(3, 1, 4, Blocks.water);
+                helper.assertFalse(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Water was admitted as dry landing");
+                helper.setBlock(3, 0, 4, Blocks.stone);
+                helper.setBlock(3, 1, 4, Blocks.fire);
+                helper.assertTrue(
+                    helper.getWorld()
+                        .getBlock(point.x, point.y, point.z) == Blocks.fire,
+                    "Hazard fixture did not retain actual fire on solid support");
+                helper.assertFalse(
+                    core.actor()
+                        .isEnhancedLandDestination(point),
+                    "Fire was admitted as safe landing");
+                helper.setBlock(3, 1, 4, Blocks.air);
+                helper.setBlock(3, 0, 4, Blocks.glass);
+                removed[0] = target;
+                helper.setBlock(target.x - f.x, target.y - f.y - 1, target.z - f.z, Blocks.air);
+                changed[0] = f.maid.ticksExisted;
+                return false;
+            }
+            if (f.maid.ticksExisted <= changed[0]) return false;
+            var next = core.panic()
+                .destination();
+            helper.assertTrue(
+                !core.actor()
+                    .isEnhancedLandDestination(removed[0]),
+                "Removed support remained legal");
+            helper.assertTrue(f.maid.getHealth() == 20, "Landing validation damaged the actual actor");
+            if (next == null) helper.assertTrue(
+                f.navigation.noPath() && core.actor()
+                    .peekWalkTarget() == null,
+                "Invalid destination kept a live route or WALK_TARGET");
+            else helper.assertTrue(
+                !next.equals(removed[0]) && core.actor()
+                    .isEnhancedLandDestination(next),
+                "Replacement destination retained invalid support");
+            return true;
         });
     }
 
