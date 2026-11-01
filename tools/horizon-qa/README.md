@@ -498,3 +498,8 @@ Indev142 的 `tlmnhqapilot:EnhancedSnowballTests` 观察原生EntitySnowball实�
 同玩法包N请求10tick与F原雪仗16tick通过，四项合于两份报告；失败均保留，不称一次四项通过
 新场景把隔离FakePlayer完整登记到WorldServer实体表，结束时原生移除，不为夹具放宽生产目标验证；恢复Brain会统一失效旧能力，外部能力应在恢复后建立再验证局部取消
 原 `ModernLeisureTests.fixture` 仅放宽到同包可复用，F流程保持；没有据此验证真实网络、动画画面或完整N
+
+Indev143 的 `tlmnhqapilot:EnhancedWaterTests` 保留实际世界tick，核无目标水面上浮、当前actor取消请求、旧actor迟到取消保留新请求及暂停恢复7tick，以及实际水中导航/无被动跳/暂停后新路径和PATH记忆142tick
+同包 `ModernCoreTests.waterContinuationUpdatesPathMemoryAndCancelsLiveRoute` 75tick通过；三项来自两份报告，本批无新CPU执行
+首轮水面场景请求未获准的FOLLOW_CORE_COMPONENT切换，改走已开放的FAITHFUL_TLM中间入口后仅重测水面，生产不放宽准入
+请求所有权部分通过公开跳跃入口置入待执行请求并只读观察实际pendingJump，物理上浮和水中移动仍由自然tick验证；没有据此宣布复杂水域、完整N或原版等价
