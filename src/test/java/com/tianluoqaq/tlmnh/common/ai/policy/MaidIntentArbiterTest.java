@@ -83,4 +83,18 @@ public class MaidIntentArbiterTest {
     private static MaidIntentFrame frame(MaidPolicyContext context, long tick) {
         return new MaidIntentFrame(context, context.getToken(), tick);
     }
+
+    @Test
+    public void breathingPreemptsDangerDespiteEqualUtilityAndMinimumHold() {
+        var context = new MaidPolicyContext(UUID.randomUUID());
+        var arbiter = new MaidIntentArbiter();
+        var first = frame(context, 0);
+        first.offer(Group.DANGER, Kind.PANIC, "panic", 1, null);
+        arbiter.choose(first);
+        var second = frame(context, 1);
+        second.offer(Group.DANGER, Kind.PANIC, "panic", 1, null);
+        var air = second.offer(Group.EMERGENCY, Kind.BREATHE, "air", 1, null);
+        assertSame(air, arbiter.choose(second));
+        assertEquals(MaidIntentArbiter.Reason.HIGHER_GROUP, arbiter.reason());
+    }
 }
