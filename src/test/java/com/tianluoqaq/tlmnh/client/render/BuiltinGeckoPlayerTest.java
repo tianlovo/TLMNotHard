@@ -189,6 +189,33 @@ public class BuiltinGeckoPlayerTest {
     }
 
     @Test
+    public void snowballPickupKeepsPlayingUntilEmptyResetAndBeggingKeepsPriority() {
+        var fixture = fixture("idle", "beg", "pick_up_snowball", "empty");
+        fixture.state.pickingUpSnowball = true;
+        fixture.tick(0);
+        assertEquals("pick_up_snowball", fixture.clip("misc"));
+        fixture.tick(6);
+        double firstOffset = fixture.controller("misc").tickOffset;
+        fixture.tick(7);
+        assertEquals(firstOffset, fixture.controller("misc").tickOffset, 0);
+        fixture.tick(8);
+        assertEquals(firstOffset, fixture.controller("misc").tickOffset, 0);
+        fixture.state.begging = true;
+        fixture.tick(11);
+        assertEquals("beg", fixture.clip("misc"));
+        fixture.state.begging = false;
+        fixture.state.pickingUpSnowball = false;
+        fixture.state.snowballAnimationExpired = true;
+        fixture.tick(14);
+        assertEquals("empty", fixture.clip("misc"));
+        fixture.state.snowballAnimationExpired = false;
+        fixture.state.pickingUpSnowball = true;
+        fixture.tick(18);
+        assertEquals("pick_up_snowball", fixture.clip("misc"));
+        assertEquals(18, fixture.controller("misc").tickOffset, 0);
+    }
+
+    @Test
     public void everyGeckoChoicePlaysCoreStatesWithItsOwnControllerAndPhysics() throws Exception {
         var models = new BuiltinMaidModels(BuiltinGeckoPlayerTest::resource);
         int choices = 0, winefox = 0, frames = 0;

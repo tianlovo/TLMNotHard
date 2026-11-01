@@ -79,6 +79,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.tianluoqaq.tlmnh.common.life.meal.MaidMealController meals = new com.tianluoqaq.tlmnh.common.life.meal.MaidMealController(
         this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
+    private final com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation snowballAnimation = new com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation();
     private final com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory modernCombatMemory = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory();
     private final com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings attackSettings = new com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings();
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
@@ -234,6 +235,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void handleHealthUpdate(byte state) {
         if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);
         else if (state == 46) com.tianluoqaq.tlmnh.common.entity.MaidTeleportParticles.show(this);
+        else if (state == com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation.STATUS)
+            snowballAnimation.start(this);
         else super.handleHealthUpdate(state);
     }
 
@@ -481,6 +484,24 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     public MaidBrainCoordinator getBrainCoordinator() {
         return brain;
+    }
+
+    public com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation getSnowballAnimation() {
+        return snowballAnimation;
+    }
+
+    public void startPickUpSnowball() {
+        snowballAnimation.start(this);
+    }
+
+    @Override
+    public void swingItem() {
+        swingMaidHand(false);
+    }
+
+    public void swingMaidHand(boolean offhand) {
+        super.swingItem();
+        if (!worldObj.isRemote && isSwingInProgress && swingProgressInt == -1) setPose(MaidPose.SWING_OFFHAND, offhand);
     }
 
     /** 原EntityMaid.getTarget读取Brain ATTACK_TARGET，原型仍使用原生EntityLiving字段 */

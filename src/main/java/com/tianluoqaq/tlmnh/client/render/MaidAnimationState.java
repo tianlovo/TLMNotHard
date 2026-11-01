@@ -24,6 +24,7 @@ public final class MaidAnimationState {
     public boolean onGround = true, sprinting, climbing, swimming, dead, swinging;
     public String vehicleId = "", passengerId = "";
     public int swingTick;
+    public boolean pickingUpSnowball, snowballAnimationExpired;
     public double verticalSpeed;
     public float attackAnim, health = 20, maxHealth = 20;
     public int dimension;
@@ -38,6 +39,14 @@ public final class MaidAnimationState {
         var state = new MaidAnimationState(maid.getUniqueID());
         state.sleeping = maid.hasPose(MaidPose.SLEEPING);
         state.begging = maid.hasPose(MaidPose.BEGGING);
+        var snowball = maid.getSnowballAnimation();
+        if (!state.begging && snowball.pickingUp()
+            && System.currentTimeMillis() - snowball.startedAt()
+                > com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation.DURATION_MILLIS) {
+            snowball.clear();
+            state.snowballAnimationExpired = true;
+        }
+        state.pickingUpSnowball = snowball.pickingUp();
         state.usingItem = maid.hasPose(MaidPose.USING_ITEM);
         state.usingOffhand = maid.hasPose(MaidPose.USING_OFFHAND);
         state.swingLeft = maid.hasPose(MaidPose.SWING_OFFHAND);

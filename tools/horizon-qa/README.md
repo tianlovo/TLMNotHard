@@ -243,3 +243,16 @@ Indev110 选择 `tlmnhqapilot:ModernCombatTests` 并关联既有动态 Follow，
 较早无该隔离输入的追击 240 tick 超时原样保留，未用延长期限或修改生产距离/冷却使其通过
 分类中主人年龄加 150 是显式原生历史输入，不是自然 150 tick 护主 benchmark；标准 FakePlayer 没有冒充真实联机玩家
 木盾组由真正 EntityArrow 飞行碰撞触发生产伤害/格挡与耐久，未直接调用盾牌伤害回调；未扩展为七盾或客户端矩阵通过
+
+## 原随机活动与雪仗
+
+Indev111 选择 `tlmnhqapilot:ModernLeisureTests`，并在首轮关联近战回调和动态 Follow
+三组分别执行原加权 Gate 的自然 LOOK/真实走动与坐姿仅张望、冷群系雪层的主/副手雪球及无射手原生飞行
+以及 EntityJoinWorld 回调同步撤权、清自有球/目标、旧帧引用拒绝与新帧恢复，不手工推进 Brain
+原规则凭空补一雪球到空手且不消耗，测试保持这条源规则；装备替换是显式输入，不推导 GUI 自动收纳已经通过
+
+正式版 EndlessIDs 禁止旧 getBiomeArray，首轮两项准备即零 tick 失败；改用实装 ChunkBiomeHook 的 short 数组并恢复
+首轮随机运行 650 tick 没有移动，后轮不同随机输入下在 197 tick 满足自然执行；首次原因仍未定位，不能当作原版复现或统计可靠性通过
+后轮三项实际 197/29/17 tick，JSON/XML/process 0；此前未变类的近战 56 与 Follow 172 tick 单独保留并按 pilot 类字节绑定
+最终只修两个客户端动画类的原计时/空动画规则，其余 1128 类与资源字节不变；没有重跑通过场景或改写原始 JAR 哈希
+客户端连续画面、多人、全部随机输入和完整 O/F/N 仍须后续合并验证

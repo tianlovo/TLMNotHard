@@ -15,6 +15,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSel
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunAwayTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunOne;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSnowballTargetTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStartSnowballAttacking;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleUseTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
@@ -47,6 +50,13 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
+    private final MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
+        restRandom = new MaidRunOne(true), rideWorkRandom = new MaidRunOne(false), rideIdleLook = new MaidRunOne(false);
+    private final MaidStartSnowballAttacking snowFind = new MaidStartSnowballAttacking();
+    private MaidSnowballTargetTask snowThrow = new MaidSnowballTargetTask(50);
+    private boolean snowRunning;
+    private long snowDeadline;
+    private com.tianluoqaq.tlmnh.common.entity.MaidTask registeredTask;
     private final MaidBedTask bed = new MaidBedTask(.6F, 2);
     private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
     private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
@@ -58,6 +68,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos schedulePos = new com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos();
     private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
     private final java.util.Map<String, MaidActivityState.Activity> priority5 = new java.util.HashMap<>();
+    private final java.util.Map<String, MaidActivityState.Activity> priority20 = new java.util.HashMap<>();
     private boolean climbRunning;
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
@@ -85,6 +96,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         priority5.put("work", MaidActivityState.Activity.WORK);
         priority5.put("rest", MaidActivityState.Activity.REST);
         priority5.put("panic", MaidActivityState.Activity.PANIC);
+        priority20.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
+        priority20.put("idle", MaidActivityState.Activity.IDLE);
+        priority20.put("work", MaidActivityState.Activity.WORK);
+        priority20.put("rest", MaidActivityState.Activity.REST);
     }
 
     @Override
@@ -103,6 +118,12 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lastEntityTick = maid.ticksExisted;
             hasTick = true;
             perception.tick();
+            if (registeredTask != maid.getTask()) {
+                if (snowRunning) snowThrow.stop(actor);
+                snowRunning = false;
+                snowThrow = new MaidSnowballTargetTask(50);
+                registeredTask = maid.getTask();
+            }
             activities.initialize();
             actor.maintainSleep();
             if (!actor.canBrainMoving()) {
@@ -184,6 +205,14 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     }
                 }
             }
+            if (activities.active() == MaidActivityState.Activity.RIDE_IDLE) rideIdleLook.tryStart(actor, true);
+            if (activities.active() == MaidActivityState.Activity.WORK
+                && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE
+                && actor.attackTarget() == null
+                && snowFind.checkExtraStartConditions(actor)) {
+                actor.nextWorldInt(1);
+                snowFind.start(actor);
+            }
             if (activities.active() == MaidActivityState.Activity.WORK && !workBegRunning
                 && workBeg.checkExtraStartConditions(actor)) {
                 workBegRunning = true;
@@ -193,6 +222,15 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 && rideWorkBeg.checkExtraStartConditions(actor)) {
                 rideWorkBegRunning = true;
                 actor.nextWorldInt(1);
+            }
+            if (activities.active() == MaidActivityState.Activity.WORK
+                && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE
+                && !snowRunning
+                && snowThrow.checkExtraStartConditions(actor)) {
+                snowRunning = true;
+                snowDeadline = time + 1200 + actor.nextWorldInt(1);
+                snowThrow.start(actor);
+                if (!actor.isCurrent()) return;
             }
             var meal = activities.active() == MaidActivityState.Activity.WORK ? workMeal
                 : activities.active() == MaidActivityState.Activity.RIDE_WORK ? rideWorkMeal : null;
@@ -222,6 +260,12 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
                 actor.nextWorldInt(1);
                 pickup.start(maid, perception, actor);
+            }
+            for (var group : priority20.values()) {
+                if (activities.active() == group) randomFor(group).tryStart(
+                    actor,
+                    group == MaidActivityState.Activity.REST || group == MaidActivityState.Activity.RIDE_WORK
+                        || !actor.isGoingToBreath());
             }
             for (var entry : priority99.entrySet()) {
                 if (entry.getValue() == null) {
@@ -256,6 +300,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     idleBeg.stop(actor);
                 }
             }
+            rideIdleLook.tickOrStop(actor);
             if (workBegRunning) {
                 if (workBeg.canStillUse(actor)) workBeg.tick(actor);
                 else {
@@ -270,6 +315,14 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     rideWorkBeg.stop(actor);
                 }
             }
+            if (snowRunning) {
+                if (time > snowDeadline || !snowThrow.canStillUse(actor)) {
+                    snowRunning = false;
+                    snowThrow.stop(actor);
+                } else snowThrow.tick(actor);
+                if (!actor.isCurrent()) return;
+            }
+            for (var group : priority20.values()) randomFor(group).tickOrStop(actor);
             if (followRunning) followRunning = false;
             if (vehicleRunning) {
                 vehicle.stop();
@@ -293,6 +346,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             bed.reset();
             idleStealMove.reset();
             workStealMove.reset();
+            for (var group : priority20.values()) randomFor(group).cancel();
+            rideIdleLook.cancel();
+            snowRunning = false;
+            snowThrow.cancelUseState();
             idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
@@ -311,6 +368,16 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
 
     public ModernFollowCoreActor getActor() {
         return actor;
+    }
+
+    private MaidRunOne randomFor(MaidActivityState.Activity activity) {
+        return switch (activity) {
+            case IDLE -> idleRandom;
+            case WORK -> workRandom;
+            case REST -> restRandom;
+            case RIDE_WORK -> rideWorkRandom;
+            default -> throw new IllegalArgumentException("No random activity " + activity);
+        };
     }
 
     public MaidModernPerception getPerception() {

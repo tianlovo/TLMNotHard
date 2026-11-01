@@ -948,3 +948,18 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 实读正式版 EFR 2.6.65 的 EntityArmourStand 和原生 FML 注册查询；分类使用实际 IMob/INpc、驯养归属、原生受伤/攻击历史与配置，不把所有模组实体类型宣称为现代 Enemy 的一一映射
 - 现代 Forge 的可取消 BEHAVIOR_TARGET 事件以自有 `MaidAttackTargetEvent` 适配；原 Pre 取消仍为 API true 且无 Post/损耗，回调后继续检查实际授权，致死已接受攻击仍执行原武器损耗
 - ShieldController 拆分 owner 限定的启动与运行结束，保留原型旧入口；普通目标近战参考位置已适配，现代 RiderShieldingMount 特例、分类 GUI/网络和完整任务刷新工作记忆仍待补齐
+
+## 原随机活动与雪球
+
+- Indev111 从固定 TLM 提交移植 `MaidRunOne`、`MaidStartSnowballAttacking` 与 `MaidSnowballTargetTask`，保留原包名和来源头
+- 实读原 TaskIdle 的冷群系/雪层/主人与同主目标，MaidBrain 的 IDLE/WORK/REST/RIDE 组优先级、张望类别和抽样权重
+- 实读固定映射 GateBehavior、RunOne、ShufflingList/WeightedEntry、SetEntityLookTarget、DoNothing
+  以及 RandomStroll 陆地变体、LandRandomPos/RandomPos 相关采样与 Biome 冷雪阈值，独立随机源与浮点指数保持
+- 自有 `MaidRandomGate`、`MaidRandomActor` 适配原 Gate 生命周期；`MaidLandRandomSampler` 新增无方向采样，共用原稳定/限制/上移/拒水/成本检查
+- 自有 `MaidSnowballActor` 复用 guarded 攻击目标引用，原 StartSnowball 不走战斗选敌事件，停止按身份清自身目标
+- 目标平台 LOOK 的猫按原生 Ocelot 类型适配，没有对应原生 Parrot 时保留该权重空项，不扩大为其他模组动物
+- 实读原 MaidAnimationMessage、AnimationManager misc/playAnimation、RawAnimation 相等与 AnimationController.setAnimation
+  原连续拾取只延长计时，未在雪球分支使用 shouldReset；撤掉额外强制重播，保留空动画重置
+- 自有 `MaidSnowballAnimation` 保存非 NBT 计时与观测序号，用实体事件 47 向实际跟踪端同步，不强行在 Bedrock 新增原源没有的特殊动作
+- 实读正式版 EndlessIDs 1.7.4 的 ChunkBiomeHook JAR API，HQA 使用 getBiomeShortArray 并恢复原数组；生产不引入该测试依赖
+- 原版随机输入复现、第一次 650 tick 超时原因、完整任务刷新工作记忆、特殊座椅和实际 Gecko 雪球画面仍待后续验收

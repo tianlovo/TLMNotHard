@@ -17,12 +17,29 @@ public final class MaidLandRandomSampler {
 
     public static Vec3 getPosAway(Actor actor, int radius, int vertical, Vec3 avoid) {
         var origin = actor.position();
+        return sample(
+            actor,
+            radius,
+            () -> FollowFallbackSampler
+                .direction(actor, radius, vertical, origin.x - avoid.x, origin.z - avoid.z, 1.5707963705062866D));
+    }
+
+    public static Vec3 getPos(Actor actor, int radius, int vertical) {
+        return sample(
+            actor,
+            radius,
+            () -> new BlockPos(
+                actor.nextEntityInt(2 * radius + 1) - radius,
+                actor.nextEntityInt(2 * vertical + 1) - vertical,
+                actor.nextEntityInt(2 * radius + 1) - radius));
+    }
+
+    private static Vec3 sample(Actor actor, int radius, java.util.function.Supplier<BlockPos> direction) {
         boolean restricted = FollowFallbackSampler.mobRestricted(actor, radius);
         BlockPos best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
         for (int attempt = 0; attempt < 10; attempt++) {
-            var offset = FollowFallbackSampler
-                .direction(actor, radius, vertical, origin.x - avoid.x, origin.z - avoid.z, 1.5707963705062866D);
+            var offset = direction.get();
             if (offset == null) continue;
             var pos = FollowFallbackSampler.absolutePosition(actor, radius, offset);
             if (pos.y < actor.minBuildHeight() || pos.y > actor.maxBuildHeight()

@@ -7,9 +7,14 @@ import java.util.UUID;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.passive.EntityOcelot;
+import net.minecraft.entity.passive.EntityWolf;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.entity.projectile.EntitySnowball;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemSnowball;
 import net.minecraft.item.ItemStack;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.potion.Potion;
@@ -43,7 +48,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
     MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
-    MaidLifeActor, MaidStealActor, MaidCombatActor {
+    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -53,6 +58,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final TaskAttack attack = new TaskAttack();
     private Object shieldOwner;
     private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
+    private long randomLookSelections, randomWalkSelections, snowballThrows;
+    private EntityLivingBase ownedSnowballTarget;
     private Point workTarget;
     private MaidEdibleBlockAction edibleAction;
     private MaidModernPerception perception;
@@ -545,6 +552,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
             stopOwnedShield();
+            if (ownedSnowballTarget != null && maid.getModernCombatMemory()
+                .target() == ownedSnowballTarget) maid.getModernCombatMemory()
+                    .target(null);
+            ownedSnowballTarget = null;
             cake.cancel();
             life.wake();
             if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
@@ -1260,12 +1271,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             target);
         if (MinecraftForge.EVENT_BUS.post(event) || !isCurrent()) return false;
         perception.setAttackTarget(event.getNewTarget());
+        ownedSnowballTarget = null;
         return true;
     }
 
     public void eraseAttackTarget() {
         guard();
         perception.setAttackTarget(null);
+        ownedSnowballTarget = null;
     }
 
     public boolean canAttack(MaidCombatActor.Target value) {
@@ -1451,6 +1464,197 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && entityId == entity.getEntityId()
                 && identity.equals(entity.getUniqueID());
         }
+    }
+
+    public boolean randomGateEligible() {
+        guard();
+        return !maid.hasPose(MaidPose.BEGGING) && !maid.hasPose(MaidPose.SLEEPING)
+            && (maid.ridingEntity == null || !maid.ridingEntity.getClass()
+                .getName()
+                .equals("com.github.tartaricacid.touhoulittlemaid.entity.item.EntitySit"));
+    }
+
+    public boolean tryRandomLook(MaidRandomActor.LookKind kind, float distance) {
+        guard();
+        if (look != null || perception.visible() == null) return false;
+        var selected = perception.visible()
+            .findClosest(entity -> {
+                boolean type = switch (kind) {
+                    case PLAYER -> entity instanceof EntityPlayer;
+                    case MAID -> entity.getClass() == EntityMaid.class;
+                    case WOLF -> entity.getClass() == EntityWolf.class;
+                    // 目标平台猫使用原生Ocelot类型；没有把其他模组鸟类当成原版Parrot
+                    case CAT -> entity.getClass() == EntityOcelot.class;
+                    case PARROT -> false;
+                };
+                return type && entity != maid.riddenByEntity
+                    && maid.getDistanceSqToEntity(entity) <= distance * distance;
+            });
+        if (selected == null) return false;
+        look = new EntityLook(selected);
+        randomLookSelections++;
+        return true;
+    }
+
+    public boolean hasRandomWalkTarget() {
+        guard();
+        return walk != null;
+    }
+
+    public Vec3 sampleRandomWalk(int radius, int vertical) {
+        guard();
+        var pos = MaidLandRandomSampler.getPos(new WorldFallback(), radius, vertical);
+        if (pos != null) randomWalkSelections++;
+        return pos;
+    }
+
+    public long randomLookSelections() {
+        return randomLookSelections;
+    }
+
+    public long randomWalkSelections() {
+        return randomWalkSelections;
+    }
+
+    public long snowballThrows() {
+        return snowballThrows;
+    }
+
+    public boolean canSnowballFight() {
+        guard();
+        var feet = airSearchPosition();
+        return maid.getTask() == MaidTask.IDLE && !maid.hasPose(MaidPose.BEGGING)
+            && world.blockExists(feet.x, feet.y, feet.z)
+            && world.getBlock(feet.x, feet.y, feet.z) == Blocks.snow_layer
+            && world.getBiomeGenForCoords(feet.x, feet.z)
+                .getFloatTemperature(feet.x, feet.y, feet.z) < .15F;
+    }
+
+    public MaidCombatActor.Target findFirstValidSnowballTarget() {
+        guard();
+        if (perception.visible() == null) return null;
+        var owner = maid.getOwner();
+        var target = perception.visible()
+            .findClosest(entity -> {
+                boolean friendly = entity instanceof EntityPlayer player && maid.isOwner(player)
+                    || entity instanceof EntityMaid other && owner != null && owner.equals(other.getOwner());
+                return friendly && maid.getHomeArea()
+                    .withinRestriction(
+                        MathHelper.floor_double(entity.posX),
+                        MathHelper.floor_double(entity.posY),
+                        MathHelper.floor_double(entity.posZ));
+            });
+        return target == null ? null : new AttackTargetView(target);
+    }
+
+    public void rememberSnowballTarget(MaidCombatActor.Target target) {
+        perception.setAttackTarget(attackTarget(target).entity);
+    }
+
+    public boolean holdingSnowballOrEmpty() {
+        guard();
+        return snowballOrEmpty(maid.getHeldItem()) || snowballOrEmpty(maid.getOffhandItem());
+    }
+
+    private static boolean snowballOrEmpty(ItemStack stack) {
+        return stack == null || stack.stackSize <= 0 || stack.getItem() instanceof ItemSnowball;
+    }
+
+    public boolean targetWithinRestriction(MaidCombatActor.Target value) {
+        var entity = attackTarget(value).entity;
+        return maid.getHomeArea()
+            .withinRestriction(
+                MathHelper.floor_double(entity.posX),
+                MathHelper.floor_double(entity.posY),
+                MathHelper.floor_double(entity.posZ));
+    }
+
+    public void prepareSnowballHand() {
+        guard();
+        ownedSnowballTarget = maid.getModernCombatMemory()
+            .target();
+        var main = maid.getHeldItem();
+        if (main == null || main.stackSize <= 0) {
+            maid.setCurrentItemOrArmor(0, new ItemStack(Items.snowball));
+            playPickUpSnowball();
+            return;
+        }
+        var off = maid.getOffhandItem();
+        if (!(main.getItem() instanceof ItemSnowball) && (off == null || off.stackSize <= 0)) {
+            maid.setOffhandItem(new ItemStack(Items.snowball));
+            playPickUpSnowball();
+        }
+    }
+
+    public float nextSnowballFloat() {
+        guard();
+        return maid.getRNG()
+            .nextFloat();
+    }
+
+    public int nextSnowballInt(int bound) {
+        guard();
+        return maid.getRNG()
+            .nextInt(bound);
+    }
+
+    public void swingSnowballHand() {
+        guard();
+        var main = maid.getHeldItem();
+        maid.swingMaidHand(main == null || !(main.getItem() instanceof ItemSnowball));
+    }
+
+    public void throwSnowballAt(MaidCombatActor.Target value) {
+        var view = attackTarget(value);
+        if (maid.getTask() != MaidTask.IDLE || maid.getModernCombatMemory()
+            .target() != view.entity) return;
+        var ball = new EntitySnowball(world, maid.posX, maid.posY, maid.posZ);
+        double x = view.entity.posX - maid.posX, z = view.entity.posZ - maid.posZ;
+        double y = view.entity.boundingBox.minY + view.entity.height / 3.0F - ball.posY;
+        ball.setThrowableHeading(x, y + Math.sqrt(x * x + z * z) * .15D, z, 1.6F, 1);
+        maid.playSound(
+            "random.bow",
+            .5F,
+            .4F / (maid.getRNG()
+                .nextFloat() * .4F + .8F));
+        if (!view.current()) {
+            ball.setDead();
+            return;
+        }
+        boolean spawned = world.spawnEntityInWorld(ball);
+        if (spawned && view.current()
+            && maid.getModernCombatMemory()
+                .target() == view.entity)
+            snowballThrows++;
+        else ball.setDead();
+    }
+
+    public void playPickUpSnowball() {
+        guard();
+        maid.startPickUpSnowball();
+    }
+
+    public boolean isPickingUpSnowball() {
+        guard();
+        return maid.getSnowballAnimation()
+            .pickingUp();
+    }
+
+    public long snowballAnimationStartedAt() {
+        guard();
+        return maid.getSnowballAnimation()
+            .startedAt();
+    }
+
+    public long nowMillis() {
+        guard();
+        return System.currentTimeMillis();
+    }
+
+    public void expireSnowballAnimation() {
+        guard();
+        maid.getSnowballAnimation()
+            .clear();
     }
 
     private OwnerView owner(Owner value) {

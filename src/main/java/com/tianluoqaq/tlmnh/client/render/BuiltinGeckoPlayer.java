@@ -64,7 +64,7 @@ public final class BuiltinGeckoPlayer implements GeckoAnimationTarget {
         add("hold_mainhand", 0, event -> hold(event, Slot.MAINHAND));
         swingController = add("swing", 2, this::swing);
         add("use", 2, this::use);
-        add("misc", 2, event -> state.begging ? play(event, "beg", EDefaultLoopTypes.LOOP) : PlayState.STOP);
+        add("misc", 2, this::misc);
         add("passenger", 2, event -> play(event, "passenger$" + state.passengerId, EDefaultLoopTypes.LOOP));
         for (int i = 0; i < 8; i++) {
             String name = "parallel" + i;
@@ -125,6 +125,13 @@ public final class BuiltinGeckoPlayer implements GeckoAnimationTarget {
         }
         applied = true;
         return true;
+    }
+
+    private PlayState misc(AnimationEvent<BuiltinGeckoPlayer> event) {
+        if (state.begging) return play(event, "beg", EDefaultLoopTypes.LOOP);
+        if (state.pickingUpSnowball) return play(event, "pick_up_snowball", EDefaultLoopTypes.PLAY_ONCE);
+        if (state.snowballAnimationExpired) return play(event, "empty", EDefaultLoopTypes.PLAY_ONCE);
+        return PlayState.STOP;
     }
 
     private PlayState main(AnimationEvent<BuiltinGeckoPlayer> event) {
