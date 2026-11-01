@@ -14,7 +14,8 @@ public final class MaidSensingBudget {
         LIVING,
         PICKUP,
         LIFE,
-        AIR
+        AIR,
+        AMBIENT
     }
 
     public static final class Request {

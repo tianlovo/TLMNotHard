@@ -32,6 +32,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedRideController ride;
     private final EnhancedBreathingController breathing;
     private final EnhancedClimbController climb;
+    private final EnhancedAmbientController ambient;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
@@ -65,6 +66,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         ride = new EnhancedRideController(maid, actor);
         breathing = new EnhancedBreathingController(maid, actor, navigation);
         climb = new EnhancedClimbController(actor);
+        ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
     }
 
     @Override
@@ -156,6 +158,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                         entity);
                 }
             }
+            ambient.offer(frame);
             var selected = arbiter.choose(frame);
             Kind nextKind = selected == null ? null : selected.kind;
             String nextTarget = selected == null ? null : selected.target;
@@ -202,6 +205,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     var entity = (Entity) selected.payload;
                     if (legalPickup(entity)) actor.setEntityWalkAndLook(entity, .6F, 0);
                 }
+                case BEG, OBSERVE, WANDER -> ambient.execute(selected);
                 default -> throw new IllegalStateException("Unsupported enhanced core intent");
             }
             if (!actor.isCurrent()) return;
@@ -248,6 +252,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         selectedKind = null;
         selectedTarget = null;
         panic.cancel();
+        ambient.cancel();
         breathing.cancel();
         sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
         climb.cancel();
@@ -314,6 +319,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedBreathingController breathing() {
         return breathing;
+    }
+
+    public EnhancedAmbientController ambient() {
+        return ambient;
     }
 
     public ModernFollowCoreActor actor() {

@@ -14,7 +14,8 @@ public final class MaidIntentFrame {
         COMBAT,
         COMMAND,
         CARE,
-        AUTONOMOUS
+        AUTONOMOUS,
+        AMBIENT
     }
 
     public enum Kind {
@@ -30,7 +31,10 @@ public final class MaidIntentFrame {
         PANIC,
         VEHICLE,
         RIDE,
-        MEAL
+        MEAL,
+        BEG,
+        OBSERVE,
+        WANDER
     }
 
     private final MaidPolicyContext context;

@@ -1173,6 +1173,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return MaidLandRandomSampler.getPosAway(new WorldFallback(true), radius, vertical, avoid);
     }
 
+    public Vec3 sampleEnhancedLand(int radius, int vertical) {
+        guard();
+        return MaidLandRandomSampler.getPos(new WorldFallback(true), radius, vertical);
+    }
+
+    /** 只设置当前动作的LOOK，增强选择器负责复核候选可见性和活动范围 */
+    public void lookAtAmbientEntity(EntityLivingBase entity) {
+        guard();
+        if (entity.worldObj != world || !entity.isEntityAlive())
+            throw new IllegalArgumentException("Live same-world ambient target required");
+        look = new EntityLook(entity);
+    }
+
     /** 增强落点按实际脚下碰撞承重和当前身体空间判断，透明度不提供通行或安全保证 */
     public boolean isEnhancedLandDestination(Point point) {
         guard();
