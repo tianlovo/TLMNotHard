@@ -8,15 +8,23 @@ import net.minecraft.block.BlockFenceGate;
 import net.minecraft.world.World;
 
 import com.tianluoqaq.tlmnh.common.ai.NativeDoorState;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 /** 目标平台门API适配，保留Malisis动画和锁定规则，不直接改其TileEntity状态 */
 public final class MaidDoorAccess {
 
-    private static final Animated ANIMATED = animated();
+    private static final Animated ANIMATED = IntegrationGuard
+        .call(ExternalFeature.ANIMATED_DOORS, MaidDoorAccess::animated, () -> null);
 
     private MaidDoorAccess() {}
 
     public static boolean open(Block block, World world, int x, int y, int z) {
+        return IntegrationGuard
+            .call(ExternalFeature.ANIMATED_DOORS, () -> openSafe(block, world, x, y, z), () -> false);
+    }
+
+    private static boolean openSafe(Block block, World world, int x, int y, int z) {
         var tile = world.getTileEntity(x, y, z);
         if (ANIMATED != null && ANIMATED.state.getDeclaringClass()
             .isInstance(tile)) {
@@ -28,7 +36,14 @@ public final class MaidDoorAccess {
     }
 
     public static boolean setOpen(Block block, World world, int x, int y, int z, boolean value) {
-        if (open(block, world, x, y, z) == value) return true;
+        return IntegrationGuard
+            .call(ExternalFeature.ANIMATED_DOORS, () -> setOpenSafe(block, world, x, y, z, value), () -> false);
+    }
+
+    private static boolean setOpenSafe(Block block, World world, int x, int y, int z, boolean value) {
+        boolean current = open(block, world, x, y, z);
+        if (!IntegrationGuard.available(ExternalFeature.ANIMATED_DOORS)) return false;
+        if (current == value) return true;
         if (block instanceof BlockDoor door) door.func_150014_a(world, x, y, z, value);
         else if (block instanceof BlockFenceGate) {
             var tile = world.getTileEntity(x, y, z);
@@ -60,6 +75,8 @@ public final class MaidDoorAccess {
                 MaidDoorAccess.class.getClassLoader());
             return new Animated(tile.getMethod("getState"), tile.getMethod("openOrCloseDoor"));
         } catch (ClassNotFoundException absent) {
+            if (cpw.mods.fml.common.Loader.isModLoaded("malisisdoors"))
+                throw new IllegalStateException("Installed animated door class missing", absent);
             return null;
         } catch (NoSuchMethodException incompatible) {
             throw new IllegalStateException("Installed animated door API differs", incompatible);

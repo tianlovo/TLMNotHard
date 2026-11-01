@@ -61,9 +61,10 @@ public final class MaidShrineBlock extends BlockContainer {
     @Override
     public void breakBlock(World world, int x, int y, int z, Block block, int metadata) {
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof MaidShrineTile shrine) {
-            var film = shrine.extractForBreak();
+            var film = shrine.getFilm();
             if (film != null) {
-                MaidFilmRecovery.returnFromShrine(world, film, x + 0.5D, y + 0.5D, z + 0.5D);
+                MaidFilmRecovery.queueOwnedItem(world, film, x + 0.5D, y + 0.5D, z + 0.5D);
+                shrine.extractForBreak();
             }
         }
         super.breakBlock(world, x, y, z, block, metadata);

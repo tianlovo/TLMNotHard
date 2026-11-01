@@ -41,8 +41,13 @@ public final class MaidDeathService {
         var inventory = maid.getMaidInventory();
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             var stack = inventory.getStackInSlot(slot);
-            if (stack != null) items.appendTag(stack.writeToNBT(new NBTTagCompound()));
+            if (stack != null) items.appendTag(com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack));
         }
+        var recovery = inventory.recovery()
+            .write();
+        for (int index = 0; index < recovery.tagCount(); index++) items.appendTag(
+            recovery.getCompoundTagAt(index)
+                .copy());
         items.appendTag(
             MaidLifecycleItems.credential(MaidResurrectionContent.FILM, token, owner)
                 .writeToNBT(new NBTTagCompound()));
@@ -60,6 +65,8 @@ public final class MaidDeathService {
             z,
             maid.getCustomNameTag());
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) inventory.setInventorySlotContents(slot, null);
+        inventory.recovery()
+            .clear();
         try {
             ensureTombstone(world, token);
         } catch (RuntimeException exception) {

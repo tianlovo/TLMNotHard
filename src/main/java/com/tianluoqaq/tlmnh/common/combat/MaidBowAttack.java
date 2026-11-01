@@ -144,6 +144,7 @@ public final class MaidBowAttack {
     }
 
     private boolean fireOnce(EntityLivingBase target) {
+        if (!NativeArrowGravity.available()) return false;
         if (!canFire(target) || target != observed
             || drawTicks < DRAW_TICKS
             || drawingBow != maid.getHeldItem()
@@ -165,6 +166,7 @@ public final class MaidBowAttack {
 
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
     public boolean fireForModern(EntityLivingBase target, float charge, BooleanSupplier admitted) {
+        if (!NativeArrowGravity.available()) return false;
         if (firing || !admitted.getAsBoolean()) return false;
         int slot = modernArrowSlot(maid);
         if (slot < 0) return false;
@@ -234,6 +236,11 @@ public final class MaidBowAttack {
                 arrow.setDead();
                 return reject(safety);
             }
+        }
+        NativeArrowGravity.forArrow(arrow);
+        if (!NativeArrowGravity.available()) {
+            arrow.setDead();
+            return false;
         }
         arrow.shootingEntity = maid;
 

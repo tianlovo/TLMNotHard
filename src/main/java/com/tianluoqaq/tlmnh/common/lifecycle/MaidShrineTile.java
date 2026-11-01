@@ -62,14 +62,18 @@ public final class MaidShrineTile extends TileEntity {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
-        var stored = ItemStack.loadItemStackFromNBT(tag.getCompoundTag("StorageItem"));
-        film = MaidLifecycleItems.isFilm(stored) ? stored : null;
+        var stored = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decodeField(tag, "StorageItem");
+        film = stored == null || MaidLifecycleItems.isFilm(stored)
+            || stored.getItem() == com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.ITEM ? stored
+                : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
+                    .seal(tag.getCompoundTag("StorageItem"), "shrine_slot");
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
-        if (film != null) tag.setTag("StorageItem", film.writeToNBT(new NBTTagCompound()));
+        if (film != null)
+            tag.setTag("StorageItem", com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(film));
         else tag.removeTag("StorageItem");
     }
 

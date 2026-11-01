@@ -17,10 +17,10 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
-import squeek.applecore.api.AppleCoreAPI;
 
 /** GTNH食物数据适配，不把女仆伪装成玩家执行onEaten */
 public final class MaidFoodProfile {
@@ -29,8 +29,8 @@ public final class MaidFoodProfile {
     public final int duration;
     private ItemStack container;
     private boolean milk;
+    private boolean requiresNutrition = true, requiresGregtech;
     private final List<Effect> effects = new ArrayList<>();
-    private static boolean warned;
 
     private MaidFoodProfile(ItemStack stack, int hunger, float saturation) {
         total = hunger + hunger * saturation * 2;
@@ -38,15 +38,20 @@ public final class MaidFoodProfile {
     }
 
     public static MaidFoodProfile inspect(ItemStack stack) {
+        return IntegrationGuard
+            .call(ExternalFeature.NUTRITION, () -> inspectSafe(stack == null ? null : stack.copy()), () -> null);
+    }
+
+    private static MaidFoodProfile inspectSafe(ItemStack stack) {
         if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return null;
         EnumAction action = stack.getItemUseAction();
         if (action != EnumAction.eat && action != EnumAction.drink) return null;
-        var values = AppleCoreAPI.accessor.getFoodValues(stack);
-        if (values == null || values.hunger < 0 || !Float.isFinite(values.saturationModifier)) return null;
-        var profile = new MaidFoodProfile(stack, values.hunger, values.saturationModifier);
+        var values = Nutrition.values(stack);
+        if (values == null || values[0] < 0 || !Float.isFinite(values[1])) return null;
+        var profile = new MaidFoodProfile(stack, (int) values[0], values[1]);
         if (!Float.isFinite(profile.total) || profile.total < 0 || profile.duration <= 0 || profile.duration > 1200)
             return null;
-        try {
+        {
             if (stack.getItem() instanceof ItemFood food) {
                 String id = net.minecraft.item.Item.itemRegistry.getNameForObject(food);
                 boolean vanilla = id != null && id.startsWith("minecraft:");
@@ -83,30 +88,37 @@ public final class MaidFoodProfile {
                 }
                 return profile;
             }
-            // 已核 GT5 5.09.54.265：食物表公开，效果与容器沿用固定字段，没有 NPC 接口
-            Class<?> meta = Class.forName("gregtech.api.items.MetaGeneratedItem");
-            if (!meta.isInstance(stack.getItem())) return null;
-            var stats = (Map<?, ?>) meta.getField("mFoodStats")
-                .get(stack.getItem());
-            Object stat = stats.get((short) stack.getItemDamage());
-            if (stat == null || !stat.getClass()
-                .getName()
-                .equals("gregtech.api.util.GTFoodStat")) return null;
-            if ((boolean) field(stat, "mExplosive")) return null;
-            var empty = (ItemStack) field(stat, "mEmptyContainer");
-            profile.container = empty == null ? null : empty.copy();
-            profile.milk = (boolean) field(stat, "mMilk");
-            int[] potions = (int[]) field(stat, "mPotionEffects");
-            boolean ambient = (boolean) field(stat, "mInvisibleParticles");
-            for (int i = 3; i < potions.length; i += 4)
-                profile.effect(potions[i - 3], potions[i - 2], potions[i - 1], potions[i] / 100F, ambient);
-            return profile;
-        } catch (ReflectiveOperationException | RuntimeException failure) {
-            if (!warned) {
-                warned = true;
-                TLMNotHard.LOG.warn("Food data unavailable; affected food is not consumed", failure);
-            }
-            return null;
+            return IntegrationGuard.call(ExternalFeature.GREGTECH_FOOD, () -> gregtech(stack, profile), () -> null);
+        }
+    }
+
+    private static MaidFoodProfile gregtech(ItemStack stack, MaidFoodProfile profile)
+        throws ReflectiveOperationException {
+        Class<?> meta = Class.forName("gregtech.api.items.MetaGeneratedItem");
+        if (!meta.isInstance(stack.getItem())) return null;
+        var stats = (Map<?, ?>) meta.getField("mFoodStats")
+            .get(stack.getItem());
+        Object stat = stats.get((short) stack.getItemDamage());
+        if (stat == null || !stat.getClass()
+            .getName()
+            .equals("gregtech.api.util.GTFoodStat")) return null;
+        if ((boolean) field(stat, "mExplosive")) return null;
+        var empty = (ItemStack) field(stat, "mEmptyContainer");
+        profile.container = empty == null ? null : empty.copy();
+        profile.milk = (boolean) field(stat, "mMilk");
+        profile.requiresGregtech = true;
+        int[] potions = (int[]) field(stat, "mPotionEffects");
+        boolean ambient = (boolean) field(stat, "mInvisibleParticles");
+        for (int i = 3; i < potions.length; i += 4)
+            profile.effect(potions[i - 3], potions[i - 2], potions[i - 1], potions[i] / 100F, ambient);
+        return profile;
+    }
+
+    private static final class Nutrition {
+
+        static float[] values(ItemStack stack) {
+            var values = squeek.applecore.api.AppleCoreAPI.accessor.getFoodValues(stack);
+            return values == null ? null : new float[] { values.hunger, values.saturationModifier };
         }
     }
 
@@ -117,6 +129,7 @@ public final class MaidFoodProfile {
             var effects = Items.potionitem.getEffects(stack);
             if (effects == null) return null;
             var profile = new MaidFoodProfile(stack, 0, 0);
+            profile.requiresNutrition = false;
             profile.container = new ItemStack(Items.glass_bottle);
             for (PotionEffect effect : effects) profile
                 .effect(effect.getPotionID(), effect.getDuration(), effect.getAmplifier(), 1, effect.getIsAmbient());
@@ -156,6 +169,11 @@ public final class MaidFoodProfile {
     private void effect(int id, int ticks, int amplifier, float chance, boolean ambient) {
         if (id > 0 && id < Potion.potionTypes.length && Potion.potionTypes[id] != null && ticks > 0 && chance > 0)
             effects.add(new Effect(id, ticks, amplifier, chance, ambient));
+    }
+
+    public boolean available() {
+        return (!requiresNutrition || IntegrationGuard.available(ExternalFeature.NUTRITION))
+            && (!requiresGregtech || IntegrationGuard.available(ExternalFeature.GREGTECH_FOOD));
     }
 
     public ItemStack container() {

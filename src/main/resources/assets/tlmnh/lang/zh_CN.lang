@@ -106,3 +106,12 @@ gui.tlmnh.original.model_cache_pending=当前使用实时预览，缩略图缓�
 
 gui.tlmnh.original.config_pending=待移植
 gui.tlmnh.original.config_pending.desc=此选项会随对应功能接入，当前开发版暂不可调
+
+item.tlmnh.recovery_parcel.name=物品保护包
+chat.tlmnh.protection.fallback=[TLMNH %s] 已触发兼容保护：%s 当前不可用，物品数据仍保留，异常详情见日志
+chat.tlmnh.protection.sealed=当前环境无法安全恢复原物品，保护包仍完整保留其数据
+chat.tlmnh.protection.recovered=已向背包转移一件保管物品
+chat.tlmnh.protection.no_space=未转移保管物品，请检查背包空位和保管区
+commands.tlmnhprotect.usage=/tlmnhprotect recover <女仆实体编号>
+commands.tlmnhprotect.owner=请站在自己拥有且存活的女仆附近
+tooltip.tlmnh.protection.parcel=已保留原始物品数据，恢复兼容环境后右键尝试取回

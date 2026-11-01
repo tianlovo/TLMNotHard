@@ -107,3 +107,12 @@ gui.tlmnh.original.model_cache_pending=Live previews are used; thumbnail caching
 
 gui.tlmnh.original.config_pending=Pending
 gui.tlmnh.original.config_pending.desc=This option will become available when its feature is ported
+
+item.tlmnh.recovery_parcel.name=Protected item parcel
+chat.tlmnh.protection.fallback=[TLMNH %s] Compatibility protection: %s is unavailable. Owned item data is retained; see the log for the exception
+chat.tlmnh.protection.sealed=The original item cannot be restored safely in this environment. The parcel still retains its data
+chat.tlmnh.protection.recovered=One protected item was transferred to your inventory
+chat.tlmnh.protection.no_space=No protected item was transferred. Check free inventory space and the recovery store
+commands.tlmnhprotect.usage=/tlmnhprotect recover <maid entity id>
+commands.tlmnhprotect.owner=Stand near a living maid that you own
+tooltip.tlmnh.protection.parcel=Original item data retained. Right-click after restoring the compatible environment

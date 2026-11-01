@@ -3,10 +3,11 @@ package com.tianluoqaq.tlmnh.common.inventory;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
 
 /** 六格背包、双手与护甲的统一槽位视图，装备仍只有实体中的一份存储 */
 public final class MaidInventory implements IInventory {
@@ -19,6 +20,12 @@ public final class MaidInventory implements IInventory {
     public static final int TOTAL_SIZE = 12;
 
     private final EntityMaid maid;
+    private final RecoveryStore recovery = new RecoveryStore();
+
+    public RecoveryStore recovery() {
+        return recovery;
+    }
+
     private final ItemStack[] backpack = new ItemStack[BACKPACK_SIZE];
 
     public MaidInventory(EntityMaid maid) {
@@ -155,9 +162,8 @@ public final class MaidInventory implements IInventory {
         var items = new NBTTagList();
         for (int slot = 0; slot < BACKPACK_SIZE; slot++) {
             if (backpack[slot] != null) {
-                var item = new NBTTagCompound();
+                var item = ProtectedItemCodec.encode(backpack[slot]);
                 item.setByte("Slot", (byte) slot);
-                backpack[slot].writeToNBT(item);
                 items.appendTag(item);
             }
         }
@@ -169,7 +175,11 @@ public final class MaidInventory implements IInventory {
         for (int index = 0; index < items.tagCount(); index++) {
             var item = items.getCompoundTagAt(index);
             int slot = item.getByte("Slot") & 255;
-            if (slot < BACKPACK_SIZE) setInventorySlotContents(slot, ItemStack.loadItemStackFromNBT(item));
+            if (!item.hasKey("Slot", 1) || slot >= BACKPACK_SIZE || backpack[slot] != null) recovery.retain(item);
+            else {
+                var stack = ProtectedItemCodec.decode(item);
+                backpack[slot] = stack == null ? ProtectedItemCodec.seal(item, "empty_entry") : stack;
+            }
         }
     }
 

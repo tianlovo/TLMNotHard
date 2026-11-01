@@ -32,6 +32,10 @@ public final class MaidMealController {
             return;
         }
         if (lease != null) {
+            if (profile != null && !profile.available()) {
+                cancel();
+                return;
+            }
             if (!maid.getItemUseState()
                 .isCurrent(lease)) {
                 cancel();

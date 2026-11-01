@@ -18,7 +18,6 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import mods.battlegear2.api.shield.IShield;
 
 /** 从 native 的实际实体读取一帧，动画计时由调用方的独立时间轴传入 */
 @SideOnly(Side.CLIENT)
@@ -89,7 +88,7 @@ public final class MaidMolangFrames {
 
     private static String classify(ItemStack stack) {
         Item item = stack.getItem();
-        if (item instanceof IShield) return "shield";
+        if (com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.isShield(stack)) return "shield";
         if (item instanceof ItemSword) return "sword";
         if (item instanceof ItemAxe) return "axe";
         if (item instanceof ItemPickaxe) return "pickaxe";

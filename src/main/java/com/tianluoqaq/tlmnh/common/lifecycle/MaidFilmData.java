@@ -11,9 +11,9 @@ import net.minecraft.nbt.NBTTagCompound;
 public final class MaidFilmData {
 
     private static final String[] REMOVED = { "id", "UUIDMost", "UUIDLeast", "PersistentIDMSB", "PersistentIDLSB",
-        "MaidInventory", "MaidExperience", "TLMNHOffhand", "Equipment", "DropChances", "Health", "HealF", "HurtTime",
-        "DeathTime", "AttackTime", "HurtByTimestamp", "Pos", "Motion", "Rotation", "FallDistance", "Fire", "Air",
-        "Riding", "Leash", "Leashed", "ActiveEffects", "AbsorptionAmount", "Invulnerable" };
+        "TLMNHRecovery", "MaidInventory", "MaidExperience", "TLMNHOffhand", "Equipment", "DropChances", "Health",
+        "HealF", "HurtTime", "DeathTime", "AttackTime", "HurtByTimestamp", "Pos", "Motion", "Rotation", "FallDistance",
+        "Fire", "Air", "Riding", "Leash", "Leashed", "ActiveEffects", "AbsorptionAmount", "Invulnerable" };
 
     private MaidFilmData() {}
 

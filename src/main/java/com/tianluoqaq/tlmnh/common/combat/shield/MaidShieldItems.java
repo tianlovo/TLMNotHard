@@ -11,7 +11,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 
-import mods.battlegear2.api.shield.IShield;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 /** native 实装盾牌的物品能力；玩家专用事件、动画和箭捕获不在这里冒充可复用 */
 public final class MaidShieldItems {
@@ -54,11 +55,23 @@ public final class MaidShieldItems {
     }
 
     public static Profile inspect(ItemStack stack) {
+        if (stack == null || stack.getItem() == null) return new Profile(Status.EMPTY, "", false);
+        return IntegrationGuard.call(
+            ExternalFeature.SHIELDS,
+            () -> inspectSafe(stack.copy()),
+            () -> new Profile(Status.UNSUPPORTED, itemId(stack), false));
+    }
+
+    public static boolean isShield(ItemStack stack) {
+        return stack != null && IntegrationGuard.call(ExternalFeature.SHIELDS, () -> Api.isShield(stack), () -> false);
+    }
+
+    private static Profile inspectSafe(ItemStack stack) {
         if (stack == null || stack.stackSize <= 0 || stack.getItem() == null)
             return new Profile(Status.EMPTY, "", false);
         String id = itemId(stack);
         boolean tinkers = ROUND.equals(id) || HEATER.equals(id);
-        if (!(stack.getItem() instanceof IShield) || !BG_IDS.contains(id) && !tinkers)
+        if (!(Api.isShield(stack)) || !BG_IDS.contains(id) && !tinkers)
             return new Profile(Status.UNSUPPORTED, id, false);
         if (tinkers) {
             var data = toolData(stack);
@@ -101,19 +114,33 @@ public final class MaidShieldItems {
     }
 
     public static boolean canBlock(ItemStack stack, DamageSource source) {
-        return inspect(stack).isReady() && source != null && ((IShield) stack.getItem()).canBlock(stack, source);
+        return inspect(stack).isReady() && source != null
+            && IntegrationGuard.call(ExternalFeature.SHIELDS, () -> Api.canBlock(stack.copy(), source), () -> false);
     }
 
     public static float blockAngle(ItemStack stack) {
-        return ((IShield) stack.getItem()).getBlockAngle(stack);
+        return IntegrationGuard.call(ExternalFeature.SHIELDS, () -> {
+            float value = Api.blockAngle(stack.copy());
+            if (!Float.isFinite(value) || value < 0 || value > 360)
+                throw new IllegalStateException("Invalid shield block angle");
+            return value;
+        }, () -> 0F);
     }
 
     public static float durabilityReduction(ItemStack stack, DamageSource source) {
-        return ((IShield) stack.getItem()).getDamageReduction(stack, source);
+        return IntegrationGuard.call(ExternalFeature.SHIELDS, () -> {
+            float value = Api.reduction(stack.copy(), source);
+            if (!Float.isFinite(value) || value < 0) throw new IllegalStateException("Invalid shield damage reduction");
+            return value;
+        }, () -> 0F);
     }
 
     /** Forge 的精确工具能力映射，既不猜显示名称，也不把 GT 链锯当成普通斧 */
     public static boolean canDisableShield(ItemStack weapon) {
+        return IntegrationGuard.call(ExternalFeature.SHIELDS, () -> canDisableSafe(weapon), () -> false);
+    }
+
+    private static boolean canDisableSafe(ItemStack weapon) {
         if (weapon == null || weapon.stackSize <= 0 || weapon.getItem() == null) return false;
         if (weapon.getItem() instanceof ItemAxe) return true;
         var copy = weapon.copy();
@@ -129,5 +156,24 @@ public final class MaidShieldItems {
                 && data.getInteger("TotalDurability") > 0;
         }
         return true;
+    }
+
+    private static final class Api {
+
+        static boolean isShield(ItemStack stack) {
+            return stack.getItem() instanceof mods.battlegear2.api.shield.IShield;
+        }
+
+        static boolean canBlock(ItemStack stack, DamageSource source) {
+            return ((mods.battlegear2.api.shield.IShield) stack.getItem()).canBlock(stack, source);
+        }
+
+        static float blockAngle(ItemStack stack) {
+            return ((mods.battlegear2.api.shield.IShield) stack.getItem()).getBlockAngle(stack);
+        }
+
+        static float reduction(ItemStack stack, DamageSource source) {
+            return ((mods.battlegear2.api.shield.IShield) stack.getItem()).getDamageReduction(stack, source);
+        }
     }
 }

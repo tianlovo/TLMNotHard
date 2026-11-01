@@ -34,7 +34,7 @@ import cpw.mods.fml.common.network.NetworkRegistry;
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "required-after:battlegear2;required-after:AppleCore")
+    dependencies = "after:battlegear2;after:AppleCore")
 public final class TLMNotHard {
 
     public static final String MOD_ID = "tlmnh";
@@ -61,6 +61,8 @@ public final class TLMNotHard {
         com.github.tartaricacid.touhoulittlemaid.datapack.KaomojiData.load();
         ModEntities.register(this);
         MaidLifeContent.register();
+        com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.register();
+        com.tianluoqaq.tlmnh.common.protection.ProtectionEvents.register();
         MaidResurrectionContent.register();
         AnimationLab.register();
         MaidBrainLifecycle.register();
@@ -80,11 +82,18 @@ public final class TLMNotHard {
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
+        event.registerServerCommand(new com.tianluoqaq.tlmnh.common.protection.ProtectionCommand());
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             AnimationLab.validateAutoEntry();
             MaidShieldRuntimeProbe.registerForDevelopment();
             event.registerServerCommand(new DevelopmentCommand());
         }
+    }
+
+    @Mod.EventHandler
+    public void missingMappings(cpw.mods.fml.common.event.FMLMissingMappingsEvent event) {
+        for (var mapping : event.getAll()) if (mapping.type == cpw.mods.fml.common.registry.GameRegistry.Type.ITEM)
+            com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.missing(mapping.id, mapping.name);
     }
 
     @Mod.EventHandler

@@ -33,6 +33,8 @@ import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原实体的核心状态移植，渲染、交互和行为由独立适配模块接入 */
@@ -553,7 +555,11 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public boolean interact(EntityPlayer player) {
-        var held = player == null ? null : player.getCurrentEquippedItem();
+        var held = player == null ? null
+            : com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
+                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PLAYER_OFFHAND,
+                player::getCurrentEquippedItem,
+                () -> null);
         boolean nameTag = held != null && held.getItem() == Items.name_tag;
         // 返回未处理会进入ItemNameTag原生分支，拒绝时也要阻止它绕过女仆权限
         if (!MaidInteractions.canInteract(this, player)) return nameTag;
@@ -825,7 +831,17 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         home.save(tag);
         attackSettings.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
-        if (offhand != null) tag.setTag(OFFHAND_TAG, offhand.writeToNBT(new NBTTagCompound()));
+        tag.setTag(
+            RecoveryStore.TAG,
+            inventory.recovery()
+                .write());
+        var equipment = new net.minecraft.nbt.NBTTagList();
+        for (int slot = 0; slot < 5; slot++) {
+            var stack = getEquipmentInSlot(slot);
+            equipment.appendTag(stack == null ? new NBTTagCompound() : ProtectedItemCodec.encode(stack));
+        }
+        tag.setTag("Equipment", equipment);
+        if (offhand != null) tag.setTag(OFFHAND_TAG, ProtectedItemCodec.encode(offhand));
         else tag.removeTag(OFFHAND_TAG);
     }
 
@@ -854,7 +870,24 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                 entered = true;
                 brain.beforePersistentRead();
             }
-            super.readEntityFromNBT(tag);
+            // 原生读取前先解码，避免缺失物品变为空槽；原始输入保持不变
+            var sanitized = (NBTTagCompound) tag.copy();
+            sanitized.removeTag("Equipment");
+            super.readEntityFromNBT(sanitized);
+            inventory.recovery()
+                .read(tag.getTagList(RecoveryStore.TAG, 10));
+            inventory.recovery()
+                .retainInvalidList(tag, "Equipment");
+            inventory.recovery()
+                .retainInvalidList(tag, MAID_INVENTORY_TAG);
+            inventory.recovery()
+                .retainInvalidList(tag, RecoveryStore.TAG);
+            var equipment = tag.getTagList("Equipment", 10);
+            for (int slot = 0; slot < 5; slot++) setCurrentItemOrArmor(
+                slot,
+                slot < equipment.tagCount() ? ProtectedItemCodec.decode(equipment.getCompoundTagAt(slot)) : null);
+            for (int slot = 5; slot < equipment.tagCount(); slot++) inventory.recovery()
+                .retain(equipment.getCompoundTagAt(slot));
             extraSaveData = (NBTTagCompound) tag.getCompoundTag("TLMNH")
                 .copy();
             if (extraSaveData.getInteger("Schema") > SAVE_VERSION) {
@@ -884,7 +917,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience") && tag.hasKey("MaidIsPickup", 1))
                 setPickup(tag.getBoolean("MaidIsPickup"));
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
-            setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
+            setOffhandItem(ProtectedItemCodec.decodeField(tag, OFFHAND_TAG));
             home.load(tag);
             attackSettings.load(tag);
             meals.load(tag);

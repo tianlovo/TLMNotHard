@@ -416,6 +416,7 @@ public final class MaidShieldController {
         var world = maid.worldObj;
         var identity = maid.getUniqueID();
         Item originalItem = shield.getItem();
+        var protectedBefore = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(shield);
         try {
             if (!MaidShieldItems.canBlock(shield, source)) {
                 record(
@@ -437,6 +438,8 @@ public final class MaidShieldController {
             Entity opponent = source.getEntity();
             if (opponent != null) {
                 float rawAngle = MaidShieldItems.blockAngle(shield);
+                if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+                    .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)) return;
                 float rawYaw = MaidShieldRules
                     .relativeYaw(opponent.posX, opponent.posZ, maid.posX, maid.posZ, maid.rotationYaw, Math::random);
                 angle = finite(rawAngle);
@@ -460,6 +463,8 @@ public final class MaidShieldController {
                 }
             }
             float rawReduction = MaidShieldItems.durabilityReduction(shield, source);
+            if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+                .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)) return;
             reduction = finite(rawReduction);
             if (reduction == null) {
                 record(
@@ -532,8 +537,21 @@ public final class MaidShieldController {
                 shield,
                 !sameUse,
                 cooldown);
-        } catch (RuntimeException | LinkageError failure) {
+        } catch (RuntimeException | LinkageError | AssertionError failure) {
+            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+                .trip(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS, failure);
+            event.setCanceled(false);
             release(use, "shield_callback_failed");
+            // 只封存仍由本女仆持有的同一对象，不能再补发已转移到其他所有者的物品
+            var inventory = maid.getMaidInventory();
+            for (int slot = 0; slot < inventory.getSizeInventory(); slot++)
+                if (inventory.getStackInSlot(slot) == shield) {
+                    inventory.setInventorySlotContents(
+                        slot,
+                        com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
+                            .seal(protectedBefore, "shield_callback"));
+                    break;
+                }
             record(
                 depth,
                 Outcome.ERROR,
@@ -548,7 +566,6 @@ public final class MaidShieldController {
                 shield,
                 maid.getOffhandItem() != shield,
                 cooldown);
-            throw failure;
         }
     }
 

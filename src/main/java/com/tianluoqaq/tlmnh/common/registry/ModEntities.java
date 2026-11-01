@@ -14,7 +14,7 @@ public final class ModEntities {
         EntityRegistry.registerModEntity(
             com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class,
             "gravity_free_arrow",
-            1,
+            2,
             mod,
             80,
             20,

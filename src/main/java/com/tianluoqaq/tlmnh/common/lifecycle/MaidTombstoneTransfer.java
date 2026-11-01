@@ -40,7 +40,8 @@ public final class MaidTombstoneTransfer {
         boolean committed = false;
         try {
             for (int i = 0; i < source.tagCount(); i++) {
-                var stack = ItemStack.loadItemStackFromNBT(source.getCompoundTagAt(i));
+                var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
+                    .decode(source.getCompoundTagAt(i));
                 if (stack == null) throw new IllegalStateException("Invalid tombstone stack");
                 insert(planned, stack, player.inventory.getInventoryStackLimit());
                 if (stack.stackSize > 0) overflow.add(stack);

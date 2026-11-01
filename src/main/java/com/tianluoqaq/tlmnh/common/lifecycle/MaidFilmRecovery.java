@@ -4,7 +4,6 @@ import java.util.UUID;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
@@ -17,10 +16,29 @@ public final class MaidFilmRecovery {
     public static UUID returnFromShrine(World world, ItemStack film, double x, double y, double z) {
         if (world.isRemote || !MaidLifecycleItems.isFilm(film))
             throw new IllegalArgumentException("Server film required");
-        var ledger = MaidLifecycleData.get(world);
-        var id = ledger.queueReturnedFilm(film.writeToNBT(new NBTTagCompound()), world.provider.dimensionId, x, y, z);
+        return returnOwnedItem(world, film, x, y, z);
+    }
+
+    /** 本模组持有物品共用先保管后交付边界 */
+    public static UUID returnOwnedItem(World world, ItemStack film, double x, double y, double z) {
+        if (world.isRemote || film == null || film.stackSize <= 0)
+            throw new IllegalArgumentException("Server item required");
+        UUID id = queueOwnedItem(world, film, x, y, z);
         attemptSafely(world, id);
         return id;
+    }
+
+    /** 无世界生成回调，调用者可在返回后清空原槽，交付由既有世界tick推进 */
+    public static UUID queueOwnedItem(World world, ItemStack stack, double x, double y, double z) {
+        if (world.isRemote || stack == null || stack.stackSize <= 0)
+            throw new IllegalArgumentException("Server item required");
+        return MaidLifecycleData.get(world)
+            .queueReturnedFilm(
+                com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack),
+                world.provider.dimensionId,
+                x,
+                y,
+                z);
     }
 
     public static void retryPending(World world) {
@@ -46,8 +64,8 @@ public final class MaidFilmRecovery {
         EntityItem drop = null;
         boolean delivered = false;
         try {
-            var expected = ItemStack.loadItemStackFromNBT(stored);
-            if (!MaidLifecycleItems.isFilm(expected)) throw new IllegalStateException("Invalid escrowed film");
+            var expected = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(stored);
+            if (expected == null) throw new IllegalStateException("Empty escrowed item retained");
             drop = new EntityItem(
                 world,
                 position.xCoord,

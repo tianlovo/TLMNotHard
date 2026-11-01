@@ -1041,3 +1041,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 三场景各三次共 1800 帧，平台外部方块保存并恢复，原全局设置、在线合成主人、内存通道与区块票据随夹具清理
 - compare_port 使用历史原版冻结工具核对原身份、输入和清理，再检查移植输入/年龄/属性/实体移除及 HQA 结果，输出组内/组间描述性轨迹
   原版真实连接主人与移植标准 FakePlayer 分开标识；此观察不准入完整 F、统计收益、全部场景或执行成本结论
+
+## 外部依赖与库存失效保护
+
+- 新增 `common.protection` 为本工程独立实现，不从其他模组复制通用修补器或自动迁移未知 API
+- EntityMaid 保留原实体包名，在已有 `writeEntityToNBT` / `readEntityFromNBT` 接入物品身份、无损封存及越界保管
+  原生 Equipment 读取前移除待解码列表，由本模组边界逐项恢复，避免原生 null 结果吞掉未知物品
+- MaidShieldItems 的 Battlegear 类型引用与 MaidFoodProfile 的 AppleCore 引用隔离到按需内部适配器
+  可选依赖不再用本模组硬启动依赖阻止存档保护执行；不表示整个 GTNH 包的其他模组也能缺少这些依赖启动
+- 对照实装 Forge 的 MapStorage.loadData：其异常后可能返回已构造但未完成读取的对象，因此检查完成状态，拒绝覆盖既有不可读基线
+- 重力箭模组数字 ID 调整为 2，墓碑沿用 1，实体存档名称保持原值；修复此前两者同时使用 1 的网络注册冲突
+- ProtectionTests 的类缺失验证仅隔离载入本模组适配器，不物理移除实际整包依赖，也不冒充修改过的完整 GTNH 重启验收

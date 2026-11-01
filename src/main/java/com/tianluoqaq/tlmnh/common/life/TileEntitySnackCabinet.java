@@ -10,6 +10,12 @@ import net.minecraft.tileentity.TileEntity;
 /** 上游最小 27 格零食柜，使用原生箱子界面，不增加厨房联动 */
 public final class TileEntitySnackCabinet extends TileEntity implements IInventory {
 
+    private final com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery = new com.tianluoqaq.tlmnh.common.protection.RecoveryStore();
+
+    public com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery() {
+        return recovery;
+    }
+
     private final ItemStack[] items = new ItemStack[27];
 
     @Override
@@ -93,23 +99,32 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         super.writeToNBT(tag);
         var contents = new NBTTagList();
         for (int slot = 0; slot < items.length; slot++) if (items[slot] != null) {
-            var item = new NBTTagCompound();
+            var item = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(items[slot]);
             item.setByte("Slot", (byte) slot);
-            items[slot].writeToNBT(item);
             contents.appendTag(item);
         }
         tag.setTag("Items", contents);
+        tag.setTag(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, recovery.write());
     }
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
         java.util.Arrays.fill(items, null);
+        recovery.read(tag.getTagList(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, 10));
+        recovery.retainInvalidList(tag, "Items");
+        recovery.retainInvalidList(tag, com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG);
         var contents = tag.getTagList("Items", 10);
         for (int index = 0; index < contents.tagCount(); index++) {
             var item = contents.getCompoundTagAt(index);
             int slot = item.getByte("Slot") & 255;
-            if (slot < items.length) items[slot] = ItemStack.loadItemStackFromNBT(item);
+            if (!item.hasKey("Slot", 1) || slot >= items.length || items[slot] != null) recovery.retain(item);
+            else {
+                var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(item);
+                items[slot] = stack == null
+                    ? com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.seal(item, "empty_entry")
+                    : stack;
+            }
         }
     }
 }
