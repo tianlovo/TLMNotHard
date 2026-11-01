@@ -27,7 +27,10 @@ public final class MaidIntentFrame {
         HEAL,
         MELEE,
         RANGED,
-        PANIC
+        PANIC,
+        VEHICLE,
+        RIDE,
+        MEAL
     }
 
     private final MaidPolicyContext context;

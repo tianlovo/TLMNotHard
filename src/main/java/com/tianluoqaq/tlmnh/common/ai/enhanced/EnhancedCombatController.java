@@ -76,7 +76,9 @@ public final class EnhancedCombatController {
 
     private boolean permitted() {
         if (!actor.isCurrent() || !maid.isTamed()
-            || !actor.canBrainMoving()
+            || maid.getLeashed()
+            || actor.isSleeping()
+            || !actor.canBrainMoving() && !EnhancedRideController.stationary(maid)
             || maid.getHomeArea()
                 .activity() != Activity.WORK)
             return false;
@@ -130,6 +132,9 @@ public final class EnhancedCombatController {
 
     public void execute(EntityLivingBase selected, boolean bow) {
         if (!permitted() || !legal(selected, bow)) return;
+        var mount = maid.ridingEntity;
+        boolean sitting = maid.isSitting();
+        java.util.function.BooleanSupplier mobility = () -> maid.ridingEntity == mount && maid.isSitting() == sitting;
         var memory = maid.getModernCombatMemory();
         if (memory.target() != selected) {
             if (!actor.setAttackTarget(actor.combatTargetView(selected)) || !actor.isCurrent()) return;
@@ -137,7 +142,7 @@ public final class EnhancedCombatController {
         // 目标事件可以重定向，只使用事件完成后的实际对象并重新验证许可
         ownedTarget = memory.target();
         var target = ownedTarget;
-        if (!actor.isCurrent()) return;
+        if (!actor.isCurrent() || !mobility.getAsBoolean()) return;
         if (!legal(target, bow)) {
             actor.eraseAttackTarget();
             ownedTarget = null;
@@ -154,24 +159,28 @@ public final class EnhancedCombatController {
         } else {
             stopRanged();
             if (actor.shieldBehaviorRunning()) actor.stopUsingShield();
-            if (remembers()) actor.setPositionWalkAndLook(lastSeen, APPROACH_SPEED, 0);
+            if (!EnhancedRideController.stationary(maid) && remembers())
+                actor.setPositionWalkAndLook(lastSeen, APPROACH_SPEED, 0);
+            else actor.eraseWalkTarget();
             return;
         }
         actor.lookAtAttackTarget(view);
-        if (bow) tickRanged(target, view);
-        else tickMelee(target, view);
+        if (bow) tickRanged(target, view, mobility);
+        else tickMelee(target, view, mobility);
     }
 
-    private void tickMelee(EntityLivingBase target, Target view) {
+    private void tickMelee(EntityLivingBase target, Target view, java.util.function.BooleanSupplier mobility) {
         stopRanged();
-        if (actor.withinMeleeRange(view)) actor.eraseWalkTarget();
+        if (EnhancedRideController.stationary(maid) || actor.withinMeleeRange(view)) actor.eraseWalkTarget();
         else actor.walkToAttackTarget(view, APPROACH_SPEED);
         var use = maid.getItemUseState();
         if (!actor.attackCoolingDown() && actor.withinMeleeRange(view)
             && (use.peek() == null || actor.shieldBehaviorRunning())) {
             actor.swingMainHand();
             attacks++;
-            actor.hurtTarget(view, () -> permitted() && legal(target, false) && visible(target, false));
+            actor.hurtTarget(
+                view,
+                () -> mobility.getAsBoolean() && permitted() && legal(target, false) && visible(target, false));
             if (!actor.isCurrent()) return;
             double speed = actor.attackSpeed();
             actor.setAttackCooldown(speed > 0 ? (long) (20 / speed) : 20);
@@ -183,14 +192,15 @@ public final class EnhancedCombatController {
         } else if (use.peek() == null && shield.checkExtraStartConditions(actor)) shield.start(actor);
     }
 
-    private void tickRanged(EntityLivingBase target, Target view) {
+    private void tickRanged(EntityLivingBase target, Target view, java.util.function.BooleanSupplier mobility) {
         if (actor.shieldBehaviorRunning()) actor.stopUsingShield();
         actor.rangedBow()
             .observe(target, true, maid.worldObj.getTotalWorldTime());
+        boolean stationary = EnhancedRideController.stationary(maid);
         boolean close = actor.distanceToTarget(view) <= RANGED_STAND_DISTANCE;
-        if (close) actor.eraseWalkTarget();
+        if (stationary || close) actor.eraseWalkTarget();
         else actor.walkToAttackTarget(view, APPROACH_SPEED);
-        if (close) {
+        if (!stationary && close) {
             if (!strafing && strafe.checkExtraStartConditions(actor)) {
                 strafe.start(actor);
                 strafing = true;
@@ -211,7 +221,7 @@ public final class EnhancedCombatController {
                 actor.fireRangedAttackForPolicy(
                     view,
                     1,
-                    () -> permitted() && legal(target, true) && visible(target, true));
+                    () -> mobility.getAsBoolean() && permitted() && legal(target, true) && visible(target, true));
                 if (actor.isCurrent()) cooldown = actor.shootCooldown();
             }
         } else if (maid.getItemUseState()

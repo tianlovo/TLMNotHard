@@ -359,6 +359,24 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         look = owner(value);
     }
 
+    /** 增强动作读取当前主人与实际视线，不沿用分频Sensor的可见缓存 */
+    public Owner visibleOwnerNow(double distance) {
+        guard();
+        var player = resolveOwner();
+        if (player == null || player.worldObj != world
+            || player.isDead
+            || !player.isEntityAlive()
+            || player.theItemInWorldManager.getGameType()
+                .getID() == 3
+            || maid.getDistanceSqToEntity(player) >= distance * distance
+            || !maid.canEntityBeSeen(player)) return null;
+        return new OwnerView(player);
+    }
+
+    public boolean ownerHoldsTemptation(Owner value) {
+        return com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig.matches(owner(value).player.getHeldItem());
+    }
+
     public void setBegging(boolean value) {
         guard();
         maid.setPose(MaidPose.BEGGING, value);
@@ -869,6 +887,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         boolean allowed = MaidVehiclePlatform.canAddPassenger(expected);
         guard();
         return allowed;
+    }
+
+    public boolean isOwnerControlledVehicle(Vehicle value) {
+        var expected = vehicle(value).entity;
+        var player = resolveOwner();
+        var actual = player == null ? null : MaidVehiclePlatform.controlledVehicle(player);
+        guard();
+        return actual == expected;
     }
 
     public boolean maidIsPassenger() {
