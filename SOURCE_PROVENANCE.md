@@ -977,3 +977,16 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原 O 的无重力、距离相关速度/散布、现代箭随机基础伤害与该目标平台执行配置不同；此处不是 O 等价证明，也不是完整 F/N 或同物理 F-R/N 收益结论
 - 当前武器支持目标平台 ItemBow 与原生基础箭；QuickCharge 默认适配为 0，实装 JAR 名称扫描未发现对应符号，不据此声称所有模组都没有语义相似附魔
 - 全工作记忆刷新、真实 GUI Brain 暂停、完整分类界面、现代额外弹药/自定义箭接口及完整原版对照仍待后续实现或验收
+
+## 原 Brain 刷新与界面暂停
+
+- Indev113 实读固定 TLM EntityMaid.refreshBrain/setTask/setSchedule、MaidBrain.registerBrainGoals 与 AbstractMaidContainer 的打开/关闭状态
+- 实读固定映射 Brain.stopAll/copyWithoutBehaviors：仅停止运行行为，并将仍存在的记忆值交给重建后的 Brain，不把刷新当作策略取消
+- 自有 ModernFollowCoreComponent 执行运行中 Look/Move/Climb/Beg/Shield/Strafe/Shoot/Snow/Vehicle 的停止效果，
+  再重置检查计数、独立随机 Gate、射击/走位及 Sensor 初始延迟
+- 工作点、偷吃动作、攻击目标、攻击 TTL、不可达时间与感知记忆按剩余值保留；运行中 Move/Look 的停止会擦相应记忆，Snow 的停止会清自身攻击目标
+- 相同任务不刷新，日程设置按原版每次刷新并立即初始化活动；停止逻辑先在原帧授权下执行，行为身份随后作废，旧动作引用不能在刷新后的同帧恢复权限
+- 原 guiOpening 只跳过 Brain tick；共享物品使用和实体 SchedulePos 保持 living 相位，界面暂停不复用会撤销策略与资源的开发 suspension
+- 实读 Forge 1.7.10 FMLNetworkHandler.openGui 的真实字节码：先 getRemoteGuiContainer，再 closeScreen，随后安装新窗口
+- 目标平台用窗口对象身份释放暂停状态，避免旧窗口关闭清除刚构造的新窗口；该身份不存档，也不作为 GUI 布局或网络验收的替代
+- 其他现代工作点任务、特殊坐骑分支、完整 F/N 策略、真实客户端交互与原版自然 benchmark 仍按首版范围继续验收

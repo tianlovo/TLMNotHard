@@ -141,12 +141,20 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             home.requestReturn();
         }
         if (runtime.requiresAfterNativeNavigation()) {
-            if (suspended) afterNavigationGate.clear();
-            else afterNavigationGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
+            if (suspended) {
+                afterNavigationGate.clear();
+                afterLivingGate.clear();
+            } else {
+                // 实体日程独立于Brain；窗口在导航前打开也不能丢掉本tick的实体阶段
+                afterLivingGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
+                if (maid.guiOpening) afterNavigationGate.clear();
+                else afterNavigationGate
+                    .book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
+            }
             return;
         }
         afterNavigationGate.clear();
-        executePolicy(runtime, false);
+        if (!maid.guiOpening) executePolicy(runtime, false);
     }
 
     /** 原生navigator更新后、move/look/jump之前，只消费唯一协调器本tick的预约 */
@@ -155,6 +163,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (maid.worldObj == null || maid.worldObj.isRemote
             || runtime == null
             || suspended
+            || maid.guiOpening
             || unloaded
             || persistentReadDepth > 0
             || lifecycleFailed
@@ -642,6 +651,27 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidBoundedPathPlanner.Attempt getLastCombatPathAttempt() {
         return combatPlanner.getLastAttempt();
+    }
+
+    /** 原refresh只停运行行为、重建Behavior/Sensor，不能用策略取消擦掉工作记忆 */
+    public boolean refreshModernBrain() {
+        var runtime = policy;
+        if (maid.worldObj == null || maid.worldObj.isRemote
+            || persistentReadDepth > 0
+            || suspended
+            || unloaded
+            || lifecycleFailed
+            || transitioningPolicy
+            || runtime == null
+            || !runtime.isReady()
+            || !runtime.requiresAfterNativeNavigation()
+            || !(afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent core))
+            return false;
+        core.refreshBrain(
+            runtime,
+            runtime.getContext()
+                .getToken());
+        return true;
     }
 
     /** 供受控场景暂时让出行为，恢复后重新感知，不持久化为玩家玩法状态 */

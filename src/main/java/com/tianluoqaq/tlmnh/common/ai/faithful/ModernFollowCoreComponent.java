@@ -51,13 +51,14 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
     private MaidModernRanged rangedWork = new MaidModernRanged(false), rangedRide = new MaidModernRanged(true);
-    private final MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
+    private MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
         restRandom = new MaidRunOne(true), rideWorkRandom = new MaidRunOne(false), rideIdleLook = new MaidRunOne(false);
     private final MaidStartSnowballAttacking snowFind = new MaidStartSnowballAttacking();
     private MaidSnowballTargetTask snowThrow = new MaidSnowballTargetTask(50);
     private boolean snowRunning;
     private long snowDeadline;
-    private com.tianluoqaq.tlmnh.common.entity.MaidTask registeredTask;
+    private boolean refreshing;
+    private long refreshes;
     private final MaidBedTask bed = new MaidBedTask(.6F, 2);
     private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
     private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
@@ -119,16 +120,6 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             lastEntityTick = maid.ticksExisted;
             hasTick = true;
             perception.tick();
-            if (registeredTask != maid.getTask()) {
-                rangedWork.stop(actor);
-                rangedRide.stop(actor);
-                rangedWork = new MaidModernRanged(false);
-                rangedRide = new MaidModernRanged(true);
-                if (snowRunning) snowThrow.stop(actor);
-                snowRunning = false;
-                snowThrow = new MaidSnowballTargetTask(50);
-                registeredTask = maid.getTask();
-            }
             activities.initialize();
             actor.maintainSleep();
             if (!actor.canBrainMoving()) {
@@ -344,6 +335,57 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         } finally {
             ticking = false;
         }
+    }
+
+    /** 对应stopAll + copyWithoutBehaviors；停止副作用决定擦哪些记忆，其余对象原样保留 */
+    public void refreshBrain(MaidPolicyRuntime runtime, Token token) {
+        if (refreshing) throw new IllegalStateException("Reentrant modern Brain refresh");
+        refreshing = true;
+        try {
+            actor.beginEntityFrame(runtime, token);
+            long time = actor.worldGameTime();
+            if (climbRunning) climb.stop(actor);
+            if (lookState.getStatus() == FollowCoreLookDriver.Status.RUNNING) look.doStop(actor, lookState, time);
+            if (moveState.getStatus() == FollowMoveState.Status.RUNNING) move.doStop(actor, moveState, time);
+            if (idleBegRunning) idleBeg.stop(actor);
+            if (workBegRunning) workBeg.stop(actor);
+            if (rideIdleBegRunning) rideIdleBeg.stop(actor);
+            if (rideWorkBegRunning) rideWorkBeg.stop(actor);
+            combat.stop(actor);
+            rangedWork.stop(actor);
+            rangedRide.stop(actor);
+            if (snowRunning) snowThrow.stop(actor);
+            if (vehicleRunning) vehicle.stop();
+            heal.reset();
+            workMeal.reset();
+            rideWorkMeal.reset();
+            bed.reset();
+            idleStealMove.reset();
+            workStealMove.reset();
+            idleRandom = new MaidRunOne(true);
+            workRandom = new MaidRunOne(true);
+            restRandom = new MaidRunOne(true);
+            rideWorkRandom = new MaidRunOne(false);
+            rideIdleLook = new MaidRunOne(false);
+            rangedWork = new MaidModernRanged(false);
+            rangedRide = new MaidModernRanged(true);
+            snowThrow = new MaidSnowballTargetTask(50);
+            snowRunning = climbRunning = followRunning = vehicleRunning = false;
+            idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
+            lookState = new FollowCoreLookDriver.State();
+            moveState = new FollowMoveState();
+            perception.refreshSensors();
+            activities.reset();
+            activities.initialize();
+            refreshes++;
+            actor.invalidateBehaviorViews();
+        } finally {
+            refreshing = false;
+        }
+    }
+
+    public long refreshes() {
+        return refreshes;
     }
 
     @Override

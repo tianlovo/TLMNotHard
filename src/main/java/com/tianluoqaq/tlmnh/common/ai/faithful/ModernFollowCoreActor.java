@@ -85,6 +85,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private int teleportAttempts;
     private int homeTeleportAttempts, homeTeleportSuccesses, homeTeleportLiquidRejects;
     private int lastScheduleEntityTick = -1;
+    private Object behaviorIdentity = new Object();
+    private Object frameBehaviors;
 
     public ModernFollowCoreActor(EntityMaid maid) {
         this.maid = Objects.requireNonNull(maid, "maid");
@@ -97,7 +99,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid);
     }
 
-    public void beginFrame(MaidPolicyRuntime runtime, Token token) {
+    public void beginEntityFrame(MaidPolicyRuntime runtime, Token token) {
         this.runtime = runtime;
         this.token = token;
         worldTick = world.getTotalWorldTime();
@@ -105,13 +107,23 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         ownerId = maid.func_152113_b();
         task = maid.getTask();
         frameActive = true;
+        frameBehaviors = behaviorIdentity;
         followStop = false;
         guard();
         if (!navigation.claimBrainTarget(this, token, this))
             throw new IllegalStateException("Foreign WALK_TARGET driver");
+    }
+
+    public void beginFrame(MaidPolicyRuntime runtime, Token token) {
+        beginEntityFrame(runtime, token);
         navigationLease();
         maid.getModernCombatMemory()
             .beginBrainFrame(world, entityTick, worldTick);
+    }
+
+    public void invalidateBehaviorViews() {
+        guard();
+        behaviorIdentity = new Object();
     }
 
     void bindPerception(MaidModernPerception memory) {
@@ -121,7 +133,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     @Override
     public boolean isCurrent() {
-        return frameActive && runtime != null
+        return frameActive && frameBehaviors == behaviorIdentity
+            && runtime != null
             && token != null
             && !world.isRemote
             && maid.worldObj == world
@@ -887,6 +900,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         final Entity entity;
         final Token lease = token;
+        final Object behaviors = behaviorIdentity;
         final long tick = worldTick;
         final int age = entityTick;
 
@@ -900,8 +914,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         void check() {
             guard();
-            if (lease != token || tick != worldTick || age != entityTick || entity.worldObj != world)
-                throw new IllegalStateException("Expired vehicle frame");
+            if (lease != token || behaviors != behaviorIdentity
+                || tick != worldTick
+                || age != entityTick
+                || entity.worldObj != world) throw new IllegalStateException("Expired vehicle frame");
         }
     }
 
@@ -1055,7 +1071,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void afterLivingFrame(Token expectedToken) {
-        guard();
+        beginEntityFrame(runtime, expectedToken);
         if (token != expectedToken || lastScheduleEntityTick == maid.ticksExisted)
             throw new IllegalStateException("Duplicate or stale schedule entity phase");
         lastScheduleEntityTick = maid.ticksExisted;
@@ -1180,6 +1196,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         final PathEntity raw;
         final Token lease = token;
+        final Object behaviors = behaviorIdentity;
         final long createdWorldTick = worldTick;
         final int createdEntityTick = entityTick;
         final Point[] nodes;
@@ -1195,7 +1212,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         void check() {
             navigationLease();
-            if (token != lease || worldTick != createdWorldTick
+            if (token != lease || behaviors != behaviorIdentity
+                || worldTick != createdWorldTick
                 || entityTick != createdEntityTick
                 || navigation.getPath() != raw) throw new IllegalStateException("Expired climbing path view");
         }
@@ -1237,6 +1255,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public WalkTarget peekWalkTarget() {
         return walk;
+    }
+
+    public Point peekWorkTarget() {
+        return workTarget;
+    }
+
+    public MaidEdibleBlockAction peekEdibleAction() {
+        return edibleAction;
     }
 
     public Path peekPathMemory() {
@@ -1646,6 +1672,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         final int entityId, age;
         final long tick;
         final Token lease;
+        final Object behaviors = behaviorIdentity;
 
         AttackTargetView(EntityLivingBase entity) {
             this.entity = entity;
@@ -1662,6 +1689,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         boolean current() {
             return isCurrent() && lease == token
+                && behaviors == behaviorIdentity
                 && tick == worldTick
                 && age == entityTick
                 && entityId == entity.getEntityId()

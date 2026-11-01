@@ -89,6 +89,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         this);
     private ItemStack offhand;
     private final com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory damageHistory = new com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory();
+    public boolean guiOpening;
+    private Object maidContainer;
     private boolean canClimb;
     private int climbFallDelayTicks;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
@@ -595,12 +597,28 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.updateObject(DATA_MODEL, modelId);
     }
 
+    /** Forge先构造新窗口再关闭旧窗口，旧会话只能释放自身 */
+    public void openMaidContainer(Object container) {
+        maidContainer = java.util.Objects.requireNonNull(container, "container");
+        guiOpening = true;
+    }
+
+    public void closeMaidContainer(Object container) {
+        if (maidContainer == container) {
+            maidContainer = null;
+            guiOpening = false;
+        }
+    }
+
     public MaidTask getTask() {
         return MaidTask.fromId(dataWatcher.getWatchableObjectString(DATA_TASK));
     }
 
     public void setTask(MaidTask task) {
+        if (getTask() == task) return;
+        boolean modernRefresh = brain != null && brain.refreshModernBrain();
         dataWatcher.updateObject(DATA_TASK, task.getId());
+        if (modernRefresh) return;
         setAttackTarget(null);
         getNavigator().clearPathEntity();
         if (shield != null) shield.cancelUse("task_changed");
@@ -614,6 +632,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     public void setSchedule(MaidSchedule schedule) {
         dataWatcher.updateObject(DATA_SCHEDULE, (byte) schedule.ordinal());
+        if (brain != null) brain.refreshModernBrain();
     }
 
     public int getExperience() {

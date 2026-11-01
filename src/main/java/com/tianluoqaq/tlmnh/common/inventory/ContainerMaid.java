@@ -53,6 +53,7 @@ public class ContainerMaid extends Container {
     protected ContainerMaid(InventoryPlayer playerInventory, EntityMaid maid, boolean developmentLayout) {
         this.maid = maid;
         this.viewer = playerInventory.player;
+        maid.openMaidContainer(this);
         if (!developmentLayout) return;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
             addMaidSlot(slot, 8 + slot * 18, 100);
@@ -87,6 +88,12 @@ public class ContainerMaid extends Container {
                 return canInteractWith(player);
             }
         });
+    }
+
+    @Override
+    public void onContainerClosed(EntityPlayer player) {
+        super.onContainerClosed(player);
+        maid.closeMaidContainer(this);
     }
 
     public EntityMaid getMaid() {

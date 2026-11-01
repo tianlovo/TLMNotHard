@@ -39,6 +39,10 @@ public final class MaidModernCombat {
         if (!maid.shieldBehaviorRunning() && shield.checkExtraStartConditions(maid)) shield.start(maid);
     }
 
+    public void stop(MaidCombatActor maid) {
+        if (maid.shieldBehaviorRunning()) shield.stop(maid);
+    }
+
     public void runShield(MaidCombatActor maid) {
         if (maid.shieldBehaviorRunning()
             && (maid.worldGameTime() > maid.shieldBehaviorDeadline() || !shield.canStillUse(maid))) shield.stop(maid);

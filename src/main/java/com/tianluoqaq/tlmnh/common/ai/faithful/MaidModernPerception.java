@@ -200,6 +200,14 @@ public final class MaidModernPerception {
             .canSee(entity);
     }
 
+    /** Brain.copyWithoutBehaviors保留记忆对象，但重新构造Sensor并抽取初始延迟 */
+    public void refreshSensors() {
+        livingDelay = RANDOM.nextInt(SCAN_RATE);
+        hurtDelay = RANDOM.nextInt(SCAN_RATE);
+        hostileDelay = RANDOM.nextInt(SCAN_RATE);
+        pickupDelay = RANDOM.nextInt(30);
+    }
+
     public void clear() {
         active = false;
         epoch++;
