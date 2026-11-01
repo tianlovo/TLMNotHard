@@ -78,7 +78,11 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
             .get(index);
         preview.setModelId(choice.getId());
         try {
-            textures.put(index, MaidIconCapture.capture(preview, choice.getItemScale(), location(index)));
+            var texture = MaidIconCapture.capture(preview, choice.getItemScale(), location(index));
+            if (texture == null) {
+                failures++;
+                queue.clear();
+            } else textures.put(index, texture);
         } catch (RuntimeException failure) {
             failures++;
             TLMNotHard.LOG.error("Cannot cache builtin model icon {}", choice.getId(), failure);

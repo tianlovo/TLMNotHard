@@ -41,16 +41,15 @@ public final class MaidDetailsPreview implements AutoCloseable {
 
     public void draw(EntityMaid maid, float x, float y, float scale, float yaw, float pitch, boolean floor,
         float partialTick) {
-        int mode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        int depth = MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH);
-        var filters = MaidRenderPlatformState.captureFilterWindow();
+        MaidRenderProtection.draw(() -> drawUnchecked(maid, x, y, scale, yaw, pitch, floor, partialTick));
+    }
+
+    private void drawUnchecked(EntityMaid maid, float x, float y, float scale, float yaw, float pitch, boolean floor,
+        float partialTick) {
         var manager = RenderManager.instance;
         float viewX = manager.playerViewX, viewY = manager.playerViewY;
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
-        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GL11.glPushMatrix();
-        try {
+        try (var filters = MaidRenderPlatformState.captureFilterWindow(); var scope = new MaidItemRenderScope()) {
             GL11.glColor4f(1, 1, 1, 1);
             GL11.glEnable(GL11.GL_COLOR_MATERIAL);
             GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -88,11 +87,6 @@ public final class MaidDetailsPreview implements AutoCloseable {
             manager.playerViewX = viewX;
             manager.playerViewY = viewY;
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lightX, lightY);
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            while (MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH) > depth) GL11.glPopMatrix();
-            GL11.glPopAttrib();
-            GL11.glMatrixMode(mode);
-            filters.restore();
         }
     }
 

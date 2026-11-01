@@ -33,6 +33,7 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void init() {
         super.init();
+        com.tianluoqaq.tlmnh.client.protection.ClientProtectionEvents.register();
         var worldSounds = com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE;
         FMLCommonHandler.instance()
             .bus()

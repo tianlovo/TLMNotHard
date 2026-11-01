@@ -13,13 +13,16 @@ import org.lwjgl.opengl.GL13;
 /** 已支持物品的GL边界，矩阵栈与attrib分开恢复，不修改FBO或program */
 public final class MaidItemRenderScope implements AutoCloseable {
 
-    private final int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
-    private final int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+    private final int matrixMode;
+    private final int activeTexture;
     private final MatrixState modelView, projection;
     private final List<TextureState> textures = new ArrayList<>();
     private boolean attributesPushed, clientAttributesPushed, closed;
 
     public MaidItemRenderScope() {
+        if (!MaidRenderProtection.ready()) throw new IllegalStateException("Native render state unavailable");
+        matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
+        activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         try {
             modelView = MatrixState.capture(GL11.GL_MODELVIEW);
             projection = MatrixState.capture(GL11.GL_PROJECTION);
@@ -69,6 +72,7 @@ public final class MaidItemRenderScope implements AutoCloseable {
         if (attributesPushed) failure = restore(GL11::glPopAttrib, failure);
         failure = restore(() -> OpenGlHelper.setActiveTexture(activeTexture), failure);
         failure = restore(() -> GL11.glMatrixMode(matrixMode), failure);
+        if (failure != null) MaidRenderProtection.failed(failure);
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
     }

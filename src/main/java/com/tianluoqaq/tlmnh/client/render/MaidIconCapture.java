@@ -28,6 +28,10 @@ public final class MaidIconCapture {
     private MaidIconCapture() {}
 
     public static CacheIconTexture capture(EntityMaid maid, float itemScale, ResourceLocation location) {
+        return MaidRenderProtection.call(() -> captureUnchecked(maid, itemScale, location), () -> null);
+    }
+
+    private static CacheIconTexture captureUnchecked(EntityMaid maid, float itemScale, ResourceLocation location) {
         var mc = Minecraft.getMinecraft();
         var framebuffer = mc.getFramebuffer();
         boolean fbo = OpenGlHelper.isFramebufferEnabled();
@@ -36,16 +40,10 @@ public final class MaidIconCapture {
         int frameHeight = fbo ? framebuffer.framebufferHeight : mc.displayHeight;
         if (imageWidth < 256 || frameHeight < 256)
             throw new IllegalStateException("Model icon capture requires 256 pixels");
-        int mode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT), unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
-        var filters = MaidRenderPlatformState.captureFilterWindow();
-        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        int depth = MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH);
-        GL11.glPushMatrix();
         CacheIconTexture texture = null;
-        try {
+        try (var filters = MaidRenderPlatformState.captureFilterWindow(); var scope = new MaidItemRenderScope()) {
             var resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
             int size = (int) Math.ceil(256.0 / resolution.getScaleFactor());
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -85,11 +83,6 @@ public final class MaidIconCapture {
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, pack);
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, unpack);
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lightX, lightY);
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            while (MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH) > depth) GL11.glPopMatrix();
-            GL11.glPopAttrib();
-            GL11.glMatrixMode(mode);
-            filters.restore();
         }
     }
 

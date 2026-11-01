@@ -43,8 +43,12 @@ public final class MaidRenderer extends RenderLiving {
 
     @Override
     public void doRender(EntityLiving entity, double x, double y, double z, float yaw, float partialTick) {
+        MaidRenderProtection.draw(() -> renderBody(entity, x, y, z, yaw, partialTick));
+    }
+
+    private void renderBody(EntityLiving entity, double x, double y, double z, float yaw, float partialTick) {
         var previous = mainModel;
-        try {
+        try (var scope = new MaidItemRenderScope()) {
             var model = modelFor((EntityMaid) entity);
             model.beginRenderFrame();
             HeldItemGpuProbe.beforeMaidBody((EntityMaid) entity, model);
@@ -58,8 +62,12 @@ public final class MaidRenderer extends RenderLiving {
 
     @Override
     public void doRenderShadowAndFire(Entity entity, double x, double y, double z, float yaw, float partialTick) {
+        MaidRenderProtection.draw(() -> renderShadow(entity, x, y, z, yaw, partialTick));
+    }
+
+    private void renderShadow(Entity entity, double x, double y, double z, float yaw, float partialTick) {
         float previousShadow = shadowSize;
-        try {
+        try (var scope = new MaidItemRenderScope()) {
             shadowSize = 0.5F * modelFor((EntityMaid) entity).getChoice()
                 .getEntityScale();
             super.doRenderShadowAndFire(entity, x, y, z, yaw, partialTick);

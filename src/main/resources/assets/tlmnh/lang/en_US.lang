@@ -116,3 +116,5 @@ chat.tlmnh.protection.no_space=No protected item was transferred. Check free inv
 commands.tlmnhprotect.usage=/tlmnhprotect recover <maid entity id>
 commands.tlmnhprotect.owner=Stand near a living maid that you own
 tooltip.tlmnh.protection.parcel=Original item data retained. Right-click after restoring the compatible environment
+
+chat.tlmnh.protection.client_fallback=[TLMNH %s] Local compatibility protection: %s disabled; server gameplay and item data are unaffected by this fault. See the client log

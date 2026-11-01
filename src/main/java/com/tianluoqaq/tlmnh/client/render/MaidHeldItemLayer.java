@@ -239,6 +239,9 @@ public final class MaidHeldItemLayer {
                     : new NativeCall(++nativeSequence, hand, profile, pass, stack, selectedRenderer, source, bridge);
                 invokeNative(renderer, maid, stack, pass, observing, call);
             }
+        } catch (RuntimeException | LinkageError | AssertionError failure) {
+            MaidRenderProtection.failed(failure);
+            throw failure;
         }
     }
 

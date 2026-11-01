@@ -1063,3 +1063,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
   跨进程夹具等待磁盘完整 NBT 与预期相同，不能把 saveAllData 返回当作落盘完成，也不修改全局保存配置
 - 新增测试提供方 Canary 仅属于非发布 pilot 模组，保持 mod version 1；变体只修改其类中 API 方法名称，原调用方保持旧方法引用
   此范围用于验证真实提供方代码摘要变化与缺失方法回退，不代表全部 GTNH 第三方升级组合已验证
+
+## 客户端依赖边界与逻辑端隔离
+
+- Indev120 的客户端基线、渲染预检、逻辑端故障记录及开发探针为本工程独立实现
+- 保留上游 `client/gui/entity/cache/CacheIconManager.java` 的原包名，改动仅为捕获安全回退的空纹理并停止该轮队列，不将缺失结果放入缓存
+- 平台适配读取实际 TextureUtil 字段及 Angelica GLSM 的方法、上下文与字段类型；按需初始化，API 缺失不转成假的矩阵深度
+- CompatibilityLedger 区分已构造的新基线与 MapStorage 未读完的对象；新建实例完成检查后标记可用，损坏的既有文件不替换
+- ProtectionTests 使用既有 Hodgepodge 异步落盘观察方式，等待完整 NBT，再核同一缓存对象的再次验证；不更改全局保存设置

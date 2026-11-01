@@ -115,3 +115,5 @@ chat.tlmnh.protection.no_space=未转移保管物品，请检查背包空位和�
 commands.tlmnhprotect.usage=/tlmnhprotect recover <女仆实体编号>
 commands.tlmnhprotect.owner=请站在自己拥有且存活的女仆附近
 tooltip.tlmnh.protection.parcel=已保留原始物品数据，恢复兼容环境后右键尝试取回
+
+chat.tlmnh.protection.client_fallback=[TLMNH %s] 本地兼容保护：%s 已停用，服务端玩法和物品数据不受此故障影响，详情见客户端日志

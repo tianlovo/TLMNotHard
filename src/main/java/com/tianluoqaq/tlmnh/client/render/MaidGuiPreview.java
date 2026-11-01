@@ -24,18 +24,19 @@ public final class MaidGuiPreview {
 
     public static void draw(EntityMaid maid, int x, int y, int size, float lookX, float lookY, int clipX, int clipY,
         int clipWidth, int clipHeight) {
+        MaidRenderProtection
+            .draw(() -> drawUnchecked(maid, x, y, size, lookX, lookY, clipX, clipY, clipWidth, clipHeight));
+    }
+
+    private static void drawUnchecked(EntityMaid maid, int x, int y, int size, float lookX, float lookY, int clipX,
+        int clipY, int clipWidth, int clipHeight) {
         var minecraft = Minecraft.getMinecraft();
         var resolution = new ScaledResolution(minecraft, minecraft.displayWidth, minecraft.displayHeight);
         int scale = resolution.getScaleFactor();
-        int mode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        int depth = MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH);
         float viewY = RenderManager.instance.playerViewY;
         float body = maid.renderYawOffset, yaw = maid.rotationYaw, pitch = maid.rotationPitch;
         float head = maid.rotationYawHead, previousHead = maid.prevRotationYawHead;
-        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GL11.glPushMatrix();
-        try {
+        try (var scope = new MaidItemRenderScope()) {
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
             GL11.glScissor(
                 clipX * scale,
@@ -50,10 +51,6 @@ public final class MaidGuiPreview {
             maid.rotationYawHead = head;
             maid.prevRotationYawHead = previousHead;
             RenderManager.instance.playerViewY = viewY;
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            while (MaidRenderPlatformState.matrixDepth(GL11.GL_MODELVIEW_STACK_DEPTH) > depth) GL11.glPopMatrix();
-            GL11.glPopAttrib();
-            GL11.glMatrixMode(mode);
         }
     }
 }

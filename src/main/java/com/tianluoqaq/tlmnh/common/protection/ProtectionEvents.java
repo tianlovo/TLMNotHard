@@ -14,6 +14,7 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.relauncher.Side;
 
 /** 故障日志保留异常栈，聊天按玩家和故障去重，失败后仍可进入世界取回物品 */
 public final class ProtectionEvents {
@@ -30,10 +31,12 @@ public final class ProtectionEvents {
 
     @SubscribeEvent
     public void load(WorldEvent.Load event) {
+        if (event.world.isRemote) return;
         try {
             CompatibilityLedger.verify(event.world);
         } catch (Exception | LinkageError | AssertionError failure) {
-            for (var feature : ExternalFeature.values()) IntegrationGuard.trip(feature, failure);
+            for (var feature : ExternalFeature.values())
+                if (!feature.clientOnly) IntegrationGuard.trip(Side.SERVER, feature, failure);
         }
     }
 
@@ -57,7 +60,7 @@ public final class ProtectionEvents {
         if (player == null || player.worldObj.isRemote) return;
         var notified = NOTIFIED
             .computeIfAbsent(player.getUniqueID(), ignored -> java.util.concurrent.ConcurrentHashMap.newKeySet());
-        for (var fault : IntegrationGuard.faults()
+        for (var fault : IntegrationGuard.faults(Side.SERVER)
             .values()) if (notified.add(fault.code)) {
                 var message = new ChatComponentTranslation("chat.tlmnh.protection.fallback", fault.code, fault.key);
                 message.getChatStyle()

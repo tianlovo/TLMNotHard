@@ -10,14 +10,21 @@ public enum ExternalFeature {
     ANIMATED_DOORS("animated_doors", "malisisdoors", "malisiscore"),
     VEHICLES("vehicles", "etfuturum"),
     ARROW_GRAVITY("arrow_gravity", "GalacticraftCore"),
-    ITEM_DELIVERY("item_delivery");
+    ITEM_DELIVERY("item_delivery"),
+    CLIENT_RENDER_STATE("client_render_state", true, "angelica");
 
     public final String id;
     public final int contractRevision = 1;
+    public final boolean clientOnly;
     private final String[] dependencies;
 
     ExternalFeature(String id, String... dependencies) {
+        this(id, false, dependencies);
+    }
+
+    ExternalFeature(String id, boolean clientOnly, String... dependencies) {
         this.id = id;
+        this.clientOnly = clientOnly;
         this.dependencies = dependencies;
     }
 

@@ -6,6 +6,9 @@ import java.util.function.Supplier;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.relauncher.Side;
+
 /** 外部调用失败只停用该能力；回退值由调用边界明确提供，不猜测替代API */
 public final class IntegrationGuard {
 
@@ -19,61 +22,111 @@ public final class IntegrationGuard {
 
         public final String key, code;
         public final Throwable cause;
+        public final Side side;
 
-        Fault(String key, String code, Throwable cause) {
+        Fault(Side side, String key, String code, Throwable cause) {
+            this.side = side;
             this.key = key;
             this.code = code;
             this.cause = cause;
         }
     }
 
-    private static final Map<String, Fault> FAULTS = new LinkedHashMap<>();
+    private static final Map<Side, Map<String, Fault>> FAULTS = new java.util.EnumMap<>(Side.class);
     private static long sequence;
 
     private IntegrationGuard() {}
 
     public static <T> T call(ExternalFeature feature, Call<T> operation, Supplier<T> fallback) {
-        if (!available(feature)) return fallback.get();
+        return call(currentSide(), feature, operation, fallback);
+    }
+
+    public static <T> T call(Side side, ExternalFeature feature, Call<T> operation, Supplier<T> fallback) {
+        if (!available(side, feature)) return fallback.get();
         try {
             return operation.get();
         } catch (Exception | LinkageError | AssertionError failure) {
-            trip(feature, failure);
+            trip(side, feature, failure);
             return fallback.get();
         }
     }
 
     public static synchronized boolean available(ExternalFeature feature) {
-        return !FAULTS.containsKey(feature.id);
+        return available(currentSide(), feature);
+    }
+
+    public static synchronized boolean available(Side side, ExternalFeature feature) {
+        return !(side == Side.SERVER && feature.clientOnly) && !faultMap(side).containsKey(feature.id);
     }
 
     public static Fault trip(ExternalFeature feature, Throwable failure) {
-        return report(feature.id, failure);
+        return trip(currentSide(), feature, failure);
     }
 
-    public static synchronized Fault report(String key, Throwable failure) {
+    public static Fault trip(Side side, ExternalFeature feature, Throwable failure) {
+        return report(side, feature.id, failure);
+    }
+
+    public static Fault report(String key, Throwable failure) {
+        return report(currentSide(), key, failure);
+    }
+
+    public static void throwIfFatal(Throwable failure) {
         var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Throwable, Boolean>());
-        for (Throwable cause = failure; cause != null && seen.add(cause); cause = cause.getCause()) {
+        var pending = new java.util.ArrayDeque<Throwable>();
+        if (failure != null) pending.add(failure);
+        while (!pending.isEmpty()) {
+            var cause = pending.removeFirst();
+            if (!seen.add(cause)) continue;
             if (cause instanceof VirtualMachineError error) throw error;
             if (cause instanceof ThreadDeath death) throw death;
             if (cause instanceof InterruptedException) Thread.currentThread()
                 .interrupt();
+            if (cause.getCause() != null) pending.add(cause.getCause());
+            java.util.Collections.addAll(pending, cause.getSuppressed());
         }
-        var existing = FAULTS.get(key);
+    }
+
+    public static synchronized Fault report(Side side, String key, Throwable failure) {
+        throwIfFatal(failure);
+        var faults = faultMap(side);
+        var existing = faults.get(key);
         if (existing != null) return existing;
-        var fault = new Fault(key, String.format("TLMNH-P%06d", ++sequence), failure);
-        FAULTS.put(key, fault);
-        TLMNotHard.LOG
-            .error("{}: protected fallback for {}; original owned data must remain intact", fault.code, key, failure);
+        var fault = new Fault(side, key, String.format("TLMNH-P%06d", ++sequence), failure);
+        faults.put(key, fault);
+        TLMNotHard.LOG.error(
+            "{}: {} protected fallback for {}; original owned data must remain intact",
+            fault.code,
+            side,
+            key,
+            failure);
         return fault;
     }
 
     public static synchronized Map<String, Fault> faults() {
-        return new LinkedHashMap<>(FAULTS);
+        return faults(currentSide());
+    }
+
+    public static synchronized Map<String, Fault> faults(Side side) {
+        return new LinkedHashMap<>(faultMap(side));
+    }
+
+    private static Map<String, Fault> faultMap(Side side) {
+        return FAULTS.computeIfAbsent(side, ignored -> new LinkedHashMap<>());
+    }
+
+    private static Side currentSide() {
+        var handler = FMLCommonHandler.instance();
+        return handler.getSide() == Side.SERVER ? Side.SERVER : handler.getEffectiveSide();
     }
 
     /** 仅为隔离故障夹具恢复进程内状态，正式玩法不会自动解除熔断 */
     public static synchronized void resetForDevelopment() {
+        resetForDevelopment(currentSide());
+    }
+
+    public static synchronized void resetForDevelopment(Side side) {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development command required");
-        FAULTS.clear();
+        faultMap(side).clear();
     }
 }
