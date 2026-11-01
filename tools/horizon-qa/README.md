@@ -480,3 +480,10 @@ Indev139 的 `tlmnhqapilot:ProgressionTests` 分五个独立batch，覆盖实际
 最终玩法包五项同轮JSON/XML/process0通过，均为1tick同步交互；木板与羊毛改用明确可持有的metadata0变体后另补合成单项通过，四个非合成场景及共用夹具保持
 配置在无Forge启动数据的普通JVM曾失败，报告/源码保留并移到实际Forge；初配方失败与诊断也保留，GT输入类型修正后重跑，没有把旧结果改绿
 这些玩家为原生EntityPlayerMP及隔离内存通道，不是FakePlayer；不推导真实多客户端、完整生存链、跨进程升级或性能结论
+
+`tlmnhqapilot:LifecycleUpgradeTests` 由私有运行器在同一个全新专用世界分三个JVM执行，显式选择legacy/upgraded/resumed及预期版本、JAR摘要；缺少参数或身份不符即失败
+开发单元140实际使用138→139→139，三个阶段各1tick通过、正常退出，旧版写schema1、新版写schema2；核原生旧生命周期、制作凭证、复制拒绝和持久物品NBT，不手工伪造旧schema
+`tlmnh.qaLifecycleFreeze` 仅为该QA进程注册持久化环境：加载世界时保持动物开启至退出，加入世界时只冻结带专用标记的女仆AI，不重建其装备
+首轮因HQA关闭动物而经原生更新删除旧夹具，失败保留；增加实际磁盘区块检查并在全新世界重跑，没有改玩法包补偿测试环境
+运行器只在自有QA子目录切换冻结旧/新JAR与最小兼容pilot，前后核主安装摘要，正常停止后恢复原QA安装和配置；旧版写入后备份整个专用世界
+这些测试不覆盖player.dat、真实多客户端、崩溃原子性、自然AI或画面；新版本仍需完整首版跨模块验收
