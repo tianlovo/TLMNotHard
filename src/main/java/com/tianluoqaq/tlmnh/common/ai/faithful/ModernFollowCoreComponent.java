@@ -7,10 +7,12 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearHu
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClearSleepTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSelfTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunAwayTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -25,6 +27,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
+    private final MaidHealSelfTask heal = new MaidHealSelfTask();
+    private final MaidWorkMealTask workMeal = new MaidWorkMealTask(), rideWorkMeal = new MaidWorkMealTask();
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private final MaidClimbTask climb = new MaidClimbTask();
@@ -93,6 +97,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             if (breath.checkExtraStartConditions(actor)) {
                 actor.nextWorldInt(1);
                 breath.start(actor);
+                if (!actor.isCurrent()) return;
             }
             if (breathStop.checkExtraStartConditions(actor)) {
                 actor.nextWorldInt(1);
@@ -110,6 +115,11 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }
+            if (heal.checkExtraStartConditions(actor)) {
+                actor.nextWorldInt(1);
+                heal.start(actor);
+                if (!actor.isCurrent()) return;
+            }
             // 原Brain只在活动组入口检查active；ClearHurt切换活动后同组后项仍会继续尝试启动
             if (activities.active() == MaidActivityState.Activity.PANIC) {
                 actor.nextWorldInt(1);
@@ -119,6 +129,13 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                     actor.nextWorldInt(1);
                     runAway.start(actor, actor.dangerPosition());
                 }
+            }
+            var meal = activities.active() == MaidActivityState.Activity.WORK ? workMeal
+                : activities.active() == MaidActivityState.Activity.RIDE_WORK ? rideWorkMeal : null;
+            if (meal != null && meal.checkExtraStartConditions(actor)) {
+                actor.nextWorldInt(1);
+                meal.start(actor);
+                if (!actor.isCurrent()) return;
             }
             if (!perception.pickupEntities()
                 .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
@@ -155,6 +172,9 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
         } finally {
             perception.clear();
             activities.reset();
+            heal.reset();
+            workMeal.reset();
+            rideWorkMeal.reset();
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
             followRunning = false;

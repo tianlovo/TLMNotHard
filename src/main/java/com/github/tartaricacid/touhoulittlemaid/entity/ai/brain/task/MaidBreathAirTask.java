@@ -27,6 +27,7 @@ public final class MaidBreathAirTask {
 
     public void start(MaidAirActor maid) {
         if (maid.tryEatBreatheItem()) return;
+        if (!maid.isCurrent()) return;
         findAirPosition(maid);
     }
 

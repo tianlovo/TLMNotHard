@@ -187,3 +187,15 @@ Indev105 选择 `tlmnhqapilot:ModernScheduleTests`，再加 104 的 `ModernActiv
 
 Indev105 同一玩法候选四组一次通过：锁存/自然返家/存档边界 113 tick、远距传送/已有 WALK 80 tick、液体拒绝/取消 83 tick、104 日程/Await 106 tick
 JSON/XML 与进程退出 0 一致，无跳过、未完成或基础设施错误，测试实体、玩家、全局设置和票据按夹具清理
+
+## 治疗、工作餐与缺物事件
+
+Indev106 选择 `tlmnhqapilot:ModernMealTests`
+加 `ModernAirTests.breathingPotionUsesExistingInventoryLeaseAndReturnsContainer` 作共享控制器关联
+新三组检查真实船上治疗与工作餐共用主手/期限/容器、缺血阈值及 REST 睡眠/检查计数/背包换手，以及回执不造物/实际供给/事件回调取消和后继 lease 保留
+船使用实装 EFR 新船和真实封闭水池，旧 EntityBoat 会被整包取消生成并替换；不调整身体碰撞断言
+事件供给来自用例持有的有限库存，只在真实转入女仆背包后递减，并在结束注销监听器，不代表其他模组存储联动已实现
+
+同一玩法 JAR 分批通过骑乘/治疗与工作餐/容器 32 tick、睡眠/阈值/计数/换手 152 tick、事件供给/取消 34 tick、呼吸药水关联 37 tick
+GTNH 实装蘑菇煲 total 为 2.4，原回血抽样可能不触发；每 tick 随机自愈也会干扰生命断言，因此夹具固定真实 RNG 输入分别观察，不改生产数值或概率
+失败报告与各轮编译 pilot/源码快照保留，最后只重测骑乘组；分批证据不表示一轮四项全绿，也不构成自然原版 benchmark

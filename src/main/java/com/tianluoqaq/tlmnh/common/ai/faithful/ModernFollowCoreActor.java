@@ -34,7 +34,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
-    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor {
+    MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -49,6 +49,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private WalkTarget walk;
     private Object look;
     private MaidItemUseState.Lease breathItemLease;
+    private MaidItemUseState.Lease mealItemLease;
     private ModernPath pathMemory, navigationView;
     private ModernPath lastCreated;
     private PathEntity ownedPath;
@@ -376,8 +377,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             if (breathItemLease != null && maid.getItemUseState()
                 .peek() == breathItemLease) maid.getMealController()
                     .cancel();
+            if (mealItemLease != null && maid.getItemUseState()
+                .peek() == mealItemLease) maid.getMealController()
+                    .cancel();
         } finally {
             breathItemLease = null;
+            mealItemLease = null;
             if (ownsTarget) {
                 maid.setCanClimb(false);
                 maid.setSneaking(false);
@@ -539,13 +544,50 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean tryEatBreatheItem() {
         guard();
         if (!maid.getMealController()
-            .tryStartBreathing()) return false;
+            .tryStartBreathing(this::isCurrent)) return false;
+        if (!isCurrent()) return false;
         breathItemLease = maid.getItemUseState()
             .peek();
         maid.getAquaticController()
             .getManager()
             .setEatBreatheItem(true);
         return true;
+    }
+
+    public int nextMealInt(int bound) {
+        guard();
+        return maid.getRNG()
+            .nextInt(bound);
+    }
+
+    public boolean isSleeping() {
+        guard();
+        return maid.hasPose(MaidPose.SLEEPING);
+    }
+
+    public boolean taskAllowsEating() {
+        guard();
+        // 首版保留的Idle/Attack/RangedAttack均沿原IMaidTask默认enableEating=true
+        return true;
+    }
+
+    public float missingHealth() {
+        guard();
+        return maid.getMaxHealth() - maid.getHealth();
+    }
+
+    public boolean canAddWorkMeal() {
+        guard();
+        return maid.getFavorabilityManager()
+            .canAdd(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL.getTypeName());
+    }
+
+    public void eatMeal(boolean healing) {
+        guard();
+        if (maid.getMealController()
+            .tryStartMeal(healing, this::isCurrent) && isCurrent())
+            mealItemLease = maid.getItemUseState()
+                .peek();
     }
 
     public Point airSearchPosition() {

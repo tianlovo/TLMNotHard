@@ -895,3 +895,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 原 TeleportHelper 初步方块读取可加载目标区块，randomTeleport 自身再检查区块；不替换为主人传送算法，也不在十次失败后发明 WALK 回退
 - 新增限制区/传送适配位于自有根包，沿实际碰撞 AABB 映射原默认 solid/blocksMotion；现代强制 solid 属性及特殊模组方块兼容仍有限制
 - 这些源码与字节码合同不等于新增原版自然运行或 O/F/N benchmark，完整 F/N 仍未开放
+
+- Indev106 从固定 TLM 提交移植 `MaidCheckRateTask`、`MaidHealSelfTask`、`MaidWorkMealTask`、`MaidRequestItemEvent` 及 `ItemsUtil.findStackSlot`，保留原包名和来源头
+- 实读原 Brain 核心治疗优先级 3、WORK/RIDE_WORK 各自的工作餐优先级 7，检查计数按 50 加实体 RNG 的 0～49，并保留睡眠、缺血至少 2 和工作好感冷却条件
+- 实读原 DefaultMaidHealSelfMeal/DefaultMaidWorkMeal、HandUtils 和库存临时换手，已有目标版营养/效果/容器适配继续由同一控制器执行，不增加第二份隐藏库存
+- 固定 mapped LivingEntity.startUsingItem 的已使用分支直接返回，因此同帧两个 meal 回调各自施加开始效果，共享的使用时长不能重置或消耗两份物品
+- 原请求事件的 ItemStack 仅表示已转入库存的回执；ItemsUtil 先查背包，缺少才发事件，再查实际库存，目标版在回调后另核当前策略授权
+- 旧 Forge 用可取消事件和 null 空栈适配，未增加其他内容模组的外部存储联动；现代呼吸复用请求，原型呼吸保留旧入口
+- 未映射的现代饰品食用回调、完整持续进食粒子以及未知自定义食物仍有缺口，以上接线不代表完整 F/N 或原版自然 benchmark

@@ -7,6 +7,10 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 /** 原呼吸任务的世界/物品/记忆边界，调用方须持当前策略帧 */
 public interface MaidAirActor {
 
+    default boolean isCurrent() {
+        return true;
+    }
+
     boolean isEatBreatheItem();
 
     boolean isGoingToBreath();

@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.life.meal;
 
+import java.util.function.BooleanSupplier;
+
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
@@ -17,7 +19,7 @@ public final class MaidMealController {
     private MaidFoodProfile profile;
     private ItemStack food, expected, displaced;
     private int handSlot, sourceSlot = -1, remaining, nextCheck;
-    private boolean breathing;
+    private boolean breathing, modernMeal;
 
     public MaidMealController(EntityMaid maid) {
         this.maid = maid;
@@ -62,22 +64,79 @@ public final class MaidMealController {
     }
 
     public boolean tryStartBreathing() {
-        if (!permitted(true)) return false;
+        return tryStartBreathing(() -> true, false);
+    }
+
+    public boolean tryStartBreathing(BooleanSupplier current) {
+        return tryStartBreathing(current, true);
+    }
+
+    private boolean tryStartBreathing(BooleanSupplier current, boolean request) {
+        if (!permitted(true) || !current.getAsBoolean()) return false;
+        if (lease != null && !maid.getItemUseState()
+            .isCurrent(lease)) cancel();
         if (isEating()) return breathing;
         if (maid.getItemUseState()
             .peek() != null) return false;
         for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
-            if (start(slot, true, true)) return true;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) if (start(slot, true, true)) return true;
+            if (start(slot, true, true, current)) return true;
+        if (request) com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil
+            .findStackSlot(maid, stack -> MaidFoodProfile.inspectBreathing(stack) != null, -1, current);
+        if (!current.getAsBoolean()) return false;
+        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
+            if (start(slot, true, true, current)) return true;
+        return false;
+    }
+
+    public boolean tryStartMeal(boolean healing, BooleanSupplier current) {
+        if (!permitted(true) || !current.getAsBoolean()) return false;
+        if (lease != null && !maid.getItemUseState()
+            .isCurrent(lease)) cancel();
+        var active = maid.getItemUseState()
+            .peek();
+        if (active != null && (active != lease || breathing)) return false;
+        for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
+            if (startModernMeal(slot, healing, current)) return true;
+        com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil
+            .findStackSlot(maid, stack -> mealProfile(stack, healing) != null, -1, current);
+        if (!current.getAsBoolean()) return false;
+        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
+            if (startModernMeal(slot, healing, current)) return true;
+        return false;
+    }
+
+    private MaidFoodProfile mealProfile(ItemStack stack, boolean healing) {
+        return stack == null || MaidMealConfig.blocked(stack, healing) ? null : MaidFoodProfile.inspect(stack);
+    }
+
+    private boolean startModernMeal(int slot, boolean healing, BooleanSupplier current) {
+        var selected = mealProfile(
+            maid.getMaidInventory()
+                .getStackInSlot(slot),
+            healing);
+        if (selected == null || !current.getAsBoolean()) return false;
+        if (lease != null) {
+            // 原startUsingItem在已使用时不重置期限，meal回调仍独立施加开始效果
+            if (slot < MaidInventory.BACKPACK_SIZE) return false;
+            applyStartEffect(selected, healing);
+            return true;
+        }
+        modernMeal = true;
+        if (start(slot, healing, false, current)) return true;
+        modernMeal = false;
         return false;
     }
 
     private boolean start(int slot, boolean healing, boolean forBreathing) {
+        return start(slot, healing, forBreathing, () -> true);
+    }
+
+    private boolean start(int slot, boolean healing, boolean forBreathing, BooleanSupplier current) {
         var inventory = maid.getMaidInventory();
         var stack = inventory.getStackInSlot(slot);
         if (stack == null || !forBreathing && MaidMealConfig.blocked(stack, healing)) return false;
         var selected = forBreathing ? MaidFoodProfile.inspectBreathing(stack) : MaidFoodProfile.inspect(stack);
-        if (selected == null) return false;
+        if (selected == null || !current.getAsBoolean() || inventory.getStackInSlot(slot) != stack) return false;
         handSlot = slot;
         sourceSlot = -1;
         if (slot < MaidInventory.BACKPACK_SIZE) {
@@ -105,16 +164,20 @@ public final class MaidMealController {
             return false;
         }
         // 上游在开始使用时回血/计好感，不把它改成另一套饥饿值系统
+        applyStartEffect(profile, healing);
+        return true;
+    }
+
+    private void applyStartEffect(MaidFoodProfile selected, boolean healing) {
         if (healing) {
             if (maid.getRNG()
-                .nextInt(5) < profile.total) maid.heal(Math.max(profile.total / 5, 1));
+                .nextInt(5) < selected.total) maid.heal(Math.max(selected.total / 5, 1));
         } else {
             int point = maid.getRNG()
-                .nextInt(100) < profile.total ? 0 : 1;
+                .nextInt(100) < selected.total ? 0 : 1;
             maid.getFavorabilityManager()
                 .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL, point);
         }
-        return true;
     }
 
     private boolean permitted(boolean breathingUse) {
@@ -123,7 +186,7 @@ public final class MaidMealController {
             && !maid.hasPose(MaidPose.SLEEPING)
             && !maid.getBrainCoordinator()
                 .isSuspended()
-            && (breathingUse || maid.ridingEntity == null);
+            && (breathingUse || modernMeal || maid.ridingEntity == null);
     }
 
     private boolean valid() {
@@ -175,6 +238,7 @@ public final class MaidMealController {
         profile = null;
         remaining = 0;
         breathing = false;
+        modernMeal = false;
         inventory.markDirty();
     }
 
