@@ -5,11 +5,11 @@ import java.util.Arrays;
 
 import net.minecraftforge.common.config.Configuration;
 
-/** 获取途径独立配置；Indev默认值不是最终GTNH配方或生态平衡方案 */
+/** 获取途径独立配置；默认蒸汽获取，已有显式配置值保持 */
 public final class MaidAcquisitionConfig {
 
     public static boolean naturalSpawning;
-    public static boolean giveInitialSlab = true;
+    public static boolean giveInitialSlab;
     public static int naturalWeight = 1;
     public static int[] naturalBiomes = { 1, 4 };
     public static int[] naturalDimensions = { 0 };
@@ -27,8 +27,8 @@ public final class MaidAcquisitionConfig {
         giveInitialSlab = config.getBoolean(
             "giveInitialSlab",
             "acquisition",
-            true,
-            "首次可领取一个绑定魂符，满背包时等待空位 / Give one owner-bound initial soul slab; wait for inventory space");
+            false,
+            "可选首次赠送绑定魂符，默认关闭以保留蒸汽获取进度；满背包时等待空位 / Optional free initial owner-bound slab; disabled by default for steam progression; wait for inventory space");
         naturalWeight = config.getInt(
             "naturalWeight",
             "acquisition",

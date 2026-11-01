@@ -8,7 +8,7 @@ import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
-/** 首版生活核心注册，GTNH 配方与阶段尚待讨论，暂不注册生存配方 */
+/** 首版生活核心注册；蒸汽材料配方由进度层统一注册 */
 public final class MaidLifeContent {
 
     public static final BlockSnackCabinet snackCabinet = new BlockSnackCabinet();

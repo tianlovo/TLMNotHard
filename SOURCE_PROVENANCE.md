@@ -1194,3 +1194,12 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 增强root持有独立MaidInteractWithDoor实例，将固定上游任务作为受保护动作原语使用；上游包、来源、冷却及关闭条件保持
 - 取消后重建门动作内部状态，原ModernFollowCoreActor按自有权限清路径及门记忆；外部Malisis适配仍集中在compat/malisisdoors/common/block
 - F调度与原门动作实现不变；QA只开放既有走廊夹具helper的包内可见性，新增增强实例实际场景
+
+## GTNH进度与制作凭证
+
+- GregTech公开配方/API固定核对5.09.54.265，提交[bb00f3f1023e20d3cce84cf09abb442d22a3a5a5](https://github.com/GTNewHorizons/GT5-Unofficial/tree/bb00f3f1023e20d3cce84cf09abb442d22a3a5a5)；只增加非传递compileOnly依赖，不打包GregTech实现
+- 已读GTModHandler、GTShapedRecipe、ItemList、OrePrefixes、CraftingRecipeLoader、SmelterRecipes与原始高炉配方/机器，核材料类型、LV外壳及GT烤蛋糕的手工/炉炼路径
+- 整包配方处理核对GTNH Core 2.9.99，提交[9f108160f88f7d6ba7e20d830eeee760d7198144](https://github.com/GTNewHorizons/NewHorizonsCoreMod/tree/9f108160f88f7d6ba7e20d830eeee760d7198144)；GTNH核心仍在进度层，不迁入独立内容模组适配目录
+- 四个配方、MaidCoreItem和MaidProgressionRecipes为本工程实现；图标复用既有固定上游魂符资源，来源和资产许可保持
+- 制作凭证使用本工程账本新种类ACQUIRED，与原INITIAL免费赠送、FILM死亡权利分开；schema1读取保留，schema2写入及未知版本拒写由定向检查和实际旧生命周期流程验证
+- 首轮GT接口收到裸Item/Block后没有可用核心配方，改为ItemStack并核输入类型；失败、诊断与最终实际合成分别保留，完整生存获取与跨进程升级仍待验

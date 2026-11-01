@@ -19,6 +19,7 @@
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
 | Gecko 层级遍历使用的 fastutil 容器 | vigna/fastutil，it.unimi.dsi:fastutil:8.5.18 | Apache-2.0，Sebastiano Vigna；运行时复用 RC2 已提供的库，开发与测试单独解析，不随本模组 JAR 打包或重定位 |
 | Battlegear2-for-Backhand 盾牌公开 API | GTNewHorizons/Battlegear2-for-Backhand，1.6.8-backhand | 上游 LICENCE 为 GNU GPL v3；仅 compileOnly API 依赖，运行时复用 RC2 已安装模组，不随本模组打包或复制实现类；平台适配范围见 SOURCE_PROVENANCE.md |
+| GregTech配方与核心物品公开API | GTNewHorizons/GT5-Unofficial，5.09.54.265，bb00f3f1023e20d3cce84cf09abb442d22a3a5a5 | 上游[LICENSE.txt](https://github.com/GTNewHorizons/GT5-Unofficial/blob/bb00f3f1023e20d3cce84cf09abb442d22a3a5a5/LICENSE.txt)为LGPL v3；仅非传递compileOnly依赖，运行时复用整包提供方，不打包其实现 |
 | 六个内置女仆模型包的模型、纹理、动画文件、图标、原始说明与语言资源 | 同一 TLM 提交的 src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0 及默认 maid.animation.json | CC BY-NC-SA 4.0，原文见 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt，Copyright (c) 2019-2025 tartaric_acid；各模型作者和说明保留在原 maid_model.json 与 lang/*.json |
 
 资产来源为 [Touhou Little Maid 固定提交](https://github.com/TartaricAcid/TouhouLittleMaid/tree/8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6)，

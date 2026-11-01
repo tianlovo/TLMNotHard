@@ -11,6 +11,7 @@ import net.minecraftforge.common.MinecraftForge;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidCoreItem;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineBlock;
@@ -21,10 +22,11 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.registry.EntityRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 
-/** 核心获取与复活内容；GTNH配方门槛另行确定，当前不注册临时配方 */
+/** 获取与复活内容注册；蒸汽核心及LV神龛配方由进度层在postInit注册 */
 public final class MaidResurrectionContent {
 
     public static final Item INITIAL_SLAB = new MaidLifecycleItems.InitialSlab().setCreativeTab(CreativeTabs.tabMisc);
+    public static final Item MAID_CORE = new MaidCoreItem().setCreativeTab(CreativeTabs.tabMisc);
     public static final Item EMPTY_SLAB = new MaidLifecycleItems.StoredMaidItem().setMaxStackSize(1)
         .setUnlocalizedName("tlmnh.smart_slab_empty")
         .setTextureName("touhou_little_maid:smart_slab_empty")
@@ -42,6 +44,7 @@ public final class MaidResurrectionContent {
         if (registered) throw new IllegalStateException("Maid resurrection content already registered");
         registered = true;
         GameRegistry.registerItem(INITIAL_SLAB, "smart_slab_init");
+        GameRegistry.registerItem(MAID_CORE, "maid_core");
         GameRegistry.registerItem(EMPTY_SLAB, "smart_slab_empty");
         GameRegistry.registerItem(FILM, "film");
         SHRINE.setCreativeTab(CreativeTabs.tabDecorations);

@@ -7,6 +7,7 @@ public enum ExternalFeature {
     SHIELDS("shields", "battlegear2", "TConstruct", "tinkersdefense"),
     NUTRITION("nutrition", "AppleCore"),
     GREGTECH_FOOD("gregtech_food", "gregtech"),
+    PROGRESSION_RECIPES("progression_recipes", "gregtech", "dreamcraft"),
     ANIMATED_DOORS("animated_doors", "malisisdoors", "malisiscore"),
     VEHICLES("vehicles", "etfuturum"),
     ARROW_GRAVITY("arrow_gravity", "GalacticraftCore"),

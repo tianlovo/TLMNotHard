@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.registry.ModEntities;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
@@ -34,7 +35,7 @@ import cpw.mods.fml.common.network.NetworkRegistry;
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "after:battlegear2;after:AppleCore")
+    dependencies = "after:battlegear2;after:AppleCore;after:gregtech;after:dreamcraft")
 public final class TLMNotHard {
 
     public static final String MOD_ID = "tlmnh";
@@ -78,6 +79,11 @@ public final class TLMNotHard {
         PROXY.init();
         MaidResurrectionContent.registerSpawns();
         LOG.info("TLMNH_BOOTSTRAP_READY side={} version={} bytecodeTarget=8", event.getSide(), Tags.VERSION);
+    }
+
+    @Mod.EventHandler
+    public void postInit(FMLPostInitializationEvent event) {
+        com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes.register();
     }
 
     @Mod.EventHandler

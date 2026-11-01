@@ -57,10 +57,11 @@ public final class MaidLifecycleService {
         var token = MaidLifecycleItems.token(stack);
         var world = player.worldObj;
         var ledger = MaidLifecycleData.get(world);
-        var owner = ledger.owner(token, MaidLifecycleData.Kind.INITIAL);
+        var kind = ledger.initialKind(token);
+        var owner = kind == null ? null : ledger.owner(token, kind);
         if (owner == null) return Result.INVALID_CREDENTIAL;
         if (!owner.equals(player.getUniqueID())) return Result.WRONG_OWNER;
-        if (ledger.reserve(token, MaidLifecycleData.Kind.INITIAL) == null) return Result.INVALID_CREDENTIAL;
+        if (ledger.reserve(token, kind) == null) return Result.INVALID_CREDENTIAL;
         boolean committed = false;
         EntityMaid maid = null;
         try {
@@ -89,6 +90,44 @@ public final class MaidLifecycleService {
                 ledger.rollback(token);
             }
         }
+    }
+
+    /** 先将本次材料转换为专属凭证；放置失败仍保留该凭证，不回造可再次交易的核心 */
+    public static Result activateCore(EntityPlayer player, ItemStack stack, int x, int y, int z) {
+        if (!canUse(player) || stack == null
+            || stack.stackSize != 1
+            || stack.getItem() != MaidResurrectionContent.MAID_CORE
+            || player.getCurrentEquippedItem() != stack
+            || player.getDistanceSq(x + .5, y + 1, z + .5) > 64
+            || !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
+                cpw.mods.fml.relauncher.Side.SERVER,
+                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PROGRESSION_RECIPES))
+            return Result.DENIED;
+        var world = player.worldObj;
+        int slot = player.inventory.currentItem;
+        if (!player.canPlayerEdit(x, y + 1, z, 1, stack) || player.inventory.currentItem != slot
+            || player.worldObj != world
+            || player.getCurrentEquippedItem() != stack
+            || stack.stackSize != 1
+            || player.getDistanceSq(x + .5, y + 1, z + .5) > 64
+            || !canUse(player)) return Result.DENIED;
+        var ledger = MaidLifecycleData.get(world);
+        var token = ledger.acquiredToken(player.getUniqueID());
+        var bound = MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, player.getUniqueID());
+        if (stack.hasTagCompound()) {
+            var tag = (net.minecraft.nbt.NBTTagCompound) stack.getTagCompound()
+                .copy();
+            tag.setString("TLMNHToken", token.toString());
+            tag.setString(
+                "InitMaidOwner",
+                player.getUniqueID()
+                    .toString());
+            bound.setTagCompound(tag);
+        }
+        ledger.markDelivered(token);
+        player.inventory.setInventorySlotContents(slot, bound);
+        player.inventory.markDirty();
+        return releaseInitial(player, bound, x, y, z);
     }
 
     public static Result resurrect(EntityPlayer player, MaidShrineTile shrine) {

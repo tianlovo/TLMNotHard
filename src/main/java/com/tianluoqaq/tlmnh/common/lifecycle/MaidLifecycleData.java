@@ -19,7 +19,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public enum Kind {
         INITIAL,
-        FILM
+        FILM,
+        ACQUIRED
     }
 
     private final Map<UUID, Entry> entries = new HashMap<>();
@@ -53,6 +54,16 @@ public final class MaidLifecycleData extends WorldSavedData {
             if (entry.getValue().kind == Kind.INITIAL && entry.getValue().owner.equals(owner)) return entry.getKey();
         }
         return add(Kind.INITIAL, owner, owner, new NBTTagCompound());
+    }
+
+    /** 制作获取与每位玩家一次的免费赠送分开，每个核心各有独立兑现权 */
+    public UUID acquiredToken(UUID owner) {
+        return add(Kind.ACQUIRED, owner, UUID.randomUUID(), new NBTTagCompound());
+    }
+
+    public Kind initialKind(UUID token) {
+        var entry = entries.get(token);
+        return entry != null && (entry.kind == Kind.INITIAL || entry.kind == Kind.ACQUIRED) ? entry.kind : null;
     }
 
     /** 同一具死亡实体只产生一份胶片凭证，后续调用返回null */
@@ -158,7 +169,7 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public void markDelivered(UUID token) {
         var entry = entries.get(token);
-        if (entry == null || entry.kind != Kind.INITIAL) throw new IllegalArgumentException("Unknown initial token");
+        if (entry == null || initialKind(token) == null) throw new IllegalArgumentException("Unknown initial token");
         entry.delivered = true;
         markDirty();
     }
@@ -214,19 +225,27 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         healthy = false;
-        if (tag.getInteger("Schema") != 1) throw new IllegalStateException("Unsupported maid lifecycle schema");
+        int schema = tag.getInteger("Schema");
+        if (schema != 1 && schema != 2) throw new IllegalStateException("Unsupported maid lifecycle schema");
         var restored = new HashMap<UUID, Entry>();
         var list = tag.getTagList("Entries", 10);
         var initialOwners = new HashSet<UUID>();
         var deadMaids = new HashSet<UUID>();
+        var acquisitions = new HashSet<UUID>();
         for (int i = 0; i < list.tagCount(); i++) {
             var item = list.getCompoundTagAt(i);
             var token = UUID.fromString(item.getString("Token"));
             var owner = UUID.fromString(item.getString("Owner"));
             var subject = UUID.fromString(item.getString("Subject"));
             var kind = Kind.valueOf(item.getString("Kind"));
-            if (restored.containsKey(token)
-                || !(kind == Kind.INITIAL ? initialOwners.add(owner) : deadMaids.add(subject)))
+            if (schema == 1 && kind == Kind.ACQUIRED)
+                throw new IllegalStateException("Acquired credential requires lifecycle schema 2");
+            boolean unique = switch (kind) {
+                case INITIAL -> initialOwners.add(owner);
+                case FILM -> deadMaids.add(subject);
+                case ACQUIRED -> acquisitions.add(subject);
+            };
+            if (restored.containsKey(token) || !unique)
                 throw new IllegalStateException("Duplicate maid lifecycle identity");
             var entry = new Entry(
                 kind,
@@ -278,7 +297,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 1);
+        tag.setInteger("Schema", 2);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
