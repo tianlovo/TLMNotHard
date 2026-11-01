@@ -486,8 +486,6 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
-        if (maid.getAquaticController() != null) maid.getAquaticController()
-            .clear();
         ordinaryArbiter.clear();
         ordinaryIntent = null;
         MaidWorldNavigationBudget.cancel(maid);
@@ -517,6 +515,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(
             () -> maid.getItemUseState()
                 .invalidate(),
+            failure);
+        failure = cancel(
+            () -> {
+                if (maid.getAquaticController() != null) maid.getAquaticController()
+                    .clear();
+            },
             failure);
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;

@@ -819,3 +819,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 新控制器在原型低氧执行器持有移动时让出驱动；低氧路线每 tick 重核终点的当前眼高与空气事实，避免站姿规划的终点在泳姿下仍处于水中
 - 站姿浅水回归暴露旧水检测上下各缩 0.4 的另一影响，Indev97 将 MixinEntityAquatic 的完整内缩身体扩展到所有女仆姿态；其他实体及目标世界的原生流体/水流方法保持，不宣称已移植完整现代流体系统
 - 仍缺完整动态 Brain WALK_TARGET、MoveToTargetSink 相位、快速缓存、多目标和完整攀爬任务；窄水槽的 WATER_BORDER 竖直恢复也须处理，完整 F/N 与自然原版对照继续待办
+
+## 现代导航与 Follow 核心组件
+
+- Indev98 继续采用固定 TLM 提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`，核对
+  MaidFollowOwnerTask、MaidPathNavigation、MaidUnderWaterPathNavigation 与既有 MoveToTargetSink/Behavior/EntityTracker 映射字节码
+- 现代 PathNavigation.createPath 按独立 targetPos 元数据复用活路径；新查询即更新该元数据并重置超时，即使返回路径最后未安装，不能用已安装结果的目标代替此相位
+- ModernFollowCoreActor/Component 是本项目新增适配文件，接实际现代导航、动态主人目标、PATH、真实 canReach 和停止事实；现有 FollowOwnerTask 移植文件保留原包名和来源
+- 创建/安装之间的模式、tick 和策略 lease 校验及身份取消属于本项目生命周期边界，不能冒充上游原有 API；泳姿生命周期清理只允许重置两状态均无路径的管理器
+- 原版 MoveToTargetSink 的 150～250 tick 时限保留，重规划不延长时限；动态跟随停止不一律等于已到达，watchdog 必须从实际导航记录判断
+- 独立 QA 夹具使用 Forge FakePlayer，并把它登记到真实全局在线列表；核对目标 ServerUtilities 2.4.22 的 Universe.getPlayer/ServerUtils.isFake 分支，避免普通合成玩家缺失登录档案造成启动崩溃
+- 本批是 Follow/Move/Look 组件接线；完整感知、Brain 活动和工作记忆、快速可达缓存/多目标、完整 F/N 与原版 O/F/N 继续待办

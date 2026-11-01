@@ -81,7 +81,7 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
     public void clear() {
         pendingJump = false;
         if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
-            navigator.resetNavigation();
+            navigator.resetNavigationIfIdle();
         manager.setWantToSwim(false);
         manager.setReadyToLand(false);
         manager.setGoingToBreath(false);

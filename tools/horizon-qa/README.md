@@ -81,3 +81,21 @@ Indev97 选择 `-Dhorizonqa.tests=tlmnhqapilot:TraversalNavigationTests`
 
 Indev97 最终候选四组退出 0，状态 JSON/JUnit XML 一致，无失败、跳过或基础设施错误
 岸边站姿漏检浅水的问题修正后，才计入水陆交接通过；旧失败、窄槽限制和撤回的推断分别保留
+
+## 现代 Follow/Move/Look 组件
+
+Indev98 选择 `-Dhorizonqa.tests=tlmnhqapilot:ModernCoreTests`，并显式开启 `-Dtlmnh.devCommands=true`
+四个独立批次分别检查动态主人与两次实际查询、深水三维执行及活路线取消、真实 watchdog 与部分路径 CANT_REACH，以及旧创建拒绝/策略撤销保留外来路线
+组件通过开发用 after-navigation 入口安装，不改变默认玩法调度，也不启用完整 F/N
+
+主人采用标准 Forge FakePlayer、隔离内存通道，并同时登记世界与服务器全局在线列表，结束时逐项移除
+普通 EntityPlayerMP 直接加入全局表会因 ServerUtilities 缺失登录档案崩溃，该原始无报告运行单独保留，不能用进程退出 0 推定通过
+夹具必须尊重原版 Behavior 的 150～250 tick 上限：重规划不续期；动态用例检查到达或原期限后正常清理，不能假定有限时行为一定走完整程
+watchdog 场景在首个检测窗内被物理墙挡住，避免行为时限先到而掩盖卡住检测；水路线 PATH 按管理器末尾换路、Sink 下一帧导航后更新的相位断言
+
+这些仍是受控主人和局部组件验证，不替代真实多人、完整 F 或原版自然运行 benchmark
+
+Indev98 最终候选的四个组件场景通过，分别运行 216/136/109/8 tick；状态 JSON、JUnit XML 和进程退出 0 一致，无失败或跳过
+本批未启动客户端；真实多人、全任务与原版运行对照继续保留独立验收
+
+同一最终候选另复验默认原型 Root 的水陆交接与 `1/8` 活续路线取消，171 tick 通过，退出与两种报告一致

@@ -28,6 +28,61 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     private Point walkTarget;
     private long generation;
     private boolean avoidSun;
+    private Object brainOwner;
+    private Object brainLease;
+    private BrainTarget brainTarget;
+    private boolean tickingMode;
+    private Stop lastStop;
+    private long searches;
+
+    /** 动态WALK_TARGET由持有者读取，导航管理器不能冻结最近一次创建路径的坐标 */
+    public interface BrainTarget {
+
+        boolean isCurrent();
+
+        Point currentPosition();
+    }
+
+    public enum StopCause {
+        EXPLICIT,
+        MODE_CHANGE,
+        WATCHDOG,
+        TIMEOUT
+    }
+
+    public static final class Stop {
+
+        public final PathEntity path;
+        public final StopCause cause;
+        public final long worldTick;
+
+        private Stop(PathEntity path, StopCause cause, long worldTick) {
+            this.path = path;
+            this.cause = cause;
+            this.worldTick = worldTick;
+        }
+    }
+
+    /** 创建与安装分开；同一导航对象在模式交接后也不能安装旧状态的请求 */
+    public static final class BrainPath {
+
+        public final MaidModernPath path;
+        private final MaidPathNavigator navigator;
+        private final Object owner;
+        private final Object lease;
+        private final long generation, worldTick;
+        private final int entityTick;
+
+        private BrainPath(MaidPathNavigator navigator, Object owner, MaidModernPath path) {
+            this.navigator = navigator;
+            this.owner = owner;
+            lease = navigator.brainLease;
+            this.path = path;
+            generation = navigator.generation;
+            worldTick = navigator.maid.worldObj.getTotalWorldTime();
+            entityTick = navigator.maid.ticksExisted;
+        }
+    }
 
     public MaidPathNavigator(EntityMaid maid, World world) {
         super(maid, world);
@@ -49,15 +104,81 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     public void tickMode() {
-        manager.tick();
+        tickingMode = true;
+        try {
+            manager.tick();
+        } finally {
+            tickingMode = false;
+        }
     }
 
     public void resetNavigation() {
         manager.resetNavigation();
     }
 
+    /** 清理生命周期状态时，只重置已无任何路线持有者的管理器 */
+    public void resetNavigationIfIdle() {
+        if (ground.path == null && water.path == null) manager.resetNavigation();
+    }
+
     private MaidNativePathRegion region() {
         return new MaidNativePathRegion(maid.worldObj, maid);
+    }
+
+    public boolean claimBrainTarget(Object owner, Object lease, BrainTarget target) {
+        java.util.Objects.requireNonNull(owner, "owner");
+        java.util.Objects.requireNonNull(lease, "lease");
+        java.util.Objects.requireNonNull(target, "target");
+        if (brainOwner != null && brainOwner != owner) return false;
+        brainOwner = owner;
+        brainLease = lease;
+        brainTarget = target;
+        return true;
+    }
+
+    public void releaseBrainTarget(Object owner) {
+        if (brainOwner == owner) {
+            brainOwner = null;
+            brainLease = null;
+            brainTarget = null;
+        }
+    }
+
+    private boolean brainCurrent() {
+        return brainTarget != null && brainTarget.isCurrent();
+    }
+
+    private void requireBrainOwner(Object owner) {
+        if (owner == null || brainOwner != owner || !brainCurrent())
+            throw new IllegalStateException("Foreign or expired brain navigation owner");
+    }
+
+    /** 原现代导航API：先核可更新条件，再复用同目标活路线，否则用实际FOLLOW_RANGE创建 */
+    public BrainPath createBrainPath(Object owner, int x, int y, int z, int accuracy) {
+        requireBrainOwner(owner);
+        var path = active.brainQuery(new Point(x, y, z), accuracy);
+        return path == null ? null : new BrainPath(this, owner, path);
+    }
+
+    public boolean installBrainPath(Object owner, BrainPath created, double speed) {
+        requireBrainOwner(owner);
+        if (created == null) return active.install(null, speed, false);
+        if (created.navigator != this || created.owner != owner
+            || created.lease != brainLease
+            || created.generation != generation
+            || created.worldTick != maid.worldObj.getTotalWorldTime()
+            || created.entityTick != maid.ticksExisted
+            || created.path.result.water != active.water)
+            throw new IllegalStateException("Brain path creation context changed before installation");
+        return active.install(created.path, speed, false);
+    }
+
+    public Stop lastStop() {
+        return lastStop;
+    }
+
+    public long searchCount() {
+        return searches;
     }
 
     /** Pure query used by the guarded production create/install boundary */
@@ -72,6 +193,19 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     private MaidModernPath query(State state, int x, int y, int z, float range, int accuracy) {
         var region = region();
         var requested = new Point(x, y, z);
+        var normalized = normalize(state, requested, region);
+        x = normalized.x;
+        y = normalized.y;
+        z = normalized.z;
+        var context = context(region);
+        searches++;
+        var result = MaidPathSearch
+            .find(context, state.water, x, y, z, range, accuracy, floor(getPathSearchRange() * 16));
+        return state.water ? new MaidAmphibiousPath(result, requested) : new MaidModernPath(result, requested);
+    }
+
+    private Point normalize(State state, Point requested, MaidNativePathRegion region) {
+        int x = requested.x, y = requested.y, z = requested.z;
         if (!state.water) {
             if (region.air(x, y, z)) {
                 int below = y - 1;
@@ -87,10 +221,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 while (y < region.maxY() && region.solid(x, y, z)) y++;
             }
         }
-        var context = context(region);
-        var result = MaidPathSearch
-            .find(context, state.water, x, y, z, range, accuracy, floor(getPathSearchRange() * 16));
-        return state.water ? new MaidAmphibiousPath(result, requested) : new MaidModernPath(result, requested);
+        return new Point(x, y, z);
     }
 
     public MaidPathContext context(MaidPathRegion region) {
@@ -115,10 +246,18 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     public boolean canUpdatePath() {
-        return active.water || maid.onGround
-            || maid.isInWater()
-            || maid.handleLavaMovement()
-            || maid.ridingEntity != null;
+        return active.canUpdate();
+    }
+
+    public float pathfindingCost(MaidPathType type) {
+        return costs[type.ordinal()];
+    }
+
+    public boolean isStableDestination(int x, int y, int z) {
+        if (!maid.worldObj.blockExists(x, y - 1, z)) return false;
+        return active.water ? !maid.worldObj.isAirBlock(x, y - 1, z)
+            : maid.worldObj.getBlock(x, y - 1, z)
+                .isOpaqueCube();
     }
 
     @Override
@@ -243,7 +382,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     @Override
     public Point walkTarget() {
-        return walkTarget;
+        return brainTarget == null ? walkTarget : brainCurrent() ? brainTarget.currentPosition() : null;
     }
 
     @Override
@@ -273,6 +412,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         if (active != navigation) {
             active = (State) navigation;
             generation++;
+            lastStop = null;
         }
     }
 
@@ -280,6 +420,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         final boolean water;
         PathEntity path;
+        Point targetPos;
         LegacyPath legacy;
         double speed;
         int tick, lastStuckCheck, timeoutX, timeoutY, timeoutZ;
@@ -309,13 +450,40 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         @Override
         public void stop() {
+            stop(tickingMode ? StopCause.MODE_CHANGE : StopCause.EXPLICIT);
+        }
+
+        void stop(StopCause cause) {
+            if (active == this && path != null) lastStop = new Stop(path, cause, maid.worldObj.getTotalWorldTime());
             if (path != null && !(path instanceof MaidModernPath)) MaidPathNavigator.super.clearPathEntity();
             path = null;
             legacy = null;
         }
 
+        MaidModernPath brainQuery(Point target, int accuracy) {
+            if (maid.posY < region().minY() || !canUpdate()) return null;
+            var normalized = normalize(this, target, region());
+            if (path instanceof MaidModernPath modern && !path.isFinished()
+                && targetPos != null
+                && targetPos.x == normalized.x
+                && targetPos.y == normalized.y
+                && targetPos.z == normalized.z) return modern;
+            var created = query(this, target.x, target.y, target.z, getPathSearchRange(), accuracy);
+            if (created != null) {
+                // 原createPath立即更新查询目标，即使调用方之后没有安装；不能改成已安装路径的终点
+                targetPos = new Point(created.result.targetX, created.result.targetY, created.result.targetZ);
+                resetTimeout();
+            }
+            return created;
+        }
+
+        boolean canUpdate() {
+            return water || maid.onGround || maid.isInWater() || maid.handleLavaMovement() || maid.ridingEntity != null;
+        }
+
         @Override
         public MaidNavigationActor.Path create(Point target) {
+            if (brainCurrent()) return brainQuery(target, 0);
             if (path instanceof MaidModernPath modern && !path.isFinished()
                 && modern.result.targetX == target.x
                 && modern.result.targetY == target.y
@@ -330,10 +498,14 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         public boolean moveTo(MaidNavigationActor.Path candidate, double speed) {
             if (!(candidate instanceof MaidModernPath modern)) return false;
             if (active != this && active.path != null) modern.continueCancellation(active.path);
-            return install(modern, speed);
+            return install(modern, speed, !brainCurrent());
         }
 
         boolean install(PathEntity candidate, double speed) {
+            return install(candidate, speed, true);
+        }
+
+        boolean install(PathEntity candidate, double speed, boolean resetTimer) {
             if (candidate == null) {
                 stop();
                 return false;
@@ -372,7 +544,8 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             this.speed = speed;
             lastStuckCheck = tick;
             lastStuckPos = position();
-            resetTimeout();
+            if (active == this) lastStop = null;
+            if (resetTimer) resetTimeout();
             return true;
         }
 
@@ -437,7 +610,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 float distance = (speed >= 1 ? speed : speed * speed) * 100F * .25F;
                 if (position.squareDistanceTo(lastStuckPos) < distance * distance) {
                     stuck = true;
-                    stop();
+                    stop(StopCause.WATCHDOG);
                 } else stuck = false;
                 lastStuckCheck = tick;
                 lastStuckPos = position;
@@ -456,7 +629,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             }
             if (timeoutLimit > 0 && timeoutTimer > timeoutLimit * 3) {
                 resetTimeout();
-                stop();
+                stop(StopCause.TIMEOUT);
             }
             lastTimeoutCheck = time;
         }

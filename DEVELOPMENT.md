@@ -463,3 +463,20 @@ Indev97 的单一 `MaidPathNavigator` 内部分别维护地面和水中状态，
 当前 `walkTarget` 仍是最近安装目标的投影，地面/水中查询仍受原型范围和世界额度约束
 完整 Brain 动态记忆、Sink 相位、快速可达缓存、多目标、原版攀爬任务和自然原版对照尚未完成，不能启用完整 F/N
 Horizon-QA 的窄水槽试验已暴露 WATER_BORDER 竖直恢复限制，宽池模式交接通过也不能覆盖该问题或算作全部水域验收
+
+## 现代导航上的 Follow 核心组件
+
+Indev98 新增 `ModernFollowCoreActor` 与 `ModernFollowCoreComponent`，显式安装到既有开发用 after-navigation 入口
+组件沿用 `MaidFollowOwnerTask`、`FollowCoreMoveDriver` 和 `FollowCoreLookDriver`，原生导航先 tick，随后先启动所有 STOPPED 行为，再运行 look0、move2、follow3
+主人从服务器在线玩家表按 UUID 查找，WALK_TARGET 持续读取主人位置，PATH 与可达性直接对应真实现代路线
+现代查询使用实际 FOLLOW_RANGE，保留 createPath 更新查询目标元数据和活路径缓存的原始相位，不沿用原型十 tick 重查、16 格范围或世界准入额度
+创建句柄另核策略 lease、内部导航代数、世界和实体 tick；外来接管路径不能由旧组件或全局泳姿清理撤销
+
+默认原型 Root 与旧 `Rc2FollowCoreActor` 保留，组件只验证 Follow/Move/Look 这一范围，不作为完整 F 的入口
+目前未接完整 Brain 活动、传感器缓存、工作目标记忆、快速可达 BFS、多目标及方块变化重规划，也未新增自然原版运行对照
+默认维度亮度、流体/固体渲染等事实仍由目标环境适配；完整 F/N 继续不可选
+
+Indev98 最终候选的四个组件场景通过，分别运行 216/136/109/8 tick；状态 JSON、JUnit XML 和进程退出 0 一致，无失败或跳过
+本批未启动客户端；真实多人、全任务与原版运行对照继续保留独立验收
+
+同一最终候选另复验默认原型 Root 的水陆交接与 `1/8` 活续路线取消，171 tick 通过，退出与两种报告一致
