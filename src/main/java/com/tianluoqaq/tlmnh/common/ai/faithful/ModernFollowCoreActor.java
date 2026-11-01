@@ -10,12 +10,14 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.potion.Potion;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
@@ -35,13 +37,15 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor
     implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor, MaidPathNavigator.BrainTarget,
-    MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor, MaidLifeActor {
+    MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor, MaidLifeActor, MaidStealActor {
 
     private final EntityMaid maid;
     private final World world;
     private final MaidPathNavigator navigation;
     private final MaidModernLife life;
+    private final MaidCakeAction cake;
     private Point workTarget;
+    private MaidEdibleBlockAction edibleAction;
     private MaidModernPerception perception;
     private MaidPolicyRuntime runtime;
     private Token token;
@@ -70,6 +74,7 @@ public final class ModernFollowCoreActor
             throw new IllegalArgumentException("Modern maid navigation required");
         navigation = modern;
         life = new MaidModernLife(maid, this::isCurrent);
+        cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
     }
 
     public void beginFrame(MaidPolicyRuntime runtime, Token token) {
@@ -314,6 +319,79 @@ public final class ModernFollowCoreActor
         maid.setPose(MaidPose.BEGGING, value);
     }
 
+    public MaidEdibleBlockAction edibleAction() {
+        guard();
+        return edibleAction;
+    }
+
+    public void setEdibleAction(MaidEdibleBlockAction action) {
+        guard();
+        edibleAction = action;
+    }
+
+    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS openWorkSearch() {
+        return openPickupSearch();
+    }
+
+    public boolean workPointNearOwner(Point point) {
+        guard();
+        if (isHomeModeEnable()) return true;
+        var owner = resolveOwner();
+        return owner != null && owner.worldObj == world
+            && owner.getDistanceSq(point.x + .5, point.y + .5, point.z + .5) < 64;
+    }
+
+    public ItemStack firstCakeStack() {
+        guard();
+        return cake.firstCakeStack();
+    }
+
+    public boolean shouldStealCake(Point point) {
+        guard();
+        return cake.shouldSteal(point);
+    }
+
+    public boolean shouldPlaceCake(Point point, ItemStack stack) {
+        guard();
+        return cake.shouldPlace(point, stack);
+    }
+
+    public boolean consumeCake(Point point) {
+        guard();
+        return cake.consume(point);
+    }
+
+    public boolean placeCake(Point point) {
+        guard();
+        return cake.place(point);
+    }
+
+    public void rewardSteal() {
+        guard();
+        maid.getFavorabilityManager()
+            .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK, 1);
+    }
+
+    public void swingMainHand() {
+        guard();
+        maid.swingItem();
+    }
+
+    public boolean walkMatchesWorkTarget() {
+        guard();
+        if (walk == null || workTarget == null) return false;
+        var pos = walk.currentPosition();
+        return pos.x == workTarget.x + .5 && pos.y == workTarget.y + .5 && pos.z == workTarget.z + .5;
+    }
+
+    public int cakeBites() {
+        return cake.bites();
+    }
+
+    public int cakePlacements() {
+        return cake.placements();
+    }
+
     public void stopFollowingTask() {
         guard();
         followStop = true;
@@ -455,6 +533,7 @@ public final class ModernFollowCoreActor
     public void cancelOwnedResources() {
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
+            cake.cancel();
             life.wake();
             if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
             if (breathItemLease != null && maid.getItemUseState()
@@ -484,6 +563,7 @@ public final class ModernFollowCoreActor
             lastCreated = null;
             walk = null;
             workTarget = null;
+            edibleAction = null;
             look = null;
             cantReachSince = null;
             followStop = false;

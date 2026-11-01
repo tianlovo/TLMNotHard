@@ -15,6 +15,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSel
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunAwayTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleUseTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -48,6 +50,10 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
     private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
     private boolean idleBegRunning, workBegRunning, rideIdleBegRunning, rideWorkBegRunning;
+    private final MaidStealEdibleMoveBlockTask idleStealMove = new MaidStealEdibleMoveBlockTask(.6F),
+        workStealMove = new MaidStealEdibleMoveBlockTask(.6F);
+    private final MaidStealEdibleUseTask idleStealUse = new MaidStealEdibleUseTask(2),
+        workStealUse = new MaidStealEdibleUseTask(2);
     private final com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos schedulePos = new com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos();
     private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
     private final java.util.Map<String, MaidActivityState.Activity> priority5 = new java.util.HashMap<>();
@@ -187,6 +193,23 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 meal.start(actor);
                 if (!actor.isCurrent()) return;
             }
+            var stealMove = activities.active() == MaidActivityState.Activity.IDLE ? idleStealMove
+                : activities.active() == MaidActivityState.Activity.WORK ? workStealMove : null;
+            if (stealMove != null) {
+                if (!actor.hasLifeWalkTarget() && actor.workTarget() == null
+                    && stealMove.checkExtraStartConditions(actor)) {
+                    actor.nextWorldInt(1);
+                    stealMove.start(actor);
+                    if (!actor.isCurrent()) return;
+                }
+                var use = stealMove == idleStealMove ? idleStealUse : workStealUse;
+                if (actor.workTarget() != null && actor.edibleAction() != null
+                    && use.checkExtraStartConditions(actor)) {
+                    actor.nextWorldInt(1);
+                    use.start(actor);
+                    if (!actor.isCurrent()) return;
+                }
+            }
             if (!perception.pickupEntities()
                 .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
                 actor.nextWorldInt(1);
@@ -259,6 +282,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             workMeal.reset();
             rideWorkMeal.reset();
             bed.reset();
+            idleStealMove.reset();
+            workStealMove.reset();
             idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();

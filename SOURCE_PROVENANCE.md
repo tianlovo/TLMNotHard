@@ -923,3 +923,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 1.7 目标缺少现代 POI 持久记录，当前不加载未加载床区块；醒来用本平台站立碰撞挑邻位，现代原生出口逐项等价尚未核验
 - 诱惑物支持原注册 ID/默认蛋糕，现代标签无对应时按未知项回退；乞食仍只检查主人主手和已缓存可见实体
 - 已实读后续偷吃移动/使用、父 MoveToBlock、CakeEdible 与 IMaidEdibleBlock 的关键合同；本批只接床和乞食，偷吃动作记忆与原两阶段尚待移植，不以源码阅读冒充已实现
+
+## 原偷吃移动、使用与动作记忆
+
+- Indev109 从固定 TLM 提交移植 `MaidMoveToBlockTask`、`MaidStealEdibleMoveBlockTask`、`MaidStealEdibleUseTask` 和 `MaidEdibleBlockAction`，保留原包名/来源头
+- 实读原 CakeEdible、IMaidEdibleBlock、MaidEdibleBlockManager、MaidPathFindingBFS、EntityMaid 的可用库存与放置入口、MaidInvWrapper 的用途；首版只接原生蛋糕和最小零食柜，不引入其他食品扩展
+- 原移动任务的搜索顺序、最后工作点、主人严格 8 格、27 邻点 BFS、成功搜索 900 计数与动作交替保持；Use 的工作目标/WALK 精确中心检查与清理保持
+- 自有 `MaidStealActor` 与 `MaidCakeAction` 负责目标世界查询、有限库存、原生 Forge 事件和回调提交守卫；双手先于背包，不读取护甲作食物
+- 目标 MCP BlockCake 的 metadata+1 达到 6 时移除，采用本平台六口而非现代七口；粒子发送走目标 WorldServer 原生包，实际客户端表现待验
+- 放置继续检查零食柜与资源身份，比源 Use 的位置复核更严格；近处已失效的源工作目标没有擅自加入自动清理，后续增强策略单独处理
+- 初生首次搜索与稳定落地后站起的结果不同，原始失败和隔离诊断保留，未用手动搜索冒充自然通过；原版首帧合同仍待对照
