@@ -163,7 +163,8 @@ public final class ModernScheduleTests {
                     "Far return did not use original integer candidates/support/collision and stop-navigation semantics");
                 attempts[0] = actor.homeTeleportAttempts();
                 // 显式外部位移是此场景输入，用于区别已有同中心WALK分支；之后只靠原生tick移动
-                actor.setPositionWalkAndLook(new Point(f.x + 4, f.y + 1, f.z + 4), .7F, 3);
+                // 控制输入减慢本段，保证age80仍在远处，实际检验已有同中心WALK抑制传送
+                actor.setPositionWalkAndLook(new Point(f.x + 4, f.y + 1, f.z + 4), .1F, 3);
                 place(f, 17.5);
                 teleported[0] = true;
             } else if (teleported[0]) {
@@ -171,8 +172,10 @@ public final class ModernScheduleTests {
                 if (age == 80) {
                     double dx = Math.floor(f.maid.posX) - f.x - 4;
                     helper.assertTrue(
-                        dx * dx > 49 && actor.peekWalkTarget() != null
-                            && actor.walkTargetsRestrictionCenter()
+                        dx * dx > 49,
+                        "Slow-walk fixture reached home before its far-walk suppression check");
+                    helper.assertTrue(
+                        actor.peekWalkTarget() != null && actor.walkTargetsRestrictionCenter()
                             && actor.homeTeleportAttempts() == attempts[0]
                             && actor.homeTeleportSuccesses() == 1
                             && !f.navigation.noPath(),
