@@ -68,6 +68,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         this);
     private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
+    private final com.tianluoqaq.tlmnh.common.life.meal.MaidMealController meals = new com.tianluoqaq.tlmnh.common.life.meal.MaidMealController(
+        this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
@@ -122,6 +124,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super.onLivingUpdate();
         if (!worldObj.isRemote) {
             shield.tickAfterLivingUpdate();
+            meals.tick();
             pickup.tick();
             syncOffhand();
             syncBackpackShowItem();
@@ -252,6 +255,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     public com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager getChatBubbleManager() {
         return chatBubbleManager;
+    }
+
+    public com.tianluoqaq.tlmnh.common.life.meal.MaidMealController getMealController() {
+        return meals;
     }
 
     public MaidItemUseState getItemUseState() {
@@ -509,6 +516,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void writeEntityToNBT(NBTTagCompound tag) {
+        meals.save(tag);
         super.writeEntityToNBT(tag);
         var extension = (NBTTagCompound) extraSaveData.copy();
         extension.setInteger("Schema", Math.max(SAVE_VERSION, extension.getInteger("Schema")));
@@ -585,6 +593,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
             setOffhandItem(ItemStack.loadItemStackFromNBT(tag.getCompoundTag(OFFHAND_TAG)));
             home.load(tag);
+            meals.load(tag);
             func_110163_bv();
             successful = true;
         } finally {
@@ -617,6 +626,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     /** 驯服女仆交给死亡保管；野生女仆完整掉落，禁止原版随机毁损装备 */
     @Override
     protected void dropEquipment(boolean recentlyHit, int looting) {
+        meals.cancel();
         if (MaidDeathService.preserve(this)) return;
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             var stack = inventory.getStackInSlot(slot);

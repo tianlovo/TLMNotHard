@@ -34,7 +34,7 @@ import cpw.mods.fml.common.network.NetworkRegistry;
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "required-after:battlegear2")
+    dependencies = "required-after:battlegear2;required-after:AppleCore")
 public final class TLMNotHard {
 
     public static final String MOD_ID = "tlmnh";

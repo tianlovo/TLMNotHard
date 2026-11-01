@@ -451,6 +451,138 @@ public final class MaidCoreInteractionProbe {
         if (pendingPanic != null) pendingPanic.finish(false, "server stopping");
     }
 
+    /** 三组库存边界夹具，调用实际RC2物品与女仆控制器，不冒充自然tick/客户端验收 */
+    public static void runMeals(WorldServer world, String group) {
+        try (var f = new Fixture(world)) {
+            require(world.spawnEntityInWorld(f.maid), "meal actor registered");
+            f.maid.getBrainCoordinator()
+                .setSuspended(false);
+            var maid = f.maid;
+            var inv = maid.getMaidInventory();
+            var meal = maid.getMealController();
+            if ("complete".equals(group)) {
+                var sword = new ItemStack(Items.iron_sword);
+                var spare = new ItemStack(Items.diamond, 3);
+                inv.setInventorySlotContents(6, sword);
+                inv.setInventorySlotContents(7, spare);
+                inv.setInventorySlotContents(0, new ItemStack(Items.mushroom_stew));
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating() && maid.hasPose(MaidPose.USING_OFFHAND), "backpack food in offhand");
+                require(inv.getStackInSlot(0) == spare && maid.getHealth() > 2, "swap conserves old hand and heals");
+                for (int i = 0; i < 32; i++) meal.tick();
+                require(
+                    !meal.isEating() && inv.getStackInSlot(6) == sword && inv.getStackInSlot(7) == spare,
+                    "hands restored");
+                require(count(inv, Items.mushroom_stew) == 0 && count(inv, Items.bowl) == 1, "one soup one bowl");
+                require(
+                    maid.getItemUseState()
+                        .peek() == null && !maid.hasPose(MaidPose.USING_ITEM),
+                    "food lease released");
+            } else if ("cancel".equals(group)) {
+                var sword = new ItemStack(Items.iron_sword);
+                var oldOff = new ItemStack(Items.diamond, 2);
+                inv.setInventorySlotContents(6, sword);
+                inv.setInventorySlotContents(7, oldOff);
+                inv.setInventorySlotContents(0, new ItemStack(Items.apple, 4));
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating(), "cancel eating started");
+                f.maid.getBrainCoordinator()
+                    .setSuspended(true);
+                require(
+                    !meal.isEating() && inv.getStackInSlot(7) == oldOff && count(inv, Items.apple) == 4,
+                    "pause restores without consuming");
+                f.maid.getBrainCoordinator()
+                    .setSuspended(false);
+                meal.load(new NBTTagCompound());
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating(), "save eating started");
+                var saved = new NBTTagCompound();
+                maid.writeEntityToNBT(saved);
+                require(!meal.isEating() && inv.getStackInSlot(7) == oldOff, "save restores before serializing");
+                var restored = f.newMaid();
+                restored.readEntityFromNBT(saved);
+                require(
+                    count(restored.getMaidInventory(), Items.apple) == 4
+                        && count(restored.getMaidInventory(), Items.diamond) == 2,
+                    "save/load conserves");
+                meal.load(new NBTTagCompound());
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating(), "mutation eating started");
+                var replacement = new ItemStack(Items.emerald);
+                f.owner.inventory.setInventorySlotContents(20, inv.getStackInSlot(7));
+                inv.setInventorySlotContents(7, replacement);
+                meal.tick();
+                require(
+                    !meal.isEating() && inv.getStackInSlot(7) == replacement && inv.getStackInSlot(0) == oldOff,
+                    "menu changes not overwritten");
+                require(f.owner.inventory.getStackInSlot(20).stackSize == 4, "removed food retained by viewer");
+            } else if ("rc2".equals(group)) {
+                Item item = (Item) Item.itemRegistry.getObject("gregtech:gt.metaitem.02");
+                require(item != null, "actual RC2 GT item exists");
+                var drink = new ItemStack(item, 2, 32000);
+                var food = com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile.inspect(drink);
+                require(food != null && food.container() != null, "GT coffee nutrition and container");
+                var empty = food.container();
+                for (int slot = 0; slot < 6; slot++)
+                    inv.setInventorySlotContents(slot, new ItemStack(Items.diamond, 64));
+                inv.setInventorySlotContents(7, new ItemStack(Items.diamond, 64));
+                inv.setInventorySlotContents(6, drink);
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating() && !maid.hasPose(MaidPose.USING_OFFHAND), "existing main hand drink");
+                for (int i = 0; i < food.duration; i++) meal.tick();
+                require(drink.stackSize == 1 && inv.getStackInSlot(6) == drink, "one GT drink consumed");
+                int dropped = 0;
+                for (Object entity : world.loadedEntityList)
+                    if (entity instanceof EntityItem drop && !f.originalEntities.contains(drop)) {
+                        var stack = drop.getEntityItem();
+                        if (stack.isItemEqual(empty) && ItemStack.areItemStackTagsEqual(stack, empty))
+                            dropped += stack.stackSize;
+                    }
+                require(
+                    count(inv, empty.getItem(), empty.getItemDamage()) == 0 && dropped == empty.stackSize,
+                    "full inventory returns exactly one real dropped thermos");
+                // 必定生效的原版附魔金苹果，检查NPC药效路径且不借用玩家回调
+                meal.load(new NBTTagCompound());
+                inv.setInventorySlotContents(6, new ItemStack(Items.golden_apple, 1, 1));
+                maid.setHealth(2);
+                meal.tick();
+                require(meal.isEating(), "golden apple started");
+                for (int i = 0; i < 32; i++) meal.tick();
+                require(
+                    maid.isPotionActive(Potion.field_76444_x) && maid.isPotionActive(Potion.regeneration)
+                        && maid.isPotionActive(Potion.resistance)
+                        && maid.isPotionActive(Potion.fireResistance),
+                    "golden apple effects on NPC");
+                require(
+                    com.tianluoqaq.tlmnh.common.config.MaidMealConfig.blocked(new ItemStack(Items.fish, 1, 3), true)
+                        && !com.tianluoqaq.tlmnh.common.config.MaidMealConfig.blocked(new ItemStack(Items.fish), true),
+                    "only pufferfish blocked");
+            } else throw new IllegalArgumentException("Unknown meal group: " + group);
+            TLMNotHard.LOG.info(
+                "TLMNH_MEAL_TEST_PASS group={} controller-calls=actual-RC2 natural-ticks=unverified client=unverified",
+                group);
+        }
+    }
+
+    private static int count(com.tianluoqaq.tlmnh.common.inventory.MaidInventory inv, Item item) {
+        return count(inv, item, -1);
+    }
+
+    private static int count(com.tianluoqaq.tlmnh.common.inventory.MaidInventory inv, Item item, int metadata) {
+        int count = 0;
+        for (int slot = 0; slot < inv.getSizeInventory(); slot++) {
+            var stack = inv.getStackInSlot(slot);
+            if (stack != null && stack.getItem() == item && (metadata < 0 || stack.getItemDamage() == metadata))
+                count += stack.stackSize;
+        }
+        return count;
+    }
+
     public static void runSelfCare(WorldServer world) {
         try (var f = new Fixture(world)) {
             world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));

@@ -670,3 +670,18 @@ EmojiReloadListener 读取已登记的 20 张内置 PNG，资源包可替换这�
 独立 MaidSelfCare 适配 EntityMaid.randomRestoreHealth：服务端低血时每 tick 以 0.0025 概率恢复 1 生命，满血不消耗这次随机值，不复活死亡女仆
 上游 spawnRestoreHealthParticle 保留在原 EntityMaid 包中，使用旧版 mobSpell 对应 ENTITY_EFFECT、原颜色与分布；旧实体状态 100～102 携带 7～9 粒子的恢复提示，不改变原生驯服/爱心状态
 普通背包进食和完整自保仍继续开发；不把这两项原型改进写成完整忠实 F、增强 N 或原版 benchmark 通过
+
+## 核心自动进食适配
+
+MaidMealController 的检查间隔、回血条件、营养计算与日常进食好感概率参考固定 TLM 提交
+`8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 MaidHealSelfTask、MaidWorkMealTask、
+DefaultMaidHealSelfMeal、DefaultMaidWorkMeal 和 Type.WORK_MEAL，原代码 MIT 许可见既有条目
+临时换手改用背包原槽交换，保存时先取消并还原，避免隐藏物品遗漏或菜单改动被覆盖
+不移植野餐垫、饰品和外部进食联动，也不另加玩家式饥饿消耗
+
+RC2 食物能力按 AppleCore `3.3.13`（`eabf8deb429202b45731f444784a69553917af7b`）的
+AppleCoreAPI.accessor.getFoodValues 读取通用营养值，不调用玩家专用 GetPlayerFoodValues
+GT5-Unofficial `5.09.54.205`（`a3e1e11241a814c9fa0dd0973d5699548428f689`）的
+MetaGeneratedItem.mFoodStats 与 GTFoodStat 用于核对 RC2 食物数据布局
+本模组自行读取常规 GTFoodStat 的容器、药效和牛奶标记，不复制 GT 源文件，也不调用要求 EntityPlayer 的 onEaten
+爆炸食物、未知 IFoodStat、自定义 ItemFood 进食回调暂不自动食用；不能据此宣称兼容所有整合包食物

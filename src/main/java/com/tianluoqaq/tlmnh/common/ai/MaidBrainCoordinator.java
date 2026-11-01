@@ -449,6 +449,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(pickup::cancel, failure);
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
+        failure = cancel(
+            () -> maid.getMealController()
+                .cancel(),
+            failure);
         failure = cancel(follow::cancel, failure);
         failure = cancel(home::cancel, failure);
         failure = cancel(actionRunner::clear, failure);
