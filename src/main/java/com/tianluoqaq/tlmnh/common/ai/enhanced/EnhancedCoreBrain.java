@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidInteractWithDoor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -31,6 +32,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedRideController ride;
     private final EnhancedBreathingController breathing;
     private final EnhancedClimbController climb;
+    private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
     private boolean ticking;
@@ -210,6 +212,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             if (actor.hasLookTarget()) actor.lookAtCurrentTargetIfPresent();
             navigation.tick();
             if (actor.isCurrent()) climb.tick();
+            if (actor.isCurrent()) doors.trigger(actor);
         } finally {
             ticking = false;
         }
@@ -248,6 +251,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         breathing.cancel();
         sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
         climb.cancel();
+        doors = new MaidInteractWithDoor();
         navigation.cancel();
         try {
             try {

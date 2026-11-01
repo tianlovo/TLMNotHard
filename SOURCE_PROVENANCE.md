@@ -1188,3 +1188,9 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - ModernFollowCoreActor新增显式增强陆地入口，使用本工程已有MaidNativePathRegion的实际碰撞、脚下高度及固定上游MaidNodeEvaluator的陆地成本判断
 - MaidLandRandomSampler的有限候选生成与随机顺序保持，增强显式选择碰撞承重条件；F的默认WorldFallback继续读取原导航稳定点条件
 - EnhancedPanicController在采样与继续使用目标时都核实际落点，原固定上游Panic/RunAway任务与F调度不变
+
+## 增强门动作接线
+
+- 增强root持有独立MaidInteractWithDoor实例，将固定上游任务作为受保护动作原语使用；上游包、来源、冷却及关闭条件保持
+- 取消后重建门动作内部状态，原ModernFollowCoreActor按自有权限清路径及门记忆；外部Malisis适配仍集中在compat/malisisdoors/common/block
+- F调度与原门动作实现不变；QA只开放既有走廊夹具helper的包内可见性，新增增强实例实际场景
