@@ -21,6 +21,21 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.TickResult;
 public class MaidPolicyRuntimeTest {
 
     @Test
+    public void panicRunsLifeCleanupAndSuppressesCombatFollowAndPermission() {
+        var actor = new TestActions();
+        actor.panicking = true;
+        assertEquals(TickResult.COMPLETED, actor.runtime.tick(() -> {
+            fail("Panic must suppress ordinary permission");
+            return true;
+        }));
+        events(actor, "life:false");
+        actor.events.clear();
+        actor.panicking = false;
+        actor.runtime.tick(() -> true);
+        events(actor, "combat", "life:true", "follow");
+    }
+
+    @Test
     public void defaultPreservesCombatLifeFollowAndLazyPermissionOrder() {
         var actor = new TestActions();
         var runtime = actor.runtime;
@@ -573,10 +588,15 @@ public class MaidPolicyRuntimeTest {
 
         private final List<String> events = new ArrayList<>();
         private final MaidPolicyRuntime runtime = new MaidPolicyRuntime(UUID.randomUUID(), this);
-        private boolean fighting, living;
+        private boolean fighting, living, panicking;
         private MaidPolicyContext lifeContext;
         private MaidPolicyContext.Token lifeToken;
         private Runnable onCombat, onLife, onFollow, onCancel;
+
+        @Override
+        public boolean tickPanic() {
+            return panicking;
+        }
 
         @Override
         public boolean tickCombat() {

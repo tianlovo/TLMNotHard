@@ -46,6 +46,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidHomeController home;
     private final MaidTraversalController traversal;
     private final MaidPickupController pickup;
+    private final MaidPanicController panic;
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
@@ -73,6 +74,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         home = new MaidHomeController(maid, actionRunner);
         traversal = new MaidTraversalController(maid);
+        panic = new MaidPanicController(maid, actionRunner, () -> suspended);
         pickup = new MaidPickupController(maid, actionRunner, ownerSensor::findOwner);
         bow = new MaidBowAttack(maid);
         life = new MaidLifeController(
@@ -225,6 +227,17 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             afterNavigationActions = null;
         }
         if (policy == null) policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
+
+            @Override
+            public boolean tickPanic() {
+                boolean panicking = panic.tick();
+                if (panicking) {
+                    combat.cancel();
+                    bow.cancel();
+                    pickup.cancel();
+                }
+                return panicking;
+            }
 
             @Override
             public boolean tickCombat() {
@@ -431,7 +444,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         dangerSensor.clear();
         combatActor.forgetOwner();
         targetMemory.clear();
-        Throwable failure = cancel(combat::cancel, null);
+        Throwable failure = cancel(panic::cancel, null);
+        failure = cancel(combat::cancel, failure);
         failure = cancel(pickup::cancel, failure);
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
@@ -482,6 +496,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidHomeController getHomeController() {
         return home;
+    }
+
+    public MaidPanicController getPanicController() {
+        return panic;
     }
 
     public MaidPickupController getPickupController() {

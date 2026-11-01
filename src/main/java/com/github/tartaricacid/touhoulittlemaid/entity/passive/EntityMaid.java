@@ -126,6 +126,30 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             syncOffhand();
             syncBackpackShowItem();
             chatBubbleManager.tick();
+            com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(this);
+        }
+    }
+
+    @Override
+    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    public void handleHealthUpdate(byte state) {
+        if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);
+        else super.handleHealthUpdate(state);
+    }
+
+    /** 上游spawnRestoreHealthParticle：旧版mobSpell对应ENTITY_EFFECT */
+    public void spawnRestoreHealthParticle(int count) {
+        if (!worldObj.isRemote) return;
+        for (int i = 0; i < count; i++) {
+            double dx = rand.nextGaussian() * .02, dy = rand.nextGaussian() * .02, dz = rand.nextGaussian() * .02;
+            worldObj.spawnParticle(
+                "mobSpell",
+                posX + rand.nextFloat() * width * 2 - width - dx * 10,
+                posY + rand.nextFloat() * height - dy * 10,
+                posZ + rand.nextFloat() * width * 2 - width - dz * 10,
+                .9,
+                .1,
+                .1);
         }
     }
 

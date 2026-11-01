@@ -657,3 +657,16 @@ ChatBubbleRenderer、EntityGraphics、文字和图片渲染器保留原包名，
 EmojiReloadListener 读取已登记的 20 张内置 PNG，资源包可替换这些位置；不增加外部 GIF/图片导入功能，缓存只随短期气泡保留
 客户端总显示偏好和每只女仆的原版显示开关均已接入；扩容背包不在首版范围，原版背包显示行保留无背包状态与范围说明
 与上一批背部物品和默认界面合并做局部双端验证，不建立新的逐像素/全模型测试框架；正式版仍须单独完成跨模块集成
+
+## 苦力怕逃离与被动回血
+
+独立 MaidPanicController 参考固定上游 MaidHostilesSensor、MaidPanicTask、MaidRunAwayTask、SetWalkTargetAwayFrom 与 MaidBrain.registerPanicGoals
+保留空闲任务允许、攻击任务禁用、可见且严格 8 格内最近苦力怕、速度 0.7 和最多 10 次逃离候选；坐下时可站起、结束睡眠并离开骑乘，危险动作先于普通生活和跟随
+目标版读取完整局部苦力怕列表，每 20 tick 感知，使用已核的原生 RandomPositionGenerator.findRandomTargetBlockAwayFrom 与现有有界路径适配；
+这部分尚未实现原版全部 HURT_BY 慌乱记忆或现代水下导航
+候选搜索前确认涉及区块已加载，遵守现有家园边界；选择实际路径终点朝离开威胁的方向，保留已有同向路径，失败冷却 20 tick，不把未加载或暂缺路径当作允许继续偷吃
+新增 PANIC 动作身份参与现有所有权交接；取消先撤销身份，只清理自己仍持有的路径，任务改变、暂停、卸载与威胁移除可退出
+
+独立 MaidSelfCare 适配 EntityMaid.randomRestoreHealth：服务端低血时每 tick 以 0.0025 概率恢复 1 生命，满血不消耗这次随机值，不复活死亡女仆
+上游 spawnRestoreHealthParticle 保留在原 EntityMaid 包中，使用旧版 mobSpell 对应 ENTITY_EFFECT、原颜色与分布；旧实体状态 100～102 携带 7～9 粒子的恢复提示，不改变原生驯服/爱心状态
+普通背包进食和完整自保仍继续开发；不把这两项原型改进写成完整忠实 F、增强 N 或原版 benchmark 通过

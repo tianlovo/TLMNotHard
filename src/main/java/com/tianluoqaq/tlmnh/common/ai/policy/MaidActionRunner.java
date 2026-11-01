@@ -6,6 +6,7 @@ import java.util.Objects;
 public final class MaidActionRunner {
 
     public enum Owner {
+        PANIC,
         FOLLOW,
         HOME,
         PICKUP,

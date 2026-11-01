@@ -430,6 +430,258 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    private static PanicRuntime pendingPanic;
+
+    public static void startPanicRuntime(WorldServer world) {
+        require(pendingPanic == null, "one panic runtime");
+        var probe = new PanicRuntime(world);
+        pendingPanic = probe;
+        try {
+            probe.begin();
+            cpw.mods.fml.common.FMLCommonHandler.instance()
+                .bus()
+                .register(probe);
+        } catch (RuntimeException | Error failure) {
+            probe.finish(false, failure.toString());
+            throw failure;
+        }
+    }
+
+    public static void cancelPanicRuntime() {
+        if (pendingPanic != null) pendingPanic.finish(false, "server stopping");
+    }
+
+    public static void runSelfCare(WorldServer world) {
+        try (var f = new Fixture(world)) {
+            world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
+            require(world.spawnEntityInWorld(f.maid), "registered self-care maid");
+            var spy = new HealSpy(f.maid);
+            MinecraftForge.EVENT_BUS.register(spy);
+            try {
+                float before = Math.max(1, f.maid.getMaxHealth() - 2);
+                f.maid.setHealth(before);
+                int draws = 0;
+                while (spy.count == 0 && draws < 10000) {
+                    com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                    draws++;
+                }
+                require(
+                    spy.count == 1 && spy.amount == 1
+                        && !spy.cancelled
+                        && f.maid.getHealth() == Math.min(f.maid.getMaxHealth(), before + 1),
+                    "native passive heal actual=" + f.maid.getHealth()
+                        + " before="
+                        + before
+                        + " events="
+                        + spy.count
+                        + " amount="
+                        + spy.amount
+                        + " cancelled="
+                        + spy.cancelled
+                        + " draws="
+                        + draws
+                        + " rng="
+                        + f.maid.getRNG()
+                            .getClass()
+                            .getName());
+                f.maid.setHealth(f.maid.getMaxHealth());
+                com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                require(
+                    f.maid.getHealth() == f.maid.getMaxHealth() && spy.count == 1,
+                    "full health no extra heal event");
+                f.maid.setHealth(0);
+                com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                require(f.maid.getHealth() == 0, "no passive resurrection");
+                TLMNotHard.LOG.info(
+                    "TLMNH_SELF_CARE_TEST_PASS one-health=restored full-health=no-extra-event dead=no-resurrection draws={} rng={} particles=client-unverified",
+                    draws,
+                    f.maid.getRNG()
+                        .getClass()
+                        .getName());
+            } finally {
+                MinecraftForge.EVENT_BUS.unregister(spy);
+            }
+        }
+    }
+
+    public static final class HealSpy {
+
+        private final EntityMaid maid;
+        private int count;
+        private float amount;
+        private boolean cancelled;
+
+        HealSpy(EntityMaid maid) {
+            this.maid = maid;
+        }
+
+        @SubscribeEvent(priority = cpw.mods.fml.common.eventhandler.EventPriority.LOWEST, receiveCanceled = true)
+        public void heal(net.minecraftforge.event.entity.living.LivingHealEvent event) {
+            if (event.entityLiving == maid) {
+                count++;
+                amount = event.amount;
+                cancelled = event.isCanceled();
+            }
+        }
+    }
+
+    /** 自然实体tick：坐下遇苦力怕逃离、攻击任务不慌乱、取消/恢复与威胁移除 */
+    public static final class PanicRuntime {
+
+        private final Fixture f;
+        private final java.util.Map<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block> blocks = new java.util.LinkedHashMap<>();
+        private final java.util.Map<net.minecraft.util.ChunkCoordinates, Integer> metadata = new java.util.HashMap<>();
+        private net.minecraft.entity.monster.EntityCreeper creeper;
+        private final net.minecraft.world.EnumDifficulty difficulty;
+        private int ticks, phase, phaseStart;
+        private boolean finished;
+        private double x, z, initialDistance;
+
+        PanicRuntime(WorldServer world) {
+            f = new Fixture(world);
+            difficulty = world.difficultySetting;
+        }
+
+        private void begin() {
+            f.world.difficultySetting = net.minecraft.world.EnumDifficulty.NORMAL;
+            int bx = (int) Math.floor(f.maid.posX), bz = (int) Math.floor(f.maid.posZ);
+            x = bx + .5;
+            z = bz + .5;
+            for (int cx = (bx - 24) >> 4; cx <= (bx + 24) >> 4; cx++)
+                for (int cz = (bz - 24) >> 4; cz <= (bz + 24) >> 4; cz++) f.world.getChunkFromChunkCoords(cx, cz);
+            for (int px = bx - 16; px <= bx + 16; px++)
+                for (int pz = bz - 16; pz <= bz + 16; pz++) for (int py = 99; py <= 107; py++) {
+                    var point = new net.minecraft.util.ChunkCoordinates(px, py, pz);
+                    blocks.put(point, f.world.getBlock(px, py, pz));
+                    metadata.put(point, f.world.getBlockMetadata(px, py, pz));
+                    f.world.setBlock(
+                        px,
+                        py,
+                        pz,
+                        py == 99 ? net.minecraft.init.Blocks.glowstone : net.minecraft.init.Blocks.air,
+                        0,
+                        2);
+                }
+            f.maid.setPosition(x, 100, z);
+            f.maid.onGround = true;
+            f.maid.setSitting(true);
+            f.maid.setSchedule(com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.ALL);
+            creeper = new net.minecraft.entity.monster.EntityCreeper(f.world);
+            creeper.tasks.taskEntries.clear();
+            creeper.targetTasks.taskEntries.clear();
+            creeper.func_110163_bv();
+            creeper.setPosition(x + 4, 100, z);
+            creeper.onGround = true;
+            require(
+                f.world.spawnEntityInWorld(creeper) && f.world.spawnEntityInWorld(f.maid),
+                "registered panic actors");
+            initialDistance = f.maid.getDistanceSqToEntity(creeper);
+            f.maid.getBrainCoordinator()
+                .setSuspended(false);
+            TLMNotHard.LOG
+                .info("TLMNH_PANIC_RUNTIME_STARTED input=natural-world-ticks stationary-registered-creeper=true");
+        }
+
+        @SubscribeEvent
+        public void tick(cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent event) {
+            if (finished || event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
+            try {
+                ticks++;
+                var brain = f.maid.getBrainCoordinator();
+                var controller = brain.getPanicController();
+                require(
+                    ticks <= 300,
+                    "panic timeout phase=" + phase
+                        + " status="
+                        + controller.getStatus()
+                        + " distance="
+                        + f.maid.getDistanceSqToEntity(creeper));
+                if (phase == 0 && f.maid.getDistanceSqToEntity(creeper) > initialDistance + 20) {
+                    require(!f.maid.isSitting(), "panic stands from waiting");
+                    require(
+                        brain.getActionRunner()
+                            .getOwner() == com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                        "panic owns actual motion");
+                    TLMNotHard.LOG.info(
+                        "TLMNH_PANIC_PHASE_PASS phase=escape ticks={} distanceSq={}",
+                        ticks,
+                        f.maid.getDistanceSqToEntity(creeper));
+                    f.maid.setTask(com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK);
+                    f.maid.setPosition(x, 100, z);
+                    f.maid.motionX = f.maid.motionZ = 0;
+                    f.maid.setSitting(true);
+                    phase = 1;
+                    phaseStart = ticks;
+                } else if (phase == 1 && ticks - phaseStart >= 15) {
+                    require(
+                        f.maid.isSitting() && controller.getThreat() == null
+                            && brain.getActionRunner()
+                                .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                        "attack task disables panic");
+                    f.maid.setTask(com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE);
+                    phase = 2;
+                    phaseStart = ticks;
+                } else if (phase == 2 && f.maid.getDistanceSqToEntity(creeper) > initialDistance + 20) {
+                    brain.setSuspended(true);
+                    require(
+                        f.maid.getNavigator()
+                            .noPath()
+                            && brain.getActionRunner()
+                                .getOwner() == null
+                            && controller.getThreat() == null,
+                        "suspension releases owned navigation");
+                    phase = 3;
+                    phaseStart = ticks;
+                } else if (phase == 3 && ticks - phaseStart >= 5) {
+                    f.maid.setPosition(x, 100, z);
+                    f.maid.motionX = f.maid.motionZ = 0;
+                    f.maid.onGround = true;
+                    brain.setSuspended(false);
+                    phase = 4;
+                    phaseStart = ticks;
+                } else if (phase == 4 && f.maid.getDistanceSqToEntity(creeper) > initialDistance + 20) {
+                    f.world.removeEntity(creeper);
+                    phase = 5;
+                    phaseStart = ticks;
+                } else if (phase == 5 && ticks - phaseStart >= 3) {
+                    require(
+                        controller.getThreat() == null && brain.getActionRunner()
+                            .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                        "removed threat releases panic");
+                    finish(true, "escape;attack-disabled;cancel-resume;threat-removed");
+                }
+            } catch (RuntimeException | Error error) {
+                finish(false, error.toString());
+            }
+        }
+
+        private void finish(boolean success, String detail) {
+            if (finished) return;
+            finished = true;
+            cpw.mods.fml.common.FMLCommonHandler.instance()
+                .bus()
+                .unregister(this);
+            try {
+                f.maid.getBrainCoordinator()
+                    .setSuspended(true);
+                if (creeper != null) f.world.removeEntity(creeper);
+                f.close();
+            } finally {
+                for (var entry : blocks.entrySet()) {
+                    var p = entry.getKey();
+                    f.world.setBlock(p.posX, p.posY, p.posZ, entry.getValue(), metadata.get(p), 2);
+                }
+                f.world.difficultySetting = difficulty;
+                if (pendingPanic == this) pendingPanic = null;
+            }
+            TLMNotHard.LOG.info(
+                "TLMNH_PANIC_RUNTIME_TEST_{} ticks={} detail={} benchmark=unverified",
+                success ? "PASS" : "FAIL",
+                ticks,
+                detail);
+        }
+    }
+
     private static PickupRuntime pendingPickup;
 
     public static void startPickupRuntime(WorldServer world) {

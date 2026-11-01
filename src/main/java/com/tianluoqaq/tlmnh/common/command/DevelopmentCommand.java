@@ -223,6 +223,16 @@ public final class DevelopmentCommand extends CommandBase {
                 .runBackItem((net.minecraft.world.WorldServer) sender.getEntityWorld());
             return;
         }
+        if (args.length == 1 && "panic-runtime-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .startPanicRuntime((WorldServer) sender.getEntityWorld());
+            return;
+        }
+        if (args.length == 1 && "self-care-test".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
+                .runSelfCare((WorldServer) sender.getEntityWorld());
+            return;
+        }
         if (args.length == 1 && "bubbles-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
                 .runBubbles((WorldServer) sender.getEntityWorld());

@@ -90,8 +90,10 @@ public final class TLMNotHard {
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
         Throwable failure = null;
-        for (Runnable close : new Runnable[] { MaidBowRuntimeProbe::cancel, MaidLifeRuntimeProbe::cancel,
-            MaidShieldRuntimeProbe::cancel, MaidEpisodeRecorder::closeAll }) {
+        for (Runnable close : new Runnable[] {
+            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe::cancelPanicRuntime,
+            MaidBowRuntimeProbe::cancel, MaidLifeRuntimeProbe::cancel, MaidShieldRuntimeProbe::cancel,
+            MaidEpisodeRecorder::closeAll }) {
             try {
                 close.run();
             } catch (RuntimeException | Error error) {
