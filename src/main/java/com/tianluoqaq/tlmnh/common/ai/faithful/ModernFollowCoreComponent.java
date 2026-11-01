@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
@@ -13,6 +15,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
+    private final MaidBreathAirTask breath = new MaidBreathAirTask();
+    private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
     private FollowMoveState moveState = new FollowMoveState();
     private boolean followRunning, ticking, hasTick;
@@ -46,6 +50,14 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
                 moveState = new FollowMoveState();
             }
             // 原Brain先启动全部STOPPED行为，再按look0、move2、follow3运行
+            if (breath.checkExtraStartConditions(actor)) {
+                actor.nextWorldInt(1);
+                breath.start(actor);
+            }
+            if (breathStop.checkExtraStartConditions(actor)) {
+                actor.nextWorldInt(1);
+                breathStop.start(actor);
+            }
             if (lookState.getStatus() == FollowCoreLookDriver.Status.STOPPED) look.tryStart(actor, lookState, time);
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {

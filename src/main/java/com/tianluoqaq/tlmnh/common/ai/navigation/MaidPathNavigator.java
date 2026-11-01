@@ -148,6 +148,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
     }
 
+    public boolean isBrainTargetOwner(Object owner) {
+        return owner != null && brainOwner == owner;
+    }
+
     private boolean brainCurrent() {
         return brainTarget != null && brainTarget.isCurrent();
     }

@@ -38,7 +38,9 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
         }
         var breath = maid.getBrainCoordinator()
             .getBreathController();
-        manager.setGoingToBreath(breath.isActive());
+        var policy = maid.getBrainCoordinator()
+            .peekPolicyRuntime();
+        if (policy == null || !policy.requiresAfterNativeNavigation()) manager.setGoingToBreath(breath.isActive());
         manager.setEatBreatheItem(
             maid.getMealController()
                 .isBreathing());

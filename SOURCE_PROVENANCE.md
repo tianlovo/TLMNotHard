@@ -840,3 +840,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 核对 MaidSelectivePathFinding/MaidUnderWaterBoardingPathFinder，任一目标流体为空即对整个查询采用上岸启发式；相同评分的目标不承诺跨平台固定选择次序
 - 集合查询按 PathNavigation 原重载直接使用目标坐标，单坐标入口才执行 GroundPathNavigation 的归一化；不把目标元数据缓存误写成已安装路线目标
 - 这些查询基础尚未完成原 MaidBreathAirTask/生活任务接线、全活动和感知，也不等于新增原版自然运行对照或完整 F/N
+
+## 原呼吸任务接现代组件
+
+- Indev100 从固定 TLM 提交移植 MaidBreathAirTask/StopTask，保留原包名与顺序；现代 Behavior 的默认 `nextInt(1)` 开始相位由外层组件消费
+- 任务条件保留食用中拒绝、有效空气目标与活路径复用、100 氧阈值、呼吸效果和使用中检查；结束保留 290 氧/效果/饰品条件及目标记忆擦除
+- BFS 搜索范围和竖直范围均为 16，找到目标后仍用实际现代 A* canReach 确认；失败后按当前位置海平面中心、再按原 5×5 迭代顺序尝试
+- MaidAirActor 为本项目新增世界/物品/记忆边界，现有物品控制器负责已核手/背包/临时交换与使用生命周期；尚未接原请求物品事件或溺水饰品槽/物品
+- 原 givesAir 实际判断目标单格的空流体或气泡柱以及空碰撞形状，未按注释改成两格空气，也未沿用原型按当前眼高验证终点的另一算法
+- 目标 Et Futurum 2.6.65 的 BlockBubbleColumn 碰撞为空且对 Living 实体恢复 300 氧，按已核实际类识别；现代 MobEffectUtil 还检查 CONDUIT_POWER，该效果目标映射仍待办
+- 原 TARGET_POS 工作记忆、完整感知/活动与原攀爬任务尚未接本组件，完整 F/N 和新增原版自然运行对照继续待办

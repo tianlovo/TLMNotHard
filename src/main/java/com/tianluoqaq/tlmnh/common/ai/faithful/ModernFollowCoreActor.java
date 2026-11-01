@@ -1,12 +1,14 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.potion.Potion;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -22,13 +24,14 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidWalkEvaluator;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
-public final class ModernFollowCoreActor
-    implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor, MaidPathNavigator.BrainTarget {
+public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
+    MaidPathNavigator.BrainTarget, MaidAirActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -39,8 +42,9 @@ public final class ModernFollowCoreActor
     private int entityTick;
     private String ownerId;
     private MaidTask task;
-    private OwnerWalk walk;
-    private OwnerView look;
+    private WalkTarget walk;
+    private Object look;
+    private MaidItemUseState.Lease breathItemLease;
     private ModernPath pathMemory, navigationView;
     private ModernPath lastCreated;
     private PathEntity ownedPath;
@@ -191,12 +195,13 @@ public final class ModernFollowCoreActor
     }
 
     public boolean ownerIsWalkTarget(Owner owner) {
-        return walk != null && walk.owner.player == owner(owner).player;
+        return walk instanceof OwnerWalk target && target.owner.player == owner(owner).player;
     }
 
     public void setWalkAndLookTargetMemories(Owner owner, float speedModifier, int stopDistance) {
-        look = owner(owner);
-        walk = new OwnerWalk(look, speedModifier, stopDistance);
+        var view = owner(owner);
+        look = view;
+        walk = new OwnerWalk(view, speedModifier, stopDistance);
     }
 
     public void resetNavigation() {
@@ -354,12 +359,23 @@ public final class ModernFollowCoreActor
 
     /** 生命周期先使token失效，清理仍只撤销自身路线/目标，不覆盖后来接管者 */
     public void cancelOwnedResources() {
+        boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
             if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
+            if (breathItemLease != null && maid.getItemUseState()
+                .peek() == breathItemLease) maid.getMealController()
+                    .cancel();
         } finally {
+            breathItemLease = null;
+            if (ownsTarget) {
+                var swim = maid.getAquaticController()
+                    .getManager();
+                swim.setGoingToBreath(false);
+                swim.setEatBreatheItem(false);
+            }
             frameActive = false;
             navigation.releaseBrainTarget(this);
-            navigation.resetNavigationIfIdle();
+            if (ownsTarget) navigation.resetNavigationIfIdle();
             ownedPath = null;
             navigationView = null;
             pathMemory = null;
@@ -423,21 +439,119 @@ public final class ModernFollowCoreActor
 
     public boolean isCurrentLookTargetVisible() {
         guard();
-        return look != null && look.player.worldObj == world
-            && look.player.isEntityAlive()
+        if (look instanceof Point) return true;
+        return look instanceof OwnerView target && target.player.worldObj == world
+            && target.player.isEntityAlive()
             && maid.getEntitySenses()
-                .canSee(look.player);
+                .canSee(target.player);
     }
 
     public void lookAtCurrentTargetIfPresent() {
         guard();
-        if (look != null) maid.getLookHelper()
+        if (look instanceof OwnerView target) maid.getLookHelper()
             .setLookPosition(
-                look.player.posX,
-                look.player.posY + look.player.getEyeHeight(),
-                look.player.posZ,
+                target.player.posX,
+                target.player.posY + target.player.getEyeHeight(),
+                target.player.posZ,
                 10,
                 maid.getVerticalFaceSpeed());
+        else if (look instanceof Point target) maid.getLookHelper()
+            .setLookPosition(target.x + .5, target.y + .5, target.z + .5, 10, maid.getVerticalFaceSpeed());
+    }
+
+    public boolean isEatBreatheItem() {
+        guard();
+        return maid.getAquaticController()
+            .getManager()
+            .isEatBreatheItem();
+    }
+
+    public Point walkTargetPosition() {
+        return currentPosition();
+    }
+
+    public int distanceManhattan(Point pos) {
+        return blockPosition().manhattanDistance(new BlockPos(pos.x, pos.y, pos.z));
+    }
+
+    public int airSupply() {
+        guard();
+        return maid.getAir();
+    }
+
+    public boolean hasBreathingEffect() {
+        guard();
+        // 目标已核水下呼吸；当前移植未提供现代CONDUIT_POWER，后续不能据此称完整效果映射
+        return maid.isPotionActive(Potion.waterBreathing);
+    }
+
+    public boolean hasDrownBauble() {
+        guard();
+        // 当前库存尚无原溺水饰品槽/物品，保留任务分支，待装备扩展后接实际物品事实
+        return false;
+    }
+
+    public boolean isUsingItem() {
+        guard();
+        return maid.getItemUseState()
+            .peek() != null;
+    }
+
+    public boolean tryEatBreatheItem() {
+        guard();
+        if (!maid.getMealController()
+            .tryStartBreathing()) return false;
+        breathItemLease = maid.getItemUseState()
+            .peek();
+        maid.getAquaticController()
+            .getManager()
+            .setEatBreatheItem(true);
+        return true;
+    }
+
+    public Point airSearchPosition() {
+        var pos = blockPosition();
+        return new Point(pos.x, pos.y, pos.z);
+    }
+
+    public int seaLevel() {
+        guard();
+        return new MaidNativePathRegion(world).seaLevel();
+    }
+
+    public Optional<Point> findAirWithBfs(int range) {
+        navigationLease();
+        var home = maid.getHomeArea();
+        var center = home.enabled() ? new Point(home.center().x, home.center().y, home.center().z)
+            : airSearchPosition();
+        try (var map = navigation.createArrivalMap(center, range, range)) {
+            return map.find(this::givesAir);
+        }
+    }
+
+    public boolean canPathReach(Point pos) {
+        navigationLease();
+        var created = navigation.createBrainPath(this, pos.x, pos.y, pos.z, 0);
+        return created != null && created.path.canReach();
+    }
+
+    public boolean givesAir(Point pos) {
+        guard();
+        if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
+        var block = world.getBlock(pos.x, pos.y, pos.z);
+        boolean bubble = block.getClass()
+            .getName()
+            .equals("ganymedes01.etfuturum.blocks.BlockBubbleColumn");
+        if (block.getMaterial()
+            .isLiquid() && !bubble) return false;
+        var box = block.getCollisionBoundingBoxFromPool(world, pos.x, pos.y, pos.z);
+        return box == null || box.maxX <= box.minX || box.maxY <= box.minY || box.maxZ <= box.minZ;
+    }
+
+    public void setAirWalkAndLook(Point pos, float speed, int closeDistance) {
+        guard();
+        look = pos;
+        walk = new PositionWalk(pos, speed, closeDistance);
     }
 
     public void eraseLookTarget() {
@@ -514,6 +628,39 @@ public final class ModernFollowCoreActor
         public boolean isUnderWater() {
             guard();
             return player.isInsideOfMaterial(Material.water);
+        }
+    }
+
+    private final class PositionWalk implements WalkTarget {
+
+        final Point pos;
+        final float speed;
+        final int closeEnough;
+
+        PositionWalk(Point pos, float speed, int closeEnough) {
+            this.pos = pos;
+            this.speed = speed;
+            this.closeEnough = closeEnough;
+        }
+
+        public BlockPos currentBlockPosition() {
+            guard();
+            return new BlockPos(pos.x, pos.y, pos.z);
+        }
+
+        public float getSpeedModifier() {
+            guard();
+            return speed;
+        }
+
+        public int getCloseEnoughDistance() {
+            guard();
+            return closeEnough;
+        }
+
+        public boolean isEntityTrackerSpectator() {
+            guard();
+            return false;
         }
     }
 
