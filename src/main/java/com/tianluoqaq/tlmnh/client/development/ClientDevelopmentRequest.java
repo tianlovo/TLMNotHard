@@ -58,6 +58,11 @@ public final class ClientDevelopmentRequest {
             if (name.contains("..") || !SCREENSHOT_NAME.matcher(name)
                 .matches()) throw new IllegalArgumentException("Invalid screenshot name");
         }
+        if (command == Command.PROTECTION_PROBE) {
+            action = text(json, "action");
+            if (!Arrays.asList("inspect", "missing_api", "recover")
+                .contains(action)) throw new IllegalArgumentException("Unknown protection probe action");
+        }
         if (command == Command.WORLD_SOUND_PROBE) {
             action = text(json, "action");
             if (!Arrays.asList("global_0", "global_100", "vanilla", "close_gui", "disconnect")
@@ -216,6 +221,7 @@ public final class ClientDevelopmentRequest {
     public enum Command {
         STATUS,
         WORLD_SOUND_PROBE,
+        PROTECTION_PROBE,
         CONNECT_LOCAL,
         LAB_VIEW,
         LOOK,

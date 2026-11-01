@@ -36,6 +36,7 @@ import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
+import cpw.mods.fml.relauncher.Side;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 
@@ -44,11 +45,56 @@ public final class ProtectionTests {
 
     private ProtectionTests() {}
 
+    @GameTest(template = "modern_core_cell", timeoutTicks = 100, batch = "protection_persistence")
+    public static void savedNewLedgerCanBeVerifiedAgain(GameTestHelper helper) {
+        IntegrationGuard.resetForDevelopment();
+        helper.afterTest(IntegrationGuard::resetForDevelopment);
+        var world = helper.getWorld();
+        CompatibilityLedger.verify(world);
+        var ledger = (CompatibilityLedger) world.mapStorage
+            .loadData(CompatibilityLedger.class, CompatibilityLedger.NAME);
+        var expected = new NBTTagCompound();
+        ledger.writeToNBT(expected);
+        world.mapStorage.saveAllData();
+        var file = world.getSaveHandler()
+            .getMapFileFromName(CompatibilityLedger.NAME);
+        helper.succeedWhen(() -> {
+            if (file == null || !file.isFile()) return false;
+            try (var input = new java.io.FileInputStream(file)) {
+                var actual = net.minecraft.nbt.CompressedStreamTools.readCompressed(input)
+                    .getCompoundTag("data");
+                if (!expected.equals(actual)) return false;
+            } catch (java.io.IOException pendingWrite) {
+                return false;
+            }
+            CompatibilityLedger.verify(world);
+            helper.assertTrue(
+                IntegrationGuard.available(ExternalFeature.SHIELDS),
+                "Fresh saved ledger was treated as unreadable");
+            return true;
+        });
+    }
+
     /** 同批顺序执行，避免隔离故障夹具相互修改进程熔断状态 */
     @GameTest(template = "modern_core_cell", timeoutTicks = 50, batch = "protection_contract")
     public static void losslessStorageAndUnavailableApis(GameTestHelper helper) throws Exception {
         IntegrationGuard.resetForDevelopment();
         helper.afterTest(IntegrationGuard::resetForDevelopment);
+        IntegrationGuard.resetForDevelopment(Side.CLIENT);
+        helper.afterTest(() -> IntegrationGuard.resetForDevelopment(Side.CLIENT));
+        var clientFault = IntegrationGuard
+            .trip(Side.CLIENT, ExternalFeature.PLAYER_OFFHAND, new NoSuchMethodError("QA client-only offhand failure"));
+        helper.assertTrue(
+            IntegrationGuard.available(ExternalFeature.PLAYER_OFFHAND)
+                && !IntegrationGuard.available(Side.CLIENT, ExternalFeature.PLAYER_OFFHAND),
+            "Client fault disabled server capability");
+        var compatibility = new CompatibilityLedger("qa-server");
+        compatibility.check();
+        var ledgerTag = new NBTTagCompound();
+        compatibility.writeToNBT(ledgerTag);
+        helper.assertTrue(
+            !ledgerTag.hasKey(ExternalFeature.CLIENT_RENDER_STATE.id),
+            "Server persisted client render baseline");
         var world = helper.getWorld();
         var owner = new EntityPlayerMP(
             MinecraftServer.getServer(),
@@ -101,6 +147,10 @@ public final class ProtectionTests {
                 ItemStack.areItemStacksEqual(apple, maid.getOffhandItem()),
                 "Offhand API failure lost apple count/damage/custom NBT on cycle " + cycle);
         }
+        helper.assertTrue(
+            !IntegrationGuard.faults()
+                .get(ExternalFeature.PLAYER_OFFHAND.id).code.equals(clientFault.code),
+            "Client and server diagnostics share one fault record");
         ProtectionEvents.warn(owner);
         ProtectionEvents.warn(owner);
         channel.runPendingTasks();

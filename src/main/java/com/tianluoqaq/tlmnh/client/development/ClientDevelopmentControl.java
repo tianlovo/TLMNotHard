@@ -320,6 +320,10 @@ public final class ClientDevelopmentControl {
                     GpuMatrixProbe.arm(name, request.model);
                     response.addProperty("status", "pending-render");
                     break;
+                case PROTECTION_PROBE:
+                    var protection = ClientProtectionProbe.perform(request.action);
+                    for (var entry : protection.entrySet()) response.add(entry.getKey(), entry.getValue());
+                    break;
                 case WORLD_SOUND_PROBE:
                     var soundState = MaidWorldSoundProbe.perform(request.action);
                     for (var entry : soundState.entrySet()) response.add(entry.getKey(), entry.getValue());
@@ -349,7 +353,7 @@ public final class ClientDevelopmentControl {
                     throw new IllegalArgumentException("Unknown client development command");
             }
             if (!response.has("status")) response.addProperty("status", "complete");
-        } catch (IOException | RuntimeException error) {
+        } catch (IOException | ReflectiveOperationException | RuntimeException error) {
             response.addProperty("status", "failed");
             response.addProperty("error", error.toString());
         }
