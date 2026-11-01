@@ -35,6 +35,10 @@ public interface MaidAirActor {
 
     boolean canBrainMoving();
 
+    default boolean canScanForAir() {
+        return true;
+    }
+
     Optional<Point> findAirWithBfs(int range);
 
     boolean canPathReach(Point pos);

@@ -64,6 +64,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow;
     private MaidItemUseState.Lease rangedUseLease;
     private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
+    private com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing;
     private long randomLookSelections, randomWalkSelections, snowballThrows;
     private EntityLivingBase ownedSnowballTarget;
     private Point workTarget;
@@ -139,6 +140,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void bindPerception(MaidModernPerception memory) {
         if (perception != null) throw new IllegalStateException("Perception already bound");
         perception = Objects.requireNonNull(memory, "memory");
+    }
+
+    public void bindSensing(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession session) {
+        if (sensing != null) throw new IllegalStateException("Sensing session already bound");
+        sensing = Objects.requireNonNull(session, "session");
+    }
+
+    public boolean canScanForAir() {
+        guard();
+        return sensing == null || sensing.acquire(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
     }
 
     @Override

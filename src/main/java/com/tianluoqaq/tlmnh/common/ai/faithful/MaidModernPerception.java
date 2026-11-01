@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -18,6 +19,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidHosti
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidNearestLivingEntitySensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidPickupEntitiesSensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
@@ -26,10 +28,12 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 public final class MaidModernPerception {
 
     private static final int SCAN_RATE = 20;
+    private static final int OBSERVATION_TTL = 60;
     // Sensor使用独立的线程安全随机源，不消耗世界/女仆Behavior的随机流
     private static final Random RANDOM = new Random();
     private final EntityMaid maid;
     private final BooleanSupplier current;
+    private final Predicate<Kind> admission;
     private final MaidNearestLivingEntitySensor living = new MaidNearestLivingEntitySensor();
     private final MaidHurtBySensor hurt = new MaidHurtBySensor();
     private final MaidHostilesSensor hostile = new MaidHostilesSensor();
@@ -44,18 +48,34 @@ public final class MaidModernPerception {
     private DamageSource hurtBy;
     private EntityLivingBase hurtByEntity;
     private List<Entity> pickupEntities = Collections.emptyList();
+    private long livingObservedAt = Long.MIN_VALUE, pickupObservedAt = Long.MIN_VALUE;
 
     public MaidModernPerception(EntityMaid maid, BooleanSupplier current) {
+        this(maid, current, null);
+    }
+
+    public MaidModernPerception(EntityMaid maid, BooleanSupplier current, Predicate<Kind> admission) {
         this.maid = Objects.requireNonNull(maid, "maid");
         this.current = Objects.requireNonNull(current, "current");
+        this.admission = admission;
     }
 
     public void tick() {
         if (!current.getAsBoolean()) throw new IllegalStateException("Expired perception frame");
         active = true;
+        if (admission != null) {
+            if (!livingObservationFresh() && visible != null) {
+                epoch++;
+                nearby = Collections.emptyList();
+                visible = null;
+                nearestHostile = null;
+            }
+            if (!pickupObservationFresh()) pickupEntities = Collections.emptyList();
+        }
         attackTarget = maid.getModernCombatMemory()
             .target();
-        if (--livingDelay <= 0) {
+        if (livingDelay > 0) livingDelay--;
+        if (livingDelay <= 0 && (admission == null || admission.test(Kind.LIVING))) {
             livingDelay = SCAN_RATE;
             living.doTick(maid, this);
             scans++;
@@ -70,7 +90,8 @@ public final class MaidModernPerception {
             hostile.doTick(maid, this);
             hostileScans++;
         }
-        if (--pickupDelay <= 0) {
+        if (pickupDelay > 0) pickupDelay--;
+        if (pickupDelay <= 0 && (admission == null || admission.test(Kind.PICKUP))) {
             pickupDelay = 30;
             pickup.doTick(maid, this);
             pickupScans++;
@@ -94,6 +115,7 @@ public final class MaidModernPerception {
 
     public void setNearby(List<EntityLivingBase> entities) {
         guard();
+        livingObservedAt = maid.worldObj.getTotalWorldTime();
         nearby = Collections.unmodifiableList(new ArrayList<>(entities));
         long snapshotEpoch = ++epoch;
         visible = new MaidVisibleLivingEntities(nearby, this::targetable, () -> {
@@ -120,6 +142,7 @@ public final class MaidModernPerception {
 
     public void setPickupEntities(List<Entity> entities) {
         guard();
+        pickupObservedAt = maid.worldObj.getTotalWorldTime();
         pickupEntities = Collections.unmodifiableList(new ArrayList<>(entities));
     }
 
@@ -210,6 +233,7 @@ public final class MaidModernPerception {
 
     public void clear() {
         active = false;
+        livingObservedAt = pickupObservedAt = Long.MIN_VALUE;
         epoch++;
         nearby = Collections.emptyList();
         visible = null;
@@ -242,5 +266,18 @@ public final class MaidModernPerception {
 
     public long pickupScanCount() {
         return pickupScans;
+    }
+
+    public boolean livingObservationFresh() {
+        return fresh(livingObservedAt);
+    }
+
+    public boolean pickupObservationFresh() {
+        return fresh(pickupObservedAt);
+    }
+
+    private boolean fresh(long observedAt) {
+        long age = maid.worldObj.getTotalWorldTime() - observedAt;
+        return observedAt != Long.MIN_VALUE && age >= 0 && age <= OBSERVATION_TTL;
     }
 }

@@ -24,6 +24,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
+    private final com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing;
     private final MaidIntentArbiter arbiter = new MaidIntentArbiter();
     private final EnhancedNavigationController navigation;
     private final EnhancedLifeController life;
@@ -48,12 +49,17 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         actor = new ModernFollowCoreActor(
             maid,
             com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
-        perception = new MaidModernPerception(maid, actor::isCurrent);
+        sensing = new com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession(
+            maid.worldObj,
+            maid.getUniqueID(),
+            actor::isCurrent);
+        perception = new MaidModernPerception(maid, actor::isCurrent, sensing::acquire);
         actor.bindPerception(perception);
+        actor.bindSensing(sensing);
         var budget = com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget.forWorld(maid.worldObj);
         var identity = maid.getUniqueID();
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
-        life = new EnhancedLifeController(maid, actor);
+        life = new EnhancedLifeController(maid, actor, sensing);
         combat = new EnhancedCombatController(maid, actor, perception);
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
@@ -257,8 +263,12 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         try {
             stopSelected();
         } finally {
-            arbiter.clear();
-            perception.clear();
+            try {
+                arbiter.clear();
+                perception.clear();
+            } finally {
+                sensing.cancelAll();
+            }
         }
     }
 
@@ -298,5 +308,13 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public ModernFollowCoreActor actor() {
         return actor;
+    }
+
+    public MaidModernPerception perception() {
+        return perception;
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing() {
+        return sensing;
     }
 }

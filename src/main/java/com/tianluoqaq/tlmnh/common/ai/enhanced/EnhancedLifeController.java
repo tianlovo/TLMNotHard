@@ -13,6 +13,8 @@ import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent.Action;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
@@ -27,37 +29,53 @@ public final class EnhancedLifeController {
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidLifeSensor sensor;
+    private final MaidSensingSession sensing;
     private List<MaidLifeCandidate> observations = Collections.emptyList();
     private MaidPolicyContext.Token observedToken;
     private boolean observedRest;
     private long nextScan, nextSnack, bedSelectedAt, nextBedAttempt;
     private TileEntityMaidBed reservedBed;
     private int bites, placements, sleepEntries;
+    private long scans;
 
-    public EnhancedLifeController(EntityMaid maid, ModernFollowCoreActor actor) {
+    public EnhancedLifeController(EntityMaid maid, ModernFollowCoreActor actor, MaidSensingSession sensing) {
         this.maid = maid;
         this.actor = actor;
         sensor = new MaidLifeSensor(maid);
+        this.sensing = sensing;
     }
 
     public void offer(MaidIntentFrame frame, MaidPolicyContext context) {
-        if (!permitted()) return;
+        if (!permitted()) {
+            sensing.cancel(MaidSensingBudget.Kind.LIFE);
+            return;
+        }
         long now = maid.worldObj.getTotalWorldTime();
         boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
         if (reservedBed != null && !actor.isSleeping() && now - bedSelectedAt > MAX_BED_APPROACH_TICKS) {
             cancel();
             nextBedAttempt = now + BED_RETRY_TICKS;
         }
-        if (rest && now < nextBedAttempt || !rest && now < nextSnack) return;
-        if (observedToken != context.getToken() || observedRest != rest || now >= nextScan) {
-            observations = sensor.scan(context, rest);
+        if (rest && now < nextBedAttempt || !rest && now < nextSnack) {
+            sensing.cancel(MaidSensingBudget.Kind.LIFE);
+            return;
+        }
+        if (observedToken != context.getToken() || observedRest != rest) {
+            observations = Collections.emptyList();
+            sensor.clear();
             observedToken = context.getToken();
             observedRest = rest;
-            nextScan = now + SCAN_INTERVAL;
+            nextScan = 0;
         }
         if (reservedBed != null && rest && legalBed(reservedBed)) {
+            sensing.cancel(MaidSensingBudget.Kind.LIFE);
             offer(frame, observation(reservedBed, context), Action.BED);
             return;
+        }
+        if (now >= nextScan && sensing.acquire(MaidSensingBudget.Kind.LIFE)) {
+            observations = sensor.scan(context, rest);
+            scans++;
+            nextScan = now + SCAN_INTERVAL;
         }
         for (var observation : observations) {
             var tile = sensor.resolve(observation, context);
@@ -206,6 +224,7 @@ public final class EnhancedLifeController {
         observedToken = null;
         nextScan = 0;
         sensor.clear();
+        sensing.cancel(MaidSensingBudget.Kind.LIFE);
         if (bed != null) bed.release(maid);
     }
 
@@ -219,5 +238,9 @@ public final class EnhancedLifeController {
 
     public int sleepEntries() {
         return sleepEntries;
+    }
+
+    public long scanCount() {
+        return scans;
     }
 }

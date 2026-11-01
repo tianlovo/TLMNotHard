@@ -1167,3 +1167,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - EnhancedCombatController在乘坐时保留范围内近战与原生弓执行，抑制地面追击/横移；伤害及箭生成回调后的实际乘坐身份纳入提交许可
 - 增强root补普通工作餐及乘坐变化的自有资源释放，原Meal控制器的开始效果、有限库存、手部交换和正常完成结算保持
 - ModernFollowCoreActor只增加当前主人视线、诱惑物与控制载具重验入口，F原方法和原活动调度保持
+
+## 增强世界感知配额
+
+- MaidSensingBudget、MaidWorldSensingBudget与MaidSensingSession为本工程独立实现，世界线程FIFO只保存女仆/实例/类型身份，不保存世界回调或目标动作
+- MaidModernPerception新增显式可选准入入口，增强绑定世界配额及60tick观察有效期；F默认构造保持原20/30tick Sensor节奏与可见缓存
+- 增强生活控制器在实际MaidLifeSensor扫描前取得配额，缺额保留尚合法候选；持有床的当前对象检查与续租继续走原受保护平台
+- 固定上游MaidBreathAirTask在实际找空气前增加默认允许的准入检查，F默认true；增强缺额直接返回等待，原BFS/空气判断/路径和物品执行保持
+- 世界卸载同时移除感知配额，增强生命周期取消按构造时实例scope清队，不返还已使用额度；不改变原A*配额

@@ -61,6 +61,7 @@ public final class MaidBrainLifecycle {
     public void onWorldUnload(WorldEvent.Unload event) {
         if (event.world.isRemote) return;
         MaidWorldNavigationBudget.unload(event.world);
+        com.tianluoqaq.tlmnh.common.ai.perception.MaidWorldSensingBudget.unload(event.world);
         UNLOADING_WORLDS.add(event.world);
         visit(
             new ArrayList<>(event.world.loadedEntityList),

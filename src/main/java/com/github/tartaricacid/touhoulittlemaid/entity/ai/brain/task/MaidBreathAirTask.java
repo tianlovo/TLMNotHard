@@ -33,6 +33,7 @@ public final class MaidBreathAirTask {
 
     private void findAirPosition(MaidAirActor maid) {
         if (!maid.canBrainMoving()) return;
+        if (!maid.canScanForAir()) return;
         var match = maid.findAirWithBfs(AIR_SEARCH_RANGE);
         // 原BFS可能找到A*范围内不能完全到达的点，仍须实际canReach确认
         if (match.isPresent() && maid.canPathReach(match.get())) {
