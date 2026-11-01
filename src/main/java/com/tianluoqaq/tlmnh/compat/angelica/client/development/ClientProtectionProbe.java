@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.client.development;
+package com.tianluoqaq.tlmnh.compat.angelica.client.development;
 
 import java.util.Arrays;
 import java.util.List;
@@ -37,7 +37,7 @@ public final class ClientProtectionProbe {
             if (!IntegrationGuard.faults(Side.CLIENT)
                 .isEmpty() || !MaidRenderProtection.ready())
                 throw new IllegalStateException("Clean client protection state required");
-            var type = Class.forName("com.tianluoqaq.tlmnh.client.render.MaidRenderPlatformState");
+            var type = Class.forName("com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState");
             var loader = type.getDeclaredField("providerLoader");
             var bindings = type.getDeclaredField("bindings");
             loader.setAccessible(true);

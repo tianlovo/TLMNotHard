@@ -383,3 +383,10 @@ BehaviorProtectionTests 选择三种故障机制并使用独立 batch，因为�
 Forge FakePlayer 的聊天方法为空实现；AI主人继续用既有FakePlayer，聊天使用同身份但未登记的标准EntityPlayerMP与EmbeddedChannel读取真实S02包
 不把这个接收端加入整合包在线玩家列表，避免绕过ServerUtilities等模组的完整登录注册；不声称真实网络登录/客户端显示已覆盖
 初轮三种夹具错误的JSON/XML或缺失报告状态均保留，最终完整JSON/XML与process0才作为本单元通过
+
+## 提供方适配改包后的隔离范围
+
+Indev126 将适配与专用夹具按模组/侧或用途/职责放入compat，普通HQA场景继续按原职责组织
+WithoutOptionalApis同时隔离业务壳及其Battlegear、AppleCore、TConstruct和TinkersDefense适配，外部API仍被拒绝，不能通过父加载器的真实提供方绕过缺失场景
+最终同JAR三项既有场景通过：动画门95、进食与乘船32、缺失接口与保管1tick，JSON/XML/process0一致
+没有新建镜像用例或重跑历史全集；专用构造与观察类的源码搬移检查不等于新的客户端或全部盾牌运行验收

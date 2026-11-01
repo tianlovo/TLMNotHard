@@ -210,9 +210,7 @@ public final class MaidNamingProbe {
             "distant written tag cannot fall through to vanilla naming");
         f.owner.setPosition(f.maid.posX, f.maid.posY, f.maid.posZ);
         try {
-            int slot = (Integer) Class.forName("xonin.backhand.api.core.BackhandUtils")
-                .getMethod("getOffhandSlot", net.minecraft.entity.player.EntityPlayer.class)
-                .invoke(null, f.owner);
+            int slot = com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess.offhandSlot(f.owner);
             f.owner.inventory.setInventorySlotContents(slot, denied.copy());
             f.owner.inventory.currentItem = slot;
             require(

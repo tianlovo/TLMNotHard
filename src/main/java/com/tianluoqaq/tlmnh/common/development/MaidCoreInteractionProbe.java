@@ -34,6 +34,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -1320,7 +1321,7 @@ public final class MaidCoreInteractionProbe {
                     1);
             traversal.tick();
             require(
-                com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
+                com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
                     (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                     world,
                     x + 1,
@@ -1336,12 +1337,10 @@ public final class MaidCoreInteractionProbe {
             maid.getNavigator()
                 .clearPathEntity();
             var animated = world.getTileEntity(x + 1, y, z);
-            if (animated != null && animated.getClass()
-                .getName()
-                .startsWith("net.malisis.doors.")) {
+            if (com.tianluoqaq.tlmnh.compat.malisisdoors.development.block.MalisisDoorFixture.isAnimated(animated)) {
                 traversal.tick();
                 require(
-                    com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
+                    com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
                         (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                         world,
                         x + 1,
@@ -1349,14 +1348,11 @@ public final class MaidCoreInteractionProbe {
                         z),
                     "pending open animation retained for later close");
                 // 本同步夹具用已读存档接口给定动画完成态，不在服务端命令中阻塞等待动画计时
-                var completed = new NBTTagCompound();
-                animated.writeToNBT(completed);
-                completed.setInteger("state", 2);
-                animated.readFromNBT(completed);
+                com.tianluoqaq.tlmnh.compat.malisisdoors.development.block.MalisisDoorFixture.completeOpening(animated);
             }
             traversal.tick();
             require(
-                !com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
+                !com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
                     (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                     world,
                     x + 1,
@@ -1817,9 +1813,7 @@ public final class MaidCoreInteractionProbe {
 
     private static int offhandSlot(EntityPlayer player) {
         try {
-            return (Integer) Class.forName("xonin.backhand.api.core.BackhandUtils")
-                .getMethod("getOffhandSlot", EntityPlayer.class)
-                .invoke(null, player);
+            return BackhandAccess.offhandSlot(player);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("native Backhand API unavailable", exception);
         }
@@ -1827,9 +1821,7 @@ public final class MaidCoreInteractionProbe {
 
     private static boolean usingOffhand(EntityPlayer player, BooleanSupplier action) {
         try {
-            return (Boolean) Class.forName("xonin.backhand.api.core.BackhandUtils")
-                .getMethod("useOffhandItem", EntityPlayer.class, boolean.class, BooleanSupplier.class)
-                .invoke(null, player, false, action);
+            return BackhandAccess.usingOffhand(player, action);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("native Backhand hand switch failed", exception);
         }

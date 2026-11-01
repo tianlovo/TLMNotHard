@@ -2,8 +2,6 @@ package com.tianluoqaq.tlmnh.client.development;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -53,7 +51,8 @@ import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
-import com.tianluoqaq.tlmnh.common.development.MaidShieldFixtures;
+import com.tianluoqaq.tlmnh.compat.angelica.client.development.AngelicaBatchReader;
+import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -166,9 +165,7 @@ public final class HeldItemGpuProbe {
         try {
             requireObserver();
             if (soleMaid(request.model) != request.maid) throw new IllegalStateException("Held GPU actor changed");
-            Object pack = Class.forName("net.coderbot.iris.Iris")
-                .getMethod("getCurrentPack")
-                .invoke(null);
+            Object pack = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries.currentShaderPack();
             if (!(pack instanceof Optional<?>) || ((Optional<?>) pack).isPresent())
                 throw new IllegalStateException("Held GPU pilot requires no shader pack");
             if (!OpenGlHelper.isFramebufferEnabled() || !GLContext.getCapabilities().OpenGL30)
@@ -657,61 +654,6 @@ public final class HeldItemGpuProbe {
     }
 
     /** 只读查询实际 Angelica 队列，不 flush/suspend 或切换全局 Java batch 队列 */
-    private static final class BatchReader {
-
-        final Class<?> batcherType, instancerType, glsmType;
-        final Object batcher;
-        final Method active, queued, held;
-        final Method[] batchCounters, itemCounters;
-        final Field drawCalls;
-
-        BatchReader() throws Exception {
-            batcherType = Class.forName("com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher");
-            instancerType = Class.forName("com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer");
-            glsmType = Class.forName("com.gtnewhorizons.angelica.glsm.GLStateManager");
-            batcher = batcherType.getField("INSTANCE")
-                .get(null);
-            active = batcherType.getMethod("isActive");
-            queued = batcherType.getDeclaredMethod("hasQueuedGeometry");
-            held = batcherType.getDeclaredMethod("hasHeldEntities");
-            queued.setAccessible(true);
-            held.setAccessible(true);
-            batchCounters = new Method[] { batcherType.getMethod("statParts"),
-                batcherType.getMethod("statInstancedDraws"), batcherType.getMethod("statInstancedInstances"),
-                batcherType.getMethod("statRedrawnInstances") };
-            itemCounters = new Method[] { instancerType.getMethod("statInstanced"),
-                instancerType.getMethod("statGlintInstanced"), instancerType.getMethod("statFallback") };
-            Class<?> draws;
-            try {
-                draws = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMDraws");
-            } catch (ClassNotFoundException legacy) {
-                draws = glsmType;
-            }
-            drawCalls = draws.getField("drawCalls");
-        }
-
-        JsonObject snapshot() {
-            var state = new JsonObject();
-            state.addProperty("rawQueueSizesKnown", false);
-            try {
-                state.addProperty("active", (Boolean) active.invoke(batcher));
-                state.addProperty("queuedGeometry", (Boolean) queued.invoke(batcher));
-                state.addProperty("heldEntities", (Boolean) held.invoke(batcher));
-                var batch = new JsonObject();
-                for (Method method : batchCounters) batch.addProperty(method.getName(), (Long) method.invoke(batcher));
-                state.add("batcherCounters", batch);
-                var items = new JsonObject();
-                for (Method method : itemCounters) items.addProperty(method.getName(), (Long) method.invoke(null));
-                state.add("itemInstancerCounters", items);
-                state.addProperty("glsmDrawCalls", drawCalls.getLong(null));
-                state.addProperty("known", true);
-            } catch (Exception | LinkageError failure) {
-                state.addProperty("known", false);
-                state.addProperty("readError", failure.toString());
-            }
-            return state;
-        }
-    }
 
     private static void requireImmediateBatch(JsonObject state) {
         if (!state.get("known")
@@ -767,7 +709,7 @@ public final class HeldItemGpuProbe {
         final JsonArray queryWaits = new JsonArray();
         final JsonArray batchObservations = new JsonArray();
         final Path game, folder;
-        final BatchReader batches;
+        final AngelicaBatchReader batches;
         MaidHeldItemLayer.DevelopmentDrawGate gate;
         JsonArray calls, hands;
         JsonObject nativeBatchBefore;
@@ -785,7 +727,7 @@ public final class HeldItemGpuProbe {
             this.body = body;
             this.empty = empty;
             try {
-                batches = new BatchReader();
+                batches = new AngelicaBatchReader();
             } catch (Exception | LinkageError failure) {
                 var unknown = new JsonObject();
                 unknown.addProperty("known", false);
@@ -1157,9 +1099,7 @@ public final class HeldItemGpuProbe {
                 || Thread.currentThread() != request.owner
                 || !request.installing
                 || request.report != null
-                || !event.getClass()
-                    .getName()
-                    .equals("tconstruct.library.event.ToolBuildEvent"))
+                || !com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData.isToolBuildEvent(event))
                 return;
             factoryCancellationConsumed = true;
             request.factoryFaultTriggered = true;

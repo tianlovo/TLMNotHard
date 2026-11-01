@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.development;
+package com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,6 +11,7 @@ import net.minecraft.nbt.NBTTagCompound;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 
 /** 使用真实注册物品与ToolBuilder构造盾牌，不手填正常成品的InfiTool */
 public final class MaidShieldFixtures {
@@ -23,45 +24,15 @@ public final class MaidShieldFixtures {
             String id = "battlegear2:shield." + material;
             result.put(id, new ItemStack(registered(id)));
         }
-        var registry = Class.forName("tconstruct.library.TConstructRegistry");
-        Object materials = registry.getField("toolMaterials")
-            .get(null);
-        require(materials instanceof Map, "Actual material registry is not a map");
-        Object wood = ((Map<?, ?>) materials).get(0);
-        require(wood != null, "Actual material zero is missing");
-        String materialName = (String) wood.getClass()
-            .getField("materialName")
-            .get(wood);
-        int reinforced = wood.getClass()
-            .getField("reinforced")
-            .getInt(wood);
-        require("Wood".equals(materialName) && reinforced == 0, "Wood baseline changed in actual native");
-        var material = new JsonObject();
-        material.addProperty("id", 0);
-        material.addProperty("name", materialName);
-        material.addProperty("reinforced", reinforced);
-        material.addProperty(
-            "durability",
-            wood.getClass()
-                .getField("durability")
-                .getInt(wood));
-        construction.add("material", material);
-        var builderType = Class.forName("tconstruct.library.crafting.ToolBuilder");
-        Object builder = builderType.getField("instance")
-            .get(null);
-        require(builder != null, "Actual ToolBuilder is missing");
-        var parts = Class.forName("tconstruct.tools.TinkerTools");
-        construction.add(
-            "tconstructIdentity",
-            DevelopmentArtifactIdentity.capture(registry, builderType, parts, wood.getClass()));
+        var tools = new com.tianluoqaq.tlmnh.compat.tconstruct.development.tool.TConstructToolBuilder(construction);
         var builds = new JsonArray();
         construction.add("builds", builds);
         for (boolean heater : new boolean[] { false, true }) {
             String id = heater ? "tinkersdefense:Heater Shield" : "tinkersdefense:Round Shield";
-            var head = part(parts, "largePlate");
-            var handle = part(parts, heater ? "toughRod" : "toolRod");
-            var accessory = part(parts, heater ? "largePlate" : "frypanHead");
-            var extra = heater ? part(parts, "toughBinding") : null;
+            var head = tools.part("largePlate");
+            var handle = tools.part(heater ? "toughRod" : "toolRod");
+            var accessory = tools.part(heater ? "largePlate" : "frypanHead");
+            var extra = heater ? tools.part("toughBinding") : null;
             var row = new JsonObject();
             row.addProperty("registryId", id);
             row.addProperty("normalBuilderInvoked", true);
@@ -69,19 +40,7 @@ public final class MaidShieldFixtures {
             for (ItemStack stack : new ItemStack[] { head, handle, accessory, extra }) before.add(snapshot(stack));
             row.add("partsBefore", before);
             builds.add(row);
-            Object output;
-            if (heater) output = builderType
-                .getMethod(
-                    "buildTool",
-                    ItemStack.class,
-                    ItemStack.class,
-                    ItemStack.class,
-                    ItemStack.class,
-                    String.class)
-                .invoke(builder, head, handle, accessory, extra, "");
-            else output = builderType
-                .getMethod("buildTool", ItemStack.class, ItemStack.class, ItemStack.class, String.class)
-                .invoke(builder, head, handle, accessory, "");
+            Object output = tools.build(head, handle, accessory, extra, heater);
             require(output instanceof ItemStack, "ToolBuilder rejected " + id);
             var stack = (ItemStack) output;
             row.add("output", snapshot(stack));
@@ -112,7 +71,7 @@ public final class MaidShieldFixtures {
                 result.get("battlegear2:shield.wood")
                     .getItem()
                     .getClass(),
-                Class.forName("mods.battlegear2.api.shield.IShield")));
+                com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.apiType()));
         construction.add(
             "tinkersDefenseIdentity",
             DevelopmentArtifactIdentity.capture(
@@ -161,13 +120,6 @@ public final class MaidShieldFixtures {
             result.add("infi", infi);
         }
         return result;
-    }
-
-    private static ItemStack part(Class<?> tools, String field) throws Exception {
-        Object item = tools.getField(field)
-            .get(null);
-        require(item instanceof Item, "Registered tool part missing: " + field);
-        return new ItemStack((Item) item, 1, 0);
     }
 
     private static Item registered(String id) {

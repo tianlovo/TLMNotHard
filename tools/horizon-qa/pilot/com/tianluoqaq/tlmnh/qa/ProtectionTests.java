@@ -393,7 +393,11 @@ public final class ProtectionTests {
             if (name.startsWith("mods.battlegear2.api.") || name.startsWith("squeek.applecore.api."))
                 throw new ClassNotFoundException("QA intentionally removed " + name);
             if (!name.startsWith("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems")
-                && !name.startsWith("com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile"))
+                && !name.startsWith("com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile")
+                && !name.startsWith("com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.")
+                && !name.startsWith("com.tianluoqaq.tlmnh.compat.applecore.common.food.")
+                && !name.startsWith("com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.")
+                && !name.startsWith("com.tianluoqaq.tlmnh.compat.tinkersdefense.common.shield."))
                 return super.loadClass(name, resolve);
             Class<?> type = findLoadedClass(name);
             if (type == null) {

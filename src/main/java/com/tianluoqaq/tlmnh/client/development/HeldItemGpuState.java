@@ -31,7 +31,8 @@ final class HeldItemGpuState {
     final int renderbuffer = GL11.glGetInteger(GL30.GL_RENDERBUFFER_BINDING),
         program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
     final int mode = GL11.glGetInteger(GL11.GL_MATRIX_MODE), active = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-    final int clientActive = clientActiveTexture();
+    final int clientActive = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries
+        .clientActiveTexture();
     final int packBuffer = GL11.glGetInteger(GL21.GL_PIXEL_PACK_BUFFER_BINDING),
         unpackBuffer = GL11.glGetInteger(GL21.GL_PIXEL_UNPACK_BUFFER_BINDING);
     final int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING),
@@ -186,20 +187,4 @@ final class HeldItemGpuState {
         GL11.glLoadMatrix(buffer);
     }
 
-    private static int clientActiveTexture() {
-        try {
-            var manager = Class.forName("com.gtnewhorizons.angelica.glsm.GLStateManager");
-            try {
-                manager = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMTextures");
-            } catch (ClassNotFoundException legacy) {
-                // native 的查询仍在 GLStateManager；正式版拆到 GLSMTextures
-            }
-            return GL13.GL_TEXTURE0 + (Integer) manager.getMethod("getClientActiveTextureUnit")
-                .invoke(null);
-        } catch (ClassNotFoundException absent) {
-            return GL11.glGetInteger(GL13.GL_CLIENT_ACTIVE_TEXTURE);
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Cannot observe actual client texture unit", failure);
-        }
-    }
 }

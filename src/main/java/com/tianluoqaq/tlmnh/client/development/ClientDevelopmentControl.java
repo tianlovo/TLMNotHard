@@ -321,7 +321,8 @@ public final class ClientDevelopmentControl {
                     response.addProperty("status", "pending-render");
                     break;
                 case PROTECTION_PROBE:
-                    var protection = ClientProtectionProbe.perform(request.action);
+                    var protection = com.tianluoqaq.tlmnh.compat.angelica.client.development.ClientProtectionProbe
+                        .perform(request.action);
                     for (var entry : protection.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case WORLD_SOUND_PROBE:

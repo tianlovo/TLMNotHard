@@ -96,9 +96,7 @@ public final class GpuMatrixProbe {
                 .equals(pending.model)) throw new IllegalStateException("GPU actual actor/model identity differs");
             if (!OpenGlHelper.isFramebufferEnabled() || !GLContext.getCapabilities().OpenGL30)
                 throw new IllegalStateException("Reviewed OpenGL 3 FBO path is unavailable");
-            Object pack = Class.forName("net.coderbot.iris.Iris")
-                .getMethod("getCurrentPack")
-                .invoke(null);
+            Object pack = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries.currentShaderPack();
             if (!(pack instanceof Optional<?>)) throw new IllegalStateException("Shader identity API is unavailable");
             if (((Optional<?>) pack).isPresent())
                 throw new IllegalStateException("Shader packs are outside this GPU fixture");

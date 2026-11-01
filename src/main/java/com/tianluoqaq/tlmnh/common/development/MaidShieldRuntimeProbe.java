@@ -60,6 +60,8 @@ import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController.Cause;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController.Outcome;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
+import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventBus;
@@ -71,7 +73,6 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
-import mods.battlegear2.api.shield.IShield;
 
 /**
  * 原生伤害入口施加受控输入，时钟仅由已登记实体的真实世界tick推进
@@ -262,7 +263,7 @@ public final class MaidShieldRuntimeProbe {
             MaidLifeRuntimeProbe.class);
         woodItem = registered("battlegear2:shield.wood");
         ironItem = registered("battlegear2:shield.iron");
-        battlegearIdentity = DevelopmentArtifactIdentity.capture(woodItem.getClass(), IShield.class);
+        battlegearIdentity = DevelopmentArtifactIdentity.capture(woodItem.getClass(), BattlegearShieldAccess.apiType());
         require(
             !MaidBowRuntimeProbe.isFixtureReserved() && !MaidLifeRuntimeProbe.isFixtureReserved(),
             "Runtime fixture changed while start was queued");
