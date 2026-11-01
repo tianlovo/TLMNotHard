@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 /** 单次绘制所需的查询数据，不包含世界、实体或物品实例引用 */
 public final class MolangQueryFrame {
 
-    // RC2 注册表包含 IC2:itemArmor... 这类旧 ID，大小写必须原样保留
+    // native 注册表包含 IC2:itemArmor... 这类旧 ID，大小写必须原样保留
     private static final Pattern ITEM_ID = Pattern.compile("[A-Za-z0-9_.-]+:[A-Za-z0-9/._-]+");
     private final Map<Slot, Equipment> equipment = new EnumMap<>(Slot.class);
     public double lifetime, bodyYaw, netHeadYaw, headPitch, health, maxHealth, groundSpeed, verticalSpeed, yawSpeed;

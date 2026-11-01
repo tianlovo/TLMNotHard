@@ -17,7 +17,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-/** 已完成姿态上的背部附件；原版FIXED图标与RC2装备渲染器分开处理 */
+/** 已完成姿态上的背部附件；原版FIXED图标与原生平台装备渲染器分开处理 */
 @SideOnly(Side.CLIENT)
 public final class MaidBackItemRenderer {
 

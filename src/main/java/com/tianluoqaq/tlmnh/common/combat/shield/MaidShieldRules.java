@@ -3,7 +3,7 @@ package com.tianluoqaq.tlmnh.common.combat.shield;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 
-/** RC2 角度与耗损规则、原 TLM 的计时边界，不接触世界和装备 */
+/** native 角度与耗损规则、原 TLM 的计时边界，不接触世界和装备 */
 public final class MaidShieldRules {
 
     public static final int PASSIVE_TICKS = 100;

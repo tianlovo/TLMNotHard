@@ -86,7 +86,7 @@ gradle.projectsEvaluated {
                 contractSha256: sha(new File(tool, 'contract.json').bytes), agentSha256: sha(agent.bytes), compiledClasses: classes,
                 dependencyPolicy: 'resolved-fastutil-8.5.18-v1', externalArtifacts: externalArtifacts,
                 externalClasses: externalClasses])) + '\n', 'UTF-8')
-            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonClientRuntime
             if (runtime.files.count { it.isFile() && it.toPath().toRealPath() == dependencyJar.toPath().toRealPath() } != 1)
                 throw new GradleException('Resolved fastutil JAR is missing or repeated in the actual replay classpath')
             def launcher = project.javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }.get()

@@ -128,7 +128,7 @@ public final class MaidModelUiProbe {
                         network = requested;
                     } else if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
                         if (action.equals("pointer")) {
-                            // RC2 lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
+                            // native lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
                             org.lwjgl.input.Mouse.setCursorPosition(0, 0);
                             requested = true;
                         } else {

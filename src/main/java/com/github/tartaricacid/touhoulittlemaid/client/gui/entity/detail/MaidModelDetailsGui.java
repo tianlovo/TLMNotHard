@@ -1,7 +1,7 @@
 /*
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: client/gui/entity/detail/MaidModelDetailsGui.java, MIT
- * Adaptation: detached preview state, RC2 offhand shield and same model container
+ * Adaptation: detached preview state, native offhand shield and same model container
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail;
 
@@ -64,7 +64,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
             case 8 -> guiEntity.setCurrentItemOrArmor(0, active ? new ItemStack(Items.diamond_sword) : null);
             case 9 -> {
                 var shield = GameRegistry.findItem("battlegear2", "shield.wood");
-                if (active && shield == null) throw new IllegalStateException("RC2 wood shield missing");
+                if (active && shield == null) throw new IllegalStateException("native wood shield missing");
                 guiEntity.setOffhandItem(active ? new ItemStack(shield) : null);
             }
             default -> throw new IllegalArgumentException("Unknown preview state");

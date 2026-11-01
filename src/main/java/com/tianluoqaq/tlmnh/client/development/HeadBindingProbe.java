@@ -211,7 +211,8 @@ public final class HeadBindingProbe {
             throw new IllegalStateException("Unobscured safe lab spectator required");
         GameType mode = ReflectionHelper
             .getPrivateValue(PlayerControllerMP.class, minecraft.playerController, "currentGameType", "field_78779_k");
-        if (mode == null || mode.getID() != 3) throw new IllegalStateException("Actual RC2 spectator mode 3 required");
+        if (mode == null || mode.getID() != 3)
+            throw new IllegalStateException("Actual native spectator mode 3 required");
     }
 
     private static JsonObject header() {

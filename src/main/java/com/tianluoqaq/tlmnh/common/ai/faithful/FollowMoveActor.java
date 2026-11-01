@@ -78,7 +78,7 @@ public interface FollowMoveActor {
         /** 底层实际路径对象身份，非null且不能每次读取创建新身份 */
         Object getIdentity();
 
-        /** 现代路径的实际canReach，不以RC2的noPath或二维终点判据猜测 */
+        /** 现代路径的实际canReach，不以原生平台的noPath或二维终点判据猜测 */
         boolean canReach();
     }
 

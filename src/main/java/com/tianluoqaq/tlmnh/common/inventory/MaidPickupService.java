@@ -16,7 +16,7 @@ import net.minecraftforge.common.MinecraftForge;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
-/** 上游接触拾取的 RC2 适配，世界实体和库存只在服务端交易 */
+/** 上游接触拾取的 native 适配，世界实体和库存只在服务端交易 */
 public final class MaidPickupService {
 
     private final EntityMaid maid;
@@ -89,7 +89,7 @@ public final class MaidPickupService {
         if (orb.xpValue == 0) orb.setDead();
     }
 
-    /** RC2 Et Futurum 注册名为 enchantment.mending；保留 TLM 随机选择一件装备的规则 */
+    /** native Et Futurum 注册名为 enchantment.mending；保留 TLM 随机选择一件装备的规则 */
     private int repairWithMending(int xp) {
         Enchantment mending = null;
         for (var enchantment : Enchantment.enchantmentsList)
@@ -118,7 +118,7 @@ public final class MaidPickupService {
     }
 
     public boolean pickupArrow(EntityArrow arrow, boolean simulate) {
-        // 自定义箭可能对应另一种物品；首版只回收 RC2 原生箭，不将未知箭转换为普通箭
+        // 自定义箭可能对应另一种物品；首版只回收 native 原生箭，不将未知箭转换为普通箭
         if (!valid(arrow) || !maid.canPickupItems()
             || arrow.getClass() != EntityArrow.class
             || arrow.arrowShake > 0

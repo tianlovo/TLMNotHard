@@ -577,7 +577,7 @@ public final class MaidBowRuntimeProbe {
         if (episode != null) report.add("episode", episode);
         report.addProperty(
             "scope",
-            "natural RC2 maid selection/navigation/bow/arrow ticks with scripted target inputs and isolated memory owner");
+            "natural native maid selection/navigation/bow/arrow ticks with scripted target inputs and isolated memory owner");
         report.addProperty(
             "targetFixture",
             "native zombie AI retained with zero movement speed, knockback resistance and a sun-protecting helmet");

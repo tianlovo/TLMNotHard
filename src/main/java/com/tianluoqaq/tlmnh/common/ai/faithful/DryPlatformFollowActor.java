@@ -22,8 +22,8 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
-/** FOLLOW_CORE组件的RC2执行边界，仅接受显式开发干燥合同，不提供完整家园/呼吸状态 */
-public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor {
+/** FOLLOW_CORE组件的原生平台执行边界，仅接受显式开发干燥合同，不提供完整家园/呼吸状态 */
+public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor {
 
     /** 必须核实已加载的完整搜索域、STONE平面/空气、无危险和未知块；不允许强加载 */
     public interface DryDomain {
@@ -101,17 +101,17 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     private NativePath pathMemory, navigationView;
     private PathEntity ownedPath;
     private long stopGeneration;
-    private Rc2NavigationStopState.Event lastNativeStop;
+    private NativeNavigationStopState.Event lastNativeStop;
     private Long cantReachSince;
     private boolean followStop;
     private MaidBoundedPathPlanner.Creation lastCreation;
     private MaidBoundedPathPlanner.Installation lastInstallation;
-    private Rc2FollowTeleport.Result lastTeleport;
+    private DryPlatformFollowTeleport.Result lastTeleport;
     private final FollowFallbackSampler.Actor fallbackActor = new DryFallbackActor();
     private boolean fallbackSampling;
     private Vec3 fallbackOrigin;
 
-    public Rc2FollowCoreActor(EntityMaid maid, Contract contract) {
+    public DryPlatformFollowActor(EntityMaid maid, Contract contract) {
         this.maid = Objects.requireNonNull(maid, "maid");
         this.contract = Objects.requireNonNull(contract, "contract");
         world = maid.worldObj;
@@ -200,8 +200,9 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         }
     }
 
-    private Rc2NavigationStopState stopState() {
-        if (!(navigator instanceof Rc2NavigationStopSource source)) throw outside("native_navigation_feedback_missing");
+    private NativeNavigationStopState stopState() {
+        if (!(navigator instanceof NativeNavigationStopSource source))
+            throw outside("native_navigation_feedback_missing");
         return source.tlmnh$navigationStopState();
     }
 
@@ -277,8 +278,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
     public boolean teleportToOwner(Owner owner) {
         var view = owner(owner);
         navigationLease();
-        lastTeleport = Rc2FollowTeleport
-            .tryTeleport(maid, view.player, maid.getRNG()::nextInt, new Rc2FollowTeleport.Access() {
+        lastTeleport = DryPlatformFollowTeleport
+            .tryTeleport(maid, view.player, maid.getRNG()::nextInt, new DryPlatformFollowTeleport.Access() {
 
                 public boolean isCurrent() {
                     return current();
@@ -299,8 +300,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
                     pathMemory = null;
                 }
             });
-        if (lastTeleport.status == Rc2FollowTeleport.Status.SUCCESS) return true;
-        if (lastTeleport.status == Rc2FollowTeleport.Status.EXHAUSTED) return false;
+        if (lastTeleport.status == DryPlatformFollowTeleport.Status.SUCCESS) return true;
+        if (lastTeleport.status == DryPlatformFollowTeleport.Status.EXHAUSTED) return false;
         throw outside("teleport_" + lastTeleport.status + ":" + lastTeleport.diagnostic);
     }
 
@@ -683,7 +684,7 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         try {
             if (ownedPath != null && navigator.getPath() == ownedPath) navigator.clearPathEntity();
         } finally {
-            if (navigator instanceof Rc2NavigationStopSource source) source.tlmnh$navigationStopState()
+            if (navigator instanceof NativeNavigationStopSource source) source.tlmnh$navigationStopState()
                 .release(this);
             stopGeneration = 0;
             lastNativeStop = null;
@@ -713,9 +714,9 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         return look != null;
     }
 
-    /** 本组件只使用RC2当前LOS，不冒充原版sensor的候选范围、刷新相位或缓存 */
+    /** 本组件只使用原生平台当前LOS，不冒充原版sensor的候选范围、刷新相位或缓存 */
     public String getLookVisibilitySource() {
-        return "CURRENT_RC2_LOS";
+        return "CURRENT_NATIVE_LOS";
     }
 
     public boolean isLookTargetRegistered() {
@@ -755,7 +756,7 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         return lastCreation;
     }
 
-    public Rc2NavigationStopState.Event peekLastNativeStop() {
+    public NativeNavigationStopState.Event peekLastNativeStop() {
         return lastNativeStop;
     }
 
@@ -767,7 +768,7 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
         return lastInstallation;
     }
 
-    public Rc2FollowTeleport.Result getLastTeleport() {
+    public DryPlatformFollowTeleport.Result getLastTeleport() {
         return lastTeleport;
     }
 
@@ -796,8 +797,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
             this.player = player;
         }
 
-        Rc2FollowCoreActor actor() {
-            return Rc2FollowCoreActor.this;
+        DryPlatformFollowActor actor() {
+            return DryPlatformFollowActor.this;
         }
 
         void check() {
@@ -876,8 +877,8 @@ public final class Rc2FollowCoreActor implements FollowOwnerActor, FollowMoveAct
             this.lease = lease;
         }
 
-        Rc2FollowCoreActor actor() {
-            return Rc2FollowCoreActor.this;
+        DryPlatformFollowActor actor() {
+            return DryPlatformFollowActor.this;
         }
 
         public Object getIdentity() {

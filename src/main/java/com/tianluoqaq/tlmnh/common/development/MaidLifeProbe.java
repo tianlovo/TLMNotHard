@@ -69,7 +69,7 @@ public final class MaidLifeProbe {
         EmbeddedChannel connection = null;
         Throwable failure = null;
         try {
-            // Nutrition等RC2服务端同步需要真实channel，不建立握手或真实客户端dispatcher
+            // Nutrition等原生平台服务端同步需要真实channel，不建立握手或真实客户端dispatcher
             connection = new EmbeddedChannel(manager);
             manager.setConnectionState(EnumConnectionState.PLAY);
             IsolatedPlayerChannel.verify(manager, connection);
@@ -135,7 +135,7 @@ public final class MaidLifeProbe {
                     .getName());
             require(
                 nativePortions == 6 && world.isAirBlock(x, y + 1, z),
-                "Actual RC2 cake differs from the six-portion adapter; observed=" + nativePortions);
+                "Actual native cake differs from the six-portion adapter; observed=" + nativePortions);
             world.setBlock(x, y + 1, z, Blocks.cake, 0, 3);
             int hunger = maid.getHunger(), favor = maid.getFavorability();
             life = new MaidLifeController(maid, () -> {}, () -> owner);
@@ -162,7 +162,7 @@ public final class MaidLifeProbe {
                 sensor.resolve(observedCabinet, context) == null,
                 "Replacement cabinet cannot inherit old observation");
             world.setBlockToAir(x, y + 1, z);
-            // 原生 Item.cake 的堆叠上限为1，分槽放置以免把RC2的堆叠补丁当成前提
+            // 原生 Item.cake 的堆叠上限为1，分槽放置以免把原生平台的堆叠补丁当成前提
             verifyIntentSelection(world, maid, owner, x, y, z);
             verifySnackOwnerRange(world, maid, owner, x, y, z);
             maid.getMaidInventory()

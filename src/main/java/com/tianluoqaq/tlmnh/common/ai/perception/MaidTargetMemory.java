@@ -8,7 +8,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 public final class MaidTargetMemory {
 
     public enum Source {
-        RC2_ENTITY_SENSES
+        NATIVE_ENTITY_SENSES
     }
 
     private final int maximumAge;
@@ -109,7 +109,7 @@ public final class MaidTargetMemory {
         }
 
         public Source getSource() {
-            return Source.RC2_ENTITY_SENSES;
+            return Source.NATIVE_ENTITY_SENSES;
         }
 
         public double getX() {

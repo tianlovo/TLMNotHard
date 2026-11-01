@@ -955,7 +955,7 @@ public final class HeldItemGpuProbe {
                     byte[] color = rgba(), afterDepth = depth();
                     // 像素回读不保证query已就绪，只在真实AVAILABLE后读取可能阻塞的RESULT
                     awaitQuery(query, request.deadline, wait);
-                    // RC2 Angelica提供scalar i，scalar ui会被重定向到不存在的重载
+                    // native Angelica提供scalar i，scalar ui会被重定向到不存在的重载
                     int result = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT);
                     if (result < 0) throw new IllegalStateException("Native query exceeds signed result range");
                     gpuSamples = result;

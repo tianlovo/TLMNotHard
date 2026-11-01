@@ -1,7 +1,7 @@
 /*
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: client/gui/entity/model/MaidModelGui.java, MIT
- * Adaptation: native RC2 preview, bounded detached entities, authoritative builtin selection
+ * Adaptation: native native preview, bounded detached entities, authoritative builtin selection
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model;
 

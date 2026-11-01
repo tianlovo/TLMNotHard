@@ -10,22 +10,22 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopSource;
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopSource;
+import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopState;
 
 /** 观察原生 watchdog 的唯一清空调用，不替换或重发原调用 */
 @Mixin(PathNavigate.class)
-public abstract class MixinPathNavigate implements Rc2NavigationStopSource {
+public abstract class MixinPathNavigate implements NativeNavigationStopSource {
 
     @Shadow
     private EntityLiving theEntity;
 
     @Unique
-    private Rc2NavigationStopState tlmnh$stopState;
+    private NativeNavigationStopState tlmnh$stopState;
 
     @Override
-    public Rc2NavigationStopState tlmnh$navigationStopState() {
-        if (tlmnh$stopState == null) tlmnh$stopState = new Rc2NavigationStopState();
+    public NativeNavigationStopState tlmnh$navigationStopState() {
+        if (tlmnh$stopState == null) tlmnh$stopState = new NativeNavigationStopState();
         return tlmnh$stopState;
     }
 

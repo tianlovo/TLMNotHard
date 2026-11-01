@@ -26,7 +26,7 @@ public class MaidTargetMemoryTest {
         assertTrue(memory.observeVisible(targetId, target, 3, 64, 5, 65.5));
         var first = memory.recall(targetId, target);
         assertEquals(100, first.getObservedAt());
-        assertEquals(MaidTargetMemory.Source.RC2_ENTITY_SENSES, first.getSource());
+        assertEquals(MaidTargetMemory.Source.NATIVE_ENTITY_SENSES, first.getSource());
         memory.beginFrame(world, context, 140);
         assertSame(first, memory.recall(targetId, target));
         memory.beginFrame(world, context, 141);

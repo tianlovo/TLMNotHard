@@ -18,7 +18,7 @@ public class Rc2NavigationStopStateTest {
     public void completedNativeCallOnlyMatchesTheOwnedInstallationAndExactFrame() {
         var runtime = runtime();
         var context = runtime.getContext();
-        var state = new Rc2NavigationStopState();
+        var state = new NativeNavigationStopState();
         Object owner = new Object(), path = new Object(), world = new Object();
         var token = context.getToken();
         long generation = state.arm(owner, path, world, context, token);
@@ -28,13 +28,13 @@ public class Rc2NavigationStopStateTest {
         assertTrue(state.matches(owner, path, world, generation, token, 30, 101));
         assertFalse(state.matches(owner, path, world, generation, token, 30, 102));
         assertFalse(state.matches(owner, new Object(), world, generation, token, 30, 101));
-        assertEquals("RC2_NATIVE_WATCHDOG", state.peekEvent().cause);
+        assertEquals("NATIVE_NAVIGATION_WATCHDOG", state.peekEvent().cause);
     }
 
     @Test
     public void plainClearAndReinstallationCannotReuseAnEarlierCause() {
         var context = runtime().getContext();
-        var state = new Rc2NavigationStopState();
+        var state = new NativeNavigationStopState();
         Object owner = new Object(), path = new Object(), world = new Object();
         var token = context.getToken();
         long first = state.arm(owner, path, world, context, token);
@@ -55,7 +55,7 @@ public class Rc2NavigationStopStateTest {
     public void retiredLeaseAndForeignReleaseCannotAuthorizeOrEraseAnotherOwner() {
         var runtime = runtime();
         var context = runtime.getContext();
-        var state = new Rc2NavigationStopState();
+        var state = new NativeNavigationStopState();
         Object owner = new Object(), path = new Object(), world = new Object();
         var token = context.getToken();
         state.arm(owner, path, world, context, token);

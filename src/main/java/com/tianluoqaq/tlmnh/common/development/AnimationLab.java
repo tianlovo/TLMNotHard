@@ -71,7 +71,7 @@ public final class AnimationLab {
         var mode = GameType.getByID(3);
         require(
             mode.getID() == 3,
-            "RC2 spectator mode is unavailable; enable Et Futurum spectator mode before testing");
+            "native spectator mode is unavailable; enable Et Futurum spectator mode before testing");
         return mode;
     }
 

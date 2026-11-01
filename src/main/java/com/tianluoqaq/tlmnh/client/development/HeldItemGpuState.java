@@ -192,7 +192,7 @@ final class HeldItemGpuState {
             try {
                 manager = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMTextures");
             } catch (ClassNotFoundException legacy) {
-                // RC2 的查询仍在 GLStateManager；正式版拆到 GLSMTextures
+                // native 的查询仍在 GLStateManager；正式版拆到 GLSMTextures
             }
             return GL13.GL_TEXTURE0 + (Integer) manager.getMethod("getClientActiveTextureUnit")
                 .invoke(null);

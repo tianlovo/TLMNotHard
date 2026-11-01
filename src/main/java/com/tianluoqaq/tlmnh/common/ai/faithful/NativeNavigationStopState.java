@@ -6,11 +6,11 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 
 /** 单导航器、所属世界线程内的停滞反馈；空路径本身不构成原因 */
-public final class Rc2NavigationStopState {
+public final class NativeNavigationStopState {
 
     public static final class Event {
 
-        public final String cause = "RC2_NATIVE_WATCHDOG";
+        public final String cause = "NATIVE_NAVIGATION_WATCHDOG";
         public final long installationGeneration, worldTick;
         public final int entityTick;
         private final transient Object observer, path, world;

@@ -13,7 +13,7 @@ import net.minecraft.util.DamageSource;
 
 import mods.battlegear2.api.shield.IShield;
 
-/** RC2 实装盾牌的物品能力；玩家专用事件、动画和箭捕获不在这里冒充可复用 */
+/** native 实装盾牌的物品能力；玩家专用事件、动画和箭捕获不在这里冒充可复用 */
 public final class MaidShieldItems {
 
     private static final Set<String> BG_IDS = Collections.unmodifiableSet(

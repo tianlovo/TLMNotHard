@@ -201,7 +201,7 @@ public final class GeometryPortReplay {
         result.addProperty("runtimePolicy", "geometry-v2-single-passive-observer");
         result.addProperty("dependencyPolicy", "resolved-fastutil-8.5.18-v1");
         result.add("actualExternalArtifacts", actualArtifacts);
-        result.addProperty("scope", "selected production definitions and resolved fastutil JAR origins only; not all runtime classes or live RC2 loading");
+        result.addProperty("scope", "selected production definitions and resolved fastutil JAR origins only; not all runtime classes or live native loading");
         return result;
     }
 

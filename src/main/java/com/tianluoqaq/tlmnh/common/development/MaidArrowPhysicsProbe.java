@@ -14,7 +14,7 @@ import com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver;
 import com.tianluoqaq.tlmnh.common.combat.ArrowPhysics;
 import com.tianluoqaq.tlmnh.common.combat.BallisticVector;
 
-/** 实际RC2箭实体的同步自由飞行检查；不等于自然tick武器、碰撞或命中率benchmark */
+/** 实际原生平台箭实体的同步自由飞行检查；不等于自然tick武器、碰撞或命中率benchmark */
 public final class MaidArrowPhysicsProbe {
 
     private MaidArrowPhysicsProbe() {}
@@ -90,7 +90,7 @@ public final class MaidArrowPhysicsProbe {
                 velocity(arrow).subtract(expected.velocity)
                     .length());
             maximum = Math.max(maximum, error);
-            require(error == 0, "Effective RC2 arrow physics differs at tick " + tick + ": " + error);
+            require(error == 0, "Effective native arrow physics differs at tick " + tick + ": " + error);
         }
         var value = new JsonObject();
         value.addProperty("medium", water ? "water" : "air");

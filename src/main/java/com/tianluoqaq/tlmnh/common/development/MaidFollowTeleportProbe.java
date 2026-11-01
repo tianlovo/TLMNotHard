@@ -29,10 +29,10 @@ import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowTeleport;
+import com.tianluoqaq.tlmnh.common.ai.faithful.DryPlatformFollowTeleport;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
-/** 原版实际随机流驱动RC2真实碰撞与传送，不执行Brain、导航sink或自然实体tick */
+/** 原版实际随机流驱动原生平台真实碰撞与传送，不执行Brain、导航sink或自然实体tick */
 public final class MaidFollowTeleportProbe {
 
     private MaidFollowTeleportProbe() {}
@@ -47,7 +47,7 @@ public final class MaidFollowTeleportProbe {
         output.addProperty("version", Tags.VERSION);
         output.addProperty(
             "scope",
-            "unregistered native participants, real RC2 STONE/air collision and movement with original recorded RNG; no Brain, online-owner lookup or memory-layer equivalence");
+            "unregistered native participants, real native STONE/air collision and movement with original recorded RNG; no Brain, online-owner lookup or memory-layer equivalence");
         output.addProperty("equivalenceVerified", false);
         output.addProperty("naturalBehaviourVerified", false);
         output.addProperty("memoryLayerVerified", false);
@@ -100,12 +100,12 @@ public final class MaidFollowTeleportProbe {
                 try (var fixture = new Fixture(world, row)) {
                     var random = new RecordedInts(row.getAsJsonArray("maidRandomCalls"));
                     var access = new Lease(fixture.maid);
-                    var result = Rc2FollowTeleport.tryTeleport(fixture.maid, fixture.owner, random, access);
+                    var result = DryPlatformFollowTeleport.tryTeleport(fixture.maid, fixture.owner, random, access);
                     var actual = new JsonObject();
                     actual.addProperty("id", id);
                     actual.addProperty("rebuild", rebuild);
                     actual.add("result", new Gson().toJsonTree(result));
-                    actual.addProperty("teleportReturned", result.status == Rc2FollowTeleport.Status.SUCCESS);
+                    actual.addProperty("teleportReturned", result.status == DryPlatformFollowTeleport.Status.SUCCESS);
                     actual.addProperty("rngConsumed", random.index);
                     actual.addProperty("rngAvailable", random.samples.size());
                     actual.add("randomCalls", random.consumed);
@@ -168,7 +168,7 @@ public final class MaidFollowTeleportProbe {
 
     private static JsonObject runtimeIdentity() throws Exception {
         return DevelopmentArtifactIdentity
-            .capture(MaidFollowTeleportProbe.class, Rc2FollowTeleport.class, EntityMaid.class);
+            .capture(MaidFollowTeleportProbe.class, DryPlatformFollowTeleport.class, EntityMaid.class);
     }
 
     private static String sha(byte[] bytes) throws Exception {
@@ -185,7 +185,7 @@ public final class MaidFollowTeleportProbe {
         if (!condition) throw new IllegalStateException(message);
     }
 
-    private static final class RecordedInts implements Rc2FollowTeleport.RandomInts {
+    private static final class RecordedInts implements DryPlatformFollowTeleport.RandomInts {
 
         final JsonArray samples, consumed = new JsonArray();
         int index;
@@ -221,7 +221,7 @@ public final class MaidFollowTeleportProbe {
         }
     }
 
-    private static final class Lease implements Rc2FollowTeleport.Access {
+    private static final class Lease implements DryPlatformFollowTeleport.Access {
 
         final EntityMaid maid;
         final MaidPolicyRuntime runtime;
@@ -384,9 +384,10 @@ public final class MaidFollowTeleportProbe {
             maid.setLocationAndAngles(baseX + .5, 160, baseZ + .5, 0, 0);
             var injected = new Lease(maid);
             injected.injectForeignPathOnClear = true;
-            var afterMove = Rc2FollowTeleport.tryTeleport(maid, owner, new RecordedInts(originalRandom), injected);
+            var afterMove = DryPlatformFollowTeleport
+                .tryTeleport(maid, owner, new RecordedInts(originalRandom), injected);
             require(
-                afterMove.status == Rc2FollowTeleport.Status.OWNERSHIP_LOST && afterMove.moved
+                afterMove.status == DryPlatformFollowTeleport.Status.OWNERSHIP_LOST && afterMove.moved
                     && maid.getNavigator()
                         .getPath() == injected.foreignPath,
                 "Ownership loss after a real move was reported as success or erased the replacement path");
@@ -400,28 +401,29 @@ public final class MaidFollowTeleportProbe {
             var before = relativePosition();
             var pathBefore = maid.getNavigator()
                 .getPath();
-            var outside = Rc2FollowTeleport.tryTeleport(maid, owner, noRandom, access);
+            var outside = DryPlatformFollowTeleport.tryTeleport(maid, owner, noRandom, access);
             require(
-                outside.status == Rc2FollowTeleport.Status.OUT_OF_SCOPE && outside.rngCalls == 0 && !outside.moved,
+                outside.status == DryPlatformFollowTeleport.Status.OUT_OF_SCOPE && outside.rngCalls == 0
+                    && !outside.moved,
                 "Unknown block became a scored failed candidate");
             output.add(rejectedGuard(outside, access, before, pathBefore));
             var stale = new Lease(maid);
             stale.runtime.invalidate(MaidPolicyRuntime.InvalidationReason.RESET);
-            var rejected = Rc2FollowTeleport.tryTeleport(maid, owner, noRandom, stale);
+            var rejected = DryPlatformFollowTeleport.tryTeleport(maid, owner, noRandom, stale);
             require(
-                rejected.status == Rc2FollowTeleport.Status.STALE && rejected.rngCalls == 0 && !rejected.moved,
+                rejected.status == DryPlatformFollowTeleport.Status.STALE && rejected.rngCalls == 0 && !rejected.moved,
                 "Stale token executed teleport");
             output.add(rejectedGuard(rejected, stale, before, pathBefore));
             var unowned = new Lease(maid);
             unowned.owned = false;
-            var lost = Rc2FollowTeleport.tryTeleport(maid, owner, noRandom, unowned);
+            var lost = DryPlatformFollowTeleport.tryTeleport(maid, owner, noRandom, unowned);
             require(
-                lost.status == Rc2FollowTeleport.Status.OWNERSHIP_LOST && lost.rngCalls == 0 && !lost.moved,
+                lost.status == DryPlatformFollowTeleport.Status.OWNERSHIP_LOST && lost.rngCalls == 0 && !lost.moved,
                 "Unowned navigation executed teleport");
             output.add(rejectedGuard(lost, unowned, before, pathBefore));
         }
 
-        JsonObject rejectedGuard(Rc2FollowTeleport.Result result, Lease lease, JsonObject before,
+        JsonObject rejectedGuard(DryPlatformFollowTeleport.Result result, Lease lease, JsonObject before,
             net.minecraft.pathfinding.PathEntity pathBefore) {
             var after = relativePosition();
             boolean pathUnchanged = maid.getNavigator()

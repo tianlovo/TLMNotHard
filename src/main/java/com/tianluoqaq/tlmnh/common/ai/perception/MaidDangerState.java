@@ -17,7 +17,7 @@ public final class MaidDangerState {
     }
 
     public enum Source {
-        RC2_ENTITY_SENSES,
+        NATIVE_ENTITY_SENSES,
         COMPLETE_NATIVE_AABB_SCAN
     }
 
@@ -115,7 +115,7 @@ public final class MaidDangerState {
         }
 
         public Source getSource() {
-            return result == Result.VISIBLE_HOSTILE ? Source.RC2_ENTITY_SENSES : Source.COMPLETE_NATIVE_AABB_SCAN;
+            return result == Result.VISIBLE_HOSTILE ? Source.NATIVE_ENTITY_SENSES : Source.COMPLETE_NATIVE_AABB_SCAN;
         }
 
         public UUID getTargetId() {

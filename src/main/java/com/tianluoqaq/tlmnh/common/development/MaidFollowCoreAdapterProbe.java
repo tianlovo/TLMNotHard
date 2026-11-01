@@ -40,21 +40,21 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Creation;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.EndpointRelation;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner.Installation;
+import com.tianluoqaq.tlmnh.common.ai.faithful.DryPlatformFollowActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreComponent;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreLookDriver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreMoveDriver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowFallbackSampler;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2FollowCoreActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopSource;
-import com.tianluoqaq.tlmnh.common.ai.faithful.Rc2NavigationStopState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopSource;
+import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopState;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
-/** 未登记实体的真实RC2 AI阶段组件采集，不是自然世界tick或真实登录主人测试 */
+/** 未登记实体的真实native AI阶段组件采集，不是自然世界tick或真实登录主人测试 */
 public final class MaidFollowCoreAdapterProbe {
 
     private static final Gson GSON = new GsonBuilder().serializeNulls()
@@ -99,7 +99,7 @@ public final class MaidFollowCoreAdapterProbe {
         output.addProperty("componentContract", "FOLLOW_CORE_COMPONENT_V2");
         output.addProperty("componentSchedule", "start-pass look0/move2/follow3; running-pass look0/move2/follow3");
         output.addProperty("componentWorldRngOrderVerified", false);
-        output.addProperty("lookVisibilitySource", "CURRENT_RC2_LOS");
+        output.addProperty("lookVisibilitySource", "CURRENT_NATIVE_LOS");
         output.addProperty("version", Tags.VERSION);
         output.addProperty("worldNatural", false);
         output.addProperty("equivalenceVerified", false);
@@ -124,15 +124,15 @@ public final class MaidFollowCoreAdapterProbe {
                 FollowCoreLookDriver.class,
                 FollowCoreLookDriver.State.class,
                 FollowCoreMoveDriver.class,
-                Rc2FollowCoreActor.class,
+                DryPlatformFollowActor.class,
                 MaidBoundedPathPlanner.class,
                 MaidPolicyRuntime.class,
                 EntityMaid.class,
                 DevelopmentArtifactIdentity.class);
             if (fallback) identityClasses.add(FollowFallbackSampler.class);
             if (watchdog) {
-                identityClasses.add(Rc2NavigationStopState.class);
-                identityClasses.add(Rc2NavigationStopSource.class);
+                identityClasses.add(NativeNavigationStopState.class);
+                identityClasses.add(NativeNavigationStopSource.class);
             }
             output
                 .add("runtimeIdentity", DevelopmentArtifactIdentity.capture(identityClasses.toArray(new Class<?>[0])));
@@ -155,7 +155,7 @@ public final class MaidFollowCoreAdapterProbe {
             if (watchdog) {
                 output.addProperty(
                     "scope",
-                    "controlled manual inherited AI; original RC2 watchdog clear callsite observation, owned stop/retry and unknown-clear refusal; no modern watchdog equivalence or natural F/N");
+                    "controlled manual inherited AI; original native watchdog clear callsite observation, owned stop/retry and unknown-clear refusal; no modern watchdog equivalence or natural F/N");
                 pipeline(platform, rows);
                 watchdogRecovery(platform, rows);
                 unknownClear(platform, rows);
@@ -288,7 +288,7 @@ public final class MaidFollowCoreAdapterProbe {
             try {
                 fixture.frame(frames, "unknown_clear");
                 throw new IllegalStateException("Ordinary clear was accepted as native watchdog");
-            } catch (Rc2FollowCoreActor.OutsideContractException expected) {
+            } catch (DryPlatformFollowActor.OutsideContractException expected) {
                 require(
                     expected.getMessage()
                         .contains("navigation_disappeared_cause_unknown"),
@@ -672,7 +672,7 @@ public final class MaidFollowCoreAdapterProbe {
             originalPlayers = new ArrayList<>(globalPlayers);
             component = new FollowCoreComponent(
                 maid,
-                new Rc2FollowCoreActor.Contract(8, false, false, new Rc2FollowCoreActor.DryDomain() {
+                new DryPlatformFollowActor.Contract(8, false, false, new DryPlatformFollowActor.DryDomain() {
 
                     public void verify(EntityMaid current, FollowMoveActor.BlockPos target) {
                         platform.verify(current, target);
@@ -962,7 +962,7 @@ public final class MaidFollowCoreAdapterProbe {
             result.addProperty("domainVerifications", platform.verifications.size());
             if (platform.watchdog) {
                 result.addProperty("domainVerificationCalls", platform.totalVerifications);
-                result.addProperty("nativeFeedbackApplied", maid.getNavigator() instanceof Rc2NavigationStopSource);
+                result.addProperty("nativeFeedbackApplied", maid.getNavigator() instanceof NativeNavigationStopSource);
                 result.addProperty("stopGeneration", actor.getStopGeneration());
                 var event = actor.peekLastNativeStop();
                 var stop = new JsonObject();
@@ -1334,8 +1334,8 @@ public final class MaidFollowCoreAdapterProbe {
         return previous;
     }
 
-    private static Rc2FollowCoreActor.OutsideContractException outside(String reason) {
-        return new Rc2FollowCoreActor.OutsideContractException(reason);
+    private static DryPlatformFollowActor.OutsideContractException outside(String reason) {
+        return new DryPlatformFollowActor.OutsideContractException(reason);
     }
 
     private static void require(boolean condition, String message) {

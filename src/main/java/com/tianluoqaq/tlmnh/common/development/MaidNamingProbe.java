@@ -159,7 +159,7 @@ public final class MaidNamingProbe {
         require(f.held().stackSize == 2, "invalid name preserves tags");
         container = f.open(2);
         var spectator = GameType.getByID(3);
-        require(spectator.getID() == 3, "RC2 spectator available");
+        require(spectator.getID() == 3, "native spectator available");
         f.owner.theItemInWorldManager.setGameType(spectator);
         require(!MaidNamingNetwork.apply(f.owner, MaidNameRequest.from(container, "旁观", false)), "spectator denied");
         require(f.owner.inventory.getStackInSlot(0).stackSize == 2, "spectator raw slot conserved");
@@ -220,7 +220,7 @@ public final class MaidNamingProbe {
                     .equals("原牌名称") && f.owner.inventory.getStackInSlot(slot).stackSize == 2,
                 "offhand written tag cannot fall through to vanilla naming");
         } catch (ReflectiveOperationException error) {
-            throw new IllegalStateException("RC2 Backhand naming probe unavailable", error);
+            throw new IllegalStateException("native Backhand naming probe unavailable", error);
         } finally {
             f.owner.inventory.currentItem = 0;
         }

@@ -4,7 +4,7 @@
  * Original:
  * event/maid/{SaddleMaidEvent,ApplyGoldenAppleEvent,ApplyPotionEffectEvent,GetExpBottleEvent,UseNameTagEvent}.java
  * MIT, see licenses/TouhouLittleMaid-MIT.txt
- * Adaptation: server authority, RC2 hands, native 1.7.10 riding and item conservation
+ * Adaptation: server authority, native hands, native 1.7.10 riding and item conservation
  */
 package com.tianluoqaq.tlmnh.common.interaction;
 
@@ -27,7 +27,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
-/** 原版主人交互的RC2适配，客户端只判断操作是否被接收 */
+/** 原版主人交互的原生平台适配，客户端只判断操作是否被接收 */
 public final class MaidInteractions {
 
     public static final int EXPERIENCE_PER_BOTTLE = 12;
@@ -40,7 +40,7 @@ public final class MaidInteractions {
             || !player.isEntityAlive()
             || player.worldObj != maid.worldObj
             || maid.getDistanceSqToEntity(player) > 64.0D) return false;
-        // EFR 在RC2注册的旁观模式ID为3，不对其客户端类建立公共代码依赖
+        // EFR 在原生平台注册的旁观模式ID为3，不对其客户端类建立公共代码依赖
         return !(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
             .getID() != 3;
     }

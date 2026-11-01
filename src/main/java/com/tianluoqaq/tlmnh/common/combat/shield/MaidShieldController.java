@@ -21,7 +21,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
-/** TLM举盾生命周期与RC2物品格挡分开，冷却按Item维护，不占主手近战动作 */
+/** TLM举盾生命周期与原生平台物品格挡分开，冷却按Item维护，不占主手近战动作 */
 public final class MaidShieldController {
 
     public enum Cause {

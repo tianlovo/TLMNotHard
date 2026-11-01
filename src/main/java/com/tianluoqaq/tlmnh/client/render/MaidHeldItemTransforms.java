@@ -2,7 +2,7 @@ package com.tianluoqaq.tlmnh.client.render;
 
 import org.joml.Matrix4f;
 
-/** 原版附件坐标与RC2物品坐标的显式桥接，不推进模型姿态 */
+/** 原版附件坐标与原生平台物品坐标的显式桥接，不推进模型姿态 */
 public final class MaidHeldItemTransforms {
 
     public enum Side {
@@ -56,7 +56,7 @@ public final class MaidHeldItemTransforms {
             .mul(nativeArmEntry(side, profile, rotateFull3D));
     }
 
-    /** RC2进入ItemRenderer之前的矩阵，ItemRenderer自己的helper变换仍正常执行 */
+    /** native进入ItemRenderer之前的矩阵，ItemRenderer自己的helper变换仍正常执行 */
     public static Matrix4f nativeArmEntry(Side side, Profile profile, boolean rotateFull3D) {
         if (profile == Profile.SHIELD_LEFT) {
             if (side != Side.LEFT) throw new IllegalArgumentException("Shield-left profile requires the left hand");

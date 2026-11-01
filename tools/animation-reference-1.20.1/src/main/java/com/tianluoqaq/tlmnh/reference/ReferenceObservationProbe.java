@@ -194,7 +194,7 @@ public final class ReferenceObservationProbe {
                     selected.remove(pack);
                     repository.reload();
                     if (mode.equals("rc2")) {
-                        if (repository.getPack(pack) == null) throw new IllegalStateException("Local RC2 font diagnostic pack required");
+                        if (repository.getPack(pack) == null) throw new IllegalStateException("Local native font diagnostic pack required");
                         selected.add(pack);
                     }
                     repository.setSelected(selected);

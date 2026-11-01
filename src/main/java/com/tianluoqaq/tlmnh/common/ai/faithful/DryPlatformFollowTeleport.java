@@ -12,16 +12,16 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 /**
- * 原版 EntityMaid.teleportToOwner 的 RC2 干燥石头平台适配
+ * 原版 EntityMaid.teleportToOwner 的 native 干燥石头平台适配
  * 候选顺序来自固定上游 8a3ac5e9；这里只接受明确的开发合同，不包含完整现代节点分类
  */
-public final class Rc2FollowTeleport {
+public final class DryPlatformFollowTeleport {
 
     private static final int MAX_ATTEMPTS = 10;
     private static final int DOMAIN_RADIUS = 4;
     private static final int WORLD_LIMIT = 29_999_990;
 
-    private Rc2FollowTeleport() {}
+    private DryPlatformFollowTeleport() {}
 
     public interface RandomInts {
 

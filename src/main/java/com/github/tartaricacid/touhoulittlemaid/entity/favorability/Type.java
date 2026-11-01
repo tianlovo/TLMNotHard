@@ -2,7 +2,7 @@
  * Adapted from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: entity/favorability/{FavorabilityManager,Type}.java
  * Copyright (c) TartaricAcid contributors, MIT; see licenses/TouhouLittleMaid-MIT.txt
- * RC2 adaptation: native attributes/NBT/status particles; no baubles or excluded activities
+ * native adaptation: native attributes/NBT/status particles; no baubles or excluded activities
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.favorability;
 

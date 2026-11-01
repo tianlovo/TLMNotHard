@@ -20,7 +20,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import mods.battlegear2.api.shield.IShield;
 
-/** 从 RC2 的实际实体读取一帧，动画计时由调用方的独立时间轴传入 */
+/** 从 native 的实际实体读取一帧，动画计时由调用方的独立时间轴传入 */
 @SideOnly(Side.CLIENT)
 public final class MaidMolangFrames {
 

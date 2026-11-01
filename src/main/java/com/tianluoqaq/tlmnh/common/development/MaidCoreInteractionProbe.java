@@ -37,7 +37,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/** 实际RC2服务端夹具，使用隔离玩家和临时实体；不声称验证客户端点击或网络包顺序 */
+/** 实际原生平台服务端夹具，使用隔离玩家和临时实体；不声称验证客户端点击或网络包顺序 */
 public final class MaidCoreInteractionProbe {
 
     private MaidCoreInteractionProbe() {}
@@ -451,7 +451,7 @@ public final class MaidCoreInteractionProbe {
         if (pendingPanic != null) pendingPanic.finish(false, "server stopping");
     }
 
-    /** 三组库存边界夹具，调用实际RC2物品与女仆控制器，不冒充自然tick/客户端验收 */
+    /** 三组库存边界夹具，调用实际原生平台物品与女仆控制器，不冒充自然tick/客户端验收 */
     public static void runMeals(WorldServer world, String group) {
         try (var f = new Fixture(world)) {
             require(world.spawnEntityInWorld(f.maid), "meal actor registered");
@@ -520,9 +520,9 @@ public final class MaidCoreInteractionProbe {
                     !meal.isEating() && inv.getStackInSlot(7) == replacement && inv.getStackInSlot(0) == oldOff,
                     "menu changes not overwritten");
                 require(f.owner.inventory.getStackInSlot(20).stackSize == 4, "removed food retained by viewer");
-            } else if ("rc2".equals(group)) {
+            } else if ("native-items".equals(group)) {
                 Item item = (Item) Item.itemRegistry.getObject("gregtech:gt.metaitem.02");
-                require(item != null, "actual RC2 GT item exists");
+                require(item != null, "actual native GT item exists");
                 var drink = new ItemStack(item, 2, 32000);
                 var food = com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile.inspect(drink);
                 require(food != null && food.container() != null, "GT coffee nutrition and container");
@@ -564,7 +564,7 @@ public final class MaidCoreInteractionProbe {
                     "only pufferfish blocked");
             } else throw new IllegalArgumentException("Unknown meal group: " + group);
             TLMNotHard.LOG.info(
-                "TLMNH_MEAL_TEST_PASS group={} controller-calls=actual-RC2 natural-ticks=unverified client=unverified",
+                "TLMNH_MEAL_TEST_PASS group={} controller-calls=actual-native natural-ticks=unverified client=unverified",
                 group);
         }
     }
@@ -1201,7 +1201,7 @@ public final class MaidCoreInteractionProbe {
                 mending = enchantment;
                 break;
             }
-        require(mending != null, "RC2 mending enchantment present");
+        require(mending != null, "native mending enchantment present");
         var tool = new ItemStack(Items.iron_pickaxe);
         tool.setItemDamage(10);
         tool.addEnchantment(mending, 1);
@@ -1320,7 +1320,7 @@ public final class MaidCoreInteractionProbe {
                     1);
             traversal.tick();
             require(
-                com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
                     (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                     world,
                     x + 1,
@@ -1341,7 +1341,7 @@ public final class MaidCoreInteractionProbe {
                 .startsWith("net.malisis.doors.")) {
                 traversal.tick();
                 require(
-                    com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                    com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
                         (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                         world,
                         x + 1,
@@ -1356,7 +1356,7 @@ public final class MaidCoreInteractionProbe {
             }
             traversal.tick();
             require(
-                !com.tianluoqaq.tlmnh.common.ai.Rc2DoorState.isOpenOrOpening(
+                !com.tianluoqaq.tlmnh.common.ai.NativeDoorState.isOpenOrOpening(
                     (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
                     world,
                     x + 1,
@@ -1779,7 +1779,7 @@ public final class MaidCoreInteractionProbe {
         require(!f.maid.interact(f.owner), "distance denied");
         f.owner.setPosition(f.maid.posX, f.maid.posY, f.maid.posZ);
         var spectator = GameType.getByID(3);
-        require(spectator.getID() == 3, "RC2 spectator registered");
+        require(spectator.getID() == 3, "native spectator registered");
         f.owner.theItemInWorldManager.setGameType(spectator);
         f.owner.setSneaking(true);
         f.hand(new ItemStack(Items.golden_apple));
@@ -1821,7 +1821,7 @@ public final class MaidCoreInteractionProbe {
                 .getMethod("getOffhandSlot", EntityPlayer.class)
                 .invoke(null, player);
         } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("RC2 Backhand API unavailable", exception);
+            throw new IllegalStateException("native Backhand API unavailable", exception);
         }
     }
 
@@ -1831,7 +1831,7 @@ public final class MaidCoreInteractionProbe {
                 .getMethod("useOffhandItem", EntityPlayer.class, boolean.class, BooleanSupplier.class)
                 .invoke(null, player, false, action);
         } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("RC2 Backhand hand switch failed", exception);
+            throw new IllegalStateException("native Backhand hand switch failed", exception);
         }
     }
 

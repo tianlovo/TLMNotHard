@@ -10,7 +10,7 @@ gradle.projectsEvaluated {
             def launcher = project.javaToolchains.launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(25))
             }.get()
-            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+            def runtime = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonClientRuntime
             def destination = project.file(project.findProperty('referenceLauncher') ?: 'build/reference-replay/launcher.json')
             destination.parentFile.mkdirs()
             destination.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
@@ -33,7 +33,7 @@ gradle.projectsEvaluated {
         javaLauncher.set(project.javaToolchains.launcherFor {
             languageVersion.set(JavaLanguageVersion.of(25))
         })
-        classpath = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonRc2Client
+        classpath = project.sourceSets.test.runtimeClasspath.filter { !it.name.startsWith('gson-') } + project.configurations.gsonClientRuntime
         workingDir = project.layout.buildDirectory.dir('reference-replay').get().asFile
         doFirst {
             workingDir.mkdirs()

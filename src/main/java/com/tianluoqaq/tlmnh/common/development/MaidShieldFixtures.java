@@ -35,7 +35,7 @@ public final class MaidShieldFixtures {
         int reinforced = wood.getClass()
             .getField("reinforced")
             .getInt(wood);
-        require("Wood".equals(materialName) && reinforced == 0, "Wood baseline changed in actual RC2");
+        require("Wood".equals(materialName) && reinforced == 0, "Wood baseline changed in actual native");
         var material = new JsonObject();
         material.addProperty("id", 0);
         material.addProperty("name", materialName);

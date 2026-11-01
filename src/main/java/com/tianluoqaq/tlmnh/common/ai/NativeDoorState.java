@@ -5,12 +5,12 @@ import java.lang.reflect.Method;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.world.World;
 
-/** RC2 原版木门的 Malisis 动画状态；不替换其开门入口、动画或权限 */
-public final class Rc2DoorState {
+/** native 原版木门的 Malisis 动画状态；不替换其开门入口、动画或权限 */
+public final class NativeDoorState {
 
     private static final Method ANIMATED_STATE = resolve();
 
-    private Rc2DoorState() {}
+    private NativeDoorState() {}
 
     public static boolean isOpenOrOpening(BlockDoor door, World world, int x, int y, int z) {
         var tile = world.getTileEntity(x, y, z);
@@ -23,7 +23,7 @@ public final class Rc2DoorState {
                     || value.name()
                         .equals("OPENING");
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException("RC2 animated door state is unavailable", failure);
+                throw new IllegalStateException("native animated door state is unavailable", failure);
             }
         }
         return door.func_150015_f(world, x, y, z);
@@ -32,7 +32,10 @@ public final class Rc2DoorState {
     private static Method resolve() {
         try {
             return Class
-                .forName("net.malisis.doors.door.tileentity.DoorTileEntity", false, Rc2DoorState.class.getClassLoader())
+                .forName(
+                    "net.malisis.doors.door.tileentity.DoorTileEntity",
+                    false,
+                    NativeDoorState.class.getClassLoader())
                 .getMethod("getState");
         } catch (ClassNotFoundException | NoSuchMethodException absent) {
             return null;

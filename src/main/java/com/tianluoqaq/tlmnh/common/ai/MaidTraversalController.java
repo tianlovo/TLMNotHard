@@ -90,7 +90,7 @@ public final class MaidTraversalController {
     }
 
     private boolean isOpen(Block block, int x, int y, int z) {
-        return block instanceof BlockDoor door ? Rc2DoorState.isOpenOrOpening(door, maid.worldObj, x, y, z)
+        return block instanceof BlockDoor door ? NativeDoorState.isOpenOrOpening(door, maid.worldObj, x, y, z)
             : (maid.worldObj.getBlockMetadata(x, y, z) & 4) != 0;
     }
 

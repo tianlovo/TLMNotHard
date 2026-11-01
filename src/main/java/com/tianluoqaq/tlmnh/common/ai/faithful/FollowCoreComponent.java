@@ -12,7 +12,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigationActions {
 
     private final EntityMaid maid;
-    private final Rc2FollowCoreActor actor;
+    private final DryPlatformFollowActor actor;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
     private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(0.5F, 2);
@@ -22,19 +22,19 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
     private long followEndTimestamp, lastWorldTick;
     private int lastEntityTick;
 
-    public FollowCoreComponent(EntityMaid maid, Rc2FollowCoreActor.Contract contract) {
+    public FollowCoreComponent(EntityMaid maid, DryPlatformFollowActor.Contract contract) {
         this.maid = Objects.requireNonNull(maid, "maid");
-        actor = new Rc2FollowCoreActor(maid, contract);
+        actor = new DryPlatformFollowActor(maid, contract);
     }
 
     @Override
     public void tick(Token token) {
-        if (ticking) throw new Rc2FollowCoreActor.OutsideContractException("component_reentry");
-        if (maid.worldObj == null) throw new Rc2FollowCoreActor.OutsideContractException("world_missing");
+        if (ticking) throw new DryPlatformFollowActor.OutsideContractException("component_reentry");
+        if (maid.worldObj == null) throw new DryPlatformFollowActor.OutsideContractException("world_missing");
         var runtime = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         if (hasTick && lastWorldTick == maid.worldObj.getTotalWorldTime() && lastEntityTick == maid.ticksExisted)
-            throw new Rc2FollowCoreActor.OutsideContractException("duplicate_component_tick");
+            throw new DryPlatformFollowActor.OutsideContractException("duplicate_component_tick");
         ticking = true;
         try {
             actor.beginFrame(runtime, token);
@@ -71,7 +71,7 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
         }
     }
 
-    public Rc2FollowCoreActor getActor() {
+    public DryPlatformFollowActor getActor() {
         return actor;
     }
 

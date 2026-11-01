@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 
-/** 核对实际RC2类来源和资源字节，不把class资源摘要冒充变换后类定义摘要 */
+/** 核对实际原生平台类来源和资源字节，不把class资源摘要冒充变换后类定义摘要 */
 public final class MaidGeckoLibraryProbe {
 
     private static final String JAR_SHA = "9094ae67d01d0ad246f886f11ad557fc2e79c72cbf3feed83e1512a8ae90a74a";
@@ -38,7 +38,7 @@ public final class MaidGeckoLibraryProbe {
                 if (source == null) throw new IllegalStateException("Missing actual library CodeSource");
                 var location = source.getLocation();
                 var fileLocation = location;
-                // RC2可用jar:file作为CodeSource，不将它当成已挂载的ZIP文件系统
+                // native可用jar:file作为CodeSource，不将它当成已挂载的ZIP文件系统
                 if ("jar".equals(location.getProtocol())) {
                     var connection = location.openConnection();
                     if (!(connection instanceof JarURLConnection jar))
@@ -51,7 +51,7 @@ public final class MaidGeckoLibraryProbe {
                     .toRealPath();
                 String actualJarSha = Files.isRegularFile(file) ? sha(Files.readAllBytes(file)) : "not-a-jar-file";
                 if (!actualJarSha.equals(JAR_SHA)) throw new IllegalStateException(
-                    "Actual RC2 fastutil source differs: " + file.getFileName() + " sha256=" + actualJarSha);
+                    "Actual native fastutil source differs: " + file.getFileName() + " sha256=" + actualJarSha);
                 byte[] bytes;
                 try (var input = type.getResourceAsStream('/' + CLASSES[i].replace('.', '/') + ".class")) {
                     if (input == null) throw new IllegalStateException("Missing actual library class resource");
@@ -82,7 +82,7 @@ public final class MaidGeckoLibraryProbe {
                 classes.add(CLASSES[i], entry);
             }
         } catch (Exception error) {
-            throw new IllegalStateException("Cannot verify actual RC2 Gecko container library", error);
+            throw new IllegalStateException("Cannot verify actual native Gecko container library", error);
         }
         report.add("classes", classes);
         report.addProperty("runtimeDefinedBytesVerified", false);
