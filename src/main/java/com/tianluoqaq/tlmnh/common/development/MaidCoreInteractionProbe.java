@@ -230,7 +230,7 @@ public final class MaidCoreInteractionProbe {
                     .setEnabled(true),
                 "pickup home enabled");
             require(f.world.spawnEntityInWorld(f.maid), "pickup actor registered");
-            item = new EntityItem(f.world, x + 3.5, 100, z + 0.5, new ItemStack(Items.apple, 3));
+            item = new EntityItem(f.world, x + 3.5, 100.25, z + 0.5, new ItemStack(Items.apple, 3));
             item.delayBeforeCanPickup = 0;
             require(f.world.spawnEntityInWorld(item), "pickup target registered");
             startX = f.maid.posX;
@@ -262,7 +262,7 @@ public final class MaidCoreInteractionProbe {
                     require(
                         apples == 3 && maid.getDistanceSq(startX, maid.posY, startZ) > 0.25,
                         "natural approach and conserved pickup");
-                    item = new EntityItem(fixture.world, startX + 5, 100, startZ, new ItemStack(Items.stick));
+                    item = new EntityItem(fixture.world, startX + 5, 100.25, startZ, new ItemStack(Items.stick));
                     item.delayBeforeCanPickup = 0;
                     require(fixture.world.spawnEntityInWorld(item), "second target registered");
                     phase = 1;
@@ -562,8 +562,7 @@ public final class MaidCoreInteractionProbe {
             }
             maid.setPosition(x + 0.5, y, z + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
-            var up = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
-                .create(maid, x + 1, y + 3, z + 1, 8, true, true, false, true);
+            var up = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery.create(maid, x, y + 3, z, 8, true, true, false, true);
             require(up != null && up.getFinalPathPoint().yCoord == y + 3, "existing ladder column has vertical route");
             maid.getNavigator()
                 .setPath(up, 1);
@@ -572,8 +571,7 @@ public final class MaidCoreInteractionProbe {
             require(maid.posY > y, "ladder ascent reaches native movement");
             maid.setPosition(x + 0.5, y + 3, z + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
-            var down = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
-                .create(maid, x + 1, y, z + 1, 8, true, true, false, true);
+            var down = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery.create(maid, x, y, z, 8, true, true, false, true);
             require(down != null && down.getFinalPathPoint().yCoord == y, "ladder descent route");
             maid.getNavigator()
                 .setPath(down, 1);

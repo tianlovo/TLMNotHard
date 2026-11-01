@@ -159,13 +159,9 @@ public final class MaidPickupController {
     private boolean pathTo(Entity entity) {
         var proposed = run == null ? runner.newRun(maid.worldObj, maid.getTask()) : run;
         if (proposed == null || !proposed.isCurrent(maid.worldObj, maid.getTask())) return false;
-        // 原生整数目标会再减半个实体宽度，偏移一格使节点中心落在掉落物所在格
-        var created = planner.create(
-            maid,
-            Math.floor(entity.posX) + 1,
-            Math.floor(entity.boundingBox.minY),
-            Math.floor(entity.posZ) + 1,
-            0.6);
+        // 原生整数重载先加0.5再减实体半宽，直接传掉落物所在格
+        var created = planner
+            .create(maid, Math.floor(entity.posX), Math.floor(entity.boundingBox.minY), Math.floor(entity.posZ), 0.6);
         var path = created.path;
         if (path == null || path.getCurrentPathLength() == 0 || !proposed.isCurrent(maid.worldObj, maid.getTask()))
             return false;

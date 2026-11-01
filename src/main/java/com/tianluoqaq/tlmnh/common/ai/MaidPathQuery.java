@@ -72,7 +72,8 @@ public final class MaidPathQuery {
             .isActiveClimbing() || !maid.isOnLadder()) return null;
         int cx = MathHelper.floor_double(maid.posX), cy = MathHelper.floor_double(maid.boundingBox.minY),
             cz = MathHelper.floor_double(maid.posZ);
-        int tx = MathHelper.floor_double(x - maid.width / 2), tz = MathHelper.floor_double(z - maid.width / 2);
+        int tx = MathHelper.floor_double(x + 0.5 - maid.width / 2),
+            tz = MathHelper.floor_double(z + 0.5 - maid.width / 2);
         if (targetY == cy || Math.abs(targetY - cy) > range || Math.abs(tx - cx) + Math.abs(tz - cz) > 1) return null;
         var points = new java.util.ArrayList<PathPoint>();
         int step = targetY > cy ? 1 : -1;
