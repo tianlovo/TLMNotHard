@@ -365,3 +365,10 @@ pilot资源中放置原字节合同，输出实际SHA；每轮新实体、20tick
 水域前后检查真实水源/玻璃及metadata，先清水后清壁，再还原模板外方块；子清理提前登记，父Fixture最后释放其主人/区块及模板
 最终候选121的水域单项1320tick通过，6次/1200帧完整，JSON/XML/process 0；首轮清理顺序错误原记录保留
 采集通过只用于控制与观察，不准入完整F/N、严格轨迹等价、多人或统计收益
+
+## 被动跳水相位
+
+SwimJumpPhaseTests通过既有AfterNavigationActions开发入口包装真实现代组件，核部分浸水条件下的入口前/后任务状态及策略暂停清理，不额外推进世界或Brain
+最终124同JAR两项HQA通过：相位/取消1tick、水域1320tick；首轮相位探针事件过早且漏接AssertionError造成的无最终报告失败保留
+HQA GameTestAssertException继承AssertionError，异步探针需显式交回框架，不能在Forge事件里直接抛出导致整服终止
+本单元不准入完整F/N、客户端或最终跨模块验收
