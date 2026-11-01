@@ -85,8 +85,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory modernCombatMemory = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory();
     private final com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings attackSettings = new com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings();
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
+    private final com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection behaviorProtection = new com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection(
+        this);
+    private final Runnable nativeAiTick = () -> super.updateAITasks();
+    private final Runnable brainAfterLiving = () -> brain.afterLivingUpdate();
     private final com.tianluoqaq.tlmnh.common.ai.MaidAquaticController aquatic = new com.tianluoqaq.tlmnh.common.ai.MaidAquaticController(
         this);
+    private final Runnable aquaticBeforeLiving = () -> aquatic.beforeLivingUpdate();
+    private final Runnable aquaticAfterLiving = () -> aquatic.afterLivingUpdate();
     private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
         this);
     private ItemStack offhand;
@@ -149,16 +155,28 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     @Override
+    protected void updateAITasks() {
+        if (behaviorProtection != null) behaviorProtection.run(nativeAiTick);
+    }
+
+    public void clearBehaviorInputs() {
+        moveForward = moveStrafing = 0;
+        setAIMoveSpeed(0);
+        setJumping(false);
+        if (aquatic != null) aquatic.clearPendingJump();
+    }
+
+    @Override
     public void onLivingUpdate() {
         if (!worldObj.isRemote && itemUses != null) itemUses.advanceUse(
             (int) getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.USE_ITEM_SPEED)
                 .getAttributeValue());
-        if (aquatic != null) aquatic.beforeLivingUpdate();
+        if (aquatic != null) behaviorProtection.run(aquaticBeforeLiving);
         super.onLivingUpdate();
-        if (aquatic != null) aquatic.afterLivingUpdate();
+        if (aquatic != null) behaviorProtection.run(aquaticAfterLiving);
         if (!worldObj.isRemote) {
             favorabilityManager.tick();
-            brain.afterLivingUpdate();
+            behaviorProtection.run(brainAfterLiving);
             shield.tickAfterLivingUpdate();
             meals.tick();
             pickup.tick();

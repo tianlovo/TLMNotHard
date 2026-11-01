@@ -11,6 +11,7 @@ public enum ExternalFeature {
     VEHICLES("vehicles", "etfuturum"),
     ARROW_GRAVITY("arrow_gravity", "GalacticraftCore"),
     ITEM_DELIVERY("item_delivery"),
+    BEHAVIOR_RUNTIME("behavior_runtime"),
     CLIENT_RENDER_STATE("client_render_state", true, "angelica");
 
     public final String id;

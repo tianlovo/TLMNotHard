@@ -1101,3 +1101,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - MaidAquaticController.beforeLivingUpdate不再提前运行现代组件的被动跳水，旧原型入口保持；刷新及取消清现代任务待发请求
 - 实读目标EntityLivingBase.onUpdate：Forge LivingUpdate事件早于super.onUpdate及流体刷新，不能据该事件冒充Brain前已刷新流体的观察点
 - 实装HQA GameTestAssertException字节码继承AssertionError，探针改用既有AfterNavigationActions真实回调，并把断言等非致命失败交回HQA
+
+## AI 世界入口的失效回退
+
+- 保留上游 EntityMaid 原包名；根据实读目标 EntityLiving.updateAITasks 的可覆盖入口，将原生导航/感知及其女仆回调置于单实例保护中
+- MaidBehaviorProtection、按 UUID 的故障范围、物主受众与策略失败退休为本工程独立实现；不以快照补发撤销外部回调的任意副作用
+- EntityMaid 原生物理继续运行，水域管理前后阶段与 Brain.afterLivingUpdate 使用同一边界，避免存档读取后从旁路重新运行旧原型行为
+- MaidPolicyRuntime 原回调仍抛出主异常，世界入口接住可恢复错误；已失败清理不重复，原错误与 suppressed 清理证据保持

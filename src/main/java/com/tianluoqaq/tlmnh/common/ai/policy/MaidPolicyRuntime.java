@@ -193,6 +193,15 @@ public final class MaidPolicyRuntime {
         cancelAndInvalidate(reason);
     }
 
+    /** 世界回退永久关闭已失败的壳；回调边界已尝试过清理时不重试未知接口 */
+    public void retireAfterFailure() {
+        if (retired) return;
+        if (faulted && lastInvalidationReason == InvalidationReason.CALLBACK_FAILURE) {
+            retired = true;
+            context.retire();
+        } else retire(InvalidationReason.CALLBACK_FAILURE);
+    }
+
     private TickResult invalidatedTickResult() {
         return retired ? TickResult.RETIRED : TickResult.INVALIDATED;
     }

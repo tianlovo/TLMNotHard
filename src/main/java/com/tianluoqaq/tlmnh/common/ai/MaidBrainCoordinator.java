@@ -68,7 +68,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private World observedWorld;
     private String observedOwner;
     private String lastPolicyState;
-    private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed;
+    private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed, behaviorProtected;
     private int persistentReadDepth;
     private final BooleanSupplier lifePermission;
     private final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
@@ -118,6 +118,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     @Override
     public void updateTask() {
+        if (behaviorProtected) return;
         if (MaidBrainLifecycle.isWorldUnloading(maid.worldObj)) {
             onUnload();
             return;
@@ -163,6 +164,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (maid.worldObj == null || maid.worldObj.isRemote
             || runtime == null
             || suspended
+            || behaviorProtected
             || maid.guiOpening
             || unloaded
             || persistentReadDepth > 0
@@ -198,6 +200,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         var runtime = policy;
         if (runtime == null || maid.worldObj.isRemote
             || suspended
+            || behaviorProtected
             || unloaded
             || persistentReadDepth > 0
             || lifecycleFailed
@@ -279,6 +282,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (maid.worldObj == null || maid.worldObj.isRemote
             || transitioningPolicy
             || lifecycleFailed
+            || behaviorProtected
             || unloaded
             || persistentReadDepth > 0
             || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)) return policy;
@@ -387,6 +391,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || persistentReadDepth > 0
             || unloaded
             || lifecycleFailed
+            || behaviorProtected
             || transitioningPolicy)
             throw new IllegalStateException("Development component cannot be installed at this lifecycle boundary");
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
@@ -513,6 +518,23 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 .clear();
             afterNavigationActions = null;
             if (telemetry.isEnabled()) telemetry.invalidate("actor_unloaded_during_recording");
+        }
+    }
+
+    /** 仅停行为与其旧预约，不清库存，也不把故障当作可自动恢复的暂停 */
+    public void stopBehaviorForProtection() {
+        if (behaviorProtected) return;
+        behaviorProtected = true;
+        afterNavigationGate.clear();
+        afterLivingGate.clear();
+        try {
+            if (policy == null) cancelControllers();
+            else policy.retireAfterFailure();
+        } catch (RuntimeException | Error failure) {
+            lifecycleFailed = true;
+            throw failure;
+        } finally {
+            maid.clearBehaviorInputs();
         }
     }
 
@@ -671,6 +693,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || suspended
             || unloaded
             || lifecycleFailed
+            || behaviorProtected
             || transitioningPolicy
             || runtime == null
             || !runtime.isReady()

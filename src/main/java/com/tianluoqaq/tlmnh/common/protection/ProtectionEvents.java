@@ -61,7 +61,8 @@ public final class ProtectionEvents {
         var notified = NOTIFIED
             .computeIfAbsent(player.getUniqueID(), ignored -> java.util.concurrent.ConcurrentHashMap.newKeySet());
         for (var fault : IntegrationGuard.faults(Side.SERVER)
-            .values()) if (notified.add(fault.code)) {
+            .values())
+            if ((fault.owner == null || fault.owner.equals(player.getUniqueID())) && notified.add(fault.code)) {
                 var message = new ChatComponentTranslation("chat.tlmnh.protection.fallback", fault.code, fault.key);
                 message.getChatStyle()
                     .setColor(EnumChatFormatting.GOLD);

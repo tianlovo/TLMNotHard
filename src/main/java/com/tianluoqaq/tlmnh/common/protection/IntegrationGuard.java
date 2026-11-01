@@ -23,12 +23,14 @@ public final class IntegrationGuard {
         public final String key, code;
         public final Throwable cause;
         public final Side side;
+        public final java.util.UUID owner;
 
-        Fault(Side side, String key, String code, Throwable cause) {
+        Fault(Side side, String key, String code, Throwable cause, java.util.UUID owner) {
             this.side = side;
             this.key = key;
             this.code = code;
             this.cause = cause;
+            this.owner = owner;
         }
     }
 
@@ -59,6 +61,10 @@ public final class IntegrationGuard {
         return !(side == Side.SERVER && feature.clientOnly) && !faultMap(side).containsKey(feature.id);
     }
 
+    public static synchronized boolean available(Side side, String key) {
+        return !faultMap(side).containsKey(key);
+    }
+
     public static Fault trip(ExternalFeature feature, Throwable failure) {
         return trip(currentSide(), feature, failure);
     }
@@ -87,12 +93,16 @@ public final class IntegrationGuard {
         }
     }
 
-    public static synchronized Fault report(Side side, String key, Throwable failure) {
+    public static Fault report(Side side, String key, Throwable failure) {
+        return report(side, key, failure, null);
+    }
+
+    public static synchronized Fault report(Side side, String key, Throwable failure, java.util.UUID owner) {
         throwIfFatal(failure);
         var faults = faultMap(side);
         var existing = faults.get(key);
         if (existing != null) return existing;
-        var fault = new Fault(side, key, String.format("TLMNH-P%06d", ++sequence), failure);
+        var fault = new Fault(side, key, String.format("TLMNH-P%06d", ++sequence), failure, owner);
         faults.put(key, fault);
         TLMNotHard.LOG.error(
             "{}: {} protected fallback for {}; original owned data must remain intact",
