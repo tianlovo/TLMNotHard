@@ -294,3 +294,11 @@ Indev114 新增 `tlmnhqapilot:ModernDoorTests`，全部由真实实体 tick、�
 Indev115 在既有真实矿车射击场景中加入逐帧头/身体朝向检查，两次在帧末改变载具方向，下一次自然 updateRidden 必须重新对齐
 同一最终玩法候选在 49 tick 完成两次释放与实际资源结算，JSON/XML/process 0 一致；无地面路径或横移
 另有两个局部检查验证未保留内容的计数独立、记忆前提暂停与刷新重置；不据此声称客户端骑乘表现、全部坐骑或完整 F 已验收
+
+## 原飞行对照试点
+
+Indev116 新增 SourceBowTests，并关联既有实际生成撤权/恢复场景；全部使用同一最终玩法 JAR
+专用与原生箭在空气、水中比较真实 tick 递推，4 tick 通过；自然原飞行有限/Infinity/Power/Flame、手优先耗材、原拾取标记与实际命中 79 tick 通过
+原生生成时撤权、旧引用及恢复 59 tick 通过，三项 JSON/XML/process 0 一致
+首候选曾因共享 ModifyConstant 与 Galacticraft 冲突未启动，无 JSON/XML；失败保留，最终改为专用箭自身适配与只读飞行状态
+当前不声明所有弹药/附魔、客户端、严格上游取消时序或自然 O/F/N 统计收益
