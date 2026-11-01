@@ -475,3 +475,8 @@ Indev137 在原 `EnhancedPanicTests.visibleCreeperLeavesSitMovesCancelsResumesAn
 
 Indev138 的 `tlmnhqapilot:EnhancedDoorTests` 覆盖实际门/栅栏独立权限、通过后动画关闭104tick，以及暂停撤销路线/记忆/请求、拒绝旧DoorPath能力并恢复通行关闭45tick
 同包 `ModernDoorTests.naturalDoorAndGateUseIndependentPermissionsAndActualAnimatedClosure` 102tick通过，三项同轮JSON/XML/process0一致；本轮无新CPU执行，单女仆范围不推导多人或全部门型
+
+Indev139 的 `tlmnhqapilot:ProgressionTests` 分五个独立batch，覆盖实际工作台四配方扣料及低阶替换拒绝、核心阻塞/归属/复制/两次制作与赠送隔离、出生回调重入与换手撤权、真实Forge默认/显式配置，以及复用原生命周期探针的死亡库存和神龛失败回滚
+最终玩法包五项同轮JSON/XML/process0通过，均为1tick同步交互；木板与羊毛改用明确可持有的metadata0变体后另补合成单项通过，四个非合成场景及共用夹具保持
+配置在无Forge启动数据的普通JVM曾失败，报告/源码保留并移到实际Forge；初配方失败与诊断也保留，GT输入类型修正后重跑，没有把旧结果改绿
+这些玩家为原生EntityPlayerMP及隔离内存通道，不是FakePlayer；不推导真实多客户端、完整生存链、跨进程升级或性能结论

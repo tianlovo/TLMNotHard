@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 2);
+        invalid.setInteger("Schema", 3);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -122,5 +122,71 @@ public class MaidLifecycleDataTest {
         var restored = new MaidLifecycleData("fixture");
         restored.readFromNBT(tag);
         return restored;
+    }
+
+    @Test
+    public void craftedCredentialsAreIndependentFromEachOtherAndTheOncePerOwnerGiftAfterReload() {
+        var owner = UUID.randomUUID();
+        var data = new MaidLifecycleData("fixture");
+        var first = data.acquiredToken(owner);
+        var second = data.acquiredToken(owner);
+        var gift = data.initialToken(owner);
+        assertNotEquals(first, second);
+        assertNotEquals(first, gift);
+        assertNotEquals(second, gift);
+        assertEquals(MaidLifecycleData.Kind.ACQUIRED, data.initialKind(first));
+        assertNull(data.reserve(first, MaidLifecycleData.Kind.INITIAL));
+        assertNotNull(data.reserve(first, MaidLifecycleData.Kind.ACQUIRED));
+        assertNull(data.reserve(first, MaidLifecycleData.Kind.ACQUIRED));
+        data.commit(first);
+        data.markDelivered(second);
+        var restored = roundtrip(data);
+        assertNull(restored.reserve(first, MaidLifecycleData.Kind.ACQUIRED));
+        assertNotNull(restored.reserve(second, MaidLifecycleData.Kind.ACQUIRED));
+        restored.rollback(second);
+        assertEquals(owner, restored.owner(second, MaidLifecycleData.Kind.ACQUIRED));
+        assertEquals(gift, restored.initialToken(owner));
+        assertFalse(restored.delivered(gift));
+        assertNotNull(restored.reserve(gift, MaidLifecycleData.Kind.INITIAL));
+    }
+
+    @Test
+    public void legacySchemaOneMigratesGiftAndFilmRightsBeforeAddingCraftedCredentials() {
+        var owner = UUID.randomUUID();
+        var old = new MaidLifecycleData("fixture");
+        var gift = old.initialToken(owner);
+        var identity = new NBTTagCompound();
+        identity.setString("ModelId", "geckolib:winefox_hanfu");
+        var film = old.newFilm(owner, UUID.randomUUID(), identity);
+        var legacy = new NBTTagCompound();
+        old.writeToNBT(legacy);
+        legacy.setInteger("Schema", 1);
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(legacy);
+        assertEquals(gift, restored.initialToken(owner));
+        assertEquals(owner, restored.owner(film, MaidLifecycleData.Kind.FILM));
+        assertNull(restored.initialKind(film));
+        assertEquals(
+            "geckolib:winefox_hanfu",
+            restored.reserve(film, MaidLifecycleData.Kind.FILM)
+                .getString("ModelId"));
+        restored.rollback(film);
+        var acquired = restored.acquiredToken(owner);
+        var current = new NBTTagCompound();
+        restored.writeToNBT(current);
+        assertEquals(2, current.getInteger("Schema"));
+        assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
+    }
+
+    @Test
+    public void newerAcquisitionKindsCannotBeSmuggledIntoLegacySchema() {
+        var source = new MaidLifecycleData("fixture");
+        source.acquiredToken(UUID.randomUUID());
+        var tag = new NBTTagCompound();
+        source.writeToNBT(tag);
+        tag.setInteger("Schema", 1);
+        var restored = new MaidLifecycleData("fixture");
+        assertThrows(IllegalStateException.class, () -> restored.readFromNBT(tag));
+        assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
     }
 }
