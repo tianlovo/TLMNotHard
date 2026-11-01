@@ -708,6 +708,15 @@ Indev113 在现代组件中区分原 Brain 刷新与策略撤销：刷新只调�
 ## 代码命名
 
 通用类型、接口、检查任务与诊断来源按职责命名，整合包版本保存在元数据和验证记录
+
+## 原门任务与平台动画
+
+Indev114 由原 MaidInteractWithDoor 在 PATH 有效期间处理开关门，现代分支停止原型 Traversal 门控制，避免两套关闭规则竞争
+DOORS_TO_CLOSE 是跨 Brain 刷新的临时记忆；同类女仆通过缓存附近实体及其 PATH 判断让门，不额外扫描世界或修改对方策略
+实装 MalisisDoors 的关闭可能在开门动画中暂不接受，保留该条记忆等待后续原门任务；不添加路径结束或取消后的全局关门行为
+自然独立权限与实际关闭 199 tick、双女仆让门/刷新保留/后行关闭 128 tick 在同一玩法 JAR 通过，关联 Follow 190 tick 来自前轮未变检查类
+首轮夹具半径令跟随未启动，原始失败记录保留；只修夹具并复测两项，不能声称单轮三项全绿或客户端动画已验收
+提交前 import/注释整理影响六个类的调试行号，指令/描述符/常量一致，其余 1139 类与资源字节相同；最终字节 JAR 未另启运行
 同一实现随运行环境升级时保持类型名稳定，第三方适配按提供方或能力区分
 当前门状态读取使用 `NativeDoorState`，原生导航反馈使用 `NativeNavigationStopSource` / `NativeNavigationStopState`
 限定干燥平台的开发适配为 `DryPlatformFollowActor` / `DryPlatformFollowTeleport`，名称保持其能力范围

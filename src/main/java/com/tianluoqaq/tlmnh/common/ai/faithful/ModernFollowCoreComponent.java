@@ -12,6 +12,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidClimbTa
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerVehicleTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSelfTask;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidInteractWithDoor;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPickupEntitiesTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRunAwayTask;
@@ -50,6 +51,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
+    private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private MaidModernRanged rangedWork = new MaidModernRanged(false), rangedRide = new MaidModernRanged(true);
     private MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
         restRandom = new MaidRunOne(true), rideWorkRandom = new MaidRunOne(false), rideIdleLook = new MaidRunOne(false);
@@ -148,6 +150,8 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             panic.start(activities);
             actor.nextWorldInt(1);
             await.start(actor);
+            doors.trigger(actor);
+            if (!actor.isCurrent()) return;
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
@@ -374,6 +378,7 @@ public final class ModernFollowCoreComponent implements MaidPolicyRuntime.AfterN
             idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
             moveState = new FollowMoveState();
+            doors = new MaidInteractWithDoor();
             perception.refreshSensors();
             activities.reset();
             activities.initialize();

@@ -48,7 +48,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
     MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
-    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor {
+    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor, MaidDoorActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -87,6 +87,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private int lastScheduleEntityTick = -1;
     private Object behaviorIdentity = new Object();
     private Object frameBehaviors;
+    private java.util.Set<MaidDoorActor.Position> doorsToClose;
+    private long doorOpenRequests, doorCloseRequests;
 
     public ModernFollowCoreActor(EntityMaid maid) {
         this.maid = Objects.requireNonNull(maid, "maid");
@@ -611,6 +613,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             walk = null;
             workTarget = null;
             edibleAction = null;
+            doorsToClose = null;
             look = null;
             cantReachSince = null;
             followStop = false;
@@ -1464,6 +1467,160 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         return maid.getShieldController()
             .activeTaskDeadline();
+    }
+
+    public MaidDoorActor.DoorPath doorPath() {
+        guard();
+        return pathMemory == null ? null : new DoorPathView(pathMemory.raw);
+    }
+
+    public java.util.Set<MaidDoorActor.Position> doorsToClose() {
+        guard();
+        return doorsToClose;
+    }
+
+    public void rememberDoors(java.util.Set<MaidDoorActor.Position> positions) {
+        guard();
+        doorsToClose = positions;
+    }
+
+    public MaidDoorActor.Position doorPosition(Point point) {
+        guard();
+        return new MaidDoorActor.Position(world.provider.dimensionId, point);
+    }
+
+    public Point doorFeet() {
+        return airSearchPosition();
+    }
+
+    public boolean canOpenDoor() {
+        guard();
+        return maid.getConfigManager()
+            .isOpenDoor();
+    }
+
+    public boolean canOpenFenceGate() {
+        guard();
+        return maid.getConfigManager()
+            .isOpenFenceGate();
+    }
+
+    public MaidDoorActor.Kind doorKind(MaidDoorActor.Position pos) {
+        guard();
+        var p = pos.point;
+        if (pos.dimension != world.provider.dimensionId || !world.blockExists(p.x, p.y, p.z))
+            return MaidDoorActor.Kind.NONE;
+        var block = world.getBlock(p.x, p.y, p.z);
+        if (block instanceof net.minecraft.block.BlockDoor && block.getMaterial() == Material.wood)
+            return MaidDoorActor.Kind.WOOD_DOOR;
+        return block instanceof net.minecraft.block.BlockFenceGate ? MaidDoorActor.Kind.FENCE_GATE
+            : MaidDoorActor.Kind.NONE;
+    }
+
+    private Point nativeDoorPosition(MaidDoorActor.Position pos) {
+        var p = pos.point;
+        if (world.getBlock(p.x, p.y, p.z) instanceof net.minecraft.block.BlockDoor
+            && (world.getBlockMetadata(p.x, p.y, p.z) & 8) != 0) return new Point(p.x, p.y - 1, p.z);
+        return p;
+    }
+
+    public boolean doorOpen(MaidDoorActor.Position pos) {
+        guard();
+        if (doorKind(pos) == MaidDoorActor.Kind.NONE) return false;
+        var p = nativeDoorPosition(pos);
+        return MaidDoorAccess.open(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z);
+    }
+
+    public boolean setDoorOpen(MaidDoorActor.Position pos, boolean value) {
+        guard();
+        if (doorKind(pos) == MaidDoorActor.Kind.NONE) return false;
+        var p = nativeDoorPosition(pos);
+        if (value) doorOpenRequests++;
+        else doorCloseRequests++;
+        return MaidDoorAccess.setOpen(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z, value);
+    }
+
+    public boolean doorTooFar(MaidDoorActor.Position pos, double distance) {
+        guard();
+        var p = pos.point;
+        return pos.dimension != world.provider.dimensionId
+            || maid.getDistanceSq(p.x + .5, p.y + .5, p.z + .5) >= distance * distance;
+    }
+
+    public boolean otherMaidsComingThrough(MaidDoorActor.Position pos) {
+        guard();
+        String type = net.minecraft.entity.EntityList.getEntityString(maid);
+        if (type == null) return false;
+        var p = pos.point;
+        for (var living : perception.nearby()) {
+            if (!(living instanceof EntityMaid other)
+                || !type.equals(net.minecraft.entity.EntityList.getEntityString(other))
+                || other.getDistanceSq(p.x + .5, p.y + .5, p.z + .5) >= 4) continue;
+            var path = other.getBrainCoordinator()
+                .peekModernBrainPath();
+            if (path == null || path.isFinished() || path.getCurrentPathIndex() <= 0) continue;
+            var before = path.getPathPointFromIndex(path.getCurrentPathIndex() - 1);
+            var next = path.getPathPointFromIndex(path.getCurrentPathIndex());
+            if (p.equals(new Point(before.xCoord, before.yCoord, before.zCoord))
+                || p.equals(new Point(next.xCoord, next.yCoord, next.zCoord))) return true;
+        }
+        return false;
+    }
+
+    public long doorOpenRequests() {
+        return doorOpenRequests;
+    }
+
+    public long doorCloseRequests() {
+        return doorCloseRequests;
+    }
+
+    public int rememberedDoorCount() {
+        return doorsToClose == null ? 0 : doorsToClose.size();
+    }
+
+    private final class DoorPathView implements MaidDoorActor.DoorPath {
+
+        private final PathEntity raw;
+        private final Token lease = token;
+        private final Object behaviors = behaviorIdentity;
+        private final long tick = worldTick;
+        private final int age = entityTick;
+
+        DoorPathView(PathEntity raw) {
+            this.raw = raw;
+        }
+
+        private void check() {
+            guard();
+            if (lease != token || behaviors != behaviorIdentity || tick != worldTick || age != entityTick)
+                throw new IllegalStateException("Expired door path view");
+        }
+
+        public boolean notStarted() {
+            check();
+            return raw.getCurrentPathIndex() <= 0;
+        }
+
+        public boolean done() {
+            check();
+            return raw.isFinished();
+        }
+
+        public Point previous() {
+            check();
+            return node(raw.getCurrentPathIndex() - 1);
+        }
+
+        public Point next() {
+            check();
+            return node(raw.getCurrentPathIndex());
+        }
+
+        private Point node(int index) {
+            var node = raw.getPathPointFromIndex(index);
+            return new Point(node.xCoord, node.yCoord, node.zCoord);
+        }
     }
 
     public boolean hasRangedWalkTarget() {

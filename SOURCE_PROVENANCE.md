@@ -990,3 +990,15 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 实读 Forge 1.7.10 FMLNetworkHandler.openGui 的真实字节码：先 getRemoteGuiContainer，再 closeScreen，随后安装新窗口
 - 目标平台用窗口对象身份释放暂停状态，避免旧窗口关闭清除刚构造的新窗口；该身份不存档，也不作为 GUI 布局或网络验收的替代
 - 其他现代工作点任务、特殊坐骑分支、完整 F/N 策略、真实客户端交互与原版自然 benchmark 仍按首版范围继续验收
+
+## 原门 OneShot 与关门记忆
+
+- Indev114 移植固定 TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+  `entity/ai/brain/task/MaidInteractWithDoor.java`，保留原包与 MIT 来源
+- 原 `MaidBrain` 将门任务放在 priority 2、MoveSink 启动前；仅在 PATH 已开始且未结束时执行，保留相同 next 节点置 3、不同节点递减的原顺序
+- 原 prev 门即使已开也记忆，next 门仅新开时记忆；关闭保留原节点/脚位置判断、方块中心严格 8 格边界、缓存附近同类实体严格 2 格及其 PATH 前后节点让门条件
+- 原木门关闭后移除记忆，栅栏门本次关闭后保留到下次观察；DOORS_TO_CLOSE 没有 codec，行为刷新重建任务但保留集合，不新增 NBT
+- 自有 `MaidDoorActor`、`MaidDoorAccess` 适配帧授权、原 PATH 记忆和目标平台
+  实读 GTNH 2.9.0 的 MalisisDoors `1.19.13-GTNH` 门、栅栏门与 TileEntity 字节码及 modifyVanillaDoors 配置
+- 木门通过原生开关入口保留锁定规则，动画栅栏门通过自身 TileEntity toggle；原生 OPENING 期间可能不接受关闭，适配层保留待关记录等待后续原任务，不强改动画状态
+- 现代分支关闭原型 Traversal 的门处理，旧原型入口保留；当前自然服务端证据不替代客户端动画、所有门变体、多人或完整 F/N 验收

@@ -653,6 +653,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return combatPlanner.getLastAttempt();
     }
 
+    /** 仅窥视原PATH记忆，供同类女仆让门判断，不启动或推进对方策略 */
+    public PathEntity peekModernBrainPath() {
+        if (afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent core) {
+            var path = core.getActor()
+                .peekPathMemory();
+            return path == null ? null : (PathEntity) path.getIdentity();
+        }
+        return null;
+    }
+
     /** 原refresh只停运行行为、重建Behavior/Sensor，不能用策略取消擦掉工作记忆 */
     public boolean refreshModernBrain() {
         var runtime = policy;

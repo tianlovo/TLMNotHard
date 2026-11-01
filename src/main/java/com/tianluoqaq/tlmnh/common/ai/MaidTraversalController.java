@@ -44,6 +44,12 @@ public final class MaidTraversalController {
 
     public void tick(boolean prototypeClimbing) {
         if (maid.worldObj.isRemote) return;
+        if (!prototypeClimbing) {
+            // 现代分支由原Door OneShot与门记忆管理，旧控制器不再开关门或爬梯
+            opened.clear();
+            stopClimbing();
+            return;
+        }
         if (observedWorld != maid.worldObj) {
             opened.clear();
             observedWorld = maid.worldObj;
