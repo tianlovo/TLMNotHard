@@ -503,3 +503,9 @@ Indev143 的 `tlmnhqapilot:EnhancedWaterTests` 保留实际世界tick，核无�
 同包 `ModernCoreTests.waterContinuationUpdatesPathMemoryAndCancelsLiveRoute` 75tick通过；三项来自两份报告，本批无新CPU执行
 首轮水面场景请求未获准的FOLLOW_CORE_COMPONENT切换，改走已开放的FAITHFUL_TLM中间入口后仅重测水面，生产不放宽准入
 请求所有权部分通过公开跳跃入口置入待执行请求并只读观察实际pendingJump，物理上浮和水中移动仍由自然tick验证；没有据此宣布复杂水域、完整N或原版等价
+
+开发单元144复用143玩法包，`NaturalFollowPortTests` / `NaturalWaterPortTests`
+可用 `-Dtlmnh.qaNaturalProfile=enhanced_core_component` 显式采真实增强组件
+不为N设置qaFaithfulProfile，初始/逐帧验证实际N Brain、context、决策数和原N弹道profile
+平坦1980tick与水域1320tick同进程通过，分别9轮1800帧、6轮1200帧；生产/观察器实际工件和打包类资源与比较器核对，三种损坏样本拒绝，旧F描述指标复算保持
+本批没有新生产构建或CPU单测；完整N、原版等价、统计收益和执行成本仍未准入，真实连接原O与移植FakePlayer及其他采集限制见自然跟随工具说明

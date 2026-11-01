@@ -21,7 +21,10 @@ import com.google.gson.JsonObject;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
+import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -66,9 +69,8 @@ public final class NaturalFollowPortTests {
         final List<SavedBlock> outside = new ArrayList<>();
         EntityMaid maid;
         MaidFaithfulBrain core;
-        final com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile expectedProfile = Boolean
-            .getBoolean("tlmnh.qaFaithfulProfile") ? com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM
-                : com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FOLLOW_CORE_COMPONENT;
+        EnhancedCoreBrain enhanced;
+        final MaidBrainProfile expectedProfile = requestedProfile();
         com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime boundRuntime;
         String bindingEntry;
         String selectionResult;
@@ -147,8 +149,10 @@ public final class NaturalFollowPortTests {
                     "productionArtifact",
                     com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity.capture(
                         EntityMaid.class,
-                        MaidFaithfulBrain.class,
-                        com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.class));
+                        expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT ? EnhancedCoreBrain.class
+                            : MaidFaithfulBrain.class,
+                        com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.class,
+                        ModernFollowCoreActor.class));
                 output.add(
                     "observerArtifact",
                     com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity.capture(
@@ -164,13 +168,18 @@ public final class NaturalFollowPortTests {
                 contract.get("contract")
                     .getAsString());
             output.addProperty("candidateIsCompleteFaithfulProfile", false);
+            output.addProperty("candidateIsCompleteEnhancedProfile", false);
             output.addProperty("originalEquivalencePassed", false);
             output.addProperty("statisticalAdmission", false);
             output.addProperty("worldRngAndSensorPhaseUncontrolled", true);
             output.addProperty(
                 "ownerKind",
                 "standard Forge FakePlayer in online/world tables, synthetic position inputs");
-            output.addProperty("sourceFlightProfile", "SOURCE_ORIGINAL (no bow in these scenes)");
+            output.addProperty(
+                "sourceFlightProfile",
+                expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT
+                    ? "NATIVE_MOTION_COMPENSATION (no bow in these scenes)"
+                    : "SOURCE_ORIGINAL (no bow in these scenes)");
             output.add("runs", runs);
             var potions = new JsonArray();
             for (var potion : Potion.potionTypes) if (potion != null) {
@@ -313,17 +322,22 @@ public final class NaturalFollowPortTests {
             sample.addProperty("health", maid.getHealth());
             sample.addProperty(
                 "activity",
-                core.getActivities()
+                enhanced == null ? core.getActivities()
                     .active()
-                    .name());
+                    .name()
+                    : maid.getHomeArea()
+                        .activity()
+                        .name());
+            if (enhanced != null) sample.addProperty(
+                "enhancedGoal",
+                enhanced.selectedKind() == null ? null
+                    : enhanced.selectedKind()
+                        .name());
             sample.addProperty(
                 "speed",
                 maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
                     .getAttributeValue());
-            sample.addProperty(
-                "teleportAttempts",
-                core.getActor()
-                    .teleportAttempts());
+            sample.addProperty("teleportAttempts", actor().teleportAttempts());
             var path = maid.getNavigator()
                 .getPath();
             sample.addProperty("pathPresent", path != null);
@@ -382,12 +396,15 @@ public final class NaturalFollowPortTests {
                     .getAsDouble() + 1,
                 spawn.get(2)
                     .getAsDouble());
-            if (expectedProfile == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM) {
+            if (expectedProfile == MaidBrainProfile.FAITHFUL_TLM
+                || expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT) {
                 var selected = maid.selectBrainProfileForDevelopment(expectedProfile);
                 helper.assertTrue(
                     selected == com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.SELECTED,
-                    "Natural actor F factory selection failed");
-                core = maid.getBrainCoordinator()
+                    "Natural actor requested factory selection failed");
+                if (expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT) enhanced = maid.getBrainCoordinator()
+                    .peekEnhancedCore();
+                else core = maid.getBrainCoordinator()
                     .peekFaithfulBrain();
                 bindingEntry = "entity_protected_profile_selection";
                 selectionResult = selected.name();
@@ -400,9 +417,10 @@ public final class NaturalFollowPortTests {
             }
             boundRuntime = maid.getBrainCoordinator()
                 .peekPolicyRuntime();
-            helper.assertTrue(core != null && boundRuntime != null, "Natural actor has no bound Brain or runtime");
-            core.getActor()
-                .rangedBow()
+            helper.assertTrue(
+                (core != null || enhanced != null) && boundRuntime != null,
+                "Natural actor has no bound Brain or runtime");
+            if (enhanced == null) actor().rangedBow()
                 .setFlightProfileForDevelopment(ModernFlightProfile.SOURCE_ORIGINAL);
             frame = 0;
             frames = new JsonArray();
@@ -435,7 +453,8 @@ public final class NaturalFollowPortTests {
         private JsonObject policySnapshot() {
             var brain = maid.getBrainCoordinator();
             var runtime = brain.peekPolicyRuntime();
-            boolean stable = runtime == boundRuntime && brain.peekFaithfulBrain() == core;
+            boolean stable = runtime == boundRuntime && (enhanced == null ? brain.peekFaithfulBrain() == core
+                : brain.peekEnhancedCore() == enhanced && brain.peekFaithfulBrain() == null);
             helper.assertTrue(
                 stable && runtime != null
                     && runtime.isReady()
@@ -466,11 +485,27 @@ public final class NaturalFollowPortTests {
                 runtime.getContext()
                     .getEpoch());
             value.addProperty("bindingStable", stable);
+            value.addProperty("brainClass", (enhanced == null ? core.getClass() : enhanced.getClass()).getName());
             value.addProperty(
-                "brainClass",
-                core.getClass()
-                    .getName());
+                "flightProfile",
+                actor().rangedBow()
+                    .flightProfile()
+                    .name());
+            if (enhanced != null) value.addProperty("independentCoreDecisions", enhanced.decisions());
             return value;
+        }
+
+        private ModernFollowCoreActor actor() {
+            return enhanced == null ? core.getActor() : enhanced.actor();
+        }
+
+        private static MaidBrainProfile requestedProfile() {
+            String profile = System.getProperty("tlmnh.qaNaturalProfile", "");
+            if (profile.equals("enhanced_core_component")) return MaidBrainProfile.ENHANCED_CORE_COMPONENT;
+            if (profile.equals("faithful_tlm")) return MaidBrainProfile.FAITHFUL_TLM;
+            if (!profile.isEmpty()) throw new IllegalArgumentException("Explicit natural profile unsupported");
+            return Boolean.getBoolean("tlmnh.qaFaithfulProfile") ? MaidBrainProfile.FAITHFUL_TLM
+                : MaidBrainProfile.FOLLOW_CORE_COMPONENT;
         }
 
         private void moveOwner(int at) {

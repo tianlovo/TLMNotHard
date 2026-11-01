@@ -57,7 +57,12 @@ def verify_packaged_resources(identity, artifact, expected_sha, classes):
 def verify_policy(value, row, expected_profile):
     assert value["profile"] == expected_profile
     assert value["ready"] is value["afterNativeNavigation"] is value["developmentOnly"] is value["bindingStable"] is True
-    assert value["brainClass"] == "com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain"
+    enhanced = expected_profile == "enhanced_core_component"
+    assert value["brainClass"] == ("com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain" if enhanced
+                                   else "com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain")
+    if enhanced:
+        assert value["flightProfile"] == "NATIVE_MOTION_COMPENSATION"
+        assert type(value["independentCoreDecisions"]) is int and value["independentCoreDecisions"] >= 0
     assert value["contextMaidUuid"] == row["maidUuid"]
     assert type(value["epoch"]) is int and 0 <= value["epoch"] <= 2 ** 63 - 1
     return value["epoch"]
@@ -72,7 +77,7 @@ def main():
     parser.add_argument("--hqa-result", type=Path, required=True)
     parser.add_argument("--observed", type=Path, required=True)
     parser.add_argument("--candidate-sha256", required=True)
-    parser.add_argument("--expected-port-profile", choices=("follow_core_component", "faithful_tlm"),
+    parser.add_argument("--expected-port-profile", choices=("follow_core_component", "faithful_tlm", "enhanced_core_component"),
                         default="follow_core_component")
     parser.add_argument("--candidate-jar", type=Path)
     parser.add_argument("--pilot-jar", type=Path)
@@ -89,8 +94,10 @@ def main():
     assert port["schema"] in ("follow-natural-port-observation-v1", "follow-natural-port-observation-v2")
     version_two = port["schema"] == "follow-natural-port-observation-v2"
     faithful = args.expected_port_profile == "faithful_tlm"
-    assert version_two or not faithful, "Historical component captures cannot establish F identity"
-    port_label = "F_development" if faithful else "port_component"
+    enhanced = args.expected_port_profile == "enhanced_core_component"
+    factory = faithful or enhanced
+    assert version_two or not factory, "Historical component captures cannot establish F or N identity"
+    port_label = "N_development" if enhanced else "F_development" if faithful else "port_component"
     assert port["contract"] == contract["contract"]
     assert contract["contract"] in ("FOLLOW_NATURAL_O_V1", "FOLLOW_NATURAL_WATER_O_V1")
     water = contract["contract"] == "FOLLOW_NATURAL_WATER_O_V1"
@@ -109,10 +116,20 @@ def main():
         assert port["contractSha256"] == capture["contractSha256"] == digest(args.original_tool / "contract.json")
         if faithful:
             assert observed["canonical_faithful_profile"] is True
-        verify_packaged_resources(port["productionArtifact"], args.candidate_jar, args.candidate_sha256, (
+        if enhanced:
+            assert observed["requested_natural_profile"] == "enhanced_core_component"
+            assert observed["canonical_faithful_profile"] is False
+            assert port["candidateIsCompleteEnhancedProfile"] is False
+        production_classes = (
             "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
-            "com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain",
-            "com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime"))
+            "com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain" if enhanced
+                else "com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain",
+            "com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime")
+        actor_class = "com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor"
+        if enhanced or actor_class in port["productionArtifact"]["classResources"]:
+            production_classes += (actor_class,)
+        verify_packaged_resources(port["productionArtifact"], args.candidate_jar, args.candidate_sha256,
+                                  production_classes)
         verify_packaged_resources(port["observerArtifact"], args.pilot_jar, observed["pilot_sha256"], (
             "com.tianluoqaq.tlmnh.qa.NaturalFollowPortTests",
             "com.tianluoqaq.tlmnh.qa.NaturalFollowPortTests$Collector",
@@ -136,12 +153,14 @@ def main():
             o_terrain = o_rows[key]["terrainBefore"]
             assert row["terrainBefore"] == {k: o_terrain[k] for k in ("kind", "waterCells", "glassCells", "cells")}
         if version_two:
-            assert row["bindingEntry"] == ("entity_protected_profile_selection" if faithful else "explicit_development_component")
-            assert row["selectionResult"] == ("SELECTED" if faithful else "NOT_APPLICABLE")
+            assert row["bindingEntry"] == ("entity_protected_profile_selection" if factory else "explicit_development_component")
+            assert row["selectionResult"] == ("SELECTED" if factory else "NOT_APPLICABLE")
             previous_epoch = verify_policy(row["initialPolicy"], row, args.expected_port_profile)
         for i, frame in enumerate(row["frames"]):
             if version_two:
                 epoch = verify_policy(frame["policy"], row, args.expected_port_profile)
+                if enhanced:
+                    assert frame["policy"]["independentCoreDecisions"] > 0
                 assert epoch >= previous_epoch
                 previous_epoch = epoch
             assert type(frame["index"]) is int and type(frame["age"]) is int
@@ -194,6 +213,8 @@ def main():
         "port_group": port_label,
         "policy_provenance_verified": version_two,
         "canonical_faithful_binding_verified": faithful and version_two,
+        "independent_enhanced_binding_verified": enhanced and version_two,
+        "full_enhanced_profile_passed": False,
         "packaged_class_resources_verified": version_two,
         "post_transform_definitions_verified": False,
         "inputs": {"original_capture": digest(args.original_capture), "original_identity": digest(args.original_build_identity),
