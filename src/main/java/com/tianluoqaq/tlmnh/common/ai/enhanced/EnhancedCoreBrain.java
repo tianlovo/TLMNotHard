@@ -35,6 +35,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final EnhancedAmbientController ambient;
     private final EnhancedSnowballController snowball;
     private final EnhancedBuoyancyController buoyancy;
+    private final EnhancedFollowController follow;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
     private Kind selectedKind;
     private String selectedTarget;
@@ -71,6 +72,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
         snowball = new EnhancedSnowballController(maid, actor, perception);
         buoyancy = new EnhancedBuoyancyController(maid, actor);
+        follow = new EnhancedFollowController(maid, actor);
     }
 
     @Override
@@ -131,8 +133,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                 && !owner.isDeadOrDying()
                 && owner.getWorldIdentity() == actor.getWorldIdentity()) {
                 double start = selectedKind == Kind.FOLLOW ? 2 : 6;
-                if (!actor.closerThan(owner, start) && actor.closerThan(owner, 64))
-                    frame.offer(Group.COMMAND, Kind.FOLLOW, "owner", 1, owner);
+                if (!actor.closerThan(owner, start)) frame.offer(Group.COMMAND, Kind.FOLLOW, "owner", 1, owner);
             }
             boolean eating = maid.getMealController()
                 .isEating();
@@ -182,10 +183,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             if (!frame.accepts(selected)) return;
             switch (selected.kind) {
                 case BREATHE -> breathing.execute();
-                case FOLLOW -> actor.setWalkAndLookTargetMemories(
-                    (com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload,
-                    .5F,
-                    2);
+                case FOLLOW -> follow
+                    .execute((com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload);
                 case HOME -> actor.setPositionWalkAndLook(
                     (com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point) selected.payload,
                     .7F,
@@ -344,6 +343,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedBuoyancyController buoyancy() {
         return buoyancy;
+    }
+
+    public EnhancedFollowController follow() {
+        return follow;
     }
 
     public ModernFollowCoreActor actor() {

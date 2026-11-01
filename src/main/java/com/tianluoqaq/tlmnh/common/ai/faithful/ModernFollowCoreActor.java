@@ -22,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.living.EnderTeleportEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
@@ -677,6 +678,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public boolean teleportToOwner(Owner value) {
+        return teleportToOwner(value, () -> true, false);
+    }
+
+    public boolean ownerMatchesEntity(Owner value, EntityLivingBase entity) {
+        return owner(value).player == entity;
+    }
+
+    /** 增强恢复使用实际落点身体空间，并在Forge传送回调后复核本次权限和地形 */
+    public boolean teleportEnhancedToOwner(Owner value, java.util.function.BooleanSupplier authorized) {
+        return teleportToOwner(value, authorized, true);
+    }
+
+    private boolean teleportToOwner(Owner value, java.util.function.BooleanSupplier authorized, boolean enhanced) {
         var player = owner(value).player;
         navigationLease();
         teleportAttempts = 0;
@@ -685,6 +699,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         int ownerX = MathHelper.floor_double(player.posX), ownerY = MathHelper.floor_double(player.posY),
             ownerZ = MathHelper.floor_double(player.posZ);
         for (int i = 0; i < 10; i++) {
+            if (!authorized.getAsBoolean()) return false;
             int x = ownerX + maid.getRNG()
                 .nextInt(7) - 3;
             int y = ownerY + maid.getRNG()
@@ -699,12 +714,36 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 || world.getBlock(x, y - 1, z) == MaidLifeContent.snackCabinet) continue;
             var kind = evaluator.cellType(x, y, z);
             if (kind != MaidPathType.WALKABLE && kind != MaidPathType.WATER) continue;
-            var translated = maid.boundingBox.getOffsetBoundingBox(
-                x - MathHelper.floor_double(maid.posX),
-                y - MathHelper.floor_double(maid.posY),
-                z - MathHelper.floor_double(maid.posZ));
+            var translated = enhanced
+                ? maid.boundingBox.getOffsetBoundingBox(x + .5 - maid.posX, y - maid.posY, z + .5 - maid.posZ)
+                : maid.boundingBox.getOffsetBoundingBox(
+                    x - MathHelper.floor_double(maid.posX),
+                    y - MathHelper.floor_double(maid.posY),
+                    z - MathHelper.floor_double(maid.posZ));
             if (!world.getCollidingBoundingBoxes(maid, translated)
                 .isEmpty()) continue;
+            if (enhanced) {
+                var event = new EnderTeleportEvent(maid, x + .5, y, z + .5, 0);
+                if (MinecraftForge.EVENT_BUS.post(event) || !authorized.getAsBoolean()
+                    || event.targetX != x + .5
+                    || event.targetY != y
+                    || event.targetZ != z + .5
+                    || event.attackDamage != 0) return false;
+                if (!world.blockExists(x, y - 1, z)
+                    || !world.blockExists(x, y + MathHelper.ceiling_float_int(maid.height), z)
+                    || world.getBlock(x, y - 1, z) == MaidLifeContent.snackCabinet) return false;
+                var fresh = new MaidWalkEvaluator(navigation.context(new MaidNativePathRegion(world)));
+                var freshKind = fresh.cellType(x, y, z);
+                if (freshKind != MaidPathType.WALKABLE && freshKind != MaidPathType.WATER
+                    || !world
+                        .getCollidingBoundingBoxes(
+                            maid,
+                            maid.boundingBox
+                                .getOffsetBoundingBox(x + .5 - maid.posX, y - maid.posY, z + .5 - maid.posZ))
+                        .isEmpty())
+                    return false;
+            }
+            if (!authorized.getAsBoolean()) return false;
             navigationLease();
             maid.setLocationAndAngles(x + .5, y, z + .5, maid.rotationYaw, maid.rotationPitch);
             stopNavigation();
