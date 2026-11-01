@@ -247,7 +247,7 @@ public final class ModernVehicleTests {
         }
     }
 
-    private static final class Fixture {
+    static final class Fixture {
 
         final GameTestHelper helper;
         final List<Entity> owned = new ArrayList<>();
@@ -289,17 +289,19 @@ public final class ModernVehicleTests {
         }
 
         void assertPassenger() {
+            assertPassenger(f.core.getActor());
+        }
+
+        void assertPassenger(com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor actor) {
             var seat = seat();
             helper.assertTrue(
                 boat.riddenByEntity == f.owner && seat != null
                     && seat.riddenByEntity == f.maid
                     && f.maid.ridingEntity == seat,
                 "Maid displaced the owner or did not join the real passenger seat");
-            var view = f.core.getActor()
-                .ownerControlledVehicle();
+            var view = actor.ownerControlledVehicle();
             helper.assertTrue(
-                view != null && f.core.getActor()
-                    .sameMaidVehicle(view),
+                view != null && actor.sameMaidVehicle(view),
                 "Seat proxy was not normalized to the owner's controlled boat");
         }
 
