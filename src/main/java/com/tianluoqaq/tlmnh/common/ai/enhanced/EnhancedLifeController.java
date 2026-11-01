@@ -200,12 +200,13 @@ public final class EnhancedLifeController {
 
     /** 不访问失效actor，不恢复已提交物品；床租约只按实际持有身份释放 */
     public void cancel() {
-        if (reservedBed != null) reservedBed.release(maid);
+        var bed = reservedBed;
         reservedBed = null;
         observations = Collections.emptyList();
         observedToken = null;
         nextScan = 0;
         sensor.clear();
+        if (bed != null) bed.release(maid);
     }
 
     public int bites() {

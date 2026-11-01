@@ -10,6 +10,7 @@ public final class MaidIntentFrame {
 
     public enum Group {
         EMERGENCY,
+        COMBAT,
         COMMAND,
         CARE,
         AUTONOMOUS
@@ -22,7 +23,9 @@ public final class MaidIntentFrame {
         SNACK,
         PICKUP,
         BREATHE,
-        HEAL
+        HEAL,
+        MELEE,
+        RANGED
     }
 
     private final MaidPolicyContext context;

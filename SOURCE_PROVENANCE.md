@@ -1144,3 +1144,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 共享MaidModernLife允许实际持有床租约的同一女仆完成入睡，其他占用者仍拒绝；固定上游任务的原包与来源保持
 - 同块更换床TE以实际对象身份重新判断；替换后同tick合法重新入睡无需人工等待帧
 - 初/最终131玩法包只增强生活类字节变化，F自然睡眠44tick与租约CPU按其原执行层复用，不改写为最终包新执行
+
+## 增强战斗与原生移动靶解算
+
+- EnhancedCombatController为本工程独立实现，目标选择/分组与近战、弓、盾动作组合不调用F或Legacy root
+- 复用固定上游TaskAttack/TaskBowAttack的任务合法性及MaidUseShieldTask/MaidAttackStrafingTask动作原语；原文件包名、来源和执行服务保持
+- ModernFollowCoreActor新增本帧目标视图、回调提交许可与仅自有弓租约释放，F旧入口默认许可和原生静止靶profile保持
+- 增强actor显式使用已有ObservedTargetMotion估计与原生物理求解器，未移植新的预测框架或更改原生箭重力
+- 目标事件的实际重定向结果、伤害Pre和原生箭生成回调后重新判断合法性；隐藏追踪只使用最后可见点

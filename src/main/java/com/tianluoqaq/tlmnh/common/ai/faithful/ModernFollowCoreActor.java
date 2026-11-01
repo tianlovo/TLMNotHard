@@ -94,6 +94,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private long doorOpenRequests, doorCloseRequests;
 
     public ModernFollowCoreActor(EntityMaid maid) {
+        this(maid, com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile.NATIVE_STATIC_COMPENSATION);
+    }
+
+    public ModernFollowCoreActor(EntityMaid maid,
+        com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile flightProfile) {
         this.maid = Objects.requireNonNull(maid, "maid");
         world = Objects.requireNonNull(maid.worldObj, "world");
         if (!(maid.getNavigator() instanceof MaidPathNavigator modern))
@@ -101,7 +106,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigation = modern;
         life = new MaidModernLife(maid, this::isCurrent);
         cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
-        rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid);
+        rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid, flightProfile);
     }
 
     public void beginEntityFrame(MaidPolicyRuntime runtime, Token token) {
@@ -1313,6 +1318,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return target == null ? null : new AttackTargetView(target);
     }
 
+    /** 当前实体观察转换成仅本帧有效的能力引用，不授予攻击许可 */
+    public MaidCombatActor.Target combatTargetView(EntityLivingBase entity) {
+        guard();
+        if (entity == null || entity.worldObj != world || world.getEntityByID(entity.getEntityId()) != entity)
+            throw new IllegalArgumentException("Foreign combat observation");
+        return new AttackTargetView(entity);
+    }
+
     public MaidCombatActor.Target findFirstValidAttackTarget() {
         guard();
         return IAttackTask.findFirstValidAttackTarget(maid, perception.visible(), attack)
@@ -1411,6 +1424,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void hurtTarget(MaidCombatActor.Target value) {
+        hurtTarget(value, () -> true);
+    }
+
+    public void hurtTarget(MaidCombatActor.Target value, java.util.function.BooleanSupplier permitted) {
         var view = attackTarget(value);
         var weapon = maid.getHeldItem();
         var before = weapon == null ? null : weapon.copy();
@@ -1420,10 +1437,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 .target() == view.entity
             && maid.getHeldItem() == weapon
             && ItemStack.areItemStacksEqual(weapon, before);
-        java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && view.entity.isEntityAlive()
+        java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && permitted.getAsBoolean()
+            && view.entity.isEntityAlive()
             && attack.hasAssaultWeapon(maid)
             && attack.canAttack(maid, view.entity)
-            && targetVisible(view)
+            && (targetVisible(view) || runtime.getProfile()
+                == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT
+                && maid.canEntityBeSeen(view.entity))
             && withinMeleeRange(view);
         meleeAttempts++;
         var result = MaidMeleeAttack.hurtForModern(maid, view.entity, admitted, completion);
@@ -1741,6 +1761,21 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
     }
 
+    public boolean ownsRangedUse() {
+        guard();
+        return rangedUseLease != null && maid.getItemUseState()
+            .isCurrent(rangedUseLease);
+    }
+
+    /** 增强动作只释放自己的租约，不停止其他动作新取得的物品使用 */
+    public void stopOwnedRangedUse() {
+        guard();
+        var owned = rangedUseLease;
+        rangedUseLease = null;
+        maid.getItemUseState()
+            .release(owned);
+    }
+
     public void stopRangedItemUse() {
         guard();
         // 原stopUsingItem停止当前任意手/种类，身份捕获防止回调擦掉后来持有者
@@ -1751,13 +1786,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void performRangedAttack(MaidCombatActor.Target value, float charge) {
+        fireRangedAttackForPolicy(value, charge, () -> true);
+    }
+
+    public boolean fireRangedAttackForPolicy(MaidCombatActor.Target value, float charge,
+        java.util.function.BooleanSupplier permitted) {
         var view = attackTarget(value);
         var item = maid.getHeldItem();
         var before = item == null ? null : item.copy();
-        rangedBow.fireForModern(
+        return rangedBow.fireForModern(
             view.entity,
             charge,
-            () -> view.current() && maid.getTask() == MaidTask.RANGED_ATTACK
+            () -> view.current() && permitted.getAsBoolean()
+                && maid.getTask() == MaidTask.RANGED_ATTACK
                 && maid.getModernCombatMemory()
                     .target() == view.entity
                 && ranged.hasBow(maid)

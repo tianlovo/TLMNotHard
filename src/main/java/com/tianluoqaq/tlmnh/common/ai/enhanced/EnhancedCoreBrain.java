@@ -27,6 +27,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     private final MaidIntentArbiter arbiter = new MaidIntentArbiter();
     private final EnhancedNavigationController navigation;
     private final EnhancedLifeController life;
+    private final EnhancedCombatController combat;
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
     private Kind selectedKind;
@@ -36,13 +37,19 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public EnhancedCoreBrain(EntityMaid maid) {
         this.maid = java.util.Objects.requireNonNull(maid, "maid");
-        actor = new ModernFollowCoreActor(maid);
+        // 新增强实例不继承其他策略的攻击执行记忆或冷却
+        maid.getModernCombatMemory()
+            .clear();
+        actor = new ModernFollowCoreActor(
+            maid,
+            com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
         var budget = com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget.forWorld(maid.worldObj);
         var identity = maid.getUniqueID();
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
         life = new EnhancedLifeController(maid, actor);
+        combat = new EnhancedCombatController(maid, actor, perception);
     }
 
     @Override
@@ -56,13 +63,14 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
             perception.tick();
             actor.maintainSleep();
             decisions++;
-            // 战斗和骑乘尚未接入；本组件持有的睡眠继续接受生活合法性/日程检查
+            // 骑乘尚未接入；本组件持有的睡眠继续接受生活合法性/日程检查
             var home = maid.getHomeArea();
             boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
             if (!maid.isTamed() || !actor.canBrainMoving() && !sleeping
                 || home.enabled() && !home.sameDimension()
-                || maid.getTask() != MaidTask.IDLE
-                || perception.nearestHostile() != null) {
+                || maid.getTask() != MaidTask.IDLE && maid.getTask() != MaidTask.ATTACK
+                    && maid.getTask() != MaidTask.RANGED_ATTACK
+                || maid.getTask() == MaidTask.IDLE && perception.nearestHostile() != null) {
                 stopSelected();
                 return;
             }
@@ -100,6 +108,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                     "meal",
                     Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
                     null);
+            combat.offer(frame);
             life.offer(frame, runtime.getContext());
             if (maid.isPickup() && !actor.isSleeping()) {
                 int count = 0;
@@ -140,6 +149,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
                 case SLEEP, SNACK -> life.execute(
                     (com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent) selected.payload,
                     runtime.getContext());
+                case MELEE, RANGED -> combat
+                    .execute((net.minecraft.entity.EntityLivingBase) selected.payload, selected.kind == Kind.RANGED);
                 case HEAL -> {
                     // 活跃进食不重复调用开始效果，紧急组仍可取消当前物品租约
                     if (!maid.getMealController()
@@ -186,14 +197,18 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
     }
 
     private void stopSelected() {
+        selectedKind = null;
+        selectedTarget = null;
         navigation.cancel();
         try {
-            life.cancel();
+            try {
+                life.cancel();
+            } finally {
+                combat.cancel();
+            }
         } finally {
             actor.cancelOwnedResources();
         }
-        selectedKind = null;
-        selectedTarget = null;
     }
 
     @Override
@@ -222,6 +237,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreAc
 
     public long transitions() {
         return transitions;
+    }
+
+    public EnhancedCombatController combat() {
+        return combat;
     }
 
     public EnhancedLifeController life() {

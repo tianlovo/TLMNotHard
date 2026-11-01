@@ -36,6 +36,7 @@ public final class MaidBowAttack {
 
     public enum ModernFlightProfile {
         NATIVE_STATIC_COMPENSATION,
+        NATIVE_MOTION_COMPENSATION,
         SOURCE_ORIGINAL
     }
 
@@ -68,7 +69,16 @@ public final class MaidBowAttack {
     private ModernFlightProfile modernFlightProfile = ModernFlightProfile.NATIVE_STATIC_COMPENSATION;
 
     public MaidBowAttack(EntityMaid maid) {
-        this.maid = maid;
+        this(maid, ModernFlightProfile.NATIVE_STATIC_COMPENSATION);
+    }
+
+    public MaidBowAttack(EntityMaid maid, ModernFlightProfile profile) {
+        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        modernFlightProfile = java.util.Objects.requireNonNull(profile, "profile");
+    }
+
+    public ModernFlightProfile flightProfile() {
+        return modernFlightProfile;
     }
 
     public static boolean hasBow(EntityMaid maid) {
@@ -220,7 +230,9 @@ public final class MaidBowAttack {
                 lastSolution = ArrowInterceptSolver.solve(
                     origin,
                     aimPoint(target),
-                    prototype ? motion.velocity() : new BallisticVector(0, 0, 0),
+                    prototype || modernFlightProfile == ModernFlightProfile.NATIVE_MOTION_COMPENSATION
+                        ? motion.velocity()
+                        : new BallisticVector(0, 0, 0),
                     3.0,
                     MAX_FLIGHT_TICKS,
                     ArrowPhysics.OVERWORLD_AIR);
