@@ -7,7 +7,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
@@ -88,7 +88,7 @@ public final class ModernDoorTests {
         helper.assertTrue(follower.bindTo(f.owner.getUniqueID()), "Second maid binding failed");
         follower.setPickup(false);
         helper.spawnEntity(follower, 2.5, 1, 3.5);
-        var second = new ModernFollowCoreComponent(follower);
+        var second = new MaidFaithfulBrain(follower);
         follower.getBrainCoordinator()
             .setAfterNavigationActionsForDevelopment(second);
         follower.setSchedule(MaidSchedule.ALL);

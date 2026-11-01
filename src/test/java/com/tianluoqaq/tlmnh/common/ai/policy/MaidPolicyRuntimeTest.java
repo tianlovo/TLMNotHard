@@ -117,7 +117,8 @@ public class MaidPolicyRuntimeTest {
                         .isCurrent(previous));
                 assertFalse(runtime.isReady());
             };
-            assertFalse(profile.isAvailable());
+            assertEquals(profile == MaidBrainProfile.FAITHFUL_TLM, profile.isAvailable());
+            if (profile == MaidBrainProfile.FAITHFUL_TLM) assertTrue(profile.isDevelopmentOnly());
             assertEquals(SelectionResult.UNAVAILABLE, runtime.select(profile));
             assertEquals(profile, runtime.getProfile());
             assertFalse(runtime.isReady());
@@ -643,6 +644,100 @@ public class MaidPolicyRuntimeTest {
         actor.onOrdinary = () -> actor.runtime.invalidate(InvalidationReason.OWNER_CHANGED);
         assertEquals(TickResult.INVALIDATED, actor.runtime.tick(() -> true));
         events(actor, "combat", "ordinary:true", "cancel");
+    }
+
+    @Test
+    public void faithfulBindingUsesNativeAndEntityPhasesWithoutLegacyDispatch() {
+        var actor = new TestActions();
+        var faithful = new MaidPolicyRuntime.FaithfulActions() {
+
+            @Override
+            public void tick(MaidPolicyContext.Token token) {
+                actor.events.add("faithful");
+            }
+
+            @Override
+            public void afterLivingUpdate(MaidPolicyContext.Token token) {
+                actor.events.add("entity");
+            }
+
+            @Override
+            public void cancel() {
+                actor.events.add("faithful_cancel");
+            }
+        };
+        var runtime = new MaidPolicyRuntime(UUID.randomUUID(), actor, faithful);
+        assertEquals(SelectionResult.SELECTED, runtime.select(MaidBrainProfile.FAITHFUL_TLM));
+        actor.events.clear();
+        assertEquals(TickResult.WRONG_PHASE, runtime.tick(() -> {
+            fail("F queried legacy life");
+            return true;
+        }));
+        assertEquals(TickResult.COMPLETED, runtime.tickAfterNativeNavigation());
+        assertEquals(TickResult.COMPLETED, runtime.tickAfterLivingUpdate());
+        events(actor, "faithful", "entity");
+        var old = runtime.getContext()
+            .getToken();
+        assertEquals(SelectionResult.UNAVAILABLE, runtime.select(MaidBrainProfile.ENHANCED));
+        assertFalse(
+            runtime.getContext()
+                .isCurrent(old));
+        assertEquals(TickResult.UNAVAILABLE, runtime.tickAfterNativeNavigation());
+        events(actor, "faithful", "entity", "cancel", "faithful_cancel");
+    }
+
+    @Test
+    public void ordinaryDevelopmentCallbackCannotQualifyAsFaithfulBrain() {
+        var actor = new TestActions();
+        var component = new MaidPolicyRuntime.AfterNavigationActions() {
+
+            @Override
+            public void tick(MaidPolicyContext.Token token) {
+                actor.events.add("component");
+            }
+
+            @Override
+            public void cancel() {}
+        };
+        var runtime = new MaidPolicyRuntime(UUID.randomUUID(), actor, component);
+        assertEquals(SelectionResult.UNAVAILABLE, runtime.select(MaidBrainProfile.FAITHFUL_TLM));
+        assertEquals(TickResult.UNAVAILABLE, runtime.tickAfterNativeNavigation());
+        events(actor, "cancel");
+        assertEquals(SelectionResult.SELECTED, runtime.select(MaidBrainProfile.FOLLOW_CORE_COMPONENT));
+        actor.events.clear();
+        assertEquals(TickResult.COMPLETED, runtime.tickAfterNativeNavigation());
+        events(actor, "component");
+    }
+
+    @Test
+    public void faithfulFailureRetiresWithoutRepeatedCleanupOrPrototypeFallback() {
+        var actor = new TestActions();
+        var failure = new NoSuchMethodError("provider");
+        var faithful = new MaidPolicyRuntime.FaithfulActions() {
+
+            @Override
+            public void tick(MaidPolicyContext.Token token) {
+                throw failure;
+            }
+
+            @Override
+            public void cancel() {
+                actor.events.add("faithful_cancel");
+            }
+        };
+        var runtime = new MaidPolicyRuntime(UUID.randomUUID(), actor, faithful);
+        runtime.select(MaidBrainProfile.FAITHFUL_TLM);
+        actor.events.clear();
+        try {
+            runtime.tickAfterNativeNavigation();
+            fail("F failure must reach the world boundary");
+        } catch (NoSuchMethodError actual) {
+            assertSame(failure, actual);
+        }
+        runtime.retireAfterFailure();
+        assertEquals(TickResult.RETIRED, runtime.tickAfterLivingUpdate());
+        assertEquals(TickResult.RETIRED, runtime.tick(() -> true));
+        events(actor, "cancel", "faithful_cancel");
     }
 
     private static void events(TestActions actor, String... expected) {

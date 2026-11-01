@@ -21,7 +21,7 @@ import com.google.gson.JsonObject;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -65,7 +65,7 @@ public final class NaturalFollowPortTests {
         final String daylight;
         final List<SavedBlock> outside = new ArrayList<>();
         EntityMaid maid;
-        ModernFollowCoreComponent core;
+        MaidFaithfulBrain core;
         JsonArray frames;
         JsonObject row;
         int caseIndex, repetition, warmup, frame, total;
@@ -356,7 +356,7 @@ public final class NaturalFollowPortTests {
                     .getAsDouble() + 1,
                 spawn.get(2)
                     .getAsDouble());
-            core = new ModernFollowCoreComponent(maid);
+            core = new MaidFaithfulBrain(maid);
             maid.getBrainCoordinator()
                 .setAfterNavigationActionsForDevelopment(core);
             core.getActor()

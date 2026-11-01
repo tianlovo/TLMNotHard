@@ -390,3 +390,11 @@ Indev126 将适配与专用夹具按模组/侧或用途/职责放入compat，普
 WithoutOptionalApis同时隔离业务壳及其Battlegear、AppleCore、TConstruct和TinkersDefense适配，外部API仍被拒绝，不能通过父加载器的真实提供方绕过缺失场景
 最终同JAR三项既有场景通过：动画门95、进食与乘船32、缺失接口与保管1tick，JSON/XML/process0一致
 没有新建镜像用例或重跑历史全集；专用构造与观察类的源码搬移检查不等于新的客户端或全部盾牌运行验收
+
+## 专用 F 策略验证
+
+显式设置 `tlmnh.qaFaithfulProfile` 时，ModernCoreTests.Fixture从实体保护入口选择FAITHFUL_TLM，并核实际profile与协调器创建的MaidFaithfulBrain
+默认夹具继续使用原窄开发入口，历史冻结样本与合同不改写；当前引用同步类名，不改变其原观察断言
+FaithfulPolicyTests用真实命令切到不可用N，观察旧授权退休且不调原型，再显式恢复F并执行原生NBT读写，等待自然tick重建新运行实例
+另一场景使旧清理抛出接口错误，核新F工厂不启动、故障只停一次、普通选择不能绕过停用、原附魔苹果保留
+同最终127五项通过：生命周期13/9tick，实际F跟随45、进食/乘船32、箭盾70tick；仅证明这些行为与边界，不授予完整O/F/N或跨世界/客户端验收

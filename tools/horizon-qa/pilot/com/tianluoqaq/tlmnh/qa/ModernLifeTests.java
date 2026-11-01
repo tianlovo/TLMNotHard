@@ -11,7 +11,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState.Activity;
-import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
@@ -70,7 +70,7 @@ public final class ModernLifeTests {
     public static void occupiedBedIsSkippedBrokenBedWakesAndRetiredWorkMemoryCannotSleep(GameTestHelper helper) {
         // 清理在标准Fixture关闭主人连接/票据前执行
         EntityMaid[] other = { null };
-        ModernFollowCoreComponent[] otherCore = { null };
+        MaidFaithfulBrain[] otherCore = { null };
         helper.afterTest(() -> {
             if (other[0] != null) {
                 other[0].getBrainCoordinator()
@@ -138,7 +138,7 @@ public final class ModernLifeTests {
                 helper.assertTrue(rejected && closeBed.isOwnedBy(other[0]), "Retired actor changed the foreign bed");
                 closeBed.release(other[0]);
                 other[0].setPose(MaidPose.SLEEPING, false);
-                otherCore[0] = new ModernFollowCoreComponent(other[0]);
+                otherCore[0] = new MaidFaithfulBrain(other[0]);
                 other[0].getBrainCoordinator()
                     .setAfterNavigationActionsForDevelopment(otherCore[0]);
                 other[0].getBrainCoordinator()

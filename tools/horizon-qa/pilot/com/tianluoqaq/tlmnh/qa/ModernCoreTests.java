@@ -18,10 +18,11 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreComponent;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 
@@ -251,7 +252,7 @@ public final class ModernCoreTests {
         final GameTestHelper helper;
         final EntityMaid maid;
         final EntityPlayerMP owner;
-        final ModernFollowCoreComponent core;
+        final MaidFaithfulBrain core;
         final MaidPathNavigator navigation;
         final int x, y, z;
         double previousX, previousY, previousZ;
@@ -332,10 +333,26 @@ public final class ModernCoreTests {
             helper.assertTrue(maid.bindTo(owner.getUniqueID()), "Fresh owner binding failed");
             maid.setPickup(false);
             helper.spawnEntity(maid, 1.5, 1, 4.5);
-            core = new ModernFollowCoreComponent(maid);
             navigation = (MaidPathNavigator) maid.getNavigator();
-            maid.getBrainCoordinator()
-                .setAfterNavigationActionsForDevelopment(core);
+            if (Boolean.getBoolean("tlmnh.qaFaithfulProfile")) {
+                helper.assertTrue(
+                    maid.selectBrainProfileForDevelopment(
+                        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM)
+                        == MaidPolicyRuntime.SelectionResult.SELECTED,
+                    "Canonical F selection failed");
+                core = maid.getBrainCoordinator()
+                    .peekFaithfulBrain();
+                helper.assertTrue(
+                    core != null && maid.getBrainCoordinator()
+                        .peekPolicyRuntime()
+                        .getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM,
+                    "Fixture silently used a component or legacy profile");
+                System.out.println("TLMNH_CANONICAL_F_BOUND uuid=" + maid.getUniqueID());
+            } else {
+                core = new MaidFaithfulBrain(maid);
+                maid.getBrainCoordinator()
+                    .setAfterNavigationActionsForDevelopment(core);
+            }
             previousX = maid.posX;
             previousY = maid.posY;
             previousZ = maid.posZ;
