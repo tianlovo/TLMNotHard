@@ -90,6 +90,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super(world);
         setSize(0.6F, 1.5F);
         func_110163_bv();
+        ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
+            .tlmnh$setNavigator(new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator(this, world));
         getNavigator().setCanSwim(true);
         tasks.addTask(0, brain);
     }

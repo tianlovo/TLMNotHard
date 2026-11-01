@@ -705,21 +705,26 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 
 - GT5 5.09.54.265 固定提交 bb00f3f1023e20d3cce84cf09abb442d22a3a5a5：GTFoodStat 和 MetaGeneratedItem 与原基线源码及实装类字节一致，保留现有食物字段适配
 - Backhand 1.8.18 固定提交 a18c3ab5dc15009beeb45716c0493912be55dbca：核对实装常用副手 API；不借此声明玩家交互或女仆盾牌组合已通过
-- Angelica 2.2.43 固定提交 2b46b4f602dfd7c6b5dd67f42acd853adfa1d9c6：反射矩阵、客户端纹理单元与绘制计数分别改从 GLSMMatrices、GLSMTextures、GLSMDraws 读取，保留旧 API 回退
+- Angelica 2.2.43 固定提交 2b46b4f602dfd7c6b5dd67f42acd853adfa1d9c6：反射矩阵、客户端纹理单元与绘制计数分别改从
+  GLSMMatrices、GLSMTextures、GLSMDraws 读取，保留旧 API 回退
 - Et Futurum 2.6.65-GTNH 固定提交 ff1a4717b22fa16da0d986deb3c59d0d4c9ff9db：核对变更路径，旁观保护仍须在正式版实机确认
 - 正式版依赖审计与运行证据单列，旧 RC2 结果不迁为正式版通过
 
 ## 受伤事实与活动中断
 
-- 固定上游 TLM 的 MaidPanicTask、MaidClearHurtTask、MaidRunAwayTask 与 MaidBrain.registerPanicGoals：受伤触发 PANIC 活动，逃离点仍来自 NEAREST_HOSTILE，不凭伤害来源推断不可见攻击者的位置
+- 固定上游 TLM 的 MaidPanicTask、MaidClearHurtTask、MaidRunAwayTask 与 MaidBrain.registerPanicGoals：受伤触发 PANIC 活动，逃离点仍来自
+  NEAREST_HOSTILE，不凭伤害来源推断不可见攻击者的位置
 - MC 1.20.1 原始 client JAR 的 HurtBySensor 与 LivingEntity.getLastDamageSource 已按官方映射和实际字节码核对，最后伤害来源在世界时间差大于 40 tick 后清除
 - 新增 com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory，记录原生接受攻击后的短期事实；世界变化、回退时间与策略生命周期取消清除，不进入存档
 - 原型按事实到期直接结束中断，尚未声称与现代 HURT_BY 传感器分频相位逐 tick 一致；完整忠实 F 与增强 N 继续独立待验
 
 ## 低氧保全与水中移动
 
-- 固定上游 8a3ac5e 的 entity/ai/brain/task/MaidBreathAirTask.java、MaidBreathAirStopTask.java：低于 100 空气启动、恢复到 290 或获得水下呼吸效果后结束；先检查双手与背包的呼吸物品，再找可呼吸位置
-- 同提交 entity/passive/MaidPathFindingBFS.java、entity/ai/control/MaidMoveControl.java 和 EntityMaid.travel/isPushedByFluid：核对三维搜索、0.5 目标速度、三倍基础前进、水中加速度及 0.9 阻力；新增独立 MaidBreathController 适配旧版服务端生命周期和碰撞移动，未整文件改包移植
+- 固定上游 8a3ac5e 的 entity/ai/brain/task/MaidBreathAirTask.java、MaidBreathAirStopTask.java：低于 100 空气启动、恢复到 290
+  或获得水下呼吸效果后结束；先检查双手与背包的呼吸物品，再找可呼吸位置
+- 同提交 entity/passive/MaidPathFindingBFS.java、entity/ai/control/MaidMoveControl.java 和
+  EntityMaid.travel/isPushedByFluid：核对三维搜索、0.5 目标速度、三倍基础前进、水中加速度及 0.9 阻力；新增独立 MaidBreathController
+  适配旧版服务端生命周期和碰撞移动，未整文件改包移植
 - 普通饮用药水读取目标 ItemPotion.getEffects，拒绝喷溅药水，按原生效果 NBT 应用，饮用结束才消耗一份并归还玻璃瓶；GT 呼吸食物沿用已核食物效果适配，不执行玩家回调
 - Root 优先交接低氧保全，当前仍是原型中的保全策略；暂未声称完整忠实 F 的物品使用等待相位或全部现代游泳姿态/碰撞箱一致
 - 空气搜索以现有实体尺寸核对已加载方块及碰撞，水平/垂直范围各 16，每 tick 最多处理 128 节点，不加载区块；这些是本项目适配边界，不能据此声称完整世界级调度预算已完成
@@ -729,11 +734,16 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 
 ## 弓手横移与追击蓄力
 
-- 固定 TLM 提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 entity/ai/brain/task/MaidAttackStrafingTask.java:54–105：每 20 tick 各以 0.3 概率翻转方向，距离大于弓默认射程一半时前进、小于五分之一时后退；主人范围边界抑制走位，停止时清输入但保留任务方向状态
-- 新增独立 MaidStrafingState 投影该方向状态，原始文件未改包复制；MC 1.20.1 实际 BowItem 字节码的默认范围为 15，MoveControl.strafe 使用 0.25 倍移动属性并在不可走侧向时退回前方
-- MaidBrainCoordinator 与 EntityMaid.moveEntityWithHeading 适配旧版没有 strafe 控件且原生 move helper 会清前进输入的差异：仅当前世界 tick、有效 COMBAT 身份可投递一次输入，保留原生加速、摩擦和碰撞，不直接改位置
+- 固定 TLM 提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+  entity/ai/brain/task/MaidAttackStrafingTask.java:54–105：每 20 tick 各以 0.3
+  概率翻转方向，距离大于弓默认射程一半时前进、小于五分之一时后退；主人范围边界抑制走位，停止时清输入但保留任务方向状态
+- 新增独立 MaidStrafingState 投影该方向状态，原始文件未改包复制；MC 1.20.1 实际 BowItem 字节码的默认范围为 15，MoveControl.strafe 使用 0.25
+  倍移动属性并在不可走侧向时退回前方
+- MaidBrainCoordinator 与 EntityMaid.moveEntityWithHeading 适配旧版没有 strafe 控件且原生 move helper 会清前进输入的差异：仅当前世界
+  tick、有效 COMBAT 身份可投递一次输入，保留原生加速、摩擦和碰撞，不直接改位置
 - 地形守卫使用已加载方块、身体碰撞、下方支撑、家园范围及液体/火/仙人掌排除；前方也不可走时停下，这是目标环境的保守适配，不声称等价于全部现代 WalkNodeEvaluator 类型
-- MaidShootTargetTask.java:72–113 的行走/使用物品并行关系用于修正追击时每 tick 清空蓄力的问题；隐藏目标仍按真实 canStillUse 可见性条件取消，未套用脱离 Behavior 生命周期的 60 tick 保持假设
+- MaidShootTargetTask.java:72–113 的行走/使用物品并行关系用于修正追击时每 tick 清空蓄力的问题；隐藏目标仍按真实 canStillUse 可见性条件取消，未套用脱离 Behavior
+  生命周期的 60 tick 保持假设
 - 当前仍保留原型的 12 格发射半径、目标选择、路径与冷却门槛；完整原版走近/家园语义、原版射击 profile、完整 F/N 和原版 benchmark 均未由本批完成
 
 ## 世界级导航预算
@@ -754,11 +764,16 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 
 ## 游泳姿态、尺寸与被动跳跃
 
-- 固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 entity/passive/MaidSwimManager.java 原包名保留，平台类型改为独立 actor；服务端按想游泳、落地、坐下和骑乘更新标志与实际姿态，停止游泳不覆盖睡眠姿态
-- entity/ai/brain/task/MaidSwimJumpTask.java 保留原包名；其原生 Swim/Behavior 生命周期映射为显式世界时间、流体、导航和两路 RNG 输入，仍使用 60 tick 生命周期和严格小于 0.8 的跳跃概率
-- EntityMaid.java:1818–1819、2652–2653、2635–2648 的眼高、游泳尺寸和主动游泳 travel 为适配依据；MC 1.20.1 实际 Entity.refreshDimensions、LivingEntity 眼高及 CollisionGetter.findFreePosition 字节码补齐引擎行为，尺寸增长以方块碰撞体膨胀后查找自由中心
-- MaidEntityPose、MaidPoseDimensions、MaidAquaticController 与两个 actor 是本项目独立文件；实际姿态使用 DataWatcher 同步，避免旧 setSize 在宽度增长时平移实体
-- MixinEntityAquatic 只为小于 0.8 高的女仆修正水检测框，现代 Entity.updateFluidHeightAndDoFluidPushing 使用完整身体内缩 0.001；旧版上下各减 0.4 会倒置 0.6/0.2 高身体的范围，原生水流、入水效果和其他实体保持原方法
+- 固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 entity/passive/MaidSwimManager.java 原包名保留，平台类型改为独立
+  actor；服务端按想游泳、落地、坐下和骑乘更新标志与实际姿态，停止游泳不覆盖睡眠姿态
+- entity/ai/brain/task/MaidSwimJumpTask.java 保留原包名；其原生 Swim/Behavior 生命周期映射为显式世界时间、流体、导航和两路 RNG 输入，仍使用 60 tick
+  生命周期和严格小于 0.8 的跳跃概率
+- EntityMaid.java:1818–1819、2652–2653、2635–2648 的眼高、游泳尺寸和主动游泳 travel 为适配依据；MC 1.20.1 实际
+  Entity.refreshDimensions、LivingEntity 眼高及 CollisionGetter.findFreePosition 字节码补齐引擎行为，尺寸增长以方块碰撞体膨胀后查找自由中心
+- MaidEntityPose、MaidPoseDimensions、MaidAquaticController 与两个 actor 是本项目独立文件；实际姿态使用 DataWatcher 同步，避免旧 setSize
+  在宽度增长时平移实体
+- MixinEntityAquatic 只为小于 0.8 高的女仆修正水检测框，现代 Entity.updateFluidHeightAndDoFluidPushing 使用完整身体内缩 0.001；旧版上下各减 0.4
+  会倒置 0.6/0.2 高身体的范围，原生水流、入水效果和其他实体保持原方法
 - 当前旧导航上的模式判断与主动水中执行只是执行投影；完整现代 Amphibious 节点器、全部导航管理器语义与非主动游泳的现代 travel 仍待实现，不能据此称完整水域或完整 F 已完成
 
 - EntityMaid.setScaleForAge 阻止旧 EntityAgeable 客户端每 tick 以年龄重新设置站立尺寸；仅在尺寸与同步 Pose 不同时恢复，保留现代眼高缓存的刷新边界
@@ -766,7 +781,24 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 ## 默认水中非主动移动
 
 - Indev95 依据同一固定上游 EntityMaid.java:2635–2648 的非主动游泳分支，将水平输入乘 1.2，并在准备上岸或头部入水时增加 0.5 垂直输入，否则增加 0.05
-- MC 1.20.1 实际 LivingEntity.travel/getFluidFallingAdjustedMovement 字节码用于核对三轴归一化、0.02 默认加速度、0.8 阻力、0.08/16 默认水中重力、奔跑和墙边脱困；新增独立 MaidWaterPhysics，不把原生水平二维加速和 0.02 水中重力当作现代行为
+- MC 1.20.1 实际 LivingEntity.travel/getFluidFallingAdjustedMovement 字节码用于核对三轴归一化、0.02 默认加速度、0.8 阻力、0.08/16
+  默认水中重力、奔跑和墙边脱困；新增独立 MaidWaterPhysics，不把原生水平二维加速和 0.02 水中重力当作现代行为
 - 固定上游 MaidNavigationManager.switchToNavigation 的无路径分支切换导航但不写 mode；原版 tick 随后按 GROUND 取消 wantToSwim，旧投影修正为无路径闲置不锁定主动水中模式
 - 正式版 Et Futurum 2.6.65-GTNH 的 living-base 鞘翅钩子和水相关代码已核对，未补足这段非主动水中 travel；这不等于审计了整包所有水中附魔或重力来源
 - 当前仅接默认物理，现代特殊附魔/效果、环境重力、完整 Amphibious 节点器和导航切换仍待补齐；服务端真实碰撞实测不替代自然寻路、客户端或完整原版 benchmark
+
+## 单目标两栖路线与执行
+
+- Indev96 移植固定 TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+  entity/ai/navigation/MaidUnderWaterNodeEvaluator.java，保留原包名；使用查询局部位置集合适配已访问节点，完整快速可达缓存接口尚未接入
+- 同提交 MaidSelectivePathFinding、MaidUnderWaterBoardingPathFinder 用于核对目标无流体时的上岸启发式：节点低于目标时额外计入每格 100 的高度差，目标仍记录最近搜索节点
+- 实际 MC 1.20.1、Forge 47.2.0 映射类
+  WalkNodeEvaluator、AmphibiousNodeEvaluator、PathFinder、Node、BinaryHeap、PathNavigation 与 AmphibiousPathNavigation
+  用于核对占据范围、类型代价、台阶/下落/转角、上下水节点、浅水偏好、1.5 启发权重、严格堆比较、部分路线与三维推进/watchdog
+- MaidPathContext/Region/Type/Node、MaidWalkEvaluator、MaidAmphibiousEvaluator/Search/Path 和 MaidPathNavigator
+  为独立实现；水中生产查询使用新搜索和执行，地面仍保留既有原生查询/执行，共用同一导航身份以维持动作的路线所有权
+- MixinEntityNavigator 仅在女仆构造时替换 EntityLiving 的实际 navigator 字段，内部直接字段调用与 getNavigator 保持同一个实例；其他实体不替换
+- 允许跌落高度读取实际 EntityLiving.getMaxSafePointTries；已核对它与现代 Mob.getMaxFallDistance 的无目标/生命/难度公式一致，不将普通情况下的 3 格写死到战斗场景
+- 目标世界按实际方块、门/栅栏/轨道、流体及碰撞读取；Et Futurum 2.6.65-GTNH 的 BlockHoney、BlockMagma、BlockWitherRose 分别映射蜂蜜、火伤和谨慎伤害类型，不引入新硬依赖
+- 当前仅单目标，仍受原型每次 16 格查询范围和世界准入预算约束，部分路线不谎报 canReach；完整现代地面节点、导航管理器切换、缓存、多目标/API 相位和原版运行对照继续待办，完整 F/N 不启用
+- 旧 World 没有现代生成器海平面 API，当前使用主世界 63；特殊维度海平面、复杂模组方块与完整环境适配仍待验，不能把有限水池结果泛化为全部地形通过

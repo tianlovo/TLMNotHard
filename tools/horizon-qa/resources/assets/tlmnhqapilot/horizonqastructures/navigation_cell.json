@@ -1,0 +1,88 @@
+{
+  "format_version": 2,
+  "size": [
+    13,
+    7,
+    7
+  ],
+  "palette": {
+    "A": {
+      "name": "minecraft:air",
+      "meta": 0
+    }
+  },
+  "layers": [
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ],
+    [
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA",
+      "AAAAAAAAAAAAA"
+    ]
+  ],
+  "annotations": {
+    "labels": {
+      "maid": [
+        2,
+        1,
+        3
+      ]
+    }
+  }
+}
