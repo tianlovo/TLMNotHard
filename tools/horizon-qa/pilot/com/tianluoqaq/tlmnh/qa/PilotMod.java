@@ -9,4 +9,11 @@ import cpw.mods.fml.common.Mod;
     dependencies = "required-after:tlmnh;required-after:horizonqa",
     acceptableRemoteVersions = "*")
 public final class PilotMod {
+
+    public static final ProtectionCanary PROTECTION_CANARY = new ProtectionCanary();
+
+    @Mod.EventHandler
+    public void preInit(cpw.mods.fml.common.event.FMLPreInitializationEvent event) {
+        cpw.mods.fml.common.registry.GameRegistry.registerItem(PROTECTION_CANARY, "protection_canary");
+    }
 }
