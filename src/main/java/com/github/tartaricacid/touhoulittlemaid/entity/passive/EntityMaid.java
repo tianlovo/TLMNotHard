@@ -406,6 +406,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return pickup.pickupArrow(arrow, simulate);
     }
 
+    public boolean canPickup(Entity entity, boolean rejectWater) {
+        return pickup.canPickup(entity, rejectWater);
+    }
+
     public void setPickupItems(boolean enabled) {
         setMaidFlag(FLAG_PICKUP_ITEMS, enabled);
     }

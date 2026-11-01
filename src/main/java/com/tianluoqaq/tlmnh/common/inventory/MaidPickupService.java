@@ -43,6 +43,13 @@ public final class MaidPickupService {
         return available() && entity != null && entity.worldObj == maid.worldObj && !entity.isDead;
     }
 
+    public boolean canPickup(Entity entity, boolean rejectWater) {
+        if (!valid(entity) || rejectWater && entity.isInWater()) return false;
+        if (entity instanceof EntityItem item) return pickupItem(item, true);
+        if (entity instanceof EntityArrow arrow) return pickupArrow(arrow, true);
+        return entity instanceof EntityXPOrb orb && maid.canPickupExperience() && orb.xpValue > 0;
+    }
+
     public boolean pickupItem(EntityItem item, boolean simulate) {
         if (!valid(item) || !maid.canPickupItems() || item.delayBeforeCanPickup > 0) return false;
         var event = new MaidPickupEvent.ItemResultPre(maid, item, simulate);

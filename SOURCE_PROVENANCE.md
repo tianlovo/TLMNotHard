@@ -613,3 +613,10 @@ RC2 实际原版木门为 MalisisDoors `1.19.11-GTNH` 的替换类，源码固�
 已核 `door/block/Door.java` 的原生村民开门入口和 `door/tileentity/DoorTileEntity.java` 的 OPENING/OPENED/CLOSING 状态及延迟元数据更新
 新增 `Rc2DoorState` 只读取现有动画状态，仍调用 BlockDoor 的开门入口，保留动画、密码和红石规则；未增加 Malisis 内容玩法或硬依赖
 同步夹具以真实开门请求及给定动画完成态检查后续关门，不把它写成完整自然动画或多门集成验收
+
+## 主动寻找物品
+
+独立适配 `MaidPickupController` 参考固定上游 `MaidPickupEntitiesSensor`、`MaidPickupEntitiesTask` 和 `MaidBrain.registerCoreGoals`
+保留 30 tick 感知、可见/非水中/可放入筛选、先确认可达性及跟随优先；目标版本没有直接复用高版本 Brain API
+移动接入现有 `MaidActionRunner`，新 PICKUP 身份参与原动作交接；坐下、抱起、拴绳、休息、危险和任务失效均退出，清理只处理自己持有的路径
+当前实现限制每次处理 64 个候选、查询最近 3 个候选，并记录截断，不能把这项有界原型写成完整忠实 F、增强 N 或 benchmark 达标

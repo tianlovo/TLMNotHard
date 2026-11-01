@@ -172,6 +172,151 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
+    private static PickupRuntime pendingPickup;
+
+    public static void startPickupRuntime(WorldServer world) {
+        require(pendingPickup == null, "one active pickup runtime fixture");
+        var probe = new PickupRuntime(world);
+        pendingPickup = probe;
+        try {
+            probe.begin();
+            cpw.mods.fml.common.FMLCommonHandler.instance()
+                .bus()
+                .register(probe);
+        } catch (RuntimeException | Error failure) {
+            probe.finish(false, failure.toString());
+            throw failure;
+        }
+    }
+
+    /** 两个真实世界 tick 场景：接近收取、当前动作被坐下指令取消 */
+    public static final class PickupRuntime {
+
+        private final Fixture fixture;
+        private final java.util.Map<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block> blocks = new java.util.LinkedHashMap<>();
+        private final java.util.Map<net.minecraft.util.ChunkCoordinates, Integer> metadata = new java.util.HashMap<>();
+        private EntityItem item;
+        private int ticks, phase;
+        private double startX, startZ, stoppedX, stoppedZ;
+        private boolean finished;
+
+        PickupRuntime(WorldServer world) {
+            fixture = new Fixture(world);
+        }
+
+        private void begin() {
+            var f = fixture;
+            int x = (int) Math.floor(f.maid.posX), z = (int) Math.floor(f.maid.posZ);
+            for (int cx = (x - 24) >> 4; cx <= (x + 24) >> 4; cx++)
+                for (int cz = (z - 24) >> 4; cz <= (z + 24) >> 4; cz++) f.world.getChunkFromChunkCoords(cx, cz);
+            for (int bx = x - 2; bx <= x + 7; bx++)
+                for (int bz = z - 2; bz <= z + 2; bz++) for (int by = 99; by <= 102; by++) {
+                    var p = new net.minecraft.util.ChunkCoordinates(bx, by, bz);
+                    blocks.put(p, f.world.getBlock(bx, by, bz));
+                    metadata.put(p, f.world.getBlockMetadata(bx, by, bz));
+                    f.world.setBlock(
+                        bx,
+                        by,
+                        bz,
+                        by == 99 ? net.minecraft.init.Blocks.glowstone : net.minecraft.init.Blocks.air,
+                        0,
+                        2);
+                }
+            f.maid.setPosition(x + 0.5, 100, z + 0.5);
+            f.maid.onGround = true;
+            f.maid.setSchedule(com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.ALL);
+            require(
+                f.maid.getHomeArea()
+                    .setEnabled(true),
+                "pickup home enabled");
+            require(f.world.spawnEntityInWorld(f.maid), "pickup actor registered");
+            item = new EntityItem(f.world, x + 3.5, 100, z + 0.5, new ItemStack(Items.apple, 3));
+            item.delayBeforeCanPickup = 0;
+            require(f.world.spawnEntityInWorld(item), "pickup target registered");
+            startX = f.maid.posX;
+            startZ = f.maid.posZ;
+            f.maid.getBrainCoordinator()
+                .setSuspended(false);
+            TLMNotHard.LOG.info("TLMNH_PICKUP_RUNTIME_STARTED owner=offline-home input=natural-world-ticks");
+        }
+
+        @SubscribeEvent
+        public void onTick(cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent event) {
+            if (finished || event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
+            try {
+                ticks++;
+                var maid = fixture.maid;
+                if (ticks > 220) throw new IllegalStateException(
+                    "pickup runtime exceeded 220 ticks; phase=" + phase
+                        + ";target="
+                        + maid.getBrainCoordinator()
+                            .getPickupController()
+                            .getTarget());
+                if (phase == 0 && item.isDead) {
+                    int apples = 0;
+                    for (int i = 0; i <= com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND; i++) {
+                        var stack = maid.getMaidInventory()
+                            .getStackInSlot(i);
+                        if (stack != null && stack.getItem() == Items.apple) apples += stack.stackSize;
+                    }
+                    require(
+                        apples == 3 && maid.getDistanceSq(startX, maid.posY, startZ) > 0.25,
+                        "natural approach and conserved pickup");
+                    item = new EntityItem(fixture.world, startX + 5, 100, startZ, new ItemStack(Items.stick));
+                    item.delayBeforeCanPickup = 0;
+                    require(fixture.world.spawnEntityInWorld(item), "second target registered");
+                    phase = 1;
+                } else if (phase == 1 && maid.getBrainCoordinator()
+                    .getPickupController()
+                    .getTarget() == item) {
+                        require(!item.isDead, "target not yet collected before cancellation");
+                        maid.setSitting(true);
+                        stoppedX = maid.posX;
+                        stoppedZ = maid.posZ;
+                        phase = 2;
+                    } else if (phase == 2 && maid.getBrainCoordinator()
+                        .getPickupController()
+                        .getTarget() == null) {
+                            require(
+                                maid.getNavigator()
+                                    .noPath() && !item.isDead,
+                                "sit cancels owned path without collecting distant target");
+                            require(
+                                maid.getDistanceSq(stoppedX, maid.posY, stoppedZ) < 0.25,
+                                "sit stops pickup movement");
+                            finish(true, "");
+                        }
+            } catch (RuntimeException | Error failure) {
+                finish(false, failure.toString());
+            }
+        }
+
+        private void finish(boolean passed, String reason) {
+            if (finished) return;
+            finished = true;
+            try {
+                fixture.maid.getBrainCoordinator()
+                    .setSuspended(true);
+                if (item != null) fixture.world.removeEntity(item);
+                fixture.close();
+                var points = new ArrayList<>(blocks.keySet());
+                Collections.reverse(points);
+                for (var p : points) fixture.world.setBlock(p.posX, p.posY, p.posZ, blocks.get(p), metadata.get(p), 2);
+            } finally {
+                cpw.mods.fml.common.FMLCommonHandler.instance()
+                    .bus()
+                    .unregister(this);
+                pendingPickup = null;
+            }
+            TLMNotHard.LOG.info(
+                "TLMNH_PICKUP_RUNTIME_{} ticks={} phase={} reason={} full_benchmark=false",
+                passed ? "PASS" : "FAIL",
+                ticks,
+                phase,
+                reason);
+        }
+    }
+
     private static void pickupBatch(Fixture f) {
         var maid = f.maid;
         var inv = maid.getMaidInventory();

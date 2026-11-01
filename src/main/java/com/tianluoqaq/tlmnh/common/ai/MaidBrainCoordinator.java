@@ -45,6 +45,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidActionRunner actionRunner = new MaidActionRunner();
     private final MaidHomeController home;
     private final MaidTraversalController traversal;
+    private final MaidPickupController pickup;
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
@@ -72,6 +73,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         follow = new MaidFollowController(new EntityActor(), maid.getEntityId());
         home = new MaidHomeController(maid, actionRunner);
         traversal = new MaidTraversalController(maid);
+        pickup = new MaidPickupController(maid, actionRunner, ownerSensor::findOwner);
         bow = new MaidBowAttack(maid);
         life = new MaidLifeController(
             maid,
@@ -234,7 +236,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
             @Override
             public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
-                return life.tick(context, token, permitted);
+                boolean living = life.tick(context, token, permitted);
+                if (!permitted || living) pickup.cancel();
+                return living;
             }
 
             @Override
@@ -243,9 +247,19 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                     .enabled()) {
                     follow.cancel();
                     home.tick();
+                    if (actionRunner.getOwner() == Owner.HOME) pickup.cancel();
+                    else pickup.tick(!dangerSensor.hasKnownDanger());
                 } else {
                     home.cancel();
-                    follow.tick();
+                    if (actionRunner.getOwner() == Owner.FOLLOW) {
+                        follow.tick();
+                        if (actionRunner.getOwner() == Owner.FOLLOW) {
+                            pickup.cancel();
+                            return;
+                        }
+                    }
+                    if (pickup.tick(!dangerSensor.hasKnownDanger())) follow.cancel();
+                    else follow.tick();
                 }
             }
 
@@ -418,6 +432,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         combatActor.forgetOwner();
         targetMemory.clear();
         Throwable failure = cancel(combat::cancel, null);
+        failure = cancel(pickup::cancel, failure);
         failure = cancel(life::cancel, failure);
         failure = cancel(bow::cancel, failure);
         failure = cancel(follow::cancel, failure);
@@ -467,6 +482,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidHomeController getHomeController() {
         return home;
+    }
+
+    public MaidPickupController getPickupController() {
+        return pickup;
     }
 
     public void onHomeCommandChanged() {
