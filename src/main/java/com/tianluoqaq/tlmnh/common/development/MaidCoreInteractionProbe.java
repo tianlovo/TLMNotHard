@@ -328,7 +328,8 @@ public final class MaidCoreInteractionProbe {
                 com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.restore(maid);
             return;
         }
-        boolean headFixture = action.equals("reimu-head") || action.equals("winefox-head");
+        boolean accessories = action.equals("reimu-accessories") || action.equals("winefox-accessories");
+        boolean headFixture = accessories || action.equals("reimu-head") || action.equals("winefox-head");
         require(headFixture || action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
         if (!com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
             com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
@@ -342,10 +343,11 @@ public final class MaidCoreInteractionProbe {
         maid.getMaidInventory()
             .setInventorySlotContents(
                 5,
-                headFixture ? new ItemStack(
-                    action.equals("reimu-head") ? net.minecraft.init.Blocks.pumpkin
-                        : net.minecraft.init.Blocks.red_flower)
-                    : new ItemStack(Items.diamond_sword));
+                accessories ? new ItemStack(Items.compass)
+                    : headFixture ? new ItemStack(
+                        action.equals("reimu-head") ? net.minecraft.init.Blocks.pumpkin
+                            : net.minecraft.init.Blocks.red_flower)
+                        : new ItemStack(Items.diamond_sword));
         if (headFixture) {
             maid.setCurrentItemOrArmor(4, new ItemStack(Items.skull, 1, 4));
             com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.trackHeadSlot(maid);

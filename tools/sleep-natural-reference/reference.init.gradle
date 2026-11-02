@@ -24,6 +24,7 @@ def selected = [
     'com.github.tartaricacid.touhoulittlemaid.tileentity.TileEntityMaidBed',
     'com.github.tartaricacid.touhoulittlemaid.init.InitPoi',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
+    'com.tianluoqaq.tlmnh.reference.sleep.SleepAttributeSnapshot',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests$Session'
 ].sort()
 if (paired) selected.addAll(['com.github.tartaricacid.touhoulittlemaid.entity.poi.MaidPoiManager', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests$Session'])

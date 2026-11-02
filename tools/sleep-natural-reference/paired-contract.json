@@ -89,5 +89,26 @@
     "headYaw": 0.0,
     "bodyYaw": 0.0
   },
-  "initialSoundPackId": "touhou_little_maid"
+  "initialSoundPackId": "touhou_little_maid",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {"key": "max_health", "original": "minecraft:generic.max_health", "port": "generic.maxHealth"},
+      {"key": "movement_speed", "original": "minecraft:generic.movement_speed", "port": "generic.movementSpeed"},
+      {"key": "follow_range", "original": "minecraft:generic.follow_range", "port": "generic.followRange"},
+      {"key": "knockback_resistance", "original": "minecraft:generic.knockback_resistance", "port": "generic.knockbackResistance"},
+      {"key": "attack_damage", "original": "minecraft:generic.attack_damage", "port": "generic.attackDamage"}
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  }
 }

@@ -161,7 +161,8 @@ public class ClientDevelopmentRequestTest {
 
     @Test
     public void renderProbeAcceptsOnlyReviewedModelsAndExplicitFaults() {
-        for (String model : new String[] { "geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid" }) {
+        for (String model : new String[] { "geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid",
+            "touhou_little_maid:hakurei_reimu" }) {
             for (String fault : new String[] { "none", "uv_offset", "wrong_texture", "drop_geometry" }) {
                 var request = parse(
                     "{\"command\":\"render_probe\",\"model\":\"" + model + "\",\"fault\":\"" + fault + "\"}");
@@ -171,7 +172,7 @@ public class ClientDevelopmentRequestTest {
         }
         for (String json : new String[] { "{\"command\":\"render_probe\"}",
             "{\"command\":\"render_probe\",\"model\":null}",
-            "{\"command\":\"render_probe\",\"model\":\"touhou_little_maid:hakurei_reimu\"}",
+            "{\"command\":\"render_probe\",\"model\":\"tlmnh:unknown\"}",
             "{\"command\":\"render_probe\",\"model\":\"geckolib:winefox_hanfu\",\"fault\":\"random\"}" })
             assertThrows(IllegalArgumentException.class, () -> parse(json));
     }

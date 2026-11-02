@@ -46,7 +46,9 @@ def check(capture, build, tool, agent_bytes):
             "premain build identity mismatch")
     require(identity["agent"]["agentSha256"] == manifest["definitionAgentSha256"] == sha(agent_bytes),
             "actual definition agent mismatch")
-    require(set(identity["classes"]) == set(manifest["compiledClasses"]) and len(identity["classes"]) == 9,
+    attribute_observer = "com.tianluoqaq.tlmnh.reference.sleep.SleepAttributeSnapshot"
+    selected_count = 10 if attribute_observer in identity["classes"] else 9
+    require(set(identity["classes"]) == set(manifest["compiledClasses"]) and len(identity["classes"]) == selected_count,
             "selected class set changed")
     different = []
     for name, observed in identity["classes"].items():
@@ -62,6 +64,9 @@ def check(capture, build, tool, agent_bytes):
             "fresh actor repetitions missing")
     summaries = []
     for index, row in enumerate(runs):
+        if attribute_observer in identity["classes"]:
+            from attribute_inputs import snapshot
+            snapshot(row["attributeInputs"], "original")
         require(row["repetition"] == index and row["nativeBedPoiCount"] == 1, "wrong actor/bed inputs")
         require(row["entityClass"] == "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid"
                 and row["brainClass"] == "net.minecraft.world.entity.ai.Brain", "not the exact original entity/Brain")

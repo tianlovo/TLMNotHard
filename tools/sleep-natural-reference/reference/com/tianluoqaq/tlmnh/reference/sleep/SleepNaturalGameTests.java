@@ -249,6 +249,7 @@ public final class SleepNaturalGameTests {
             row.addProperty("actualRestrictRadius", maid.getRestrictRadius());
             row.addProperty("nativeBedPoiCount", poi);
             row.add("frames", frames);
+            row.add("attributeInputs", SleepAttributeSnapshot.capture(maid));
             runs.add(row);
             if (repetition == 0) output.add("identity", identity());
             afterSpawn();

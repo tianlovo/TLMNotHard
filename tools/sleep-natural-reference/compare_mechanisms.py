@@ -8,6 +8,7 @@ from pathlib import Path
 
 from check import UPSTREAM, require, sha
 from compare_port import OBSERVER, PRODUCTION, artifact, metrics
+from attribute_inputs import compare_attribute_inputs
 
 MECHANISMS = ("normal", "occupied_release", "unreachable", "bed_removed", "hurt_sleeping")
 SLEEP_OWNER = ["com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator",
@@ -28,8 +29,12 @@ def original_identity(data, build_bytes, tool, agent_bytes):
             "original premain manifest mismatch")
     require(identity["agent"]["agentSha256"] == build["definitionAgentSha256"] == sha(agent_bytes), "agent mismatch")
     require(identity["wholeClasspathOrPostDefinitionBytesVerified"] is False, "identity scope upgraded")
-    require(set(identity["classes"]) == set(build["compiledClasses"]) and len(identity["classes"]) == (12 if "difficulty" in data["contract"] else 11),
+    selected_count = (12 if "difficulty" in data["contract"] else 11) + (1 if "attributeInputs" in data["contract"] else 0)
+    require(set(identity["classes"]) == set(build["compiledClasses"]) and len(identity["classes"]) == selected_count,
             "selected original class set changed")
+    if "attributeInputs" in data["contract"]:
+        require("com.tianluoqaq.tlmnh.reference.sleep.SleepAttributeSnapshot" in identity["classes"],
+                "actual original attribute observer identity missing")
     differences = []
     for name, item in identity["classes"].items():
         require(item["resourceSha256"] == build["compiledClasses"][name], "original resource mismatch: " + name)
@@ -141,8 +146,15 @@ def pair_inputs(original, port):
         require(x["difficulty"] == y["difficulty"] == original["contract"]["difficulty"], "actual difficulty not frozen")
         require(x["nonEmptyItemStackCount"] == y["nonEmptyItemStackCount"] == x["activeEffectCount"] == y["activeEffectCount"] == 0,
                 "fresh actual items/effects not empty")
+    attributes = compare_attribute_inputs(a.get("attributeInputs"), b.get("attributeInputs"),
+                                          original["contract"].get("attributeInputs"))
+    for row, inputs in ((a, x), (b, y)):
+        if "attributeInputs" in row:
+            require(row["attributeInputs"]["rawEntityNBT"] == inputs["rawInitialNBT"],
+                    "typed attributes were not observed with the retained complete initial NBT")
     return {"recorded_field_differences": differences, "semantic_block_layout_equal": layout_equal,
-            "raw_task_ids": tasks, "inventory_and_full_NBT_semantic_equivalence_evaluated": False,
+            "raw_task_ids": tasks, "attribute_inputs": attributes,
+            "inventory_and_full_NBT_semantic_equivalence_evaluated": False,
             "complete_actual_environment_pair_accepted": False,
             "scope": "recorded scalar/home/layout comparison; raw NBT retained, engine RNG/physics and full inventory semantics not qualified"}
 
@@ -178,19 +190,29 @@ def main():
     p.add_argument("--require-immediate-hurt-wake", action="store_true")
     p.add_argument("--require-paired-inputs", action="store_true")
     p.add_argument("--require-deterministic-spawn", action="store_true")
+    p.add_argument("--allow-additional-port-tests", action="store_true",
+                   help="Allow other passing cases in the same HQA process; still require all ten paired sleep cases")
+    p.add_argument("--require-attribute-inputs", action="store_true",
+                   help="Require exact equality of five reviewed initial attributes; does not qualify unmapped attributes/full NBT")
     args = p.parse_args()
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
     require(hqa["status"] == "passed" and hqa["exitCode"] == observed["process_exit"] == 0
             and observed["status"] == hqa and observed["full_release_passed"] is False, "HQA failed/incomplete")
-    require(hqa["counts"]["selectedTests"] == hqa["counts"]["passed"] == 10 and
+    total_cases = len(hqa["tests"])
+    require(hqa["counts"]["selectedTests"] == hqa["counts"]["passed"] == total_cases
+            and (total_cases >= 10 if args.allow_additional_port_tests else total_cases == 10) and
             all(hqa["counts"][k] == 0 for k in ("failed", "timedOut", "skipped", "incomplete", "issues")), "HQA case count changed")
     expected_names = {label + "".join(w.capitalize() for w in mechanism.split("_"))
                       for label in ("faithful", "enhanced") for mechanism in MECHANISMS}
-    require({t["name"] for t in hqa["tests"]} == expected_names and all(t["status"] == "passed" for t in hqa["tests"]),
+    sleep_class = "tlmnhqapilot:SleepMechanismPortTests"
+    sleep_tests = [t for t in hqa["tests"] if t["classname"] == sleep_class] if args.allow_additional_port_tests else hqa["tests"]
+    require(len(sleep_tests) == 10 and {t["name"] for t in sleep_tests} == expected_names
+            and all(t["status"] == "passed" for t in hqa["tests"]),
             "wrong HQA cases")
     cases = list(ET.parse(args.port_run / "TEST-horizonqa.xml").getroot().iter("testcase"))
-    require(len(cases) == 10 and {c.get("name") for c in cases} == expected_names and
+    sleep_cases = [c for c in cases if c.get("classname") == sleep_class] if args.allow_additional_port_tests else cases
+    require(len(cases) == total_cases and len(sleep_cases) == 10 and {c.get("name") for c in sleep_cases} == expected_names and
             all(not any(c.find(t) is not None for t in ("failure", "error", "skipped")) for c in cases), "JUnit differs")
     pilot = args.port_run / "tested-pilot.jar"
     require(observed["candidate_sha256"] == sha(args.candidate_jar.read_bytes()) and
@@ -219,6 +241,9 @@ def main():
             artifact(port["productionArtifact"], args.candidate_jar, PRODUCTION)
             artifact(port["observerArtifact"], pilot, OBSERVER)
             artifact(port["pairedObserverArtifact"], pilot, PAIRED_OBSERVER)
+            if "attributeInputs" in contract:
+                artifact(port["attributeInputArtifact"], pilot,
+                         ["com.tianluoqaq.tlmnh.qa.SleepAttributePortSnapshot"])
             if "difficulty" in contract:
                 artifact(port["sleepOwnerArtifact"], args.candidate_jar, SLEEP_OWNER)
             if args.require_deterministic_spawn:
@@ -228,6 +253,9 @@ def main():
             if args.require_deterministic_spawn:
                 summaries[-1]["deterministic_spawn_inputs"] = deterministic_spawn_inputs(port)
             pairs[profile] = pair_inputs(original, port)
+            if args.require_attribute_inputs:
+                require(pairs[profile]["attribute_inputs"]["selected_initial_attribute_inputs_equal"] is True,
+                        "selected actual attribute inputs are not exactly equal or remain unproven")
             if args.require_paired_inputs:
                 require(not pairs[profile]["recorded_field_differences"] and pairs[profile]["semantic_block_layout_equal"]
                         and len(set(pairs[profile]["raw_task_ids"].values())) == 1, "recorded paired inputs differ")
@@ -245,6 +273,16 @@ def main():
               "candidate_sha256": sha(args.candidate_jar.read_bytes()), "pilot_sha256": sha(pilot.read_bytes()),
               "complete_b10_accepted": False, "statistical_verdict": "NOT_EVALUATED",
               "definition_difference_explanation_verified": False, "full_release_passed": False}
+    result["hqa_total_case_count"] = total_cases
+    result["hqa_paired_sleep_case_count"] = len(sleep_tests)
+    result["selected_initial_attribute_inputs_equal"] = all(
+        pair["attribute_inputs"]["selected_initial_attribute_inputs_equal"]
+        for scene in scenes for pair in scene["input_pairs"].values())
+    result["selected_initial_attribute_inputs_within_numeric_tolerance"] = all(
+        pair["attribute_inputs"]["selected_initial_attribute_inputs_within_numeric_tolerance"]
+        for scene in scenes for pair in scene["input_pairs"].values())
+    result["all_attribute_semantics_evaluated"] = False
+    result["full_nbt_semantic_equivalence_evaluated"] = False
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k != "scenes"}, ensure_ascii=False))

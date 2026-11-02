@@ -44,11 +44,14 @@ public final class MaidPoseRuntimeProbe {
                 x == 3 || x == 7 || z == -2 || z == 2 || y == 65 || y == 69 ? Blocks.glass : Blocks.water,
                 0,
                 2);
+            // 留真实空气出口，由低氧控制器搜索路线并自然产生游泳意图和Pose
+            require(world.setBlock(6, 69, 0, Blocks.air, 0, 2), "Reachable air opening required");
             maid = new EntityMaid(world);
             require(maid.bindTo(observer.getUniqueID()), "Fresh maid owner binding required");
             maid.getEntityData()
                 .setBoolean("TLMNHAquaticProbe", true);
             maid.setPosition(5.5, 66.2, .5);
+            maid.setAir(90);
             require(world.spawnEntityInWorld(maid), "Registered aquatic maid required");
         } else {
             require(

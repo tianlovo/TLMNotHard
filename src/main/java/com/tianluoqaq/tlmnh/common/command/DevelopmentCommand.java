@@ -247,6 +247,15 @@ public final class DevelopmentCommand extends CommandBase {
                 .stage(net.minecraft.command.CommandBase.getPlayer(sender, args[1]), args[2]);
             return;
         }
+        if (args.length == 4 && "player-disk".equals(args[0])) {
+            try {
+                com.tianluoqaq.tlmnh.common.development.persistence.MaidPlayerDiskProbe
+                    .run(getPlayer(sender, args[1]), args[2], args[3]);
+            } catch (Exception failure) {
+                throw new IllegalStateException("Native player disk observation failed", failure);
+            }
+            return;
+        }
         if (args.length == 1 && "ranged-movement-test".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.MaidRangedMovementProbe
                 .start((WorldServer) sender.getEntityWorld());

@@ -159,6 +159,9 @@ public final class NaturalSleepPortTests {
                 output.add(
                     "observerArtifact",
                     DevelopmentArtifactIdentity.capture(NaturalSleepPortTests.class, Collector.class));
+                output.add(
+                    "attributeInputArtifact",
+                    DevelopmentArtifactIdentity.capture(SleepAttributePortSnapshot.class));
                 chunks.forceChunksStrict(helper.getWorld(), x - 16, y, z - 16, x + 33, y + 10, z + 25);
             } catch (Exception error) {
                 throw new IllegalStateException("Sleep observer setup failed", error);
@@ -265,6 +268,7 @@ public final class NaturalSleepPortTests {
                 helper.getWorld()
                     .getBlockMetadata(x + 7, y + 1, z + 4));
             row.add("frames", frames);
+            row.add("attributeInputs", SleepAttributePortSnapshot.capture(maid));
             runs.add(row);
             afterSpawn();
         }

@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 3);
+        invalid.setInteger("Schema", 4);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -158,9 +158,7 @@ public class MaidLifecycleDataTest {
         var identity = new NBTTagCompound();
         identity.setString("ModelId", "geckolib:winefox_hanfu");
         var film = old.newFilm(owner, UUID.randomUUID(), identity);
-        var legacy = new NBTTagCompound();
-        old.writeToNBT(legacy);
-        legacy.setInteger("Schema", 1);
+        var legacy = legacy(old, 1);
         var restored = new MaidLifecycleData("fixture");
         restored.readFromNBT(legacy);
         assertEquals(gift, restored.initialToken(owner));
@@ -174,7 +172,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(2, current.getInteger("Schema"));
+        assertEquals(3, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -188,5 +186,105 @@ public class MaidLifecycleDataTest {
         var restored = new MaidLifecycleData("fixture");
         assertThrows(IllegalStateException.class, () -> restored.readFromNBT(tag));
         assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+    }
+
+    @Test
+    public void legacySchemaTwoKeepsCraftedAndDeathRightsWithoutInventingExperience() {
+        var owner = UUID.randomUUID();
+        var data = new MaidLifecycleData("fixture");
+        var acquired = data.acquiredToken(owner);
+        var film = data
+            .depositDeath(owner, UUID.randomUUID(), new NBTTagCompound(), new NBTTagList(), 7, 1, 5, 2, "old");
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(legacy(data, 2));
+        assertEquals(MaidLifecycleData.Kind.ACQUIRED, restored.initialKind(acquired));
+        assertEquals(owner, restored.owner(film, MaidLifecycleData.Kind.FILM));
+        assertEquals(0, restored.remainingDeathExperience(film));
+        assertTrue(
+            restored.pendingDeathExperience(7, Long.MAX_VALUE)
+                .isEmpty());
+        assertEquals(0, roundtrip(restored).remainingDeathExperience(film));
+    }
+
+    @Test
+    public void fullIntExperienceRemainderSurvivesInventoryAndFilmRedemptionIndependently() {
+        var data = new MaidLifecycleData("fixture");
+        var items = new NBTTagList();
+        items.appendTag(new NBTTagCompound());
+        var token = data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            items,
+            7,
+            1,
+            5,
+            2,
+            "xp",
+            Integer.MAX_VALUE,
+            40);
+        data.markPublished(token);
+        assertTrue(
+            data.pendingDeathExperience(7, 39)
+                .isEmpty());
+        assertEquals(java.util.Collections.singletonList(token), data.pendingDeathExperience(7, 40));
+        assertEquals(Integer.MAX_VALUE, data.reserveDeathExperience(token));
+        assertEquals(0, data.reserveDeathExperience(token));
+        assertNull(data.reserveTombstone(token));
+        assertThrows(IllegalStateException.class, () -> data.finishDeathExperience(token, Integer.MAX_VALUE - 1, 11));
+        assertEquals(Integer.MAX_VALUE, data.remainingDeathExperience(token));
+        data.finishDeathExperience(token, Integer.MAX_VALUE, 11);
+        var remaining = roundtrip(data);
+        assertEquals(Integer.MAX_VALUE - 11, remaining.remainingDeathExperience(token));
+        assertNotNull(remaining.reserveTombstone(token));
+        remaining.finishTombstone(token, items, new NBTTagList());
+        assertNotNull(remaining.reserve(token, MaidLifecycleData.Kind.FILM));
+        remaining.commit(token);
+        var afterRevive = roundtrip(remaining);
+        assertEquals(Integer.MAX_VALUE - 11, afterRevive.reserveDeathExperience(token));
+        afterRevive.finishDeathExperience(token, Integer.MAX_VALUE - 11, Integer.MAX_VALUE - 11);
+        assertEquals(0, roundtrip(afterRevive).remainingDeathExperience(token));
+        assertEquals(0, afterRevive.reserveDeathExperience(token));
+    }
+
+    @Test
+    public void malformedExperienceCannotTurnIntoAnEmptyOverwrittenLedger() {
+        var source = new MaidLifecycleData("fixture");
+        source.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            new NBTTagList(),
+            0,
+            1,
+            5,
+            2,
+            "xp",
+            53,
+            40);
+        for (boolean wrongType : new boolean[] { false, true }) {
+            var tag = new NBTTagCompound();
+            source.writeToNBT(tag);
+            var entry = tag.getTagList("Entries", 10)
+                .getCompoundTagAt(0);
+            if (wrongType) entry.setString("DeathExperience", "53");
+            else entry.setInteger("DeathExperience", -1);
+            var restored = new MaidLifecycleData("fixture");
+            assertThrows(IllegalStateException.class, () -> restored.readFromNBT(tag));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
+    }
+
+    private static NBTTagCompound legacy(MaidLifecycleData data, int schema) {
+        var tag = new NBTTagCompound();
+        data.writeToNBT(tag);
+        tag.setInteger("Schema", schema);
+        var entries = tag.getTagList("Entries", 10);
+        for (int index = 0; index < entries.tagCount(); index++) {
+            var entry = entries.getCompoundTagAt(index);
+            entry.removeTag("DeathExperience");
+            entry.removeTag("ExperienceReadyAt");
+        }
+        return tag;
     }
 }

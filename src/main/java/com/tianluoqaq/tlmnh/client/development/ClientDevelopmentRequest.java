@@ -80,7 +80,11 @@ public final class ClientDevelopmentRequest {
         }
         if (command == Command.RENDER_PROBE) {
             model = text(json, "model");
-            if (!Arrays.asList("geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid")
+            if (!Arrays
+                .asList(
+                    "geckolib:winefox_hanfu",
+                    "authors_and_credits:wine_fox_maid",
+                    "touhou_little_maid:hakurei_reimu")
                 .contains(model)) throw new IllegalArgumentException("Unreviewed render probe model");
             if (json.has("fault")) fault = text(json, "fault");
             if (!Arrays.asList("none", "uv_offset", "wrong_texture", "drop_geometry")
@@ -149,6 +153,14 @@ public final class ClientDevelopmentRequest {
                     "sound",
                     "sound_apply",
                     "config",
+                    "global",
+                    "global_sound_zero",
+                    "global_sound_mid",
+                    "global_sound_full",
+                    "global_bubbles",
+                    "global_cache",
+                    "global_save",
+                    "global_cancel",
                     "main_tab",
                     "config_down",
                     "config_up",

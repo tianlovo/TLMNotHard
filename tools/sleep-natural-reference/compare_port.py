@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from check import check, require
+from attribute_inputs import snapshot
 
 PRODUCTION = [
     "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
@@ -78,9 +79,13 @@ def port_capture(data, contract, contract_sha, candidate, pilot):
     require(profile in ("faithful_tlm", "enhanced"), "not a full production factory profile")
     artifact(data["productionArtifact"], candidate, PRODUCTION)
     artifact(data["observerArtifact"], pilot, OBSERVER)
+    if "attributeInputArtifact" in data:
+        artifact(data["attributeInputArtifact"], pilot, ["com.tianluoqaq.tlmnh.qa.SleepAttributePortSnapshot"])
     runs = data["runs"]
     require(len(runs) == contract["repetitions"] and len({r["uuid"] for r in runs}) == len(runs), "fresh actors missing")
     for index, row in enumerate(runs):
+        if "attributeInputArtifact" in data:
+            snapshot(row["attributeInputs"], "port")
         require(row["repetition"] == index and row["entityClass"] == PRODUCTION[0]
                 and row["selection"] == "SELECTED" and row["actualProfile"] == profile, "factory identity changed")
         require(row["initialPosition"] == [2.5, 1, 4.5] and row["homeCenter"] == [7, 1, 4]
