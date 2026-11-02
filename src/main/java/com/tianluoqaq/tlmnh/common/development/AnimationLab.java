@@ -134,6 +134,10 @@ public final class AnimationLab {
                 .setBoolean(MAID_MARKER, true);
             maid.bindTo(player.getUniqueID());
             maid.func_110163_bv();
+            // 为回归测试固定音色和初始朝向，消除随机差异
+            if (DeterministicMaidSpawn.isDeterministicSpawnEnabled()) {
+                DeterministicMaidSpawn.freezeInitialState(maid);
+            }
             maid.setModelId(model);
         } else maid.setModelId(model);
         // 复用存档中的展台女仆时也恢复夹具输入，避免历史位置和朝向污染下一例
