@@ -12,6 +12,7 @@ public final class MaidContainerAccess {
     public static boolean canInteract(EntityPlayer viewer, EntityPlayer player, EntityMaid maid) {
         return player != null && player == viewer
             && maid != null
+            && !com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService.isPendingRedemption(maid)
             && maid.getMaidInventory()
                 .isUseableByPlayer(player)
             && player.worldObj.getEntityByID(maid.getEntityId()) == maid;

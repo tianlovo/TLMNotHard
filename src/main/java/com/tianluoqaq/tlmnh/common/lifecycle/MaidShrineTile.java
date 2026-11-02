@@ -76,6 +76,19 @@ public final class MaidShrineTile extends TileEntity {
         return film.copy();
     }
 
+    boolean beginRedemptionUse(ItemStack expected) {
+        if (busy || !ItemStack.areItemStacksEqual(film, expected)) return false;
+        busy = true;
+        return true;
+    }
+
+    void consumeUse(ItemStack expected) {
+        if (!busy || !ItemStack.areItemStacksEqual(film, expected))
+            throw new IllegalStateException("Shrine film no longer belongs to this redemption");
+        film = null;
+        changed();
+    }
+
     void finishUse(boolean consumed) {
         if (!busy) throw new IllegalStateException("No shrine transaction");
         if (consumed) film = null;

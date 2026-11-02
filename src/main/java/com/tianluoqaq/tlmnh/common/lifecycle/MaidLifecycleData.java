@@ -53,7 +53,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         "AcquisitionPhase",
         "AcquisitionSource",
         "AcquisitionReceipt",
-        "AcquisitionCredential");
+        "AcquisitionCredential",
+        "Redemption");
     private static final Set<String> RETURNED_FIELDS = fields("Id", "Stack", "Dimension", "X", "Y", "Z");
 
     private final Map<UUID, Entry> entries = new HashMap<>();
@@ -62,6 +63,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Set<UUID> tombstoneAttempts = new HashSet<>();
     private final Set<UUID> experienceAttempts = new HashSet<>();
     private final Set<UUID> acquisitionAttempts = new HashSet<>();
+    private final Set<UUID> redemptionAttempts = new HashSet<>();
+    private final Map<UUID, UUID> redemptionCandidates = new HashMap<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
 
@@ -117,7 +120,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     boolean beginAcquisition(UUID token) {
-        acquisitionEntry(token);
+        var entry = acquisitionEntry(token);
+        if (entry.consumed || !entry.redemption.hasNoTags()) return false;
         if (!reservations.add(token)) return false;
         acquisitionAttempts.add(token);
         return true;
@@ -187,6 +191,89 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = acquisitionEntry(token);
         if (!reservations.contains(token) || !acquisitionAttempts.contains(token))
             throw new IllegalStateException("Acquisition attempt is no longer owned");
+        return entry;
+    }
+
+    public NBTTagCompound redemption(UUID token) {
+        var entry = entries.get(token);
+        return entry == null ? new NBTTagCompound() : (NBTTagCompound) entry.redemption.copy();
+    }
+
+    Set<UUID> pendingRedemptions(UUID actor) {
+        var result = new HashSet<UUID>();
+        for (var item : entries.entrySet()) if (!item.getValue().redemption.hasNoTags() && actor.toString()
+            .equals(item.getValue().redemption.getString("Actor"))) result.add(item.getKey());
+        return result;
+    }
+
+    NBTTagCompound pendingMaid(UUID identity) {
+        var token = redemptionCandidates.get(identity);
+        return token == null ? new NBTTagCompound() : redemption(token);
+    }
+
+    boolean resumeRedemption(UUID token) {
+        var entry = entries.get(token);
+        if (entry == null || entry.consumed || entry.redemption.hasNoTags() || !reservations.add(token)) return false;
+        redemptionAttempts.add(token);
+        return true;
+    }
+
+    void prepareRedemption(World world, UUID token, NBTTagCompound intent) {
+        var entry = entries.get(token);
+        if (entry == null || entry.consumed
+            || !entry.redemption.hasNoTags()
+            || !reservations.contains(token)
+            || acquisitionAttempts.contains(token))
+            throw new IllegalStateException("No exclusive maid redemption reservation");
+        MaidRedemptionRecord.validate(intent);
+        var candidate = UUID.fromString(intent.getString("Candidate"));
+        if (redemptionCandidates.containsKey(candidate))
+            throw new IllegalStateException("Maid candidate already reserved");
+        entry.redemption = (NBTTagCompound) intent.copy();
+        redemptionCandidates.put(candidate, token);
+        redemptionAttempts.add(token);
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void beginRedemptionCosts(World world, UUID token) {
+        var entry = activeRedemption(token);
+        entry.redemption.setString("Stage", "COSTS");
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void finishRedemption(World world, UUID token, boolean consumed) {
+        var entry = activeRedemption(token);
+        var pending = entry.redemption;
+        entry.redemption = new NBTTagCompound();
+        entry.consumed = consumed;
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+            redemptionCandidates.remove(UUID.fromString(pending.getString("Candidate")));
+        } finally {
+            if (!durable) {
+                entry.redemption = pending;
+                entry.consumed = false;
+                markDirty();
+            }
+        }
+    }
+
+    void endRedemption(UUID token) {
+        redemptionAttempts.remove(token);
+        reservations.remove(token);
+    }
+
+    private Entry activeRedemption(UUID token) {
+        var entry = entries.get(token);
+        if (entry == null || entry.consumed
+            || entry.redemption.hasNoTags()
+            || !redemptionAttempts.contains(token)
+            || !reservations.contains(token)) throw new IllegalStateException("Maid redemption is no longer owned");
         return entry;
     }
 
@@ -507,6 +594,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.kind != kind
             || entry.consumed
             || entry.acquisitionPhase != AcquisitionPhase.NONE
+            || !entry.redemption.hasNoTags()
             || !reservations.add(token)) return null;
         return (NBTTagCompound) entry.identity.copy();
     }
@@ -515,6 +603,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = entries.get(token);
         if (entry == null || entry.acquisitionPhase != AcquisitionPhase.NONE
             || acquisitionAttempts.contains(token)
+            || !entry.redemption.hasNoTags()
             || !reservations.remove(token)) throw new IllegalStateException("No lifecycle reservation");
         entry.consumed = true;
         markDirty();
@@ -556,11 +645,13 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
-        if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty() || !acquisitionAttempts.isEmpty())
+        if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty()
+            || !acquisitionAttempts.isEmpty()
+            || !redemptionAttempts.isEmpty())
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 5)
+        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 6)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
@@ -568,6 +659,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var initialOwners = new HashSet<UUID>();
         var deadMaids = new HashSet<UUID>();
         var acquisitions = new HashSet<UUID>();
+        var candidates = new HashMap<UUID, UUID>();
         for (int i = 0; i < list.tagCount(); i++) {
             var item = list.getCompoundTagAt(i);
             knownFields(item, ENTRY_FIELDS);
@@ -616,6 +708,18 @@ public final class MaidLifecycleData extends WorldSavedData {
             entry.tombstoneHeld = readHold(item, "TombstoneHeld", schema);
             entry.experienceHeld = readHold(item, "ExperienceHeld", schema);
             readAcquisition(entry, item, schema);
+            if (schema < 6 && item.hasKey("Redemption") || schema >= 6 && !item.hasKey("Redemption", 10))
+                throw new IllegalStateException("Invalid maid redemption encoding");
+            entry.redemption = (NBTTagCompound) item.getCompoundTag("Redemption")
+                .copy();
+            if (!entry.redemption.hasNoTags()) {
+                MaidRedemptionRecord.validate(entry.redemption);
+                if (entry.consumed || entry.acquisitionPhase != AcquisitionPhase.NONE
+                    || (kind == Kind.FILM) != entry.redemption.getBoolean("Shrine"))
+                    throw new IllegalStateException("Invalid maid redemption state");
+                if (candidates.put(UUID.fromString(entry.redemption.getString("Candidate")), token) != null)
+                    throw new IllegalStateException("Duplicate pending maid candidate");
+            }
             if ((entry.tombstoneHeld || entry.experienceHeld) && (kind != Kind.FILM || !entry.delivered))
                 throw new IllegalStateException("Invalid held death escrow");
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
@@ -650,6 +754,9 @@ public final class MaidLifecycleData extends WorldSavedData {
         tombstoneAttempts.clear();
         experienceAttempts.clear();
         acquisitionAttempts.clear();
+        redemptionAttempts.clear();
+        redemptionCandidates.clear();
+        redemptionCandidates.putAll(candidates);
         experienceCursors.clear();
         healthy = true;
     }
@@ -657,7 +764,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 5);
+        tag.setInteger("Schema", 6);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -687,6 +794,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             data.setTag("AcquisitionSource", entry.acquisitionSource.copy());
             data.setTag("AcquisitionReceipt", entry.acquisitionReceipt.copy());
             data.setTag("AcquisitionCredential", entry.acquisitionCredential.copy());
+            data.setTag("Redemption", entry.redemption.copy());
             list.appendTag(data);
         }
         tag.setTag("Entries", list);
@@ -792,6 +900,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         private AcquisitionPhase acquisitionPhase = AcquisitionPhase.NONE;
         private NBTTagCompound acquisitionSource = new NBTTagCompound(), acquisitionReceipt = new NBTTagCompound(),
             acquisitionCredential = new NBTTagCompound();
+        private NBTTagCompound redemption = new NBTTagCompound();
 
         private Entry(Kind kind, UUID owner, UUID subject, NBTTagCompound identity, boolean consumed,
             boolean delivered) {

@@ -216,6 +216,9 @@ public abstract class AbstractModelGui extends GuiScreen {
         if (mc.currentScreen != this || !container.canInteractWith(mc.thePlayer)
             || mc.thePlayer.inventory.getItemStack() != null
             || !getVisibleModelIndices().contains(index)) return false;
+        if (BuiltinModelCatalog.choices()
+            .get(index)
+            .isEasterEgg()) return false;
         mc.playerController.sendEnchantPacket(container.windowId, BuiltinModelSelection.wireAction(index));
         return true;
     }
@@ -224,6 +227,9 @@ public abstract class AbstractModelGui extends GuiScreen {
         if (mc.currentScreen != this || !container.canInteractWith(mc.thePlayer)
             || mc.thePlayer.inventory.getItemStack() != null
             || !getVisibleModelIndices().contains(index)) return false;
+        if (BuiltinModelCatalog.choices()
+            .get(index)
+            .isEasterEgg()) return false;
         mc.displayGuiScreen(
             new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui(
                 container,
@@ -411,7 +417,7 @@ public abstract class AbstractModelGui extends GuiScreen {
                         .get(button.id - CHOICE);
                     lines.add(names.name(choice));
                     for (String line : choice.getDescription()) lines.add(names.text(line));
-                    lines.add(text("gui.touhou_little_maid.skin.tooltips.show_details"));
+                    if (!choice.isEasterEgg()) lines.add(text("gui.touhou_little_maid.skin.tooltips.show_details"));
                     if (!choice.getPreferredSoundPack()
                         .trim()
                         .isEmpty())

@@ -87,7 +87,12 @@ public final class MaidModelGui extends AbstractModelGui {
         });
         var choice = BuiltinModelCatalog.choices()
             .get(modelIndex);
-        MaidGuiPreview.draw(maid, x, y, (int) (12 * choice.getItemScale()), -25, -20, 0, 0, width, height);
+        if (choice.isEasterEgg()) {
+            com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride.placeholder(maid, () -> {
+                MaidGuiPreview.draw(maid, x, y, (int) (12 * choice.getItemScale()), -25, -20, 0, 0, width, height);
+                return null;
+            });
+        } else MaidGuiPreview.draw(maid, x, y, (int) (12 * choice.getItemScale()), -25, -20, 0, 0, width, height);
     }
 
     @Override

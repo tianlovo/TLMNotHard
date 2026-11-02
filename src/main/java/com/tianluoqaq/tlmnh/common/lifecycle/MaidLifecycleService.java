@@ -33,6 +33,10 @@ public final class MaidLifecycleService {
 
     private MaidLifecycleService() {}
 
+    public static boolean isPendingRedemption(EntityMaid maid) {
+        return MaidRedemptionDelivery.blocks(maid);
+    }
+
     public static boolean canUse(EntityPlayer player) {
         return player != null && !player.worldObj.isRemote
             && !(player instanceof FakePlayer)
@@ -62,34 +66,22 @@ public final class MaidLifecycleService {
         var owner = kind == null ? null : ledger.owner(token, kind);
         if (owner == null) return Result.INVALID_CREDENTIAL;
         if (!owner.equals(player.getUniqueID())) return Result.WRONG_OWNER;
+        if (!ledger.redemption(token)
+            .hasNoTags())
+            return MaidRedemptionDelivery.resume(player, ledger, token) ? Result.SUCCESS : Result.INVALID_CREDENTIAL;
         if (ledger.reserve(token, kind) == null) return Result.INVALID_CREDENTIAL;
-        boolean committed = false;
+        boolean handedOff = false;
         EntityMaid maid = null;
         try {
             maid = new EntityMaid(world);
             if (!maid.bindTo(owner)) return Result.DENIED;
             maid.setLocationAndAngles(x + 0.5D, y + 1.0D, z + 0.5D, 0, 0);
             if (!safeSpawn(maid)) return Result.BLOCKED;
-            if (!world.spawnEntityInWorld(maid) || !maid.isEntityAlive() || !MaidSpawnChecks.present(maid, world))
-                return Result.SPAWN_REJECTED;
-            if (!maid.isTamed() || !owner.toString()
-                .equals(maid.func_152113_b())) return Result.DENIED;
-            // 出生和编辑权限回调可改变玩家位置、槽位或原地改写物品，提交前重新核原请求
-            if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)
-                || !MaidSpawnChecks.present(maid, world)
-                || !maid.isTamed()
-                || !owner.toString()
-                    .equals(maid.func_152113_b()))
-                return Result.DENIED;
-            ledger.commit(token);
-            committed = true;
-            // 替换整个槽位，不让1.7.10创造模式的旧栈数量恢复把魂符复制回来
-            player.inventory.setInventorySlotContents(slot, new ItemStack(MaidResurrectionContent.EMPTY_SLAB));
-            player.inventory.markDirty();
-            maid.worldObj.setEntityState(maid, (byte) 7);
-            return Result.SUCCESS;
+            if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
+            handedOff = true;
+            return MaidRedemptionDelivery.publish(player, ledger, token, maid, stack, null, x, y, z);
         } finally {
-            if (!committed) {
+            if (!handedOff) {
                 MaidSpawnChecks.discard(maid);
                 ledger.rollback(token);
             }
@@ -146,10 +138,21 @@ public final class MaidLifecycleService {
             || player.getDistanceSq(shrine.xCoord + 0.5D, shrine.yCoord + 0.5D, shrine.zCoord + 0.5D) > 64.0D)
             return Result.DENIED;
         if (!hasHealth(player.getHealth(), player.getMaxHealth(), player.capabilities.isCreativeMode))
-            return Result.HEALTH_LOW;
+            // 已进入扣费阶段的精确恢复允许当前已扣为0.25，不再要求第二次达到生存门槛
+            return resumeShrine(player, shrine) ? Result.SUCCESS : Result.HEALTH_LOW;
+        var existing = shrine.getFilm();
+        if (existing != null) {
+            var existingToken = MaidLifecycleItems.token(existing);
+            if (!MaidLifecycleData.get(player.worldObj)
+                .redemption(existingToken)
+                .hasNoTags())
+                return MaidRedemptionDelivery.resume(player, MaidLifecycleData.get(player.worldObj), existingToken)
+                    ? Result.SUCCESS
+                    : Result.INVALID_CREDENTIAL;
+        }
         var film = shrine.beginUse();
         if (film == null) return Result.INVALID_CREDENTIAL;
-        boolean committed = false;
+        boolean handedOff = false;
         var world = player.worldObj;
         int shrineX = shrine.xCoord, shrineY = shrine.yCoord, shrineZ = shrine.zCoord;
         UUID token = null;
@@ -170,12 +173,7 @@ public final class MaidLifecycleService {
             maid.setHealth(maid.getMaxHealth());
             maid.setLocationAndAngles(shrine.xCoord + 0.5D, shrine.yCoord + 1.0D, shrine.zCoord + 0.5D, 0, 0);
             if (!safeSpawn(maid, shrine)) return Result.BLOCKED;
-            if (!world.spawnEntityInWorld(maid) || !maid.isEntityAlive() || !MaidSpawnChecks.present(maid, world))
-                return Result.SPAWN_REJECTED;
-            if (!maid.isTamed() || !owner.toString()
-                .equals(maid.func_152113_b())) return Result.DENIED;
             if (!canUse(player) || player.worldObj != world
-                || !MaidSpawnChecks.present(maid, world)
                 || shrine.isInvalid()
                 || shrine.getWorldObj() != world
                 || shrine.xCoord != shrineX
@@ -188,18 +186,22 @@ public final class MaidLifecycleService {
                 || player.getDistanceSq(shrineX + 0.5D, shrineY + 0.5D, shrineZ + 0.5D) > 64.0D
                 || !hasHealth(player.getHealth(), player.getMaxHealth(), player.capabilities.isCreativeMode))
                 return Result.DENIED;
-            ledger.commit(token);
-            committed = true;
-            if (!player.capabilities.isCreativeMode) player.setHealth(0.25F);
-            maid.worldObj.setEntityState(maid, (byte) 7);
-            return Result.SUCCESS;
+            handedOff = true;
+            return MaidRedemptionDelivery.publish(player, ledger, token, maid, film, shrine, shrineX, shrineY, shrineZ);
         } finally {
-            if (!committed) {
+            if (!handedOff) {
                 MaidSpawnChecks.discard(maid);
                 if (ledger != null) ledger.rollback(token);
             }
-            shrine.finishUse(committed);
+            shrine.finishUse(false);
         }
+    }
+
+    private static boolean resumeShrine(EntityPlayer player, MaidShrineTile shrine) {
+        var ledger = MaidLifecycleData.get(player.worldObj);
+        var token = MaidLifecycleItems.token(shrine.getFilm());
+        return token != null && !ledger.redemption(token)
+            .hasNoTags() && MaidRedemptionDelivery.resume(player, ledger, token);
     }
 
     private static boolean safeSpawn(EntityMaid maid) {

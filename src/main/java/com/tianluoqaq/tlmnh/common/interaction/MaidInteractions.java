@@ -37,6 +37,7 @@ public final class MaidInteractions {
     public static boolean canInteract(EntityMaid maid, EntityPlayer player) {
         if (player == null || player instanceof FakePlayer
             || !maid.isEntityAlive()
+            || com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService.isPendingRedemption(maid)
             || !player.isEntityAlive()
             || player.worldObj != maid.worldObj
             || maid.getDistanceSqToEntity(player) > 64.0D) return false;

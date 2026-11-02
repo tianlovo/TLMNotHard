@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
@@ -37,6 +38,8 @@ public final class EnhancedNavigationController {
     private BlockPos preflightTarget;
     private long preflightTick;
     private Outcome outcome = Outcome.IDLE;
+    private BooleanSupplier blockedRoute;
+    private boolean obstacleRecheckPending;
 
     public EnhancedNavigationController(FollowMoveActor actor, Function<BlockPos, MaidPathCreation> requests,
         Runnable cancelQueue) {
@@ -56,6 +59,7 @@ public final class EnhancedNavigationController {
             retryAt = 0;
             progressAnchor = null;
             partialOrigin = null;
+            clearObstacleRecovery();
         }
         lastTick = now;
         var target = actor.getWalkTarget();
@@ -67,6 +71,7 @@ public final class EnhancedNavigationController {
         if (failedTarget != null && position.distanceSquared(failedTarget) > REPLAN_DISTANCE_SQUARED) {
             failedTarget = null;
             retryAt = 0;
+            clearObstacleRecovery();
         }
         if (position.manhattanDistance(actor.blockPosition()) <= target.getCloseEnoughDistance()) {
             stopRoute();
@@ -96,7 +101,10 @@ public final class EnhancedNavigationController {
             return outcome = installed.canReach() ? Outcome.RUNNING : Outcome.PARTIAL_PATH;
         }
         if (now < retryAt) {
-            return outcome = Outcome.COOLDOWN;
+            if (blockedRoute != null && blockedRoute.getAsBoolean()) {
+                obstacleRecheckPending = true;
+            } else if (obstacleRecheckPending) clearObstacleRecovery();
+            if (!obstacleRecheckPending) return outcome = Outcome.COOLDOWN;
         }
         // 每次读取本tick实际目标；队列不保存路径请求或旧世界回调
         return applyCreation(requests.apply(position), target, position, current, now);
@@ -139,6 +147,7 @@ public final class EnhancedNavigationController {
                 partialOrigin = actual.canReach() ? null : current;
                 failedTarget = null;
                 retryAt = 0;
+                clearObstacleRecovery();
                 if (actual.canReach()) {
                     actor.eraseCantReachSince();
                     return outcome = Outcome.RUNNING;
@@ -152,6 +161,7 @@ public final class EnhancedNavigationController {
     }
 
     private void failed(long now, BlockPos target) {
+        clearObstacleRecovery();
         actor.stopNavigation();
         actor.setPathMemory(null);
         failures++;
@@ -162,6 +172,8 @@ public final class EnhancedNavigationController {
     }
 
     private void recover(long now, BlockPos target) {
+        clearObstacleRecovery();
+        if (actor instanceof EnhancedRouteObstacleActor observer) blockedRoute = observer.observeBlockedRoute();
         actor.stopNavigation();
         actor.setPathMemory(null);
         failedTarget = target;
@@ -184,6 +196,7 @@ public final class EnhancedNavigationController {
         progressAnchor = partialOrigin = null;
         preflight = null;
         preflightTarget = null;
+        clearObstacleRecovery();
     }
 
     /** 退休时不使用失效actor，只释放构造时绑定的原世界/身份队列 */
@@ -197,6 +210,12 @@ public final class EnhancedNavigationController {
         preflight = null;
         preflightTarget = null;
         outcome = Outcome.IDLE;
+        clearObstacleRecovery();
+    }
+
+    private void clearObstacleRecovery() {
+        blockedRoute = null;
+        obstacleRecheckPending = false;
     }
 
     public Outcome outcome() {

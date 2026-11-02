@@ -20,6 +20,7 @@ public final class BuiltinModelCatalog {
 
     private static final Map<String, Choice> BY_ID = new LinkedHashMap<>();
     private static List<Choice> choices = Collections.emptyList();
+    private static final Choice EASTER_EGG_PLACEHOLDER = new Choice();
 
     private BuiltinModelCatalog() {}
 
@@ -71,6 +72,11 @@ public final class BuiltinModelCatalog {
         return choices;
     }
 
+    /** 仅供客户端目录预览；不加入可选择索引或服务端模型白名单 */
+    public static Choice easterEggPlaceholder() {
+        return EASTER_EGG_PLACEHOLDER;
+    }
+
     /** 显示文本保留上游翻译引用，客户端负责解析相应模型包语言资源 */
     public static final class Choice {
 
@@ -79,6 +85,8 @@ public final class BuiltinModelCatalog {
         private final String packId;
         private final String name;
         private final String preferredSoundPack;
+        private final String easterEggTag;
+        private final boolean easterEggEncrypted;
         private final List<String> description;
         private final ResourceLocation geometry;
         private final ResourceLocation texture;
@@ -98,6 +106,12 @@ public final class BuiltinModelCatalog {
             this.name = json.get("name")
                 .getAsString();
             var source = json.getAsJsonObject("source_info");
+            var egg = source.getAsJsonObject("easter_egg");
+            this.easterEggTag = egg != null && egg.has("tag") ? egg.get("tag")
+                .getAsString() : "";
+            this.easterEggEncrypted = egg != null && egg.has("encrypt")
+                && egg.get("encrypt")
+                    .getAsBoolean();
             this.preferredSoundPack = source.has("use_sound_pack_id") && !source.get("use_sound_pack_id")
                 .isJsonNull() ? source.get("use_sound_pack_id")
                     .getAsString() : "";
@@ -124,6 +138,21 @@ public final class BuiltinModelCatalog {
             var descriptionList = new ArrayList<String>();
             for (var line : json.getAsJsonArray("description")) descriptionList.add(line.getAsString());
             this.description = Collections.unmodifiableList(descriptionList);
+        }
+
+        private Choice() {
+            id = baseId = "touhou_little_maid:easter_egg_model";
+            packId = "touhou_little_maid";
+            name = "{gui.touhou_little_maid.model_gui.easter_egg.normal}";
+            preferredSoundPack = easterEggTag = "";
+            easterEggEncrypted = false;
+            geometry = new ResourceLocation("touhou_little_maid:models/bedrock/entity/easter_egg_model.json");
+            texture = new ResourceLocation("touhou_little_maid:textures/bedrock/entity/easter_egg_model.png");
+            animations = Collections.emptyList();
+            description = Collections.emptyList();
+            gecko = false;
+            showBackpack = showCustomHead = true;
+            entityScale = itemScale = 1;
         }
 
         public String getId() {
@@ -184,6 +213,19 @@ public final class BuiltinModelCatalog {
 
         public String getPreferredSoundPack() {
             return preferredSoundPack;
+        }
+
+        public boolean isEasterEgg() {
+            return !easterEggTag.trim()
+                .isEmpty();
+        }
+
+        public String getEasterEggTag() {
+            return easterEggTag;
+        }
+
+        public boolean isEasterEggEncrypted() {
+            return easterEggEncrypted;
         }
     }
 }

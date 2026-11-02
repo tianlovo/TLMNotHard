@@ -93,6 +93,7 @@ public final class GuiMaidModels extends GuiContainer {
             || !getVisibleModelIndices().contains(index)) return false;
         var choice = BuiltinModelCatalog.choices()
             .get(index);
+        if (choice.isEasterEgg()) return false;
         if (choice.getId()
             .equals(
                 container.getMaid()

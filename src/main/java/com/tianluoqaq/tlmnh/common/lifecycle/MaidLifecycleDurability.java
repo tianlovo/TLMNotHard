@@ -31,6 +31,8 @@ import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraft.world.storage.SaveHandler;
 import net.minecraft.world.storage.ThreadedFileIOBase;
 
+import com.tianluoqaq.tlmnh.compat.endlessids.common.storage.EndlessIdsSectionData;
+
 /** 两类出站保管的写前屏障与实际目标读回；不把原生吞掉IO异常的返回当作存盘成功 */
 final class MaidLifecycleDurability {
 
@@ -98,6 +100,10 @@ final class MaidLifecycleDurability {
     }
 
     static void player(EntityPlayer player, NBTTagList expectedInventory, int selected) {
+        player(player, expectedInventory, selected, null);
+    }
+
+    static void player(EntityPlayer player, NBTTagList expectedInventory, int selected, Float health) {
         requirePlayer(player);
         try {
             expectedInventory = (NBTTagList) expectedInventory.copy();
@@ -105,7 +111,8 @@ final class MaidLifecycleDurability {
             var store = (SaveHandler) server.getSaveHandler()
                 .getSaveHandler();
             if (!expectedInventory.equals(player.inventory.writeToNBT(new NBTTagList()))
-                || player.inventory.currentItem != selected)
+                || player.inventory.currentItem != selected
+                || health != null && player.getHealth() != health)
                 throw new IllegalStateException("Player delivery changed before native save");
             // 沿原生SaveHandler及PlayerSavingEvent写出，绝不readPlayerData覆写活玩家
             store.writePlayerData(player);
@@ -115,7 +122,11 @@ final class MaidLifecycleDurability {
                 || !expectedInventory.equals(saved.getTagList("Inventory", 10))
                 || saved.getInteger("SelectedItemSlot") != selected
                 || !expectedInventory.equals(player.inventory.writeToNBT(new NBTTagList()))
-                || player.inventory.currentItem != selected)
+                || player.inventory.currentItem != selected
+                || health != null && (!saved.hasKey("HealF", 5) || saved.getFloat("HealF") != health
+                    || !saved.hasKey("Health", 2)
+                    || saved.getShort("Health") != (short) Math.ceil(health)
+                    || player.getHealth() != health))
                 throw new IllegalStateException("Native player inventory save was rejected or rewritten");
             try (var channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
                 channel.force(true);
@@ -129,6 +140,95 @@ final class MaidLifecycleDurability {
 
     static void requireEntities(World world) {
         loader(server(world));
+    }
+
+    static NBTTagCompound maidSnapshot(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
+        var result = new NBTTagCompound();
+        var type = EntityList.getEntityString(maid);
+        if (type == null || maid.ridingEntity != null || maid.riddenByEntity != null)
+            throw new IllegalStateException("Unknown or mounted maid publication");
+        result.setString("id", type);
+        maid.writeToNBT(result);
+        return (NBTTagCompound) result.copy();
+    }
+
+    static void shrine(MaidShrineTile shrine, NBTTagCompound expected, int metadata) {
+        try {
+            var world = server(shrine.getWorldObj());
+            var chunks = new LinkedHashMap<Long, Chunk>();
+            checkShrine(shrine, expected, metadata);
+            addChunk(world, chunks, shrine.xCoord >> 4, shrine.zCoord >> 4);
+            var loader = loader(world);
+            for (var chunk : chunks.values()) loader.saveChunk(world, chunk);
+            ThreadedFileIOBase.threadedIOInstance.waitForFinish();
+            try (var input = RegionFileCache
+                .getChunkInputStream(loader.chunkSaveLocation, shrine.xCoord >> 4, shrine.zCoord >> 4)) {
+                if (input == null) throw new IllegalStateException("No saved shrine chunk");
+                var root = CompressedStreamTools.read(input);
+                var level = root.getCompoundTag("Level");
+                if (!root.hasKey("Level", 10) || !level.hasKey("TileEntities", 9)
+                    || !level.hasKey("xPos", 3)
+                    || !level.hasKey("zPos", 3)
+                    || level.getInteger("xPos") != (shrine.xCoord >> 4)
+                    || level.getInteger("zPos") != (shrine.zCoord >> 4))
+                    throw new IllegalStateException("Unknown saved shrine chunk");
+                checkShrineBlock(level, shrine, metadata);
+                var tiles = level.getTagList("TileEntities", 10);
+                if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
+                    throw new IllegalStateException("Unknown saved shrine tile list");
+                int count = 0;
+                for (int i = 0; i < tiles.tagCount(); i++) {
+                    var tile = tiles.getCompoundTagAt(i);
+                    if (tile.getInteger("x") == shrine.xCoord && tile.getInteger("y") == shrine.yCoord
+                        && tile.getInteger("z") == shrine.zCoord) {
+                        count++;
+                        if (!expected.equals(tile))
+                            throw new IllegalStateException("Saved shrine differs from its owned snapshot");
+                    }
+                }
+                if (count != 1) throw new IllegalStateException("Saved shrine identity is not unique");
+            }
+            checkShrine(shrine, expected, metadata);
+        } catch (Exception failure) {
+            if (failure instanceof InterruptedException) Thread.currentThread()
+                .interrupt();
+            throw new IllegalStateException("Cannot confirm native shrine cost; redemption remains pending", failure);
+        }
+    }
+
+    static void checkShrine(MaidShrineTile shrine, NBTTagCompound expected, int metadata) {
+        var world = shrine.getWorldObj();
+        var actual = new NBTTagCompound();
+        if (shrine.isInvalid() || !world.getChunkProvider()
+            .chunkExists(shrine.xCoord >> 4, shrine.zCoord >> 4)
+            || world.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) != shrine
+            || world.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord)
+                != com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE
+            || world.getBlockMetadata(shrine.xCoord, shrine.yCoord, shrine.zCoord) != metadata)
+            throw new IllegalStateException("Shrine identity changed during redemption");
+        shrine.writeToNBT(actual);
+        if (!expected.equals(actual)) throw new IllegalStateException("Shrine storage changed during redemption");
+    }
+
+    private static void checkShrineBlock(NBTTagCompound level, MaidShrineTile shrine, int metadata) {
+        if (!level.hasKey("Sections", 9)) throw new IllegalStateException("Unknown native shrine block sections");
+        var sections = level.getTagList("Sections", 10);
+        if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
+            throw new IllegalStateException("Unknown native shrine section entries");
+        int count = 0;
+        for (int i = 0; i < sections.tagCount(); i++) {
+            var section = sections.getCompoundTagAt(i);
+            if (!section.hasKey("Y", 1) || section.getByte("Y") != shrine.yCoord >> 4) continue;
+            count++;
+            int index = ((shrine.yCoord & 15) << 8) | ((shrine.zCoord & 15) << 4) | (shrine.xCoord & 15);
+            int id = EndlessIdsSectionData.blockId(section, index);
+            if (id
+                != net.minecraft.block.Block
+                    .getIdFromBlock(com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE)
+                || EndlessIdsSectionData.metadata(section, index) != metadata)
+                throw new IllegalStateException("Native shrine block or facing changed during save");
+        }
+        if (count != 1) throw new IllegalStateException("Native shrine block section is not unique");
     }
 
     /** 只保存涉及的已加载区块；一批经验球共用一次原生IO等待，不遍历整个世界 */
@@ -237,6 +337,7 @@ final class MaidLifecycleDurability {
         final double x, y, z;
         final String type;
         final ItemStack item;
+        private NBTTagCompound maid;
         private boolean retracted;
 
         Publication(EntityItem entity, ItemStack expected) {
@@ -245,6 +346,12 @@ final class MaidLifecycleDurability {
 
         Publication(EntityXPOrb entity, int expected) {
             this(entity, null, expected);
+        }
+
+        Publication(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid entity,
+            NBTTagCompound expected) {
+            this(entity, null, 0);
+            maid = (NBTTagCompound) expected.copy();
         }
 
         private Publication(Entity entity, ItemStack item, int experience) {
@@ -274,12 +381,16 @@ final class MaidLifecycleDurability {
                 && entity.posY == y
                 && entity.posZ == z
                 && (world.getEntityByID(id) == null || world.getEntityByID(id) == entity)
-                && (item == null ? entity instanceof EntityXPOrb orb && orb.xpValue == experience
-                    : entity instanceof EntityItem drop && ItemStack.areItemStacksEqual(item, drop.getEntityItem()));
+                && (maid != null
+                    ? entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid actual
+                        && maid.equals(maidSnapshot(actual))
+                    : item == null ? entity instanceof EntityXPOrb orb && orb.xpValue == experience
+                        : entity instanceof EntityItem drop
+                            && ItemStack.areItemStacksEqual(item, drop.getEntityItem()));
         }
 
         void discard(World world) {
-            if (!owned(world) || entity.isDead)
+            if (!owned(world) || entity.isDead && maid == null)
                 throw new IllegalStateException("Unknown material successor or prior consumption must remain intact");
             world.removeEntity(entity);
             retracted = true;
@@ -288,6 +399,7 @@ final class MaidLifecycleDurability {
 
         private boolean matches(NBTTagCompound saved) {
             var position = saved.getTagList("Pos", 6);
+            if (maid != null) return maid.equals(saved);
             return saved.hasKey("Pos", 9) && position.tagCount() == 3
                 && position.func_150309_d(0) == x
                 && position.func_150309_d(1) == y

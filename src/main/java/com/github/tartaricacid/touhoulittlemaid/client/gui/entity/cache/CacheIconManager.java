@@ -78,7 +78,9 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
             .get(index);
         preview.setModelId(choice.getId());
         try {
-            var texture = MaidIconCapture.capture(preview, choice.getItemScale(), location(index));
+            var texture = choice.isEasterEgg() ? com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride
+                .placeholder(preview, () -> MaidIconCapture.capture(preview, choice.getItemScale(), location(index)))
+                : MaidIconCapture.capture(preview, choice.getItemScale(), location(index));
             if (texture == null) {
                 failures++;
                 queue.clear();

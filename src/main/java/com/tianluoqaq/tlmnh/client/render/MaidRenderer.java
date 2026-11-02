@@ -86,10 +86,10 @@ public final class MaidRenderer extends RenderLiving {
             generation = models.getGeneration();
         }
         var cached = entities.get(maid);
-        String requested = maid.getModelId();
-        if (cached != null && requested.equals(cached.requested)) return cached.model;
-        var choice = BuiltinModelCatalog.get(requested);
+        var choice = MaidNamedModelOverride.resolve(maid);
         if (choice == null) choice = BuiltinModelCatalog.get(DEFAULT_MODEL);
+        String requested = choice.getId();
+        if (cached != null && requested.equals(cached.requested)) return cached.model;
         BuiltinMaidModel model;
         try {
             model = models.create(choice);

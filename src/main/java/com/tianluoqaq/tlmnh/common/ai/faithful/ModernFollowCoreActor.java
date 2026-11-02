@@ -25,7 +25,6 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.EnderTeleportEvent;
 
-import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
@@ -54,7 +53,8 @@ import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.MaidDoorAccess;
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
     MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
-    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor, MaidDoorActor {
+    MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor, MaidDoorActor,
+    com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRouteObstacleActor {
 
     private final EntityMaid maid;
     private final World world;
@@ -571,6 +571,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 ? com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.WAITING_BUDGET
                 : com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.UNREACHABLE;
         return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, path);
+    }
+
+    @Override
+    public java.util.function.BooleanSupplier observeBlockedRoute() {
+        navigationLease();
+        if (!runtime.getProfile()
+            .isEnhanced()) throw new IllegalStateException("Enhanced obstacle observer requires its actual policy");
+        var identity = behaviorIdentity;
+        return com.tianluoqaq.tlmnh.common.ai.navigation.MaidRouteBlockage.observe(maid, ownedPath, () -> {
+            navigationLease();
+            return behaviorIdentity == identity && runtime.getProfile()
+                .isEnhanced();
+        });
     }
 
     public Path createPath(Vec3 target, int accuracy) {
@@ -1571,9 +1584,15 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public MaidCombatActor.Target findFirstValidAttackTarget() {
         guard();
-        return IAttackTask.findFirstValidAttackTarget(maid, perception.visible(), attack)
-            .map(AttackTargetView::new)
-            .orElse(null);
+        var visible = perception.visible();
+        var target = visible == null ? null
+            : visible.findClosest(
+                entity -> liveCombatTarget(entity) && maid.getHomeArea()
+                    .withinRestriction(
+                        MathHelper.floor_double(entity.posX),
+                        MathHelper.floor_double(entity.posY),
+                        MathHelper.floor_double(entity.posZ)));
+        return target == null ? null : new AttackTargetView(target);
     }
 
     public boolean setAttackTarget(MaidCombatActor.Target value) {
@@ -1596,7 +1615,26 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public boolean canAttack(MaidCombatActor.Target value) {
-        return attack.canAttack(maid, attackTarget(value).entity);
+        return liveCombatTarget(attackTarget(value).entity);
+    }
+
+    /** 首版F15平台安全门独立于原目标分类与可见缓存，不凭旧感知提交友伤或攻击离世对象 */
+    private boolean liveCombatTarget(EntityLivingBase target) {
+        guard();
+        if (target == null || target == maid
+            || world.provider == null
+            || maid.dimension != world.provider.dimensionId
+            || target.worldObj != world
+            || target.dimension != maid.dimension
+            || !target.isEntityAlive()
+            || target.isDead
+            || target.isEntityInvulnerable()
+            || world.getEntityByID(target.getEntityId()) != target) return false;
+        var owner = maid.getOwner();
+        boolean permitted = target != owner && !maid.isOnSameTeam(target)
+            && (owner == null || !owner.isOnSameTeam(target))
+            && attack.canAttack(maid, target);
+        return isCurrent() && maid.getOwner() == owner && permitted;
     }
 
     public boolean targetAlive(MaidCombatActor.Target value) {
@@ -1672,9 +1710,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void hurtTarget(MaidCombatActor.Target value, java.util.function.BooleanSupplier permitted) {
         var view = attackTarget(value);
+        var owner = maid.getOwner();
         var weapon = maid.getHeldItem();
         var before = weapon == null ? null : weapon.copy();
         java.util.function.BooleanSupplier completion = () -> view.current() && view.entity.worldObj == world
+            && maid.getOwner() == owner
             && maid.getTask() == MaidTask.ATTACK
             && maid.getModernCombatMemory()
                 .target() == view.entity
@@ -1683,7 +1723,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && permitted.getAsBoolean()
             && view.entity.isEntityAlive()
             && attack.hasAssaultWeapon(maid)
-            && attack.canAttack(maid, view.entity)
+            && liveCombatTarget(view.entity)
             && (targetVisible(view) || runtime.getProfile()
                 .isEnhanced() && maid.canEntityBeSeen(view.entity))
             && withinMeleeRange(view);
@@ -1919,10 +1959,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public MaidCombatActor.Target findFirstValidRangedTarget() {
         guard();
-        return com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask
-            .findFirstValidAttackTarget(maid, perception.nearby(), ranged)
-            .map(AttackTargetView::new)
-            .orElse(null);
+        var attacker = maid.getAITarget();
+        if (liveCombatTarget(attacker) && ranged.canSee(maid, attacker)) return new AttackTargetView(attacker);
+        for (var candidate : perception.nearby())
+            if (liveCombatTarget(candidate) && ranged.canSee(maid, candidate)) return new AttackTargetView(candidate);
+        return null;
     }
 
     public boolean rangedTargetTooFar(MaidCombatActor.Target value) {
