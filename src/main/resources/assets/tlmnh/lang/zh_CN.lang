@@ -153,3 +153,5 @@ feature.tlmnh.protection.client_snack_cabinet=零食柜显示
 
 block.touhou_little_maid.snack_cabinet.tip=可以存储物品。女仆会食用放在顶部的食物方块，还会把其物品栏中的食物方块放置到上方。
 feature.tlmnh.protection.cabinet_sounds=零食柜音效
+
+feature.tlmnh.protection.client_shrine=神龛显示

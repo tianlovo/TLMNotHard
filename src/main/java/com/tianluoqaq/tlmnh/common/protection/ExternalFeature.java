@@ -20,6 +20,7 @@ public enum ExternalFeature {
     CLIENT_TOMBSTONE("client_tombstone", true),
     CLIENT_MAID_BED("client_maid_bed", true),
     CLIENT_SNACK_CABINET("client_snack_cabinet", true),
+    CLIENT_SHRINE("client_shrine", true),
     CLIENT_TOMBSTONE_DIMENSION_TEXTURE("client_tombstone_dimension_texture", true, "TwilightForest");
 
     public final String id;

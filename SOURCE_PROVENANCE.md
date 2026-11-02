@@ -1301,3 +1301,11 @@ Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可�
 低平台CabinetOpeners适配无玩家参数的IInventory回调，在下一tick读取真实ContainerChest并于打开期间每5tick重查，不引入门动画或持久人数；名称沿旧版原生字符串合同，未知原NBT类型保留
 Et Futurum Requiem 2.6.65实际TileEntityBarrel第183/202行以Reference.MCAssetVer拼接block.barrel.open/close；本工程声音适配沿该提供方资源域读取，不复制Mojang声音，不把EFR桶自身的不同音高和metadata开关写入女仆柜
 比较器与通知依据本工程实际Forge源Container.calcRedstoneFromInventory及TileEntity.markDirty，服务端原生10tick检查确认旁边实际比较器由满库存15降空0，不由纯计算替代传播验证
+
+## 原版神龛模型与胶片显示
+
+固定TLM提交的 `client/renderer/tileentity/TileEntityShrineRenderer.java` 保留原包与MIT来源，柜体平移/负Z及负Y旋转、胶片0.85高度/0.5缩放/世界时间负Y旋转按实际源移植
+原 `BlockShrine` 的三层VoxelShape为0～16底座高5、中层2～14高5～10、顶层4～12高10～16；旧平台将相同几何用于碰撞与射线，朝向沿原北向默认和反向玩家放置
+神龛模型JSON、纹理和物品PNG的固定Git原blob与路径映射列于 `assets/tlmnh/shrine-assets-provenance.json`，三项资产均沿CC-BY-NC-SA-4.0，不改原字节
+原胶片模型继承item/generated；本目标实际1.20.1 client-extra.jar内 `assets/minecraft/models/item/generated.json` 的GROUND平移为(0,2,0)/16、缩放为(0.5,0.5,0.5)，低平台按该变换挤出既有胶片图标
+原TileEntityShrine保存并同步完整StorageItem；本工程保留服务端完整存储，只同步最小显示种类，属于本项目数据边界适配，不能把显示物品当原始凭证或客户端回包当持久数据

@@ -1209,3 +1209,11 @@ metadata低两位记录放置yaw，0沿旧柜与原版默认北向；高两位�
 比较器沿原生Container库存计算，不将Recovery保管物品计入；库存markDirty使用原生Tile的比较器通知，原柜拆除沿既有交付逻辑并通知输出变化
 CabinetOpeners仅在真实服务端自有Tile执行，开关回调请求下一tick核对实际同柜ContainerChest，首开/末关播放原桶声音；打开期间每5tick处理玩家离开等丢失回调，旁观模式ID3不计入，计数不存盘
 EtFuturum声音适配位于compat/etfuturum/common/sound，惰性读取Reference.MCAssetVer并由CABINET_SOUNDS独立保护；资源域接口失效回退原生箱声，异常和聊天提示沿既有保护系统，不能由服务端声音事件认定客户端音频播放完成
+
+## 神龛模型与显示数据
+
+神龛使用固定原模型、纹理和物品图标，原渲染类保留上游包名；客户端资源位于client/lifecycle/shrine，reload只清模型缓存，独立CLIENT_SHRINE保护不控制服务端胶片
+原三层碰撞与射线选择分别覆盖底座0～5/16、中层5～10/16及顶层10/16～1；方向按玩家反向放置，旧metadata0默认北向，未知高位不归一化，同方块方向改变保留原Tile和胶片
+描述包只包含DisplayVersion与StorageKind两个byte，后者0/1/2表示空、胶片、恢复保管包；服务端拒绝把S35显示输入交给readFromNBT，客户端显示物品没有凭证、主人或原女仆数据
+存盘仍沿原StorageItem保护编解码，模型显示、显示物品改写和资源失败不回写真实槽；这不是磁盘崩溃事务或完整复活链验收
+胶片显示保留原神龛平移、缩放、世界时间旋转，以及实际1.20.1 item/generated的GROUND变换；旧平台通过自有物品图标挤出显示，不创建世界掉落物或调用胶片使用逻辑

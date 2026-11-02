@@ -12,14 +12,43 @@ public final class MaidShrineTile extends TileEntity {
 
     private ItemStack film;
     private boolean busy;
+    private int clientStorageKind;
 
     @Override
     public boolean canUpdate() {
         return false;
     }
 
+    @Override
+    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    public net.minecraft.util.AxisAlignedBB getRenderBoundingBox() {
+        // 原模型visible_bounds宽3/高2.5/中心Y.75，屋顶高于单方块碰撞，不能随碰撞盒被裁去
+        return net.minecraft.util.AxisAlignedBB
+            .getBoundingBox(xCoord - 1, yCoord - .5, zCoord - 1, xCoord + 2, yCoord + 2, zCoord + 2);
+    }
+
     public ItemStack getFilm() {
         return film == null ? null : film.copy();
+    }
+
+    /** 仅供渲染：不向客户端暴露胶片token、主人或原始女仆NBT */
+    public ItemStack displayItem() {
+        int kind = worldObj != null && worldObj.isRemote ? clientStorageKind : storageKind();
+        return switch (kind) {
+            case 1 -> new ItemStack(com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.FILM);
+            case 2 -> new ItemStack(com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.ITEM);
+            default -> null;
+        };
+    }
+
+    private int storageKind() {
+        return film == null ? 0 : MaidLifecycleItems.isFilm(film) ? 1 : 2;
+    }
+
+    @Override
+    public boolean shouldRefresh(net.minecraft.block.Block oldBlock, net.minecraft.block.Block newBlock, int oldMeta,
+        int newMeta, net.minecraft.world.World world, int x, int y, int z) {
+        return oldBlock != newBlock;
     }
 
     public boolean insert(ItemStack stack) {
@@ -80,12 +109,20 @@ public final class MaidShrineTile extends TileEntity {
     @Override
     public Packet getDescriptionPacket() {
         var tag = new NBTTagCompound();
-        writeToNBT(tag);
+        tag.setByte("DisplayVersion", (byte) 1);
+        tag.setByte("StorageKind", (byte) storageKind());
         return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, tag);
     }
 
     @Override
     public void onDataPacket(NetworkManager network, S35PacketUpdateTileEntity packet) {
-        readFromNBT(packet.func_148857_g());
+        // S35只更新客户端显示字段，绝不能作为服务端持久StorageItem输入
+        if (worldObj == null || !worldObj.isRemote) return;
+        var tag = packet.func_148857_g();
+        clientStorageKind = tag != null && tag.hasKey("DisplayVersion", 1)
+            && tag.getByte("DisplayVersion") == 1
+            && tag.hasKey("StorageKind", 1)
+            && tag.getByte("StorageKind") >= 0
+            && tag.getByte("StorageKind") <= 2 ? tag.getByte("StorageKind") : 0;
     }
 }
