@@ -80,15 +80,19 @@ public final class ClientDevelopmentRequest {
         }
         if (command == Command.RENDER_PROBE) {
             model = text(json, "model");
-            if (!Arrays
+            boolean reviewedFaultModel = Arrays
                 .asList(
                     "geckolib:winefox_hanfu",
                     "authors_and_credits:wine_fox_maid",
                     "touhou_little_maid:hakurei_reimu")
-                .contains(model)) throw new IllegalArgumentException("Unreviewed render probe model");
+                .contains(model);
+            if (!reviewedFaultModel && !com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.contains(model))
+                throw new IllegalArgumentException("Unknown builtin render probe model");
             if (json.has("fault")) fault = text(json, "fault");
             if (!Arrays.asList("none", "uv_offset", "wrong_texture", "drop_geometry")
                 .contains(fault)) throw new IllegalArgumentException("Unknown render probe fault");
+            if (!fault.equals("none") && !reviewedFaultModel)
+                throw new IllegalArgumentException("Unreviewed render fault model");
         }
         if (command == Command.HEAD_BINDING_PROBE) {
             model = text(json, "model");
@@ -128,6 +132,12 @@ public final class ClientDevelopmentRequest {
             if (!Arrays
                 .asList(
                     "status",
+                    "naming_text",
+                    "naming_visibility",
+                    "naming_save",
+                    "naming_cancel",
+                    "naming_escape",
+                    "naming_enter",
                     "open",
                     "select",
                     "back",
@@ -196,6 +206,7 @@ public final class ClientDevelopmentRequest {
                 || action.equals("details_shield_blocking")
                 || action.equals("details_view")
                 || action.equals("sound_play")
+                || action.equals("naming_text")
                 || action.equals("target_add")
                 || action.equals("target_remove")
                 || action.equals("target_previous")

@@ -9,6 +9,7 @@ from pathlib import Path
 from check import UPSTREAM, require, sha
 from compare_port import OBSERVER, PRODUCTION, artifact, metrics
 from attribute_inputs import compare_attribute_inputs
+from nbt_binding import BINDING_SCHEMA, compare_same_side_nbt
 
 MECHANISMS = ("normal", "occupied_release", "unreachable", "bed_removed", "hurt_sleeping")
 SLEEP_OWNER = ["com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator",
@@ -148,12 +149,16 @@ def pair_inputs(original, port):
                 "fresh actual items/effects not empty")
     attributes = compare_attribute_inputs(a.get("attributeInputs"), b.get("attributeInputs"),
                                           original["contract"].get("attributeInputs"))
-    for row, inputs in ((a, x), (b, y)):
-        if "attributeInputs" in row:
-            require(row["attributeInputs"]["rawEntityNBT"] == inputs["rawInitialNBT"],
-                    "typed attributes were not observed with the retained complete initial NBT")
+    bindings = {side: compare_same_side_nbt(row.get("attributeInputs", {}), inputs)
+                for side, row, inputs in (("original", a, x), ("port", b, y))}
+    binding_contract = original["contract"].get("attributeInputs", {}).get("rawNbtBinding")
+    if binding_contract is not None:
+        require(binding_contract["schema"] == BINDING_SCHEMA, "unsupported same-side raw NBT binding contract")
+        require(all(item["typed_structure_equal"] for item in bindings.values()),
+                "same-side complete initial NBT snapshots differ or lossless binding remains unproven")
     return {"recorded_field_differences": differences, "semantic_block_layout_equal": layout_equal,
             "raw_task_ids": tasks, "attribute_inputs": attributes,
+            "same_side_initial_nbt_bindings": bindings,
             "inventory_and_full_NBT_semantic_equivalence_evaluated": False,
             "complete_actual_environment_pair_accepted": False,
             "scope": "recorded scalar/home/layout comparison; raw NBT retained, engine RNG/physics and full inventory semantics not qualified"}
@@ -256,6 +261,8 @@ def main():
             if args.require_attribute_inputs:
                 require(pairs[profile]["attribute_inputs"]["selected_initial_attribute_inputs_equal"] is True,
                         "selected actual attribute inputs are not exactly equal or remain unproven")
+                require(all(v["typed_structure_equal"] for v in pairs[profile]["same_side_initial_nbt_bindings"].values()),
+                        "selected attributes have no proven same-side complete initial NBT binding")
             if args.require_paired_inputs:
                 require(not pairs[profile]["recorded_field_differences"] and pairs[profile]["semantic_block_layout_equal"]
                         and len(set(pairs[profile]["raw_task_ids"].values())) == 1, "recorded paired inputs differ")
@@ -282,6 +289,9 @@ def main():
         pair["attribute_inputs"]["selected_initial_attribute_inputs_within_numeric_tolerance"]
         for scene in scenes for pair in scene["input_pairs"].values())
     result["all_attribute_semantics_evaluated"] = False
+    result["same_side_initial_nbt_bindings_equal"] = all(
+        binding["typed_structure_equal"] for scene in scenes for pair in scene["input_pairs"].values()
+        for binding in pair["same_side_initial_nbt_bindings"].values())
     result["full_nbt_semantic_equivalence_evaluated"] = False
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

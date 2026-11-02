@@ -175,9 +175,14 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_world_passed"));
             return;
         }
-        if (args.length >= 1 && args.length <= 3 && "lab-enter".equals(args[0])) {
+        if (args.length >= 1 && args.length <= 4 && "lab-enter".equals(args[0])) {
             var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
-            AnimationLab.enter(player, args.length == 3 ? args[2] : "geckolib:winefox_hanfu");
+            if (args.length == 4 && !"sitting".equals(args[3]) && !"standing".equals(args[3]))
+                throw new WrongUsageException(getCommandUsage(sender));
+            AnimationLab.enter(
+                player,
+                args.length >= 3 ? args[2] : "geckolib:winefox_hanfu",
+                args.length < 4 || "sitting".equals(args[3]));
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_entered"));
             return;
         }

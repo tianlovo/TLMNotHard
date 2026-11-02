@@ -28,11 +28,15 @@ public final class MaidModelUiProbe {
     private MaidModelUiProbe() {}
 
     public static JsonObject observe() {
+        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming)
+            return namingObservation(naming, "status", null);
         requireWindow();
         return snapshot();
     }
 
     public static JsonObject perform(String action, String model) {
+        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming)
+            return namingObservation(naming, action, model);
         requireWindow();
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
@@ -272,6 +276,27 @@ public final class MaidModelUiProbe {
         }
         result.add("resourceSha256", resources);
         return result;
+    }
+
+    private static JsonObject namingObservation(com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming, String action,
+        String value) {
+        var minecraft = Minecraft.getMinecraft();
+        if (!Boolean.getBoolean("tlmnh.devCommands") || minecraft.thePlayer == null
+            || minecraft.thePlayer.openContainer != naming.getContainer()
+            || !naming.getContainer()
+                .canInteractWith(minecraft.thePlayer))
+            throw new IllegalStateException("Actual authorized naming window required");
+        var response = naming.observation();
+        boolean requested = !action.equals("status") && naming.requestAction(action, value);
+        response.addProperty("currentScreen", "GuiMaidNaming");
+        response.addProperty("action", action);
+        response.addProperty("actionRequested", requested);
+        response.addProperty(
+            "networkActionRequested",
+            requested && (action.equals("naming_save") || action.equals("naming_enter")));
+        response.addProperty("serverAcknowledged", false);
+        if (minecraft.currentScreen == naming) response.add("afterAction", naming.observation());
+        return response;
     }
 
     private static JsonObject snapshot() {

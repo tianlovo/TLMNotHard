@@ -179,6 +179,7 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("z", maid.posZ);
                             shape.addProperty("pitch", maid.rotationPitch);
                             shape.addProperty("model", maid.getModelId());
+                            shape.addProperty("sitting", maid.isSitting());
                             shape.addProperty(
                                 "swimPrevious",
                                 com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 0));

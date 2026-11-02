@@ -101,6 +101,10 @@ public final class AnimationLab {
     }
 
     public static void enter(EntityPlayerMP player, String model) {
+        enter(player, model, true);
+    }
+
+    public static void enter(EntityPlayerMP player, String model, boolean sitting) {
         require(BuiltinModelCatalog.contains(model), "Unknown builtin lab model");
         require(player.inventory.getItemStack() == null, "Put down the cursor item before entering the lab");
         var spectator = spectator();
@@ -143,7 +147,7 @@ public final class AnimationLab {
         // 复用存档中的展台女仆时也恢复夹具输入，避免历史位置和朝向污染下一例
         maid.getBrainCoordinator()
             .setSuspended(true);
-        maid.setSitting(true);
+        maid.setSitting(sitting);
         maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
         maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
         maid.rotationYawHead = maid.prevRotationYawHead = 180;

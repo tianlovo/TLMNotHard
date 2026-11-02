@@ -94,6 +94,11 @@
     "schema": "sleep-attribute-inputs-v1",
     "samplePhase": "registered_spawn_before_first_natural_tick",
     "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
     "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
     "mappings": [
       {"key": "max_health", "original": "minecraft:generic.max_health", "port": "generic.maxHealth"},

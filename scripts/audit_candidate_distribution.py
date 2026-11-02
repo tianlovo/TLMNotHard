@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 
 from verify_builtin_assets import verify as verify_assets
+from verify_builtin_sounds import verify as verify_sounds
 from verify_bytecode import JAVA_8_MAJOR, inspect_archive
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -111,49 +112,7 @@ def provenance_and_licenses(archive, names):
 
 
 def sounds(archive, names):
-    provenance_bytes = archive.read("assets/tlmnh/builtin-sounds-provenance.json")
-    provenance = json.loads(provenance_bytes)
-    catalog = json.loads(archive.read("assets/tlmnh/builtin-sounds.json"))
-    require(provenance["commit"] == catalog["upstream_commit"], "Sound catalog/source commit differ")
-    require(provenance.get("audio_distribution_cleared") is False,
-            "Audio clearance flag changed; this audit has no authority to approve new permissions")
-    recorded, audio = set(), set()
-    for entry in provenance["files"]:
-        name = entry["path"]
-        safe_member(name)
-        require(name not in recorded, "Duplicate sound provenance entry: " + name)
-        recorded.add(name)
-        data = archive.read(name)
-        require(len(data) == entry["bytes"] and digest(data) == entry["sha256"], "Sound resource/source digest differs: " + name)
-        require(isinstance(entry.get("local_audio"), bool), "Missing sound scope: " + name)
-        if entry["local_audio"]:
-            require(name.endswith(".ogg") and data.startswith(b"OggS") and entry.get("source"), "Invalid sourced Ogg: " + name)
-            audio.add(name)
-    actual_audio = {name for name in names if name.lower().endswith(".ogg")}
-    require(actual_audio == audio and bool(audio), "Actual Ogg inventory differs from the complete source manifest")
-    packs = []
-    for pack in catalog["packs"]:
-        namespace = pack["id"]
-        require(json.loads(archive.read(f"assets/{namespace}/maid_sound.json")) == pack["info"], "Original sound author information differs")
-        events = json.loads(archive.read(f"assets/{namespace}/sounds.json"))
-        require(set(events) == set(pack["events"]), "Sound event inventory differs: " + namespace)
-        references = set()
-        for event, expected_count in pack["events"].items():
-            entries = events[event]["sounds"]
-            require(len(entries) == expected_count, "Sound event count differs: " + namespace + ":" + event)
-            for resource in entries:
-                require(isinstance(resource, str), "Unreviewed sound event reference format")
-                domain, path = resource.split(":", 1) if ":" in resource else (namespace, resource)
-                target = f"assets/{domain}/sounds/{path}.ogg"
-                require(target in audio, "Event references an unsourced or missing sound: " + target)
-                references.add(target)
-        pack_audio = {name for name in audio if name.startswith(f"assets/{namespace}/")}
-        packs.append({"id": namespace, "authors": pack["info"]["author"], "source_url": pack["info"]["url"],
-                      "events": len(events), "audio_files": len(pack_audio), "referenced_audio_files": len(references),
-                      "audio_bytes": sum(archive.getinfo(name).file_size for name in pack_audio)})
-    require(len(packs) == 2 and {pack["id"] for pack in packs} == {"littlemaid_peco", "touhou_little_maid"}, "Unexpected sound packs")
-    return {"audio_files": len(audio), "source_entries": len(recorded), "provenance_sha256": digest(provenance_bytes),
-            "upstream_commit": provenance["commit"], "audio_distribution_cleared": False, "packs": packs}
+    return verify_sounds(archive.read, names)
 
 
 def audit(artifact, data):

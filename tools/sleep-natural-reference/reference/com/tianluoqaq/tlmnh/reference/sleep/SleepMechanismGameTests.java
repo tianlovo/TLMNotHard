@@ -121,6 +121,7 @@ public final class SleepMechanismGameTests {
             initial.addProperty("pickup", maid.isPickup()); initial.addProperty("difficulty", level.getDifficulty().name());
             initial.addProperty("raining", level.isRaining()); initial.addProperty("thundering", level.isThundering());
             var raw = new CompoundTag(); maid.saveWithoutId(raw); initial.addProperty("rawInitialNBT", raw.toString());
+            initial.add("rawInitialNbtBinary", SleepAttributeSnapshot.binaryNbt(raw));
             var orientation = new JsonObject();
             orientation.addProperty("yaw", maid.getYRot()); orientation.addProperty("pitch", maid.getXRot());
             orientation.addProperty("headYaw", maid.getYHeadRot()); orientation.addProperty("bodyYaw", maid.yBodyRot);

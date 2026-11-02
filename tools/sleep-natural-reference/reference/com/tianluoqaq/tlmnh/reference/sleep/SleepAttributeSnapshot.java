@@ -1,7 +1,11 @@
 package com.tianluoqaq.tlmnh.reference.sleep;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +16,7 @@ import java.util.UUID;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
@@ -52,6 +57,7 @@ final class SleepAttributeSnapshot {
             result.addProperty("side", "original");
             result.addProperty("samplePhase", "registered_spawn_before_first_natural_tick");
             result.addProperty("rawEntityNBT", before.toString());
+            result.add("rawEntityNbtBinary", binaryNbt(before));
             result.addProperty("rawAttributesNBT", before.get("Attributes").toString());
             result.addProperty("serializedAttributeCount", before.getList("Attributes", 10).size());
             var selectedNames = new HashSet<String>();
@@ -97,6 +103,23 @@ final class SleepAttributeSnapshot {
             return result;
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException("Reviewed original attribute layout is unavailable", failure);
+        }
+    }
+
+    static JsonObject binaryNbt(CompoundTag raw) {
+        try {
+            var bytes = new ByteArrayOutputStream();
+            try (var output = new DataOutputStream(bytes)) {
+                NbtIo.write(raw, output);
+            }
+            var result = new JsonObject();
+            result.addProperty("schema", "named-uncompressed-nbt-v1");
+            result.addProperty("encoding", "base64");
+            result.addProperty("rawSNBT", raw.toString());
+            result.addProperty("data", Base64.getEncoder().encodeToString(bytes.toByteArray()));
+            return result;
+        } catch (IOException failure) {
+            throw new IllegalStateException("Complete initial original NBT binary capture failed", failure);
         }
     }
 

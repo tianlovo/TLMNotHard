@@ -1,6 +1,10 @@
 package com.tianluoqaq.tlmnh.qa;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
@@ -10,6 +14,7 @@ import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.ai.attributes.IAttribute;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
+import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -39,6 +44,7 @@ final class SleepAttributePortSnapshot {
         result.addProperty("side", "port");
         result.addProperty("samplePhase", "registered_spawn_before_first_natural_tick");
         result.addProperty("rawEntityNBT", before.toString());
+        result.add("rawEntityNbtBinary", binaryNbt(before));
         result.addProperty(
             "rawAttributesNBT",
             before.getTag("Attributes")
@@ -85,6 +91,27 @@ final class SleepAttributePortSnapshot {
         result.addProperty("rawNbtUnchanged", true);
         result.addProperty("attributeInstanceMembershipUnchanged", true);
         return result;
+    }
+
+    /** 原生未压缩NBT保留全部tag类型/数组/列表顺序；旧toString本身不是无损格式 */
+    static JsonObject binaryNbt(NBTTagCompound raw) {
+        try {
+            var bytes = new ByteArrayOutputStream();
+            try (var output = new DataOutputStream(bytes)) {
+                CompressedStreamTools.write(raw, output);
+            }
+            var result = new JsonObject();
+            result.addProperty("schema", "named-uncompressed-nbt-v1");
+            result.addProperty("encoding", "base64");
+            result.addProperty("rawSNBT", raw.toString());
+            result.addProperty(
+                "data",
+                Base64.getEncoder()
+                    .encodeToString(bytes.toByteArray()));
+            return result;
+        } catch (IOException failure) {
+            throw new IllegalStateException("Complete initial native NBT binary capture failed", failure);
+        }
     }
 
     private static JsonArray modifiers(IAttributeInstance instance) {

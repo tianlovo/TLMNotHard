@@ -160,7 +160,13 @@ public class ClientDevelopmentRequestTest {
     }
 
     @Test
-    public void renderProbeAcceptsOnlyReviewedModelsAndExplicitFaults() {
+    public void renderProbeAcceptsBuiltinObservationsAndReviewedFaultModels() {
+        com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.load();
+        for (var choice : com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.choices()) {
+            var request = parse("{\"command\":\"render_probe\",\"model\":\"" + choice.getId() + "\"}");
+            assertEquals(choice.getId(), request.model);
+            assertEquals("none", request.fault);
+        }
         for (String model : new String[] { "geckolib:winefox_hanfu", "authors_and_credits:wine_fox_maid",
             "touhou_little_maid:hakurei_reimu" }) {
             for (String fault : new String[] { "none", "uv_offset", "wrong_texture", "drop_geometry" }) {
@@ -172,6 +178,7 @@ public class ClientDevelopmentRequestTest {
         }
         for (String json : new String[] { "{\"command\":\"render_probe\"}",
             "{\"command\":\"render_probe\",\"model\":null}",
+            "{\"command\":\"render_probe\",\"model\":\"geckolib:winefox\",\"fault\":\"drop_geometry\"}",
             "{\"command\":\"render_probe\",\"model\":\"tlmnh:unknown\"}",
             "{\"command\":\"render_probe\",\"model\":\"geckolib:winefox_hanfu\",\"fault\":\"random\"}" })
             assertThrows(IllegalArgumentException.class, () -> parse(json));

@@ -246,6 +246,7 @@ public final class SleepMechanismPortTests {
             var raw = new NBTTagCompound();
             maid.writeToNBT(raw);
             initial.addProperty("rawInitialNBT", raw.toString());
+            initial.add("rawInitialNbtBinary", SleepAttributePortSnapshot.binaryNbt(raw));
             var orientation = new JsonObject();
             orientation.addProperty("yaw", maid.rotationYaw);
             orientation.addProperty("pitch", maid.rotationPitch);

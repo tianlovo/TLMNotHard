@@ -179,12 +179,34 @@ public final class EnhancedActionRecoveryTests {
     @GameTest(template = "modern_core_cell", timeoutTicks = 400, batch = "enhanced_recovery_targets")
     public static void unreachableThreatYieldsToAnotherAndMovementMakesTheOriginalEligibleAgain(GameTestHelper helper) {
         var f = fixture(helper, MaidTask.ATTACK);
-        pillar(helper, 4);
-        var blocked = pig(helper, f, 7.5, 5, 4.5);
-        var reachable = pig(helper, f, 15.5, 1, 4.5);
+        // 平面隔岛保持目标可见；旧高柱同时遮挡两个候选，未必进入追击失败路径
+        for (int x = 5; x <= 9; x++)
+            for (int z = 2; z <= 6; z++) if (x != 7 || z != 4) helper.setBlock(x, 0, z, Blocks.air);
+        var blocked = pig(helper, f, 7.5, 1, 4.5);
+        var reachable = pig(helper, f, 11.5, 1, 1.5);
+        // 两条路线均留在主人的跟随起步距离内，避免合法的FOLLOW指令抢占被测战斗
+        f.owner.setPosition(f.x + 6.5, f.y + 1, f.z + 1.5);
+        helper.assertTrue(
+            f.maid.canEntityBeSeen(blocked) && f.maid.canEntityBeSeen(reachable)
+                && f.maid.getDistanceSqToEntity(blocked) < f.maid.getDistanceSqToEntity(reachable),
+            "Both real threats must start visible, with the isolated target nearer");
         var core = select(helper, f);
         boolean[] selectedBlocked = { false }, moved = { false };
         int[] abandonedAt = { -1 };
+        String[] previous = { "" };
+        helper.onEachTick("unreachable threat natural decision state", () -> {
+            var target = core.combat()
+                .target();
+            String key = (target == blocked ? "blocked" : target == reachable ? "reachable" : "none") + ":"
+                + core.combat()
+                    .abandonedTargets()
+                + ":"
+                + moved[0];
+            if (!key.equals(previous[0]) || f.maid.ticksExisted == 200 || f.maid.ticksExisted == 399) {
+                previous[0] = key;
+                System.out.println("TLMNH_UNREACHABLE_THREAT_STATE " + threatState(f, core, blocked, reachable));
+            }
+        });
         helper.succeedWhen(() -> {
             ready(helper, f, core);
             selectedBlocked[0] |= core.combat()
@@ -196,7 +218,8 @@ public final class EnhancedActionRecoveryTests {
                 helper.assertTrue(
                     selectedBlocked[0] && core.combat()
                         .abandonedTargets() == 1 && blocked.getHealth() == 200 && abandonedAt[0] >= 0,
-                    "Unreachable target was not tried/released before attacking the alternate threat");
+                    "Unreachable target was not tried/released before attacking the alternate threat: "
+                        + threatState(f, core, blocked, reachable));
                 reachable.setDead();
                 blocked.setPosition(f.maid.posX + 1.5, f.y + 1, f.maid.posZ);
                 blocked.motionX = blocked.motionY = blocked.motionZ = 0;
@@ -207,9 +230,53 @@ public final class EnhancedActionRecoveryTests {
             helper.assertTrue(
                 f.maid.ticksExisted < abandonedAt[0] + 100 && core.combat()
                     .abandonedTargets() == 1,
-                "Moving the actual target did not invalidate its old failed-position cooldown");
+                "Moving the actual target did not invalidate its old failed-position cooldown: "
+                    + threatState(f, core, blocked, reachable));
             return true;
         });
+    }
+
+    private static String threatState(ModernCoreTests.Fixture f, EnhancedCoreBrain core, EntityPig blocked,
+        EntityPig reachable) {
+        var path = f.navigation.getPath();
+        return "age=" + f.maid.ticksExisted
+            + ", selected="
+            + core.selectedKind()
+            + ", target="
+            + (core.combat()
+                .target() == blocked ? "blocked"
+                    : core.combat()
+                        .target() == reachable ? "reachable" : "none")
+            + ", abandoned="
+            + core.combat()
+                .abandonedTargets()
+            + ", cantReachSince="
+            + core.actor()
+                .peekCantReachSince()
+            + ", navigation="
+            + core.navigation()
+                .outcome()
+            + ", noPath="
+            + f.navigation.noPath()
+            + ", pathCanReach="
+            + (path instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath modern ? modern.canReach()
+                : null)
+            + ", maid="
+            + f.maid.posX
+            + "/"
+            + f.maid.posY
+            + "/"
+            + f.maid.posZ
+            + ", ownerDistance="
+            + f.maid.getDistanceToEntity(f.owner)
+            + ", blockedHealth="
+            + blocked.getHealth()
+            + ", reachableHealth="
+            + reachable.getHealth()
+            + ", blockedVisible="
+            + f.maid.canEntityBeSeen(blocked)
+            + ", reachableVisible="
+            + f.maid.canEntityBeSeen(reachable);
     }
 
     private static ModernCoreTests.Fixture fixture(GameTestHelper helper, MaidTask task) {
