@@ -4,13 +4,19 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
 
-/** 供蛋糕摆放与偷吃的最小柜体，暂用原生木板外观 */
+/** 供蛋糕摆放与偷吃的最小27格柜体，原模型与玻璃罩由TESR显示 */
 public final class BlockSnackCabinet extends BlockContainer {
+
+    public static final int TYPE_NONE = 0, TYPE_FULL = 1, TYPE_HALF = 2;
 
     public BlockSnackCabinet() {
         super(Material.wood);
@@ -25,6 +31,73 @@ public final class BlockSnackCabinet extends BlockContainer {
     @Override
     public TileEntity createNewTileEntity(World world, int metadata) {
         return new TileEntitySnackCabinet();
+    }
+
+    @Override
+    public int getRenderType() {
+        return -1;
+    }
+
+    @Override
+    public boolean isOpaqueCube() {
+        return false;
+    }
+
+    @Override
+    public boolean renderAsNormalBlock() {
+        return false;
+    }
+
+    @Override
+    public boolean isSideSolid(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
+        // 原noOcclusion不改变柜体的完整碰撞/承重，旧平台需独立声明实心面
+        return true;
+    }
+
+    @Override
+    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    public String getItemIconName() {
+        return "touhou_little_maid:snack_cabinet";
+    }
+
+    /** 旧柜metadata0没有外观方向，沿原默认北向；低两位记录玩家放置yaw */
+    public static int facingDirection(int metadata) {
+        return ((metadata & 3) + 2) & 3;
+    }
+
+    public static int cabinetType(int metadata) {
+        return (metadata >>> 2) & 3;
+    }
+
+    @Override
+    public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase placer, ItemStack stack) {
+        if (world.isRemote || world.getBlock(x, y, z) != this
+            || !(world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet)
+            || cabinet.isInvalid()) return;
+        int previous = world.getBlockMetadata(x, y, z);
+        if (cabinetType(previous) > TYPE_HALF) return;
+        if (placer != null) {
+            int facing = net.minecraft.util.MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
+            world.setBlockMetadataWithNotify(x, y, z, (previous & 12) | facing, 2);
+        }
+        refreshDisplay(world, x, y, z);
+    }
+
+    @Override
+    public void onNeighborBlockChange(World world, int x, int y, int z, Block neighbor) {
+        refreshDisplay(world, x, y, z);
+    }
+
+    void refreshDisplay(World world, int x, int y, int z) {
+        if (world.isRemote || world.getBlock(x, y, z) != this
+            || !world.blockExists(x, y + 1, z)
+            || world.getBlock(x, y + 1, z) != net.minecraft.init.Blocks.cake
+            || !(world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet)
+            || cabinet.isInvalid()) return;
+        int metadata = world.getBlockMetadata(x, y, z);
+        // 原updateShape仅在命中食物标签时切换罩型，移走蛋糕后保留原罩型
+        if (cabinetType(metadata) <= TYPE_HALF && cabinetType(metadata) != TYPE_FULL)
+            world.setBlockMetadataWithNotify(x, y, z, (metadata & 3) | (TYPE_FULL << 2), 2);
     }
 
     @Override

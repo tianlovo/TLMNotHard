@@ -10,6 +10,27 @@ import net.minecraft.tileentity.TileEntity;
 /** 上游最小 27 格零食柜，使用原生箱子界面，不增加厨房联动 */
 public final class TileEntitySnackCabinet extends TileEntity implements IInventory {
 
+    private boolean displayChecked;
+
+    @Override
+    public void updateEntity() {
+        if (displayChecked || worldObj == null
+            || worldObj.isRemote
+            || isInvalid()
+            || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this) return;
+        displayChecked = true;
+        // 旧占位柜加载时已有原版蛋糕，不等待一次额外的邻居事件才建立原玻璃罩
+        com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet
+            .refreshDisplay(worldObj, xCoord, yCoord, zCoord);
+    }
+
+    @Override
+    public boolean shouldRefresh(net.minecraft.block.Block oldBlock, net.minecraft.block.Block newBlock, int oldMeta,
+        int newMeta, net.minecraft.world.World world, int x, int y, int z) {
+        // Forge默认非原生Tile在metadata变化时会被重建；方向/玻璃罩不能清空柜内物品
+        return oldBlock != newBlock;
+    }
+
     private final com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery = new com.tianluoqaq.tlmnh.common.protection.RecoveryStore();
 
     public com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery() {
@@ -107,6 +128,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
+        displayChecked = false;
         java.util.Arrays.fill(items, null);
         recovery.read(tag.getTagList(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, 10));
         recovery.retainInvalidList(tag, "Items");

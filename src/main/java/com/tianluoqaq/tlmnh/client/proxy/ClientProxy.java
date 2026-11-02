@@ -74,6 +74,12 @@ public final class ClientProxy extends CommonProxy {
             com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed.class,
             new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityMaidBedRenderer(
                 bedModels));
+        var cabinetModels = new com.tianluoqaq.tlmnh.client.life.cabinet.MaidCabinetModelResources();
+        ((IReloadableResourceManager) manager).registerReloadListener(cabinetModels);
+        cpw.mods.fml.client.registry.ClientRegistry.bindTileEntitySpecialRenderer(
+            com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet.class,
+            new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntitySnackCabinetRenderer(
+                cabinetModels));
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             try {
                 FMLCommonHandler.instance()

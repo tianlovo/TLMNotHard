@@ -1285,3 +1285,11 @@ Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可�
 固定TLM的 `EntityMaid.openMaidGui` 在ServerPlayer且未睡眠时先navigation.stop再NetworkHooks.openScreen，并始终返回已消费交互
 `mobInteract` 先执行独立InteractMaidEvent与物品事件，UseNameTagEvent为无自定义名称的主人命名牌打开独立界面，未加入普通菜单的睡眠限制
 168据此在低平台CommonProxy的新开窗边界区分普通菜单与命名牌，以延迟工厂在原参数验证后先清真实Navigator路径再构造窗口；没有把全部主人交互改成睡眠禁用
+
+## 原版最小零食柜外观
+
+固定TLM的 `client/renderer/tileentity/TileEntitySnackCabinetRenderer.java` 保留原包与MIT来源，移植其静态模型、full/half部件显隐及原平移/旋转顺序
+柜体模型、纹理及物品PNG共三项固定Git原blob列于 `assets/tlmnh/cabinet-assets-provenance.json`，资产沿CC-BY-NC-SA-4.0许可，现代item路径映射旧版items，字节不改
+原 `BlockSnackCabinet` 定义默认北向、反向玩家放置及TYPE0/1/2，TagBlock将原版蛋糕放入FULL标签；移走食物不清掉原罩型
+本工程以旧metadata桥接方向/罩型，保留首版仅原版蛋糕的最小范围，不接厨房内容模组；Tile.shouldRefresh依据实际Forge默认非原生Tile重建规则显式保护原库存
+原 `TileEntitySnackCabinet` 固定27格、使用原生ChestMenu三排；柜体无门动画，开关音效与其它原柜行为不由此视觉批次宣称完整移植

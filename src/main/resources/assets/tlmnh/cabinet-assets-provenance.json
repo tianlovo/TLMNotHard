@@ -1,0 +1,23 @@
+{
+  "upstream": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "license_file": "licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt",
+  "files": {
+    "assets/touhou_little_maid/models/bedrock/block/snack_cabinet.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/snack_cabinet.json",
+      "bytes": 5362,
+      "sha256": "8a43945363662d6efcd20bfc132408b3436f309aa781f2e4b2fb89ac93398d37"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/snack_cabinet.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/snack_cabinet.png",
+      "bytes": 2800,
+      "sha256": "c23471edcac238810785bee426e2768fffe881d20dee9f1492cb8df6b693742c"
+    },
+    "assets/touhou_little_maid/textures/items/snack_cabinet.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/item/snack_cabinet.png",
+      "bytes": 239,
+      "sha256": "a78c607f5257721e8228ca911a3b13bee130d43a3ea9676f2300465186949ab3"
+    }
+  }
+}
