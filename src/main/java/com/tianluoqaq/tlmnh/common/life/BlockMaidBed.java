@@ -47,8 +47,8 @@ public final class BlockMaidBed extends BlockBed {
         }
         if (!world.blockExists(x, y, z) || !(world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed))
             return false;
-        if (bed.unverifiedQueuedDrop()) {
-            tellRetained(player);
+        if (bed.itemDataRetained()) {
+            tellRetained(player, bed);
             return false;
         }
         if (!bed.complete()) return false;
@@ -105,7 +105,7 @@ public final class BlockMaidBed extends BlockBed {
         var drops = new ArrayList<ItemStack>();
         if (isBlockHeadOfBed(metadata)) {
             var bed = head(world, x, y, z, metadata);
-            if (bed != null && !bed.dropQueued()) drops.add(bed.coloredItem());
+            if (bed != null && !bed.dropQueued() && !bed.placementPending()) drops.add(bed.coloredItem());
         }
         return drops;
     }
@@ -143,7 +143,7 @@ public final class BlockMaidBed extends BlockBed {
         if (!world.blockExists(otherX, y, otherZ) || world.getBlock(otherX, y, otherZ) == this) return;
         if (isBlockHeadOfBed(metadata)) {
             var bed = head(world, x, y, z, metadata);
-            if (bed != null && bed.unverifiedQueuedDrop()) return;
+            if (bed != null && bed.itemDataRetained()) return;
             dropBlockAsItem(world, x, y, z, metadata, 0);
         }
         world.setBlockToAir(x, y, z);
@@ -152,8 +152,8 @@ public final class BlockMaidBed extends BlockBed {
     @Override
     public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean willHarvest) {
         var bed = head(world, x, y, z, world.getBlockMetadata(x, y, z));
-        if (bed != null && bed.unverifiedQueuedDrop()) {
-            tellRetained(player);
+        if (bed != null && bed.itemDataRetained()) {
+            tellRetained(player, bed);
             return false;
         }
         // 原生采集先删方块再求掉落；保留Tile直到带色物品已提交
@@ -163,8 +163,8 @@ public final class BlockMaidBed extends BlockBed {
     @Override
     public void harvestBlock(World world, EntityPlayer player, int x, int y, int z, int metadata) {
         var bed = head(world, x, y, z, metadata);
-        if (bed != null && bed.unverifiedQueuedDrop()) {
-            tellRetained(player);
+        if (bed != null && bed.itemDataRetained()) {
+            tellRetained(player, bed);
             return;
         }
         super.harvestBlock(world, player, x, y, z, metadata);
@@ -175,7 +175,7 @@ public final class BlockMaidBed extends BlockBed {
     @Override
     public void onBlockHarvested(World world, int x, int y, int z, int metadata, EntityPlayer player) {
         var bed = head(world, x, y, z, metadata);
-        if (world.isRemote || !player.capabilities.isCreativeMode || bed != null && bed.unverifiedQueuedDrop()) return;
+        if (world.isRemote || !player.capabilities.isCreativeMode || bed != null && bed.itemDataRetained()) return;
         int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
         int otherX = x + sign * field_149981_a[metadata & 3][0], otherZ = z + sign * field_149981_a[metadata & 3][1];
         if (world.blockExists(otherX, y, otherZ) && world.getBlock(otherX, y, otherZ) == this)
@@ -185,12 +185,14 @@ public final class BlockMaidBed extends BlockBed {
     @Override
     public ItemStack getPickBlock(MovingObjectPosition target, World world, int x, int y, int z, EntityPlayer player) {
         var bed = head(world, x, y, z, world.getBlockMetadata(x, y, z));
-        return bed == null || bed.dropQueued() ? null : bed.coloredItem();
+        return bed == null || bed.dropQueued() || bed.placementPending() ? null : bed.coloredItem();
     }
 
-    private static void tellRetained(EntityPlayer player) {
-        if (player != null && !player.worldObj.isRemote)
-            player.addChatMessage(new ChatComponentTranslation("message.tlmnh.maid_bed.transfer_retained"));
+    private static void tellRetained(EntityPlayer player, TileEntityMaidBed bed) {
+        if (player != null && !player.worldObj.isRemote) player.addChatMessage(
+            new ChatComponentTranslation(
+                bed.placementPending() ? "message.tlmnh.maid_bed.uncommitted_placement"
+                    : "message.tlmnh.maid_bed.transfer_retained"));
     }
 
     @Override

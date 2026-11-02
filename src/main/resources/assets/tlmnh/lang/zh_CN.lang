@@ -148,3 +148,4 @@ color.tlmnh.maid_bed.blue=蓝色
 color.tlmnh.maid_bed.green=绿色
 color.tlmnh.maid_bed.purple=紫色
 color.tlmnh.maid_bed.pink=粉色
+message.tlmnh.maid_bed.uncommitted_placement=床放置未完成，原物品记录已保留；已停止使用和掉落，请保留现场并核对日志，勿重复补发

@@ -149,3 +149,4 @@ color.tlmnh.maid_bed.blue=Blue
 color.tlmnh.maid_bed.green=Green
 color.tlmnh.maid_bed.purple=Purple
 color.tlmnh.maid_bed.pink=Pink
+message.tlmnh.maid_bed.uncommitted_placement=Bed placement is uncommitted; original item record retained. Use and drops stopped. Keep this area and check logs; do not reissue items.

@@ -1264,3 +1264,11 @@ Indev163时方块视觉仍是原生床占位，原七模型/纹理及蓝色半�
 保留原四方向变换、蓝色透明及其余裁切语义；七套模型/纹理与物品图标共15项Git原blob列于 `assets/tlmnh/bed-assets-provenance.json`，沿原资产CC-BY-NC-SA-4.0许可
 现代 `textures/item/maid_bed.png` 映射旧版 `textures/items/maid_bed.png`，字节不改；JSON取固定Gitblob，源工作树的CRLF差异另留私有证据，不把不同换行资源冒称字节一致
 本工程 `MaidBedModelResources`、颜色提示和独立显示失效保护是低平台适配，实际代表验证及未验范围见PROGRESS
+
+## 旧平台床放置与回调边界
+
+166的 `MaidBedPlacement` 为本工程保护实现，依据本目标Minecraft1.7.10/Forge的
+`World.setBlock/markAndNotifyBlock`、`Chunk.func_150807_a/func_150812_a` 及 `ForgeHooks.onPlaceItemIntoWorld` 实际顺序
+Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可以失败或改变现场，因此不能用返回值或方块类型推定旧Tile仍由本次持有
+原生Forge负责捕获方块快照、MultiPlace事件及取消恢复；本入口保留该外层流程，仅在自己的放置与通知完成后确认本次身份和物品来源
+新增持久未提交记录及保守拒用属于本工程数据保护，不称为上游TLM原有存档字段；范围和实际验证见DEVELOPMENT与PROGRESS

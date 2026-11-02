@@ -22,6 +22,10 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 /** 只有床头保存临时占用；睡眠动作每 tick 续租 */
 public final class TileEntityMaidBed extends TileEntity {
 
+    static final String PLACEMENT_TAG = "TLMNHBedPlacementPending";
+    private NBTBase placementPending;
+    private boolean warnedPlacement;
+
     private static final String DROP_TAG = "TLMNHBedDropQueued";
     private final MaidBedLease lease = new MaidBedLease();
     private EntityMaid occupant;
@@ -77,12 +81,36 @@ public final class TileEntityMaidBed extends TileEntity {
         if (stack == null || stack.getItem() != MaidLifeContent.maidBedItem
             || worldObj == null
             || worldObj.isRemote
-            || !complete()
+            || !structureComplete()
             || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this) return false;
         savedColor = MaidBedColorData.read(stack.getTagCompound());
         markDirty();
         worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
         return true;
+    }
+
+    @Override
+    public void validate() {
+        super.validate();
+        MaidBedPlacement.observe(this);
+    }
+
+    void stagePlacement(NBTTagCompound marker) {
+        if (placementPending != null || dropQueued()) throw new IllegalStateException("Existing bed state retained");
+        placementPending = marker.copy();
+    }
+
+    void finishPlacement(NBTTagCompound marker) {
+        if (!marker.equals(placementPending)) throw new IllegalStateException("Bed placement marker changed");
+        placementPending = null;
+    }
+
+    public boolean placementPending() {
+        return placementPending != null;
+    }
+
+    public boolean itemDataRetained() {
+        return placementPending() || unverifiedQueuedDrop();
     }
 
     public boolean dropQueued() {
@@ -95,6 +123,7 @@ public final class TileEntityMaidBed extends TileEntity {
     }
 
     public void queueItemDrop(ItemStack stack) {
+        if (placementPending()) throw new IllegalStateException("Uncommitted bed cannot transfer an item");
         if (dropQueued()) return;
         if (worldObj == null || worldObj.isRemote
             || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this
@@ -115,6 +144,8 @@ public final class TileEntityMaidBed extends TileEntity {
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
         writeColor(tag);
+        if (placementPending == null) tag.removeTag(PLACEMENT_TAG);
+        else tag.setTag(PLACEMENT_TAG, placementPending.copy());
         if (queuedDrop == null) tag.removeTag(DROP_TAG);
         else tag.setTag(DROP_TAG, queuedDrop.copy());
     }
@@ -138,6 +169,10 @@ public final class TileEntityMaidBed extends TileEntity {
     }
 
     public boolean complete() {
+        return !placementPending() && structureComplete();
+    }
+
+    private boolean structureComplete() {
         if (dropQueued() || worldObj == null
             || isInvalid()
             || !worldObj.blockExists(xCoord, yCoord, zCoord)
@@ -193,6 +228,13 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     public void updateEntity() {
         if (worldObj == null || worldObj.isRemote) return;
+        if (placementPending()) {
+            if (!warnedPlacement) {
+                warnedPlacement = true;
+                MaidBedPlacement.reportRetained(this, placementPending);
+            }
+            return;
+        }
         if (dropQueued()) {
             clear();
             if (queuedDuringThisLoad && worldObj.getTileEntity(xCoord, yCoord, zCoord) == this
@@ -227,6 +269,9 @@ public final class TileEntityMaidBed extends TileEntity {
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
         savedColor = MaidBedColorData.read(tag);
+        placementPending = tag.hasKey(PLACEMENT_TAG) ? tag.getTag(PLACEMENT_TAG)
+            .copy() : null;
+        warnedPlacement = false;
         queuedDrop = tag.hasKey(DROP_TAG) ? tag.getTag(DROP_TAG)
             .copy() : null;
         queuedDuringThisLoad = warnedQueuedDrop = false;
@@ -236,7 +281,7 @@ public final class TileEntityMaidBed extends TileEntity {
 
     @Override
     public void invalidate() {
-        if (worldObj != null && !worldObj.isRemote) clear();
+        if (worldObj != null && !worldObj.isRemote && !placementPending()) clear();
         super.invalidate();
     }
 
