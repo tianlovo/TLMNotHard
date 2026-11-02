@@ -72,6 +72,8 @@ public final class LifecyclePersistenceTests {
         String run = System.getProperty("tlmnh.qaPersistenceRun", "");
         String phase = System.getProperty("tlmnh.qaPersistencePhase", "");
         String contract = System.getProperty("tlmnh.qaPersistenceContract", "");
+        int expectedSchema = expectedSchema();
+        helper.assertTrue(expectedSchema == 4 || expectedSchema == 5, "Explicit supported lifecycle schema required");
         helper.assertTrue(
             contract.equals("baseline") || contract.equals("durable"),
             "Explicit persistence contract required");
@@ -218,7 +220,7 @@ public final class LifecyclePersistenceTests {
             "Safely canceled overflow became permanently held");
         f.itemMode = "";
         if (f.durable()) failedWriteStopsBeforePublication(f, identity);
-        for (int schema = 1; schema <= 3; schema++) legacyFile(f, schema, identity, held);
+        for (int schema = 1; schema <= legacyLast(); schema++) legacyFile(f, schema, identity, held);
         heldState(f, false);
     }
 
@@ -268,7 +270,7 @@ public final class LifecyclePersistenceTests {
                 && f.ledger.tombstoneEmpty(f.token("RetryToken"))
                 && !MaidTombstoneTransfer.collect(retryGrave, f.owner),
             "Restart retry changed full item NBT or duplicated delivery");
-        for (int schema = 1; schema <= 3; schema++) migrate(f, schema);
+        for (int schema = 1; schema <= legacyLast(); schema++) migrate(f, schema);
         if (f.durable()) {
             try (var input = new FileInputStream(
                 new File(
@@ -425,7 +427,7 @@ public final class LifecyclePersistenceTests {
         f.ledger.writeToNBT(raw);
         var itemEntry = entry(raw, item);
         f.helper.assertTrue(
-            raw.getInteger("Schema") == 4 && f.ledger.isTombstoneHeld(item)
+            raw.getInteger("Schema") == expectedSchema() && f.ledger.isTombstoneHeld(item)
                 && !f.ledger.isDeathExperienceHeld(item)
                 && f.ledger.reserveTombstone(item) == null
                 && itemEntry.getTagList("TombstoneItems", 10)
@@ -549,7 +551,7 @@ public final class LifecyclePersistenceTests {
             191,
             f.z + .5,
             "[QA-Legacy]",
-            schema == 3 ? 37 : 0,
+            schema >= 3 ? 37 : 0,
             0);
         ledger.markPublished(film);
         if (schema >= 2) f.state.data.setString(
@@ -562,8 +564,12 @@ public final class LifecyclePersistenceTests {
         var entries = writer.data.getTagList("Entries", 10);
         for (int i = 0; i < entries.tagCount(); i++) {
             var entry = entries.getCompoundTagAt(i);
-            entry.removeTag("TombstoneHeld");
-            entry.removeTag("ExperienceHeld");
+            if (schema < 4) {
+                entry.removeTag("TombstoneHeld");
+                entry.removeTag("ExperienceHeld");
+            }
+            for (String key : new String[] { "AcquisitionPhase", "AcquisitionSource", "AcquisitionReceipt",
+                "AcquisitionCredential" }) entry.removeTag(key);
             if (schema < 3) {
                 entry.removeTag("DeathExperience");
                 entry.removeTag("ExperienceReadyAt");
@@ -597,9 +603,9 @@ public final class LifecyclePersistenceTests {
         var raw = new NBTTagCompound();
         ledger.writeToNBT(raw);
         f.helper.assertTrue(
-            raw.getInteger("Schema") == 4 && !ledger.isTombstoneHeld(film)
+            raw.getInteger("Schema") == expectedSchema() && !ledger.isTombstoneHeld(film)
                 && !ledger.isDeathExperienceHeld(film)
-                && ledger.remainingDeathExperience(film) == (schema == 3 ? 37 : 0)
+                && ledger.remainingDeathExperience(film) == (schema >= 3 ? 37 : 0)
                 && entry(raw, film).getTagList("TombstoneItems", 10)
                     .equals(f.state.data.getTagList("HeldItems", 10)),
             "Old schema migration lost complete items, default holds or XP balance");
@@ -607,14 +613,14 @@ public final class LifecyclePersistenceTests {
     }
 
     private static void migratedFiles(Fixture f) {
-        for (int schema = 1; schema <= 3; schema++) {
+        for (int schema = 1; schema <= legacyLast(); schema++) {
             var ledger = (MaidLifecycleData) f.world.mapStorage.loadData(MaidLifecycleData.class, legacyName(schema));
             var actual = new NBTTagCompound();
             ledger.writeToNBT(actual);
             var expected = f.state.data.getCompoundTag("Migrated" + schema);
             var entries = expected.getTagList("Entries", 10);
             f.helper.assertTrue(
-                actual.getInteger("Schema") == 4 && actual.getTagList("Entries", 10)
+                actual.getInteger("Schema") == expectedSchema() && actual.getTagList("Entries", 10)
                     .tagCount() == entries.tagCount(),
                 "Migrated file schema or entry count did not persist");
             for (int i = 0; i < entries.tagCount(); i++) {
@@ -664,6 +670,14 @@ public final class LifecyclePersistenceTests {
 
     private static String legacyName(int schema) {
         return NAME + "_Legacy" + schema;
+    }
+
+    private static int expectedSchema() {
+        return Integer.getInteger("tlmnh.qaPersistenceSchema", 4);
+    }
+
+    private static int legacyLast() {
+        return expectedSchema() == 5 ? 4 : 3;
     }
 
     private static void checkpoint(RawData state, String phase) {

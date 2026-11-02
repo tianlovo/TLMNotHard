@@ -108,6 +108,7 @@ public final class EnhancedActionRecoveryTests {
     @GameTest(template = "modern_core_cell", timeoutTicks = 120, batch = "enhanced_wild_ambient_panic")
     public static void untamedMaidObservesThenNaturallyAvoidsACreeperWithoutTakingDrops(GameTestHelper helper) {
         var f = fixture(helper, MaidTask.IDLE);
+        wildSamplingFloor(helper, f);
         f.maid.setPosition(f.x + 8.5, f.y + 1, f.z + 4.5);
         f.owner.setPosition(f.x + 6.5, f.y + 1, f.z + 4.5);
         makeUntamed(f);
@@ -127,6 +128,8 @@ public final class EnhancedActionRecoveryTests {
                 && f.maid.getDistanceSqToEntity(observer) < 25,
             "Untamed observation input must be a real loaded visible entity");
         var creeper = new EntityCreeper(helper.getWorld());
+        // 实装SpecialMobs会替换非持久怪物；此例固定原生危险输入，不测试异步替换链
+        creeper.func_110163_bv();
         creeper.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
             .setBaseValue(0);
         helper.afterTest(creeper::setDead);
@@ -138,6 +141,8 @@ public final class EnhancedActionRecoveryTests {
             String key = core.selectedKind() + ":" + observed[0] + ":" + panicked[0];
             if (!key.equals(previous[0]) || f.maid.ticksExisted % 20 == 0) {
                 previous[0] = key;
+                var destination = core.panic()
+                    .destination();
                 System.out.println(
                     "TLMNH_UNTAMED_SAFETY_STATE age=" + f.maid.ticksExisted
                         + ", selected="
@@ -154,6 +159,16 @@ public final class EnhancedActionRecoveryTests {
                         + f.maid.getDistanceSqToEntity(observer)
                         + ", creeperLoaded="
                         + helper.getWorld().loadedEntityList.contains(creeper)
+                        + ", creeperClass="
+                        + creeper.getClass()
+                            .getName()
+                        + ", creeperUuid="
+                        + creeper.getUniqueID()
+                        + ", creeperPersistent="
+                        + creeper.isNoDespawnRequired()
+                        + ", providerReplacementMarker="
+                        + creeper.getEntityData()
+                            .getByte("smi")
                         + ", dangerDistance="
                         + dangerDistance[0]
                         + ", currentDistance="
@@ -161,6 +176,20 @@ public final class EnhancedActionRecoveryTests {
                         + ", panicSamples="
                         + core.panic()
                             .samples()
+                        + ", destination="
+                        + (destination == null ? "none"
+                            : (destination.x - f.x) + "," + (destination.y - f.y) + "," + (destination.z - f.z))
+                        + ", walkTarget="
+                        + (core.actor()
+                            .peekWalkTarget() != null)
+                        + ", actualSearches="
+                        + f.navigation.searchCount()
+                        + ", maidPosition="
+                        + (f.maid.posX - f.x)
+                        + ","
+                        + (f.maid.posY - f.y)
+                        + ","
+                        + (f.maid.posZ - f.z)
                         + ", navigation="
                         + core.navigation()
                             .outcome());
@@ -184,6 +213,10 @@ public final class EnhancedActionRecoveryTests {
                 if (core.selectedKind() != Kind.OBSERVE) return false;
                 observed[0] = true;
                 helper.spawnEntity(creeper, 14.5, 1, 4.5);
+                helper.assertTrue(
+                    creeper.isNoDespawnRequired() && helper.getWorld()
+                        .getEntityByID(creeper.getEntityId()) == creeper,
+                    "Fixed native persistent creeper was not actually registered");
                 dangerDistance[0] = f.maid.getDistanceSqToEntity(creeper);
                 return false;
             }
@@ -194,6 +227,33 @@ public final class EnhancedActionRecoveryTests {
                 && f.navigation.searchCount() > 0
                 && f.maid.getDistanceSqToEntity(creeper) > dangerDistance[0] + 4;
         });
+    }
+
+    /** 覆盖本例半径10的真实水平候选；不重置RNG或改变自然采样次数/垂直范围 */
+    private static void wildSamplingFloor(GameTestHelper helper, ModernCoreTests.Fixture f) {
+        for (int x = -3; x <= 20; x++) for (int z = -7; z <= 16; z++) {
+            if (x >= 0 && x <= 20 && z >= 0 && z <= 8) continue;
+            for (int y = 0; y <= 3; y++) helper.assertTrue(
+                helper.getWorld()
+                    .getBlock(f.x + x, f.y + y, f.z + z) == Blocks.air
+                    && helper.getWorld()
+                        .getBlockMetadata(f.x + x, f.y + y, f.z + z) == 0
+                    && helper.getWorld()
+                        .getTileEntity(f.x + x, f.y + y, f.z + z) == null,
+                "Wild sampling extension must use its own empty preparation area");
+        }
+        helper.afterTest(() -> {
+            for (int x = -3; x <= 20; x++) for (int z = -7; z <= 16; z++)
+                if (x < 0 || x > 20 || z < 0 || z > 8) helper.setBlock(x, 0, z, Blocks.air);
+        });
+        for (int x = -3; x <= 20; x++) for (int z = -7; z <= 16; z++) {
+            helper.setBlock(x, 0, z, Blocks.stone);
+            // 原玻璃边墙会截断同一个采样半径，开放身体高度内的旧边界
+            if (x == 0 || x == 20 || z == 0 || z == 8)
+                for (int y = 1; y <= 3; y++) helper.setBlock(x, y, z, Blocks.air);
+        }
+        System.out.println(
+            "TLMNH_UNTAMED_SAMPLING_INPUT stoneSupport=[-3..20,0,-7..16] clearBodyToY=3 radius=10 vertical=3 randomSourcesReset=false");
     }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 180, batch = "enhanced_wild_air")

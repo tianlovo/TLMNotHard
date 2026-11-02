@@ -11,11 +11,13 @@ import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldProviderSurface;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
@@ -99,6 +101,50 @@ public final class ActualArrowPhysicsTests {
         helper.succeed();
     }
 
+    @GameTest(template = "modern_core_cell", timeoutTicks = 20, batch = "actual_arrow_nbt_invalidation")
+    public static void inPlaceArrowDataMutationDuringSpawnCannotRewriteTheLaunchSnapshot(GameTestHelper helper) {
+        rejectSpawnMutation(helper, "nbt");
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 20, batch = "actual_arrow_critical_invalidation")
+    public static void nonSerializedCriticalMutationDuringSpawnDoesNotSpendBowOrArrows(GameTestHelper helper) {
+        rejectSpawnMutation(helper, "critical");
+    }
+
+    private static void rejectSpawnMutation(GameTestHelper helper, String mutation) {
+        var trial = new Trial(helper, false, "spawn-" + mutation);
+        trial.mutation = mutation;
+        var weaponBefore = trial.weapon.copy();
+        var ammunitionBefore = trial.ammunition.copy();
+        helper.assertTrue(
+            !trial.bow.fireForModern(trial.target, 1, () -> true),
+            "Actual arrow spawn mutation bypassed launch admission: " + mutation);
+        helper.assertTrue(
+            trial.spawnCallbacks == 1 && trial.spawned != null
+                && trial.spawned.isDead
+                && trial.bow.getStatus() == MaidBowAttack.Status.SPAWN_REJECTED
+                && trial.bow.getShots() == 0
+                && trial.bow.getLastArrow() == null
+                && trial.f.maid.getHeldItem() == trial.weapon
+                && trial.f.maid.getMaidInventory()
+                    .getStackInSlot(0) == trial.ammunition
+                && ItemStack.areItemStacksEqual(weaponBefore, trial.weapon)
+                && ItemStack.areItemStacksEqual(ammunitionBefore, trial.ammunition),
+            "Mutated arrow survived or changed original bow/ammunition resources: " + mutation);
+        helper.assertTrue(
+            mutation.equals("nbt") ? trial.seededArrow == trial.spawned && trial.spawned.getEntityData()
+                .getCompoundTag("LaunchBoundaryProbe")
+                .getString("state")
+                .equals("changed") : trial.spawned.getIsCritical(),
+            "Real callback did not apply the intended mutation: " + mutation);
+        trial.report.addProperty("spawnMutation", mutation);
+        trial.report.addProperty("spawnCallbacks", trial.spawnCallbacks);
+        trial.report.addProperty("revokedArrowDead", true);
+        trial.report.addProperty("originalResourcesIntact", true);
+        trial.complete = true;
+        helper.succeed();
+    }
+
     public static final class Trial {
 
         final GameTestHelper helper;
@@ -114,6 +160,8 @@ public final class ActualArrowPhysicsTests {
         final float gravity;
         final String name;
         EntityArrow arrow, spawned;
+        EntityArrow seededArrow;
+        String mutation = "";
         WorldProvider replacement;
         double[] previous;
         long previousTime = Long.MIN_VALUE;
@@ -318,6 +366,18 @@ public final class ActualArrowPhysicsTests {
         }
 
         @SubscribeEvent
+        public void constructing(EntityEvent.EntityConstructing event) {
+            if (!mutation.equals("nbt") || !(event.entity instanceof EntityArrow candidate)
+                || candidate.worldObj != helper.getWorld()
+                || seededArrow != null) return;
+            var nested = new NBTTagCompound();
+            nested.setString("state", "original");
+            candidate.getEntityData()
+                .setTag("LaunchBoundaryProbe", nested);
+            seededArrow = candidate;
+        }
+
+        @SubscribeEvent
         public void spawning(EntityJoinWorldEvent event) {
             if (!(event.entity instanceof EntityArrow candidate) || candidate.shootingEntity != f.maid) return;
             spawnCallbacks++;
@@ -329,6 +389,19 @@ public final class ActualArrowPhysicsTests {
             if (replacement != null) {
                 helper.assertTrue(event.world == helper.getWorld(), "Spawn callback escaped the isolated QA world");
                 setProvider(replacement);
+            }
+            if (mutation.equals("nbt")) {
+                helper.assertTrue(candidate == seededArrow, "Spawn did not use the exact constructed arrow");
+                var nested = candidate.getEntityData()
+                    .getCompoundTag("LaunchBoundaryProbe");
+                helper.assertTrue(
+                    nested.getString("state")
+                        .equals("original"),
+                    "Initial arrow data changed before spawn");
+                nested.setString("state", "changed");
+            } else if (mutation.equals("critical")) {
+                helper.assertTrue(!candidate.getIsCritical(), "Native modern shot unexpectedly starts critical");
+                candidate.setIsCritical(true);
             }
         }
 

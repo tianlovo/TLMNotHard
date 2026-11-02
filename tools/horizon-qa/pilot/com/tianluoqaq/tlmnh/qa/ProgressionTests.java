@@ -47,6 +47,7 @@ import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import gregtech.api.enums.ItemList;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
@@ -95,28 +96,49 @@ public final class ProgressionTests {
             f,
             new ItemStack[] { wool, wool, wool, steel, new ItemStack(Items.bed), steel, wood, wood, wood },
             MaidLifeContent.maidBedItem);
-        var coloredBed = OreDictionary.getOres("bedWood")
-            .stream()
+        var beds = OreDictionary.getOres("bedWood");
+        var lookedUp = GameRegistry.findItem("etfuturum", "white_bed");
+        var registryObservation = new com.google.gson.JsonObject();
+        registryObservation.add("namedLookup", bedItemObservation(lookedUp));
+        var members = new com.google.gson.JsonArray();
+        for (var member : beds) {
+            var observed = bedItemObservation(member.getItem());
+            observed.addProperty("metadata", member.getItemDamage());
+            observed.addProperty("sameNamedLookup", member.getItem() == lookedUp);
+            members.add(observed);
+        }
+        registryObservation.add("bedWood", members);
+        System.out.println("TLMNH_PROGRESS_COLORED_BED_REGISTRY " + registryObservation);
+        // All 15 EFR colors use this native ItemBlock class. Resolve the actual ore member, not a name lookup fallback.
+        var coloredBed = beds.stream()
             .filter(
-                stack -> stack.getItem() != Items.bed && Item.itemRegistry.getNameForObject(stack.getItem())
-                    .toString()
-                    .startsWith("etfuturum:"))
-            .map(stack -> {
-                var concrete = stack.copy();
-                // EFR gives each bed color its own item; its obtainable inventory variant has metadata 0.
-                if (concrete.getItemDamage() == OreDictionary.WILDCARD_VALUE) concrete.setItemDamage(0);
-                concrete.stackSize = 1;
-                return concrete;
-            })
+                stack -> stack.getItem()
+                    .getClass()
+                    .getName()
+                    .equals("ganymedes01.etfuturum.blocks.itemblocks.ItemBlockDyedBed"))
             .findFirst()
             .orElseThrow(
-                () -> new IllegalStateException(
-                    "Missing actual Et Futurum colored bed; bedWood=" + OreDictionary.getOres("bedWood")));
+                () -> new IllegalStateException("Native Et Futurum colored bed class is absent from bedWood=" + beds))
+            .copy();
+        coloredBed.stackSize = 1;
+        var selectedItem = coloredBed.getItem();
+        int nativeId = Item.getIdFromItem(selectedItem);
+        helper.assertTrue(
+            nativeId > 0 && Item.getItemById(nativeId) == selectedItem,
+            "Actual ore bed has no exact native registry ID round trip");
+        var nativeNbt = coloredBed.writeToNBT(new net.minecraft.nbt.NBTTagCompound());
+        helper.assertTrue(
+            ItemStack.areItemStacksEqual(coloredBed, ItemStack.loadItemStackFromNBT(nativeNbt)),
+            "Actual ore bed did not survive native inventory NBT round trip");
+        var bedInput = bedItemObservation(selectedItem);
+        bedInput.addProperty("metadata", coloredBed.getItemDamage());
+        System.out.println("TLMNH_PROGRESS_COLORED_BED_INPUT " + bedInput);
         craft(
             helper,
             f,
             new ItemStack[] { wool, wool, wool, steel, coloredBed, steel, wood, wood, wood },
             MaidLifeContent.maidBedItem);
+        System.out.println("TLMNH_PROGRESS_COLORED_BED_CRAFT_PASS " + bedInput);
         craft(
             helper,
             f,
@@ -435,6 +457,27 @@ public final class ProgressionTests {
             .get(0)
             .copy();
         result.stackSize = 1;
+        return result;
+    }
+
+    private static com.google.gson.JsonObject bedItemObservation(Item item) {
+        var result = new com.google.gson.JsonObject();
+        if (item == null) {
+            result.addProperty("present", false);
+            return result;
+        }
+        result.addProperty("present", true);
+        var rawName = Item.itemRegistry.getNameForObject(item);
+        int id = Item.getIdFromItem(item);
+        result.addProperty("rawName", rawName);
+        result.addProperty(
+            "itemClass",
+            item.getClass()
+                .getName());
+        result.addProperty("nativeId", id);
+        result.addProperty("identity", System.identityHashCode(item));
+        result.addProperty("idRoundTrip", id > 0 && Item.getItemById(id) == item);
+        result.addProperty("oldNamespacePredicate", rawName != null && rawName.startsWith("etfuturum:"));
         return result;
     }
 

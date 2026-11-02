@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 5);
+        invalid.setInteger("Schema", 6);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -172,7 +172,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(4, current.getInteger("Schema"));
+        assertEquals(5, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -415,9 +415,117 @@ public class MaidLifecycleDataTest {
                 entry.removeTag("DeathExperience");
                 entry.removeTag("ExperienceReadyAt");
             }
-            entry.removeTag("TombstoneHeld");
-            entry.removeTag("ExperienceHeld");
+            if (schema < 4) {
+                entry.removeTag("TombstoneHeld");
+                entry.removeTag("ExperienceHeld");
+            }
+            for (String key : new String[] { "AcquisitionPhase", "AcquisitionSource", "AcquisitionReceipt",
+                "AcquisitionCredential" }) entry.removeTag(key);
         }
         return tag;
+    }
+
+    @Test
+    public void schemaFourPreservesBothDeathHoldsAndBalancesWhenAddingAcquisitionIntents() {
+        var data = new MaidLifecycleData("fixture");
+        var items = new NBTTagList();
+        var original = new NBTTagCompound();
+        original.setString("ForeignItemPayload", "unchanged");
+        items.appendTag(original);
+        var token = data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            items,
+            7,
+            1,
+            5,
+            2,
+            "held",
+            53,
+            40);
+        data.markPublished(token);
+        data.holdTombstone(token);
+        data.holdDeathExperience(token);
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(legacy(data, 4));
+        assertTrue(restored.isTombstoneHeld(token));
+        assertTrue(restored.isDeathExperienceHeld(token));
+        assertEquals(53, restored.remainingDeathExperience(token));
+        assertNull(restored.reserveTombstone(token));
+        assertNotNull(restored.reserve(token, MaidLifecycleData.Kind.FILM));
+        restored.rollback(token);
+        var saved = new NBTTagCompound();
+        restored.writeToNBT(saved);
+        assertEquals(5, saved.getInteger("Schema"));
+        assertEquals(
+            items,
+            saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0)
+                .getTagList("TombstoneItems", 10));
+    }
+
+    @Test
+    public void pendingGiftKeepsOneOwnerTokenAndOpaqueCredentialWithoutEnablingRedemption() {
+        var data = new MaidLifecycleData("fixture");
+        var owner = UUID.randomUUID();
+        var token = data.initialToken(owner);
+        var saved = new NBTTagCompound();
+        data.writeToNBT(saved);
+        var entry = saved.getTagList("Entries", 10)
+            .getCompoundTagAt(0);
+        var raw = new NBTTagCompound();
+        raw.setString("ForeignNestedItemData", "preserved");
+        entry.setString("AcquisitionPhase", "ISSUING");
+        entry.setTag("AcquisitionCredential", raw);
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(saved);
+        assertEquals(token, restored.initialToken(owner));
+        assertEquals(MaidLifecycleData.AcquisitionPhase.ISSUING, restored.acquisitionPhase(token));
+        assertFalse(restored.delivered(token));
+        assertNull(restored.reserve(token, MaidLifecycleData.Kind.INITIAL));
+        assertThrows(IllegalStateException.class, () -> restored.markDelivered(token));
+        var copy = restored.acquisitionCredential(token);
+        copy.setString("ForeignNestedItemData", "caller-change");
+        assertEquals(raw, roundtrip(restored).acquisitionCredential(token));
+    }
+
+    @Test
+    public void unknownOwnedFieldsAndMalformedAcquisitionStateCannotBeSilentlyRewritten() {
+        for (int mutation = 0; mutation < 4; mutation++) {
+            var data = new MaidLifecycleData("fixture");
+            data.initialToken(UUID.randomUUID());
+            var saved = new NBTTagCompound();
+            data.writeToNBT(saved);
+            var entry = saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0);
+            if (mutation == 0) saved.setString("FutureOwnedRule", "preserve-original-file");
+            else if (mutation == 1) entry.setString("FutureOwnedRule", "preserve-original-entry");
+            else if (mutation == 2) entry.removeTag("AcquisitionPhase");
+            else entry.setString("AcquisitionPhase", "FUTURE_STATE");
+            var restored = new MaidLifecycleData("fixture");
+            Class<? extends RuntimeException> expected = mutation == 3 ? IllegalArgumentException.class
+                : IllegalStateException.class;
+            assertThrows(expected, () -> restored.readFromNBT(saved));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
+    }
+
+    @Test
+    public void malformedSingleUseFlagsCannotReenableAConsumedCredentialOrOverwriteItsEncoding() {
+        for (String field : new String[] { "Consumed", "Delivered", "Published" }) {
+            var data = new MaidLifecycleData("fixture");
+            var token = data.initialToken(UUID.randomUUID());
+            assertNotNull(data.reserve(token, MaidLifecycleData.Kind.INITIAL));
+            data.commit(token);
+            var saved = new NBTTagCompound();
+            data.writeToNBT(saved);
+            saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0)
+                .setString(field, "true");
+            var restored = new MaidLifecycleData("fixture");
+            assertThrows(IllegalStateException.class, () -> restored.readFromNBT(saved));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
     }
 }

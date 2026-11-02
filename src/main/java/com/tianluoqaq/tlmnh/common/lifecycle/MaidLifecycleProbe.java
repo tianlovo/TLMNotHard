@@ -12,6 +12,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
@@ -367,11 +368,7 @@ public final class MaidLifecycleProbe {
     private static void forceAndRetry(Fixture f) {
         f.clear();
         f.owner.theItemInWorldManager.setGameType(GameType.SURVIVAL);
-        var maid = new EntityMaid(f.world);
-        require(maid.bindTo(f.owner.getUniqueID()), "secondary death owner");
-        maid.getMaidInventory()
-            .setInventorySlotContents(0, new ItemStack(Items.diamond, 3));
-        var tombstone = death(f, maid, false);
+        var tombstone = overflowTombstone(f);
         for (int slot = 0; slot < f.owner.inventory.mainInventory.length; slot++)
             f.owner.inventory.mainInventory[slot] = new ItemStack(Items.stick, 64);
         f.owner.setSneaking(true);
@@ -386,10 +383,28 @@ public final class MaidLifecycleProbe {
             !tombstone.isDead && !MaidLifecycleData.get(f.world)
                 .tombstoneEmpty(tombstone.getToken()),
             "rejected overflow remains in tombstone");
+        var ledger = MaidLifecycleData.get(f.world);
+        require(!ledger.isTombstoneHeld(tombstone.getToken()), "ordinary cancellation remains safely retryable");
+        require(
+            MaidTombstoneTransfer.collect(tombstone, f.owner) && tombstone.isDead
+                && !MaidTombstoneTransfer.collect(tombstone, f.owner),
+            "safe force retry spills and clears once");
+        int diamonds = 0;
+        for (var entity : f.world.loadedEntityList) if (entity instanceof EntityItem item && !f.original.contains(item)
+            && MaidSpawnChecks.present(item)
+            && item.getEntityItem()
+                .getItem() == Items.diamond)
+            diamonds += item.getEntityItem().stackSize;
+        require(diamonds == 3, "safe forced overflow has exactly one diamond stack");
         for (var mutation : new Mutation[] { Mutation.ITEM_DEAD, Mutation.ITEM_STACK, Mutation.ITEM_PICKUP_CANCEL,
             Mutation.ITEM_PICKUP_MUTATE }) {
-            var originalInventory = f.owner.inventory.writeToNBT(new net.minecraft.nbt.NBTTagList());
-            var ledger = MaidLifecycleData.get(f.world);
+            f.clear();
+            tombstone = overflowTombstone(f);
+            for (int slot = 0; slot < f.owner.inventory.mainInventory.length; slot++)
+                f.owner.inventory.mainInventory[slot] = new ItemStack(Items.stick, 64);
+            f.owner.setSneaking(true);
+            var originalInventory = (NBTTagList) f.owner.inventory.writeToNBT(new NBTTagList())
+                .copy();
             var originalSource = ledger.reserveTombstone(tombstone.getToken());
             ledger.rollback(tombstone.getToken());
             var mutate = new MutateJoin(f.world, mutation, f.owner);
@@ -399,32 +414,60 @@ public final class MaidLifecycleProbe {
             } finally {
                 MinecraftForge.EVENT_BUS.unregister(mutate);
             }
+            require(!mutate.items.isEmpty(), "independent mutation actually reached overflow callback " + mutation);
+            var expectedInventory = mutate.afterInventory == null ? originalInventory : mutate.afterInventory;
             require(
-                originalInventory.equals(f.owner.inventory.writeToNBT(new net.minecraft.nbt.NBTTagList())),
-                "full player inventory restored after callback " + mutation);
-            var retained = ledger.reserveTombstone(tombstone.getToken());
+                expectedInventory.equals(f.owner.inventory.writeToNBT(new NBTTagList())),
+                "callback-owned player inventory remains intact " + mutation);
+            require(
+                ledger.isTombstoneHeld(tombstone.getToken())
+                    && originalSource.equals(storedTombstoneItems(ledger, tombstone.getToken()))
+                    && ledger.reserveTombstone(tombstone.getToken()) == null,
+                "unknown overflow retains complete escrow and refuses another claim " + mutation);
+            require(
+                ledger.reserve(tombstone.getToken(), MaidLifecycleData.Kind.FILM) != null,
+                "overflow quarantine does not consume independent film right " + mutation);
+            ledger.rollback(tombstone.getToken());
+            int callbacks = mutate.items.size();
+            MinecraftForge.EVENT_BUS.register(mutate);
             try {
-                require(originalSource.equals(retained), "mutated overflow retains entire source " + mutation);
+                require(
+                    !MaidTombstoneTransfer.collect(tombstone, f.owner) && mutate.items.size() == callbacks,
+                    "held overflow cannot publish another object " + mutation);
             } finally {
-                ledger.rollback(tombstone.getToken());
+                MinecraftForge.EVENT_BUS.unregister(mutate);
             }
-            for (var entity : f.world.loadedEntityList)
-                if (entity instanceof EntityItem item && !f.original.contains(item))
-                    require(!MaidSpawnChecks.present(item), "failed claim leaves no actual spawned drop " + mutation);
+            for (int i = 0; i < mutate.items.size(); i++) {
+                var item = mutate.items.get(i);
+                require(
+                    ItemStack.areItemStacksEqual(mutate.itemStacks.get(i), item.getEntityItem()),
+                    "unknown successor stack was not overwritten " + mutation);
+                if (mutation == Mutation.ITEM_DEAD) require(item.isDead, "externally dead overflow stays dead");
+                else if (mutation != Mutation.ITEM_PICKUP_CANCEL)
+                    require(MaidSpawnChecks.present(item), "externally rewritten overflow remains intact " + mutation);
+            }
         }
-        require(
-            MaidTombstoneTransfer.collect(tombstone, f.owner) && tombstone.isDead,
-            "force retry spills and clears once");
-        int diamonds = 0;
-        for (var entity : f.world.loadedEntityList) {
-            if (entity instanceof EntityItem item && !f.original.contains(item)
-                && MaidSpawnChecks.present(item)
-                && item.getEntityItem()
-                    .getItem() == Items.diamond)
-                diamonds += item.getEntityItem().stackSize;
-        }
-        require(diamonds == 3, "forced overflow has exactly one diamond stack");
         f.owner.setSneaking(false);
+    }
+
+    private static MaidTombstoneEntity overflowTombstone(Fixture f) {
+        var maid = new EntityMaid(f.world);
+        require(maid.bindTo(f.owner.getUniqueID()), "independent overflow death owner");
+        maid.getMaidInventory()
+            .setInventorySlotContents(0, new ItemStack(Items.diamond, 3));
+        return death(f, maid, false);
+    }
+
+    private static NBTTagList storedTombstoneItems(MaidLifecycleData ledger, UUID token) {
+        var saved = new NBTTagCompound();
+        ledger.writeToNBT(saved);
+        var entries = saved.getTagList("Entries", 10);
+        for (int i = 0; i < entries.tagCount(); i++) {
+            var entry = entries.getCompoundTagAt(i);
+            if (entry.getString("Token")
+                .equals(token.toString())) return entry.getTagList("TombstoneItems", 10);
+        }
+        throw new IllegalStateException("Missing isolated overflow escrow");
     }
 
     private static void cancelledDeathAndPendingPublication(Fixture f) {
@@ -563,6 +606,9 @@ public final class MaidLifecycleProbe {
         private final Mutation mutation;
         private final EntityPlayerMP recipient;
         private int maidCalls;
+        private final ArrayList<EntityItem> items = new ArrayList<>();
+        private final ArrayList<ItemStack> itemStacks = new ArrayList<>();
+        private NBTTagList afterInventory;
 
         public MutateJoin(WorldServer world, Mutation mutation, EntityPlayerMP recipient) {
             this.world = world;
@@ -618,6 +664,12 @@ public final class MaidLifecycleProbe {
                     item.setEntityItemStack(new ItemStack(Items.stick));
                     if (mutation == Mutation.ITEM_PICKUP_CANCEL) event.setCanceled(true);
                 }
+                items.add(item);
+                itemStacks.add(
+                    item.getEntityItem()
+                        .copy());
+                afterInventory = (NBTTagList) recipient.inventory.writeToNBT(new NBTTagList())
+                    .copy();
             }
         }
     }

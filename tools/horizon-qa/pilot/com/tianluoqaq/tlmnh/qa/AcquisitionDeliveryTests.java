@@ -12,6 +12,7 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.MinecraftForge;
 
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
@@ -120,6 +121,55 @@ public final class AcquisitionDeliveryTests {
         for (var stack : player.inventory.mainInventory)
             if (stack != null && stack.getItem() == MaidResurrectionContent.INITIAL_SLAB) count += stack.stackSize;
         return count;
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 40, batch = "acquisition_payload")
+    public static void sameOwnerAndTokenWithChangedPayloadRemainsHeldWithoutReplacingTheSuccessor(
+        GameTestHelper helper) {
+        boolean oldGift = MaidAcquisitionConfig.giveInitialSlab;
+        helper.afterTest(() -> MaidAcquisitionConfig.giveInitialSlab = oldGift);
+        MaidAcquisitionConfig.giveInitialSlab = true;
+        var owner = player(helper);
+        var ledger = MaidLifecycleData.get(helper.getWorld());
+        var token = ledger.initialToken(owner.getUniqueID());
+        var saving = new AcquisitionPersistenceTests.SavingProbe(helper, owner, "payload");
+        MinecraftForge.EVENT_BUS.register(saving);
+        try {
+            helper.assertTrue(!MaidLifecycleEvents.giveInitial(owner), "Changed gift payload completed delivery");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(saving);
+        }
+        var changed = owner.inventory.mainInventory[0];
+        helper.assertTrue(
+            saving.triggers == 1 && changed != null
+                && changed.getItem() == MaidResurrectionContent.INITIAL_SLAB
+                && token.equals(MaidLifecycleItems.token(changed))
+                && owner.getUniqueID()
+                    .toString()
+                    .equals(
+                        changed.getTagCompound()
+                            .getString("InitMaidOwner"))
+                && changed.getTagCompound()
+                    .getString("CallbackPayload")
+                    .equals("callback-owned"),
+            "The real same-token slab save callback was not exercised");
+        var expected = (NBTTagList) owner.inventory.writeToNBT(new NBTTagList())
+            .copy();
+        owner.worldObj.getSaveHandler()
+            .getSaveHandler()
+            .writePlayerData(owner);
+        new MaidLifecycleEvents().onLogin(new cpw.mods.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent(owner));
+        helper.assertTrue(
+            owner.inventory.mainInventory[0] == changed && expected.equals(owner.inventory.writeToNBT(new NBTTagList()))
+                && !ledger.delivered(token)
+                && ledger.acquisitionPhase(token)
+                    .name()
+                    .equals("ISSUING")
+                && ledger.reserve(token, MaidLifecycleData.Kind.INITIAL) == null
+                && !MaidLifecycleEvents.giveInitial(owner)
+                && gifts(owner) == 1,
+            "Pending resume adopted changed same-token payload or issued another credential");
+        helper.succeed();
     }
 
     private static EntityPlayerMP player(GameTestHelper helper) {

@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 
 from verify_builtin_assets import verify as verify_assets
+from verify_builtin_retention import verify as verify_retention
 from verify_builtin_sounds import verify as verify_sounds
 from verify_bytecode import JAVA_8_MAJOR, inspect_archive
 
@@ -148,6 +149,7 @@ def audit(artifact, data):
         check("third_party_class_boundary", lambda: class_boundary(names))
         check("licenses_and_source_anchors", lambda: provenance_and_licenses(archive, names))
         check("builtin_assets", lambda: verify_assets(archive.read))
+        check("retained_builtin_resources", lambda: verify_retention(archive.read, names))
         check("sound_sources_and_events", lambda: sounds(archive, names))
         notice = archive.read("META-INF/THIRD_PARTY_NOTICES.md").decode("utf-8") if "META-INF/THIRD_PARTY_NOTICES.md" in names else ""
         report["original_source_license"] = "undetermined" if "原创代码的最终分发许可在正式版发布前单独确定" in notice else "not_certified_by_this_audit"
