@@ -14,7 +14,8 @@ public enum ExternalFeature {
     ITEM_DELIVERY("item_delivery"),
     BEHAVIOR_RUNTIME("behavior_runtime"),
     CLIENT_RENDER_STATE("client_render_state", true, "angelica"),
-    CLIENT_SLOT_ICONS("client_slot_icons", true, "battlegear2");
+    CLIENT_SLOT_ICONS("client_slot_icons", true, "battlegear2"),
+    CLIENT_HEAD_ITEMS("client_head_items", true);
 
     public final String id;
     public final int contractRevision = 1;

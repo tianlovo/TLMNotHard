@@ -85,6 +85,7 @@ public final class BuiltinModelCatalog {
         private final List<ResourceLocation> animations;
         private final boolean gecko;
         private final boolean showBackpack;
+        private final boolean showCustomHead;
         private final float entityScale;
         private final float itemScale;
 
@@ -101,6 +102,8 @@ public final class BuiltinModelCatalog {
                 .isJsonNull() ? source.get("use_sound_pack_id")
                     .getAsString() : "";
             this.showBackpack = !source.has("show_backpack") || source.get("show_backpack")
+                .getAsBoolean();
+            this.showCustomHead = !source.has("show_custom_head") || source.get("show_custom_head")
                 .getAsBoolean();
             this.geometry = new ResourceLocation(
                 json.get("geometry")
@@ -173,6 +176,10 @@ public final class BuiltinModelCatalog {
 
         public boolean isShowBackpack() {
             return showBackpack;
+        }
+
+        public boolean isShowCustomHead() {
+            return showCustomHead;
         }
 
         public String getPreferredSoundPack() {

@@ -1203,3 +1203,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 - 四个配方、MaidCoreItem和MaidProgressionRecipes为本工程实现；图标复用既有固定上游魂符资源，来源和资产许可保持
 - 制作凭证使用本工程账本新种类ACQUIRED，与原INITIAL免费赠送、FILM死亡权利分开；schema1读取保留，schema2写入及未知版本拒写由定向检查和实际旧生命周期流程验证
 - 首轮GT接口收到裸Item/Block后没有可用核心配方，改为ItemStack并核输入类型；失败、诊断与最终实际合成分别保留，完整生存获取与跨进程升级仍待验
+
+## 原版头部附件层
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+`client/renderer/entity/layer/LayerMaidBipedHead.java` 与
+`client/renderer/entity/geckolayer/GeckoLayerMaidBipedHead.java` 合并移植至原包的前者
+保留头盔槽头颅和背示槽方块两条显示路径，未引入可选帽子模组
+`MaidHeadAttachment` 和 `MaidHeadItemRenderer` 是本工程适配：按两种骨架的原定位、缩放及偏移调用1.7.10原生头颅/方块渲染，补读模型原有的 `show_custom_head` 标记
+旧平台SkullOwner复合与字符串格式均只读；旧方块元数据保留物品颜色及植物公开状态，原生库存坐标与现代方块坐标作显式桥接，不据此宣称两版本方块几何或材质完全相同
+显示能力独立隔离，失效不改物品或所有权；普通护甲沿内置模型的原动画显隐，不新增上游没有的通用人形护甲层

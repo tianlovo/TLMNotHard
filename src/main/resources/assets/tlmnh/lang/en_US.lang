@@ -133,3 +133,4 @@ gui.tlmnh.task_config.unavailable=This list cannot be edited now; existing setti
 gui.tlmnh.task_config.unknown_type=Enter a registered living entity ID
 message.tlmnh.attack_config.denied=Target settings were not saved: the editor expired or its data changed. Reopen the page.
 feature.tlmnh.protection.client_slot_icons=Empty hand slot icons
+feature.tlmnh.protection.client_head_items=Maid head attachments

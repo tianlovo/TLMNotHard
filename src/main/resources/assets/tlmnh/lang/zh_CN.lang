@@ -132,3 +132,4 @@ gui.tlmnh.task_config.unavailable=此列表暂时无法编辑，原有设置已�
 gui.tlmnh.task_config.unknown_type=请输入已注册的生物 ID
 message.tlmnh.attack_config.denied=攻击目标设置未保存：编辑会话已失效或原有数据已改变，请重新打开页面
 feature.tlmnh.protection.client_slot_icons=双手空槽提示
+feature.tlmnh.protection.client_head_items=女仆头部附件显示
