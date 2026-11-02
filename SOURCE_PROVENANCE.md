@@ -1279,3 +1279,9 @@ Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可�
 本目标原版1.20.1映射Forge47.2.0的 `LivingEntityRenderer.render/setupRotations/sleepDirectionToRotation` 及方向switch已从实际类字节读取
 方向为南90、西0、北270、东180度，随后Z轴getFlipDegrees及Y270；站姿眼高平移沿固定原EntityMaid的身高与坐姿比例
 本工程旧版MaidRenderer补入活着时的卧姿根变换；服务端以既有姿态同步值携带已确认床方向，醒来清理，属于低平台适配，未声称原版死亡/游泳等其它分支已全部等价
+
+## 原版普通菜单与命名牌例外
+
+固定TLM的 `EntityMaid.openMaidGui` 在ServerPlayer且未睡眠时先navigation.stop再NetworkHooks.openScreen，并始终返回已消费交互
+`mobInteract` 先执行独立InteractMaidEvent与物品事件，UseNameTagEvent为无自定义名称的主人命名牌打开独立界面，未加入普通菜单的睡眠限制
+168据此在低平台CommonProxy的新开窗边界区分普通菜单与命名牌，以延迟工厂在原参数验证后先清真实Navigator路径再构造窗口；没有把全部主人交互改成睡眠禁用

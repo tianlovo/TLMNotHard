@@ -1,6 +1,9 @@
 package com.tianluoqaq.tlmnh.common.proxy;
 
+import java.util.function.Supplier;
+
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.Container;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -58,29 +61,41 @@ public class CommonProxy implements IGuiHandler {
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
         if ((id == GUI_MAID || id == GUI_MAID_MODELS) && !Boolean.getBoolean("tlmnh.devCommands")) return null;
+        // 原openMaidGui拒绝睡眠时新开普通菜单；命名牌有独立交互，继续沿其原条件
+        if (id != GUI_MAID_NAMING && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING)) return null;
+        var factory = maidMenuFactory(id, player, maid, unusedY, unusedZ);
+        if (factory == null) return null;
+        if (id != GUI_MAID_NAMING) maid.getNavigator()
+            .clearPathEntity();
+        return factory.get();
+    }
+
+    private static Supplier<Container> maidMenuFactory(int id, EntityPlayer player, EntityMaid maid, int unusedY,
+        int unusedZ) {
         if (id == GUI_MAID_ATTACK_CONFIG || id == GUI_MAID_DEFAULT_TASK_CONFIG) {
             long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
             boolean attack = id == GUI_MAID_ATTACK_CONFIG;
             if (session == 0 || player.inventory.getItemStack() != null
-                || !world.isRemote && (maid.getTask() != com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE) != attack)
+                || !maid.worldObj.isRemote
+                    && (maid.getTask() != com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE) != attack)
                 return null;
-            return new com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer(
+            return () -> new com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer(
                 player.inventory,
                 maid,
                 session,
                 attack);
         }
         if (id == GUI_MAID_CONFIG) return player.inventory.getItemStack() == null
-            ? new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
+            ? () -> new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
                 player.inventory,
                 maid)
             : null;
         if (id == GUI_MAID_SOUNDS) return player.inventory.getItemStack() == null
-            ? new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
+            ? () -> new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
             : null;
-        if (id == GUI_MAID_ORIGINAL) return new EmptyBackpackContainer(player.inventory, maid);
+        if (id == GUI_MAID_ORIGINAL) return () -> new EmptyBackpackContainer(player.inventory, maid);
         if (id == GUI_MAID_ORIGINAL_MODELS)
-            return player.inventory.getItemStack() == null ? new ContainerMaidModels(player.inventory, maid, true)
+            return player.inventory.getItemStack() == null ? () -> new ContainerMaidModels(player.inventory, maid, true)
                 : null;
         if (id == GUI_MAID_NAMING) {
             long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
@@ -88,11 +103,12 @@ public class CommonProxy implements IGuiHandler {
                 || !MaidInteractions.isMainHand(player)
                 || player.inventory.getItemStack() != null
                 || !ContainerMaidNaming.isUnwrittenTag(player.getCurrentEquippedItem())) return null;
-            return new ContainerMaidNaming(player.inventory, maid, session);
+            return () -> new ContainerMaidNaming(player.inventory, maid, session);
         }
         if (id == GUI_MAID_MODELS)
-            return player.inventory.getItemStack() == null ? new ContainerMaidModels(player.inventory, maid) : null;
-        return new ContainerMaid(player.inventory, maid);
+            return player.inventory.getItemStack() == null ? () -> new ContainerMaidModels(player.inventory, maid)
+                : null;
+        return () -> new ContainerMaid(player.inventory, maid);
     }
 
     @Override
