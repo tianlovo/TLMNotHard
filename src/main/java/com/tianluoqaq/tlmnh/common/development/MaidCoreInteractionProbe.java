@@ -317,34 +317,44 @@ public final class MaidCoreInteractionProbe {
 
     public static void setVisualFixture(EntityPlayerMP player, String action) {
         var maid = AnimationLab.ownedSceneMaid(player);
+        if (action.equals("snapshot")) {
+            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
+            return;
+        }
+        if (action.equals("restore") || action.equals("clear")) {
+            require(player.inventory.getItemStack() == null, "Empty cursor required for visual fixture restore");
+            player.closeScreen();
+            if (com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
+                com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.restore(maid);
+            return;
+        }
+        require(action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
+        if (!com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
+            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
+        com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.verifyBackSlot(maid);
         maid.getChatBubbleManager()
             .clear();
-        if (action.equals("clear")) maid.getMaidInventory()
-            .setInventorySlotContents(5, null);
-        else {
-            require(action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
-            maid.setModelId(action.equals("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
-            maid.setSitting(false);
-            maid.setPose(MaidPose.SLEEPING, false);
-            maid.getMaidInventory()
-                .setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
-            maid.getConfigManager()
-                .setShowBackItem(true);
-            maid.getConfigManager()
-                .setShowChatBubble(true);
-            long now = System.currentTimeMillis();
-            var bubbles = maid.getChatBubbleManager()
-                .getChatBubbleDataCollection();
-            bubbles.put(
-                now + 120000,
-                com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData
-                    .type2("(๑>◡<๑)"));
-            bubbles.put(
-                now + 120001,
-                com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData.create());
-            maid.getChatBubbleManager()
-                .forceUpdateChatBubble();
-        }
+        maid.setModelId(action.equals("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
+        maid.setSitting(false);
+        maid.setPose(MaidPose.SLEEPING, false);
+        maid.getMaidInventory()
+            .setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
+        maid.getConfigManager()
+            .setShowBackItem(true);
+        maid.getConfigManager()
+            .setShowChatBubble(true);
+        long now = System.currentTimeMillis();
+        var bubbles = maid.getChatBubbleManager()
+            .getChatBubbleDataCollection();
+        bubbles.put(
+            now + 120000,
+            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData.type2("(๑>◡<๑)"));
+        bubbles.put(
+            now + 120001,
+            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData.create());
+        maid.getChatBubbleManager()
+            .forceUpdateChatBubble();
+        com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.trackBackSlot(maid);
         TLMNotHard.LOG.info(
             "TLMNH_VISUAL_FIXTURE action={} bubbles={} back={}",
             action,
