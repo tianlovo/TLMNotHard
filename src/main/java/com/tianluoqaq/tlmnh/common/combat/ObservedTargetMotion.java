@@ -48,6 +48,13 @@ public final class ObservedTargetMotion {
         return denominator > 0 ? numerator.scale(1 / denominator) : new BallisticVector(0, 0, 0);
     }
 
+    /** 只用最近连续两次观测，供相同弹道下的匀速提前量对照；沿用同一失效与瞬移过滤 */
+    public BallisticVector latestVelocity() {
+        if (count < 2) return BallisticVector.ZERO;
+        return positions[count - 1].subtract(positions[count - 2])
+            .scale(1.0 / (times[count - 1] - times[count - 2]));
+    }
+
     public void clear() {
         java.util.Arrays.fill(positions, null);
         identity = null;

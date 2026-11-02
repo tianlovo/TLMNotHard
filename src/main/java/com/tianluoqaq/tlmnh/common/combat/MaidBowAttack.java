@@ -37,7 +37,8 @@ public final class MaidBowAttack {
     public enum ModernFlightProfile {
         NATIVE_STATIC_COMPENSATION,
         NATIVE_MOTION_COMPENSATION,
-        SOURCE_ORIGINAL
+        SOURCE_ORIGINAL,
+        NATIVE_LAST_SAMPLE_COMPENSATION
     }
 
     public enum Status {
@@ -232,7 +233,9 @@ public final class MaidBowAttack {
                     aimPoint(target),
                     prototype || modernFlightProfile == ModernFlightProfile.NATIVE_MOTION_COMPENSATION
                         ? motion.velocity()
-                        : new BallisticVector(0, 0, 0),
+                        : modernFlightProfile == ModernFlightProfile.NATIVE_LAST_SAMPLE_COMPENSATION
+                            ? motion.latestVelocity()
+                            : BallisticVector.ZERO,
                     3.0,
                     MAX_FLIGHT_TICKS,
                     ArrowPhysics.OVERWORLD_AIR);
