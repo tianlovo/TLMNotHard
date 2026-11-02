@@ -45,6 +45,50 @@ public class BuiltinMaidModelsTest {
     }
 
     @Test
+    public void namedEasterEggOverridesRenderingAndRenamingRestoresTheStoredChoice() {
+        var stored = BuiltinModelCatalog.get("geckolib:winefox_jk");
+        var egg = BuiltinModelCatalog.get("touhou_little_maid:moesumika");
+        assertTrue(egg.isEasterEgg());
+        assertEquals("moesumika", egg.getEasterEggTag());
+        assertTrue(!egg.isEasterEggEncrypted());
+        assertSame(egg, MaidNamedModelOverride.resolve(stored.getId(), "moesumika"));
+        assertSame(stored, MaidNamedModelOverride.resolve(stored.getId(), "MOESUMIKA"));
+        assertSame(stored, MaidNamedModelOverride.resolve(stored.getId(), " moesumika "));
+        assertSame(stored, MaidNamedModelOverride.resolve(stored.getId(), "命名已修改"));
+        assertSame(stored, MaidNamedModelOverride.resolve(stored.getId(), ""));
+        assertEquals("geckolib:winefox_jk", stored.getId());
+        assertEquals(
+            254,
+            BuiltinModelCatalog.choices()
+                .size());
+        assertEquals(
+            35,
+            BuiltinModelCatalog.choices()
+                .stream()
+                .filter(BuiltinModelCatalog.Choice::isWinefox)
+                .count());
+    }
+
+    @Test
+    public void namedEasterEggPlaceholderUsesRetainedGeometryWithoutBecomingASelectableModel() throws Exception {
+        var placeholder = BuiltinModelCatalog.easterEggPlaceholder();
+        assertTrue(!BuiltinModelCatalog.contains(placeholder.getId()));
+        assertTrue(
+            !BuiltinModelCatalog.choices()
+                .contains(placeholder));
+        assertTrue(
+            placeholder.getAnimations()
+                .isEmpty());
+        var models = new BuiltinMaidModels(BuiltinMaidModelsTest::resource);
+        var model = models.create(placeholder);
+        assertSame(placeholder, model.getChoice());
+        assertTrue(render(model).count > 0);
+        try (var texture = resource(placeholder.getTexture())) {
+            assertTrue(texture.read() >= 0);
+        }
+    }
+
+    @Test
     public void allChoicesUseTheirOwnGeometryAndShareOnlyDefinitions() throws Exception {
         var reads = new HashMap<ResourceLocation, Integer>();
         var models = new BuiltinMaidModels(location -> {

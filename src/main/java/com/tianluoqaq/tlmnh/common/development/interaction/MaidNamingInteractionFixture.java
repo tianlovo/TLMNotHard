@@ -28,6 +28,7 @@ public final class MaidNamingInteractionFixture {
 
     private static final String TAG = "TLMNHNamingInteractionFixture";
     public static final String VISIBLE_NAME = "命名试验 女仆", HIDDEN_NAME = "命名试验 隐藏";
+    public static final String EASTER_EGG_NAME = "moesumika";
     private static Session active;
 
     private MaidNamingInteractionFixture() {}
@@ -51,6 +52,7 @@ public final class MaidNamingInteractionFixture {
                     "verify-cancel",
                     "verify-save",
                     "verify-hidden",
+                    "verify-easter-egg",
                     "revoke",
                     "verify-revoked",
                     "status",
@@ -101,6 +103,7 @@ public final class MaidNamingInteractionFixture {
                 ProtectedItemCodec.encode(hand)
                     .copy());
             data.setString("OriginalName", maid.getCustomNameTag());
+            data.setString("OriginalModel", maid.getModelId());
             data.setBoolean("OriginalAlways", maid.getAlwaysRenderNameTag());
             data.setString("ExpectedName", maid.getCustomNameTag());
             data.setBoolean("ExpectedAlways", maid.getAlwaysRenderNameTag());
@@ -144,9 +147,10 @@ public final class MaidNamingInteractionFixture {
         require(
             player.inventory.currentItem == session.data.getInteger("ExpectedSlot"),
             "Selected slot changed externally");
-        if (action.equals("verify-save") || action.equals("verify-hidden")) {
+        if (action.equals("verify-save") || action.equals("verify-hidden") || action.equals("verify-easter-egg")) {
             boolean visible = action.equals("verify-save");
-            String expected = visible ? VISIBLE_NAME : HIDDEN_NAME;
+            String expected = action.equals("verify-easter-egg") ? EASTER_EGG_NAME
+                : visible ? VISIBLE_NAME : HIDDEN_NAME;
             require(
                 player.openContainer == player.inventoryContainer && session.maid.getCustomNameTag()
                     .equals(expected)
@@ -262,6 +266,10 @@ public final class MaidNamingInteractionFixture {
 
         void validate() {
             require(
+                !data.hasKey("OriginalModel") || data.hasKey("OriginalModel", 8) && data.getString("OriginalModel")
+                    .equals(maid.getModelId()),
+                "Naming changed the stored model; original fixture retained");
+            require(
                 player.getEntityData()
                     .getTag(TAG) == data && data.hasKey("Schema", 3)
                     && data.getInteger("Schema") == 1
@@ -359,7 +367,7 @@ public final class MaidNamingInteractionFixture {
                     name.equals(data.getString("OriginalName"))
                         && maid.getAlwaysRenderNameTag() == data.getBoolean("OriginalAlways")
                         || name.equals(VISIBLE_NAME) && maid.getAlwaysRenderNameTag()
-                        || name.equals(HIDDEN_NAME) && !maid.getAlwaysRenderNameTag(),
+                        || (name.equals(HIDDEN_NAME) || name.equals(EASTER_EGG_NAME)) && !maid.getAlwaysRenderNameTag(),
                     "Foreign maid name retained");
                 var original = data.getBoolean("OriginalHandPresent")
                     ? ProtectedItemCodec.decodeField(data, "OriginalHand")
@@ -439,6 +447,7 @@ public final class MaidNamingInteractionFixture {
                 maid.getUniqueID()
                     .toString());
             result.addProperty("name", maid.getCustomNameTag());
+            result.addProperty("storedModel", maid.getModelId());
             result.addProperty("alwaysShow", maid.getAlwaysRenderNameTag());
             result.addProperty("selected", player.inventory.currentItem);
             result.addProperty(

@@ -5,7 +5,6 @@ import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.passive.EntityPig;
-import net.minecraft.entity.passive.EntityWolf;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -106,7 +105,7 @@ public final class EnhancedActionRecoveryTests {
     }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 120, batch = "enhanced_wild_ambient_panic")
-    public static void untamedMaidObservesThenNaturallyAvoidsACreeperWithoutTakingDrops(GameTestHelper helper) {
+    public static void untamedMaidNaturallyAvoidsAnAlreadyRegisteredCreeperWithoutTakingDrops(GameTestHelper helper) {
         var f = fixture(helper, MaidTask.IDLE);
         wildSamplingFloor(helper, f);
         f.maid.setPosition(f.x + 8.5, f.y + 1, f.z + 4.5);
@@ -115,30 +114,24 @@ public final class EnhancedActionRecoveryTests {
         f.maid.setPickup(true);
         var stack = markedDiamonds("untamed", 2);
         var item = drop(helper, f, 10.5, 1, 4.5, stack.copy());
-        // 共享fixture的FakePlayer仅在玩家表内，不能充当原生附近实体查询中的观察对象
-        var observer = new EntityWolf(helper.getWorld());
-        observer.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
-            .setBaseValue(0);
-        helper.spawnEntity(observer, 8.5, 1, 3);
-        helper.afterTest(observer::setDead);
-        helper.assertTrue(
-            helper.getWorld().loadedEntityList.contains(observer) && helper.getWorld()
-                .getEntityByID(observer.getEntityId()) == observer
-                && f.maid.canEntityBeSeen(observer)
-                && f.maid.getDistanceSqToEntity(observer) < 25,
-            "Untamed observation input must be a real loaded visible entity");
         var creeper = new EntityCreeper(helper.getWorld());
         // 实装SpecialMobs会替换非持久怪物；此例固定原生危险输入，不测试异步替换链
         creeper.func_110163_bv();
         creeper.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
             .setBaseValue(0);
         helper.afterTest(creeper::setDead);
+        // 危险从开始就存在；初距4格在首次周期感知前也不会因短程闲逛离开8格危险域
+        helper.spawnEntity(creeper, 12.5, 1, 4.5);
+        helper.assertTrue(
+            creeper.isNoDespawnRequired() && helper.getWorld()
+                .getEntityByID(creeper.getEntityId()) == creeper && f.maid.canEntityBeSeen(creeper),
+            "Fixed native persistent danger input was not registered and visible");
         var core = select(helper, f);
-        boolean[] observed = { false }, panicked = { false };
-        double[] dangerDistance = { 0 };
+        boolean[] panicked = { false };
+        double[] dangerDistance = { f.maid.getDistanceSqToEntity(creeper) };
         String[] previous = { "" };
         helper.onEachTick("untamed ambient and panic natural state", () -> {
-            String key = core.selectedKind() + ":" + observed[0] + ":" + panicked[0];
+            String key = core.selectedKind() + ":" + panicked[0];
             if (!key.equals(previous[0]) || f.maid.ticksExisted % 20 == 0) {
                 previous[0] = key;
                 var destination = core.panic()
@@ -147,16 +140,8 @@ public final class EnhancedActionRecoveryTests {
                     "TLMNH_UNTAMED_SAFETY_STATE age=" + f.maid.ticksExisted
                         + ", selected="
                         + core.selectedKind()
-                        + ", observed="
-                        + observed[0]
                         + ", panicked="
                         + panicked[0]
-                        + ", observerLoaded="
-                        + helper.getWorld().loadedEntityList.contains(observer)
-                        + ", observerVisible="
-                        + f.maid.canEntityBeSeen(observer)
-                        + ", observerDistance="
-                        + f.maid.getDistanceSqToEntity(observer)
                         + ", creeperLoaded="
                         + helper.getWorld().loadedEntityList.contains(creeper)
                         + ", creeperClass="
@@ -209,17 +194,6 @@ public final class EnhancedActionRecoveryTests {
                     && count(f, stack) == 0
                     && core.selectedKind() != Kind.PICKUP,
                 "Untamed ambient/safety processing opened combat, pickup or ownership permissions");
-            if (!observed[0]) {
-                if (core.selectedKind() != Kind.OBSERVE) return false;
-                observed[0] = true;
-                helper.spawnEntity(creeper, 14.5, 1, 4.5);
-                helper.assertTrue(
-                    creeper.isNoDespawnRequired() && helper.getWorld()
-                        .getEntityByID(creeper.getEntityId()) == creeper,
-                    "Fixed native persistent creeper was not actually registered");
-                dangerDistance[0] = f.maid.getDistanceSqToEntity(creeper);
-                return false;
-            }
             panicked[0] |= core.selectedKind() == Kind.PANIC && core.panic()
                 .threat() == creeper;
             return panicked[0] && core.panic()

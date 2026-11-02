@@ -203,6 +203,10 @@ public final class ClientDevelopmentControl {
                                     : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(backItem)
                                         .toString());
                             shape.addProperty("rideable", maid.isRideable());
+                            var renderer = net.minecraft.client.renderer.entity.RenderManager.instance
+                                .getEntityRenderObject(maid);
+                            if (renderer instanceof com.tianluoqaq.tlmnh.client.render.MaidRenderer maidRenderer)
+                                shape.add("renderedPose", maidRenderer.inspectPreviewForDevelopment(maid));
                             shape.addProperty(
                                 "ridingEntityId",
                                 maid.ridingEntity == null ? -1 : maid.ridingEntity.getEntityId());

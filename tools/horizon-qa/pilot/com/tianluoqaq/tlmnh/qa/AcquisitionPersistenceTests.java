@@ -349,7 +349,10 @@ public final class AcquisitionPersistenceTests {
                     .getMapFileFromName(MaidLifecycleData.NAME))) {
                 var data = CompressedStreamTools.readCompressed(input)
                     .getCompoundTag("data");
-                helper.assertTrue(data.getInteger("Schema") == 5, "Wrong acquisition disk schema inside native save");
+                int schema = Integer.getInteger("tlmnh.qaAcquisitionSchema", 5);
+                helper.assertTrue(
+                    (schema == 5 || schema == 6) && data.getInteger("Schema") == schema,
+                    "Wrong explicit acquisition disk schema inside native save");
                 var entries = data.getTagList("Entries", 10);
                 for (int i = 0; i < entries.tagCount(); i++) if (entries.getCompoundTagAt(i)
                     .getString("Token")

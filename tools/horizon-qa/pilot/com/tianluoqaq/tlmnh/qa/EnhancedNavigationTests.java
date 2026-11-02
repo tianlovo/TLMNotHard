@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.qa;
 
+import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -20,6 +21,137 @@ import com.tianluoqaq.tlmnh.common.config.MaidNavigationConfig;
 public final class EnhancedNavigationTests {
 
     private EnhancedNavigationTests() {}
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 150, batch = "enhanced_navigation_opened_obstacle")
+    public static void originalBlockedCorridorReopensBeforeCooldownWithoutPollingNewPaths(GameTestHelper helper) {
+        int previousLimit = MaidNavigationConfig.queriesPerTick;
+        MaidNavigationConfig.queriesPerTick = 1;
+        MaidWorldNavigationBudget.unload(helper.getWorld());
+        helper.afterTest(() -> {
+            MaidNavigationConfig.queriesPerTick = previousLimit;
+            MaidWorldNavigationBudget.unload(helper.getWorld());
+        });
+        var f = new ModernCoreTests.Fixture(helper, false);
+        f.maid.setPosition(f.x + 2.5, f.y + 1, f.z + 4.5);
+        for (int x = 1; x < 20; x++) for (int y = 1; y <= 3; y++) {
+            helper.setBlock(x, y, 2, Blocks.stone);
+            helper.setBlock(x, y, 6, Blocks.stone);
+        }
+        helper.assertTrue(
+            f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED)
+                == MaidPolicyRuntime.SelectionResult.SELECTED,
+            "Complete N factory rejected obstacle fixture");
+        var core = f.maid.getBrainCoordinator()
+            .peekEnhancedCore();
+        var budget = MaidWorldNavigationBudget.forWorld(helper.getWorld());
+        int[] phase = { 0 }, recoveredAt = { -1 }, openedAt = { -1 };
+        long[] previousSearches = { 0 }, blockedSearches = { 0 };
+        boolean[] done = { false };
+        String[] previousState = { "" };
+        helper.onEachTick("complete N original-route obstacle clearance", () -> {
+            int age = f.maid.ticksExisted;
+            long searches = f.navigation.searchCount();
+            String state = phase[0] + ":"
+                + core.navigation()
+                    .outcome();
+            if (!state.equals(previousState[0]) || age % 20 == 0) {
+                previousState[0] = state;
+                var route = f.navigation.getPath();
+                System.out.println(
+                    "TLMNH_OPENED_OBSTACLE_STATE age=" + age
+                        + " phase="
+                        + phase[0]
+                        + " outcome="
+                        + core.navigation()
+                            .outcome()
+                        + " searches="
+                        + searches
+                        + " x="
+                        + (f.maid.posX - f.x)
+                        + " y="
+                        + (f.maid.posY - f.y)
+                        + " route="
+                        + (route == null ? "none" : route.getCurrentPathIndex() + "/" + route.getCurrentPathLength()));
+            }
+            helper.assertTrue(
+                f.maid.getBrainCoordinator()
+                    .peekPolicyRuntime()
+                    .isReady()
+                    && f.maid.getBrainCoordinator()
+                        .peekPolicyRuntime()
+                        .getProfile() == MaidBrainProfile.ENHANCED
+                    && f.maid.getBrainCoordinator()
+                        .peekEnhancedCore() == core
+                    && f.maid.getBrainCoordinator()
+                        .getFollowController()
+                        .getTicks() == 0,
+                "Obstacle fixture lost its complete natural N root");
+            helper.assertTrue(
+                searches - previousSearches[0] <= 1 && budget.used(
+                    helper.getWorld()
+                        .getTotalWorldTime())
+                    <= 1,
+                "Obstacle recovery bypassed actual world query quota");
+            previousSearches[0] = searches;
+            if (phase[0] == 0) {
+                if (f.navigation.getPath() == null) return;
+                helper.assertTrue(f.maid.posX < f.x + 7, "Original route did not precede the controlled wall");
+                for (int y = 1; y <= 3; y++) for (int z = 3; z <= 5; z++) helper.setBlock(8, y, z, Blocks.stone);
+                phase[0] = 1;
+            } else if (phase[0] == 1) {
+                if (core.navigation()
+                    .outcome() != Outcome.RECOVERY_WAIT) return;
+                helper.assertTrue(
+                    f.navigation.noPath() && core.navigation()
+                        .recoveryCount() == 1,
+                    "Actual original blocked route did not enter its first recovery");
+                recoveredAt[0] = age;
+                blockedSearches[0] = searches;
+                phase[0] = 2;
+            } else if (phase[0] == 2) {
+                helper.assertTrue(
+                    searches == blockedSearches[0] && core.navigation()
+                        .failureCount() == 0
+                        && core.actor()
+                            .peekWalkTarget() != null,
+                    "Unchanged original blockage caused a query flood or discarded its live intent");
+                // 原走廊外的方块变化不能成为提前重评的凭据
+                if (age - recoveredAt[0] == 2) helper.setBlock(4, 4, 1, Blocks.stone);
+                if (age - recoveredAt[0] < 6) return;
+                for (int y = 1; y <= 3; y++) for (int z = 3; z <= 5; z++) helper.setBlock(8, y, z, Blocks.air);
+                openedAt[0] = age;
+                phase[0] = 3;
+            } else if (phase[0] == 3) {
+                helper.assertTrue(
+                    age - openedAt[0] <= 2,
+                    "Confirmed original corridor clearance still waited for the old 20tick recovery deadline");
+                if (core.navigation()
+                    .outcome() != Outcome.RUNNING || f.navigation.noPath()) return;
+                helper.assertTrue(
+                    age - recoveredAt[0] < 20 && searches == blockedSearches[0] + 1
+                        && core.actor()
+                            .peekCantReachSince() == null,
+                    "Early obstacle retry was unbounded, late or retained stale failure memory");
+                phase[0] = 4;
+            } else if (phase[0] == 4 && f.maid.posX > f.x + 9 && f.maid.getDistanceSqToEntity(f.owner) <= 6.25) {
+                helper.assertTrue(
+                    core.navigation()
+                        .recoveryCount() == 1
+                        && core.navigation()
+                            .failureCount() == 0,
+                    "Opened original route did not finish through natural movement");
+                System.out.println(
+                    "TLMNH_OPENED_OBSTACLE_PASS recoveryAge=" + recoveredAt[0]
+                        + " openedAge="
+                        + openedAt[0]
+                        + " arrivalAge="
+                        + age
+                        + " ownerProfile=shared_controlled_ForgeFakePlayer not_multiplayer=true quota=1");
+                done[0] = true;
+            }
+        });
+        helper.succeedWhen(() -> done[0]);
+    }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 20, batch = "enhanced_navigation_air_preflight")
     public static void lowAirPreflightRetainsQueueWithoutAWalkTargetOrFalseFailure(GameTestHelper helper) {

@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.qa;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityMinecartEmpty;
@@ -14,6 +15,8 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.scoreboard.ScorePlayerTeam;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -27,6 +30,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
@@ -39,6 +44,195 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 public final class ModernCombatTests {
 
     private ModernCombatTests() {}
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 160, batch = "modern_combat_f_live_target")
+    public static void completeFaithfulRootSkipsAlliesAndRechecksPreCallbackWorldMembership(GameTestHelper helper) {
+        var f = fixture(helper);
+        String type = "tlmnhqapilot:live_team_pig";
+        helper.assertTrue(
+            !EntityList.stringToClassMapping.containsKey(type)
+                && !EntityList.classToStringMapping.containsKey(TeamPig.class),
+            "Controlled team target name already owned");
+        helper.afterTest(() -> {
+            EntityList.stringToClassMapping.remove(type, TeamPig.class);
+            EntityList.classToStringMapping.remove(TeamPig.class, type);
+        });
+        EntityList.stringToClassMapping.put(type, TeamPig.class);
+        EntityList.classToStringMapping.put(TeamPig.class, type);
+        var scoreboard = helper.getWorld()
+            .getScoreboard();
+        String name = "tlmnhF" + f.maid.getEntityId();
+        var oldTeam = f.owner.getTeam();
+        var team = scoreboard.createTeam(name);
+        helper.afterTest(() -> {
+            scoreboard.removeTeam(team);
+            if (oldTeam != null) scoreboard.func_151392_a(f.owner.getCommandSenderName(), oldTeam.getRegisteredName());
+        });
+        var ally = new TeamPig(helper.getWorld());
+        var target = new TeamPig(helper.getWorld());
+        var hook = new LiveTargetHook(f, target, ally, team);
+        helper.afterTest(() -> {
+            MinecraftForge.EVENT_BUS.unregister(hook);
+            for (var entity : new TeamPig[] { ally, target }) {
+                entity.setDead();
+                helper.getWorld()
+                    .removePlayerEntityDangerously(entity);
+            }
+        });
+        helper.assertTrue(
+            scoreboard.func_151392_a(f.owner.getCommandSenderName(), name),
+            "Native owner team input rejected");
+        ally.team = team;
+        for (var entity : new TeamPig[] { ally, target }) {
+            entity.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+                .setBaseValue(200);
+            entity.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                .setBaseValue(0);
+            entity.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
+                .setBaseValue(1);
+            entity.setHealth(200);
+        }
+        helper.spawnEntity(ally, 2.5, 1, 3.5);
+        helper.spawnEntity(target, 3.3, 1, 4.5);
+        f.maid.getAttackListData()
+            .attackGroups()
+            .put(MaidCombatEntities.id(target), MonsterType.HOSTILE);
+        helper.assertTrue(
+            f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.FAITHFUL_TLM)
+                == MaidPolicyRuntime.SelectionResult.SELECTED,
+            "Complete F factory rejected live-target regression");
+        var core = f.maid.getBrainCoordinator()
+            .peekFaithfulBrain();
+        MinecraftForge.EVENT_BUS.register(hook);
+        int[] phase = { 0 }, changedAt = { -1 }, wear = { 0 };
+        float[] health = { 200 };
+        boolean[] done = { false };
+        helper.onEachTick("complete F selection and native melee admission after Pre", () -> {
+            int age = f.maid.ticksExisted;
+            helper.assertTrue(
+                f.maid.getBrainCoordinator()
+                    .peekPolicyRuntime()
+                    .isReady()
+                    && f.maid.getBrainCoordinator()
+                        .peekPolicyRuntime()
+                        .getProfile() == MaidBrainProfile.FAITHFUL_TLM
+                    && f.maid.getBrainCoordinator()
+                        .peekFaithfulBrain() == core
+                    && f.maid.getBrainCoordinator()
+                        .getCombatController()
+                        .getTicks() == 0,
+                "Live-target regression changed its complete natural F root");
+            helper.assertTrue(
+                hook.allyAttempts == 0 && ally.getHealth() == 200,
+                "Nearest allied target was selected or hurt instead of the farther legal enemy");
+            var weapon = f.maid.getHeldItem();
+            if (phase[0] == 0 && hook.mutations == 1) {
+                helper.assertTrue(
+                    target.getHealth() == 200 && weapon.getItemDamage() == 0 && hook.posts == 0,
+                    "Joining the owner's team in Pre still committed damage, Post or weapon wear");
+                changedAt[0] = age;
+                phase[0] = 1;
+            } else if (phase[0] == 1 && age >= changedAt[0] + 2) {
+                helper.assertTrue(
+                    target.getHealth() == 200 && weapon.getItemDamage() == 0,
+                    "Live allied target retained stale cached attack permission");
+                target.team = null;
+                hook.mode = 2;
+                phase[0] = 2;
+            } else if (phase[0] == 2 && target.getHealth() < 200) {
+                helper.assertTrue(
+                    weapon.getItemDamage() == 1 && hook.posts == 1,
+                    "Leaving the team did not resume one actual finite melee attack");
+                health[0] = target.getHealth();
+                wear[0] = weapon.getItemDamage();
+                hook.mode = 3;
+                phase[0] = 3;
+            } else if (phase[0] == 3 && hook.mutations == 2) {
+                helper.assertTrue(
+                    target.isEntityAlive() && helper.getWorld()
+                        .getEntityByID(target.getEntityId()) != target
+                        && target.getHealth() == health[0]
+                        && weapon.getItemDamage() == wear[0]
+                        && hook.posts == 1,
+                    "Alive but natively unregistered Pre target retained attack admission");
+                hook.mode = 4;
+                helper.spawnEntity(target, target.posX - f.x, target.posY - f.y, target.posZ - f.z);
+                helper.assertTrue(
+                    helper.getWorld()
+                        .getEntityByID(target.getEntityId()) == target,
+                    "Original target identity was not actually registered again");
+                phase[0] = 4;
+            } else if (phase[0] == 4 && target.getHealth() < health[0]) {
+                helper.assertTrue(
+                    weapon.getItemDamage() == wear[0] + 1 && hook.posts == 2,
+                    "Re-registered original target did not resume exactly one attack and wear");
+                System.out.println(
+                    "TLMNH_F_LIVE_TARGET_PASS age=" + age
+                        + " targetClass="
+                        + target.getClass()
+                            .getName()
+                        + " targetId="
+                        + MaidCombatEntities.id(target)
+                        + " scope=controlled_native_team_getter_and_remove_then_alive_input not_real_mod_team_or_multiplayer=true");
+                done[0] = true;
+            }
+        });
+        helper.succeedWhen(() -> done[0]);
+    }
+
+    /** 旧平台普通生物没有可写队伍；只用原生Team类型提供明确受控的getTeam输入 */
+    public static final class TeamPig extends EntityPig {
+
+        Team team;
+
+        public TeamPig(World world) {
+            super(world);
+        }
+
+        @Override
+        public Team getTeam() {
+            return team;
+        }
+    }
+
+    public static final class LiveTargetHook {
+
+        final ModernCoreTests.Fixture f;
+        final TeamPig target, ally;
+        final ScorePlayerTeam team;
+        int mode = 1, mutations, allyAttempts, posts;
+
+        LiveTargetHook(ModernCoreTests.Fixture f, TeamPig target, TeamPig ally, ScorePlayerTeam team) {
+            this.f = f;
+            this.target = target;
+            this.ally = ally;
+            this.team = team;
+        }
+
+        @SubscribeEvent
+        public void pre(MaidHurtTarget.Pre event) {
+            if (event.getMaid() != f.maid) return;
+            if (event.getTarget() == ally) allyAttempts++;
+            if (event.getTarget() != target) return;
+            if (mode == 1) {
+                target.team = team;
+                mutations++;
+                mode = 0;
+            } else if (mode == 3) {
+                f.helper.getWorld()
+                    .removePlayerEntityDangerously(target);
+                // 将世界登记与alive状态分离的受控回调，不冒称正常维度转移机制
+                target.isDead = false;
+                mutations++;
+                mode = 0;
+            }
+        }
+
+        @SubscribeEvent
+        public void post(MaidHurtTarget.Post event) {
+            if (event.getMaid() == f.maid && event.getTarget() == target) posts++;
+        }
+    }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 240, batch = "modern_combat_approach")
     public static void naturalApproachUsesSourceReachAndExpirableAttributeCooldown(GameTestHelper helper) {

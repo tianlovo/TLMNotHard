@@ -111,7 +111,7 @@ public class EnhancedNavigationControllerTest {
     private static final class Fixture {
 
         long time;
-        boolean hasTarget = true, done, stuck, reachable = true;
+        boolean hasTarget = true, done, stuck, reachable = true, observeBlockage, corridorClear;
         int requests;
         Long since;
         BlockPos target = new BlockPos(8, 0, 0), requested;
@@ -142,7 +142,7 @@ public class EnhancedNavigationControllerTest {
         };
         final FollowMoveActor actor = (FollowMoveActor) Proxy.newProxyInstance(
             FollowMoveActor.class.getClassLoader(),
-            new Class<?>[] { FollowMoveActor.class },
+            new Class<?>[] { FollowMoveActor.class, EnhancedRouteObstacleActor.class },
             (proxy, method, args) -> {
                 return switch (method.getName()) {
                     case "worldGameTime" -> time;
@@ -159,6 +159,9 @@ public class EnhancedNavigationControllerTest {
                     case "navigationPath" -> installed;
                     case "navigationIsDone" -> done;
                     case "navigationIsStuck" -> stuck;
+                    case "observeBlockedRoute" -> observeBlockage
+                        ? (java.util.function.BooleanSupplier) () -> corridorClear
+                        : null;
                     case "moveTo" -> {
                         installed = (Path) args[0];
                         yield true;
@@ -269,6 +272,96 @@ public class EnhancedNavigationControllerTest {
         assertTrue(f.hasTarget);
         assertNull(f.installed);
         assertNull(f.memory);
+    }
+
+    @Test
+    public void openedOriginalCorridorRetriesEarlyThroughQuotaAndCannotGrantRepeatedFailureRetries() {
+        var f = new Fixture();
+        f.observeBlockage = true;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.time = 40;
+        assertEquals(Outcome.RECOVERY_WAIT, f.controller.tick());
+        int before = f.requests;
+        for (f.time = 41; f.time <= 44; f.time++) {
+            assertEquals(Outcome.COOLDOWN, f.controller.tick());
+            assertEquals(before, f.requests);
+        }
+        f.corridorClear = true;
+        f.result = Result.WAITING_BUDGET;
+        assertEquals(Outcome.WAITING_BUDGET, f.controller.tick());
+        assertEquals(before + 1, f.requests);
+        assertEquals(Long.valueOf(40), f.since);
+        // 预算等待不能把已经确认的机会丢回原20tick冷却，也不能成为新失败
+        f.time++;
+        assertEquals(Outcome.WAITING_BUDGET, f.controller.tick());
+        assertEquals(before + 2, f.requests);
+        assertEquals(0, f.controller.failureCount());
+        f.time++;
+        f.result = Result.UNREACHABLE;
+        assertEquals(Outcome.UNREACHABLE, f.controller.tick());
+        before = f.requests;
+        f.result = Result.FOUND;
+        f.time++;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        assertEquals(before, f.requests);
+        f.time = 66;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        f.time = 67;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertNull(f.since);
+    }
+
+    @Test
+    public void earlyObstacleWaitCannotSurviveCancellationOrTimeRollback() {
+        var f = new Fixture();
+        f.observeBlockage = true;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.time = 40;
+        assertEquals(Outcome.RECOVERY_WAIT, f.controller.tick());
+        f.corridorClear = true;
+        f.result = Result.WAITING_BUDGET;
+        f.time++;
+        assertEquals(Outcome.WAITING_BUDGET, f.controller.tick());
+        f.controller.cancel();
+        f.corridorClear = false;
+        f.result = Result.UNREACHABLE;
+        f.time++;
+        assertEquals(Outcome.UNREACHABLE, f.controller.tick());
+        int before = f.requests;
+        f.corridorClear = true;
+        f.time++;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        assertEquals(before, f.requests);
+        f.time = 0;
+        f.result = Result.FOUND;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        assertEquals(before + 1, f.requests);
+    }
+
+    @Test
+    public void pendingEarlyRetryLosesItsGrantWhenTheOriginalCorridorBecomesUnreadableOrBlockedAgain() {
+        var f = new Fixture();
+        f.observeBlockage = true;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
+        f.time = 40;
+        assertEquals(Outcome.RECOVERY_WAIT, f.controller.tick());
+        f.corridorClear = true;
+        f.result = Result.WAITING_BUDGET;
+        f.time++;
+        assertEquals(Outcome.WAITING_BUDGET, f.controller.tick());
+        int before = f.requests;
+        f.corridorClear = false;
+        f.time++;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        assertEquals(before, f.requests);
+        assertEquals(0, f.controller.failureCount());
+        f.corridorClear = true;
+        f.time++;
+        assertEquals(Outcome.COOLDOWN, f.controller.tick());
+        assertEquals(before, f.requests);
+        f.time = 60;
+        f.result = Result.FOUND;
+        assertEquals(Outcome.RUNNING, f.controller.tick());
     }
 
     @Test

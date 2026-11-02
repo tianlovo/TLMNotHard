@@ -154,6 +154,9 @@ public final class NaturalRangedPairTests {
             profile = enhanced ? MaidBrainProfile.ENHANCED : MaidBrainProfile.FAITHFUL_TLM;
             report.addProperty("schema", "natural-ranged-pair-v1");
             report.addProperty("scene", scene);
+            if (scene.equals("safety")) report.addProperty(
+                "shooterInput",
+                "initial sitting=true; complete factory root uses normal RIDE_WORK/stationary ranged; no root suspension or direct bow calls");
             report.addProperty("arm", arm);
             report.addProperty(
                 "scope",
@@ -184,6 +187,8 @@ public final class NaturalRangedPairTests {
             f.maid.setTask(MaidTask.RANGED_ATTACK);
             f.maid.setSchedule(MaidSchedule.ALL);
             f.maid.setPickup(false);
+            // 安全场景固定正常坐姿射击输入，仍由完整根的RIDE_WORK/stationary入口执行
+            if (scene.equals("safety")) f.maid.setSitting(true);
             if (scene.equals("safety")) weapon.addEnchantment(Enchantment.flame, 1);
             f.maid.setCurrentItemOrArmor(0, weapon);
             f.maid.setOffhandItem(null);
@@ -269,6 +274,7 @@ public final class NaturalRangedPairTests {
             conditions = new JsonObject();
             conditions.add("target", physicalConditions(target));
             conditions.add("maid", physicalConditions(f.maid));
+            conditions.addProperty("sitting", f.maid.isSitting());
             conditions.addProperty("nativeGravity", (double) .05F);
             conditions.addProperty("nativeDrag", (double) .99F);
             conditions.add("weapon", item(weapon));

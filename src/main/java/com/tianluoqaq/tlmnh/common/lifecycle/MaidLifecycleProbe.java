@@ -131,7 +131,7 @@ public final class MaidLifecycleProbe {
         } finally {
             MinecraftForge.EVENT_BUS.unregister(reject);
         }
-        for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.MAID_OWNER }) {
+        for (var mutation : new Mutation[] { Mutation.MAID_DEAD }) {
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
             try {
@@ -144,6 +144,36 @@ public final class MaidLifecycleProbe {
                 MinecraftForge.EVENT_BUS.unregister(mutate);
             }
         }
+        // 改写归属的未知后继会持久封存；独立制作凭证不能占用下方正常INITIAL释放的权利
+        var heldToken = ledger.acquiredToken(f.owner.getUniqueID());
+        var heldSlab = MaidLifecycleItems
+            .credential(MaidResurrectionContent.INITIAL_SLAB, heldToken, f.owner.getUniqueID());
+        f.hand(heldSlab);
+        var changedOwner = new MutateJoin(f.world, Mutation.MAID_OWNER, f.owner);
+        MinecraftForge.EVENT_BUS.register(changedOwner);
+        try {
+            require(
+                MaidLifecycleService.releaseInitial(f.owner, heldSlab, f.x, f.y, f.z)
+                    == MaidLifecycleService.Result.DENIED && changedOwner.maidCalls == 1
+                    && f.owner.getCurrentEquippedItem() == heldSlab
+                    && !ledger.redemption(heldToken)
+                        .hasNoTags()
+                    && ledger.reserve(heldToken, MaidLifecycleData.Kind.ACQUIRED) == null,
+                "independent unknown owner source remains held");
+            var successor = f.latestMaid();
+            require(
+                MaidSpawnChecks.present(successor, f.world) && !successor.isOwner(f.owner),
+                "unknown slab successor was deleted or overwritten");
+            require(
+                MaidLifecycleService.releaseInitial(f.owner, heldSlab, f.x, f.y, f.z)
+                    == MaidLifecycleService.Result.INVALID_CREDENTIAL && changedOwner.maidCalls == 1,
+                "held slab cannot create a second candidate");
+            // 仅清理本夹具实际创建并明确改写的同一对象，给正常释放场景留出空间
+            f.world.removeEntity(successor);
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(changedOwner);
+        }
+        f.hand(slab);
         require(
             f.owner.theItemInWorldManager
                 .activateBlockOrUseItem(f.owner, f.world, slab, f.x, f.y, f.z, 1, 0.5F, 1, 0.5F),
@@ -303,8 +333,7 @@ public final class MaidLifecycleProbe {
             rejected == MaidLifecycleService.Result.SPAWN_REJECTED && shrine.getFilm() != null
                 && f.owner.getHealth() == 11,
             "cancelled shrine spawn rolls back both costs result=" + rejected);
-        for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.MAID_OWNER, Mutation.PLAYER_DISTANCE,
-            Mutation.SHRINE_CONTENT }) {
+        for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.PLAYER_DISTANCE, Mutation.SHRINE_CONTENT }) {
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
             MaidLifecycleService.Result result;
@@ -361,7 +390,38 @@ public final class MaidLifecycleProbe {
             MaidLifecycleService.resurrect(f.owner, shrine) == MaidLifecycleService.Result.INVALID_CREDENTIAL,
             "duplicate film cannot revive twice");
         shrine.extract();
+        var preserved = new NBTTagCompound();
+        revived.writeToNBT(preserved);
         f.world.removeEntity(revived);
+        // 改写归属的候选属于未知后继，使用独立凭证检查持久封存，不能再要求原token重兑
+        var ledger = MaidLifecycleData.get(f.world);
+        var heldToken = ledger.newFilm(f.owner.getUniqueID(), UUID.randomUUID(), MaidFilmData.identity(preserved));
+        var heldFilm = MaidLifecycleItems.credential(MaidResurrectionContent.FILM, heldToken, f.owner.getUniqueID());
+        require(shrine.insert(heldFilm), "independent successor fixture film");
+        var changedOwner = new MutateJoin(f.world, Mutation.MAID_OWNER, f.owner);
+        MinecraftForge.EVENT_BUS.register(changedOwner);
+        try {
+            require(
+                MaidLifecycleService.resurrect(f.owner, shrine) == MaidLifecycleService.Result.DENIED
+                    && changedOwner.maidCalls == 1
+                    && shrine.getFilm() != null
+                    && f.owner.getHealth() == 20
+                    && !ledger.redemption(heldToken)
+                        .hasNoTags()
+                    && ledger.reserve(heldToken, MaidLifecycleData.Kind.FILM) == null,
+                "unknown maid owner preserves source and holds only its independent birth right");
+            var successor = f.latestMaid();
+            require(
+                MaidSpawnChecks.present(successor, f.world) && !successor.isOwner(f.owner),
+                "unknown owner successor was deleted or rewritten");
+            require(
+                MaidLifecycleService.resurrect(f.owner, shrine) == MaidLifecycleService.Result.INVALID_CREDENTIAL
+                    && changedOwner.maidCalls == 1
+                    && MaidSpawnChecks.present(successor, f.world),
+                "held successor cannot admit a second spawn");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(changedOwner);
+        }
         f.world.setBlock(f.x, f.y, f.z, Blocks.stone);
     }
 

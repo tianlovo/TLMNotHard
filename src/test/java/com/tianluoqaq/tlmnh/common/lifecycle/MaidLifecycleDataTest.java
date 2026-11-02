@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 6);
+        invalid.setInteger("Schema", 7);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -172,7 +172,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(5, current.getInteger("Schema"));
+        assertEquals(6, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -411,6 +411,7 @@ public class MaidLifecycleDataTest {
         var entries = tag.getTagList("Entries", 10);
         for (int index = 0; index < entries.tagCount(); index++) {
             var entry = entries.getCompoundTagAt(index);
+            if (schema < 6) entry.removeTag("Redemption");
             if (schema < 3) {
                 entry.removeTag("DeathExperience");
                 entry.removeTag("ExperienceReadyAt");
@@ -457,7 +458,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var saved = new NBTTagCompound();
         restored.writeToNBT(saved);
-        assertEquals(5, saved.getInteger("Schema"));
+        assertEquals(6, saved.getInteger("Schema"));
         assertEquals(
             items,
             saved.getTagList("Entries", 10)
@@ -523,6 +524,47 @@ public class MaidLifecycleDataTest {
             saved.getTagList("Entries", 10)
                 .getCompoundTagAt(0)
                 .setString(field, "true");
+            var restored = new MaidLifecycleData("fixture");
+            assertThrows(IllegalStateException.class, () -> restored.readFromNBT(saved));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
+    }
+
+    @Test
+    public void schemaFiveAcquisitionRightsMigrateWithoutInventingAnOutstandingBirth() {
+        var old = new MaidLifecycleData("fixture");
+        var token = old.initialToken(UUID.randomUUID());
+        var saved = new NBTTagCompound();
+        old.writeToNBT(saved);
+        saved.setInteger("Schema", 5);
+        saved.getTagList("Entries", 10)
+            .getCompoundTagAt(0)
+            .removeTag("Redemption");
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(saved);
+        assertTrue(
+            restored.redemption(token)
+                .hasNoTags());
+        assertNotNull(restored.reserve(token, MaidLifecycleData.Kind.INITIAL));
+        restored.rollback(token);
+        var upgraded = new NBTTagCompound();
+        restored.writeToNBT(upgraded);
+        assertEquals(6, upgraded.getInteger("Schema"));
+    }
+
+    @Test
+    public void unknownOrMalformedRedemptionCannotBeSilentlyClearedOnRead() {
+        for (int mutation = 0; mutation < 3; mutation++) {
+            var old = new MaidLifecycleData("fixture");
+            old.initialToken(UUID.randomUUID());
+            var saved = new NBTTagCompound();
+            old.writeToNBT(saved);
+            var entry = saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0);
+            if (mutation == 0) entry.removeTag("Redemption");
+            else if (mutation == 1) entry.setString("Redemption", "future-format");
+            else entry.getCompoundTag("Redemption")
+                .setString("FutureField", "must-remain");
             var restored = new MaidLifecycleData("fixture");
             assertThrows(IllegalStateException.class, () -> restored.readFromNBT(saved));
             assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));

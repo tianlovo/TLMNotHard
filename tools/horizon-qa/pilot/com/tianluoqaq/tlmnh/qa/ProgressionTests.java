@@ -99,6 +99,15 @@ public final class ProgressionTests {
         var beds = OreDictionary.getOres("bedWood");
         var lookedUp = GameRegistry.findItem("etfuturum", "white_bed");
         var registryObservation = new com.google.gson.JsonObject();
+        registryObservation.addProperty(
+            "collectionClass",
+            beds.getClass()
+                .getName());
+        registryObservation.addProperty("nativeCount", beds.size());
+        registryObservation.addProperty(
+            "inheritedStreamCount",
+            beds.stream()
+                .count());
         registryObservation.add("namedLookup", bedItemObservation(lookedUp));
         var members = new com.google.gson.JsonArray();
         for (var member : beds) {
@@ -110,16 +119,16 @@ public final class ProgressionTests {
         registryObservation.add("bedWood", members);
         System.out.println("TLMNH_PROGRESS_COLORED_BED_REGISTRY " + registryObservation);
         // All 15 EFR colors use this native ItemBlock class. Resolve the actual ore member, not a name lookup fallback.
-        var coloredBed = beds.stream()
-            .filter(
-                stack -> stack.getItem()
-                    .getClass()
-                    .getName()
-                    .equals("ganymedes01.etfuturum.blocks.itemblocks.ItemBlockDyedBed"))
-            .findFirst()
-            .orElseThrow(
-                () -> new IllegalStateException("Native Et Futurum colored bed class is absent from bedWood=" + beds))
-            .copy();
+        // This Java-7 wrapper delegates iteration but inherits an empty ArrayList spliterator.
+        ItemStack coloredBed = null;
+        for (var member : beds) if (member.getItem()
+            .getClass()
+            .getName()
+            .equals("ganymedes01.etfuturum.blocks.itemblocks.ItemBlockDyedBed")) {
+                coloredBed = member.copy();
+                break;
+            }
+        helper.assertTrue(coloredBed != null, "Native Et Futurum colored bed class is absent from bedWood=" + beds);
         coloredBed.stackSize = 1;
         var selectedItem = coloredBed.getItem();
         int nativeId = Item.getIdFromItem(selectedItem);
