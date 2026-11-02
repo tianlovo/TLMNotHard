@@ -70,6 +70,8 @@ public final class TileEntitySnackCabinetRenderer extends TileEntitySpecialRende
                     vertices.end();
                 }
             }
+            com.tianluoqaq.tlmnh.client.development.life.CabinetRenderObservation
+                .completed(cabinet, model, type, model.getPart("full").visible, model.getPart("half").visible);
             return true;
         }, () -> false);
     }

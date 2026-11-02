@@ -656,3 +656,10 @@ NaturalSleepPortTests在完整F/N每帧记录实际sleepDirection，并检查自
 SleepingGuiTests创建独立原生EntityPlayerMP及实际世界女仆，默认Legacy，直接走EntityMaid.interact和注册FML开窗流程
 两项覆盖睡眠普通入口/菜单页拒绝、醒来构造安装关闭及真实导航停止、非法会话/光标保留原路径，以及睡眠命名牌和喂金苹果的独立条件与物品守恒
 原女仆库存、手持数量/NBT、药效与睡眠方向均按实际状态断言；内存通道无真实FML客户端投递目标，不将本轮服务端流程称作鼠标/GUI像素/多人网络验收
+
+## 柜体外观与库存保留
+
+SnackCabinetStateTests通过实际ItemBlock放置、World.metadata更新、邻居蛋糕通知和原生ContainerChest，核同一Tile及27格Items/Recovery完整NBT不变
+旧柜已存蛋糕的原生NBT重建、未知罩型12保留、外来Tile拒改metadata分别检查；自生成测试物品在标准模板清理前核原NBT再清，避免生成虚构交付记录
+`tlmnhdev lab-cabinet-visual <player> open|gui|clear` 限自有保护虚空观察者，持久journal记录三只空柜和两份显示蛋糕；意外物品、恢复记录、metadata或上方块改变均拒绝清理
+客户端cabinets只读报告原生绘制返回、全/半罩显隐、metadata与实际模型引用更换；gui使用真实原生27格窗口。计数不代替图像，实际范围见PROGRESS，不宣称其他食品联动或完整多人验收
