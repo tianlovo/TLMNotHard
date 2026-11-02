@@ -606,3 +606,9 @@ Indev152 新增最近连续两次观测的速度对照，沿用同一目标切�
 展台仅在同步出生调用内准入已登记的精确实体对象，调用结束立即撤销；清理核marker、主人和token，若任一种账本记录拥有token则拒绝删除，不扩大到其它墓碑
 客户端状态的 `tombstones` 最多报告32项，包括实际服务器实体ID、同步名字、原生绘制返回、名字行数、纹理及实际模型引用更换计数；计数不证明可见像素，158六幅原图和资源重载范围见PROGRESS
 资源检查器新增独立六项生命周期资产摘要验证；出生夹具、观察器和显示检查不替代真实死亡/领取、多人与原版完整成像
+
+## 忠实最近床与完整增强睡眠
+
+`ModernLifeTests.nearestOccupiedBedWaitsForReleaseBrokenBedWakesAndRetiredMemoryCannotSleep` 在真实床头保持外来占用60tick，检查F仍选择最近床且未偷租或换远床，再观察释放入睡、拆床、旧actor拒绝及他人复用
+`EnhancedLifeTests` 当前从生产入口选择完整 `ENHANCED`，逐帧核实际profile；旧组件样本的身份不改，不由本次一项控制宣称该类其它方法新跑
+159同进程的F正常44tick、占用生命周期88tick及完整N23tick范围见PROGRESS，没有新CPU测试或原版睡眠采样

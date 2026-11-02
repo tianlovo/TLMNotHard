@@ -66,8 +66,9 @@ public final class ModernLifeTests {
         helper.succeedWhen(() -> done[0]);
     }
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 170, batch = "modern_life_cancel")
-    public static void occupiedBedIsSkippedBrokenBedWakesAndRetiredWorkMemoryCannotSleep(GameTestHelper helper) {
+    @GameTest(template = "modern_core_cell", timeoutTicks = 240, batch = "modern_life_cancel")
+    public static void nearestOccupiedBedWaitsForReleaseBrokenBedWakesAndRetiredMemoryCannotSleep(
+        GameTestHelper helper) {
         // 清理在标准Fixture关闭主人连接/票据前执行
         EntityMaid[] other = { null };
         MaidFaithfulBrain[] otherCore = { null };
@@ -93,6 +94,7 @@ public final class ModernLifeTests {
         helper.assertTrue(closeBed.claim(other[0]), "Exclusive occupied bed setup failed");
         other[0].setPose(MaidPose.SLEEPING, true);
         int[] phase = { 0 }, broken = { 0 };
+        boolean[] released = { false };
         boolean[] done = { false };
         helper.onEachTick("occupied nearest candidate, invalidated bed and cancelled TARGET_POS", () -> {
             if (phase[0] < 2) ready(helper, f);
@@ -103,23 +105,45 @@ public final class ModernLifeTests {
                 "Second maid policy faulted");
             int age = f.maid.ticksExisted;
             if (phase[0] == 0) {
-                helper.assertTrue(!closeBed.isOwnedBy(f.maid), "Maid stole another maid's occupied head");
-                closeBed.claim(other[0]);
+                if (!released[0]) {
+                    helper.assertTrue(!closeBed.isOwnedBy(f.maid), "Maid stole another maid's occupied head");
+                    var nearest = f.core.getActor()
+                        .findNearestBed();
+                    helper.assertTrue(
+                        nearest != null && nearest.x == closeBed.xCoord
+                            && nearest.y == closeBed.yCoord
+                            && nearest.z == closeBed.zCoord,
+                        "Faithful POI Occupancy.ANY selection skipped the nearest occupied bed");
+                    helper.assertTrue(
+                        closeBed.claim(other[0]) && !farBed.isOwnedBy(f.maid)
+                            && !f.maid.hasPose(MaidPose.SLEEPING)
+                            && f.core.getActor()
+                                .sleepEntries() == 0,
+                        "Occupied head was stolen or a farther bed silently replaced the original selection");
+                    if (age < 60) return;
+                    closeBed.release(other[0]);
+                    other[0].setPose(MaidPose.SLEEPING, false);
+                    released[0] = true;
+                }
                 if (f.maid.hasPose(MaidPose.SLEEPING)) {
-                    helper.assertTrue(farBed.isOwnedBy(f.maid), "Occupied nearest bed was not excluded from search");
-                    helper.setBlock(8, 1, 4, Blocks.air);
+                    helper.assertTrue(
+                        closeBed.isOwnedBy(f.maid) && !farBed.isOwnedBy(f.maid),
+                        "Released nearest bed was not acquired by the natural faithful root");
+                    helper.setBlock(3, 1, 4, Blocks.air);
                     broken[0] = age;
                     phase[0] = 1;
                 }
             } else if (phase[0] == 1 && age > broken[0]) {
                 helper.assertFalse(f.maid.hasPose(MaidPose.SLEEPING), "Removed bed left a sleeping maid");
-                helper.assertFalse(farBed.isOwnedBy(f.maid), "Removed bed retained its occupant lease");
+                helper.assertFalse(closeBed.isOwnedBy(f.maid), "Removed bed retained its occupant lease");
+                helper.assertTrue(farBed.claim(other[0]), "Foreign farther-bed setup failed");
+                other[0].setPose(MaidPose.SLEEPING, true);
                 var actor = f.core.getActor();
                 actor.setWorkTarget(
                     new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
-                        closeBed.xCoord,
-                        closeBed.yCoord,
-                        closeBed.zCoord));
+                        farBed.xCoord,
+                        farBed.yCoord,
+                        farBed.zCoord));
                 f.maid.getBrainCoordinator()
                     .setSuspended(true);
                 helper.assertTrue(
@@ -129,14 +153,14 @@ public final class ModernLifeTests {
                 try {
                     actor.sleepAt(
                         new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
-                            closeBed.xCoord,
-                            closeBed.yCoord,
-                            closeBed.zCoord));
+                            farBed.xCoord,
+                            farBed.yCoord,
+                            farBed.zCoord));
                 } catch (IllegalStateException expected) {
                     rejected = true;
                 }
-                helper.assertTrue(rejected && closeBed.isOwnedBy(other[0]), "Retired actor changed the foreign bed");
-                closeBed.release(other[0]);
+                helper.assertTrue(rejected && farBed.isOwnedBy(other[0]), "Retired actor changed the foreign bed");
+                farBed.release(other[0]);
                 other[0].setPose(MaidPose.SLEEPING, false);
                 otherCore[0] = new MaidFaithfulBrain(other[0]);
                 other[0].getBrainCoordinator()
@@ -145,14 +169,14 @@ public final class ModernLifeTests {
                     .setSuspended(false);
                 phase[0] = 2;
             } else if (phase[0] == 2 && other[0].hasPose(MaidPose.SLEEPING)) {
-                helper.assertTrue(closeBed.isOwnedBy(other[0]), "Released bed did not become reusable");
+                helper.assertTrue(farBed.isOwnedBy(other[0]), "Released bed did not become reusable");
                 other[0].getBrainCoordinator()
                     .setSuspended(true);
                 helper.assertTrue(
-                    !occupied(closeBed) && !other[0].hasPose(MaidPose.SLEEPING),
+                    !occupied(farBed) && !other[0].hasPose(MaidPose.SLEEPING),
                     "Live sleep cancel leaked bed occupancy");
                 done[0] = true;
-                System.out.println("TLMNH_LIFE108_BED_CANCEL_PASS tick=" + age);
+                System.out.println("TLMNH_FAITHFUL_BED_LIFECYCLE_PASS tick=" + age);
             }
         });
         helper.succeedWhen(() -> done[0]);

@@ -274,10 +274,16 @@ public final class EnhancedLifeTests {
     }
 
     private static EnhancedCoreBrain select(GameTestHelper helper, EntityMaid maid) {
+        var profile = MaidBrainProfile.ENHANCED;
         helper.assertTrue(
-            maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED_CORE_COMPONENT)
-                == MaidPolicyRuntime.SelectionResult.SELECTED,
+            maid.selectBrainProfileForDevelopment(profile) == MaidPolicyRuntime.SelectionResult.SELECTED,
             "Actual enhanced life selection failed");
+        helper.assertTrue(
+            maid.getBrainCoordinator()
+                .peekPolicyRuntime()
+                .getProfile() == profile,
+            "Enhanced life silently used a different profile");
+        System.out.println("TLMNH_ENHANCED_LIFE_PROFILE profile=" + profile);
         return maid.getBrainCoordinator()
             .peekEnhancedCore();
     }
@@ -299,6 +305,8 @@ public final class EnhancedLifeTests {
             maid.isEntityAlive() && brain.peekEnhancedCore() == core
                 && brain.peekPolicyRuntime()
                     .isReady()
+                && brain.peekPolicyRuntime()
+                    .getProfile() == MaidBrainProfile.ENHANCED
                 && brain.peekFaithfulBrain() == null
                 && brain.getFollowController()
                     .getTicks() == 0
