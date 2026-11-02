@@ -49,6 +49,8 @@ public final class MaidBackItemRenderer {
                 .pose()
                 .rotateX((float) Math.PI);
         } else {
+            model.getBedrockPose()
+                .applyTransform(poses);
             poses.last()
                 .pose()
                 .rotateZ((float) Math.PI)
