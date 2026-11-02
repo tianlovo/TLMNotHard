@@ -219,6 +219,15 @@ public final class MaidHeldItemLayer {
                 profile,
                 profile == Profile.FULL_3D && stack.getItem()
                     .shouldRotateAroundWhenRendering());
+            if (side == Side.LEFT) {
+                bridge = com.tianluoqaq.tlmnh.compat.battlegear2.client.render.BattlegearShieldRenderTransforms.adapt(
+                    stack,
+                    selectedRenderer,
+                    maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM)
+                        && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND),
+                    bridge);
+                if (bridge == null) return;
+            }
             var entry = new Matrix4f(source).mul(bridge);
             matrixBuffer.clear();
             entry.get(matrixBuffer);
