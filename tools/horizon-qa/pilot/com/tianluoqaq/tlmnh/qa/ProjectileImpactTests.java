@@ -39,7 +39,6 @@ import com.tianluoqaq.tlmnh.common.config.MaidCombatConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
@@ -185,72 +184,6 @@ public final class ProjectileImpactTests {
         });
     }
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 40, batch = "projectile_missing_hook")
-    public static void absentNativeHookRefusesReleaseWarnsOnceAndStopsUnlitStrayBeforeDamage(GameTestHelper helper) {
-        requireMode(helper, true);
-        var e = new Environment(helper);
-        e.drain(e.owner, null);
-        e.drain(e.ally, null);
-        e.newTarget();
-        e.setupBow(ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
-        helper.assertTrue(
-            !e.bow.fireForModern(e.target, 1, () -> true) && e.bow.getLastArrow() == null,
-            "Missing native hook allowed a production flame arrow to spawn");
-        e.unspentItems();
-        // 后备伤害边界另用外部已生成的无火原生箭验证，不称生产放箭或火焰回滚
-        e.arrow = new net.minecraft.entity.projectile.EntityArrow(
-            helper.getWorld(),
-            e.f.maid.posX,
-            e.f.maid.posY + e.f.maid.getEyeHeight() - .1,
-            e.f.maid.posZ);
-        e.arrow.shootingEntity = e.f.maid;
-        e.arrow.setThrowableHeading(1, 0, 0, 3, 0);
-        helper.assertTrue(
-            helper.getWorld()
-                .spawnEntityInWorld(e.arrow),
-            "Unlit stray arrow did not spawn");
-        helper.assertTrue(!(e.arrow instanceof MaidArrowImpactState), "Fallback JVM still applied native impact mixin");
-        var damage = new DamageObservation(e.owner);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(damage);
-        helper.afterTest(() -> net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(damage));
-        int[] phase = { 0 };
-        helper.succeedWhen(() -> {
-            if (phase[0] == 0) {
-                e.cross(e.owner);
-                phase[0] = 1;
-                return false;
-            }
-            if (!e.arrow.isDead) return false;
-            helper.assertTrue(
-                damage.received && damage.canceled
-                    && !e.owner.capabilities.disableDamage
-                    && e.owner.getHealth() == 20
-                    && e.target.getHealth() == 200,
-                "Damage fallback healed after harm or allowed the arrow to reach another actor");
-            e.unspentItems();
-            var fault = IntegrationGuard.faults(Side.SERVER)
-                .get("projectile_impact/" + e.f.maid.getUniqueID());
-            helper.assertTrue(
-                fault != null && e.owner.getUniqueID()
-                    .equals(fault.owner) && !MaidProjectileImpactProtection.available(e.f.maid),
-                "Impact fallback did not isolate the shooter");
-            ProtectionEvents.warn(e.owner);
-            ProtectionEvents.warn(e.owner);
-            ProtectionEvents.warn(e.ally);
-            helper.assertTrue(
-                e.drain(e.owner, fault.code) == 1 && e.drain(e.ally, fault.code) == 0,
-                "Native chat fallback was missing, duplicated or sent to another player");
-            helper.assertTrue(
-                !e.bow.fireForModern(e.target, 1, () -> true) && e.f.maid.getMaidInventory()
-                    .getStackInSlot(0).stackSize == 8 && e.weapon.getItemDamage() == 0,
-                "Stopped impact capability kept consuming finite ammunition");
-            helper.assertTrue(
-                MaidProjectileImpactProtection.available(e.friend),
-                "One failed shooter disabled another healthy maid's projectile capability");
-            return true;
-        });
-    }
-
     private static void requireMode(GameTestHelper helper, boolean fallback) {
         helper.assertTrue(
             Boolean.getBoolean("tlmnh.devCommands")
@@ -277,7 +210,7 @@ public final class ProjectileImpactTests {
         }
     }
 
-    private static final class Environment {
+    static final class Environment {
 
         final GameTestHelper helper;
         final ModernCoreTests.Fixture f;
