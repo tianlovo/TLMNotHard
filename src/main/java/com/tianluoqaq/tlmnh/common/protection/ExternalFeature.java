@@ -10,6 +10,7 @@ public enum ExternalFeature {
     PROGRESSION_RECIPES("progression_recipes", "gregtech", "dreamcraft"),
     ANIMATED_DOORS("animated_doors", "malisisdoors", "malisiscore"),
     VEHICLES("vehicles", "etfuturum"),
+    CABINET_SOUNDS("cabinet_sounds", "etfuturum"),
     ARROW_GRAVITY("arrow_gravity", "GalacticraftCore"),
     ITEM_DELIVERY("item_delivery"),
     BEHAVIOR_RUNTIME("behavior_runtime"),

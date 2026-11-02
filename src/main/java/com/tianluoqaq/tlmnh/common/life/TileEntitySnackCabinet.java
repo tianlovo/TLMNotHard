@@ -11,17 +11,22 @@ import net.minecraft.tileentity.TileEntity;
 public final class TileEntitySnackCabinet extends TileEntity implements IInventory {
 
     private boolean displayChecked;
+    private net.minecraft.nbt.NBTBase customName;
+    private final com.tianluoqaq.tlmnh.common.life.cabinet.CabinetOpeners openers = new com.tianluoqaq.tlmnh.common.life.cabinet.CabinetOpeners(
+        this);
 
     @Override
     public void updateEntity() {
-        if (displayChecked || worldObj == null
-            || worldObj.isRemote
+        if (worldObj == null || worldObj.isRemote
             || isInvalid()
             || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this) return;
-        displayChecked = true;
-        // 旧占位柜加载时已有原版蛋糕，不等待一次额外的邻居事件才建立原玻璃罩
-        com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet
-            .refreshDisplay(worldObj, xCoord, yCoord, zCoord);
+        if (!displayChecked) {
+            displayChecked = true;
+            // 旧占位柜加载时已有原版蛋糕，不等待一次额外的邻居事件才建立原玻璃罩
+            com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet
+                .refreshDisplay(worldObj, xCoord, yCoord, zCoord);
+        }
+        openers.tick();
     }
 
     @Override
@@ -78,12 +83,19 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public String getInventoryName() {
-        return "container.tlmnh.snack_cabinet";
+        return hasCustomInventoryName() ? ((net.minecraft.nbt.NBTTagString) customName).func_150285_a_()
+            : "container.tlmnh.snack_cabinet";
     }
 
     @Override
     public boolean hasCustomInventoryName() {
-        return false;
+        return customName instanceof net.minecraft.nbt.NBTTagString name && !name.func_150285_a_()
+            .isEmpty();
+    }
+
+    public void setCustomInventoryName(String name) {
+        customName = new net.minecraft.nbt.NBTTagString(name);
+        markDirty();
     }
 
     @Override
@@ -102,10 +114,14 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     }
 
     @Override
-    public void openInventory() {}
+    public void openInventory() {
+        openers.requestCheck();
+    }
 
     @Override
-    public void closeInventory() {}
+    public void closeInventory() {
+        openers.requestCheck();
+    }
 
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack) {
@@ -123,12 +139,16 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         }
         tag.setTag("Items", contents);
         tag.setTag(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, recovery.write());
+        if (customName != null) tag.setTag("CustomName", customName.copy());
     }
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
         displayChecked = false;
+        openers.reset();
+        customName = tag.hasKey("CustomName") ? tag.getTag("CustomName")
+            .copy() : null;
         java.util.Arrays.fill(items, null);
         recovery.read(tag.getTagList(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, 10));
         recovery.retainInvalidList(tag, "Items");

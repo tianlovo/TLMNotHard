@@ -20,7 +20,10 @@ public final class MaidLifeContent {
 
     public static void register() {
         if (registered) throw new IllegalStateException("Maid life content is already registered");
-        GameRegistry.registerBlock(snackCabinet, "snack_cabinet");
+        GameRegistry.registerBlock(
+            snackCabinet,
+            com.tianluoqaq.tlmnh.common.life.cabinet.ItemSnackCabinet.class,
+            "snack_cabinet");
         GameRegistry.registerBlock(maidBed, (Class<? extends net.minecraft.item.ItemBlock>) null, "maid_bed");
         GameRegistry.registerItem(maidBedItem, "maid_bed");
         GameRegistry.registerTileEntity(TileEntitySnackCabinet.class, "tlmnh:snack_cabinet");

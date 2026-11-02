@@ -1293,3 +1293,11 @@ Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可�
 原 `BlockSnackCabinet` 定义默认北向、反向玩家放置及TYPE0/1/2，TagBlock将原版蛋糕放入FULL标签；移走食物不清掉原罩型
 本工程以旧metadata桥接方向/罩型，保留首版仅原版蛋糕的最小范围，不接厨房内容模组；Tile.shouldRefresh依据实际Forge默认非原生Tile重建规则显式保护原库存
 原 `TileEntitySnackCabinet` 固定27格、使用原生ChestMenu三排；柜体无门动画，开关音效与其它原柜行为不由此视觉批次宣称完整移植
+
+## 原零食柜开关、名称与比较器
+
+固定提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的BlockSnackCabinet第113～129行保留命名物品标题并使用AbstractContainerMenu库存量比较器，154～155行追加灰色原说明；双语说明从该提交语言文件同键原文移植，代码沿MIT来源
+同提交TileEntitySnackCabinet第34～61、106～133行使用ContainerOpenersCounter判断实际同ChestMenu，排除旁观者，在首开/末关沿柜朝向边界播放BARREL_OPEN/CLOSE、音量0.5、音高随机0.8～0.9
+低平台CabinetOpeners适配无玩家参数的IInventory回调，在下一tick读取真实ContainerChest并于打开期间每5tick重查，不引入门动画或持久人数；名称沿旧版原生字符串合同，未知原NBT类型保留
+Et Futurum Requiem 2.6.65实际TileEntityBarrel第183/202行以Reference.MCAssetVer拼接block.barrel.open/close；本工程声音适配沿该提供方资源域读取，不复制Mojang声音，不把EFR桶自身的不同音高和metadata开关写入女仆柜
+比较器与通知依据本工程实际Forge源Container.calcRedstoneFromInventory及TileEntity.markDirty，服务端原生10tick检查确认旁边实际比较器由满库存15降空0，不由纯计算替代传播验证

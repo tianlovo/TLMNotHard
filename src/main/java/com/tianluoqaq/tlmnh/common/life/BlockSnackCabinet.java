@@ -80,7 +80,21 @@ public final class BlockSnackCabinet extends BlockContainer {
             int facing = net.minecraft.util.MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
             world.setBlockMetadataWithNotify(x, y, z, (previous & 12) | facing, 2);
         }
+        if (stack != null && stack.hasDisplayName() && world.getTileEntity(x, y, z) == cabinet)
+            cabinet.setCustomInventoryName(stack.getDisplayName());
         refreshDisplay(world, x, y, z);
+    }
+
+    @Override
+    public boolean hasComparatorInputOverride() {
+        return true;
+    }
+
+    @Override
+    public int getComparatorInputOverride(World world, int x, int y, int z, int side) {
+        return world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet && !cabinet.isInvalid()
+            ? net.minecraft.inventory.Container.calcRedstoneFromInventory(cabinet)
+            : 0;
     }
 
     @Override
@@ -131,6 +145,7 @@ public final class BlockSnackCabinet extends BlockContainer {
                 cabinet.setInventorySlotContents(slot, null);
             }
         }
+        if (!world.isRemote) world.func_147453_f(x, y, z, this);
         super.breakBlock(world, x, y, z, old, metadata);
     }
 }

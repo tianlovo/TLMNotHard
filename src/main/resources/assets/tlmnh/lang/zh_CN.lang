@@ -150,3 +150,6 @@ color.tlmnh.maid_bed.purple=紫色
 color.tlmnh.maid_bed.pink=粉色
 message.tlmnh.maid_bed.uncommitted_placement=床放置未完成，原物品记录已保留；已停止使用和掉落，请保留现场并核对日志，勿重复补发
 feature.tlmnh.protection.client_snack_cabinet=零食柜显示
+
+block.touhou_little_maid.snack_cabinet.tip=可以存储物品。女仆会食用放在顶部的食物方块，还会把其物品栏中的食物方块放置到上方。
+feature.tlmnh.protection.cabinet_sounds=零食柜音效
