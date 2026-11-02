@@ -62,14 +62,31 @@ public final class RecoveryStore {
 
     /** 只向一个空原生背包槽转移一份，满包不删、也不丢到世界 */
     public boolean recoverOne(EntityPlayer player) {
-        if (items.isEmpty() || player.worldObj.isRemote) return false;
-        for (int slot = 0; slot < player.inventory.mainInventory.length; slot++) {
-            if (player.inventory.mainInventory[slot] == null) {
-                player.inventory.mainInventory[slot] = items.remove(0);
-                player.inventory.markDirty();
-                return true;
-            }
+        if (player == null || items.isEmpty() || player.worldObj.isRemote) return false;
+        var expected = items.get(0);
+        int slot;
+        try {
+            slot = player.inventory.getFirstEmptyStack();
+        } catch (RuntimeException | LinkageError | AssertionError failure) {
+            IntegrationGuard.report(
+                cpw.mods.fml.relauncher.Side.SERVER,
+                "player_inventory/recovery",
+                failure,
+                player.getUniqueID());
+            return false;
         }
-        return false;
+        if (slot < 0) return false;
+        if (slot >= player.inventory.mainInventory.length || player.inventory.mainInventory[slot] != null) {
+            IntegrationGuard.report(
+                cpw.mods.fml.relauncher.Side.SERVER,
+                "player_inventory/recovery",
+                new IllegalStateException("Native empty slot query returned an occupied or unknown slot"),
+                player.getUniqueID());
+            return false;
+        }
+        if (items.isEmpty() || items.get(0) != expected) return false;
+        player.inventory.mainInventory[slot] = items.remove(0);
+        player.inventory.markDirty();
+        return true;
     }
 }

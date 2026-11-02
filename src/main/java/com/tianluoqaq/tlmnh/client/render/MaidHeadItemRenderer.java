@@ -67,6 +67,7 @@ public final class MaidHeadItemRenderer {
         }
         ItemStack stack = maid.getBackpackShowItem();
         if (stack == null || stack.stackSize <= 0 || !(stack.getItem() instanceof ItemBlock)) return;
+        if (com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumBannerRenderAccess.isBanner(stack)) return;
         Block block = Block.getBlockFromItem(stack.getItem());
         // 1.20默认方块状态；旧平台用该物品公开的元数据入口，不借用玩家朝向
         int metadata = stack.getItem()

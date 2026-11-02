@@ -63,6 +63,7 @@ public final class MaidBowAttack {
     private long shots, rejectedShots;
     private Status status = Status.IDLE;
     private ArrowInterceptSolver.Solution lastSolution;
+    private ArrowPhysics lastPhysics;
     private EntityArrow lastArrow;
     private boolean firing;
     private Lease useLease;
@@ -204,18 +205,41 @@ public final class MaidBowAttack {
     private boolean release(EntityLivingBase target, ItemStack bow, int slot, BooleanSupplier admitted,
         boolean prototype, float charge) {
         if (bow == null || slot < 0 || !admitted.getAsBoolean()) return false;
+        var world = maid.worldObj;
+        var provider = world.provider;
+        int dimension = maid.dimension;
+        var identity = maid.getUniqueID();
+        double launchX = maid.posX, launchY = maid.posY, launchZ = maid.posZ;
+        float launchEyeHeight = maid.getEyeHeight();
+        var inventory = maid.getMaidInventory();
+        var ammunition = inventory.getStackInSlot(slot);
+        if (ammunition == null || ammunition.stackSize <= 0 || ammunition.getItem() != Items.arrow) return false;
+        var bowBefore = bow.copy();
+        var ammunitionBefore = ammunition.copy();
+        long transaction = generation;
+        BooleanSupplier current = () -> admitted.getAsBoolean() && generation == transaction
+            && maid.worldObj == world
+            && world.provider == provider
+            && maid.dimension == dimension
+            && maid.posX == launchX
+            && maid.posY == launchY
+            && maid.posZ == launchZ
+            && maid.getEyeHeight() == launchEyeHeight
+            && identity.equals(maid.getUniqueID())
+            && maid.getHeldItem() == bow
+            && inventory.getStackInSlot(slot) == ammunition
+            && ItemStack.areItemStacksEqual(bow, bowBefore)
+            && ItemStack.areItemStacksEqual(ammunition, ammunitionBefore);
+        lastPhysics = null;
         boolean original = !prototype && modernFlightProfile == ModernFlightProfile.SOURCE_ORIGINAL;
-        var origin = new BallisticVector(
-            maid.posX,
-            maid.posY + maid.getEyeHeight() - (original ? (double) .1F : .1),
-            maid.posZ);
+        var origin = new BallisticVector(launchX, launchY + launchEyeHeight - (original ? (double) .1F : .1), launchZ);
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
-        long startedAt = recording ? System.nanoTime() : 0;
         EntityArrow arrow;
+        NativeArrowGravity.LaunchSample launch;
         if (original) {
-            var sourceArrow = new MaidGravityFreeArrow(maid.worldObj, origin.x, origin.y, origin.z);
+            var sourceArrow = new MaidGravityFreeArrow(world, origin.x, origin.y, origin.z);
             sourceArrow.initializeSourceShot(
                 new BallisticVector(
                     target.posX - maid.posX,
@@ -226,7 +250,18 @@ public final class MaidBowAttack {
                 maid.worldObj.difficultySetting.getDifficultyId());
             arrow = sourceArrow;
             lastSolution = null;
+            launch = NativeArrowGravity.sampleForLaunch(arrow);
         } else {
+            // 查询必须针对真正将要生成的箭，不用代理箭或主世界固定值代替实际provider
+            arrow = new EntityArrow(world, origin.x, origin.y, origin.z);
+            launch = NativeArrowGravity.sampleForLaunch(arrow);
+            if (launch == null || !launch.isCurrent(arrow) || !current.getAsBoolean()) {
+                arrow.setDead();
+                return false;
+            }
+            var physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity);
+            lastPhysics = physics;
+            long startedAt = recording ? System.nanoTime() : 0;
             try {
                 lastSolution = ArrowInterceptSolver.solve(
                     origin,
@@ -238,16 +273,18 @@ public final class MaidBowAttack {
                             : BallisticVector.ZERO,
                     3.0,
                     MAX_FLIGHT_TICKS,
-                    ArrowPhysics.OVERWORLD_AIR);
+                    physics);
             } finally {
                 if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
             }
-            if (!lastSolution.isSolved()) return reject(Status.NO_SOLUTION);
-            arrow = new EntityArrow(maid.worldObj, origin.x, origin.y, origin.z);
+            if (!lastSolution.isSolved()) {
+                arrow.setDead();
+                return reject(Status.NO_SOLUTION);
+            }
             // 使用原生定向接口，零随机散布使预瞄误差可归因；保留其实际浮点归一化结果
             var velocity = lastSolution.initialVelocity;
             arrow.setThrowableHeading(velocity.x, velocity.y, velocity.z, 3.0F, 0.0F);
-            var safety = safePath(arrow, target, lastSolution.flightTicks);
+            var safety = safePath(arrow, target, lastSolution.flightTicks, physics);
             if (safety != null) {
                 arrow.setDead();
                 return reject(safety);
@@ -257,18 +294,12 @@ public final class MaidBowAttack {
             arrow.setDead();
             return false;
         }
-        NativeArrowGravity.forArrow(arrow);
-        if (!NativeArrowGravity.available()) {
+        if (launch == null || !launch.isCurrent(arrow) || !current.getAsBoolean()) {
             arrow.setDead();
             return false;
         }
         arrow.shootingEntity = maid;
 
-        var ammunition = maid.getMaidInventory()
-            .getStackInSlot(slot);
-        var bowBefore = bow.copy();
-        var ammunitionBefore = ammunition.copy();
-        long transaction = generation;
         boolean infinite = EnchantmentHelper.getEnchantmentLevel(Enchantment.infinity.effectId, bow) > 0;
         arrow.canBePickedUp = infinite ? original ? 0 : 2 : 1;
         arrow.setIsCritical(prototype);
@@ -284,7 +315,7 @@ public final class MaidBowAttack {
         arrow.writeToNBT(arrowBefore);
         var boundsBefore = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
             arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
-        if (!maid.worldObj.spawnEntityInWorld(arrow)) {
+        if (!world.spawnEntityInWorld(arrow)) {
             arrow.setDead();
             return reject(Status.SPAWN_REJECTED);
         }
@@ -296,13 +327,8 @@ public final class MaidBowAttack {
         if (arrow.isDead || arrow.shootingEntity != maid
             || !arrowBefore.equals(arrowAfter)
             || !java.util.Arrays.equals(boundsBefore, boundsAfter)
-            || generation != transaction
-            || !admitted.getAsBoolean()
-            || maid.getHeldItem() != bow
-            || maid.getMaidInventory()
-                .getStackInSlot(slot) != ammunition
-            || !ItemStack.areItemStacksEqual(bow, bowBefore)
-            || !ItemStack.areItemStacksEqual(ammunition, ammunitionBefore)) {
+            || !launch.isCurrent(arrow)
+            || !current.getAsBoolean()) {
             arrow.setDead();
             return reject(Status.SPAWN_REJECTED);
         }
@@ -324,7 +350,7 @@ public final class MaidBowAttack {
         return true;
     }
 
-    private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks) {
+    private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks, ArrowPhysics physics) {
         var state = new ArrowPhysics.State(
             new BallisticVector(arrow.posX, arrow.posY, arrow.posZ),
             new BallisticVector(arrow.motionX, arrow.motionY, arrow.motionZ));
@@ -368,7 +394,7 @@ public final class MaidBowAttack {
                 if (collision.isVecInside(from) || collision.calculateIntercept(from, to) != null)
                     return Status.BLOCKED;
             }
-            state = ArrowPhysics.OVERWORLD_AIR.step(state);
+            state = physics.step(state);
         }
         return null;
     }
@@ -445,6 +471,10 @@ public final class MaidBowAttack {
 
     public ArrowInterceptSolver.Solution getLastSolution() {
         return lastSolution;
+    }
+
+    public ArrowPhysics getLastPhysics() {
+        return lastPhysics;
     }
 
     public EntityArrow getLastArrow() {

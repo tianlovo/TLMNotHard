@@ -63,7 +63,9 @@ public final class ProtectionEvents {
         for (var fault : IntegrationGuard.faults(Side.SERVER)
             .values())
             if ((fault.owner == null || fault.owner.equals(player.getUniqueID())) && notified.add(fault.code)) {
-                var message = new ChatComponentTranslation("chat.tlmnh.protection.fallback", fault.code, fault.key);
+                var message = com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics.message(fault);
+                if (message == null)
+                    message = new ChatComponentTranslation("chat.tlmnh.protection.fallback", fault.code, fault.key);
                 message.getChatStyle()
                     .setColor(EnumChatFormatting.GOLD);
                 player.addChatMessage(message);

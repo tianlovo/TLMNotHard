@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ChatComponentTranslation;
@@ -39,11 +40,37 @@ public final class MaidTombstoneTransfer {
         var expectedDrops = new ArrayList<ItemStack>();
         boolean committed = false;
         try {
+            InventoryPlayer planning;
+            try {
+                // 原生构造补丁保留额外槽索引，空槽查询使用与实际玩家相同的运行时策略
+                planning = new InventoryPlayer(player);
+                if (planning.getClass() != player.inventory.getClass()
+                    || planning.mainInventory.length != planned.length)
+                    throw new IllegalStateException("Unsupported player inventory planning layout");
+                planning.mainInventory = planned;
+                planning.currentItem = originalSelected;
+            } catch (RuntimeException | LinkageError | AssertionError failure) {
+                com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
+                    cpw.mods.fml.relauncher.Side.SERVER,
+                    "player_inventory/tombstone",
+                    failure,
+                    player.getUniqueID());
+                return false;
+            }
             for (int i = 0; i < source.tagCount(); i++) {
                 var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
                     .decode(source.getCompoundTagAt(i));
                 if (stack == null) throw new IllegalStateException("Invalid tombstone stack");
-                insert(planned, stack, player.inventory.getInventoryStackLimit());
+                try {
+                    insert(planning, stack, player.inventory.getInventoryStackLimit());
+                } catch (RuntimeException | LinkageError | AssertionError failure) {
+                    com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
+                        cpw.mods.fml.relauncher.Side.SERVER,
+                        "player_inventory/tombstone",
+                        failure,
+                        player.getUniqueID());
+                    return false;
+                }
                 if (stack.stackSize > 0) overflow.add(stack);
             }
             if (!overflow.isEmpty() && !player.isSneaking()) {
@@ -100,7 +127,8 @@ public final class MaidTombstoneTransfer {
         return result;
     }
 
-    private static void insert(ItemStack[] slots, ItemStack stack, int inventoryLimit) {
+    private static void insert(InventoryPlayer inventory, ItemStack stack, int inventoryLimit) {
+        var slots = inventory.mainInventory;
         for (var current : slots) {
             if (current == null || !current.isItemEqual(stack) || !ItemStack.areItemStackTagsEqual(current, stack))
                 continue;
@@ -110,8 +138,11 @@ public final class MaidTombstoneTransfer {
             current.stackSize += moved;
             stack.stackSize -= moved;
         }
-        for (int slot = 0; slot < slots.length && stack.stackSize > 0; slot++) {
-            if (slots[slot] != null) continue;
+        while (stack.stackSize > 0) {
+            int slot = inventory.getFirstEmptyStack();
+            if (slot < 0) return;
+            if (slot >= slots.length || slots[slot] != null)
+                throw new IllegalStateException("Native empty slot query returned an occupied or unknown slot");
             int moved = Math.min(stack.stackSize, Math.min(stack.getMaxStackSize(), inventoryLimit));
             slots[slot] = stack.copy();
             slots[slot].stackSize = moved;

@@ -33,6 +33,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
+    private final MaidFaithfulFlightProfile flightProfile;
     private final MaidModernPerception perception;
     private final MaidActivityState activities;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
@@ -85,8 +86,13 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     private int lastEntityTick;
 
     public MaidFaithfulBrain(EntityMaid maid) {
+        this(maid, MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
+    }
+
+    public MaidFaithfulBrain(EntityMaid maid, MaidFaithfulFlightProfile flightProfile) {
         this.maid = java.util.Objects.requireNonNull(maid, "maid");
-        actor = new ModernFollowCoreActor(maid);
+        this.flightProfile = java.util.Objects.requireNonNull(flightProfile, "flightProfile");
+        actor = new ModernFollowCoreActor(maid, flightProfile.bowProfile());
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
         activities = new MaidActivityState(maid, actor, perception);
@@ -451,6 +457,17 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
 
     public ModernFollowCoreActor getActor() {
         return actor;
+    }
+
+    public MaidFaithfulFlightProfile getFlightProfile() {
+        return flightProfile;
+    }
+
+    /** 观察器若改写了组件弹道，不能继续把它记作创建时选择的完整F合同 */
+    public boolean hasFlightContract() {
+        return flightProfile.matches(
+            actor.rangedBow()
+                .flightProfile());
     }
 
     private MaidRunOne randomFor(MaidActivityState.Activity activity) {

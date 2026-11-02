@@ -15,6 +15,11 @@ public final class ArrowPhysics {
         this.gravity = gravity;
     }
 
+    /** 保留原生float实际提升后的重力值，不把非主世界查询量化回默认常数 */
+    public ArrowPhysics withGravity(float actualGravity) {
+        return new ArrowPhysics(drag, (double) actualGravity);
+    }
+
     public State step(State state) {
         return new State(
             state.position.add(state.velocity),

@@ -164,9 +164,17 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     /** 开发选择也进入实体保护边界，工厂或旧清理失败时不重试并保留物品 */
     public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
         com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile) {
+        return selectBrainProfileForDevelopment(
+            profile,
+            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
+        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile,
+        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile flightProfile) {
         var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
             com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
-        behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile));
+        behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
         return result[0];
     }
 

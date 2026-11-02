@@ -118,6 +118,7 @@ public final class MaidRenderer extends RenderLiving {
         if (!maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING) || maid.deathTime > 0) {
             super.rotateCorpse(entity, age, yaw, partialTick);
             rotateCarriedMaid(maid);
+            MaidSwimRenderPose.apply(maid, (BuiltinMaidModel) mainModel, partialTick);
             return;
         }
         int direction = maid.getSleepingBedDirection();
@@ -134,6 +135,7 @@ public final class MaidRenderer extends RenderLiving {
         GL11.glRotatef(getDeathMaxRotation(entity), 0, 0, 1);
         GL11.glRotatef(270, 0, 1, 0);
         rotateCarriedMaid(maid);
+        MaidSwimRenderPose.apply(maid, (BuiltinMaidModel) mainModel, partialTick);
         com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation.completed(maid, direction, rotation);
     }
 
@@ -167,6 +169,7 @@ public final class MaidRenderer extends RenderLiving {
             heldItems.render(maid, model, renderManager.itemRenderer, partialTick);
             headItems.render(maid, model);
             backItems.render(maid, model, renderManager.itemRenderer);
+            MaidBannerRenderer.render(maid, model);
         }
     }
 

@@ -1,0 +1,18 @@
+{
+  "upstream": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "license_file": "licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt",
+  "files": {
+    "assets/touhou_little_maid/models/bedrock/entity/maid_banner.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/maid_banner.json",
+      "bytes": 1505,
+      "sha256": "c04443a6d35a502e2164206e80e8b374df9c54bc650a4eb1e2eba2e2661310bc"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/maid_banner.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_banner.png",
+      "bytes": 306,
+      "sha256": "9d26de64860c9021b70bc41159ff9f5a8ff176458bbd8e0c15b1407e23a54dfb"
+    }
+  }
+}

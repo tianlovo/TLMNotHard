@@ -340,7 +340,7 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.core_interactions_passed"));
             return;
         }
-        if (args.length == 3 && "brain-profile".equals(args[0])) {
+        if ((args.length == 3 || args.length == 4) && "brain-profile".equals(args[0])) {
             var entity = sender.getEntityWorld()
                 .getEntityByID(parseInt(sender, args[1]));
             if (!(entity instanceof EntityMaid maid)) throw new WrongUsageException(getCommandUsage(sender));
@@ -348,9 +348,21 @@ public final class DevelopmentCommand extends CommandBase {
             for (var profile : com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.values()) if (profile.getId()
                 .equals(args[2])) selected = profile;
             if (selected == null) throw new WrongUsageException(getCommandUsage(sender));
-            var result = maid.selectBrainProfileForDevelopment(selected);
+            var flight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+            if (args.length == 4) {
+                try {
+                    flight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile
+                        .valueOf(args[3].toUpperCase(java.util.Locale.ROOT));
+                } catch (IllegalArgumentException invalid) {
+                    throw new WrongUsageException(getCommandUsage(sender));
+                }
+            }
+            var result = maid.selectBrainProfileForDevelopment(selected, flight);
             sender.addChatMessage(
-                new ChatComponentTranslation("commands.tlmnhdev.brain_profile", selected.getId(), result.name()));
+                new ChatComponentTranslation(
+                    "commands.tlmnhdev.brain_profile",
+                    selected.getId() + "/" + flight.name(),
+                    result.name()));
             return;
         }
         if (args.length == 1 && "brain-test".equals(args[0])) {

@@ -155,6 +155,9 @@ block.touhou_little_maid.snack_cabinet.tip=可以存储物品。女仆会食用�
 feature.tlmnh.protection.cabinet_sounds=零食柜音效
 
 feature.tlmnh.protection.client_shrine=神龛显示
+feature.tlmnh.protection.client_banner=女仆旗帜显示
+chat.tlmnh.acquisition.biomes_partial=本地配置提示 %s：自然生成忽略无效群系 %s，仍使用有效群系 %s；原配置保留，请修正后重启
+chat.tlmnh.acquisition.biomes_none=本地配置提示 %s：自然生成未找到可用群系，未注册生成规则；原配置 %s 保留，请修正后重启
 
 feature.tlmnh.protection.shrine_sounds=神龛交互音效
 tooltips.touhou_little_maid.film.no_data.desc=这张胶片没有女仆数据

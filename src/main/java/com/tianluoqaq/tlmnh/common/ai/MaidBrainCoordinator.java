@@ -67,6 +67,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
     private World observedWorld, policyWorld;
     private MaidBrainProfile requestedBrainProfile;
+    private com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
     private String observedOwner;
     private String lastPolicyState;
     private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed, behaviorProtected;
@@ -304,7 +305,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         }
         if (policy == null) {
             if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
-                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(maid);
+                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(
+                    maid,
+                    requestedFaithfulFlight);
             else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
                 afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(maid);
             policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
@@ -416,6 +419,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
         requestedBrainProfile = null;
+        requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
         afterNavigationActions = actions;
         var runtime = getPolicyRuntime();
         if (runtime == null) throw new IllegalStateException("No development policy runtime");
@@ -426,7 +430,19 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     /** 显式开发选择；F/N由本协调器创建独立根，普通回调不作为替代实现 */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested) {
+        return selectProfileForDevelopment(
+            requested,
+            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
+    }
+
+    /** 弹道合同在创建完整根之前选择，同对象NBT重建沿用原请求，不依赖观察器改写actor */
+    public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
+        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile flightProfile) {
         Objects.requireNonNull(requested, "requested");
+        Objects.requireNonNull(flightProfile, "flightProfile");
+        if (requested != MaidBrainProfile.FAITHFUL_TLM
+            && flightProfile != com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL)
+            return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
         if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
             || maid.worldObj.isRemote
             || !maid.isEntityAlive()
@@ -438,6 +454,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || transitioningPolicy) return MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE;
         if (policy != null && policy.getProfile() == requested
             && policy.isReady()
+            && (requested != MaidBrainProfile.FAITHFUL_TLM
+                || requestedFaithfulFlight == flightProfile && peekFaithfulBrain() != null
+                    && peekFaithfulBrain().hasFlightContract())
             && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced())
                 || requestedBrainProfile == requested))
             return MaidPolicyRuntime.SelectionResult.UNCHANGED;
@@ -445,6 +464,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         policy = null;
         afterNavigationActions = null;
         requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced() ? requested : null;
+        requestedFaithfulFlight = flightProfile;
         var runtime = getPolicyRuntime();
         if (requestedBrainProfile != null) return runtime.isReady() ? MaidPolicyRuntime.SelectionResult.SELECTED
             : MaidPolicyRuntime.SelectionResult.UNAVAILABLE;

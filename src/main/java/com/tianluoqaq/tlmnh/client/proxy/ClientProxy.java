@@ -34,6 +34,7 @@ public final class ClientProxy extends CommonProxy {
     public void init() {
         super.init();
         com.tianluoqaq.tlmnh.client.protection.ClientProtectionEvents.register();
+        com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.register();
         var worldSounds = com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE;
         FMLCommonHandler.instance()
             .bus()
@@ -59,6 +60,8 @@ public final class ClientProxy extends CommonProxy {
                 .getInputStream());
         ((IReloadableResourceManager) manager).registerReloadListener(models);
         ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
+        ((IReloadableResourceManager) manager)
+            .registerReloadListener(com.tianluoqaq.tlmnh.client.render.MaidBannerModelResources.INSTANCE);
         ((IReloadableResourceManager) manager).registerReloadListener(
             com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE);
         ((IReloadableResourceManager) manager).registerReloadListener(

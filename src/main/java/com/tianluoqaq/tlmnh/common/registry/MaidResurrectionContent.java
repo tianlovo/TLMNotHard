@@ -1,16 +1,14 @@
 package com.tianluoqaq.tlmnh.common.registry;
 
-import java.util.ArrayList;
-
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.item.Item;
-import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
+import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCoreItem;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
@@ -60,19 +58,15 @@ public final class MaidResurrectionContent {
 
     public static void registerSpawns() {
         if (!MaidAcquisitionConfig.naturalSpawning) return;
-        var biomes = new ArrayList<BiomeGenBase>();
-        for (int id : MaidAcquisitionConfig.naturalBiomes) {
-            if (id >= 0 && id < BiomeGenBase.getBiomeGenArray().length) {
-                var biome = BiomeGenBase.getBiomeGenArray()[id];
-                if (biome != null && !biomes.contains(biome)) biomes.add(biome);
-            }
-        }
-        EntityRegistry.addSpawn(
-            EntityMaid.class,
+        var biomes = MaidAcquisitionDiagnostics.resolveBiomes(MaidAcquisitionConfig.naturalBiomes);
+        if (biomes.length == 0) return;
+        EntityRegistry
+            .addSpawn(EntityMaid.class, MaidAcquisitionConfig.naturalWeight, 1, 1, EnumCreatureType.creature, biomes);
+        TLMNotHard.LOG.info(
+            "Natural maid spawning registered: usableBiomes={} configuredBiomes={} weight={} dimensions={}",
+            biomes.length,
+            java.util.Arrays.toString(MaidAcquisitionConfig.naturalBiomes),
             MaidAcquisitionConfig.naturalWeight,
-            1,
-            1,
-            EnumCreatureType.creature,
-            biomes.toArray(new BiomeGenBase[0]));
+            java.util.Arrays.toString(MaidAcquisitionConfig.naturalDimensions));
     }
 }
