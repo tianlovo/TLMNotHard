@@ -33,7 +33,7 @@ public final class MaidProjectileImpactProtection {
     /** 在任何出生回调、火焰效果或扣料之前拒绝缺失的碰撞能力 */
     public static boolean admit(EntityMaid maid, EntityArrow arrow) {
         if (!available(maid)) return false;
-        if (arrow instanceof MaidArrowImpactState) return true;
+        if (arrow instanceof MaidArrowImpactState) return MaidProjectileSource.record(arrow, maid);
         failure(maid, new IllegalStateException("Native arrow impact interception unavailable; release refused"));
         return false;
     }
@@ -66,7 +66,7 @@ public final class MaidProjectileImpactProtection {
                 "Allied projectile reached the damage boundary; native impact interception unavailable or relationship changed"));
     }
 
-    private static void failure(EntityMaid maid, Throwable cause) {
+    static void failure(EntityMaid maid, Throwable cause) {
         UUID recipient = null;
         try {
             recipient = owner(maid);

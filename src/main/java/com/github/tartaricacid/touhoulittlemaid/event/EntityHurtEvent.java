@@ -7,15 +7,29 @@ package com.github.tartaricacid.touhoulittlemaid.event;
 
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.util.MovingObjectPosition;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection;
+import com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public final class EntityHurtEvent {
+
+    /** 外部入口使用本模组女仆作射手时也记录来源，不接管其他射手 */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void retainArrowSource(EntityJoinWorldEvent event) {
+        if (event.world.isRemote || !(event.entity instanceof EntityArrow arrow)
+            || !(arrow.shootingEntity instanceof EntityMaid maid)
+            || !(arrow instanceof MaidArrowSourceState state)
+            || state.tlmnh$source() != null
+            || state.tlmnh$sourceStopped()) return;
+        if (!MaidProjectileSource.record(arrow, maid)) state.tlmnh$stopSource();
+    }
 
     public static MovingObjectPosition onArrowImpact(EntityArrow arrow, MovingObjectPosition hit) {
         if (hit != null && hit.entityHit != null

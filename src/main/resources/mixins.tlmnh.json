@@ -14,7 +14,8 @@
     "MixinPathNavigate",
     "MixinEntityPlayerVehicle",
     "MixinArrowFlightState",
-    "MixinArrowImpact"
+    "MixinArrowImpact",
+    "MixinArrowSource"
   ],
   "client": [],
   "server": []
