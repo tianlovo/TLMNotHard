@@ -136,3 +136,4 @@ feature.tlmnh.protection.client_head_items=女仆头部附件显示
 feature.tlmnh.protection.client_tombstone=女仆墓碑显示
 feature.tlmnh.protection.client_tombstone_dimension_texture=墓碑维度纹理
 entity.touhou_little_maid.tombstone.display=在此长眠
+message.tlmnh.maid_bed.unreadable_color=无法识别这张床保存的颜色，已保留原数据，未消耗染料

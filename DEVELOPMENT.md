@@ -1152,3 +1152,10 @@ N的 `EnhancedLifeController` 使用自身传感器和合法床检查，仍可�
 1.7.10原生EntityLiving在导航/现代Brain后执行move、look、jump控制，再由EntityLivingBase进入travel；只在sleepAt清一次速度会留下后续移动
 实体的现代睡眠travel分支清本帧输入和运动后调用原生travel，保留原引擎后续重力，不向外部坐骑/远距传送强制拉回旧床
 源码前提与许可来源见SOURCE_PROVENANCE；自然观察工具和局部结果见tools/sleep-natural-reference及PROGRESS，完整B10/统计收益不由该位置检查授予
+
+## 床头颜色与显示包
+
+`common/life/bed/MaidBedColor` 保存原现代颜色ID，原生ItemDye编号按七色映射；Tile颜色存储独立于占用metadata与临时租约
+缺少BedColor的旧移植床用默认粉色，未知编号或类型以NBTBase复制保留并拒染；getColor对未知返回null，后续显示调用必须显式处理
+床头S35只发送颜色字段，服务端提前拒收该显示入口；客户端检查包坐标后只更新颜色，不调用完整readFromNBT
+163的受控服务端交互与出站包检查见PROGRESS；真实客户端和床物品颜色链/原外观仍待验，不由构造显示包推导联机通过

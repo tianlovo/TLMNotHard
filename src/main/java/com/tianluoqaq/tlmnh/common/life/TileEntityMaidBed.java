@@ -2,18 +2,74 @@ package com.tianluoqaq.tlmnh.common.life;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.Packet;
+import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
 
 /** 只有床头保存临时占用；睡眠动作每 tick 续租 */
 public final class TileEntityMaidBed extends TileEntity {
 
+    private static final String COLOR_TAG = "BedColor";
     private final MaidBedLease lease = new MaidBedLease();
     private EntityMaid occupant;
+    private NBTBase savedColor;
+
+    /** 无颜色的旧移植存档沿新床默认粉色；未知类型/编号返回null并原样保存 */
+    public MaidBedColor getColor() {
+        if (savedColor == null) return MaidBedColor.PINK;
+        return savedColor instanceof NBTTagInt value ? MaidBedColor.byId(value.func_150287_d()) : null;
+    }
+
+    public boolean setColor(MaidBedColor color) {
+        if (color == null || worldObj == null
+            || worldObj.isRemote
+            || getColor() == null
+            || getColor() == color
+            || !complete()
+            || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this) return false;
+        savedColor = new NBTTagInt(color.id);
+        markDirty();
+        worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+        return true;
+    }
+
+    private void writeColor(NBTTagCompound tag) {
+        tag.setTag(COLOR_TAG, savedColor == null ? new NBTTagInt(MaidBedColor.PINK.id) : savedColor.copy());
+    }
+
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
+        writeColor(tag);
+    }
+
+    @Override
+    public Packet getDescriptionPacket() {
+        var tag = new NBTTagCompound();
+        writeColor(tag);
+        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, tag);
+    }
+
+    @Override
+    public void onDataPacket(NetworkManager network, S35PacketUpdateTileEntity packet) {
+        if (worldObj == null || !worldObj.isRemote
+            || packet.func_148856_c() != xCoord
+            || packet.func_148855_d() != yCoord
+            || packet.func_148854_e() != zCoord) return;
+        var tag = packet.func_148857_g();
+        savedColor = tag.hasKey(COLOR_TAG) ? tag.getTag(COLOR_TAG)
+            .copy() : null;
+        worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+    }
 
     public boolean complete() {
         if (worldObj == null || isInvalid()
@@ -87,6 +143,8 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
+        savedColor = tag.hasKey(COLOR_TAG) ? tag.getTag(COLOR_TAG)
+            .copy() : null;
         lease.clear();
         occupant = null;
     }

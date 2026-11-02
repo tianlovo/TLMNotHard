@@ -1239,3 +1239,13 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 本工程自然观察实际发现F短暂下落弹起、N水平滑移，据此在 `MaidModernLife.maintain` 核床身份及租约后更新后续帧位置
 旧平台move/jump helper位于现代Brain之后，移植实体在现代profile睡眠的travel入口清残留输入与运动，再执行原生travel
 默认Legacy不进入新增travel分支；原版样本、移植观察及定向验证范围见PROGRESS，完整B10与统计收益另行验收
+
+## 女仆床七色交互
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `block/BlockMaidBed.java` 中
+`AVAILABLE_COLOR` 和 `use` 定义白、黑、黄、蓝、绿、紫、粉七色，使用染料、由床尾定位床头，同色不消耗、创造不扣物品
+原 `tileentity/TileEntityMaidBed.java` 默认粉色，以 `BedColor` 保存颜色并发送更新
+本工程 `common/life/bed/MaidBedColor` 将现代颜色ID映射旧版ItemDye编号，床头Tile保存并仅同步颜色字段，服务端不接纳收到的显示包
+无颜色的旧移植存档采用新床默认粉色；无法识别的颜色编号或NBT类型原样保留、拒绝染色并提示，不用默认值覆写未知原值
+当前方块视觉仍是原生床占位，原七模型/纹理及蓝色半透明属于随后表现批次，不能由七色数据接口推导已完成原床外观
+原 `ItemMaidBed` 与 `BlockMaidBed.setPlacedBy/getDrops/getCloneItemStack` 还定义了物品颜色链；该部分另列后续，当前只移植床头数据与染料交互
