@@ -1,7 +1,7 @@
 /*
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: inventory/container/MaidMainContainer.java, MIT
- * Adaptation: native IInventory equipment, one slot per logical backpack entry
+ * Adaptation: native IInventory equipment, one slot per logical backpack entry, platform empty-hand icons
  */
 package com.github.tartaricacid.touhoulittlemaid.inventory.container;
 
@@ -52,7 +52,11 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
             @Override
             @SideOnly(Side.CLIENT)
             public IIcon getBackgroundIconIndex() {
-                return armorType >= 0 ? ItemArmor.func_94602_b(armorType) : null;
+                if (armorType >= 0) return ItemArmor.func_94602_b(armorType);
+                if (index == MaidInventory.MAIN_HAND || index == MaidInventory.OFF_HAND)
+                    return com.tianluoqaq.tlmnh.compat.battlegear2.client.gui.BattlegearSlotIcons
+                        .hand(index == MaidInventory.OFF_HAND);
+                return null;
             }
         });
     }

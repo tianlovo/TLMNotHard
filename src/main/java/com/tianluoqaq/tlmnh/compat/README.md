@@ -26,7 +26,7 @@ compat/
 | Angelica（`angelica`） | `client/render`、`client/query`、`client/development` | 渲染状态、纹理与光影查询、批次观察、接口缺失夹具 |
 | AppleCore（`applecore`） | `common/food` | 营养数据读取 |
 | Backhand（`backhand`） | `development/player` | 真实副手槽及切手夹具；生产交互沿用其修改后的原生持物入口 |
-| Battlegear2（`battlegear2`） | `common/shield` | 盾牌接口、受支持物品与格挡音效 |
+| Battlegear2（`battlegear2`） | `common/shield`、`client/gui` | 盾牌接口、受支持物品、格挡音效与原生双手空槽提示 |
 | Et Futurum Requiem（`etfuturum`） | `common/block`、`common/entity`、`common/item` | 方块分类、船与座位、盔甲架、鞘翅识别 |
 | Galacticraft Core（`galacticraftcore`） | `common/physics` | 原生箭重力查询 |
 | lwjgl3ify（`lwjgl3ify`） | `development/input` | 客户端探针的公开文本事件输入；不访问剪贴板 |
