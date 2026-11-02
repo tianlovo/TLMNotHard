@@ -73,7 +73,8 @@ public final class EnhancedSnowballController {
     private boolean permitted() {
         var use = maid.getItemUseState()
             .peek();
-        return maid.worldObj == world && actor.canBrainMoving()
+        return maid.worldObj == world && maid.isTamed()
+            && actor.canBrainMoving()
             && !EnhancedRideController.stationary(maid)
             && !maid.getLeashed()
             && !actor.isSleeping()

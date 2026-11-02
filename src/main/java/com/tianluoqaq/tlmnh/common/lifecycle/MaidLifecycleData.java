@@ -26,6 +26,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Map<UUID, Entry> entries = new HashMap<>();
     private final Map<UUID, ReturnedFilm> returnedFilms = new HashMap<>();
     private final Set<UUID> reservations = new HashSet<>();
+    private final Set<UUID> tombstoneAttempts = new HashSet<>();
+    private final Set<UUID> experienceAttempts = new HashSet<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
 
@@ -155,6 +157,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     /** 无法确认已投放实体的归属时保留原余额，重启也不得重新兑现 */
     public void holdDeathExperience(UUID token) {
         deathEscrow(token).experienceHeld = true;
+        experienceAttempts.remove(token);
         markDirty();
     }
 
@@ -165,7 +168,117 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public void holdTombstone(UUID token) {
         deathEscrow(token).tombstoneHeld = true;
+        tombstoneAttempts.remove(token);
         markDirty();
+    }
+
+    /** 复用schema4持久hold作为写前屏障；本进程的调用所有权不写盘，重启后只能保持封存 */
+    void beginTombstoneAttempt(World world, UUID token, NBTTagList expected) {
+        var entry = deathEscrow(token);
+        if (!reservations.contains(token) || entry.tombstoneHeld
+            || !entry.tombstoneItems.equals(expected)
+            || !tombstoneAttempts.add(token)) throw new IllegalStateException("Tombstone attempt changed before write");
+        entry.tombstoneHeld = true;
+        markDirty();
+        boolean durable = false;
+        try {
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) tombstoneAttempts.remove(token);
+        }
+    }
+
+    void beginExperienceAttempt(World world, UUID token, int expected) {
+        var entry = deathEscrow(token);
+        if (!reservations.contains(token) || entry.experienceHeld
+            || entry.experience != expected
+            || !experienceAttempts.add(token)) throw new IllegalStateException("XP attempt changed before write");
+        entry.experienceHeld = true;
+        markDirty();
+        boolean durable = false;
+        try {
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) experienceAttempts.remove(token);
+        }
+    }
+
+    void finishTombstoneAttempt(World world, UUID token, NBTTagList expected) {
+        var entry = activeAttempt(token, false);
+        if (!entry.tombstoneItems.equals(expected)) throw new IllegalStateException("Tombstone escrow changed");
+        var original = entry.tombstoneItems;
+        entry.tombstoneItems = new NBTTagList();
+        entry.tombstoneHeld = false;
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.tombstoneItems = original;
+                entry.tombstoneHeld = true;
+                markDirty();
+            }
+            tombstoneAttempts.remove(token);
+            reservations.remove(token);
+        }
+    }
+
+    void finishExperienceAttempt(World world, UUID token, int expected, int released) {
+        var entry = activeAttempt(token, true);
+        if (entry.experience != expected || released <= 0 || released > expected)
+            throw new IllegalStateException("XP attempt balance changed");
+        entry.experience -= released;
+        entry.experienceHeld = false;
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.experience = expected;
+                entry.experienceHeld = true;
+                markDirty();
+            }
+            experienceAttempts.remove(token);
+            reservations.remove(token);
+        }
+    }
+
+    void cancelAttempt(World world, UUID token, boolean experience) {
+        var entry = activeAttempt(token, experience);
+        if (experience) entry.experienceHeld = false;
+        else entry.tombstoneHeld = false;
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                if (experience) entry.experienceHeld = true;
+                else entry.tombstoneHeld = true;
+                markDirty();
+            }
+            abandonAttempt(token, experience);
+        }
+    }
+
+    void abandonAttempt(UUID token, boolean experience) {
+        (experience ? experienceAttempts : tombstoneAttempts).remove(token);
+        reservations.remove(token);
+    }
+
+    private Entry activeAttempt(UUID token, boolean experience) {
+        var entry = deathEscrow(token);
+        if (!reservations.contains(token) || !(experience ? experienceAttempts : tombstoneAttempts).contains(token)
+            || !(experience ? entry.experienceHeld : entry.tombstoneHeld))
+            throw new IllegalStateException("Durable material attempt is no longer owned");
+        return entry;
     }
 
     public boolean isTombstoneHeld(UUID token) {
@@ -315,6 +428,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
+        if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty())
+            throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
         if (schema != 1 && schema != 2 && schema != 3 && schema != 4)
@@ -396,6 +511,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         returnedFilms.clear();
         returnedFilms.putAll(restoredFilms);
         reservations.clear();
+        tombstoneAttempts.clear();
+        experienceAttempts.clear();
         experienceCursors.clear();
         healthy = true;
     }

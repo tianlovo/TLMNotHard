@@ -1,7 +1,6 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidInteractWithDoor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -28,6 +27,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
     private final EnhancedNavigationController navigation;
     private final EnhancedLifeController life;
     private final EnhancedCombatController combat;
+    private final EnhancedPickupController pickup;
     private final EnhancedPanicController panic;
     private final EnhancedRideController ride;
     private final EnhancedBreathingController breathing;
@@ -66,6 +66,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
         life = new EnhancedLifeController(maid, actor, sensing);
         combat = new EnhancedCombatController(maid, actor, perception);
+        pickup = new EnhancedPickupController(maid, actor, perception, navigation);
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
         follow = new EnhancedFollowController(maid, actor);
@@ -96,7 +97,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             decisions++;
             var home = maid.getHomeArea();
             boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
-            if (!maid.isTamed() || home.enabled() && !home.sameDimension()
+            if (home.enabled() && !home.sameDimension()
                 || maid.getTask() != MaidTask.IDLE && maid.getTask() != MaidTask.ATTACK
                     && maid.getTask() != MaidTask.RANGED_ATTACK) {
                 stopSelected();
@@ -146,7 +147,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             // 新受击仍立即还手；伤害窗口结束后，持续战斗不能永久阻止自疗
             boolean reactingToHit = maid.hurtTime > 0
                 && (frame.kindMask() & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()))) != 0;
-            if (!actor.isSleeping() && !reactingToHit
+            if (maid.isTamed() && !actor.isSleeping()
+                && !reactingToHit
                 && (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true)))
                 frame.offer(
                     Group.RECOVERY,
@@ -154,26 +156,14 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                     "meal",
                     Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
                     null);
-            else if (eating && selectedKind == Kind.MEAL || !eating && now >= nextMeal
+            else if (maid.isTamed() && (eating && selectedKind == Kind.MEAL || !eating && now >= nextMeal
                 && home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
                 && actor.canAddWorkMeal()
                 && maid.getItemUseState()
                     .peek() == null
-                && hasFood(false)) frame.offer(Group.CARE, Kind.MEAL, "workmeal", .1, null);
+                && hasFood(false))) frame.offer(Group.CARE, Kind.MEAL, "workmeal", .1, null);
             life.offer(frame, runtime.getContext());
-            if (!stationary && maid.isPickup() && !actor.isSleeping()) {
-                int count = 0;
-                for (var entity : perception.pickupEntities()) {
-                    if (++count > 64) break;
-                    if (legalPickup(entity)) frame.offer(
-                        Group.AUTONOMOUS,
-                        Kind.PICKUP,
-                        entity.getUniqueID()
-                            .toString(),
-                        1 / (1 + Math.sqrt(maid.getDistanceSqToEntity(entity))),
-                        entity);
-                }
-            }
+            pickup.offer(frame);
             boolean foodRequest = ambient.offerBeg(frame);
             if (!foodRequest) snowball.offer(frame);
             ambient.offer(frame);
@@ -219,10 +209,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                     if (!maid.getMealController()
                         .isEating()) actor.eatMeal(true);
                 }
-                case PICKUP -> {
-                    var entity = (Entity) selected.payload;
-                    if (legalPickup(entity)) actor.setEntityWalkAndLook(entity, .6F, 0);
-                }
+                case PICKUP -> pickup.execute((Entity) selected.payload);
                 case BEG, OBSERVE, WANDER -> ambient.execute(selected);
                 case SNOWBALL -> snowball.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
                 default -> throw new IllegalStateException("Unsupported enhanced core intent");
@@ -252,28 +239,13 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         return false;
     }
 
-    private boolean legalPickup(Entity entity) {
-        return entity != null && entity.worldObj == maid.worldObj
-            && entity.isEntityAlive()
-            && maid.canPickup(entity, true)
-            && maid.canEntityBeSeen(entity)
-            && maid.getDistanceSqToEntity(entity) <= Math.pow(
-                maid.getHomeArea()
-                    .restrictionRadius() + 1,
-                2)
-            && maid.getHomeArea()
-                .withinRestriction(
-                    MathHelper.floor_double(entity.posX),
-                    MathHelper.floor_double(entity.posY),
-                    MathHelper.floor_double(entity.posZ));
-    }
-
     private void stopSelected() {
         selectedKind = null;
         selectedTarget = null;
         panic.cancel();
         ambient.cancel();
         snowball.cancel();
+        pickup.cancel();
         breathing.cancel();
         sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
         climb.cancel();
@@ -324,6 +296,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
 
     public EnhancedCombatController combat() {
         return combat;
+    }
+
+    public EnhancedPickupController pickup() {
+        return pickup;
     }
 
     public EnhancedPanicController panic() {

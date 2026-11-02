@@ -48,8 +48,7 @@ public final class EnhancedPanicController {
     }
 
     private boolean permitted() {
-        return actor.isCurrent() && maid.isTamed()
-            && maid.getTask() == MaidTask.IDLE
+        return actor.isCurrent() && maid.getTask() == MaidTask.IDLE
             && (!maid.getHomeArea()
                 .enabled() || maid.getHomeArea()
                     .sameDimension());

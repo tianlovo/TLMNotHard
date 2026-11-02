@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 import net.minecraft.entity.item.EntityXPOrb;
@@ -9,7 +10,7 @@ import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
 
-/** 复用死亡账本保管余额，确认实际原生经验球后逐份扣除；大int余额分轮投放 */
+/** 一批原生经验球共用写前屏障与实际区块读回；大int余额仍按每轮64球有界投放 */
 public final class MaidDeathExperience {
 
     private static final int MAX_ORBS_PER_PASS = 64;
@@ -25,87 +26,91 @@ public final class MaidDeathExperience {
             if (!IntegrationGuard.available(Side.SERVER, "death_experience/" + token) || position == null
                 || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord)))
                 continue;
-            while (attempts < MAX_ORBS_PER_PASS && ledger.remainingDeathExperience(token) > 0) {
-                attempts++;
-                if (!releaseOne(world, ledger, token)) break;
-            }
+            attempts += releaseBatch(world, ledger, token, MAX_ORBS_PER_PASS - attempts);
             if (attempts >= MAX_ORBS_PER_PASS) return;
         }
     }
 
-    private static boolean releaseOne(World world, MaidLifecycleData ledger, UUID token) {
+    private static int releaseBatch(World world, MaidLifecycleData ledger, UUID token, int limit) {
         String key = "death_experience/" + token;
-        if (!IntegrationGuard.available(Side.SERVER, key)) return false;
+        if (!IntegrationGuard.available(Side.SERVER, key) || limit <= 0) return 0;
         var position = ledger.tombstonePosition(token);
         if (position == null
-            || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord)))
-            return false;
+            || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord))) return 0;
         int remaining = ledger.reserveDeathExperience(token);
-        if (remaining <= 0) return false;
-        EntityXPOrb orb = null;
-        UUID identity = null;
-        int id = -1, amount = 0;
-        boolean committed = false;
+        if (remaining <= 0) return 0;
+        var publications = new ArrayList<MaidLifecycleDurability.Publication>();
+        int attempts = 0, released = 0;
+        boolean begun = false, settling = false, committed = false;
         try {
-            amount = EntityXPOrb.getXPSplit(remaining);
-            if (amount <= 0 || amount > remaining)
-                throw new IllegalStateException("Invalid native XP split: " + amount);
-            orb = new EntityXPOrb(world, position.xCoord, position.yCoord, position.zCoord, amount);
-            identity = orb.getUniqueID();
-            id = orb.getEntityId();
-            boolean spawned = world.spawnEntityInWorld(orb);
-            if (orb.worldObj != world || orb.getEntityId() != id
-                || !identity.equals(orb.getUniqueID())
-                || orb.xpValue != amount
-                || orb.isDead) throw new IllegalStateException("Death XP spawn callback changed the owned orb");
-            if (!spawned) return false;
-            if (!MaidSpawnChecks.present(orb, world) || orb.getEntityId() != id
-                || !identity.equals(orb.getUniqueID())
-                || orb.xpValue != amount)
-                throw new IllegalStateException("Death XP spawn did not retain the actual registered orb");
-            ledger.finishDeathExperience(token, remaining, amount);
+            MaidLifecycleDurability.requireEntities(world);
+            ledger.beginExperienceAttempt(world, token, remaining);
+            begun = true;
+            while (attempts < limit && released < remaining) {
+                int amount = EntityXPOrb.getXPSplit(remaining - released);
+                if (amount <= 0 || amount > remaining - released)
+                    throw new IllegalStateException("Invalid native XP split: " + amount);
+                var orb = new EntityXPOrb(world, position.xCoord, position.yCoord, position.zCoord, amount);
+                var publication = new MaidLifecycleDurability.Publication(orb, amount);
+                publications.add(publication);
+                attempts++;
+                if (!world.spawnEntityInWorld(orb)) return attempts;
+                publication.check(world, true);
+                released += amount;
+            }
+            // 存盘事件也可改写后继；一旦进入目标持久化，未知失败不得撤掉屏障后再次投放
+            settling = true;
+            MaidLifecycleDurability.entities(world, publications, true);
+            ledger.finishExperienceAttempt(world, token, remaining, released);
             committed = true;
-            return true;
+            return attempts;
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
             IntegrationGuard.report(Side.SERVER, key, failure, ledger.owner(token, MaidLifecycleData.Kind.FILM));
-            return false;
+            return Math.max(attempts, 1);
         } finally {
             try {
-                if (!committed && orb != null) discardOwned(world, ledger, token, orb, identity, id, amount);
+                if (begun && !committed && !settling) retract(world, ledger, token, publications);
             } finally {
-                if (!committed) ledger.rollback(token);
+                if (!committed) ledger.abandonAttempt(token, true);
+                else ledger.rollback(token);
             }
         }
     }
 
-    private static void discardOwned(World world, MaidLifecycleData ledger, UUID token, EntityXPOrb orb, UUID identity,
-        int id, int amount) {
-        try {
-            if (orb.worldObj != world || orb.getEntityId() != id
-                || !identity.equals(orb.getUniqueID())
-                || orb.xpValue != amount
-                || world.getEntityByID(id) != null && world.getEntityByID(id) != orb)
-                throw new IllegalStateException("Death XP orb changed ownership; leaving external state intact");
-            world.removeEntity(orb);
-        } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.throwIfFatal(failure);
+    private static void retract(World world, MaidLifecycleData ledger, UUID token,
+        ArrayList<MaidLifecycleDurability.Publication> publications) {
+        boolean safe = true;
+        for (var publication : publications) {
             try {
-                ledger.holdDeathExperience(token);
-            } catch (Exception | LinkageError | AssertionError holdFailure) {
-                IntegrationGuard.throwIfFatal(holdFailure);
-                if (holdFailure != failure) failure.addSuppressed(holdFailure);
+                publication.discard(world);
+            } catch (Exception | LinkageError | AssertionError failure) {
+                IntegrationGuard.throwIfFatal(failure);
+                safe = false;
+                reportCleanup(ledger, token, failure);
             }
-            IntegrationGuard.report(
-                Side.SERVER,
-                "death_experience/" + token,
-                failure,
-                ledger.owner(token, MaidLifecycleData.Kind.FILM));
-            IntegrationGuard.report(
-                Side.SERVER,
-                "death_experience/" + token + "/cleanup",
-                failure,
-                ledger.owner(token, MaidLifecycleData.Kind.FILM));
         }
+        if (safe) {
+            try {
+                MaidLifecycleDurability.entities(world, publications, false);
+                ledger.cancelAttempt(world, token, true);
+            } catch (Exception | LinkageError | AssertionError failure) {
+                IntegrationGuard.throwIfFatal(failure);
+                reportCleanup(ledger, token, failure);
+            }
+        }
+    }
+
+    private static void reportCleanup(MaidLifecycleData ledger, UUID token, Throwable failure) {
+        IntegrationGuard.report(
+            Side.SERVER,
+            "death_experience/" + token,
+            failure,
+            ledger.owner(token, MaidLifecycleData.Kind.FILM));
+        IntegrationGuard.report(
+            Side.SERVER,
+            "death_experience/" + token + "/cleanup",
+            failure,
+            ledger.owner(token, MaidLifecycleData.Kind.FILM));
     }
 }
