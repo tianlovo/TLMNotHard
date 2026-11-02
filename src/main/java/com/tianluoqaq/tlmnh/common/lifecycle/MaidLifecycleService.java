@@ -51,11 +51,12 @@ public final class MaidLifecycleService {
     public static Result releaseInitial(EntityPlayer player, ItemStack stack, int x, int y, int z) {
         if (!canUse(player) || stack == null
             || stack.getItem() != MaidResurrectionContent.INITIAL_SLAB
-            || player.getCurrentEquippedItem() != stack
-            || player.getDistanceSq(x + 0.5D, y + 1.0D, z + 0.5D) > 64.0D
-            || !player.canPlayerEdit(x, y + 1, z, 1, stack)) return Result.DENIED;
-        var token = MaidLifecycleItems.token(stack);
+            || player.getCurrentEquippedItem() != stack) return Result.DENIED;
         var world = player.worldObj;
+        int slot = player.inventory.currentItem;
+        var expected = stack.copy();
+        if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
+        var token = MaidLifecycleItems.token(stack);
         var ledger = MaidLifecycleData.get(world);
         var kind = ledger.initialKind(token);
         var owner = kind == null ? null : ledger.owner(token, kind);
@@ -73,14 +74,17 @@ public final class MaidLifecycleService {
                 return Result.SPAWN_REJECTED;
             if (!maid.isTamed() || !owner.toString()
                 .equals(maid.func_152113_b())) return Result.DENIED;
-            if (!canUse(player) || player.worldObj != maid.worldObj || player.getCurrentEquippedItem() != stack)
+            // 出生和编辑权限回调可改变玩家位置、槽位或原地改写物品，提交前重新核原请求
+            if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)
+                || !MaidSpawnChecks.present(maid, world)
+                || !maid.isTamed()
+                || !owner.toString()
+                    .equals(maid.func_152113_b()))
                 return Result.DENIED;
             ledger.commit(token);
             committed = true;
             // 替换整个槽位，不让1.7.10创造模式的旧栈数量恢复把魂符复制回来
-            player.inventory.setInventorySlotContents(
-                player.inventory.currentItem,
-                new ItemStack(MaidResurrectionContent.EMPTY_SLAB));
+            player.inventory.setInventorySlotContents(slot, new ItemStack(MaidResurrectionContent.EMPTY_SLAB));
             player.inventory.markDirty();
             maid.worldObj.setEntityState(maid, (byte) 7);
             return Result.SUCCESS;
@@ -90,6 +94,22 @@ public final class MaidLifecycleService {
                 ledger.rollback(token);
             }
         }
+    }
+
+    private static boolean releaseRequestAllowed(EntityPlayer player, ItemStack stack, ItemStack expected, World world,
+        int slot, int x, int y, int z) {
+        return releaseRequestUnchanged(player, stack, expected, world, slot, x, y, z)
+            && player.canPlayerEdit(x, y + 1, z, 1, stack)
+            && releaseRequestUnchanged(player, stack, expected, world, slot, x, y, z);
+    }
+
+    private static boolean releaseRequestUnchanged(EntityPlayer player, ItemStack stack, ItemStack expected,
+        World world, int slot, int x, int y, int z) {
+        return canUse(player) && player.worldObj == world
+            && player.inventory.currentItem == slot
+            && player.getCurrentEquippedItem() == stack
+            && ItemStack.areItemStacksEqual(stack, expected)
+            && player.getDistanceSq(x + 0.5D, y + 1.0D, z + 0.5D) <= 64.0D;
     }
 
     /** 先将本次材料转换为专属凭证；放置失败仍保留该凭证，不回造可再次交易的核心 */
@@ -145,6 +165,7 @@ public final class MaidLifecycleService {
         if (film == null) return Result.INVALID_CREDENTIAL;
         boolean committed = false;
         var world = player.worldObj;
+        int shrineX = shrine.xCoord, shrineY = shrine.yCoord, shrineZ = shrine.zCoord;
         UUID token = null;
         MaidLifecycleData ledger = null;
         EntityMaid maid = null;
@@ -167,10 +188,18 @@ public final class MaidLifecycleService {
                 return Result.SPAWN_REJECTED;
             if (!maid.isTamed() || !owner.toString()
                 .equals(maid.func_152113_b())) return Result.DENIED;
-            if (!canUse(player) || player.worldObj != maid.worldObj
+            if (!canUse(player) || player.worldObj != world
+                || !MaidSpawnChecks.present(maid, world)
                 || shrine.isInvalid()
-                || maid.worldObj.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) != shrine
+                || shrine.getWorldObj() != world
+                || shrine.xCoord != shrineX
+                || shrine.yCoord != shrineY
+                || shrine.zCoord != shrineZ
+                || world.getTileEntity(shrineX, shrineY, shrineZ) != shrine
+                || world.getBlock(shrineX, shrineY, shrineZ) != MaidResurrectionContent.SHRINE
+                || !ItemStack.areItemStacksEqual(shrine.getFilm(), film)
                 || player.getCurrentEquippedItem() != null
+                || player.getDistanceSq(shrineX + 0.5D, shrineY + 0.5D, shrineZ + 0.5D) > 64.0D
                 || !hasHealth(player.getHealth(), player.getMaxHealth(), player.capabilities.isCreativeMode))
                 return Result.DENIED;
             ledger.commit(token);

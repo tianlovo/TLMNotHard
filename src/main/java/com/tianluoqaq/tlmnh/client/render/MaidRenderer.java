@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.entity.RenderLiving;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
@@ -116,6 +117,7 @@ public final class MaidRenderer extends RenderLiving {
         var maid = (EntityMaid) entity;
         if (!maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING) || maid.deathTime > 0) {
             super.rotateCorpse(entity, age, yaw, partialTick);
+            rotateCarriedMaid(maid);
             return;
         }
         int direction = maid.getSleepingBedDirection();
@@ -131,7 +133,19 @@ public final class MaidRenderer extends RenderLiving {
         GL11.glRotatef(rotation, 0, 1, 0);
         GL11.glRotatef(getDeathMaxRotation(entity), 0, 0, 1);
         GL11.glRotatef(270, 0, 1, 0);
+        rotateCarriedMaid(maid);
         com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation.completed(maid, direction, rotation);
+    }
+
+    private void rotateCarriedMaid(EntityMaid maid) {
+        if (maid.ridingEntity instanceof EntityPlayer && mainModel instanceof BuiltinMaidModel model
+            && !model.getChoice()
+                .isGecko()) {
+            // 固定上游EntityMaidRenderer.setupRotations：父级旋转后、实体缩放前，附件共用该矩阵
+            GL11.glTranslatef(-.375F, .8325F, .375F);
+            GL11.glRotatef(65, 0, 0, -1);
+            GL11.glRotatef(-80, 0, -1, 0);
+        }
     }
 
     @Override

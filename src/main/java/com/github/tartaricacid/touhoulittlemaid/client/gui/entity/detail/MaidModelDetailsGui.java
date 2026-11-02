@@ -15,6 +15,8 @@ import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -58,17 +60,21 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
             case 1 -> walk = active;
             case 2 -> guiEntity.setSitting(active);
             case 3 -> guiEntity.mountEntity(active ? seat : null);
+            // 原版以同一金头盔标记四个非空护甲槽，由动画读取槽位状态
             case 4, 5, 6, 7 -> guiEntity
                 .setCurrentItemOrArmor(8 - state, active ? new ItemStack(Items.golden_helmet) : null);
             case 8 -> guiEntity.setCurrentItemOrArmor(0, active ? new ItemStack(Items.diamond_sword) : null);
-            case 9 -> {
-                var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess
-                    .woodenShieldItem();
-                if (active && shield == null) throw new IllegalStateException("native wood shield missing");
-                guiEntity.setOffhandItem(active ? new ItemStack(shield) : null);
-            }
+            case 9 -> guiEntity.setOffhandItem(active ? previewShield() : null);
             default -> throw new IllegalArgumentException("Unknown preview state");
         }
+    }
+
+    private static ItemStack previewShield() {
+        return IntegrationGuard.call(Side.CLIENT, ExternalFeature.SHIELDS, () -> {
+            var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.woodenShieldItem();
+            if (shield == null) throw new IllegalStateException("Native wood shield missing for model preview");
+            return new ItemStack(shield);
+        }, () -> null);
     }
 
     @Override

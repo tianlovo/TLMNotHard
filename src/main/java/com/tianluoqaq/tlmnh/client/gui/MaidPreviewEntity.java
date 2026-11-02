@@ -21,6 +21,8 @@ public final class MaidPreviewEntity extends EntityMaid {
         if (!world.isRemote) throw new IllegalArgumentException("Client preview only");
         setModelId(model);
         onGround = true;
+        // 原版详情页明确清零头角，未注册预览不会经自然tick消除旧版构造器的随机朝向
+        rotationYawHead = prevRotationYawHead = 0;
     }
 
     @Override

@@ -1328,3 +1328,13 @@ MaidModernLife的已加载床头索引增加同一未占用筛选；MaidBedTask�
 原版完整自然Brain的睡中generic伤害采集显示：接受伤害的返回阶段睡姿和床占用已清理
 移植EntityMaid的实际接受伤害回调经MaidBehaviorProtection进入协调器，只让当前F/N已持有的床资源同步wake，不创建或推进新的Brain帧，也不重置任务/路径或假造token
 该改动由176原始轨迹暴露的即时状态差异驱动；取消/免疫攻击、任意伤害类型和整个睡眠生命周期不由这个局部结论宣称等价
+
+## 玩家背负与详情预览
+
+固定上游 `client/renderer/entity/EntityMaidRenderer.java` 的 `setupRotations` 在父级旋转后、缩放前处理玩家背负
+本工程 `MaidRenderer` 对 Bedrock 路径补齐平移 `(-.375,.8325,.375)`、负Z轴65度和负Y轴-80度旋转，附件继承同一矩阵
+Gecko 沿上游独立渲染分支，不追加该变换；真实背负画面仍待合批验证
+
+固定上游 `client/gui/entity/detail/MaidModelDetailsGui.java` 的构造明确清零当前及上一帧头角，本工程预览实体对应补齐
+原详情页四个护甲槽本来就使用同一金头盔作为非空标记，保留该机制；预览低凳沿原 LivingEntity 类型适配
+副手预览的目标盾牌查询接既有客户端保护，失效时仅回退空预览，不改变服务器实体或原装备

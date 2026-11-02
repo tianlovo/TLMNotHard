@@ -32,16 +32,19 @@ public final class MaidLifecycleEvents {
         var ledger = MaidLifecycleData.get(player.worldObj);
         var token = ledger.initialToken(player.getUniqueID());
         if (ledger.delivered(token)) return false;
-        int empty = -1;
         for (int i = 0; i < player.inventory.mainInventory.length; i++) {
             var stack = player.inventory.mainInventory[i];
-            if (token.equals(MaidLifecycleItems.token(stack))) {
+            if (stack != null && stack.getItem() == MaidResurrectionContent.INITIAL_SLAB
+                && token.equals(MaidLifecycleItems.token(stack))) {
                 ledger.markDelivered(token);
                 return false;
             }
-            if (stack == null && empty < 0) empty = i;
         }
-        if (empty < 0) return false;
+        // 使用目标环境的原生空槽策略，不能绕过Backhand的副手拾取配置
+        int empty = player.inventory.getFirstEmptyStack();
+        if (empty < 0 || empty >= player.inventory.mainInventory.length
+            || player.inventory.mainInventory[empty] != null
+            || ledger.delivered(token)) return false;
         player.inventory.setInventorySlotContents(
             empty,
             MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, player.getUniqueID()));
