@@ -51,6 +51,8 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 运行与输出参数为 `--hqa-result`、`--observed`、`--junit` 和 `--output`
 检查实际资源身份、工厂选择、自然tick序列和清理后，只报告首次入睡、睡眠帧数、床头水平偏移、高度及运动范围
 原版尚未记录全部初始场地、天气等实际输入，世界RNG及跨版本物理也未控制；因此保持 `NOT_EVALUATED`，没有完整配对输入、B10或统计准入
+可加 `--require-stable-sleep` 单独检查无干扰基础场景：入睡帧床头+.8，后续帧+.5625、水平居中、无水平运动且保持自己的床位
+该检查先在159的实际错误轨迹上检出下落和滑移，再用于修复候选；不由此推导完整睡眠行为或寻路收益
 
 ## 许可证
 

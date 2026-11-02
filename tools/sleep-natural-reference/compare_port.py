@@ -52,6 +52,21 @@ def metrics(row):
             "sleep_max_abs_motion": max((max(abs(v) for v in s["motion"]) for s in sleeping), default=None)}
 
 
+def stable_sleep(data):
+    """固定无干扰基础场景的入睡/后续位置检查，不评价寻路速度或完整B10"""
+    for row in data["runs"]:
+        frames = row["frames"]
+        first = next((i for i, s in enumerate(frames) if s["sleeping"]), None)
+        require(first is not None and first + 1 < len(frames), "baseline has no sustained sleep observation")
+        for i, s in enumerate(frames[first:], start=first):
+            require(s["sleeping"] and s["bedOwned"] and s["bedOccupied"], "baseline sleep or own bed lease changed")
+            y = 1.8 if i == first else 1.5625
+            require(all(abs(a - b) < 1e-6 for a, b in zip(s["position"], (7.5, y, 4.5))),
+                    "sleep position drift: repetition=%s frame=%s" % (row["repetition"], i))
+            require(abs(s["motion"][0]) < 1e-6 and abs(s["motion"][2]) < 1e-6, "sleep horizontal motion remains")
+    return {"passed": True, "scope": "uninterrupted baseline entry and subsequent sleeping anchor/own bed lease only"}
+
+
 def port_capture(data, contract, contract_sha, candidate, pilot):
     require(data["schema"] == "sleep-natural-port-feasibility-v1", "wrong port schema")
     require(data["observationComplete"] is data["ownCleanupComplete"] is True and not data.get("error"),
@@ -98,6 +113,7 @@ def main():
     parser.add_argument("--hqa-result", type=Path, required=True)
     parser.add_argument("--observed", type=Path, required=True)
     parser.add_argument("--junit", type=Path, required=True)
+    parser.add_argument("--require-stable-sleep", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     raw = args.original_capture.read_bytes()
@@ -106,21 +122,26 @@ def main():
     ports = [port_capture(json.loads(p.read_bytes()), original["contract"], original["contractSha256"],
                           args.candidate_jar, args.pilot_jar) for p in args.port_capture]
     require(len({p["profile"] for p in ports}) == len(ports), "duplicate profile captures")
+    if args.require_stable_sleep:
+        for summary, path in zip(ports, args.port_capture):
+            summary["sleep_anchor_check"] = stable_sleep(json.loads(path.read_bytes()))
     hqa = json.loads(args.hqa_result.read_bytes())
     observed = json.loads(args.observed.read_bytes())
     require(hqa["status"] == "passed" and hqa["exitCode"] == observed["process_exit"] == 0
             and observed["status"] == hqa and observed["full_release_passed"] is False, "HQA process/result incomplete")
     require(observed["candidate_sha256"] == digest(args.candidate_jar.read_bytes())
             and observed["pilot_sha256"] == digest(args.pilot_jar.read_bytes()), "HQA actual artifacts differ")
-    require(hqa["counts"]["selectedTests"] == hqa["counts"]["passed"] == len(ports)
+    require(hqa["counts"]["selectedTests"] == hqa["counts"]["passed"] >= len(ports)
             and all(hqa["counts"][key] == 0 for key in ("failed", "timedOut", "skipped", "incomplete", "issues")),
             "HQA selected cases did not all pass")
     names = {"faithful_tlm": "collectFreshOfflineHomeFaithfulActors", "enhanced": "collectFreshOfflineHomeEnhancedActors"}
     expected = {names[p["profile"]] for p in ports}
-    require({t["name"] for t in hqa["tests"]} == expected and all(t["status"] == "passed" for t in hqa["tests"]),
+    actual_names = {t["name"] for t in hqa["tests"]}
+    require(actual_names >= expected and len(hqa["tests"]) == len(actual_names) == hqa["counts"]["selectedTests"]
+            and all(t["status"] == "passed" for t in hqa["tests"]),
             "HQA cases differ from captured profiles")
     cases = list(ET.parse(args.junit).getroot().iter("testcase"))
-    require({t.get("name") for t in cases} == expected and len(cases) == len(ports)
+    require({t.get("name") for t in cases} == actual_names and len(cases) == len(actual_names)
             and all(not any(t.find(tag) is not None for tag in ("failure", "error", "skipped")) for t in cases),
             "JUnit cases did not pass")
     result = {"observation_integrity_passed": True, "original_integrity": verified,
