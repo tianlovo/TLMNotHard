@@ -42,6 +42,7 @@ public final class MaidLifecycleProbe {
     public static void run(WorldServer world) {
         try (var f = new Fixture(world)) {
             acquisition(f);
+            releaseRequestRevocation(f);
             var maid = release(f, false);
             maid.setCustomNameTag("生命周期 酒狐");
             maid.setModelId("geckolib:winefox_hanfu");
@@ -164,6 +165,47 @@ public final class MaidLifecycleProbe {
         return maid;
     }
 
+    private static void releaseRequestRevocation(Fixture f) {
+        for (var mutation : new Mutation[] { Mutation.PLAYER_DISTANCE, Mutation.SLAB_CONTENT, Mutation.SLAB_SLOT }) {
+            f.clear();
+            f.owner.setPosition(f.x + 2.5D, f.y + 1, f.z + 0.5D);
+            var token = MaidLifecycleData.get(f.world)
+                .acquiredToken(f.owner.getUniqueID());
+            var slab = MaidLifecycleItems
+                .credential(MaidResurrectionContent.INITIAL_SLAB, token, f.owner.getUniqueID());
+            f.hand(slab);
+            var mutate = new MutateJoin(f.world, mutation, f.owner);
+            MinecraftForge.EVENT_BUS.register(mutate);
+            try {
+                require(
+                    MaidLifecycleService.releaseInitial(f.owner, slab, f.x, f.y, f.z)
+                        == MaidLifecycleService.Result.DENIED,
+                    "changed release request must be rejected " + mutation);
+            } finally {
+                MinecraftForge.EVENT_BUS.unregister(mutate);
+            }
+            require(
+                mutate.maidCalls == 1 && f.owner.getCurrentEquippedItem() == slab,
+                "rejected release preserves callback successor hand " + mutation);
+            if (mutation == Mutation.SLAB_CONTENT) require(
+                "retained".equals(
+                    slab.getTagCompound()
+                        .getString("TLMNHProbeSuccessor")),
+                "rejected release preserves callback NBT");
+            for (var entity : f.world.loadedEntityList) require(
+                !(entity instanceof EntityMaid maid) || f.original.contains(maid) || maid.isDead,
+                "rejected request does not leave a second maid " + mutation);
+            f.clear();
+            f.owner.setPosition(f.x + 2.5D, f.y + 1, f.z + 0.5D);
+            f.hand(slab);
+            require(
+                MaidLifecycleService.releaseInitial(f.owner, slab, f.x, f.y, f.z)
+                    == MaidLifecycleService.Result.SUCCESS,
+                "revoked request retains its one original release right " + mutation);
+            f.world.removeEntity(f.latestMaid());
+        }
+    }
+
     private static MaidTombstoneEntity death(Fixture f, EntityMaid maid, boolean loot) {
         String original = f.world.getGameRules()
             .getGameRuleStringValue("doMobLoot");
@@ -256,7 +298,8 @@ public final class MaidLifecycleProbe {
             MinecraftForge.EVENT_BUS.unregister(reject);
         }
         require(shrine.getFilm() != null && f.owner.getHealth() == 11, "cancelled shrine spawn rolls back both costs");
-        for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.MAID_OWNER }) {
+        for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.MAID_OWNER, Mutation.PLAYER_DISTANCE,
+            Mutation.SHRINE_CONTENT }) {
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
             try {
@@ -265,8 +308,15 @@ public final class MaidLifecycleProbe {
                 MinecraftForge.EVENT_BUS.unregister(mutate);
             }
             require(
-                shrine.getFilm() != null && f.owner.getHealth() == 11,
+                mutate.maidCalls == 1 && shrine.getFilm() != null && f.owner.getHealth() == 11,
                 "mutated resurrection retains film and life " + mutation);
+            if (mutation == Mutation.SHRINE_CONTENT) require(
+                "retained".equals(
+                    shrine.getFilm()
+                        .getTagCompound()
+                        .getString("TLMNHProbeSuccessor")),
+                "rejected resurrection does not clear callback replacement film");
+            f.owner.setPosition(f.x + 2.5D, f.y + 1, f.z + 0.5D);
         }
         f.click();
         require(
@@ -477,6 +527,10 @@ public final class MaidLifecycleProbe {
     public enum Mutation {
         MAID_DEAD,
         MAID_OWNER,
+        PLAYER_DISTANCE,
+        SLAB_CONTENT,
+        SLAB_SLOT,
+        SHRINE_CONTENT,
         TOMB_CANCEL,
         TOMB_DEAD,
         ITEM_CANCEL,
@@ -491,6 +545,7 @@ public final class MaidLifecycleProbe {
         private final WorldServer world;
         private final Mutation mutation;
         private final EntityPlayerMP recipient;
+        private int maidCalls;
 
         public MutateJoin(WorldServer world, Mutation mutation, EntityPlayerMP recipient) {
             this.world = world;
@@ -502,10 +557,37 @@ public final class MaidLifecycleProbe {
         public void onJoin(EntityJoinWorldEvent event) {
             if (event.world != world) return;
             if (event.entity instanceof EntityMaid maid) {
+                maidCalls++;
                 if (mutation == Mutation.MAID_DEAD) maid.setDead();
                 if (mutation == Mutation.MAID_OWNER) maid.func_152115_b(
                     UUID.randomUUID()
                         .toString());
+                if (mutation == Mutation.PLAYER_DISTANCE)
+                    recipient.setPosition(recipient.posX + 20, recipient.posY, recipient.posZ);
+                if (mutation == Mutation.SLAB_CONTENT) recipient.getCurrentEquippedItem()
+                    .getTagCompound()
+                    .setString("TLMNHProbeSuccessor", "retained");
+                if (mutation == Mutation.SLAB_SLOT) {
+                    var stack = recipient.getCurrentEquippedItem();
+                    recipient.inventory.mainInventory[recipient.inventory.currentItem] = null;
+                    recipient.inventory.currentItem = 1;
+                    recipient.inventory.mainInventory[1] = stack;
+                }
+                if (mutation == Mutation.SHRINE_CONTENT) {
+                    var shrine = (MaidShrineTile) world.getTileEntity(
+                        (int) Math.floor(maid.posX),
+                        (int) Math.floor(maid.posY) - 1,
+                        (int) Math.floor(maid.posZ));
+                    var saved = new NBTTagCompound();
+                    shrine.writeToNBT(saved);
+                    var replacement = shrine.getFilm();
+                    replacement.getTagCompound()
+                        .setString("TLMNHProbeSuccessor", "retained");
+                    saved.setTag(
+                        "StorageItem",
+                        com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(replacement));
+                    shrine.readFromNBT(saved);
+                }
             } else if (event.entity instanceof MaidTombstoneEntity tombstone) {
                 if (mutation == Mutation.TOMB_CANCEL) event.setCanceled(true);
                 if (mutation == Mutation.TOMB_DEAD) tombstone.setDead();
