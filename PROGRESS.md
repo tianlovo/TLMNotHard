@@ -1552,3 +1552,16 @@ Indev177 在真实接受伤害回调中，经既有行为失效保护同步清�
 完整初始SNBT另逐对审阅所有顶层键：随机Rotation/SoundPackId、Fire默认值、Attributes/库存和列表编码、任务数据及GTNH附加字段仍有差异，原值均保留
 相对坐标与UUID/离线主人身份分别核对，不能把原始绝对坐标差或独立身份直接判为行为错误；也不能把这些差异静默删除后称完整输入等价
 后续正式统计前需冻结实际朝向/音色并审查剩余字段语义；本轮只收口指定机制修复，完整环境/NBT等价、完整B10、30轮统计、14项O/F/N和发布门槛仍未准入，整体约61%保持
+
+## 确定性spawn消除初始随机差异
+
+Indev178 新增 DeterministicMaidSpawn 工具类，为回归测试提供确定性的EntityMaid初始化，消除rotation和SoundPackId的随机差异
+固定音色为 touhou_little_maid，覆盖 DefaultMaidSoundPack 的随机选择；固定朝向为 yaw=0.0f pitch=0.0f，覆盖spawn的随机rotation
+通过系统属性 tlmnh.deterministicSpawn 控制是否启用，AnimationLab 在创建EntityMaid后、设置模型前调用 freezeInitialState
+
+完整NBT差异审查(cache/validation/178-nbt-analysis.md)：Rotation/SoundPackId已通过确定性spawn解决；Fire字段(-1 vs 0)为版本差异，1.7.10默认0正常，保留
+Attributes/MaidInventory/MaidTaskDataMaps为序列化策略差异，保留；only_original字段(Brain/YsmModel等)为1.20.1新版本特性，only_port字段(TLMNH/ForgeData/Thaumic等)为1.7.10环境特有，各自保留
+
+本轮L0，提交961dfe9已完成代码实现，待网络恢复后构建验证；需实际运行确认确定性spawn生效，并更新input-audit记录随机差异消除
+完整输入等价确认、完整B10、30轮统计、14项O/F/N和发布门槛继续待完成，整体约61%保持
+
