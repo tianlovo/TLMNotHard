@@ -290,10 +290,14 @@ public final class ClientDevelopmentControl {
                     break;
                 case SCREENSHOT:
                 case MODELS_UI_CAPTURE:
+                case CABINET_UI_CAPTURE:
                     if (minecraft.theWorld == null || minecraft.thePlayer == null)
                         throw new IllegalStateException("World not loaded");
                     boolean modelsUi = request.command == ClientDevelopmentRequest.Command.MODELS_UI_CAPTURE;
+                    boolean cabinetUi = request.command == ClientDevelopmentRequest.Command.CABINET_UI_CAPTURE;
                     if (modelsUi) MaidModelUiProbe.requireCaptureScreen();
+                    else if (cabinetUi)
+                        com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.requireScreen(minecraft);
                     else if (minecraft.currentScreen != null)
                         throw new IllegalStateException("Screenshot obscured by screen");
                     if (captures.size() >= MAX_PENDING_CAPTURES)
@@ -310,8 +314,9 @@ public final class ClientDevelopmentControl {
                         new Capture(
                             name,
                             request.screenshotName,
-                            modelsUi,
-                            modelsUi ? minecraft.thePlayer.openContainer.windowId : -1));
+                            request.command,
+                            modelsUi || cabinetUi ? minecraft.thePlayer.openContainer.windowId : -1,
+                            cabinetUi ? minecraft.thePlayer.openContainer : null));
                     response.addProperty("status", "pending-render");
                     break;
                 case RELOAD:
@@ -389,16 +394,23 @@ public final class ClientDevelopmentControl {
         var response = new JsonObject();
         response.addProperty("version", Tags.VERSION);
         response.addProperty("request", capture.request);
-        response.addProperty("command", capture.modelsUi ? "MODELS_UI_CAPTURE" : "SCREENSHOT");
+        response.addProperty("command", capture.command.name());
         int texture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT);
         int unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
-            if (capture.modelsUi) {
+            if (capture.command == ClientDevelopmentRequest.Command.MODELS_UI_CAPTURE) {
                 MaidModelUiProbe.requireCaptureScreen();
                 if (minecraft.thePlayer.openContainer.windowId != capture.expectedWindow)
                     throw new IllegalStateException("Model selector window changed before capture");
                 response.add("modelUiAtCapture", MaidModelUiProbe.observe());
+            } else if (capture.command == ClientDevelopmentRequest.Command.CABINET_UI_CAPTURE) {
+                var chest = com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.requireScreen(minecraft);
+                if (chest != capture.expectedContainer || chest.windowId != capture.expectedWindow)
+                    throw new IllegalStateException("Native cabinet window changed before capture");
+                response.add(
+                    "cabinetUiAtCapture",
+                    com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.observe(minecraft));
             } else
                 if (minecraft.currentScreen != null) throw new IllegalStateException("Screenshot obscured by screen");
             var path = minecraft.mcDataDir.toPath()
@@ -538,14 +550,17 @@ public final class ClientDevelopmentControl {
     private static final class Capture {
 
         private final String request, filename;
-        private final boolean modelsUi;
+        private final ClientDevelopmentRequest.Command command;
         private final int expectedWindow;
+        private final net.minecraft.inventory.Container expectedContainer;
 
-        private Capture(String request, String filename, boolean modelsUi, int expectedWindow) {
+        private Capture(String request, String filename, ClientDevelopmentRequest.Command command, int expectedWindow,
+            net.minecraft.inventory.Container expectedContainer) {
             this.request = request;
             this.filename = filename;
-            this.modelsUi = modelsUi;
+            this.command = command;
             this.expectedWindow = expectedWindow;
+            this.expectedContainer = expectedContainer;
         }
     }
 }

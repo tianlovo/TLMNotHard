@@ -47,7 +47,8 @@ public final class ClientDevelopmentRequest {
         int warmupTicks = 0;
         String model = null, fault = "none";
         String action = null, view = null;
-        if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE) {
+        if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE
+            || command == Command.CABINET_UI_CAPTURE) {
             if (!json.has("name") || !json.get("name")
                 .isJsonPrimitive()
                 || !json.getAsJsonPrimitive("name")
@@ -245,6 +246,7 @@ public final class ClientDevelopmentRequest {
         GECKO_LIBRARY_PROBE,
         MODELS_UI,
         MODELS_UI_CAPTURE,
+        CABINET_UI_CAPTURE,
         RELOAD,
         SHUTDOWN
     }
