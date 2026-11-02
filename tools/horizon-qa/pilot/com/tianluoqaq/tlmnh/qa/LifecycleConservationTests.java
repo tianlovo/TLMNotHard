@@ -60,10 +60,15 @@ public final class LifecycleConservationTests {
     @GameTest(template = "modern_core_cell", timeoutTicks = 40, batch = "lifecycle_claim_conservation")
     public static void rejectedTombstoneClaimKeepsCallbackInventoryAndCanDeliverOnceAfterRepair(GameTestHelper helper) {
         var f = new Fixture(helper);
-        for (String mutation : new String[] { "inventory", "distance", "throw" }) {
+        for (String mutation : new String[] { "inventory", "distance", "throw", "tag" }) {
             f.resetPlayer();
             for (int slot = 0; slot < f.owner.inventory.mainInventory.length; slot++)
                 f.owner.inventory.mainInventory[slot] = new ItemStack(Items.stick, 64);
+            if (mutation.equals("tag")) {
+                var tag = new NBTTagCompound();
+                tag.setString("CallbackPayload", "before");
+                f.owner.inventory.mainInventory[5].setTagCompound(tag);
+            }
             f.owner.setSneaking(true);
             var item = new ItemStack(Items.diamond, 9, 3);
             item.setStackDisplayName("Conservation original");
@@ -100,6 +105,11 @@ public final class LifecycleConservationTests {
                     f.owner.inventory.setItemStack(new ItemStack(Items.emerald, 3));
                     f.owner.inventory.currentItem = 1;
                     changed[0] = f.owner.inventory.writeToNBT(new NBTTagList());
+                } else if (mutation.equals("tag")) {
+                    f.owner.inventory.mainInventory[5].getTagCompound()
+                        .setString("CallbackPayload", "callback-owned");
+                    changed[0] = (NBTTagList) f.owner.inventory.writeToNBT(new NBTTagList())
+                        .copy();
                 } else f.owner.setPosition(f.x + 40, f.y + 1, f.z + 4);
                 if (mutation.equals("throw")) throw injected;
             };
@@ -116,7 +126,13 @@ public final class LifecycleConservationTests {
                 !f.ledger()
                     .isTombstoneHeld(token),
                 "Safely retracted overflow permanently held the claim");
-            if (changed[0] != null) helper.assertTrue(
+            if (mutation.equals("tag")) helper.assertTrue(
+                changed[0] != null && changed[0].equals(f.owner.inventory.writeToNBT(new NBTTagList()))
+                    && f.owner.inventory.mainInventory[5].getTagCompound()
+                        .getString("CallbackPayload")
+                        .equals("callback-owned"),
+                "Rejected claim overwrote the callback's in-place original item NBT");
+            else if (changed[0] != null) helper.assertTrue(
                 changed[0].equals(f.owner.inventory.writeToNBT(new NBTTagList())) && f.owner.inventory.currentItem == 1
                     && f.owner.inventory.getItemStack().stackSize == 3,
                 "Failed claim overwrote the callback's inventory, cursor or selected slot");

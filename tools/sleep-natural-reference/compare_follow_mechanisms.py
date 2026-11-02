@@ -98,9 +98,16 @@ def check_event_schedule(scene, events):
                 and actual["phase"] == "END_after_recorded_frame", "event input/timing/phase changed")
 
 
-def inspect(data, contract, contract_hash, profile):
-    require(data["profile"] == profile and data["contract"] == contract and data["contractSha256"] == contract_hash,
+def check_captured_contract(data, contract, contract_hash, profile):
+    # Legacy Gson omits this null object member; the independently captured raw resource hash remains mandatory.
+    captured = dict(data["contract"])
+    captured.setdefault("noninferiorityDelta", None)
+    require(data["profile"] == profile and captured == contract and data["contractSha256"] == contract_hash,
             "actual contract/profile changed")
+
+
+def inspect(data, contract, contract_hash, profile):
+    check_captured_contract(data, contract, contract_hash, profile)
     require(data["observationComplete"] is data["ownCleanupComplete"] is True and not data.get("error"),
             "capture incomplete or cleanup failed")
     require(data["benchmarkVerdict"] == "NOT_EVALUATED" and data["statisticalAdmission"] is False
@@ -245,11 +252,49 @@ def input_differences(original, port):
     return result
 
 
+def verify_port_results(hqa, observed, xml_cases, allow_additional=False, allow_failed_additional=False):
+    require(not allow_failed_additional or allow_additional, "failed additional cases require explicit batch scope")
+    require(observed["status"] == hqa and observed["full_release_passed"] is False, "HQA report binding differs")
+    tests = hqa["tests"]
+    selected = [t for t in tests if t["classname"] == "tlmnhqapilot:FollowMechanismPortTests"]
+    expected = {label + suffix for label in ("faithful", "enhanced")
+                for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")}
+    require(len(selected) == 6 and {t["name"] for t in selected} == expected
+            and all(t["status"] == "passed" for t in selected), "required follow cases failed or missing")
+    require(len(tests) >= 6 if allow_additional else len(tests) == 6, "unexpected additional HQA cases")
+    require(all(t["status"] in ("passed", "failed") for t in tests), "HQA case incomplete")
+    failures = [t for t in tests if t["status"] == "failed"]
+    require(not failures or allow_failed_additional, "additional HQA cases failed")
+    counts = hqa["counts"]
+    required_failures = sum(t["required"] for t in failures)
+    require(counts["selectedTests"] == len(tests) and counts["passed"] == len(tests) - len(failures)
+            and counts["failed"] == len(failures) and counts["requiredFailures"] == required_failures
+            and counts["optionalFailures"] == len(failures) - required_failures
+            and all(counts[k] == 0 for k in ("timedOut", "skipped", "incomplete", "issues", "diagnosticErrors", "junitSkipped")),
+            "HQA aggregate differs or run incomplete")
+    expected_exit = 1 if required_failures else 0
+    require(hqa["status"] == ("failed" if required_failures else "passed")
+            and hqa["exitCode"] == observed["process_exit"] == expected_exit, "HQA process outcome differs")
+    xml_by_id = {c.get("classname") + "." + c.get("name"): c for c in xml_cases}
+    require(len(xml_cases) == len(xml_by_id) == len(tests) == len({t["id"] for t in tests})
+            and set(xml_by_id) == {t["id"] for t in tests}, "JUnit case identities differ")
+    for test in tests:
+        case = xml_by_id[test["id"]]
+        failed = case.find("failure") is not None or case.find("error") is not None
+        require(case.find("skipped") is None and failed == (test["status"] == "failed"), "JUnit case result differs")
+    require(counts["junitFailures"] == sum(c.find("failure") is not None for c in xml_cases)
+            and counts["junitErrors"] == sum(c.find("error") is not None for c in xml_cases), "JUnit aggregate differs")
+    return {"status": hqa["status"], "process_exit": observed["process_exit"],
+            "whole_batch_passed": not failures, "required_follow_cases_passed": True,
+            "additional_failures": [{"id": t["id"], "failure": t.get("failure")} for t in failures]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("original-captures", "original-build", "original-tool", "original-agent", "port-run", "candidate-jar", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--allow-additional-port-tests", action="store_true")
+    parser.add_argument("--allow-failed-additional-port-tests", action="store_true")
     args = parser.parse_args()
     contract_bytes = (args.original_tool / "follow-mechanisms-contract.json").read_bytes()
     contract = json.loads(contract_bytes)
@@ -258,17 +303,10 @@ def main():
             and tuple(s["id"] for s in contract["mechanisms"]) == MECHANISMS, "unapproved exploratory contract or statistical margin")
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
-    require(hqa["status"] == "passed" and hqa["exitCode"] == observed["process_exit"] == 0
-            and observed["status"] == hqa and observed["full_release_passed"] is False, "full HQA run failed/incomplete")
-    tests = hqa["tests"]; selected = [t for t in tests if t["classname"] == "tlmnhqapilot:FollowMechanismPortTests"]
-    expected = {label + suffix for label in ("faithful", "enhanced") for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")}
-    require(len(tests) == hqa["counts"]["selectedTests"] == hqa["counts"]["passed"] and len(selected) == 6
-            and (len(tests) >= 6 if args.allow_additional_port_tests else len(tests) == 6)
-            and {t["name"] for t in selected} == expected and all(t["status"] == "passed" for t in tests)
-            and all(hqa["counts"][k] == 0 for k in ("failed", "timedOut", "skipped", "incomplete", "issues")), "wrong HQA cases")
     xml_cases = list(ET.parse(args.port_run / "TEST-horizonqa.xml").getroot().iter("testcase"))
-    require(len(xml_cases) == len(tests) and {c.get("classname") + "." + c.get("name") for c in xml_cases}
-            == {t["id"] for t in tests} and all(not any(c.find(k) is not None for k in ("failure", "error", "skipped")) for c in xml_cases), "JUnit differs")
+    batch = verify_port_results(hqa, observed, xml_cases, args.allow_additional_port_tests,
+                                args.allow_failed_additional_port_tests)
+    tests = hqa["tests"]
     pilot = args.port_run / "tested-pilot.jar"
     require(observed["candidate_sha256"] == sha(args.candidate_jar.read_bytes()) and observed["pilot_sha256"] == sha(pilot.read_bytes()), "actual candidate/pilot mismatch")
     originals = [json.loads(p.read_bytes()) for p in args.original_captures.glob("follow-mechanism-original-*.json")]
@@ -297,6 +335,7 @@ def main():
               "candidate_sha256": sha(args.candidate_jar.read_bytes()), "pilot_sha256": sha(pilot.read_bytes()),
               "contract_sha256": sha(contract_bytes), "independent_actor_count": len(actors), "independent_owner_count": len(owners),
               "frames": len(actors) * contract["framesPerActor"], "hqa_total_case_count": len(tests), "hqa_mechanism_case_count": 6,
+              "port_batch": batch,
               "scenes": scenes, "noninferiority_delta": None, "statistical_verdict": "NOT_EVALUATED",
               "complete_14_class_benchmark_accepted": False, "full_release_passed": False,
               "complete_cross_engine_input_equivalence_accepted": False, "real_logged_in_or_multiclient_owner_accepted": False,

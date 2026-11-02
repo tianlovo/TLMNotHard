@@ -2,8 +2,9 @@
 
 import copy
 import unittest
+import xml.etree.ElementTree as ET
 
-from compare_follow_mechanisms import check_event_schedule, layout, metrics, owner_facts
+from compare_follow_mechanisms import check_captured_contract, check_event_schedule, layout, metrics, owner_facts, verify_port_results
 
 
 def captured_owner(profile):
@@ -74,6 +75,74 @@ class FollowMechanismCounterexamples(unittest.TestCase):
         self.assertEqual(layout([stone]), {(8, 1, 4, "stone")})
         for cells in ([dict(stone, metadata=2)], [stone, stone], [dict(stone, registry="other:stone")]):
             with self.subTest(cells=cells), self.assertRaises(ValueError): layout(cells)
+
+
+def batch_reports(additional_failure=False):
+    tests = [{"classname": "tlmnhqapilot:FollowMechanismPortTests", "name": label + suffix,
+              "required": True, "status": "passed"}
+             for label in ("faithful", "enhanced")
+             for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")]
+    if additional_failure:
+        tests.append({"classname": "tlmnhqapilot:OtherTests", "name": "other", "required": True,
+                      "status": "failed", "failure": {"message": "retained independent failure"}})
+    cases = []
+    for test in tests:
+        test["id"] = test["classname"] + "." + test["name"]
+        case = ET.Element("testcase", classname=test["classname"], name=test["name"])
+        if test["status"] == "failed":
+            ET.SubElement(case, "failure")
+        cases.append(case)
+    failed = int(additional_failure)
+    counts = dict(selectedTests=len(tests), passed=6, failed=failed, requiredFailures=failed,
+                  optionalFailures=0, timedOut=0, skipped=0, incomplete=0, issues=0, diagnosticErrors=0,
+                  junitFailures=failed, junitErrors=0, junitSkipped=0)
+    report = dict(status="failed" if failed else "passed", exitCode=failed, counts=counts, tests=tests)
+    observed = dict(status=report, process_exit=failed, full_release_passed=False)
+    return report, observed, cases
+
+
+class BatchScopeCounterexamples(unittest.TestCase):
+
+    def test_only_known_null_omission_is_accepted_with_exact_resource_hash(self):
+        contract = {"noninferiorityDelta": None, "frames": 240}
+        actual = {"profile": "enhanced", "contract": {"frames": 240}, "contractSha256": "exact"}
+        check_captured_contract(actual, contract, "exact", "enhanced")
+        for replacement in ({"frames": 240, "noninferiorityDelta": .1}, {}, {"frames": 239}):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                check_captured_contract(dict(actual, contract=replacement), contract, "exact", "enhanced")
+        with self.assertRaises(ValueError):
+            check_captured_contract(actual, contract, "different", "enhanced")
+
+    def test_complete_selected_run_preserves_original_contract(self):
+        result = verify_port_results(*batch_reports())
+        self.assertTrue(result["whole_batch_passed"])
+
+    def test_explicit_scoped_read_retains_unrelated_failure_and_failed_process(self):
+        args = batch_reports(True)
+        result = verify_port_results(*args, allow_additional=True, allow_failed_additional=True)
+        self.assertFalse(result["whole_batch_passed"])
+        self.assertEqual(result["process_exit"], 1)
+        self.assertEqual(result["additional_failures"][0]["failure"]["message"], "retained independent failure")
+        with self.assertRaises(ValueError):
+            verify_port_results(*args, allow_additional=True)
+        with self.assertRaises(ValueError):
+            verify_port_results(*args, allow_failed_additional=True)
+
+    def test_selected_failure_cannot_be_hidden_in_batch(self):
+        report, observed, cases = batch_reports(True)
+        report["tests"][0]["status"] = "failed"
+        with self.assertRaises(ValueError):
+            verify_port_results(report, observed, cases, True, True)
+
+    def test_process_report_and_junit_disagreement_are_rejected(self):
+        for change in ("process", "xml", "incomplete", "counts"):
+            report, observed, cases = batch_reports(True)
+            if change == "process": observed["process_exit"] = 0
+            if change == "xml": cases[-1].remove(cases[-1].find("failure"))
+            if change == "incomplete": report["counts"]["incomplete"] = 1
+            if change == "counts": report["counts"]["failed"] = 0
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify_port_results(report, observed, cases, True, True)
 
 
 if __name__ == "__main__":

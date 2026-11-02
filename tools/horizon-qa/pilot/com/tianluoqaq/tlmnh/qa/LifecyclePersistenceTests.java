@@ -4,6 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
@@ -66,6 +71,10 @@ public final class LifecyclePersistenceTests {
         throws Exception {
         String run = System.getProperty("tlmnh.qaPersistenceRun", "");
         String phase = System.getProperty("tlmnh.qaPersistencePhase", "");
+        String contract = System.getProperty("tlmnh.qaPersistenceContract", "");
+        helper.assertTrue(
+            contract.equals("baseline") || contract.equals("durable"),
+            "Explicit persistence contract required");
         var world = helper.getWorld();
         helper.assertTrue(
             Boolean.getBoolean("tlmnh.devCommands") && run.matches("[0-9]{10,20}"),
@@ -99,6 +108,7 @@ public final class LifecyclePersistenceTests {
             state = new RawData(NAME);
             state.data.setInteger("Schema", 1);
             state.data.setString("Run", run);
+            state.data.setString("Contract", contract);
             state.data.setString(
                 "Owner",
                 UUID.nameUUIDFromBytes(run.getBytes(StandardCharsets.UTF_8))
@@ -113,6 +123,10 @@ public final class LifecyclePersistenceTests {
                 && state.data.getLong("LastProcess") != START,
             "A new JVM must load the same fixture from disk");
         var f = new Fixture(helper, state);
+        helper.assertTrue(
+            state.data.getString("Contract")
+                .equals(contract),
+            "Persistence contract changed between JVMs");
         switch (phase) {
             case "prepare" -> prepare(f);
             case "verify" -> verify(f);
@@ -153,6 +167,7 @@ public final class LifecyclePersistenceTests {
                 .toString());
         f.full(grave);
         f.itemMode = "rewrite";
+        f.itemToken = item;
         f.itemMarker = f.run + "/held";
         f.helper.assertTrue(
             !MaidTombstoneTransfer.collect(grave, f.owner) && f.itemCalls == 1
@@ -172,6 +187,7 @@ public final class LifecyclePersistenceTests {
         f.itemMode = "";
         f.xpX = f.x + 9.5;
         var xp = f.deposit("XpToken", null, identity, 53, 9);
+        f.xpToken = xp;
         MaidDeathExperience.retryPending(f.world);
         f.helper.assertTrue(
             f.xpCalls == 1 && f.xpOrb != null
@@ -193,6 +209,7 @@ public final class LifecyclePersistenceTests {
         f.state.data.setTag("RetryItem", retryStack.writeToNBT(new NBTTagCompound()));
         f.full(retryGrave);
         f.itemMode = "cancel";
+        f.itemToken = retry;
         f.itemMarker = f.run + "/retry";
         int before = f.itemCalls;
         f.helper.assertTrue(
@@ -200,6 +217,7 @@ public final class LifecyclePersistenceTests {
                 && !f.ledger.isTombstoneHeld(retry),
             "Safely canceled overflow became permanently held");
         f.itemMode = "";
+        if (f.durable()) failedWriteStopsBeforePublication(f, identity);
         for (int schema = 1; schema <= 3; schema++) legacyFile(f, schema, identity, held);
         heldState(f, false);
     }
@@ -251,6 +269,21 @@ public final class LifecyclePersistenceTests {
                 && !MaidTombstoneTransfer.collect(retryGrave, f.owner),
             "Restart retry changed full item NBT or duplicated delivery");
         for (int schema = 1; schema <= 3; schema++) migrate(f, schema);
+        if (f.durable()) {
+            try (var input = new FileInputStream(
+                new File(
+                    f.world.getSaveHandler()
+                        .getWorldDirectory(),
+                    "playerdata/" + f.owner.getUniqueID() + ".dat"))) {
+                f.helper.assertTrue(
+                    CompressedStreamTools.readCompressed(input)
+                        .getTagList("Inventory", 10)
+                        .equals(f.owner.inventory.writeToNBT(new NBTTagList())),
+                    "Successful native player delivery was not durable");
+            } catch (Exception failure) {
+                throw new IllegalStateException("Cannot independently read delivered native player inventory", failure);
+            }
+        }
         heldState(f, true);
     }
 
@@ -281,6 +314,7 @@ public final class LifecyclePersistenceTests {
         for (var world : MinecraftServer.getServer().worldServers) if (world != null) world.levelSaving = true;
         f.full(grave);
         f.itemMode = "rewrite";
+        f.itemToken = token;
         f.itemMarker = f.run + "/window";
         f.helper.assertTrue(
             !MaidTombstoneTransfer.collect(grave, f.owner) && f.itemCalls == 1
@@ -305,9 +339,9 @@ public final class LifecyclePersistenceTests {
                         .writeToNBT(new NBTTagCompound())),
             "Raw MCA does not contain the exact rewritten external drop");
         f.helper.assertTrue(
-            !diskEntry(f.world, MaidLifecycleData.NAME, token).getBoolean("TombstoneHeld")
+            diskEntry(f.world, MaidLifecycleData.NAME, token).getBoolean("TombstoneHeld") == f.durable()
                 && !diskData(f.world, NAME).hasKey("UnsavedMarker"),
-            "Unsaved window was accidentally flushed");
+            "Raw ledger does not match the explicit baseline/durable write-ahead contract");
         var marker = new JsonObject();
         marker.addProperty("run", f.run);
         marker.addProperty("process_start", START);
@@ -318,7 +352,8 @@ public final class LifecyclePersistenceTests {
             "window_entity",
             f.itemDrop.getUniqueID()
                 .toString());
-        marker.addProperty("disk_hold", false);
+        marker.addProperty("contract", f.state.data.getString("Contract"));
+        marker.addProperty("disk_hold", f.durable());
         marker.addProperty("memory_hold", true);
         marker.addProperty("external_drop_on_disk", true);
         marker.addProperty("storage_path", "ChunkProviderServer.saveChunks(true)+AnvilSaveHandler.flush+rawMCA");
@@ -340,6 +375,26 @@ public final class LifecyclePersistenceTests {
         if (redeemable)
             f.helper.assertTrue(items.equals(expectedItems), "Last durable escrow was not restored exactly");
         f.ledger.rollback(token);
+        if (f.durable()) {
+            var raw = new NBTTagCompound();
+            f.ledger.writeToNBT(raw);
+            f.helper.assertTrue(
+                f.ledger.isTombstoneHeld(token) && !redeemable
+                    && entry(raw, token).getTagList("TombstoneItems", 10)
+                        .equals(expectedItems),
+                "Durable hold did not retain the full original window escrow");
+            f.helper.assertTrue(
+                f.ledger.reserve(token, MaidLifecycleData.Kind.FILM)
+                    .equals(f.state.data.getCompoundTag("Identity")),
+                "Write-ahead hold blocked independent film right");
+            f.ledger.rollback(token);
+            var grave = (MaidTombstoneEntity) f.find("WindowGrave", MaidTombstoneEntity.class);
+            f.empty(grave);
+            f.itemMarker = f.run + "/window";
+            f.helper.assertTrue(
+                !MaidTombstoneTransfer.collect(grave, f.owner) && f.itemCalls == 0,
+                "Restarted durable window reached another material delivery");
+        }
         var externalId = UUID.fromString(System.getProperty("tlmnh.qaPersistenceExternal", ""));
         var external = (EntityItem) f.find(externalId, EntityItem.class);
         var expected = ItemStack.loadItemStackFromNBT(f.state.data.getCompoundTag("WindowItem"));
@@ -349,6 +404,7 @@ public final class LifecyclePersistenceTests {
             "Persisted external item lost its full rewritten NBT");
         var observed = new JsonObject();
         observed.addProperty("run", f.run);
+        observed.addProperty("contract", f.state.data.getString("Contract"));
         observed.addProperty("process_start", START);
         observed.addProperty("window_token", token.toString());
         observed.addProperty("external_entity", externalId.toString());
@@ -393,6 +449,88 @@ public final class LifecyclePersistenceTests {
                 .equals(f.state.data.getCompoundTag("Identity")),
             "XP hold blocked independent film identity");
         f.ledger.rollback(xp);
+        if (f.durable() && f.state.data.hasKey("IoToken")) {
+            var io = f.token("IoToken");
+            f.helper.assertTrue(
+                f.ledger.isTombstoneHeld(io) && f.ledger.reserveTombstone(io) == null
+                    && entry(raw, io).getTagList("TombstoneItems", 10)
+                        .equals(f.state.data.getTagList("IoItems", 10)),
+                "Failed write lost its original held escrow across JVMs");
+        }
+    }
+
+    private static void failedWriteStopsBeforePublication(Fixture f, NBTTagCompound identity) {
+        var original = stack(f.run, "writefailure");
+        var token = f.deposit("IoToken", original, identity, 0, 21);
+        var grave = f.grave(token, 21);
+        f.state.data.setTag("IoItems", entries(original));
+        f.full(grave);
+        f.itemMarker = f.run + "/writefailure";
+        f.itemToken = token;
+        var target = f.world.getSaveHandler()
+            .getMapFileFromName(MaidLifecycleData.NAME)
+            .toPath();
+        var backup = target.resolveSibling(target.getFileName() + ".qa-" + f.run);
+        var sentinel = target.resolve("tlmnh-qa-owner");
+        byte[] nonce = ("TLMNH-QA-IO/" + f.run + "/" + token).getBytes(StandardCharsets.UTF_8);
+        boolean moved = false, blocked = false;
+        byte[] originalBytes = null;
+        Throwable primaryFailure = null;
+        int calls = f.itemCalls;
+        try {
+            f.helper.assertTrue(!Files.exists(backup), "Unknown prior lifecycle backup must remain intact");
+            originalBytes = Files.readAllBytes(target);
+            Files.move(target, backup, StandardCopyOption.ATOMIC_MOVE);
+            moved = true;
+            Files.createDirectory(target);
+            blocked = true;
+            Files.write(sentinel, nonce, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            f.helper.assertTrue(
+                !MaidTombstoneTransfer.collect(grave, f.owner) && f.itemCalls == calls
+                    && f.ledger.isTombstoneHeld(token),
+                "Write failure reached an external material callback");
+        } catch (RuntimeException | Error failure) {
+            primaryFailure = failure;
+            throw failure;
+        } catch (Exception failure) {
+            var wrapped = new IllegalStateException("Controlled native write-failure fixture failed", failure);
+            primaryFailure = wrapped;
+            throw wrapped;
+        } finally {
+            try {
+                if (blocked) {
+                    f.helper.assertTrue(
+                        Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)
+                            && Files.isRegularFile(sentinel, LinkOption.NOFOLLOW_LINKS)
+                            && Arrays.equals(nonce, Files.readAllBytes(sentinel)),
+                        "Unknown IO blocker successor");
+                    int entries = 0;
+                    try (var children = Files.newDirectoryStream(target)) {
+                        for (var child : children) {
+                            f.helper.assertTrue(child.equals(sentinel), "Unknown file in controlled IO blocker");
+                            entries++;
+                        }
+                    }
+                    f.helper
+                        .assertTrue(entries == 1, "Controlled IO blocker is not the exact owned sentinel directory");
+                    Files.delete(sentinel);
+                    Files.delete(target); // 非递归；外部新增文件会使删除失败而留在原处
+                }
+                if (moved) {
+                    f.helper.assertTrue(!Files.exists(target), "Unknown lifecycle file appeared during QA restoration");
+                    f.helper.assertTrue(
+                        Arrays.equals(originalBytes, Files.readAllBytes(backup)),
+                        "Unknown original ledger backup successor");
+                    Files.move(backup, target, StandardCopyOption.ATOMIC_MOVE);
+                }
+            } catch (Exception | LinkageError | AssertionError failure) {
+                if (primaryFailure != null) {
+                    if (primaryFailure != failure) primaryFailure.addSuppressed(failure);
+                } else throw new IllegalStateException(
+                    "Refusing to overwrite unknown lifecycle file during QA restoration",
+                    failure);
+            }
+        }
     }
 
     private static void legacyFile(Fixture f, int schema, NBTTagCompound identity, ItemStack item) {
@@ -609,6 +747,7 @@ public final class LifecyclePersistenceTests {
         int itemCalls, xpCalls;
         EntityItem itemDrop;
         EntityXPOrb xpOrb;
+        UUID itemToken, xpToken;
 
         Fixture(GameTestHelper helper, RawData state) {
             this.helper = helper;
@@ -650,6 +789,11 @@ public final class LifecyclePersistenceTests {
 
         UUID token(String key) {
             return UUID.fromString(state.data.getString(key));
+        }
+
+        boolean durable() {
+            return state.data.getString("Contract")
+                .equals("durable");
         }
 
         UUID deposit(String key, ItemStack item, NBTTagCompound identity, int xp, int offset) {
@@ -723,6 +867,7 @@ public final class LifecyclePersistenceTests {
                     .equals(itemMarker)) {
                 itemCalls++;
                 itemDrop = drop;
+                if (durable()) assertWriteAhead(itemToken, "TombstoneHeld");
                 if (itemMode.equals("rewrite")) {
                     var changed = drop.getEntityItem()
                         .copy();
@@ -734,8 +879,21 @@ public final class LifecyclePersistenceTests {
                 && orb.posZ == z + .5) {
                     xpCalls++;
                     xpOrb = orb;
+                    if (durable()) assertWriteAhead(xpToken, "ExperienceHeld");
                     orb.xpValue++;
                 }
+        }
+
+        private void assertWriteAhead(UUID token, String field) {
+            try {
+                helper.assertTrue(
+                    token != null && diskEntry(world, MaidLifecycleData.NAME, token).getBoolean(field),
+                    "External callback ran before its durable domain hold");
+            } catch (Exception failure) {
+                throw new IllegalStateException(
+                    "Cannot independently read write-ahead hold inside real callback",
+                    failure);
+            }
         }
     }
 }

@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.interaction.MaidNameRules;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
+import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglTextInput;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -171,7 +172,15 @@ public final class GuiMaidNaming extends GuiContainer {
             int previousLength = nameField.getText()
                 .length();
             for (int i = 0; i < previousLength; i++) keyTyped('\0', Keyboard.KEY_DELETE);
-            for (int i = 0; i < value.length(); i++) keyTyped(value.charAt(i), Keyboard.KEY_NONE);
+            try {
+                for (int i = 0; i < value.length(); i++) {
+                    char character = value.charAt(i);
+                    LwjglTextInput.character(character);
+                    keyTyped(character, Keyboard.KEY_NONE);
+                }
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Native naming GUI text input failed", failure);
+            }
             return nameField.getText()
                 .equals(value);
         }

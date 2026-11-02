@@ -108,7 +108,7 @@ public final class FollowMechanismPortTests {
         final String outputName, oldDaylight, oldSpawning;
         final long oldTime;
         final EnumDifficulty oldDifficulty;
-        final boolean oldRain, oldThunder;
+        final boolean oldRain, oldThunder, oldAnimals;
         final int oldRainTime, oldThunderTime;
         EntityMaid maid;
         EntityPlayerMP owner;
@@ -119,7 +119,7 @@ public final class FollowMechanismPortTests {
         JsonObject ownerCall;
         double ownerX, ownerY, ownerZ;
         int warmup, previousAge, livingTicks;
-        boolean complete, closed;
+        boolean complete, closed, nativeLoginComplete;
         RuntimeException failure;
 
         Collector(GameTestHelper helper, MaidBrainProfile profile, String mechanism) {
@@ -160,6 +160,8 @@ public final class FollowMechanismPortTests {
                 .isRaining();
             oldThunder = world.getWorldInfo()
                 .isThundering();
+            oldAnimals = MinecraftServer.getServer()
+                .getCanSpawnAnimals();
             oldRainTime = world.getWorldInfo()
                 .getRainTime();
             oldThunderTime = world.getWorldInfo()
@@ -199,6 +201,14 @@ public final class FollowMechanismPortTests {
                 throw new IllegalStateException("Cannot prepare native follow mechanism chunks", failure);
             }
             var world = helper.getWorld();
+            // CI默认关闭动物资格，旧WorldServer会直接删除EntityAnimal，而不只是阻止自然生成
+            MinecraftServer.getServer()
+                .setCanSpawnAnimals(true);
+            output.addProperty("serverCanSpawnAnimalsBefore", oldAnimals);
+            output.addProperty(
+                "serverCanSpawnAnimalsDuring",
+                MinecraftServer.getServer()
+                    .getCanSpawnAnimals());
             world.getGameRules()
                 .setOrCreateGameRule("doDaylightCycle", "false");
             world.getGameRules()
@@ -228,15 +238,17 @@ public final class FollowMechanismPortTests {
             manager = new NetworkManager(false);
             channel = new EmbeddedChannel(manager);
             manager.setConnectionState(EnumConnectionState.PLAY);
-            new NetHandlerPlayServer(server, manager, owner);
+            var handler = new NetHandlerPlayServer(server, manager, owner);
             IsolatedPlayerChannel.verify(manager, channel);
             owner.setPosition(ownerX, ownerY, ownerZ);
             helper.assertTrue(
                 server.worldServerForDimension(owner.dimension) == world,
                 "SCM registration must use the actual controlled world");
-            // 该原生入口自己spawn并登记PlayerManager，不重复调用world.spawnEntityInWorld
+            // 完整原生登录初始化负责spawn、全局表和FML登录事件，不只登记SCM半登录玩家
             server.getConfigurationManager()
-                .playerLoggedIn(owner);
+                .initializeConnectionToPlayer(manager, owner, handler);
+            nativeLoginComplete = true;
+            IsolatedPlayerChannel.verify(manager, channel);
             owner.setGameType(GameType.CREATIVE);
             owner.capabilities.allowFlying = owner.capabilities.isFlying = owner.capabilities.disableDamage = true;
             helper.assertTrue(
@@ -462,6 +474,38 @@ public final class FollowMechanismPortTests {
 
         void observe() {
             var coordinator = maid.getBrainCoordinator();
+            var boundary = new JsonObject();
+            boundary.addProperty("age", maid.ticksExisted);
+            boundary.addProperty("previousAge", previousAge);
+            boundary.addProperty("livingTicks", livingTicks);
+            boundary.addProperty("alive", maid.isEntityAlive());
+            boundary.addProperty(
+                "registered",
+                helper.getWorld()
+                    .getEntityByID(maid.getEntityId()) == maid);
+            boundary.addProperty("ownerMatches", maid.getOwner() == owner);
+            boundary.addProperty("runtimeMatches", runtime == coordinator.peekPolicyRuntime());
+            boundary.addProperty("runtimeReady", runtime.isReady());
+            boundary.addProperty(
+                "actualProfile",
+                runtime.getProfile()
+                    .getId());
+            boundary.addProperty("invalidation", String.valueOf(runtime.getLastInvalidationReason()));
+            boundary.addProperty(
+                "legacyFollowTicks",
+                coordinator.getFollowController()
+                    .getTicks());
+            boundary.addProperty(
+                "legacyCombatTicks",
+                coordinator.getCombatController()
+                    .getTicks());
+            boundary.addProperty("faithfulPresent", coordinator.peekFaithfulBrain() != null);
+            boundary.addProperty("enhancedPresent", coordinator.peekEnhancedCore() != null);
+            boundary.addProperty(
+                "serverCanSpawnAnimals",
+                MinecraftServer.getServer()
+                    .getCanSpawnAnimals());
+            output.add("lastActorBoundary", boundary);
             helper.assertTrue(
                 maid.getClass() == EntityMaid.class && maid.isEntityAlive()
                     && helper.getWorld()
@@ -479,7 +523,7 @@ public final class FollowMechanismPortTests {
                     && (profile == MaidBrainProfile.ENHANCED
                         ? coordinator.peekEnhancedCore() != null && coordinator.peekFaithfulBrain() == null
                         : coordinator.peekFaithfulBrain() != null && coordinator.peekEnhancedCore() == null),
-                "Natural full root, owner or tick phase changed");
+                "Natural full root, owner or tick phase changed: " + boundary);
             var actor = profile == MaidBrainProfile.ENHANCED ? coordinator.peekEnhancedCore()
                 .actor()
                 : coordinator.peekFaithfulBrain()
@@ -619,9 +663,10 @@ public final class FollowMechanismPortTests {
             r.addProperty("nativeHandlerPresent", owner.playerNetServerHandler != null);
             r.addProperty("memoryChannelOpen", channel.isOpen() && manager.isChannelOpen());
             r.addProperty("realNetworkLogin", false);
+            r.addProperty("nativeLoginInitializationComplete", nativeLoginComplete);
             r.addProperty(
                 "registrationMethod",
-                "ServerConfigurationManager.playerLoggedIn with isolated PLAY channel; no real client login");
+                "ServerConfigurationManager.initializeConnectionToPlayer including native FML login events; isolated PLAY channel, no real client login");
             r.addProperty("dimension", owner.dimension);
             if (full) {
                 var raw = new NBTTagCompound();
@@ -705,16 +750,12 @@ public final class FollowMechanismPortTests {
                 if (food != null) helper.getWorld()
                     .removeEntity(food);
                 if (owner != null) {
-                    // 对应本夹具的SCM/world/PlayerManager登记，归还原生已建立的订阅和全局表
+                    // 与完整初始化配对，正常FML退出事件也必须归还各模组登录状态
                     var server = MinecraftServer.getServer();
                     if (server.getConfigurationManager().playerEntityList.contains(owner)) {
-                        owner.getServerForPlayer()
-                            .getPlayerManager()
-                            .removePlayer(owner);
-                        server.getConfigurationManager().playerEntityList.remove(owner);
-                        net.minecraftforge.common.chunkio.ChunkIOExecutor.adjustPoolSize(
-                            server.getConfigurationManager()
-                                .getCurrentPlayerCount());
+                        server.getConfigurationManager()
+                            .playerLoggedOut(owner);
+                        output.addProperty("nativeLogoutComplete", true);
                     }
                     helper.getWorld()
                         .removePlayerEntityDangerously(owner);
@@ -732,6 +773,8 @@ public final class FollowMechanismPortTests {
                     for (int b = 0; b < 11; b++) for (int c = 0; c < 9; c++) helper.setBlock(a, b, c, Blocks.air);
                 output.addProperty("ownCleanupComplete", true);
             } finally {
+                MinecraftServer.getServer()
+                    .setCanSpawnAnimals(oldAnimals);
                 var world = helper.getWorld();
                 world.setWorldTime(oldTime);
                 world.difficultySetting = oldDifficulty;

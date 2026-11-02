@@ -16,6 +16,16 @@ gradle.projectsEvaluated {
         resources.srcDir(new File(tool, 'resources'))
         compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath + project.files(devJar)
     }
+    // Concrete GT machine fixtures need their actual target-platform API hierarchy at QA compile time.
+    for (coordinate in [
+        'com.github.GTNewHorizons:GTNHLib:0.11.54:dev',
+        'com.github.GTNewHorizons:StructureLib:1.4.47:dev',
+        'com.github.GTNewHorizons:ModularUI:1.3.4:dev',
+        'com.github.GTNewHorizons:ModularUI2:2.3.94-1.7.10:dev',
+        'com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1095-GTNH:dev'
+    ]) {
+        project.dependencies.add(sources.compileOnlyConfigurationName, coordinate) { transitive = false }
+    }
     project.tasks.named(sources.processResourcesTaskName).configure {
         from(project.file('tools/sleep-natural-reference/contract.json')) { into 'tlmnh-sleep' }
         from(project.file('tools/sleep-natural-reference/paired-contract.json')) { into 'tlmnh-sleep' }
