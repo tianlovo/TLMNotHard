@@ -196,6 +196,9 @@ public final class ClientDevelopmentControl {
                         "beds",
                         com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.snapshot(minecraft));
                     response.add(
+                        "shrines",
+                        com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation.snapshot(minecraft));
+                    response.add(
                         "cabinets",
                         com.tianluoqaq.tlmnh.client.development.life.CabinetRenderObservation.snapshot(minecraft));
                     response.add(

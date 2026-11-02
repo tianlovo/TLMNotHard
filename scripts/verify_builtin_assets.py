@@ -95,12 +95,24 @@ def verify(read):
         data = read(path)
         if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
             raise ValueError(f"Cabinet resource differs from fixed upstream: {path}")
+    shrine = json.loads(read("assets/tlmnh/shrine-assets-provenance.json"))
+    expected_shrine = {
+        "assets/touhou_little_maid/models/bedrock/block/shrine.json",
+        "assets/touhou_little_maid/textures/bedrock/block/shrine.png",
+        "assets/touhou_little_maid/textures/items/shrine.png"}
+    if shrine["commit"] != provenance["commit"] or shrine["license"] != "CC-BY-NC-SA-4.0" or set(shrine["files"]) != expected_shrine:
+        raise ValueError("Shrine asset provenance differs from fixed upstream")
+    for path, expected in shrine["files"].items():
+        data = read(path)
+        if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+            raise ValueError(f"Shrine resource differs from fixed upstream: {path}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
             "core_files": len(core["files"]), "gui_files": len(gui["files"]),
             "lifecycle_files": len(lifecycle["files"]),
             "bed_files": len(bed["files"]),
             "cabinet_files": len(cabinet["files"]),
+            "shrine_files": len(shrine["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 

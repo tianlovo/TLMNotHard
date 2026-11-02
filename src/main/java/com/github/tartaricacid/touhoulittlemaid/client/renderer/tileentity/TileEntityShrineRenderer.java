@@ -99,6 +99,8 @@ public final class TileEntityShrineRenderer extends TileEntitySpecialRenderer {
                     icon.getIconHeight(),
                     1F / 16F);
             }
+            com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation
+                .completed(shrine, model, display != null);
             return true;
         }, () -> false);
     }
