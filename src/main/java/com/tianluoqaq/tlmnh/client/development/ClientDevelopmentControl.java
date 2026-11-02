@@ -192,6 +192,9 @@ public final class ClientDevelopmentControl {
                         "tombstones",
                         com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation
                             .snapshot(minecraft));
+                    response.add(
+                        "beds",
+                        com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.snapshot(minecraft));
                     response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
                     response.add(
                         "worldSounds",

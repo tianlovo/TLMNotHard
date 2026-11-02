@@ -72,6 +72,7 @@ public final class TileEntityMaidBedRenderer extends TileEntitySpecialRenderer {
                     vertices.end();
                 }
             }
+            com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.completed(bed, model, texture);
             return true;
         }, () -> false);
     }

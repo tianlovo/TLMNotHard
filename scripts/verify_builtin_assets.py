@@ -72,10 +72,23 @@ def verify(read):
         data = read(path)
         if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
             raise ValueError(f"Lifecycle resource differs from fixed upstream: {path}")
+    bed = json.loads(read("assets/tlmnh/bed-assets-provenance.json"))
+    colors = {"white", "black", "yellow", "blue", "green", "purple", "pink"}
+    expected_bed = {f"assets/touhou_little_maid/{kind}/{color}.{extension}"
+                    for color in colors for kind, extension in (
+                        ("models/bedrock/block/maid_bed", "json"), ("textures/bedrock/block/maid_bed", "png"))}
+    expected_bed.add("assets/touhou_little_maid/textures/items/maid_bed.png")
+    if bed["commit"] != provenance["commit"] or bed["license"] != "CC-BY-NC-SA-4.0" or set(bed["files"]) != expected_bed:
+        raise ValueError("Bed asset provenance differs from fixed upstream palette")
+    for path, expected in bed["files"].items():
+        data = read(path)
+        if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+            raise ValueError(f"Bed resource differs from fixed upstream: {path}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
             "core_files": len(core["files"]), "gui_files": len(gui["files"]),
             "lifecycle_files": len(lifecycle["files"]),
+            "bed_files": len(bed["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 

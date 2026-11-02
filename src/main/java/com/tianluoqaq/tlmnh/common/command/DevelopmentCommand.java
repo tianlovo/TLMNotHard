@@ -276,6 +276,10 @@ public final class DevelopmentCommand extends CommandBase {
                 .setVisualFixture(getPlayer(sender, args[1]), args[2]);
             return;
         }
+        if (args.length == 3 && "lab-bed-visual".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.life.MaidBedVisualFixture.set(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
         if (args.length == 3 && "lab-tombstone-visual".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture
                 .set(getPlayer(sender, args[1]), args[2]);
