@@ -12,7 +12,7 @@ import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAcc
 import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.common.shield.TinkersDefenseShields;
 
-/** native 实装盾牌的物品能力；玩家专用事件、动画和箭捕获不在这里冒充可复用 */
+/** native 实装盾牌的物品能力，玩家专用事件和动画不伪装成NPC可复用入口 */
 public final class MaidShieldItems {
 
     private MaidShieldItems() {}
@@ -102,6 +102,20 @@ public final class MaidShieldItems {
             if (!Float.isFinite(value) || value < 0) throw new IllegalStateException("Invalid shield damage reduction");
             return value;
         }, () -> 0F);
+    }
+
+    public static boolean supportsArrowCapture(ItemStack stack) {
+        if (stack == null || stack.getItem() == null) return false;
+        String id = itemId(stack);
+        if (!BattlegearShieldAccess.supports(id) && !TinkersDefenseShields.supports(id)) return false;
+        return IntegrationGuard
+            .call(ExternalFeature.SHIELDS, () -> BattlegearShieldAccess.supportsArrowCapture(stack), () -> false);
+    }
+
+    public static BattlegearShieldAccess.ArrowCapture prepareArrowCapture(ItemStack stack) {
+        if (!supportsArrowCapture(stack)) return null;
+        return IntegrationGuard
+            .call(ExternalFeature.SHIELDS, () -> BattlegearShieldAccess.prepareArrowCapture(stack), () -> null);
     }
 
     /** Forge 的精确工具能力映射，既不猜显示名称，也不把 GT 链锯当成普通斧 */

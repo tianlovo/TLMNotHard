@@ -49,7 +49,7 @@ public final class MaidShieldController {
         public final boolean using, activeTaskRunning, arrowCatchSupported;
         public final Cause cause;
         public final int passiveRemaining, currentItemCooldown;
-        public final long maintenanceTicks, activeEndTime, reentrantRejections;
+        public final long maintenanceTicks, activeEndTime, reentrantRejections, caughtArrows;
         public final String itemId, lastStop;
 
         private Snapshot(MaidShieldController controller) {
@@ -60,11 +60,13 @@ public final class MaidShieldController {
             maintenanceTicks = controller.maintenanceTicks;
             activeEndTime = controller.activeEndTime;
             reentrantRejections = controller.reentrantRejections;
+            caughtArrows = controller.caughtArrows;
             var stack = controller.maid.getOffhandItem();
             itemId = MaidShieldItems.itemId(stack);
             currentItemCooldown = stack == null ? 0 : controller.getCooldownRemaining(stack.getItem());
             lastStop = controller.lastStop;
-            arrowCatchSupported = false;
+            arrowCatchSupported = MaidShieldArrowCapture.available(controller.maid)
+                && MaidShieldItems.supportsArrowCapture(stack);
         }
     }
 
@@ -74,7 +76,7 @@ public final class MaidShieldController {
         public final int depth, requestedWear, stackSizeAfter, cooldownApplied;
         public final Outcome outcome;
         public final boolean blocked, wearCallbackInvoked, brokenAfter, equipmentChangedDuringCallback;
-        public final boolean arrowCatchSupported = false;
+        public final boolean arrowCatchSupported;
         public final String itemId, sourceType, sourceEntity, directEntity;
         public final Float amount, relativeYaw, blockAngle, durabilityReduction;
 
@@ -85,6 +87,8 @@ public final class MaidShieldController {
             this.depth = depth;
             this.outcome = outcome;
             blocked = outcome == Outcome.BLOCKED;
+            arrowCatchSupported = com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin.hasShieldCaptureHook()
+                && MaidShieldItems.supportsArrowCapture(shield);
             this.itemId = itemId;
             sourceType = source == null ? "" : source.getDamageType();
             sourceEntity = source == null ? "" : id(source.getEntity());
@@ -115,7 +119,7 @@ public final class MaidShieldController {
     private boolean activeTaskRunning;
     private Object activeTaskOwner;
     private int passiveRemaining;
-    private long maintenanceTicks, activeEndTime, sequence, reentrantRejections;
+    private long maintenanceTicks, activeEndTime, sequence, reentrantRejections, caughtArrows;
     private World lastTickWorld;
     private World lastActiveWorld;
     private long lastTickTime = Long.MIN_VALUE;
@@ -500,12 +504,16 @@ public final class MaidShieldController {
                     0);
                 return;
             }
+            // 计数API先在副本上执行，依赖失败时本次不取消伤害、不磨盾也不改箭
+            var capture = MaidShieldArrowCapture.prepare(maid, shield, source);
+            if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+                .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)
+                || !sameUseContext(use, shield, world, identity)) return;
             event.setCanceled(true);
             maid.playSound(
                 com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.BLOCK_SOUND,
                 1,
                 1);
-            // NPC箭捕获另做原生碰撞时序验收，此切片不调用EntityPlayer专用catchArrow
             if (wear >= 0) {
                 wore = true;
                 shield.damageItem(wear, maid);
@@ -521,6 +529,8 @@ public final class MaidShieldController {
                 cooldown = MaidShieldRules.DISABLE_TICKS;
                 release(use, "shield_disabled");
             }
+            if (capture != null && sameUse && capture.commit(() -> sameUseContext(use, shield, world, identity)))
+                caughtArrows++;
             // 物品回调可换槽；只清本次磨损的实际那份装备
             if (maid.getOffhandItem() == shield && shield.stackSize <= 0) maid.setOffhandItem(null);
             uses.reconcile();

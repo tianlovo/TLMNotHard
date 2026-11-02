@@ -17,8 +17,15 @@ import org.spongepowered.asm.service.MixinService;
 /** 启动阶段只读字节码，不提前加载模组实体；不兼容的可选碰撞钩子留给伤害前后备 */
 public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
+    private static volatile boolean shieldCaptureHook;
+
+    public static boolean hasShieldCaptureHook() {
+        return shieldCaptureHook;
+    }
+
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return supportsShieldCapture(targetClassName);
         if (!mixinClassName.endsWith(".MixinArrowImpact")) return true;
         if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.qaProjectileImpactFallback"))
             return false;
@@ -64,6 +71,61 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
         return next;
     }
 
+    private static AbstractInsnNode previousCode(AbstractInsnNode instruction) {
+        var previous = instruction.getPrevious();
+        while (previous != null && previous.getOpcode() < 0) previous = previous.getPrevious();
+        return previous;
+    }
+
+    /** 仅接受唯一伤害调用和原生getArrowCount()+1布局，不改写未知引擎实现 */
+    private static boolean supportsShieldCapture(String targetClassName) {
+        try {
+            var node = MixinService.getService()
+                .getBytecodeProvider()
+                .getClassNode(targetClassName);
+            for (Object rawMethod : node.methods) {
+                var method = (MethodNode) rawMethod;
+                if (!(method.name.equals("onUpdate") || method.name.equals("func_70071_h_"))
+                    || !method.desc.equals("()V")) continue;
+                int attacks = 0, additions = 0;
+                boolean afterAttack = false;
+                for (var instruction = method.instructions.getFirst(); instruction
+                    != null; instruction = instruction.getNext()) {
+                    if (!(instruction instanceof MethodInsnNode call)) continue;
+                    if (call.owner.equals("net/minecraft/entity/Entity")
+                        && (call.name.equals("attackEntityFrom") || call.name.equals("func_70097_a"))
+                        && call.desc.equals("(Lnet/minecraft/util/DamageSource;F)Z")) {
+                        attacks++;
+                        afterAttack = true;
+                    }
+                    if (call.owner.equals("net/minecraft/entity/EntityLivingBase")
+                        && (call.name.equals("setArrowCountInEntity") || call.name.equals("func_85034_r"))
+                        && call.desc.equals("(I)V")) {
+                        var add = previousCode(call);
+                        var one = add == null ? null : previousCode(add);
+                        var get = one == null ? null : previousCode(one);
+                        if (afterAttack && add != null
+                            && add.getOpcode() == Opcodes.IADD
+                            && one != null
+                            && one.getOpcode() == Opcodes.ICONST_1
+                            && get instanceof MethodInsnNode getter
+                            && getter.owner.equals("net/minecraft/entity/EntityLivingBase")
+                            && (getter.name.equals("getArrowCountInEntity") || getter.name.equals("func_85035_bI"))
+                            && getter.desc.equals("()I")) additions++;
+                        else return false;
+                    }
+                }
+                if (attacks == 1 && additions == 1) return true;
+            }
+            LogManager.getLogger("tlmnh")
+                .warn("Native arrow shield capture shape changed; capture hook disabled");
+        } catch (Exception | LinkageError failure) {
+            LogManager.getLogger("tlmnh")
+                .warn("Cannot inspect native shield capture hook; capture disabled", failure);
+        }
+        return false;
+    }
+
     @Override
     public void onLoad(String mixinPackage) {}
 
@@ -84,5 +146,18 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
     public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}
 
     @Override
-    public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}
+    public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+        if (!mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return;
+        int calls = 0;
+        for (Object rawMethod : targetClass.methods) {
+            var method = (MethodNode) rawMethod;
+            if (!(method.name.equals("onUpdate") || method.name.equals("func_70071_h_")) || !method.desc.equals("()V"))
+                continue;
+            for (var instruction = method.instructions.getFirst(); instruction
+                != null; instruction = instruction.getNext())
+                if (instruction instanceof MethodInsnNode call && call.name.contains("tlmnh$shieldArrowDamage"))
+                    calls++;
+        }
+        shieldCaptureHook = calls == 1;
+    }
 }

@@ -15,7 +15,8 @@
     "MixinEntityPlayerVehicle",
     "MixinArrowFlightState",
     "MixinArrowImpact",
-    "MixinArrowSource"
+    "MixinArrowSource",
+    "MixinEntityArrowShieldCapture"
   ],
   "client": [],
   "server": []
