@@ -1385,6 +1385,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (maid.ridingEntity != null) maid.mountEntity(null);
     }
 
+    /** 原生伤害响应只清理已持有的床位，不创建Brain帧或启动新的动作 */
+    public void wakeOwnedSleepOnHurt() {
+        if (maid.worldObj == world && !world.isRemote) life.wake();
+    }
+
     public void clearSleepingIfPresent() {
         guard();
         life.wake();

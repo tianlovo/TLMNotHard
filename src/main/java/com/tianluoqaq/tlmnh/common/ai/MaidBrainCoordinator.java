@@ -667,8 +667,17 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     /** 只在原生伤害入口确实接受攻击后记录；取消/免疫的攻击不刷新记忆 */
     public void recordAcceptedHurt() {
-        if (maid.worldObj != null && !maid.worldObj.isRemote && maid.isEntityAlive())
-            hurtMemory.record(maid.worldObj, maid.worldObj.getTotalWorldTime());
+        if (maid.worldObj == null || maid.worldObj.isRemote || !maid.isEntityAlive()) return;
+        hurtMemory.record(maid.worldObj, maid.worldObj.getTotalWorldTime());
+        // 1.20.1原生受伤会同步stopSleeping，不能等优先级任务下次执行才释放床位
+        var faithful = peekFaithfulBrain();
+        if (faithful != null) faithful.getActor()
+            .wakeOwnedSleepOnHurt();
+        else {
+            var enhanced = peekEnhancedCore();
+            if (enhanced != null) enhanced.actor()
+                .wakeOwnedSleepOnHurt();
+        }
     }
 
     public boolean hasRecentHurt() {

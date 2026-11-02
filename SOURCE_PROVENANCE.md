@@ -1320,3 +1320,11 @@ Et Futurum Requiem 2.6.65实际TileEntityBarrel第183/202行以Reference.MCAsset
 实读EFR2.6.65的EtFuturum第912/915行与ServerEventHandler第380/1620行，确认其现代资源域提供entity.item_frame.add_item/remove_item及player声音类别，本工程仍由compat/etfuturum/common/sound适配
 固定ItemFilm第103～113行恒常isFoil=true，并为空女仆数据添加原深红提示；MaidFilmItem保留原文和闪光，空数据判断适配本项目凭证形状，不在客户端查询或公开服务端女仆账本
 神龛中的闪光按实际旧平台ItemRenderer的原生双层深度相等效果适配，使用游戏自有闪光纹理和时钟，不新增或复制音频/纹理资产，原神龛与胶片位置变换保持
+
+## 现代睡眠的受伤清理与床索引
+
+固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `entity/poi/MaidPoiManager.java:21–26` 只将HEAD且未OCCUPIED状态登记为床POI
+MaidModernLife的已加载床头索引增加同一未占用筛选；MaidBedTask保留原包及MIT来源，既有Tile租约验证和生命周期失效清理继续负责实际占用
+原版完整自然Brain的睡中generic伤害采集显示：接受伤害的返回阶段睡姿和床占用已清理
+移植EntityMaid的实际接受伤害回调经MaidBehaviorProtection进入协调器，只让当前F/N已持有的床资源同步wake，不创建或推进新的Brain帧，也不重置任务/路径或假造token
+该改动由176原始轨迹暴露的即时状态差异驱动；取消/免疫攻击、任意伤害类型和整个睡眠生命周期不由这个局部结论宣称等价

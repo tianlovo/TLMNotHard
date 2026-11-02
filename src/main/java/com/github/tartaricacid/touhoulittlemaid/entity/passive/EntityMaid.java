@@ -334,7 +334,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             boolean accepted = super.attackEntityFrom(source, amount);
             if (accepted && damageHistory != null && worldObj != null && !worldObj.isRemote)
                 damageHistory.record(worldObj, worldObj.getTotalWorldTime(), source);
-            if (accepted && brain != null) brain.recordAcceptedHurt();
+            if (accepted && brain != null) behaviorProtection.run(brain::recordAcceptedHurt);
             return accepted;
         } finally {
             if (worldSounds != null) worldSounds.endDamage(previous);
