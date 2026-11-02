@@ -93,7 +93,13 @@ final class MaidModernLife {
             || world.getTileEntity(bed.xCoord, bed.yCoord, bed.zCoord) != bed
             || !bed.complete()
             || maid.getDistanceSq(bed.xCoord + .5, bed.yCoord + .8, bed.zCoord + .5) > 16
-            || !bed.claim(maid)) wake();
+            || !bed.claim(maid)
+            || !current.getAsBoolean()) {
+            wake();
+            return;
+        }
+        // 原EntityMaid.onMaidSleep在后续实体tick固定床头+.5625；入睡当帧仍由sleepAt保留+.8
+        maid.setPosition(bed.xCoord + .5, bed.yCoord + .5625, bed.zCoord + .5);
     }
 
     void wake() {

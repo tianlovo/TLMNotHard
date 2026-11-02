@@ -1231,3 +1231,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 通过POI `Occupancy.ANY` 查最近床，开始睡眠时另核头部方块与占用
 159据此去除本工程 `MaidModernLife.findBed` 的两个可用性预过滤，保留低平台加载边界与实际占用提交保护，增强选择器继续独立
 这是已读原方法的语义修正，不等于完成原版自然睡眠测评；定向运行范围见PROGRESS
+
+## 现代睡眠位置与移动相位
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `entity/passive/EntityMaid.java` 中
+`baseTick` 调用 `onMaidSleep`，后者在睡眠时固定床头中心、高度+.5625并清运动；原 `MaidBedTask.start` 另保留入睡帧+.8
+本工程自然观察实际发现F短暂下落弹起、N水平滑移，据此在 `MaidModernLife.maintain` 核床身份及租约后更新后续帧位置
+旧平台move/jump helper位于现代Brain之后，移植实体在现代profile睡眠的travel入口清残留输入与运动，再执行原生travel
+默认Legacy不进入新增travel分支；原版样本、移植观察及定向验证范围见PROGRESS，完整B10与统计收益另行验收

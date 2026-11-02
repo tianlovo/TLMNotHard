@@ -212,6 +212,13 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void moveEntityWithHeading(float strafe, float forward) {
+        if (hasPose(MaidPose.SLEEPING) && usesModernCoreNavigation()) {
+            // 原睡眠逐tick清运动；旧move/jump helper在现代Brain之后仍可能重新投递移动
+            clearBehaviorInputs();
+            motionX = motionY = motionZ = 0;
+            super.moveEntityWithHeading(0, 0);
+            return;
+        }
         if (brain != null && brain.getBreathController()
             .travelWater()) return;
         if (aquatic != null && aquatic.travelWater(strafe, forward)) return;

@@ -1145,3 +1145,10 @@ L3实际场景和范围见PROGRESS：同JAR/观察器正常三项16/24/4tick、�
 `MaidModernLife.findBed` 对应原版POI的 `Occupancy.ANY`，不在最近候选排序前过滤占用位或租约可用性；实际 `sleepAt` 保留占用与租约提交检查
 N的 `EnhancedLifeController` 使用自身传感器和合法床检查，仍可跳过不可用床；两种选择语义分开，不能把N策略作为F的原版行为
 159按L2实际验证F正常睡醒、F最近占用床生命周期和完整N返家睡眠三例，无新CPU或主客户端执行，完整自然O/F/N及B10仍待完成
+
+## 现代睡眠相位
+
+现代F/N的床位由 `MaidModernLife` 保有，维护有效租约后固定后续睡眠帧床头+.5625，入睡当帧仍保留原MaidBedTask的+.8
+1.7.10原生EntityLiving在导航/现代Brain后执行move、look、jump控制，再由EntityLivingBase进入travel；只在sleepAt清一次速度会留下后续移动
+实体的现代睡眠travel分支清本帧输入和运动后调用原生travel，保留原引擎后续重力，不向外部坐骑/远距传送强制拉回旧床
+源码前提与许可来源见SOURCE_PROVENANCE；自然观察工具和局部结果见tools/sleep-natural-reference及PROGRESS，完整B10/统计收益不由该位置检查授予
