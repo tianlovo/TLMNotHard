@@ -44,9 +44,8 @@ final class MaidModernLife {
                 for (Object value : chunk.chunkTileEntityMap.values()) {
                     if (!(value instanceof TileEntityMaidBed bed) || bed.getWorldObj() != world
                         || bed.isInvalid()
-                        || !bed.complete()
-                        || (world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 4) != 0
-                        || !bed.available(maid)) continue;
+                        || !bed.complete()) continue;
+                    // 原POI检索使用Occupancy.ANY；最近床的占用只在sleepAt实际提交时检查
                     double dx = bed.xCoord - center.x, dy = bed.yCoord - center.y, dz = bed.zCoord - center.z;
                     if (dx * dx + dy * dy + dz * dz > (double) radius * radius) continue;
                     dx = bed.xCoord - mx;

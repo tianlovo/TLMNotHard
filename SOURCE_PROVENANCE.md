@@ -1224,3 +1224,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 旧平台资源重载和GL状态边界由本工程适配，实体库存继续由既有世界账本持有
 暮色提供方类型判断位于 `compat/twilightforest/client/render`，使用实际类型身份而非固定维度号；未知接口仅回退默认纹理
 本目标未接入Aether联动，保留原纹理不代表对应维度运行验收；实际世界和资源重载范围见PROGRESS
+
+## 忠实最近床选择
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `entity/ai/brain/task/MaidBedTask.java`
+通过POI `Occupancy.ANY` 查最近床，开始睡眠时另核头部方块与占用
+159据此去除本工程 `MaidModernLife.findBed` 的两个可用性预过滤，保留低平台加载边界与实际占用提交保护，增强选择器继续独立
+这是已读原方法的语义修正，不等于完成原版自然睡眠测评；定向运行范围见PROGRESS
