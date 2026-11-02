@@ -1,0 +1,19 @@
+{
+  "schema": "sleep-natural-feasibility-contract-v1",
+  "contract": "SLEEP_NATURAL_HOME_OFFLINE_O_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "repetitions": 3,
+  "framesPerActor": 150,
+  "warmupTicks": 30,
+  "dayTime": 6000,
+  "schedule": "NIGHT",
+  "owner": "offline_uuid_no_player",
+  "homeCenter": [7, 1, 4],
+  "maidSpawnBlock": [2, 1, 4],
+  "bedHead": [7, 1, 4],
+  "bedFoot": [7, 1, 5],
+  "bedFacing": "NORTH",
+  "randomSourcesReset": false,
+  "completeB10Accepted": false,
+  "scope": "Original natural full Brain home/offline baseline and self-variation only; no paired port or benchmark verdict"
+}

@@ -1,0 +1,95 @@
+// Independent original-side feasibility tool; apply this init alone, never to the GTNH project
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+def probePath = System.getenv('TLMNH_REFERENCE_PROBE')
+def toolPath = System.getenv('TLMNH_SLEEP_NATURAL_PROBE')
+def homePath = System.getenv('TLMNH_REFERENCE_HOME')
+if (!probePath || !toolPath || !homePath) throw new GradleException('Explicit original reference, sleep tool and external HOME required')
+def original = new File(probePath).canonicalFile
+def tool = new File(toolPath).canonicalFile
+def home = new File(homePath).canonicalFile
+def port = new File(tool, '../..').canonicalFile
+if (home.toPath().startsWith(port.toPath())) throw new GradleException('Sleep runtime must remain outside the port checkout')
+apply from: new File(original, 'reference.init.gradle')
+
+def selected = [
+    'com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid',
+    'com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidBrain',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBedTask',
+    'com.github.tartaricacid.touhoulittlemaid.block.BlockMaidBed',
+    'com.github.tartaricacid.touhoulittlemaid.tileentity.TileEntityMaidBed',
+    'com.github.tartaricacid.touhoulittlemaid.init.InitPoi',
+    'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
+    'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests$Session'
+].sort()
+def identityFile = new File(home, 'identity/sleep-natural-build.json')
+def sha = { byte[] b -> MessageDigest.getInstance('SHA-256').digest(b).encodeHex().toString() }
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    project.sourceSets.main.java.srcDir(new File(tool, 'reference'))
+    project.sourceSets.main.resources.srcDir(new File(tool, 'resources'))
+    project.tasks.named('processResources').configure {
+        from(new File(tool, 'contract.json')) { into 'tlmnh-sleep' }
+    }
+    def agentRoot = new File(tool, '../geometry-reference/agent').canonicalFile
+    def agentSources = project.sourceSets.create('sleepDefinitionAgent') { java.srcDir(agentRoot) }
+    project.tasks.named(agentSources.compileJavaTaskName).configure { options.release.set(17) }
+    def agent = project.tasks.register('sleepDefinitionAgentJar', Jar) {
+        dependsOn agentSources.classesTaskName
+        from agentSources.output
+        archiveFileName.set('sleep-definition-agent.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('sleep-reference'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        manifest.attributes('Premain-Class': 'com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent',
+            'Can-Redefine-Classes': 'false', 'Can-Retransform-Classes': 'false')
+    }
+    def identity = project.tasks.register('prepareSleepNaturalReferenceIdentity') {
+        dependsOn project.tasks.named('tlmnhReferenceRuntimeIdentity'), agent
+        doLast {
+            def baseFile = new File(home, 'identity/build-identity.json')
+            def base = new JsonSlurper().parse(baseFile)
+            if (base.status != 'LOCK_VERIFIED' || base.upstreamCommit != '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6')
+                throw new GradleException('Fixed original build identity is not verified')
+            def compiled = selected.collectEntries { name ->
+                def files = project.sourceSets.main.output.classesDirs.files.collect {
+                    new File(it, name.replace('.', '/') + '.class')
+                }.findAll { it.isFile() }
+                if (files.size() != 1) throw new GradleException('Missing/duplicate sleep class: ' + name)
+                [(name): sha(files[0].bytes)]
+            }
+            def inputs = project.fileTree(tool).matching {
+                include '**/*.java', '*.gradle', '*.json', 'resources/**/*.nbt'
+            }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
+            def value = [schema: 'sleep-natural-build-v1', upstreamCommit: base.upstreamCommit,
+                minecraft: '1.20.1', forge: '47.2.0', javaFeature: 17,
+                baseReferenceBuildIdentitySha256: sha(baseFile.bytes), baseReferenceBuildIdentity: base,
+                contractSha256: sha(new File(tool, 'contract.json').bytes),
+                definitionAgentSha256: sha(agent.get().archiveFile.get().asFile.bytes),
+                compiledClasses: compiled, toolInputs: inputs,
+                scope: 'original home/offline sleep feasibility and selected resource/first-definition identities; no paired benchmark or full classpath acceptance']
+            identityFile.parentFile.mkdirs()
+            identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+    }
+    project.minecraft.runs.gameTestServer {
+        workingDirectory new File(home, 'sleep-gametest')
+        property 'forge.enabledGameTestNamespaces', 'tlmnh_sleep_natural'
+        property 'forge.gameTestServer', 'true'
+        property 'tlmnh.sleepNaturalProbe', 'true'
+        property 'tlmnh.referenceProbe', 'false'
+        property 'tlmnh.sleep.buildIdentity', identityFile.absolutePath
+        property 'tlmnh.geometry.buildIdentity', identityFile.absolutePath
+    }
+    project.tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+        dependsOn identity
+        doFirst {
+            jvmArgs '-XX:+DisableAttachMechanism',
+                '-javaagent:' + agent.get().archiveFile.get().asFile.absolutePath + '=' + selected.join(',')
+        }
+    }
+}
