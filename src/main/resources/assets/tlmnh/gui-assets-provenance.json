@@ -200,6 +200,16 @@
       "path": "data/touhou_little_maid/chat_bubble/kaomoji.json",
       "source": "src/main/resources/data/touhou_little_maid/chat_bubble/kaomoji.json",
       "sha256": "fe297b1707c0df1ddcc3c8d7ccc9c5509a8e4a32b6563b3ca47370e2f56a7cd3"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/attack_task_config.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/attack_task_config.png",
+      "sha256": "d5588f713d829179dc3aa5421274d96ba5fac5b1cd749100def2ee0793748b44"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/default_task_config.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/default_task_config.png",
+      "sha256": "21d301963e2a37a8fa4f53249ff3aa19eaacd1c00fb11018adf85ced1eb49e4c"
     }
   ]
 }

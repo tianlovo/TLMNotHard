@@ -24,11 +24,14 @@ public class CommonProxy implements IGuiHandler {
     public static final int GUI_MAID_ORIGINAL_MODELS = 4;
     public static final int GUI_MAID_SOUNDS = 5;
     public static final int GUI_MAID_CONFIG = 6;
+    public static final int GUI_MAID_ATTACK_CONFIG = 7;
+    public static final int GUI_MAID_DEFAULT_TASK_CONFIG = 8;
 
     public void init() {
         MaidNamingNetwork.init();
         com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.init();
         com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork.init();
+        com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork.init();
     }
 
     public void enqueueMaidSound(
@@ -36,6 +39,8 @@ public class CommonProxy implements IGuiHandler {
 
     public void enqueueMaidEffects(
         com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage message) {}
+
+    public void enqueueMaidAttackSnapshot(com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot message) {}
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
@@ -45,11 +50,26 @@ public class CommonProxy implements IGuiHandler {
             && id != GUI_MAID_ORIGINAL
             && id != GUI_MAID_ORIGINAL_MODELS
             && id != GUI_MAID_SOUNDS
-            && id != GUI_MAID_CONFIG) || world == null || player == null || world != player.worldObj) return null;
+            && id != GUI_MAID_CONFIG
+            && id != GUI_MAID_ATTACK_CONFIG
+            && id != GUI_MAID_DEFAULT_TASK_CONFIG) || world == null || player == null || world != player.worldObj)
+            return null;
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
         if ((id == GUI_MAID || id == GUI_MAID_MODELS) && !Boolean.getBoolean("tlmnh.devCommands")) return null;
+        if (id == GUI_MAID_ATTACK_CONFIG || id == GUI_MAID_DEFAULT_TASK_CONFIG) {
+            long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
+            boolean attack = id == GUI_MAID_ATTACK_CONFIG;
+            if (session == 0 || player.inventory.getItemStack() != null
+                || !world.isRemote && (maid.getTask() != com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE) != attack)
+                return null;
+            return new com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer(
+                player.inventory,
+                maid,
+                session,
+                attack);
+        }
         if (id == GUI_MAID_CONFIG) return player.inventory.getItemStack() == null
             ? new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
                 player.inventory,

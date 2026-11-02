@@ -41,6 +41,7 @@ public class ContainerMaid extends Container {
     public static final int ACTION_CONFIG = 17;
     public static final int ACTION_ORIGINAL_MAIN = 18;
     public static final int ACTION_RIDEABLE = 19;
+    public static final int ACTION_TASK_CONFIG = 20;
     private final EntityMaid maid;
     private final EntityPlayer viewer;
     private int lastActionTick = Integer.MIN_VALUE;
@@ -114,12 +115,13 @@ public class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < ACTION_IDLE
-            || action > ACTION_RIDEABLE
+            || action > ACTION_TASK_CONFIG
             || lastActionTick == maid.ticksExisted) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
         if (action == ACTION_RIDEABLE && player.inventory.getItemStack() != null) return false;
         if ((action == ACTION_MODELS || action == ACTION_SOUNDS
             || action == ACTION_CONFIG
+            || action == ACTION_TASK_CONFIG
             || action == ACTION_ORIGINAL_MAIN) && player.inventory.getItemStack() != null) {
             player.addChatMessage(new ChatComponentTranslation("gui.tlmnh.models.put_down_item"));
             return false;
@@ -155,6 +157,7 @@ public class ContainerMaid extends Container {
                 .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_CONFIG, maid.worldObj, maid.getEntityId(), 0, 0);
             case ACTION_ORIGINAL_MAIN -> player
                 .openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, maid.worldObj, maid.getEntityId(), 0, 0);
+            case ACTION_TASK_CONFIG -> openTaskConfiguration(player);
             case ACTION_HOME -> {
                 return maid.getHomeArea()
                     .setEnabled(
@@ -186,6 +189,22 @@ public class ContainerMaid extends Container {
 
     protected int modelGuiId() {
         return CommonProxy.GUI_MAID_MODELS;
+    }
+
+    protected void openTaskConfiguration(EntityPlayer player) {
+        long session;
+        do {
+            session = java.util.concurrent.ThreadLocalRandom.current()
+                .nextLong();
+        } while (session == 0);
+        player.openGui(
+            TLMNotHard.INSTANCE,
+            maid.getTask() == MaidTask.IDLE ? CommonProxy.GUI_MAID_DEFAULT_TASK_CONFIG
+                : CommonProxy.GUI_MAID_ATTACK_CONFIG,
+            maid.worldObj,
+            maid.getEntityId(),
+            (int) (session >>> 32),
+            (int) session);
     }
 
     @Override

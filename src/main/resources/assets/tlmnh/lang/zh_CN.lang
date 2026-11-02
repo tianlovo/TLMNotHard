@@ -120,3 +120,14 @@ tooltip.tlmnh.protection.parcel=已保留原始物品数据，恢复兼容环境
 
 chat.tlmnh.protection.client_fallback=[TLMNH %s] 本地兼容保护：%s 已停用，服务端玩法和物品数据不受此故障影响，详情见客户端日志
 commands.tlmnhdev.brain_profile=开发行为策略 %s：%s
+
+gui.touhou_little_maid.default_task_config.title=当前工作任务没有任何配置项……
+gui.touhou_little_maid.monster_type.add=添加
+gui.touhou_little_maid.monster_type.title=女仆攻击列表
+gui.touhou_little_maid.monster_type.friendly=§a友好
+gui.touhou_little_maid.monster_type.neutral=§7中立
+gui.touhou_little_maid.monster_type.hostile=§c敌对
+gui.tlmnh.task_config.loading=正在读取攻击目标设置
+gui.tlmnh.task_config.unavailable=此列表暂时无法编辑，原有设置已保留，请重新打开页面
+gui.tlmnh.task_config.unknown_type=请输入已注册的生物 ID
+message.tlmnh.attack_config.denied=攻击目标设置未保存：编辑会话已失效或原有数据已改变，请重新打开页面

@@ -121,3 +121,14 @@ tooltip.tlmnh.protection.parcel=Original item data retained. Right-click after r
 
 chat.tlmnh.protection.client_fallback=[TLMNH %s] Local compatibility protection: %s disabled; server gameplay and item data are unaffected by this fault. See the client log
 commands.tlmnhdev.brain_profile=Development behavior profile %s: %s
+
+gui.touhou_little_maid.default_task_config.title=Current task does not have any config...
+gui.touhou_little_maid.monster_type.add=Add
+gui.touhou_little_maid.monster_type.title=Maid Attack List
+gui.touhou_little_maid.monster_type.friendly=§aFriendly
+gui.touhou_little_maid.monster_type.neutral=§7Neutral
+gui.touhou_little_maid.monster_type.hostile=§cHostile
+gui.tlmnh.task_config.loading=Loading target settings
+gui.tlmnh.task_config.unavailable=This list cannot be edited now; existing settings are preserved. Reopen the page.
+gui.tlmnh.task_config.unknown_type=Enter a registered living entity ID
+message.tlmnh.attack_config.denied=Target settings were not saved: the editor expired or its data changed. Reopen the page.

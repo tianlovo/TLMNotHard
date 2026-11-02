@@ -94,6 +94,10 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         return false;
     }
 
+    protected boolean isTaskConfigPage() {
+        return false;
+    }
+
     private void add(int id, int x, int y, int width, int height, ResourceLocation atlas, int u, int v, int hover,
         int selected, String key) {
         buttonList
@@ -113,11 +117,13 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             button.visible = button.id <= ContainerMaid.ACTION_RANGED || button.id == TASK_CLOSE
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
-            if (button.id == BAUBLE && isConfigPage()) button.visible = false;
+            if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
-                case DOWNLOAD, TASK_TAB, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case DOWNLOAD, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
                 case RIDE -> mc.thePlayer.inventory.getItemStack() == null;
-                case MAIN_TAB -> isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
+                case MAIN_TAB -> (isConfigPage() || isTaskConfigPage())
+                    && mc.thePlayer.inventory.getItemStack() == null;
+                case TASK_TAB -> !isTaskConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case CONFIG_TAB -> !isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case SKIN, SOUND -> mc.thePlayer.inventory.getItemStack() == null;
                 case ContainerMaid.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
@@ -128,7 +134,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             button.offsetV = button.id == SCHEDULE ? 14 * maid.getSchedule()
                 .ordinal() : 0;
             button.selected = switch (button.id) {
-                case MAIN_TAB -> !isConfigPage();
+                case MAIN_TAB -> !isConfigPage() && !isTaskConfigPage();
+                case TASK_TAB -> isTaskConfigPage();
                 case CONFIG_TAB -> isConfigPage();
                 case ContainerMaid.ACTION_HOME -> maid.getHomeArea()
                     .enabled();
@@ -150,6 +157,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case SOUND -> send(ContainerMaid.ACTION_SOUNDS);
             case MAIN_TAB -> send(ContainerMaid.ACTION_ORIGINAL_MAIN);
             case CONFIG_TAB -> send(ContainerMaid.ACTION_CONFIG);
+            case TASK_TAB -> send(ContainerMaid.ACTION_TASK_CONFIG);
             case SCHEDULE -> send(
                 ContainerMaid.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
@@ -159,7 +167,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         refreshButtons();
     }
 
-    private void send(int action) {
+    protected void send(int action) {
         mc.playerController.sendEnchantPacket(inventorySlots.windowId, action);
     }
 
@@ -179,6 +187,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "sound" -> SOUND;
             case "config" -> CONFIG_TAB;
             case "main_tab" -> MAIN_TAB;
+            case "task_config" -> TASK_TAB;
             default -> throw new IllegalArgumentException("Unknown original GUI action");
         };
         for (var button : buttonList) if (button.id == id && button.visible && button.enabled) {

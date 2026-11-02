@@ -44,6 +44,11 @@ public final class ClientProxy extends CommonProxy {
             .bus()
             .register(effects);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(effects);
+        var attacks = com.tianluoqaq.tlmnh.client.gui.MaidAttackDisplay.INSTANCE;
+        FMLCommonHandler.instance()
+            .bus()
+            .register(attacks);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(attacks);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS
             .register(new com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent());
         com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
@@ -94,6 +99,11 @@ public final class ClientProxy extends CommonProxy {
         if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer config)
             return new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui(
                 config);
+        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer task)
+            return task.attackPage()
+                ? new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui(task)
+                : new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.DefaultMaidTaskConfigGui(
+                    task);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         if (container instanceof ContainerMaidModels modelContainer) return modelContainer.isOriginalView()
@@ -101,5 +111,10 @@ public final class ClientProxy extends CommonProxy {
                 .openMaidModelGui(modelContainer)
             : new GuiMaidModels(modelContainer);
         return null;
+    }
+
+    @Override
+    public void enqueueMaidAttackSnapshot(com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot message) {
+        com.tianluoqaq.tlmnh.client.gui.MaidAttackDisplay.INSTANCE.enqueue(message);
     }
 }

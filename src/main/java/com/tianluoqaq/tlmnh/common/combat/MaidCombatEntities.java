@@ -16,13 +16,30 @@ public final class MaidCombatEntities {
     public static ResourceLocation id(Entity entity) {
         String nativeName = EntityList.getEntityString(entity);
         if (nativeName == null) return null;
+        return typeId(entity.getClass(), nativeName);
+    }
+
+    private static ResourceLocation typeId(Class<? extends Entity> type, String nativeName) {
         var registration = EntityRegistry.instance()
-            .lookupModSpawn(entity.getClass(), true);
+            .lookupModSpawn(type, true);
         String name = registration == null ? nativeName
             : registration.getContainer()
                 .getModId() + ":"
                 + registration.getEntityName();
         return new ResourceLocation(name.toLowerCase(Locale.ENGLISH));
+    }
+
+    /** 只读取注册类型，不为编辑器构造模组实体；ID与实际选敌使用同一归一化 */
+    @SuppressWarnings("unchecked")
+    public static java.util.Map<ResourceLocation, String> registeredLivingTypes() {
+        var result = new java.util.HashMap<ResourceLocation, String>();
+        for (Object raw : EntityList.stringToClassMapping.entrySet()) {
+            var entry = (java.util.Map.Entry<?, ?>) raw;
+            if (!(entry.getKey() instanceof String name) || !(entry.getValue() instanceof Class<?>type)
+                || !net.minecraft.entity.EntityLivingBase.class.isAssignableFrom(type)) continue;
+            result.putIfAbsent(typeId((Class<? extends Entity>) type, name), name);
+        }
+        return result;
     }
 
     public static boolean isArmorStand(Entity entity) {
