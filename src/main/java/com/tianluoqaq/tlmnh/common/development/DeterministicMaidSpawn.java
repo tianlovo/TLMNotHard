@@ -5,7 +5,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 /**
  * 为回归测试提供确定性的女仆初始化，消除rotation和SoundPackId的随机差异
  *
- * <p>仅用于开发测试fixture，不影响正常游戏spawn
+ * <p>
+ * 仅用于开发测试fixture，不影响正常游戏spawn
  */
 public final class DeterministicMaidSpawn {
 

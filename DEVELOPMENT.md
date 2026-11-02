@@ -1221,3 +1221,10 @@ EtFuturum声音适配位于compat/etfuturum/common/sound，惰性读取Reference
 成功放片、取片在原有转移完成后播放原物品展示框音效，拒绝分支不播；EFR域解析与整个世界声音调用处于SHRINE_SOUNDS独立保护内，回调失败只静音并告警，不重试交付、覆盖后继物品或撤销已提交槽位
 胶片沿原物品恒常闪光，空凭证形状使用原深红提示；提示仅反映本地物品形状，实际凭证有效性仍由服务端账本判断，注册名和原掉落保全实现不变
 神龛挤出物品的闪光使用目标原生双层物品效果，纹理矩阵、混合与深度状态由既有MaidItemRenderScope恢复；这是旧平台效果适配，不承诺原1.20.1闪光相位逐像素相同
+
+## 成对出生输入检查
+
+睡眠五机制合同的 `initialOrientation` 和 `initialSoundPackId` 在两端出生入口实际应用，不依赖展台系统属性
+`compare_mechanisms.py --require-deterministic-spawn` 检查实际朝向、插值前值、音色和同份 NBT 的反读值
+它可与 `--require-paired-inputs --require-immediate-hurt-wake` 合用；旧冻结工具与旧合同继续独立保留
+该检查仅证明所列出生输入，不重置随机源，不授予完整 NBT、跨平台物理、B10 或统计准入

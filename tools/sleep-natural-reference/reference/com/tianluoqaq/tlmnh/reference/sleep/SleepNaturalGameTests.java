@@ -224,6 +224,7 @@ public final class SleepNaturalGameTests {
                     .location());
             schedule.setConfigured(true);
             schedule.restrictTo(maid);
+            beforeSpawn();
             helper.assertTrue(level.addFreshEntity(maid), "Native maid registration failed");
             helper.assertTrue(
                 maid.getClass() == EntityMaid.class && !maid.isNoAi(),
@@ -254,6 +255,8 @@ public final class SleepNaturalGameTests {
         }
 
         int expectedPoiCount() { return 1; }
+
+        protected void beforeSpawn() {}
 
         protected void afterSpawn() {}
 

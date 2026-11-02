@@ -7,7 +7,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleDataCollection;
-import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.*;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData;
 
 public class MaidBubbleCodecTest {
 

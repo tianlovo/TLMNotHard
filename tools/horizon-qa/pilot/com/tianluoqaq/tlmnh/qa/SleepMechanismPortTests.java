@@ -141,6 +141,10 @@ public final class SleepMechanismPortTests {
                 output.add(
                     "pairedObserverArtifact",
                     DevelopmentArtifactIdentity.capture(SleepMechanismPortTests.class, Collector.class));
+                output.add(
+                    "spawnInputArtifact",
+                    DevelopmentArtifactIdentity
+                        .capture(com.tianluoqaq.tlmnh.common.development.DeterministicMaidSpawn.class));
             } catch (Exception error) {
                 throw new IllegalStateException("Paired observer identity unavailable", error);
             }
@@ -192,6 +196,26 @@ public final class SleepMechanismPortTests {
         }
 
         @Override
+        protected void beforeSpawn() {
+            var orientation = contract.getAsJsonObject("initialOrientation");
+            helper.assertTrue(
+                orientation.get("yaw")
+                    .getAsFloat() == 0
+                    && orientation.get("pitch")
+                        .getAsFloat() == 0
+                    && orientation.get("headYaw")
+                        .getAsFloat() == 0
+                    && orientation.get("bodyYaw")
+                        .getAsFloat() == 0
+                    && contract.get("initialSoundPackId")
+                        .getAsString()
+                        .equals(com.tianluoqaq.tlmnh.common.development.DeterministicMaidSpawn.FIXED_SOUND_PACK_ID),
+                "Unsupported paired spawn contract");
+            // 成对输入合同主动启用，不依赖展台开关，也不重置实体或世界随机源
+            com.tianluoqaq.tlmnh.common.development.DeterministicMaidSpawn.freezeInitialState(maid);
+        }
+
+        @Override
         protected void afterSpawn() {
             var initial = new JsonObject();
             initial.addProperty("width", maid.width);
@@ -222,6 +246,23 @@ public final class SleepMechanismPortTests {
             var raw = new NBTTagCompound();
             maid.writeToNBT(raw);
             initial.addProperty("rawInitialNBT", raw.toString());
+            var orientation = new JsonObject();
+            orientation.addProperty("yaw", maid.rotationYaw);
+            orientation.addProperty("pitch", maid.rotationPitch);
+            orientation.addProperty("headYaw", maid.rotationYawHead);
+            orientation.addProperty("bodyYaw", maid.renderYawOffset);
+            orientation.addProperty("previousYaw", maid.prevRotationYaw);
+            orientation.addProperty("previousPitch", maid.prevRotationPitch);
+            orientation.addProperty("previousHeadYaw", maid.prevRotationYawHead);
+            orientation.addProperty("previousBodyYaw", maid.prevRenderYawOffset);
+            initial.add("orientation", orientation);
+            var serializedRotation = new JsonArray();
+            var rotation = raw.getTagList("Rotation", 5);
+            serializedRotation.add(new com.google.gson.JsonPrimitive(rotation.func_150308_e(0)));
+            serializedRotation.add(new com.google.gson.JsonPrimitive(rotation.func_150308_e(1)));
+            initial.add("serializedRotation", serializedRotation);
+            initial.addProperty("soundPackId", maid.getSoundPackId());
+            initial.addProperty("serializedSoundPackId", raw.getString("SoundPackId"));
             var blocks = new JsonArray();
             for (int a = 0; a < 17; a++) for (int b = 0; b < 8; b++) for (int c = 0; c < 9; c++) {
                 var block = helper.getWorld()

@@ -82,5 +82,12 @@
   "statisticalVerdict": "NOT_EVALUATED",
   "scope": "Five paired mechanism/input exploration scenes before frozen statistical validation; one fresh actor per scene/profile, not full B10 or all fourteen benchmark acceptance",
   "difficulty": "HARD",
-  "emptyInventoryAndEffects": true
+  "emptyInventoryAndEffects": true,
+  "initialOrientation": {
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "headYaw": 0.0,
+    "bodyYaw": 0.0
+  },
+  "initialSoundPackId": "touhou_little_maid"
 }

@@ -1553,15 +1553,22 @@ Indev177 在真实接受伤害回调中，经既有行为失效保护同步清�
 相对坐标与UUID/离线主人身份分别核对，不能把原始绝对坐标差或独立身份直接判为行为错误；也不能把这些差异静默删除后称完整输入等价
 后续正式统计前需冻结实际朝向/音色并审查剩余字段语义；本轮只收口指定机制修复，完整环境/NBT等价、完整B10、30轮统计、14项O/F/N和发布门槛仍未准入，整体约61%保持
 
-## 确定性spawn消除初始随机差异
+## 确定性出生输入
 
-Indev178 新增 DeterministicMaidSpawn 工具类，为回归测试提供确定性的EntityMaid初始化，消除rotation和SoundPackId的随机差异
-固定音色为 touhou_little_maid，覆盖 DefaultMaidSoundPack 的随机选择；固定朝向为 yaw=0.0f pitch=0.0f，覆盖spawn的随机rotation
-通过系统属性 tlmnh.deterministicSpawn 控制是否启用，AnimationLab 在创建EntityMaid后、设置模型前调用 freezeInitialState
+Indev178 新增 DeterministicMaidSpawn，固定音色及朝向，系统属性仅控制 AnimationLab 的调用
+复核发现两端睡眠采集并未使用该入口，展台后续还会重新设置朝向；178 的代码实现不能证明成对采集已消除随机差异
+先前对 Fire、属性、库存和任务数据的完整等价表述也缺少证据，以下按实际场景收窄
 
-完整NBT差异审查(cache/validation/178-nbt-analysis.md)：Rotation/SoundPackId已通过确定性spawn解决；Fire字段(-1 vs 0)为版本差异，1.7.10默认0正常，保留
-Attributes/MaidInventory/MaidTaskDataMaps为序列化策略差异，保留；only_original字段(Brain/YsmModel等)为1.20.1新版本特性，only_port字段(TLMNH/ForgeData/Thaumic等)为1.7.10环境特有，各自保留
+Indev179 将初始化接入原版和 HQA 的真实出生入口，由同一合同明确朝向和音色
+记录实际身体、头部、俯仰及插值前值，并从同份保存 NBT 读取 Rotation/SoundPackId，验证真实生效
+原版五例及完整 F/N 十例共十五只新实体、3600 自然帧完成，HQA/JUnit 与进程退出一致
+选定输入、即时受伤醒来和新出生输入检查通过；旧合同和两种状态改写均被新检查器拒绝，原始资料分别保留
 
-本轮L0，提交961dfe9已完成代码实现，待网络恢复后构建验证；需实际运行确认确定性spawn生效，并更新input-audit记录随机差异消除
-完整输入等价确认、完整B10、30轮统计、14项O/F/N和发布门槛继续待完成，整体约61%保持
+Fire 的负值不是火免疫，两端只在当前无火石台场景均未燃烧；现代空属性列表不代表所有属性为零
+空库存和默认选敌分支已作有界审查，不由序列化格式差异推定完整库存、任务或跨平台物理等价
+完整原始 NBT 和平台附加字段保留，完整输入/B10/统计及十四类测评仍未准入，不继续为此扩大重复采样
+
+179 完整构建、Checkstyle、419 项主测试及 92 项客户端 Gson 检查通过，1288 类最高 Java8及既有资源检查通过
+首次完整构建发现的旧测试星号导入违规已修正，失败记录保留；本轮没有新客户端或多人验收，最近主客户端仍175
+整体约61%保持，接着合批推进背负显示和生命周期提交边界等实际功能，正式版门槛保持未完成
 

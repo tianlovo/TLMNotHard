@@ -232,6 +232,7 @@ public final class NaturalSleepPortTests {
                     && home.capture(Activity.IDLE)
                     && home.capture(Activity.REST),
                 "Natural home anchors rejected");
+            beforeSpawn();
             helper.spawnEntity(maid, 2.5, 1, 4.5);
             var selected = maid.selectBrainProfileForDevelopment(profile);
             helper.assertTrue(
@@ -267,6 +268,8 @@ public final class NaturalSleepPortTests {
             runs.add(row);
             afterSpawn();
         }
+
+        protected void beforeSpawn() {}
 
         protected void afterSpawn() {}
 

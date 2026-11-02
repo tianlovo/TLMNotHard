@@ -100,6 +100,17 @@ public final class SleepMechanismGameTests {
         // 原MaidPoiManager只注册未占用的床头，Occupancy.ANY不会包含已移除的记录
         @Override int expectedPoiCount() { return mechanism.equals("occupied_release") ? 0 : 1; }
 
+        @Override protected void beforeSpawn() {
+            var input = contract.getAsJsonObject("initialOrientation");
+            maid.setYRot(input.get("yaw").getAsFloat());
+            maid.setXRot(input.get("pitch").getAsFloat());
+            maid.setYHeadRot(input.get("headYaw").getAsFloat());
+            maid.setYBodyRot(input.get("bodyYaw").getAsFloat());
+            maid.yRotO = maid.getYRot(); maid.xRotO = maid.getXRot();
+            maid.yHeadRotO = maid.getYHeadRot(); maid.yBodyRotO = maid.yBodyRot;
+            maid.setSoundPackId(contract.get("initialSoundPackId").getAsString());
+        }
+
         @Override protected void afterSpawn() {
             var initial = new JsonObject();
             initial.addProperty("width", maid.getBbWidth()); initial.addProperty("height", maid.getBbHeight());
@@ -110,6 +121,17 @@ public final class SleepMechanismGameTests {
             initial.addProperty("pickup", maid.isPickup()); initial.addProperty("difficulty", level.getDifficulty().name());
             initial.addProperty("raining", level.isRaining()); initial.addProperty("thundering", level.isThundering());
             var raw = new CompoundTag(); maid.saveWithoutId(raw); initial.addProperty("rawInitialNBT", raw.toString());
+            var orientation = new JsonObject();
+            orientation.addProperty("yaw", maid.getYRot()); orientation.addProperty("pitch", maid.getXRot());
+            orientation.addProperty("headYaw", maid.getYHeadRot()); orientation.addProperty("bodyYaw", maid.yBodyRot);
+            orientation.addProperty("previousYaw", maid.yRotO); orientation.addProperty("previousPitch", maid.xRotO);
+            orientation.addProperty("previousHeadYaw", maid.yHeadRotO); orientation.addProperty("previousBodyYaw", maid.yBodyRotO);
+            initial.add("orientation", orientation);
+            var serializedRotation = new JsonArray(); var rotation = raw.getList("Rotation", 5);
+            serializedRotation.add(rotation.getFloat(0)); serializedRotation.add(rotation.getFloat(1));
+            initial.add("serializedRotation", serializedRotation);
+            initial.addProperty("soundPackId", maid.getSoundPackId());
+            initial.addProperty("serializedSoundPackId", raw.getString("SoundPackId"));
             var blocks = new JsonArray();
             for (int a = 0; a < 17; a++) for (int b = 0; b < 8; b++) for (int c = 0; c < 9; c++) {
                 var state = level.getBlockState(origin.offset(a, b, c));

@@ -147,6 +147,25 @@ def pair_inputs(original, port):
             "scope": "recorded scalar/home/layout comparison; raw NBT retained, engine RNG/physics and full inventory semantics not qualified"}
 
 
+def deterministic_spawn_inputs(data):
+    """核实际出生状态和同一份NBT的读取值，不由调用工具函数推断生效"""
+    contract = data["contract"]
+    require("initialOrientation" in contract and "initialSoundPackId" in contract,
+            "deterministic spawn contract absent")
+    expected = dict(contract["initialOrientation"])
+    expected.update({"previous" + key[0].upper() + key[1:]: value for key, value in list(expected.items())})
+    require(set(expected) == {"yaw", "pitch", "headYaw", "bodyYaw", "previousYaw", "previousPitch",
+                              "previousHeadYaw", "previousBodyYaw"}, "unknown orientation contract")
+    for row in data["runs"]:
+        initial = row["actualInputs"]
+        require(initial.get("orientation") == expected, "actual spawn orientation differs from contract")
+        require(initial.get("serializedRotation") == [expected["yaw"], expected["pitch"]],
+                "serialized spawn rotation differs from contract")
+        require(initial.get("soundPackId") == initial.get("serializedSoundPackId") == contract["initialSoundPackId"],
+                "actual/serialized spawn sound pack differs from contract")
+    return {"passed": True, "scope": "actual and serialized initial orientation/sound only; RNG streams not reset or paired"}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--original-captures", type=Path, required=True)
@@ -158,6 +177,7 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--require-immediate-hurt-wake", action="store_true")
     p.add_argument("--require-paired-inputs", action="store_true")
+    p.add_argument("--require-deterministic-spawn", action="store_true")
     args = p.parse_args()
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
@@ -188,6 +208,8 @@ def main():
         differences = original_identity(original, args.original_build.read_bytes(), tool, args.original_agent.read_bytes())
         require(json.loads(args.original_build.read_bytes())["contractSha256"] == sha(contract_bytes), "build contract differs")
         summaries = [inspect(original, contract, sha(contract_bytes), "original")]
+        if args.require_deterministic_spawn:
+            summaries[0]["deterministic_spawn_inputs"] = deterministic_spawn_inputs(original)
         if args.require_immediate_hurt_wake and mechanism == "hurt_sleeping":
             summaries[0]["immediate_hurt_wake"] = immediate_hurt_wake(original)
         pairs = {}
@@ -199,7 +221,12 @@ def main():
             artifact(port["pairedObserverArtifact"], pilot, PAIRED_OBSERVER)
             if "difficulty" in contract:
                 artifact(port["sleepOwnerArtifact"], args.candidate_jar, SLEEP_OWNER)
+            if args.require_deterministic_spawn:
+                artifact(port["spawnInputArtifact"], args.candidate_jar,
+                         ["com.tianluoqaq.tlmnh.common.development.DeterministicMaidSpawn"])
             summaries.append(inspect(port, contract, sha(contract_bytes), profile))
+            if args.require_deterministic_spawn:
+                summaries[-1]["deterministic_spawn_inputs"] = deterministic_spawn_inputs(port)
             pairs[profile] = pair_inputs(original, port)
             if args.require_paired_inputs:
                 require(not pairs[profile]["recorded_field_differences"] and pairs[profile]["semantic_block_layout_equal"]
