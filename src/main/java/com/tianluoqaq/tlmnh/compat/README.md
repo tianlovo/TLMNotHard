@@ -33,6 +33,7 @@ compat/
 | MalisisDoors（`malisisdoors`） | `common/block`、`development/block` | 动画门状态、门与栅栏门开关、动画完成态夹具 |
 | TConstruct（`tconstruct`） | `common/tool`、`development/tool` | 工具 NBT、构造事件身份、真实 ToolBuilder |
 | TinkersDefense（`tinkersdefense`） | `common/shield`、`development/shield` | 两种盾牌的数据合同、合法物品构造与取样 |
+| Twilight Forest（`twilightforest`） | `client/render` | 通过实际维度提供方类型选择原版墓碑纹理，不写死维度号 |
 
 ## 调用边界
 

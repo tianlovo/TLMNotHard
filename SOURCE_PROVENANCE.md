@@ -1213,3 +1213,14 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 `MaidHeadAttachment` 和 `MaidHeadItemRenderer` 是本工程适配：按两种骨架的原定位、缩放及偏移调用1.7.10原生头颅/方块渲染，补读模型原有的 `show_custom_head` 标记
 旧平台SkullOwner复合与字符串格式均只读；旧方块元数据保留物品颜色及植物公开状态，原生库存坐标与现代方块坐标作显式桥接，不据此宣称两版本方块几何或材质完全相同
 显示能力独立隔离，失效不改物品或所有权；普通护甲沿内置模型的原动画显隐，不新增上游没有的通用人形护甲层
+
+## 原版墓碑外观
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+`client/renderer/entity/EntityTombstoneRenderer.java` 和 `client/model/bedrock/SimpleBedrockModel.java` 保留原包移植
+原墓碑几何、默认/下界/末地/暮色/天境五张纹理的原字节、源路径及许可列于 `assets/tlmnh/lifecycle-assets-provenance.json`
+六项资源沿原资产CC-BY-NC-SA-4.0许可，不合并为代码MIT；原双行标签译文从固定上游语言文件保留
+
+旧平台资源重载和GL状态边界由本工程适配，实体库存继续由既有世界账本持有
+暮色提供方类型判断位于 `compat/twilightforest/client/render`，使用实际类型身份而非固定维度号；未知接口仅回退默认纹理
+本目标未接入Aether联动，保留原纹理不代表对应维度运行验收；实际世界和资源重载范围见PROGRESS

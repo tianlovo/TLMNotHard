@@ -134,3 +134,6 @@ gui.tlmnh.task_config.unknown_type=Enter a registered living entity ID
 message.tlmnh.attack_config.denied=Target settings were not saved: the editor expired or its data changed. Reopen the page.
 feature.tlmnh.protection.client_slot_icons=Empty hand slot icons
 feature.tlmnh.protection.client_head_items=Maid head attachments
+feature.tlmnh.protection.client_tombstone=Maid tombstone rendering
+feature.tlmnh.protection.client_tombstone_dimension_texture=Tombstone dimension texture
+entity.touhou_little_maid.tombstone.display=Laid to rest here

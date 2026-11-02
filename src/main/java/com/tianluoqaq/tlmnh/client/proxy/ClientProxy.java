@@ -7,13 +7,13 @@ import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
+import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityTombstoneRenderer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
-import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneRenderer;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
@@ -64,7 +64,10 @@ public final class ClientProxy extends CommonProxy {
         ((IReloadableResourceManager) manager).registerReloadListener(
             new com.github.tartaricacid.touhoulittlemaid.client.resource.listener.EmojiReloadListener());
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
-        RenderingRegistry.registerEntityRenderingHandler(MaidTombstoneEntity.class, new TombstoneRenderer());
+        var tombstoneModels = new com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources();
+        ((IReloadableResourceManager) manager).registerReloadListener(tombstoneModels);
+        RenderingRegistry
+            .registerEntityRenderingHandler(MaidTombstoneEntity.class, new EntityTombstoneRenderer(tombstoneModels));
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             try {
                 FMLCommonHandler.instance()

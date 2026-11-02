@@ -1,0 +1,38 @@
+{
+  "upstream": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "license_file": "licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt",
+  "files": {
+    "assets/touhou_little_maid/models/bedrock/entity/tombstone.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/tombstone.json",
+      "bytes": 3041,
+      "sha256": "9d737f27047318c03c3bab417ed8cc0d86650800e7bea1b665ff89e66bfccf4d"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_overworld.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_overworld.png",
+      "bytes": 2569,
+      "sha256": "d70120464c760aa4645f4e304344dd42dba68efbb59cda17083b9370442736dc"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_the_nether.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_the_nether.png",
+      "bytes": 2182,
+      "sha256": "981e41ba8201618360b01b99b5f6d4550f47822368dda1c49fb34e2e6b172d60"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_the_end.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_the_end.png",
+      "bytes": 2151,
+      "sha256": "58ac3799fac91e7d2700398bde5f2378070e50bf1f24b76566b7eee1ad3040ba"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_twilight_forest.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_twilight_forest.png",
+      "bytes": 2099,
+      "sha256": "14207475b8a2d201c32a302639db8e518527be22557ca0c3da83948b5519236a"
+    },
+    "assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_aether.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/tombstone/tombstone_aether.png",
+      "bytes": 2144,
+      "sha256": "d7adccb06a5887d48d15b37568ddd6ec17b40e0a989355543103572f349e93b8"
+    }
+  }
+}

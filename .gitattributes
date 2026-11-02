@@ -16,6 +16,8 @@ src/main/resources/assets/authors_and_credits/** -text
 src/main/resources/assets/geckolib/** -text
 src/main/resources/assets/minecraft_15th/** -text
 src/main/resources/assets/touhou_little_maid/** -text
+# 原基岩几何的CRLF也属于来源字节，按原行尾检查而不转换资产
+src/main/resources/assets/touhou_little_maid/models/bedrock/** whitespace=cr-at-eol
 src/main/resources/assets/touhou_little_maid_old/** -text
 src/main/resources/assets/touhou_little_maid_seihou/** -text
 licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt -text
