@@ -27,6 +27,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidRenderer extends RenderLiving {
 
+    private static final float[] SLEEP_ROTATIONS = { 90, 0, 270, 180 };
     private static final String DEFAULT_MODEL = "touhou_little_maid:hakurei_reimu";
     private final BuiltinMaidModels models;
     private final MaidHeldItemLayer heldItems = new MaidHeldItemLayer();
@@ -108,6 +109,28 @@ public final class MaidRenderer extends RenderLiving {
     protected ResourceLocation getEntityTexture(Entity entity) {
         return modelFor((EntityMaid) entity).getChoice()
             .getTexture();
+    }
+
+    @Override
+    protected void rotateCorpse(EntityLivingBase entity, float age, float yaw, float partialTick) {
+        var maid = (EntityMaid) entity;
+        if (!maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING) || maid.deathTime > 0) {
+            super.rotateCorpse(entity, age, yaw, partialTick);
+            return;
+        }
+        int direction = maid.getSleepingBedDirection();
+        float rotation = yaw;
+        if (direction >= 0) {
+            var step = net.minecraft.block.BlockBed.field_149981_a[direction];
+            float eyeOffset = com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING.height
+                * (maid.isSitting() ? .65F : .85F) - .1F;
+            GL11.glTranslatef(-step[0] * eyeOffset, 0, -step[1] * eyeOffset);
+            // 原LivingEntityRenderer：SOUTH90/WEST0/NORTH270/EAST180
+            rotation = SLEEP_ROTATIONS[direction];
+        }
+        GL11.glRotatef(rotation, 0, 1, 0);
+        GL11.glRotatef(getDeathMaxRotation(entity), 0, 0, 1);
+        GL11.glRotatef(270, 0, 1, 0);
     }
 
     @Override

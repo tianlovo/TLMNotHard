@@ -74,6 +74,7 @@ final class MaidModernLife {
         }
         maid.getMealController()
             .cancel();
+        maid.setSleepingBedDirection(world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
         maid.setPose(MaidPose.SLEEPING, true);
         // 原MaidBedTask在LivingEntity.startSleeping之后覆盖为床头+.8
         maid.setPositionAndUpdate(point.x + .5, point.y + .8, point.z + .5);
@@ -99,6 +100,7 @@ final class MaidModernLife {
             return;
         }
         // 原EntityMaid.onMaidSleep在后续实体tick固定床头+.5625；入睡当帧仍由sleepAt保留+.8
+        maid.setSleepingBedDirection(world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
         maid.setPosition(bed.xCoord + .5, bed.yCoord + .5625, bed.zCoord + .5);
     }
 

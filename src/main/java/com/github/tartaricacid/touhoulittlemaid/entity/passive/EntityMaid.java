@@ -57,6 +57,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final int DATA_POSE = 28;
     private static final int ENTITY_POSE_SHIFT = 8;
     private static final int ENTITY_POSE_MASK = 3 << ENTITY_POSE_SHIFT;
+    private static final int SLEEP_DIRECTION_SHIFT = 10;
+    private static final int SLEEP_DIRECTION_MASK = 7 << SLEEP_DIRECTION_SHIFT;
     private com.tianluoqaq.tlmnh.common.entity.MaidEntityPose appliedEntityPose = com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING;
     private float poseEyeHeight = 1.5F * .85F;
     // 29 由 MaidHomeArea 使用，声音占用 30
@@ -583,10 +585,25 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void setPose(MaidPose pose, boolean active) {
         if (worldObj.isRemote) return;
         int flags = dataWatcher.getWatchableObjectInt(DATA_POSE);
-        dataWatcher.updateObject(DATA_POSE, active ? flags | pose.getMask() : flags & ~pose.getMask());
+        int updated = active ? flags | pose.getMask() : flags & ~pose.getMask();
+        if (pose == MaidPose.SLEEPING && !active) updated &= ~SLEEP_DIRECTION_MASK;
+        dataWatcher.updateObject(DATA_POSE, updated);
         if (pose == MaidPose.SLEEPING && ((flags & pose.getMask()) != 0) != active) setEntityPose(
             active ? com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING
                 : com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING);
+    }
+
+    /** 0..3沿旧床metadata方向；-1为无已确认床，不把未知值猜成南向 */
+    public int getSleepingBedDirection() {
+        int encoded = (dataWatcher.getWatchableObjectInt(DATA_POSE) & SLEEP_DIRECTION_MASK) >>> SLEEP_DIRECTION_SHIFT;
+        return encoded >= 1 && encoded <= 4 ? encoded - 1 : -1;
+    }
+
+    public void setSleepingBedDirection(int direction) {
+        if (worldObj.isRemote) return;
+        if (direction < -1 || direction > 3) throw new IllegalArgumentException("Invalid sleeping bed direction");
+        int flags = dataWatcher.getWatchableObjectInt(DATA_POSE);
+        dataWatcher.updateObject(DATA_POSE, (flags & ~SLEEP_DIRECTION_MASK) | (direction + 1) << SLEEP_DIRECTION_SHIFT);
     }
 
     @Override

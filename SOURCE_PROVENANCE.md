@@ -1272,3 +1272,10 @@ Indev163时方块视觉仍是原生床占位，原七模型/纹理及蓝色半�
 Chunk先注册Tile，再经世界更新入口调用观察者；更新回调可以失败或改变现场，因此不能用返回值或方块类型推定旧Tile仍由本次持有
 原生Forge负责捕获方块快照、MultiPlace事件及取消恢复；本入口保留该外层流程，仅在自己的放置与通知完成后确认本次身份和物品来源
 新增持久未提交记录及保守拒用属于本工程数据保护，不称为上游TLM原有存档字段；范围和实际验证见DEVELOPMENT与PROGRESS
+
+## 原版睡眠根变换
+
+固定TLM的 `EntityMaidRenderer.setupRotations` 与 `geckolib3/geo/GeoReplacedEntityRenderer` 继承现代父渲染器的睡眠分支，后者也在旋转前平移模型
+本目标原版1.20.1映射Forge47.2.0的 `LivingEntityRenderer.render/setupRotations/sleepDirectionToRotation` 及方向switch已从实际类字节读取
+方向为南90、西0、北270、东180度，随后Z轴getFlipDegrees及Y270；站姿眼高平移沿固定原EntityMaid的身高与坐姿比例
+本工程旧版MaidRenderer补入活着时的卧姿根变换；服务端以既有姿态同步值携带已确认床方向，醒来清理，属于低平台适配，未声称原版死亡/游泳等其它分支已全部等价

@@ -250,6 +250,7 @@ public final class MaidLifeController {
                 return false;
             }
             // 不推进动画钟；实体仍有原生重力和碰撞，只固定已占用床上的休息位置
+            maid.setSleepingBedDirection(maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
             maid.setPosition(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
             maid.setJumping(false);
@@ -507,6 +508,7 @@ public final class MaidLifeController {
             maid.getMealController()
                 .cancel();
             sleeping = true;
+            maid.setSleepingBedDirection(maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
             maid.setPose(MaidPose.SLEEPING, true);
             maid.setPositionAndUpdate(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
