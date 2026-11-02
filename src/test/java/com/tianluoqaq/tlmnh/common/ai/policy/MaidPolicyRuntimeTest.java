@@ -117,8 +117,8 @@ public class MaidPolicyRuntimeTest {
                         .isCurrent(previous));
                 assertFalse(runtime.isReady());
             };
-            assertEquals(profile == MaidBrainProfile.FAITHFUL_TLM, profile.isAvailable());
-            if (profile == MaidBrainProfile.FAITHFUL_TLM) assertTrue(profile.isDevelopmentOnly());
+            assertTrue(profile.isAvailable());
+            assertTrue(profile.isDevelopmentOnly());
             assertEquals(SelectionResult.UNAVAILABLE, runtime.select(profile));
             assertEquals(profile, runtime.getProfile());
             assertFalse(runtime.isReady());

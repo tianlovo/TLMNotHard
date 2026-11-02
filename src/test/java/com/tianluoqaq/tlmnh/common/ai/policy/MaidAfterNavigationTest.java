@@ -64,8 +64,11 @@ public class MaidAfterNavigationTest {
         assertTrue(
             sample.runtime.getProfile()
                 .isDevelopmentOnly());
-        assertFalse(MaidBrainProfile.FAITHFUL_TLM.isAvailable());
-        assertFalse(MaidBrainProfile.ENHANCED.isAvailable());
+        assertTrue(MaidBrainProfile.FAITHFUL_TLM.isAvailable());
+        assertTrue(MaidBrainProfile.ENHANCED.isAvailable());
+        assertTrue(MaidBrainProfile.ENHANCED.isDevelopmentOnly());
+        assertEquals(SelectionResult.UNAVAILABLE, sample.runtime.select(MaidBrainProfile.FAITHFUL_TLM));
+        assertEquals(SelectionResult.UNAVAILABLE, sample.runtime.select(MaidBrainProfile.ENHANCED));
     }
 
     @Test

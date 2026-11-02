@@ -57,7 +57,7 @@ public final class FaithfulPolicyTests {
                     .getCommandManager()
                     .executeCommand(
                         MinecraftServer.getServer(),
-                        "tlmnhdev brain-profile " + f.maid.getEntityId() + " enhanced");
+                        "tlmnhdev brain-profile " + f.maid.getEntityId() + " follow_core_component");
                 helper.assertTrue(
                     old[0].isRetired() && !old[0].getContext()
                         .isCurrent(token),
@@ -68,17 +68,17 @@ public final class FaithfulPolicyTests {
             if (phase[0] == 1) {
                 helper.assertTrue(
                     brain.peekPolicyRuntime()
-                        .getProfile() == MaidBrainProfile.ENHANCED
+                        .getProfile() == MaidBrainProfile.FOLLOW_CORE_COMPONENT
                         && !brain.peekPolicyRuntime()
                             .isReady()
                         && brain.peekFaithfulBrain() == null,
-                    "Unavailable N silently restored F or prototype");
+                    "Unbound component silently restored F or prototype");
                 helper.assertTrue(
                     legacy[0] == brain.getCombatController()
                         .getTicks() && legacy[1]
                             == brain.getFollowController()
                                 .getTicks(),
-                    "Unavailable N dispatched prototype");
+                    "Unbound component dispatched prototype");
                 if (age < 8) return false;
                 helper.assertTrue(
                     f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.FAITHFUL_TLM)

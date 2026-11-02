@@ -538,3 +538,11 @@ Indev145 的 `tlmnhqapilot:EnhancedFollowRecoveryTests` 核超64格的实际恢�
 探针输入适配位于 `compat/lwjgl3ify/development/input`，经公开TextEvent再走原生字符回调；动作白名单和文本事件缺失的首两轮失败保留
 首个翻页观察器选择了仍在第一页的蜘蛛，截图复核不计第二页通过；另以第八个注册ID验证第一页不能点击、第二页可改以及重新打开后的服务器数据，未将两轮合成一次全绿
 没有新CPU单测、全GUI输入矩阵、自然战斗、多人或首版发布结论
+
+### 完整增强模式的实际绑定
+
+`EnhancedPolicyTests` 从实际实体保护入口选择 `ENHANCED`，核独立增强根、原生导航之后的阶段、运行身份和旧原型零调度
+密封低氧场景限制每世界每tick一次实际A*，核真实预检、额度等待及队列保持6tick；移动生命周期场景自然行走后暂停、原生NBT重建、切F再回N，旧runtime/actor失效且原双手NBT保持15tick
+旧清理回调抛接口缺失异常时，新N工厂和其他模式恢复均被阻止，清理仅一次、附魔苹果保持8tick；同包F未绑定follow组件拒绝/NBT重建13tick、旧N组件NBT后原身份10tick通过，五项JSON/XML/process0一致
+56项选定策略检查另核窄回调不能取得完整N资格；首轮一旧available元数据断言失败，保留后修正，未放宽拒绝/取消/不回退语义
+该模式仍仅开发可选；未把旧component自然轨迹改为完整N结果，未验收十四类O/F/N、性能收益、多客户端或首版

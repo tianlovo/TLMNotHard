@@ -138,7 +138,7 @@ public final class EnhancedCoreTests {
     }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 30, batch = "enhanced_core_lifecycle")
-    public static void nativeReadRebuildsIndependentCoreAndFullEnhancedRemainsUnavailable(GameTestHelper helper) {
+    public static void nativeReadRebuildsIndependentCoreAndRetainsOwnedItems(GameTestHelper helper) {
         var f = new ModernCoreTests.Fixture(helper, false);
         var first = select(helper, f);
         var brain = f.maid.getBrainCoordinator();
@@ -148,7 +148,6 @@ public final class EnhancedCoreTests {
         var diamond = new ItemStack(Items.diamond, 7);
         f.maid.setOffhandItem(diamond.copy());
         int[] phase = { 0 }, changedAt = { 0 };
-        long[] legacy = new long[2];
         helper.succeedWhen(() -> {
             int age = f.maid.ticksExisted;
             if (age < 4) return false;
@@ -174,40 +173,15 @@ public final class EnhancedCoreTests {
                         && brain.peekPolicyRuntime()
                             .getProfile() == MaidBrainProfile.ENHANCED_CORE_COMPONENT,
                     "Natural tick failed to reconstruct independent core after native read");
-                helper.assertTrue(
-                    f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED)
-                        == MaidPolicyRuntime.SelectionResult.UNAVAILABLE,
-                    "Partial core acquired complete N identity");
-                f.maid.setHealth(10);
-                f.maid.getMaidInventory()
-                    .setInventorySlotContents(1, new ItemStack(Items.golden_apple, 2, 1));
-                legacy[0] = brain.getFollowController()
-                    .getTicks();
-                legacy[1] = brain.getCombatController()
-                    .getTicks();
                 changedAt[0] = age;
                 phase[0] = 2;
                 return false;
             }
             helper.assertTrue(
-                !brain.peekPolicyRuntime()
-                    .isReady() && brain.peekEnhancedCore() == null
-                    && brain.peekFaithfulBrain() == null
-                    && legacy[0] == brain.getFollowController()
-                        .getTicks()
-                    && legacy[1] == brain.getCombatController()
-                        .getTicks(),
-                "Unavailable full N dispatched another decision root");
-            helper.assertTrue(
-                !f.maid.getMealController()
-                    .isEating()
-                    && f.maid.getItemUseState()
-                        .peek() == null
-                    && ItemStack.areItemStacksEqual(
-                        new ItemStack(Items.golden_apple, 2, 1),
-                        f.maid.getMaidInventory()
-                            .getStackInSlot(1)),
-                "Unavailable full N restarted prototype meal outside its decision root");
+                brain.peekEnhancedCore() != null && brain.peekEnhancedCore() != first
+                    && brain.peekPolicyRuntime()
+                        .getProfile() == MaidBrainProfile.ENHANCED_CORE_COMPONENT,
+                "Component NBT rebuild changed its explicitly selected profile");
             helper.assertTrue(
                 ItemStack.areItemStacksEqual(diamond, f.maid.getOffhandItem()),
                 "Lifecycle lost owned item");
