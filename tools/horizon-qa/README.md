@@ -650,3 +650,9 @@ NaturalSleepPortTests在完整F/N每帧记录实际sleepDirection，并检查自
 `tlmnhdev lab-sleep-visual <player> reimu-north|reimu-east|winefox-east|clear` 仅在本人安全虚空场景建立可恢复的显示姿态，不模拟自然AI或物品消费
 夹具保存原实体字段、头背槽完整NBT以及原位置/朝向，意外移动或装备拒覆盖；清理核并删除自有无物品床，同命令恢复原女仆，不让中间world tick驱动场景
 客户端maidSleepRenders记录实际根变换返回、同步方向、模型及位置；计数不代替可见像素，也不代替自然行为采样、完整原版成像或真实多人验收
+
+## 睡眠普通菜单与独立物品交互
+
+SleepingGuiTests创建独立原生EntityPlayerMP及实际世界女仆，默认Legacy，直接走EntityMaid.interact和注册FML开窗流程
+两项覆盖睡眠普通入口/菜单页拒绝、醒来构造安装关闭及真实导航停止、非法会话/光标保留原路径，以及睡眠命名牌和喂金苹果的独立条件与物品守恒
+原女仆库存、手持数量/NBT、药效与睡眠方向均按实际状态断言；内存通道无真实FML客户端投递目标，不将本轮服务端流程称作鼠标/GUI像素/多人网络验收
