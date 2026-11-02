@@ -26,6 +26,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Map<UUID, Entry> entries = new HashMap<>();
     private final Map<UUID, ReturnedFilm> returnedFilms = new HashMap<>();
     private final Set<UUID> reservations = new HashSet<>();
+    private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
 
     public MaidLifecycleData(String name) {
@@ -84,6 +85,14 @@ public final class MaidLifecycleData extends WorldSavedData {
     /** 库存单独保管，不属于复活身份；库存存入后由墓碑凭证领取 */
     public UUID depositDeath(UUID owner, UUID deadMaid, NBTTagCompound identity, NBTTagList items, int dimension,
         double x, double y, double z, String name) {
+        return depositDeath(owner, deadMaid, identity, items, dimension, x, y, z, name, 0, 0);
+    }
+
+    /** 经验与墓碑物品分别兑现，胶片身份始终不携带这份余额 */
+    public UUID depositDeath(UUID owner, UUID deadMaid, NBTTagCompound identity, NBTTagList items, int dimension,
+        double x, double y, double z, String name, int experience, long experienceReadyAt) {
+        if (experience < 0 || experienceReadyAt < 0)
+            throw new IllegalArgumentException("Invalid death experience escrow");
         var token = deathToken(deadMaid);
         if (token == null) token = newFilm(owner, deadMaid, identity);
         var entry = entries.get(token);
@@ -94,10 +103,50 @@ public final class MaidLifecycleData extends WorldSavedData {
             entry.y = y;
             entry.z = z;
             entry.name = name;
+            entry.experience = experience;
+            entry.experienceReadyAt = experienceReadyAt;
             entry.delivered = true;
             markDirty();
         }
         return token;
+    }
+
+    public java.util.List<UUID> pendingDeathExperience(int dimension, long now) {
+        var result = new java.util.ArrayList<UUID>();
+        for (var item : entries.entrySet()) {
+            var entry = item.getValue();
+            if (entry.kind == Kind.FILM && entry.delivered
+                && entry.dimension == dimension
+                && entry.experience > 0
+                && entry.experienceReadyAt <= now) result.add(item.getKey());
+        }
+        if (result.size() > 1) {
+            int cursor = experienceCursors.getOrDefault(dimension, 0);
+            java.util.Collections.rotate(result, -(cursor % result.size()));
+            experienceCursors.put(dimension, cursor == Integer.MAX_VALUE ? 0 : cursor + 1);
+        }
+        return result;
+    }
+
+    public int remainingDeathExperience(UUID token) {
+        var entry = entries.get(token);
+        return entry != null && entry.kind == Kind.FILM && entry.delivered ? entry.experience : 0;
+    }
+
+    public int reserveDeathExperience(UUID token) {
+        int remaining = remainingDeathExperience(token);
+        return remaining > 0 && reservations.add(token) ? remaining : 0;
+    }
+
+    public void finishDeathExperience(UUID token, int expected, int released) {
+        var entry = entries.get(token);
+        if (entry == null || !reservations.contains(token)
+            || entry.experience != expected
+            || released <= 0
+            || released > expected) throw new IllegalStateException("Death experience reservation or balance changed");
+        reservations.remove(token);
+        entry.experience -= released;
+        markDirty();
     }
 
     public java.util.List<UUID> pendingTombstones(int dimension) {
@@ -141,8 +190,15 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public void finishTombstone(UUID token, NBTTagList remainder) {
+        finishTombstone(token, null, remainder);
+    }
+
+    public void finishTombstone(UUID token, NBTTagList expected, NBTTagList remainder) {
         var entry = entries.get(token);
-        if (entry == null || !reservations.remove(token)) throw new IllegalStateException("No tombstone reservation");
+        if (entry == null || !reservations.contains(token)
+            || expected != null && !expected.equals(entry.tombstoneItems))
+            throw new IllegalStateException("Tombstone reservation or original contents changed");
+        reservations.remove(token);
         entry.tombstoneItems = (NBTTagList) remainder.copy();
         markDirty();
     }
@@ -226,7 +282,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     public void readFromNBT(NBTTagCompound tag) {
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (schema != 1 && schema != 2) throw new IllegalStateException("Unsupported maid lifecycle schema");
+        if (schema != 1 && schema != 2 && schema != 3)
+            throw new IllegalStateException("Unsupported maid lifecycle schema");
         var restored = new HashMap<UUID, Entry>();
         var list = tag.getTagList("Entries", 10);
         var initialOwners = new HashSet<UUID>();
@@ -263,6 +320,15 @@ public final class MaidLifecycleData extends WorldSavedData {
             entry.z = item.getDouble("Z");
             entry.name = item.getString("MaidName");
             entry.published = item.getBoolean("Published");
+            if (schema == 3 && (!item.hasKey("DeathExperience", 3) || !item.hasKey("ExperienceReadyAt", 4))
+                || item.hasKey("DeathExperience") && !item.hasKey("DeathExperience", 3)
+                || item.hasKey("ExperienceReadyAt") && !item.hasKey("ExperienceReadyAt", 4))
+                throw new IllegalStateException("Invalid death experience encoding");
+            entry.experience = item.getInteger("DeathExperience");
+            entry.experienceReadyAt = item.getLong("ExperienceReadyAt");
+            if (entry.experience < 0 || entry.experienceReadyAt < 0
+                || entry.experience > 0 && (kind != Kind.FILM || !entry.delivered))
+                throw new IllegalStateException("Invalid death experience balance");
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
                 throw new IllegalStateException("Invalid tombstone position");
             restored.put(token, entry);
@@ -291,13 +357,14 @@ public final class MaidLifecycleData extends WorldSavedData {
         returnedFilms.clear();
         returnedFilms.putAll(restoredFilms);
         reservations.clear();
+        experienceCursors.clear();
         healthy = true;
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 2);
+        tag.setInteger("Schema", 3);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -319,6 +386,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             data.setDouble("Z", entry.z);
             data.setString("MaidName", entry.name);
             data.setBoolean("Published", entry.published);
+            data.setInteger("DeathExperience", entry.experience);
+            data.setLong("ExperienceReadyAt", entry.experienceReadyAt);
             list.appendTag(data);
         }
         tag.setTag("Entries", list);
@@ -355,6 +424,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         private double z;
         private String name = "";
         private boolean published;
+        private int experience;
+        private long experienceReadyAt;
 
         private Entry(Kind kind, UUID owner, UUID subject, NBTTagCompound identity, boolean consumed,
             boolean delivered) {

@@ -125,12 +125,12 @@ public final class MaidLifecycleService {
             return Result.DENIED;
         var world = player.worldObj;
         int slot = player.inventory.currentItem;
-        if (!player.canPlayerEdit(x, y + 1, z, 1, stack) || player.inventory.currentItem != slot
-            || player.worldObj != world
-            || player.getCurrentEquippedItem() != stack
-            || stack.stackSize != 1
-            || player.getDistanceSq(x + .5, y + 1, z + .5) > 64
-            || !canUse(player)) return Result.DENIED;
+        var expected = stack.copy();
+        if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)
+            || !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
+                cpw.mods.fml.relauncher.Side.SERVER,
+                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PROGRESSION_RECIPES))
+            return Result.DENIED;
         var ledger = MaidLifecycleData.get(world);
         var token = ledger.acquiredToken(player.getUniqueID());
         var bound = MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, player.getUniqueID());

@@ -54,6 +54,9 @@ public final class MaidDeathService {
         double x = Math.floor(maid.posX) + 0.5D;
         double y = Math.max(5.0D, Math.min(world.getHeight() - 2.0D, Math.floor(maid.posY)));
         double z = Math.floor(maid.posZ) + 0.5D;
+        int experience = world.getGameRules()
+            .getGameRuleBooleanValue("doMobLoot") ? maid.getExperience() : 0;
+        long now = Math.max(0, world.getTotalWorldTime());
         ledger.depositDeath(
             owner,
             maid.getUniqueID(),
@@ -63,10 +66,14 @@ public final class MaidDeathService {
             x,
             y,
             z,
-            maid.getCustomNameTag());
+            maid.getCustomNameTag(),
+            experience,
+            now > Long.MAX_VALUE - 20 ? Long.MAX_VALUE : now + 20);
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) inventory.setInventorySlotContents(slot, null);
         inventory.recovery()
             .clear();
+        // 原生20tick死亡分支不能再投放已由世界余额持有的这份经验
+        maid.setExperience(0);
         try {
             ensureTombstone(world, token);
         } catch (RuntimeException exception) {
@@ -85,6 +92,7 @@ public final class MaidDeathService {
                 TLMNotHard.LOG.error("Pending tombstone publication failed", exception);
             }
         }
+        MaidDeathExperience.retryPending(world);
     }
 
     private static void ensureTombstone(World world, UUID token) {

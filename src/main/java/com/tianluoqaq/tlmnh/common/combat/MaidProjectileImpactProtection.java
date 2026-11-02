@@ -5,7 +5,9 @@ import java.util.UUID;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.passive.EntityTameable;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.server.MinecraftServer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.config.MaidCombatConfig;
@@ -13,7 +15,7 @@ import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
 
-/** 命中时鲜读友方关系；失败按射手隔离，后续不再消耗弓箭 */
+/** 命中前鲜读友方关系与服务端PvP；失败按射手隔离，后续不再消耗弓箭 */
 public final class MaidProjectileImpactProtection {
 
     private MaidProjectileImpactProtection() {}
@@ -51,6 +53,13 @@ public final class MaidProjectileImpactProtection {
             if (owner != null && (owner.equals(victim.getUniqueID())
                 || victim instanceof EntityTameable tameable && owner.equals(owner(tameable)))) return true;
             if (victim instanceof EntityLivingBase living && maid.isOnSameTeam(living)) return true;
+            if (victim instanceof EntityPlayer && !maid.worldObj.isRemote) {
+                // 女仆不是玩家，原EntityPlayerMP的PvP检查不会识别这种箭的主人
+                // 必须在原生碰撞开始点燃/伤害前鲜读规则，不能缓存发射时的许可
+                var server = MinecraftServer.getServer();
+                if (server == null) throw new IllegalStateException("Actual server PvP rule is unavailable");
+                if (!server.isPVPEnabled()) return true;
+            }
             var id = MaidCombatEntities.id(victim);
             return id != null && MaidCombatConfig.rangedIgnored(id.toString());
         } catch (Exception | LinkageError | AssertionError failure) {
@@ -63,7 +72,7 @@ public final class MaidProjectileImpactProtection {
         failure(
             maid,
             new IllegalStateException(
-                "Allied projectile reached the damage boundary; native impact interception unavailable or relationship changed"));
+                "Protected projectile reached the damage boundary; native impact interception unavailable or impact permission changed"));
     }
 
     static void failure(EntityMaid maid, Throwable cause) {

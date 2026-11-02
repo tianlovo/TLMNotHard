@@ -1388,3 +1388,23 @@ helper 合同或外部接口变化由既有客户端保护停用该手，真实�
 两份原几何/纹理沿CC-BY-NC-SA-4.0原字节导入，详见 `assets/tlmnh/banner-assets-provenance.json`，新增资源组独立于既有650项模型资源
 实装EFR的 `TileEntityBanner.setItemValues` 解释完整物品副本，确切原生TESR的 `getTexture` 负责底色、图案、染色及动态图案缓存
 只裁剪显示副本至原版底色及前16个已解析图案，原物品、未知NBT和原生缓存不回写；256项缓存暂满时跳过本帧，接口变化沿既有客户端保护停用该能力
+
+## 维度迁移、死亡经验及复活保全
+
+Forge1614的 `Entity.travelToDimension`、`ServerConfigurationManager.transferEntityToWorld` 为维度比例、坐标截断、End分支和默认Teleporter动态分派来源
+女仆使用独立提交边界，目标实际出生且完整快照复核前保留源实体；Hodgepodge实际 `findingSpawnPoint` 保护以finally恢复，不改变其他实体的转移实现
+固定上游死亡经验、`ItemFilm` 复活关闭家园的语义分别适配到原生经验球及既有生命周期账本，保留坐标与未知NBT
+经验使用实际 `EntityXPOrb.getXPSplit`，确认原生球登记后才扣账；墓碑领取和核心激活在外部回调后复核完整物品，拒绝时保留回调新状态
+
+## 原版客户端设置与附件
+
+固定上游全局设置入口和配置控件适配为本地设置页，保存后一次应用，取消/Esc不落盘，返回原女仆容器与任务草稿
+上游 `Vanishable` 背部附件包含原版罗盘；1.7.10沿确切罗盘物品识别，保留原附件定位及耐久显示规则
+头颅接实装EFR注册的 `TileEntityFancySkullRenderer`，使用其完整profile和外层模型路径；接口与提供方指纹按既有兼容保护管理
+原版四护甲详情标记和缺少通用HumanoidArmorLayer的渲染结构保留，不以新增玩家盔甲层代替原模型机制
+
+## 增强根恢复与实际PvP规则
+
+独立增强根在危险/氧气之后、一般战斗之前调度回血，保留刚受击且合法威胁的即时反击；床柜按实际Tile身份暂停失败候选并尝试可达替代
+不可达战斗目标消费既有导航失败时间与有限重试，此项运行超时仍待定位，不描述为已验
+女仆实际箭碰撞前重新读取服务器PvP规则，关闭时在原生点火和伤害前拒绝，不弱化来源或完整物品校验

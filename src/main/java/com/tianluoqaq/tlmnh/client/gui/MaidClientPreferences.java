@@ -39,11 +39,24 @@ public final class MaidClientPreferences {
     }
 
     public static void setGlobalMaidSoundFrequency(int percent) {
+        apply(percent, showChatBubbles, modelIconCache);
+    }
+
+    /** 全局设置页一次提交本地已有配置，取消或丢失窗口权限不调用这里 */
+    public static void apply(int percent, boolean bubbles, boolean cache) {
         if (percent < 0 || percent > 100)
             throw new IllegalArgumentException("Maid sound frequency percent out of range");
+        if (configuration == null) throw new IllegalStateException("Client preferences are not initialized");
+        if (percent == globalMaidSoundFrequency && bubbles == showChatBubbles && cache == modelIconCache) return;
         globalMaidSoundFrequency = percent;
+        showChatBubbles = bubbles;
+        modelIconCache = cache;
         configuration.get("sound", "GlobalMaidSoundFrequency", 100)
             .set(percent);
+        configuration.get("render", "GlobalMaidShowChatBubble", true)
+            .set(bubbles);
+        configuration.get("model", "EnableModelIconCache", false)
+            .set(cache);
         configuration.save();
     }
 
@@ -52,9 +65,6 @@ public final class MaidClientPreferences {
     }
 
     public static void setModelIconCache(boolean enabled) {
-        modelIconCache = enabled;
-        configuration.get("model", "EnableModelIconCache", false)
-            .set(enabled);
-        configuration.save();
+        apply(globalMaidSoundFrequency, showChatBubbles, enabled);
     }
 }

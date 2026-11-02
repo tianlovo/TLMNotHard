@@ -1,5 +1,8 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
 
@@ -24,8 +27,10 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 public final class EnhancedCombatController {
 
     private static final int HIDDEN_MEMORY_TICKS = 100, MAX_CANDIDATES = 64;
+    private static final int MAX_UNREACHABLE_TICKS = 200, FAILED_TARGET_RETRY_TICKS = 100, MAX_FAILED_TARGETS = 32;
     private static final float APPROACH_SPEED = .6F;
     private static final double RANGED_STAND_DISTANCE = 8;
+    private static final double TARGET_RECONSIDER_DISTANCE_SQUARED = 4;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
@@ -33,9 +38,11 @@ public final class EnhancedCombatController {
     private final TaskBowAttack ranged = new TaskBowAttack();
     private final MaidUseShieldTask shield = new MaidUseShieldTask();
     private final MaidAttackStrafingTask strafe = new MaidAttackStrafingTask();
+    private final Map<EntityLivingBase, FailedApproach> failedApproaches = new IdentityHashMap<>();
     private EntityLivingBase ownedTarget;
     private Point lastSeen;
     private long lastSeenAt = Long.MIN_VALUE, attacks, releases;
+    private long lastSuccessfulReleaseAt, lastOfferTick = Long.MIN_VALUE, abandonedTargets;
     private int cooldown;
     private boolean strafing;
 
@@ -47,18 +54,44 @@ public final class EnhancedCombatController {
 
     public void offer(MaidIntentFrame frame) {
         if (!permitted()) return;
+        long now = actor.worldGameTime();
+        if (now < lastOfferTick) failedApproaches.clear();
+        lastOfferTick = now;
+        failedApproaches.entrySet()
+            .removeIf(
+                entry -> entry.getValue()
+                    .expired(entry.getKey(), now));
         boolean bow = maid.getTask() == MaidTask.RANGED_ATTACK;
+        if (ownedTarget != null && legal(ownedTarget, bow) && approachFailed(ownedTarget, bow, now)) {
+            if (failedApproaches.size() >= MAX_FAILED_TARGETS) failedApproaches.clear();
+            failedApproaches.put(ownedTarget, new FailedApproach(ownedTarget, now + FAILED_TARGET_RETRY_TICKS));
+            abandonedTargets++;
+        }
         if (ownedTarget != null && legal(ownedTarget, bow) && (visible(ownedTarget, bow) || remembers()))
-            offer(frame, ownedTarget, bow);
+            if (!failedApproaches.containsKey(ownedTarget)) offer(frame, ownedTarget, bow);
         // 受击来源是本tick已发生事实，不等待周期附近清单刷新
         var attacker = maid.getAITarget();
-        if (attacker != ownedTarget && legal(attacker, bow) && visible(attacker, bow)) offer(frame, attacker, bow);
+        if (attacker != ownedTarget && !failedApproaches.containsKey(attacker)
+            && legal(attacker, bow)
+            && visible(attacker, bow)) offer(frame, attacker, bow);
         int count = 0;
         for (var candidate : perception.nearby()) {
             if (++count > MAX_CANDIDATES) break;
-            if (candidate != ownedTarget && candidate != attacker && legal(candidate, bow) && visible(candidate, bow))
-                offer(frame, candidate, bow);
+            if (candidate != ownedTarget && candidate != attacker
+                && !failedApproaches.containsKey(candidate)
+                && legal(candidate, bow)
+                && visible(candidate, bow)) offer(frame, candidate, bow);
         }
+    }
+
+    private boolean approachFailed(EntityLivingBase target, boolean bow, long now) {
+        Long since = actor.getCantReachSince();
+        if (since == null || now < since || now - since <= MAX_UNREACHABLE_TICKS) return false;
+        var view = actor.combatTargetView(target);
+        return bow
+            ? actor.distanceToTarget(view) > RANGED_STAND_DISTANCE
+                && now - lastSuccessfulReleaseAt > MAX_UNREACHABLE_TICKS
+            : !actor.withinMeleeRange(view);
     }
 
     private void offer(MaidIntentFrame frame, EntityLivingBase target, boolean bow) {
@@ -136,6 +169,7 @@ public final class EnhancedCombatController {
         boolean sitting = maid.isSitting();
         java.util.function.BooleanSupplier mobility = () -> maid.ridingEntity == mount && maid.isSitting() == sitting;
         var memory = maid.getModernCombatMemory();
+        var previousTarget = ownedTarget;
         if (memory.target() != selected) {
             if (!actor.setAttackTarget(actor.combatTargetView(selected)) || !actor.isCurrent()) return;
         }
@@ -147,6 +181,11 @@ public final class EnhancedCombatController {
             actor.eraseAttackTarget();
             ownedTarget = null;
             return;
+        }
+        if (target != previousTarget) {
+            // 只在事件完成后的实际目标变化时清除旧路线失败时间
+            actor.eraseCantReachSince();
+            lastSuccessfulReleaseAt = actor.worldGameTime();
         }
         var view = actor.combatTargetView(target);
         boolean seen = visible(target, bow);
@@ -218,11 +257,14 @@ public final class EnhancedCombatController {
                 actor.stopOwnedRangedUse();
                 if (!actor.isCurrent()) return;
                 releases++;
-                actor.fireRangedAttackForPolicy(
+                boolean fired = actor.fireRangedAttackForPolicy(
                     view,
                     1,
                     () -> mobility.getAsBoolean() && permitted() && legal(target, true) && visible(target, true));
-                if (actor.isCurrent()) cooldown = actor.shootCooldown();
+                if (actor.isCurrent()) {
+                    if (fired) lastSuccessfulReleaseAt = actor.worldGameTime();
+                    cooldown = actor.shootCooldown();
+                }
             }
         } else if (maid.getItemUseState()
             .peek() == null && cooldown <= 0) actor.startRangedMainUse();
@@ -263,5 +305,28 @@ public final class EnhancedCombatController {
 
     public long releases() {
         return releases;
+    }
+
+    public long abandonedTargets() {
+        return abandonedTargets;
+    }
+
+    private static final class FailedApproach {
+
+        final double x, y, z;
+        final long retryAt;
+
+        FailedApproach(EntityLivingBase target, long retryAt) {
+            x = target.posX;
+            y = target.posY;
+            z = target.posZ;
+            this.retryAt = retryAt;
+        }
+
+        boolean expired(EntityLivingBase target, long now) {
+            return now >= retryAt || target.isDead
+                || !target.isEntityAlive()
+                || target.getDistanceSq(x, y, z) > TARGET_RECONSIDER_DISTANCE_SQUARED;
+        }
     }
 }

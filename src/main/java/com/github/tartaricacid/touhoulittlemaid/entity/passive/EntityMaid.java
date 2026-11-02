@@ -89,6 +89,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private final com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection behaviorProtection = new com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection(
         this);
+    private final com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel dimensionTravel = new com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel(
+        this);
     private final Runnable nativeAiTick = () -> super.updateAITasks();
     private final Runnable brainAfterLiving = () -> brain.afterLivingUpdate();
     private final com.tianluoqaq.tlmnh.common.ai.MaidAquaticController aquatic = new com.tianluoqaq.tlmnh.common.ai.MaidAquaticController(
@@ -1000,6 +1002,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return brain != null && worldObj != null && !worldObj.isRemote;
     }
 
+    /** 目标世界确认登记后才移除源女仆；取消或异常不能丢失原实体持有的完整物品 */
+    @Override
+    public void travelToDimension(int dimension) {
+        dimensionTravel.travel(dimension);
+    }
+
     @Override
     public void onDeath(DamageSource source) {
         super.onDeath(source);
@@ -1034,6 +1042,18 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                 inventory.setInventorySlotContents(slot, null);
             }
         }
+    }
+
+    /** 原版始终掉落保存的经验；驯服死亡的余额已先交世界账本，不能再次走动物随机经验 */
+    @Override
+    protected int getExperiencePoints(EntityPlayer player) {
+        return getExperience();
+    }
+
+    /** 1.7.10该protected标志只用于经验掉落的最近玩家攻击门槛 */
+    @Override
+    protected boolean isPlayer() {
+        return true;
     }
 
     @Override

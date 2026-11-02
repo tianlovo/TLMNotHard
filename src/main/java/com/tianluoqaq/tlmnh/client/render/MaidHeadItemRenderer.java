@@ -8,11 +8,13 @@ import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.tileentity.TileEntitySkull;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.IPlantable;
 
@@ -22,6 +24,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
+import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumSkullRenderAccess;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -32,9 +35,18 @@ public final class MaidHeadItemRenderer {
 
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     private static final java.util.Map<EntityMaid, Integer> LAST_DRAWN = new java.util.WeakHashMap<>();
+    private static final java.util.Map<EntityMaid, String> LAST_SKULL_RENDERER = new java.util.WeakHashMap<>();
 
     public static void beginFrame(EntityMaid maid) {
-        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 0);
+        if (Boolean.getBoolean("tlmnh.devCommands")) {
+            LAST_DRAWN.put(maid, 0);
+            LAST_SKULL_RENDERER.put(maid, "");
+        }
+    }
+
+    /** 仅记录实际注册并正常绘制的提供方，不代表皮肤或外层像素验收 */
+    public static String skullRendererClass(EntityMaid maid) {
+        return LAST_SKULL_RENDERER.getOrDefault(maid, "");
     }
 
     /** bit 1头颅、bit 2方块，只表示原生绘制正常返回，不代替画面验收 */
@@ -60,8 +72,16 @@ public final class MaidHeadItemRenderer {
                 -1.1875F);
             try (var scope = new MaidItemRenderScope()) {
                 apply(matrix);
-                TileEntitySkullRenderer.field_147536_b
-                    .func_152674_a(-.5F, 0, -.5F, 1, 180, helmet.getItemDamage(), profile(helmet));
+                // EFR给同一Tile类型注册了原生外层模型，不能固定调用已被替换的旧singleton
+                var renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(new TileEntitySkull());
+                if (renderer != null && renderer.getClass() == TileEntitySkullRenderer.class) {
+                    ((TileEntitySkullRenderer) renderer)
+                        .func_152674_a(-.5F, 0, -.5F, 1, 180, helmet.getItemDamage(), profile(helmet));
+                } else EtFuturumSkullRenderAccess.render(renderer, helmet.getItemDamage(), profile(helmet));
+                if (Boolean.getBoolean("tlmnh.devCommands")) LAST_SKULL_RENDERER.put(
+                    maid,
+                    renderer.getClass()
+                        .getName());
                 drawn(maid, 1);
             }
         }

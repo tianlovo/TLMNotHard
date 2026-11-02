@@ -46,6 +46,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     protected final EntityMaid maid;
     protected final T maidContainer;
     private boolean taskListOpen;
+    private boolean openingLocalScreen;
     private int lastMouseX, lastMouseY;
     private final List<String> lastDrawnEffects = new ArrayList<>();
 
@@ -119,7 +120,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 || button.id == 114 ? taskListOpen : true;
             if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
-                case DOWNLOAD, BOOK, GLOBAL, BAUBLE, 113, 114 -> false;
+                case DOWNLOAD, BOOK, BAUBLE, 113, 114 -> false;
+                case GLOBAL -> mc.thePlayer.inventory.getItemStack() == null;
                 case RIDE -> mc.thePlayer.inventory.getItemStack() == null;
                 case MAIN_TAB -> (isConfigPage() || isTaskConfigPage())
                     && mc.thePlayer.inventory.getItemStack() == null;
@@ -153,6 +155,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case TASK_SWITCH -> taskListOpen = !taskListOpen;
             case TASK_CLOSE -> taskListOpen = false;
             case INFO -> {}
+            case GLOBAL -> openGlobalConfig();
             case SKIN -> send(ContainerMaid.ACTION_MODELS);
             case SOUND -> send(ContainerMaid.ACTION_SOUNDS);
             case MAIN_TAB -> send(ContainerMaid.ACTION_ORIGINAL_MAIN);
@@ -165,6 +168,27 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             default -> send(button.id);
         }
         refreshButtons();
+    }
+
+    private void openGlobalConfig() {
+        if (mc.currentScreen != this || mc.thePlayer.openContainer != inventorySlots
+            || !inventorySlots.canInteractWith(mc.thePlayer)
+            || mc.thePlayer.inventory.getItemStack() != null) return;
+        openingLocalScreen = true;
+        try {
+            mc.displayGuiScreen(new com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui(this, inventorySlots));
+        } finally {
+            openingLocalScreen = false;
+        }
+    }
+
+    protected boolean isOpeningLocalScreen() {
+        return openingLocalScreen;
+    }
+
+    @Override
+    public void onGuiClosed() {
+        if (!openingLocalScreen) super.onGuiClosed();
     }
 
     protected void send(int action) {
@@ -188,6 +212,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "config" -> CONFIG_TAB;
             case "main_tab" -> MAIN_TAB;
             case "task_config" -> TASK_TAB;
+            case "global" -> GLOBAL;
             default -> throw new IllegalArgumentException("Unknown original GUI action");
         };
         for (var button : buttonList) if (button.id == id && button.visible && button.enabled) {

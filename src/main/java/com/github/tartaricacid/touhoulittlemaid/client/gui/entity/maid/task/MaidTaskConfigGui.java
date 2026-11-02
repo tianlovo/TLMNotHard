@@ -51,6 +51,7 @@ public abstract class MaidTaskConfigGui extends AbstractMaidContainerGui<TaskCon
 
     @Override
     public void onGuiClosed() {
+        if (isOpeningLocalScreen()) return;
         if (hasEdits()) {
             sent = true;
             MaidTaskConfigNetwork.send(

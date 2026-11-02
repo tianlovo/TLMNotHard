@@ -11,6 +11,7 @@ public final class MaidIntentFrame {
     public enum Group {
         EMERGENCY,
         DANGER,
+        RECOVERY,
         COMBAT,
         COMMAND,
         CARE,

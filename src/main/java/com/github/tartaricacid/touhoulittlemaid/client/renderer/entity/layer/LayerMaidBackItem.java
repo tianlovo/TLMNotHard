@@ -10,6 +10,7 @@ import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.MaidBackItemKinds;
 import com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
@@ -22,9 +23,7 @@ public final class LayerMaidBackItem {
     public void render(EntityMaid maid, BuiltinMaidModel model, ItemRenderer renderer) {
         MaidBackItemRenderer.beginFrame(maid);
         ItemStack stack = maid.getBackpackShowItem();
-        if (stack == null || stack.stackSize <= 0
-            || stack.getMaxDamage() <= 0
-            || !model.hasCompletedPoseFor(maid)
+        if (!MaidBackItemKinds.displaysOnBack(stack) || !model.hasCompletedPoseFor(maid)
             || !model.getChoice()
                 .isShowBackpack()
             || maid.hasPose(MaidPose.SLEEPING)

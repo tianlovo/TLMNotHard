@@ -157,6 +157,7 @@ feature.tlmnh.protection.cabinet_sounds=Snack cabinet sounds
 
 feature.tlmnh.protection.client_shrine=Shrine rendering
 feature.tlmnh.protection.client_banner=Maid banner rendering
+gui.tlmnh.client_config.scope=Applies to all maids on this client
 chat.tlmnh.acquisition.biomes_partial=Local configuration notice %s: natural spawning ignores invalid biomes %s and continues with valid biomes %s; configuration retained, correct it and restart
 chat.tlmnh.acquisition.biomes_none=Local configuration notice %s: no usable natural-spawn biomes, so no spawn rule was registered; configuration %s retained, correct it and restart
 

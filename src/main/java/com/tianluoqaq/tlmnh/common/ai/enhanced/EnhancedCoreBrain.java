@@ -142,15 +142,24 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             long now = actor.worldGameTime();
             if (now < lastCareTick) nextMeal = 0;
             lastCareTick = now;
-            if (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true)) frame
-                .offer(Group.CARE, Kind.HEAL, "meal", Math.min(1, actor.missingHealth() / maid.getMaxHealth()), null);
+            combat.offer(frame);
+            // 新受击仍立即还手；伤害窗口结束后，持续战斗不能永久阻止自疗
+            boolean reactingToHit = maid.hurtTime > 0
+                && (frame.kindMask() & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()))) != 0;
+            if (!actor.isSleeping() && !reactingToHit
+                && (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true)))
+                frame.offer(
+                    Group.RECOVERY,
+                    Kind.HEAL,
+                    "meal",
+                    Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
+                    null);
             else if (eating && selectedKind == Kind.MEAL || !eating && now >= nextMeal
                 && home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
                 && actor.canAddWorkMeal()
                 && maid.getItemUseState()
                     .peek() == null
                 && hasFood(false)) frame.offer(Group.CARE, Kind.MEAL, "workmeal", .1, null);
-            combat.offer(frame);
             life.offer(frame, runtime.getContext());
             if (!stationary && maid.isPickup() && !actor.isSleeping()) {
                 int count = 0;
