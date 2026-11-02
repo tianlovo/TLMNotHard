@@ -164,14 +164,26 @@ public final class ClientDevelopmentRequest {
                     "details_toggle",
                     "details_view",
                     "pack",
-                    "search")
+                    "search",
+                    "task_config",
+                    "target_add",
+                    "target_remove",
+                    "target_previous",
+                    "target_next",
+                    "target_page_next",
+                    "target_page_previous",
+                    "target_close")
                 .contains(action)) throw new IllegalArgumentException("Unknown model UI probe action");
             if (action.equals("select") || action.equals("pack")
                 || action.equals("search")
                 || action.equals("details")
                 || action.equals("details_toggle")
                 || action.equals("details_view")
-                || action.equals("sound_play")) model = text(json, "model");
+                || action.equals("sound_play")
+                || action.equals("target_add")
+                || action.equals("target_remove")
+                || action.equals("target_previous")
+                || action.equals("target_next")) model = text(json, "model");
         }
         return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }

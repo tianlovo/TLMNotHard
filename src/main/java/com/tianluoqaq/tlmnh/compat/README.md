@@ -29,6 +29,7 @@ compat/
 | Battlegear2（`battlegear2`） | `common/shield` | 盾牌接口、受支持物品与格挡音效 |
 | Et Futurum Requiem（`etfuturum`） | `common/block`、`common/entity`、`common/item` | 方块分类、船与座位、盔甲架、鞘翅识别 |
 | Galacticraft Core（`galacticraftcore`） | `common/physics` | 原生箭重力查询 |
+| lwjgl3ify（`lwjgl3ify`） | `development/input` | 客户端探针的公开文本事件输入；不访问剪贴板 |
 | MalisisDoors（`malisisdoors`） | `common/block`、`development/block` | 动画门状态、门与栅栏门开关、动画完成态夹具 |
 | TConstruct（`tconstruct`） | `common/tool`、`development/tool` | 工具 NBT、构造事件身份、真实 ToolBuilder |
 | TinkersDefense（`tinkersdefense`） | `common/shield`、`development/shield` | 两种盾牌的数据合同、合法物品构造与取样 |
