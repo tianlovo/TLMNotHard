@@ -144,8 +144,38 @@ public final class MaidVisualFixtureState {
         writeItem(data, "ExpectedHead", maid.getEquipmentInSlot(4));
     }
 
+    /** 饱食/饥饿只作为真实同步输入，不在渲染中伪造头角 */
+    public static void stageHunger(EntityMaid maid, int hunger) {
+        scope(maid);
+        require(hunger == 0 || hunger == 20, "Only hungry/full visual inputs are supported");
+        require(
+            maid.getBrainCoordinator()
+                .isSuspended(),
+            "Suspend the lab brain before staging hunger");
+        if (!exists(maid)) capture(maid);
+        var data = saved(maid);
+        require(data.hasKey("OriginalHunger") == data.hasKey("ExpectedHunger"), "Incomplete hunger snapshot retained");
+        if (!data.hasKey("OriginalHunger")) {
+            data.setInteger("OriginalHunger", maid.getHunger());
+            data.setInteger("ExpectedHunger", maid.getHunger());
+        }
+        require(
+            data.hasKey("OriginalHunger", 3) && data.hasKey("ExpectedHunger", 3)
+                && maid.getHunger() == data.getInteger("ExpectedHunger"),
+            "Foreign hunger change retained");
+        maid.setHunger(hunger);
+        data.setInteger("ExpectedHunger", hunger);
+        TLMNotHard.LOG.info("TLMNH_VISUAL_HUNGER_STAGED maid={} hunger={}", maid.getUniqueID(), hunger);
+    }
+
     public static void restore(EntityMaid maid) {
         var data = saved(maid);
+        boolean tracksHunger = data.hasKey("OriginalHunger");
+        require(tracksHunger == data.hasKey("ExpectedHunger"), "Incomplete hunger snapshot retained");
+        require(
+            !tracksHunger || data.hasKey("OriginalHunger", 3) && data.hasKey("ExpectedHunger", 3)
+                && maid.getHunger() == data.getInteger("ExpectedHunger"),
+            "Foreign hunger change; snapshot retained");
         require(
             matches(
                 data,
@@ -185,6 +215,7 @@ public final class MaidVisualFixtureState {
                 "Original head item could not be decoded");
         }
         maid.setModelId(data.getString("Model"));
+        if (tracksHunger) maid.setHunger(data.getInteger("OriginalHunger"));
         maid.setSitting(data.getBoolean("Sitting"));
         maid.setSleepingBedDirection(data.hasKey("SleepDirection", 3) ? data.getInteger("SleepDirection") : -1);
         maid.setPose(MaidPose.SLEEPING, data.getBoolean("Sleeping"));
@@ -200,7 +231,8 @@ public final class MaidVisualFixtureState {
         maid.getChatBubbleManager()
             .clear();
         require(
-            (!tracksHead || matches(data, "OriginalHead", maid.getEquipmentInSlot(4)))
+            (!tracksHunger || maid.getHunger() == data.getInteger("OriginalHunger"))
+                && (!tracksHead || matches(data, "OriginalHead", maid.getEquipmentInSlot(4)))
                 && matches(
                     data,
                     "OriginalBack",

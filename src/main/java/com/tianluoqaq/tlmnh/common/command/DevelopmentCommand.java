@@ -196,6 +196,34 @@ public final class DevelopmentCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_observer_passed"));
             return;
         }
+        if (args.length == 2 && "lab-state".equals(args[0])) {
+            var maid = AnimationLab.ownedSceneMaid(getPlayer(sender, args[1]));
+            var snapshot = com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(maid);
+            snapshot.addProperty(
+                "uuid",
+                maid.getUniqueID()
+                    .toString());
+            TLMNotHard.LOG.info("TLMNH_LAB_STATE {}", snapshot);
+            return;
+        }
+        if (args.length == 3 && "lab-naming-fixture".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture
+                .run(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
+        if (args.length == 3 && "lab-visual-hunger".equals(args[0])) {
+            var player = getPlayer(sender, args[1]);
+            if ("restore".equals(args[2])) MaidCoreInteractionProbe.setVisualFixture(player, "restore");
+            else {
+                if (!"hungry".equals(args[2]) && !"full".equals(args[2]))
+                    throw new WrongUsageException(getCommandUsage(sender));
+                var maid = AnimationLab.ownedSceneMaid(player);
+                com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState
+                    .stageHunger(maid, "full".equals(args[2]) ? 20 : 0);
+            }
+            TLMNotHard.LOG.info("TLMNH_VISUAL_HUNGER action={}", args[2]);
+            return;
+        }
         if (args.length == 2 && "lab-open-original-gui".equals(args[0])) {
             AnimationLab.openOriginalGui(getPlayer(sender, args[1]));
             return;

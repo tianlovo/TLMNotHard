@@ -384,8 +384,12 @@ public final class SleepNaturalGameTests {
     }
 
     private static JsonObject identity() {
+        return identity("tlmnh.sleep.buildIdentity");
+    }
+
+    static JsonObject identity(String property) {
         try {
-            byte[] bytes = Files.readAllBytes(Path.of(System.getProperty("tlmnh.sleep.buildIdentity")));
+            byte[] bytes = Files.readAllBytes(Path.of(System.getProperty(property)));
             var manifest = GSON.fromJson(new String(bytes, StandardCharsets.UTF_8), JsonObject.class);
             var agent = Class.forName(
                 "com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent",

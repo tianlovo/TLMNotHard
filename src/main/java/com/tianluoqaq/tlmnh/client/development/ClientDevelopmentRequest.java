@@ -135,6 +135,7 @@ public final class ClientDevelopmentRequest {
                     "naming_text",
                     "naming_visibility",
                     "naming_save",
+                    "naming_repeat",
                     "naming_cancel",
                     "naming_escape",
                     "naming_enter",
@@ -211,6 +212,11 @@ public final class ClientDevelopmentRequest {
                 || action.equals("target_remove")
                 || action.equals("target_previous")
                 || action.equals("target_next")) model = text(json, "model");
+            if (action.equals("naming_text")) {
+                if (model.length() > 32 || model.chars()
+                    .anyMatch(Character::isISOControl))
+                    throw new IllegalArgumentException("Naming text must fit the native 32-character field");
+            }
         }
         return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }

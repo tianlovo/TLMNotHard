@@ -1,0 +1,187 @@
+{
+  "schema": "follow-paired-mechanisms-contract-v1",
+  "contract": "FOLLOW_PAIRED_MECHANISMS_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "repetitions": 1,
+  "framesPerActor": 240,
+  "warmupTicks": 20,
+  "dayTime": 6000,
+  "difficulty": "HARD",
+  "layoutVolume": [
+    17,
+    8,
+    9
+  ],
+  "maidSpawn": [
+    2.5,
+    1,
+    4.5
+  ],
+  "ownerStart": [
+    11.5,
+    1,
+    4.5
+  ],
+  "ownerMode": "CREATIVE",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "task": "idle",
+  "homeEnabled": false,
+  "hunger": 20,
+  "initialOrientation": {
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "headYaw": 0.0,
+    "bodyYaw": 0.0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "floor": "stone_y0",
+  "corridorWalls": {
+    "z": [
+      2,
+      6
+    ],
+    "x": [
+      0,
+      16
+    ],
+    "y": [
+      1,
+      3
+    ]
+  },
+  "temporaryObstacle": {
+    "x": 8,
+    "y": [
+      1,
+      3
+    ],
+    "z": [
+      3,
+      5
+    ]
+  },
+  "food": {
+    "registry": "minecraft:apple",
+    "count": 1,
+    "position": [
+      5.5,
+      1,
+      4.5
+    ]
+  },
+  "arrivalDistance": 2.0,
+  "mechanisms": [
+    {
+      "id": "temporary_obstacle",
+      "benchmarkSubset": "B02 temporary corridor closure and reopening",
+      "initialSitting": false,
+      "foodPresent": false,
+      "events": [
+        {
+          "frame": 10,
+          "kind": "close_obstacle"
+        },
+        {
+          "frame": 70,
+          "kind": "open_obstacle"
+        }
+      ]
+    },
+    {
+      "id": "owner_reversal",
+      "benchmarkSubset": "B02 owner direction change",
+      "initialSitting": false,
+      "foodPresent": false,
+      "events": [
+        {
+          "frame": 30,
+          "kind": "owner_position",
+          "position": [
+            1.5,
+            1,
+            4.5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "waiting_owner_food",
+      "benchmarkSubset": "B04 waiting while owner stays away and an item is present, then release",
+      "initialSitting": true,
+      "foodPresent": true,
+      "events": [
+        {
+          "frame": 100,
+          "kind": "release_wait"
+        }
+      ]
+    }
+  ],
+  "eventPhase": "WorldTick.END after recording the primary actor frame; owner position is applied via native setPos/setPosition at each following WorldTick.START, recording planned/after-call/END physical facts",
+  "samplePhase": "WorldTick.END",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "randomSourcesReset": false,
+  "statisticalVerdict": "NOT_EVALUATED",
+  "noninferiorityDelta": null,
+  "complete14ClassBenchmarkAccepted": false,
+  "fullReleasePassed": false,
+  "scope": "Exploratory natural complete O/F/N roots for three related mechanisms only. Collection success is not task success, noninferiority or real logged-in/multi-client owner acceptance. Retain actual owner class, connection, registration, eye/position/flags/dimensions/mode/NBT and all initial maid NBT; no cross-engine full input equivalence.",
+  "notCapturedMetrics": [
+    "actual path request count and multiple transient requests within a tick",
+    "AI CPU/MSPT/performance",
+    "formal confidence intervals and noninferiority decision"
+  ],
+  "stillRequired": [
+    "same-contract real logged-in owner and actual multi-client runs",
+    "independent repetitions and held-out validation",
+    "user-approved noninferiority margin if such a margin is adopted"
+  ],
+  "restrictionRadius": 8
+}

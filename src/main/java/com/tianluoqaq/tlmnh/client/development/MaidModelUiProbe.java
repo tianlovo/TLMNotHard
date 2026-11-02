@@ -282,6 +282,9 @@ public final class MaidModelUiProbe {
         String value) {
         var minecraft = Minecraft.getMinecraft();
         if (!Boolean.getBoolean("tlmnh.devCommands") || minecraft.thePlayer == null
+            || !AnimationLab.isLab(minecraft.theWorld)
+            || !minecraft.thePlayer.capabilities.disableDamage
+            || !minecraft.thePlayer.capabilities.isFlying
             || minecraft.thePlayer.openContainer != naming.getContainer()
             || !naming.getContainer()
                 .canInteractWith(minecraft.thePlayer))
@@ -293,7 +296,11 @@ public final class MaidModelUiProbe {
         response.addProperty("actionRequested", requested);
         response.addProperty(
             "networkActionRequested",
-            requested && (action.equals("naming_save") || action.equals("naming_enter")));
+            naming.observation()
+                .get("submittedRequests")
+                .getAsInt()
+                > response.get("submittedRequests")
+                    .getAsInt());
         response.addProperty("serverAcknowledged", false);
         if (minecraft.currentScreen == naming) response.add("afterAction", naming.observation());
         return response;
@@ -491,6 +498,10 @@ public final class MaidModelUiProbe {
     }
 
     public static void requireCaptureScreen() {
+        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming) {
+            namingObservation(naming, "status", null);
+            return;
+        }
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
         if (!(screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui)

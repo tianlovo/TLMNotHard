@@ -132,6 +132,7 @@ public final class AnimationLab {
         var world = world();
         var maid = sceneMaid(world);
         boolean spawnMaid = maid == null;
+        boolean updateScene = spawnMaid || maid.isOwner(player);
         if (spawnMaid) {
             maid = new EntityMaid(world);
             maid.getEntityData()
@@ -143,19 +144,21 @@ public final class AnimationLab {
                 DeterministicMaidSpawn.freezeInitialState(maid);
             }
             maid.setModelId(model);
-        } else maid.setModelId(model);
+        } else if (updateScene) maid.setModelId(model);
         // 复用存档中的展台女仆时也恢复夹具输入，避免历史位置和朝向污染下一例
-        maid.getBrainCoordinator()
-            .setSuspended(true);
-        maid.setSitting(sitting);
-        maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
-        maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
-        maid.rotationYawHead = maid.prevRotationYawHead = 180;
-        maid.prevRotationPitch = 0;
-        maid.motionX = maid.motionY = maid.motionZ = 0;
-        maid.prevPosX = maid.lastTickPosX = maid.posX;
-        maid.prevPosY = maid.lastTickPosY = maid.posY;
-        maid.prevPosZ = maid.lastTickPosZ = maid.posZ;
+        if (updateScene) {
+            maid.getBrainCoordinator()
+                .setSuspended(true);
+            maid.setSitting(sitting);
+            maid.setLocationAndAngles(0.5, FLOOR + 1, 0.5, 180, 0);
+            maid.prevRotationYaw = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
+            maid.rotationYawHead = maid.prevRotationYawHead = 180;
+            maid.prevRotationPitch = 0;
+            maid.motionX = maid.motionY = maid.motionZ = 0;
+            maid.prevPosX = maid.lastTickPosX = maid.posX;
+            maid.prevPosY = maid.lastTickPosY = maid.posY;
+            maid.prevPosZ = maid.lastTickPosZ = maid.posZ;
+        }
         if (spawnMaid) require(world.spawnEntityInWorld(maid), "Animation lab maid spawn rejected");
         transfer(player, world, 0.5, FLOOR + 1, -4.5, 0, 10);
         player.sendPlayerAbilities();
@@ -306,6 +309,7 @@ public final class AnimationLab {
             && isLab(event.player.worldObj)
             && event.player instanceof EntityPlayerMP player
             && !MaidFollowRuntimeProbe.isActivePlayer(player)
+            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture.isActivePlayer(player)
             && player.theItemInWorldManager.getGameType()
                 .getID() != 3)
             player.setGameType(spectator());

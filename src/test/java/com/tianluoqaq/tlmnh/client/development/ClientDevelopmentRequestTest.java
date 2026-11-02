@@ -160,6 +160,23 @@ public class ClientDevelopmentRequestTest {
     }
 
     @Test
+    public void namingInputKeepsNativeLengthAndRejectsControlPayloads() {
+        var request = new com.google.gson.JsonObject();
+        request.addProperty("command", "models_ui");
+        request.addProperty("action", "naming_text");
+        for (String name : new String[] { "", " ", "命名试验 女仆", new String(new char[32]).replace('\0', '中') }) {
+            request.addProperty("model", name);
+            assertEquals(name, ClientDevelopmentRequest.parse(request).model);
+        }
+        for (String invalid : new String[] { "line\nbreak", "tab\there",
+            new String(new char[33]).replace('\0', '中') }) {
+            request.addProperty("model", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
+        assertEquals("naming_repeat", parse("{\"command\":\"models_ui\",\"action\":\"naming_repeat\"}").action);
+    }
+
+    @Test
     public void renderProbeAcceptsBuiltinObservationsAndReviewedFaultModels() {
         com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.load();
         for (var choice : com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.choices()) {

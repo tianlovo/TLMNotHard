@@ -19,6 +19,10 @@ gradle.projectsEvaluated {
     project.tasks.named(sources.processResourcesTaskName).configure {
         from(project.file('tools/sleep-natural-reference/contract.json')) { into 'tlmnh-sleep' }
         from(project.file('tools/sleep-natural-reference/paired-contract.json')) { into 'tlmnh-sleep' }
+        from(project.file('tools/sleep-natural-reference/follow-mechanisms-contract.json')) {
+            into 'tlmnh-follow-mechanisms'
+            rename { 'contract.json' }
+        }
         from(project.file('tools/follow-natural-reference')) {
             include 'contract.json', 'flat-contract-v1.json'
             into 'tlmnh-follow-contracts'

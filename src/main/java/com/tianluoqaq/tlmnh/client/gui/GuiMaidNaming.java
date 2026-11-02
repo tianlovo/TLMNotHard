@@ -33,6 +33,7 @@ public final class GuiMaidNaming extends GuiContainer {
     private GuiTextField nameField;
     private GuiButton done, cancel, visibility;
     private boolean alwaysShow, pending;
+    private int submittedRequests;
 
     public GuiMaidNaming(ContainerMaidNaming container) {
         super(container);
@@ -86,6 +87,7 @@ public final class GuiMaidNaming extends GuiContainer {
             || !container.canInteractWith(mc.thePlayer)
             || !MaidNameRules.isValid(name)) return false;
         MaidNamingNetwork.send(MaidNameRequest.from(container, name, showName));
+        submittedRequests++;
         pending = true;
         refreshButtons();
         return true;
@@ -179,7 +181,7 @@ public final class GuiMaidNaming extends GuiContainer {
         }
         var button = switch (action) {
             case "naming_visibility" -> visibility;
-            case "naming_save" -> done;
+            case "naming_save", "naming_repeat" -> done;
             case "naming_cancel" -> cancel;
             default -> throw new IllegalArgumentException("Unknown naming action");
         };
@@ -187,6 +189,10 @@ public final class GuiMaidNaming extends GuiContainer {
         int x = button.xPosition + button.width / 2, y = button.yPosition + button.height / 2;
         mouseClicked(x, y, 0);
         mouseMovedOrUp(x, y, 0);
+        if (action.equals("naming_repeat")) {
+            mouseClicked(x, y, 0);
+            mouseMovedOrUp(x, y, 0);
+        }
         return true;
     }
 
@@ -195,6 +201,7 @@ public final class GuiMaidNaming extends GuiContainer {
         result.addProperty("text", nameField.getText());
         result.addProperty("alwaysShow", alwaysShow);
         result.addProperty("pending", pending);
+        result.addProperty("submittedRequests", submittedRequests);
         result.addProperty("windowId", container.windowId);
         result.addProperty("containerCurrent", mc.thePlayer.openContainer == container);
         result.addProperty("canInteract", container.canInteractWith(mc.thePlayer));

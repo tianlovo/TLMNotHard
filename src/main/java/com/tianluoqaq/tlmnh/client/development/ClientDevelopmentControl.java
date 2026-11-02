@@ -158,6 +158,9 @@ public final class ClientDevelopmentControl {
                                 continue;
                             // 自定义NBT不由追踪器同步，范围限于实际展台中的女仆并列出UUID供服务器绑定
                             var shape = new JsonObject();
+                            for (var entry : com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot
+                                .capture(maid)
+                                .entrySet()) shape.add(entry.getKey(), entry.getValue());
                             shape.addProperty(
                                 "uuid",
                                 maid.getUniqueID()
