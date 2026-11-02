@@ -65,9 +65,17 @@ def verify(read):
     for expected in gui["files"]:
         if hashlib.sha256(read(expected["path"])).hexdigest() != expected["sha256"]:
             raise ValueError(f"GUI resource differs from its provenance: {expected['path']}")
+    lifecycle = json.loads(read("assets/tlmnh/lifecycle-assets-provenance.json"))
+    if lifecycle["commit"] != provenance["commit"] or lifecycle["license"] != "CC-BY-NC-SA-4.0" or len(lifecycle["files"]) != 6:
+        raise ValueError("Lifecycle asset provenance differs from fixed upstream")
+    for path, expected in lifecycle["files"].items():
+        data = read(path)
+        if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+            raise ValueError(f"Lifecycle resource differs from fixed upstream: {path}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
             "core_files": len(core["files"]), "gui_files": len(gui["files"]),
+            "lifecycle_files": len(lifecycle["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 

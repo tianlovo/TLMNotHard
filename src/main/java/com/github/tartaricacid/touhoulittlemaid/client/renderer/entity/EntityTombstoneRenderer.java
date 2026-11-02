@@ -86,6 +86,8 @@ public final class EntityTombstoneRenderer extends Render {
                     z);
                 renderNameTag(tombstone.getMaidName(), x, y + 1.85, z);
             }
+            com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation
+                .completed(tombstone, model, texture, shown ? 2 : 0);
             return true;
         }, () -> false);
     }

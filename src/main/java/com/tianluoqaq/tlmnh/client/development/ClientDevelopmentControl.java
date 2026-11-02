@@ -188,6 +188,10 @@ public final class ClientDevelopmentControl {
                             if (aquatic.size() >= 32) break;
                         }
                     response.add("labMaidShapes", aquatic);
+                    response.add(
+                        "tombstones",
+                        com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation
+                            .snapshot(minecraft));
                     response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
                     response.add(
                         "worldSounds",
