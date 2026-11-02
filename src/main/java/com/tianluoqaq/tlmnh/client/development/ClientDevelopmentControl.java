@@ -174,6 +174,30 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("boxWidth", maid.boundingBox.maxX - maid.boundingBox.minX);
                             shape.addProperty("boxHeight", maid.boundingBox.maxY - maid.boundingBox.minY);
                             shape.addProperty("eye", maid.getEyeHeight());
+                            shape.addProperty("x", maid.posX);
+                            shape.addProperty("y", maid.posY);
+                            shape.addProperty("z", maid.posZ);
+                            shape.addProperty("pitch", maid.rotationPitch);
+                            shape.addProperty("model", maid.getModelId());
+                            shape.addProperty(
+                                "swimPrevious",
+                                com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 0));
+                            shape.addProperty(
+                                "swimCurrent",
+                                com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 1));
+                            shape.addProperty(
+                                "bannerDrawCalls",
+                                com.tianluoqaq.tlmnh.client.render.MaidBannerRenderer.drawnCount(maid));
+                            shape.addProperty(
+                                "showBackItem",
+                                maid.getConfigManager()
+                                    .isShowBackItem());
+                            var backItem = maid.getBackpackShowItem();
+                            shape.addProperty(
+                                "backItemNbt",
+                                backItem == null ? ""
+                                    : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(backItem)
+                                        .toString());
                             shape.addProperty("rideable", maid.isRideable());
                             shape.addProperty(
                                 "ridingEntityId",

@@ -25,7 +25,6 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
-import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -418,8 +417,11 @@ public final class NaturalFollowPortTests {
             helper.assertTrue(
                 (core != null || enhanced != null) && boundRuntime != null,
                 "Natural actor has no bound Brain or runtime");
-            if (enhanced == null) actor().rangedBow()
-                .setFlightProfileForDevelopment(ModernFlightProfile.SOURCE_ORIGINAL);
+            if (enhanced == null) helper.assertTrue(
+                core.getFlightProfile()
+                    == com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL
+                    && core.hasFlightContract(),
+                "Natural F factory did not retain its source flight contract");
             frame = 0;
             frames = new JsonArray();
             row = new JsonObject();

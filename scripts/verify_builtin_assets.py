@@ -106,6 +106,16 @@ def verify(read):
         data = read(path)
         if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
             raise ValueError(f"Shrine resource differs from fixed upstream: {path}")
+    banner = json.loads(read("assets/tlmnh/banner-assets-provenance.json"))
+    expected_banner = {
+        "assets/touhou_little_maid/models/bedrock/entity/maid_banner.json",
+        "assets/touhou_little_maid/textures/bedrock/entity/maid_banner.png"}
+    if banner["commit"] != provenance["commit"] or banner["license"] != "CC-BY-NC-SA-4.0" or set(banner["files"]) != expected_banner:
+        raise ValueError("Banner asset provenance differs from fixed upstream")
+    for path, expected in banner["files"].items():
+        data = read(path)
+        if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+            raise ValueError(f"Banner resource differs from fixed upstream: {path}")
     return {"passed": True, "scope": "asset bytes and catalog references only; no rendering or animation execution",
             "upstream_commit": provenance["commit"], "files": len(available),
             "core_files": len(core["files"]), "gui_files": len(gui["files"]),
@@ -113,6 +123,7 @@ def verify(read):
             "bed_files": len(bed["files"]),
             "cabinet_files": len(cabinet["files"]),
             "shrine_files": len(shrine["files"]),
+            "banner_files": len(banner["files"]),
             "base_models": len(bases), "choices": len(ids), "winefox_choices": len(winefox),
             "runtime_animation_implementation_verified": False}
 
