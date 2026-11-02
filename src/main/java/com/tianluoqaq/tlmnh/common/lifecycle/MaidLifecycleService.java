@@ -96,7 +96,7 @@ public final class MaidLifecycleService {
         }
     }
 
-    private static boolean releaseRequestAllowed(EntityPlayer player, ItemStack stack, ItemStack expected, World world,
+    static boolean releaseRequestAllowed(EntityPlayer player, ItemStack stack, ItemStack expected, World world,
         int slot, int x, int y, int z) {
         return releaseRequestUnchanged(player, stack, expected, world, slot, x, y, z)
             && player.canPlayerEdit(x, y + 1, z, 1, stack)
@@ -131,22 +131,8 @@ public final class MaidLifecycleService {
                 cpw.mods.fml.relauncher.Side.SERVER,
                 com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PROGRESSION_RECIPES))
             return Result.DENIED;
-        var ledger = MaidLifecycleData.get(world);
-        var token = ledger.acquiredToken(player.getUniqueID());
-        var bound = MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, player.getUniqueID());
-        if (stack.hasTagCompound()) {
-            var tag = (net.minecraft.nbt.NBTTagCompound) stack.getTagCompound()
-                .copy();
-            tag.setString("TLMNHToken", token.toString());
-            tag.setString(
-                "InitMaidOwner",
-                player.getUniqueID()
-                    .toString());
-            bound.setTagCompound(tag);
-        }
-        ledger.markDelivered(token);
-        player.inventory.setInventorySlotContents(slot, bound);
-        player.inventory.markDirty();
+        var bound = MaidAcquisitionDelivery.core(player, stack, slot, true, x, y, z);
+        if (bound == null) return Result.DENIED;
         return releaseInitial(player, bound, x, y, z);
     }
 

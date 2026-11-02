@@ -26,3 +26,6 @@ licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt -text
 tools/animation-reference-1.20.1/baselines/** -text whitespace=cr-at-eol
 
 src/main/resources/assets/littlemaid_peco/** -text
+src/main/resources/assets/next_update_model/** -text whitespace=cr-at-eol
+src/main/resources/legacy_pack/** -text whitespace=cr-at-eol
+src/main/resources/assets/tlmnh/retained-builtin-pack/** -text

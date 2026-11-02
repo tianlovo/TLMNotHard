@@ -6,7 +6,6 @@ import net.minecraftforge.event.entity.living.LivingSpawnEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
-import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -18,39 +17,22 @@ public final class MaidLifecycleEvents {
 
     @SubscribeEvent
     public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        MaidAcquisitionDelivery.resume(event.player);
         giveInitial(event.player);
     }
 
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && event.player.ticksExisted % 100 == 0) giveInitial(event.player);
+        if (event.phase == TickEvent.Phase.END && event.player.ticksExisted % 100 == 0) {
+            MaidAcquisitionDelivery.resume(event.player);
+            giveInitial(event.player);
+        }
     }
 
     /** 满背包延后，不扔在地上；已有同token物品只补记发放状态 */
     public static boolean giveInitial(EntityPlayer player) {
         if (!MaidAcquisitionConfig.giveInitialSlab || !MaidLifecycleService.canUse(player)) return false;
-        var ledger = MaidLifecycleData.get(player.worldObj);
-        var token = ledger.initialToken(player.getUniqueID());
-        if (ledger.delivered(token)) return false;
-        for (int i = 0; i < player.inventory.mainInventory.length; i++) {
-            var stack = player.inventory.mainInventory[i];
-            if (stack != null && stack.getItem() == MaidResurrectionContent.INITIAL_SLAB
-                && token.equals(MaidLifecycleItems.token(stack))) {
-                ledger.markDelivered(token);
-                return false;
-            }
-        }
-        // 使用目标环境的原生空槽策略，不能绕过Backhand的副手拾取配置
-        int empty = player.inventory.getFirstEmptyStack();
-        if (empty < 0 || empty >= player.inventory.mainInventory.length
-            || player.inventory.mainInventory[empty] != null
-            || ledger.delivered(token)) return false;
-        player.inventory.setInventorySlotContents(
-            empty,
-            MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, player.getUniqueID()));
-        ledger.markDelivered(token);
-        player.inventory.markDirty();
-        return true;
+        return MaidAcquisitionDelivery.gift(player);
     }
 
     @SubscribeEvent

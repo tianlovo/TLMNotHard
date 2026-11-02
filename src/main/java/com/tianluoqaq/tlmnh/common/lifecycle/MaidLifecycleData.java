@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -23,11 +24,44 @@ public final class MaidLifecycleData extends WorldSavedData {
         ACQUIRED
     }
 
+    public enum AcquisitionPhase {
+        NONE,
+        PREPARED,
+        ISSUING
+    }
+
+    private static final Set<String> ROOT_FIELDS = fields("Schema", "Entries", "ReturnedFilms");
+    private static final Set<String> ENTRY_FIELDS = fields(
+        "Token",
+        "Owner",
+        "Subject",
+        "Kind",
+        "Consumed",
+        "Delivered",
+        "Identity",
+        "TombstoneItems",
+        "Dimension",
+        "X",
+        "Y",
+        "Z",
+        "MaidName",
+        "Published",
+        "DeathExperience",
+        "ExperienceReadyAt",
+        "TombstoneHeld",
+        "ExperienceHeld",
+        "AcquisitionPhase",
+        "AcquisitionSource",
+        "AcquisitionReceipt",
+        "AcquisitionCredential");
+    private static final Set<String> RETURNED_FIELDS = fields("Id", "Stack", "Dimension", "X", "Y", "Z");
+
     private final Map<UUID, Entry> entries = new HashMap<>();
     private final Map<UUID, ReturnedFilm> returnedFilms = new HashMap<>();
     private final Set<UUID> reservations = new HashSet<>();
     private final Set<UUID> tombstoneAttempts = new HashSet<>();
     private final Set<UUID> experienceAttempts = new HashSet<>();
+    private final Set<UUID> acquisitionAttempts = new HashSet<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
 
@@ -67,6 +101,93 @@ public final class MaidLifecycleData extends WorldSavedData {
     public Kind initialKind(UUID token) {
         var entry = entries.get(token);
         return entry != null && (entry.kind == Kind.INITIAL || entry.kind == Kind.ACQUIRED) ? entry.kind : null;
+    }
+
+    public AcquisitionPhase acquisitionPhase(UUID token) {
+        var entry = entries.get(token);
+        return entry == null ? AcquisitionPhase.NONE : entry.acquisitionPhase;
+    }
+
+    public NBTTagCompound acquisitionReceipt(UUID token) {
+        return (NBTTagCompound) acquisitionEntry(token).acquisitionReceipt.copy();
+    }
+
+    public NBTTagCompound acquisitionCredential(UUID token) {
+        return (NBTTagCompound) acquisitionEntry(token).acquisitionCredential.copy();
+    }
+
+    boolean beginAcquisition(UUID token) {
+        acquisitionEntry(token);
+        if (!reservations.add(token)) return false;
+        acquisitionAttempts.add(token);
+        return true;
+    }
+
+    void prepareAcquisition(World world, UUID token, NBTTagCompound source, NBTTagCompound receipt,
+        NBTTagCompound credential) {
+        var entry = activeAcquisition(token);
+        if (entry.acquisitionPhase != AcquisitionPhase.NONE || entry.delivered
+            || entry.consumed
+            || credential.hasNoTags()) throw new IllegalStateException("Acquisition intent already exists");
+        if (entry.kind == Kind.INITIAL ? !source.hasNoTags() || !receipt.hasNoTags()
+            : source.hasNoTags() || receipt.hasNoTags())
+            throw new IllegalStateException("Acquisition source does not match its credential kind");
+        var ownedSource = (NBTTagCompound) source.copy();
+        var ownedReceipt = (NBTTagCompound) receipt.copy();
+        var ownedCredential = (NBTTagCompound) credential.copy();
+        entry.acquisitionSource = ownedSource;
+        entry.acquisitionReceipt = ownedReceipt;
+        entry.acquisitionCredential = ownedCredential;
+        entry.acquisitionPhase = entry.kind == Kind.INITIAL ? AcquisitionPhase.ISSUING : AcquisitionPhase.PREPARED;
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void issueAcquisition(World world, UUID token) {
+        var entry = activeAcquisition(token);
+        if (entry.delivered || entry.consumed || entry.acquisitionPhase == AcquisitionPhase.NONE)
+            throw new IllegalStateException("Acquisition intent is not pending");
+        entry.acquisitionPhase = AcquisitionPhase.ISSUING;
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void finishAcquisition(World world, UUID token) {
+        var entry = activeAcquisition(token);
+        if (entry.acquisitionPhase != AcquisitionPhase.ISSUING || entry.delivered || entry.consumed)
+            throw new IllegalStateException("Acquisition intent changed before acknowledgement");
+        entry.delivered = true;
+        entry.acquisitionPhase = AcquisitionPhase.NONE;
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.delivered = false;
+                entry.acquisitionPhase = AcquisitionPhase.ISSUING;
+                markDirty();
+            }
+        }
+    }
+
+    void endAcquisition(UUID token) {
+        acquisitionAttempts.remove(token);
+        reservations.remove(token);
+    }
+
+    private Entry acquisitionEntry(UUID token) {
+        var entry = entries.get(token);
+        if (entry == null || entry.kind == Kind.FILM) throw new IllegalStateException("No acquisition credential");
+        return entry;
+    }
+
+    private Entry activeAcquisition(UUID token) {
+        var entry = acquisitionEntry(token);
+        if (!reservations.contains(token) || !acquisitionAttempts.contains(token))
+            throw new IllegalStateException("Acquisition attempt is no longer owned");
+        return entry;
     }
 
     /** 同一具死亡实体只产生一份胶片凭证，后续调用返回null */
@@ -374,6 +495,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     public void markDelivered(UUID token) {
         var entry = entries.get(token);
         if (entry == null || initialKind(token) == null) throw new IllegalArgumentException("Unknown initial token");
+        if (entry.acquisitionPhase != AcquisitionPhase.NONE)
+            throw new IllegalStateException("Pending acquisition requires durable acknowledgement");
         entry.delivered = true;
         markDirty();
     }
@@ -381,13 +504,18 @@ public final class MaidLifecycleData extends WorldSavedData {
     /** 返回独立快照，同时阻止出生事件回调重入；保留状态仅存在本次服务端调用栈 */
     public NBTTagCompound reserve(UUID token, Kind kind) {
         var entry = entries.get(token);
-        if (entry == null || entry.kind != kind || entry.consumed || !reservations.add(token)) return null;
+        if (entry == null || entry.kind != kind
+            || entry.consumed
+            || entry.acquisitionPhase != AcquisitionPhase.NONE
+            || !reservations.add(token)) return null;
         return (NBTTagCompound) entry.identity.copy();
     }
 
     public void commit(UUID token) {
         var entry = entries.get(token);
-        if (entry == null || !reservations.remove(token)) throw new IllegalStateException("No lifecycle reservation");
+        if (entry == null || entry.acquisitionPhase != AcquisitionPhase.NONE
+            || acquisitionAttempts.contains(token)
+            || !reservations.remove(token)) throw new IllegalStateException("No lifecycle reservation");
         entry.consumed = true;
         markDirty();
     }
@@ -428,23 +556,27 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
-        if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty())
+        if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty() || !acquisitionAttempts.isEmpty())
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (schema != 1 && schema != 2 && schema != 3 && schema != 4)
+        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 5)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
+        knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
-        var list = tag.getTagList("Entries", 10);
+        var list = ownedList(tag, "Entries", true);
         var initialOwners = new HashSet<UUID>();
         var deadMaids = new HashSet<UUID>();
         var acquisitions = new HashSet<UUID>();
         for (int i = 0; i < list.tagCount(); i++) {
             var item = list.getCompoundTagAt(i);
+            knownFields(item, ENTRY_FIELDS);
             var token = UUID.fromString(item.getString("Token"));
             var owner = UUID.fromString(item.getString("Owner"));
             var subject = UUID.fromString(item.getString("Subject"));
             var kind = Kind.valueOf(item.getString("Kind"));
+            if (item.hasKey("Identity") && !item.hasKey("Identity", 10))
+                throw new IllegalStateException("Invalid lifecycle identity encoding");
             if (schema == 1 && kind == Kind.ACQUIRED)
                 throw new IllegalStateException("Acquired credential requires lifecycle schema 2");
             boolean unique = switch (kind) {
@@ -460,16 +592,18 @@ public final class MaidLifecycleData extends WorldSavedData {
                 subject,
                 (NBTTagCompound) item.getCompoundTag("Identity")
                     .copy(),
-                item.getBoolean("Consumed"),
-                item.getBoolean("Delivered"));
-            entry.tombstoneItems = (NBTTagList) item.getTagList("TombstoneItems", 10)
-                .copy();
+                readFlag(item, "Consumed", true),
+                readFlag(item, "Delivered", true));
+            entry.tombstoneItems = (NBTTagList) ownedList(
+                item,
+                "TombstoneItems",
+                schema >= 5 || kind == Kind.FILM && entry.delivered).copy();
             entry.dimension = item.getInteger("Dimension");
             entry.x = item.getDouble("X");
             entry.y = item.getDouble("Y");
             entry.z = item.getDouble("Z");
             entry.name = item.getString("MaidName");
-            entry.published = item.getBoolean("Published");
+            entry.published = readFlag(item, "Published", true);
             if (schema >= 3 && (!item.hasKey("DeathExperience", 3) || !item.hasKey("ExperienceReadyAt", 4))
                 || item.hasKey("DeathExperience") && !item.hasKey("DeathExperience", 3)
                 || item.hasKey("ExperienceReadyAt") && !item.hasKey("ExperienceReadyAt", 4))
@@ -481,6 +615,7 @@ public final class MaidLifecycleData extends WorldSavedData {
                 throw new IllegalStateException("Invalid death experience balance");
             entry.tombstoneHeld = readHold(item, "TombstoneHeld", schema);
             entry.experienceHeld = readHold(item, "ExperienceHeld", schema);
+            readAcquisition(entry, item, schema);
             if ((entry.tombstoneHeld || entry.experienceHeld) && (kind != Kind.FILM || !entry.delivered))
                 throw new IllegalStateException("Invalid held death escrow");
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
@@ -488,9 +623,10 @@ public final class MaidLifecycleData extends WorldSavedData {
             restored.put(token, entry);
         }
         var restoredFilms = new HashMap<UUID, ReturnedFilm>();
-        var films = tag.getTagList("ReturnedFilms", 10);
+        var films = ownedList(tag, "ReturnedFilms", schema >= 5);
         for (int i = 0; i < films.tagCount(); i++) {
             var film = films.getCompoundTagAt(i);
+            knownFields(film, RETURNED_FIELDS);
             var id = UUID.fromString(film.getString("Id"));
             double x = film.getDouble("X"), y = film.getDouble("Y"), z = film.getDouble("Z");
             if (restored.containsKey(id) || restoredFilms.containsKey(
@@ -513,6 +649,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         reservations.clear();
         tombstoneAttempts.clear();
         experienceAttempts.clear();
+        acquisitionAttempts.clear();
         experienceCursors.clear();
         healthy = true;
     }
@@ -520,7 +657,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 4);
+        tag.setInteger("Schema", 5);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -546,6 +683,10 @@ public final class MaidLifecycleData extends WorldSavedData {
             data.setLong("ExperienceReadyAt", entry.experienceReadyAt);
             data.setBoolean("TombstoneHeld", entry.tombstoneHeld);
             data.setBoolean("ExperienceHeld", entry.experienceHeld);
+            data.setString("AcquisitionPhase", entry.acquisitionPhase.name());
+            data.setTag("AcquisitionSource", entry.acquisitionSource.copy());
+            data.setTag("AcquisitionReceipt", entry.acquisitionReceipt.copy());
+            data.setTag("AcquisitionCredential", entry.acquisitionCredential.copy());
             list.appendTag(data);
         }
         tag.setTag("Entries", list);
@@ -568,10 +709,66 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     private static boolean readHold(NBTTagCompound entry, String key, int schema) {
-        if (schema == 4 && !entry.hasKey(key, 1)
+        return readFlag(entry, key, schema >= 4);
+    }
+
+    private static boolean readFlag(NBTTagCompound entry, String key, boolean required) {
+        if (required && !entry.hasKey(key, 1)
             || entry.hasKey(key) && (!entry.hasKey(key, 1) || entry.getByte(key) < 0 || entry.getByte(key) > 1))
-            throw new IllegalStateException("Invalid death escrow hold encoding: " + key);
+            throw new IllegalStateException("Invalid lifecycle flag encoding: " + key);
         return entry.getBoolean(key);
+    }
+
+    private static void readAcquisition(Entry entry, NBTTagCompound data, int schema) {
+        String[] keys = { "AcquisitionPhase", "AcquisitionSource", "AcquisitionReceipt", "AcquisitionCredential" };
+        if (schema < 5) {
+            for (String key : keys)
+                if (data.hasKey(key)) throw new IllegalStateException("Acquisition intent requires lifecycle schema 5");
+            return;
+        }
+        if (!data.hasKey(keys[0], 8) || !data.hasKey(keys[1], 10)
+            || !data.hasKey(keys[2], 10)
+            || !data.hasKey(keys[3], 10)) throw new IllegalStateException("Invalid acquisition intent encoding");
+        entry.acquisitionPhase = AcquisitionPhase.valueOf(data.getString(keys[0]));
+        entry.acquisitionSource = (NBTTagCompound) data.getCompoundTag(keys[1])
+            .copy();
+        entry.acquisitionReceipt = (NBTTagCompound) data.getCompoundTag(keys[2])
+            .copy();
+        entry.acquisitionCredential = (NBTTagCompound) data.getCompoundTag(keys[3])
+            .copy();
+        boolean source = !entry.acquisitionSource.hasNoTags(), receipt = !entry.acquisitionReceipt.hasNoTags();
+        boolean credential = !entry.acquisitionCredential.hasNoTags();
+        if (entry.kind == Kind.FILM
+            && (entry.acquisitionPhase != AcquisitionPhase.NONE || source || receipt || credential)
+            || entry.kind == Kind.INITIAL && (source || receipt || entry.acquisitionPhase == AcquisitionPhase.PREPARED)
+            || source != receipt
+            || source && !credential
+            || entry.kind == Kind.ACQUIRED && (source || receipt || credential) && !(source && receipt && credential)
+            || entry.acquisitionPhase == AcquisitionPhase.NONE && credential && !entry.delivered && !entry.consumed
+            || entry.acquisitionPhase != AcquisitionPhase.NONE && (!credential || entry.delivered || entry.consumed)
+            || entry.kind == Kind.ACQUIRED && entry.acquisitionPhase != AcquisitionPhase.NONE && !source)
+            throw new IllegalStateException("Invalid acquisition intent state");
+    }
+
+    private static Set<String> fields(String... values) {
+        return new HashSet<>(Arrays.asList(values));
+    }
+
+    private static NBTTagList ownedList(NBTTagCompound data, String key, boolean required) {
+        if (!data.hasKey(key)) {
+            if (required) throw new IllegalStateException("Missing lifecycle list: " + key);
+            return new NBTTagList();
+        }
+        if (!data.hasKey(key, 9)) throw new IllegalStateException("Invalid lifecycle list encoding: " + key);
+        var typed = data.getTagList(key, 10);
+        if (((NBTTagList) data.getTag(key)).tagCount() != typed.tagCount())
+            throw new IllegalStateException("Invalid lifecycle list entries: " + key);
+        return typed;
+    }
+
+    private static void knownFields(NBTTagCompound data, Set<String> known) {
+        for (Object key : data.func_150296_c()) if (!known.contains(key))
+            throw new IllegalStateException("Unknown lifecycle field preserved without overwrite: " + key);
     }
 
     private static final class Entry {
@@ -592,6 +789,9 @@ public final class MaidLifecycleData extends WorldSavedData {
         private int experience;
         private long experienceReadyAt;
         private boolean tombstoneHeld, experienceHeld;
+        private AcquisitionPhase acquisitionPhase = AcquisitionPhase.NONE;
+        private NBTTagCompound acquisitionSource = new NBTTagCompound(), acquisitionReceipt = new NBTTagCompound(),
+            acquisitionCredential = new NBTTagCompound();
 
         private Entry(Kind kind, UUID owner, UUID subject, NBTTagCompound identity, boolean consumed,
             boolean delivered) {

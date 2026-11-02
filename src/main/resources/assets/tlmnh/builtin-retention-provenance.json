@@ -1,0 +1,2059 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "copyright": "Copyright (c) 2019-2025 tartaric_acid; original pack authors remain in source metadata",
+  "changes": "Original bytes retained; bundled pack paths flattened; original pack.mcmeta/pack.png mapped to assets/tlmnh/retained-builtin-pack; legacy_pack paths unchanged; no new playable choices or integrations",
+  "scope": {
+    "bundled_pack": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/",
+    "resource_root": "src/main/resources/",
+    "outside_pack_directories": [
+      "animation",
+      "animations",
+      "models/bedrock",
+      "models/entity",
+      "textures/bedrock",
+      "textures/entity"
+    ],
+    "source_files": 1465,
+    "source_inventory_sha256": "392d9fb66d859472094616883d0346516a47f787651f2a020cfa5f02ee0eb9db",
+    "selection": "All fixed Git-tree files in scope, minus sources already recorded by the baseline manifests"
+  },
+  "baseline_manifests": [
+    {
+      "path": "assets/tlmnh/banner-assets-provenance.json",
+      "sha256": "e53c65ce964c68ac6f209cdf2a372646264fca742d95cb26a1cf30b1e6bf82ca"
+    },
+    {
+      "path": "assets/tlmnh/bed-assets-provenance.json",
+      "sha256": "bdf3abb6be1e786495d9e1acbcc2a80855ebbda21492bb109cdfcea2a33b3c17"
+    },
+    {
+      "path": "assets/tlmnh/builtin-assets-provenance.json",
+      "sha256": "8952d1fade40e6039c735f755092ec9c85c9a2dd1412e93681764beed26e074d"
+    },
+    {
+      "path": "assets/tlmnh/builtin-sounds-provenance.json",
+      "sha256": "2c7957f377103ea90ec71b82c5969c334b52954c66e21c13036869d429aaf5b0"
+    },
+    {
+      "path": "assets/tlmnh/cabinet-assets-provenance.json",
+      "sha256": "7f59ad31c283232b7fb9e7aadc6ac9387cabfea28dd814c2477246a27ac50dcb"
+    },
+    {
+      "path": "assets/tlmnh/core-assets-provenance.json",
+      "sha256": "9a7ba641672a418e2d1970185d71c417feb36e3cfe784adf7c977c2480349dcc"
+    },
+    {
+      "path": "assets/tlmnh/gui-assets-provenance.json",
+      "sha256": "12ec813467b272cf025cee8e78048c7ad945e4837ffc5b084b059d3371eb67a4"
+    },
+    {
+      "path": "assets/tlmnh/lifecycle-assets-provenance.json",
+      "sha256": "a63acb2dcd1e55a05a77b9431e9a69d11dcb60459063cae7562d4861a3881a2f"
+    },
+    {
+      "path": "assets/tlmnh/shrine-assets-provenance.json",
+      "sha256": "08e5937494f4052f7a35944ace17825cffdb9c5bdd65228ccb1f9287612055ea"
+    }
+  ],
+  "catalog": {
+    "path": "assets/tlmnh/builtin-models.json",
+    "sha256": "20daab304a0704d24d4fce0f9f1c1fecbaa489e3b84968436e4d46fac02c589c"
+  },
+  "files": [
+    {
+      "path": "assets/touhou_little_maid/animation/chair.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/animation/chair.animation.json",
+      "bytes": 413,
+      "sha256": "e6a60671c359c2aa486899db9b550a69eef2a5c234b81d7a69b892842c5c9616"
+    },
+    {
+      "path": "assets/touhou_little_maid/animation/im.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/animation/im.animation.json",
+      "bytes": 25774,
+      "sha256": "6a73dabd7e2a2cd5710d97e5c27f30ecd7f2402e8f98424c925d2a7f681b1f05"
+    },
+    {
+      "path": "assets/touhou_little_maid/animation/iss.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/animation/iss.animation.json",
+      "bytes": 86475,
+      "sha256": "3f39b2d94e2b21a34f6666e993a8f9c7a83dbc8805e13a1e8d18e6f75243348d"
+    },
+    {
+      "path": "assets/touhou_little_maid/animation/tac.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/animation/tac.animation.json",
+      "bytes": 197692,
+      "sha256": "1b1c96bcd4673fbec65333a8aa73262a12118312093d43c75f930a6c5d0fff85"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/altar.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/altar.json",
+      "bytes": 32595,
+      "sha256": "f0473aee1761e748d7f2e25f0c43f4a7d215fc5ac39e87b9a80783f3e0b5dd5c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/bookshelf.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/bookshelf.json",
+      "bytes": 38152,
+      "sha256": "d1dc5312ff444ca79f564627fcc364449f7f7acbfb67a772248628fc4da7f55c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/cchess.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/cchess.json",
+      "bytes": 1117,
+      "sha256": "fb3abb15111f6787494cd9dc6d6a6d55af09ddcee2eed7f0a0852f09687efe11"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/cchess_pieces.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/cchess_pieces.json",
+      "bytes": 114434,
+      "sha256": "30abecf99da5661df59af3864796f37d22ed06b5ba24ca10913f11fa17136b02"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/computer.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/computer.json",
+      "bytes": 8244,
+      "sha256": "bc1fc412370fa9d6e755be1886f793c4898b65e935d6ddb6c32fc55a670c4058"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/gomoku.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/gomoku.json",
+      "bytes": 2464,
+      "sha256": "a89cc03a96b373c0aab97a109eda50b36b68f03a391dac3006cf51032d3790bd"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/gomoku_piece.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/gomoku_piece.json",
+      "bytes": 474,
+      "sha256": "2d13f3f50308d90f1fe06d4feb6e74aa15325b8cdcb7ad0700f10d2c24201bb7"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/keyboard.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/keyboard.json",
+      "bytes": 9621,
+      "sha256": "6118d3ab0385ed9ccd4da2697fd8c192d4de2cee5c11e1c95b634522763ed912"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/picnic_basket.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/picnic_basket.json",
+      "bytes": 1344,
+      "sha256": "764ec93e4b32b9ddee9657c5e3461d759d0a2b66800dab182ad0e0e737827f38"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/picnic_mat.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/picnic_mat.json",
+      "bytes": 25048,
+      "sha256": "893bef3153f766a86368ac353ffea6907737830f5231458fb16945369dab52bb"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/statue_base.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/statue_base.json",
+      "bytes": 8886,
+      "sha256": "6cbfcb54eece298337ab5205b1c43b86af675e30f0d68579cc66e8532d7680cf"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/wchess.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/wchess.json",
+      "bytes": 457,
+      "sha256": "932b7b4534ef1b311d07146b6253e97417748c09ecc4d7ecc72a2ec7e32e9252"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/block/wchess_pieces.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/wchess_pieces.json",
+      "bytes": 2483,
+      "sha256": "cd781e469562c499ff479ade3deda4ad3e0756da73fc402c26e2a214b7af96d9"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/baby_maid_fairy.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/baby_maid_fairy.json",
+      "bytes": 11809,
+      "sha256": "8fa9a75ba8b79ef602c75165ab2e7545ad1ef3a096f9ac4b15c11dea71d731fe"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/big_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/big_backpack.json",
+      "bytes": 3195,
+      "sha256": "3c3fe4626371d0286e85f95c536fe244b165a66d560e1070f2c58322b90ee343"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/crafting_table_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/crafting_table_backpack.json",
+      "bytes": 3073,
+      "sha256": "1c9e9ffca616835c46d1fa1ba937a6b2a9b8d8808c15b4c000f8105af6b7aa4c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/end_chest_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/end_chest_backpack.json",
+      "bytes": 4712,
+      "sha256": "d604e4eb5d2966d593c80c0af30fb14af6f3a4a485869c1cfbb1e872f14608b4"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/furnace_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/furnace_backpack.json",
+      "bytes": 4103,
+      "sha256": "cd0732187dfe9d6647ce5bc02d51378b84d393403996c7aa30b579fcf9eaf188"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/middle_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/middle_backpack.json",
+      "bytes": 4299,
+      "sha256": "64ba4c8f2be3b728cc436df534cd0658154a6bb88c970d7bfdfd85d5521c50a1"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/small_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/small_backpack.json",
+      "bytes": 622,
+      "sha256": "be339cc28834a3f8c168ee21db3c27721d4df3b24011be394ad0115611c68fec"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/backpack/tank_backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/backpack/tank_backpack.json",
+      "bytes": 5399,
+      "sha256": "612ae7c88d8628092550bc723a46d53da0c39bd385e27bb0d13c5bc3f022990c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/broom.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/broom.json",
+      "bytes": 3013,
+      "sha256": "87375dfb81a655b0c5050e327ac7dd5663202ae2f570e8c85541119c42d4edff"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/cake_box.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/cake_box.json",
+      "bytes": 1513,
+      "sha256": "8438f456e229dbb2169cc733200cae0841ef03c35969fa0db342fbf40a4cf538"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/easter_egg_model.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/easter_egg_model.json",
+      "bytes": 2884,
+      "sha256": "166e880cd11adc1be4bb45dfb19ab5cb7fb4e1c529dab1e84bdc9ea606ae9115"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/maid_fairy.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/maid_fairy.json",
+      "bytes": 13463,
+      "sha256": "1ac2abb747c242dcb3879262b87f3edc5effc86a20796d31222f5fb137fa2918"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/marisa_yukkuri.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/marisa_yukkuri.json",
+      "bytes": 3585,
+      "sha256": "8c7f6b096f104242566f28973b02e8a7efcdc74447ff6f68ffe4847a523abe27"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/new_maid_fairy.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/new_maid_fairy.json",
+      "bytes": 10149,
+      "sha256": "ce6f8c22cf98491c9913893960777be506dae1131686e72ab17c2a209feb0672"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/player_maid.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/player_maid.json",
+      "bytes": 5181,
+      "sha256": "20bc9b2f4e0bd69419d36de8805eb78dc93ac49c482049b3e85c6dd76fe9c210"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/player_maid_slim.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/player_maid_slim.json",
+      "bytes": 6426,
+      "sha256": "7cb394630eb4ceac715ee052307cdd77e77cd63e622290253bf4a6ae2c1238d8"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/bedrock/entity/reimu_yukkuri.json",
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/entity/reimu_yukkuri.json",
+      "bytes": 2303,
+      "sha256": "3006a48194c5845fadf198d8ae8d2a8a56990810a0a199828f7943de2153724f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/altar.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/altar.png",
+      "bytes": 25061,
+      "sha256": "7e535c05989bb47ab9e4cee14c18fc30e0ac615a2d9e2e2d646be7ed84d46b17"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/bookshelf.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/bookshelf.png",
+      "bytes": 5956,
+      "sha256": "c5bca58e060721a543a11926405f045ffb977d60a2ce55608b1df5dc8d310d0b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/cchess.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/cchess.png",
+      "bytes": 66708,
+      "sha256": "c4874c5025bf44a5537e927030d5f1ce52e1d62ba9f4961571e20735b1929f51"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/cchess_pieces.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/cchess_pieces.png",
+      "bytes": 3106,
+      "sha256": "4b795ddb3ff1840d1c30b2756f820e0053e0e153d41c3174fb9caf6f9cc631bd"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/computer.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/computer.png",
+      "bytes": 7372,
+      "sha256": "f0ea6161a84537e678b9d6e89925430b61452409837cc6b204f10efd1c95b774"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/gomoku.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/gomoku.png",
+      "bytes": 45363,
+      "sha256": "97142d76bdb7cce59f1419a1f99a30c32e669b7fc9492edcb412e6f828d670a4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/gomoku_black_piece.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/gomoku_black_piece.png",
+      "bytes": 86,
+      "sha256": "55240c503a0d48ef0f1cdd08232c99dd322a3ac5cded5134fcb1e93760794bdb"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/gomoku_white_piece.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/gomoku_white_piece.png",
+      "bytes": 90,
+      "sha256": "31ae197489330a0dd880290086a7b5e70c3fe4bfa0466ee1329d66b1b4e39b09"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/keyboard.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/keyboard.png",
+      "bytes": 4769,
+      "sha256": "702bcaefd95990e622992612d2a7d9f93937b4316a91b5ba97c70bd30b10cdac"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/picnic_basket.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/picnic_basket.png",
+      "bytes": 6333,
+      "sha256": "1eafaf8085e81841e9da216e065f820fba30d25bfa386f53b85dbbe480f84be8"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/picnic_mat.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/picnic_mat.png",
+      "bytes": 11624,
+      "sha256": "37a1a8542010078b63d510621bf8d5d0169ec669d9a75df12a25ad5023a81206"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/statue_base.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/statue_base.png",
+      "bytes": 71896,
+      "sha256": "0165076c022d1e07eec1a85df0eeac8b10e8d4b1db53c02c70019ac14b6762ae"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/wchess.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/wchess.png",
+      "bytes": 944,
+      "sha256": "a17e784ecc4cd15010d81d75d4aa22acc384c7a3d94dbe508beb81f0ed6a72f2"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/block/wchess_pieces.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/wchess_pieces.png",
+      "bytes": 125554,
+      "sha256": "40aa460493f2da49a76893b2f3466570b0b288c6fcae75c3afcdf0e533052774"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_0.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_0.png",
+      "bytes": 1481,
+      "sha256": "fe8275e356e01604fd67e3057241a4459d35ee0464549321532271595d2511a7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_1.png",
+      "bytes": 1477,
+      "sha256": "67c87250a09c06993361e49d98decd9322db3709db818e9b0ebe055e3a3fae53"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_10.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_10.png",
+      "bytes": 1664,
+      "sha256": "1c7c039bf1827b711b42dce14971bb718211d435ecce10c2430e8887ff32f7d7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_11.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_11.png",
+      "bytes": 1610,
+      "sha256": "160c8389c13124435b917516ea3d643e58857268b7b1e65ec0350d287fcb3a38"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_12.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_12.png",
+      "bytes": 1628,
+      "sha256": "e0377a96ff2707c61103b64e21c8b5b8066b07472e8c267c16a153138f2112bf"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_13.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_13.png",
+      "bytes": 1763,
+      "sha256": "9db2ec29581aaffa6ba49f447410574f6b8d8dcc139070350b62532cb12d6b3f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_14.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_14.png",
+      "bytes": 1594,
+      "sha256": "b6bcbe274de92498cf22bae359a85d431eee79d5113793b3fb79c3ae7a5f62f2"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_15.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_15.png",
+      "bytes": 1668,
+      "sha256": "84f92f89ff2d1d9ca5836027014b9f3ae3b1ac1a8b0647e20762ccc2ea93175d"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_16.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_16.png",
+      "bytes": 1579,
+      "sha256": "2a4d5f45746e78f51701a066ce2b4d4341bf92c55bfbfde238a4277d1a2b34d7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_17.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_17.png",
+      "bytes": 1398,
+      "sha256": "bcd9959299d70e4e538807518b26c445bde502592d00332b84b0b2ee745463d8"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_2.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_2.png",
+      "bytes": 1638,
+      "sha256": "52e4cde77a7a0390cfa5fcfba0ad5349a7541386061a3682145798926838b0c8"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_3.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_3.png",
+      "bytes": 1730,
+      "sha256": "b6e0650097f3faf9213d199b049421092fe6a013b484ac4d937cfbec2b492327"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_4.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_4.png",
+      "bytes": 1683,
+      "sha256": "5092aa5aa32e2ef0e98b1f5e1d167ea1d67f30f34bfe7ef6f63585f159ca96d4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_5.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_5.png",
+      "bytes": 1585,
+      "sha256": "e3f07c5df5ad6f72f34ceaf16dca2ab9ff281614b7ab8949382ef7b3bf1673da"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_6.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_6.png",
+      "bytes": 1694,
+      "sha256": "6caed4bfabb5ab30f1d7fa979d343ba120e42761af82e5eb1f3c51af64a80ab6"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_7.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_7.png",
+      "bytes": 1577,
+      "sha256": "f1425545f7aeaeb88b1d816487f0ac412400813af4cf8880e0677f214ba3c9d3"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_8.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_8.png",
+      "bytes": 1659,
+      "sha256": "4bb6c8a924bf937978aca2d70ad754f7f287c34170ae217276edd851cc2f946f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_9.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_9.png",
+      "bytes": 1778,
+      "sha256": "1647b228b44038de6d28b46774e664d01a57e2fb7bbe2a2ee62a06282573e735"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_rick.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/baby_maid_fairy/maid_fairy_rick.png",
+      "bytes": 1062,
+      "sha256": "bd2a4565e015ccf83da903df4088e0084c9754a12de58ff393ee7e00ff9b0bc7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/big_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/big_backpack.png",
+      "bytes": 840,
+      "sha256": "467d021d85b1e2c37c580e026b24a54fcc56064d1f4015c2879dc1d0f278ba69"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/crafting_table_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/crafting_table_backpack.png",
+      "bytes": 1565,
+      "sha256": "10e3bf1c2bdf7a4b7438c158548e8eda44f1986e2d41951e06925a32c79be77c"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/ender_chest_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/ender_chest_backpack.png",
+      "bytes": 1229,
+      "sha256": "23cb34b9ac1d87ad13325951149169f2991f47178e3f4f45c499534bc9b0371e"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/furnace_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/furnace_backpack.png",
+      "bytes": 1887,
+      "sha256": "6d167f7e3fb9d427c29b5c01b97f108433fb31d70eb4558b044d75c902f7dfd0"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/middle_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/middle_backpack.png",
+      "bytes": 6870,
+      "sha256": "08a646c5e1188f7c6abb0f7f47a23117ac9ac3d9d01bba571937484c2e185d17"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/small_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/small_backpack.png",
+      "bytes": 2373,
+      "sha256": "def317b65b78391d5605247ddfbfcc63f22cb3e9c8b9887ab7704ab1356266c6"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/backpack/tank_backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/backpack/tank_backpack.png",
+      "bytes": 1492,
+      "sha256": "f0d248c2c20a2c2562f01d9d52cfbd9a0dc44376464b309e292993ebadefae03"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/broom.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/broom.png",
+      "bytes": 4183,
+      "sha256": "e3aeb86b8004cb5a9017797937203b9edcc27b619bde360feb7467a0b02a3586"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_0.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_0.png",
+      "bytes": 2090,
+      "sha256": "883b8d8e2352be6cfd4848aa43dd3b04bd8a31c338b3f8b8f76e390ace40a0ec"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_1.png",
+      "bytes": 1895,
+      "sha256": "3c237e31117393be85fb2073871134e6c5143d4dc5f5129d0ac90e71c2629400"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_2.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_2.png",
+      "bytes": 2621,
+      "sha256": "2ab2549d9a3a9bfb36dc3288e298a7045fe876f41cbc34b0758ef6e1ad118d30"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_3.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_3.png",
+      "bytes": 1881,
+      "sha256": "a8d981c44490bc54aa9b30b6cb0fe4aa8aa0bbbf2a3bcc880f45547628b492c7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_4.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_4.png",
+      "bytes": 1990,
+      "sha256": "c2dea72a2fc6d6f148feb1ffd2f24a694ec65bba777b64d3bbee7093e2a7ec76"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_5.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_5.png",
+      "bytes": 2614,
+      "sha256": "9c52bed32837ab5d26ccc7b902f647160e3f6d224642eb0b09dc8544e93507a5"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_6.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_6.png",
+      "bytes": 1872,
+      "sha256": "6c97f05df5fa055a2bf238cb1dc90a0dbadfec4584b5a49f46b08d29ddc42955"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_7.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_7.png",
+      "bytes": 1894,
+      "sha256": "61a441cfdccb7fe4d39b7d59ce68470e132ce7ef5ef5023093fad067f0c38795"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/easter_egg_model.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/easter_egg_model.png",
+      "bytes": 917,
+      "sha256": "6e47dd57ef822fccb84dab38d9c95f7fab41cfd10c54a1a51fea2b4477bfd461"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_0.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_0.png",
+      "bytes": 1661,
+      "sha256": "8678cd09742b1f8952f82df62a7fa4838c51d59f6d3ad1b3cc1a2b3e84e9305a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_1.png",
+      "bytes": 1451,
+      "sha256": "9df25d9ae5a52b2ace702052384047addad01adb049226a9ef310708163ca995"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_10.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_10.png",
+      "bytes": 1621,
+      "sha256": "d66a36147087222fbff34eada24d5437c3e0c77bb6f32cf0faff00540b563438"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_11.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_11.png",
+      "bytes": 1564,
+      "sha256": "3ecf74f58c347fa0aec90eabcc3d2a78fc10c920006af942e4279d1ce1d78fb0"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_12.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_12.png",
+      "bytes": 1508,
+      "sha256": "24dda0e9a32b521cf3d4fc8a85ac96f71e9abb9e333ee4f107db9366fc717454"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_13.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_13.png",
+      "bytes": 1547,
+      "sha256": "33935b82ee6ec4faa090aecbe6aa6f60fd27616a43c488ef7c45b53c592f6041"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_14.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_14.png",
+      "bytes": 1553,
+      "sha256": "b3d25db419d419f8eb3456d4d15c8954075b5b79ac3df6f4c24d29c2df6291dc"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_15.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_15.png",
+      "bytes": 1531,
+      "sha256": "4503fc7b90c8734792b91c8ea29f7d221d1a5b15eb6d3ab18b8739a8e46a3512"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_16.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_16.png",
+      "bytes": 1477,
+      "sha256": "22a113b585d9113169df1bfa0faa3ff4a7ac6aece566a28c6ab2ee5a828cf827"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_17.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_17.png",
+      "bytes": 1496,
+      "sha256": "b96832b0d5c9785e8e2f4ac8321d085d2c7ea8a6aacc5abf6b0ff352b325c7aa"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_2.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_2.png",
+      "bytes": 1444,
+      "sha256": "93525b9935d9b5e1c30a1ca2a12ca349981d033e380d13032e18a0a2f0b59ccb"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_3.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_3.png",
+      "bytes": 1532,
+      "sha256": "e7f17f82a726e314d24660ff9c48c2c4ce72ac8bbc9e7323966a91cdc8cb4f61"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_4.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_4.png",
+      "bytes": 1588,
+      "sha256": "35eb63f119cd5f1cb8f0c1cdae3d7c274a45a70d357e377f0c885e9059b1ae85"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_5.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_5.png",
+      "bytes": 1503,
+      "sha256": "81db50da98aa70f1e56240049010b1ab0b010106408ea4898e372ea14ca82580"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_6.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_6.png",
+      "bytes": 1513,
+      "sha256": "12435dc25703f5242c31f02310743972b2ae5b25e0fe206d1e519d20af6f23a4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_7.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_7.png",
+      "bytes": 1555,
+      "sha256": "b876c6a14b25bf26ee1bce835c85056d97963cd91a8fc4dbd2bd7d08dcfb2edc"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_8.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_8.png",
+      "bytes": 1472,
+      "sha256": "31ead9583d06041ddf2dd4dd3ae8a71e97f04c9da09d1e2c4c0a756e9edd983c"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_9.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/maid_fairy/maid_fairy_9.png",
+      "bytes": 1544,
+      "sha256": "00cbb1db0e9b998310acfeb6505c1a112394f4cb0932c382885410bee206f714"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/marisa_yukkuri.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/marisa_yukkuri.png",
+      "bytes": 1753,
+      "sha256": "65c4d248d215cb0aeb726a68bfa5abe33e1b2d906684378b66a0ab36248067e7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_0.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_0.png",
+      "bytes": 2474,
+      "sha256": "2cd4527eb062e37d35c8f696ea4b72fd28e8d4f32f8dcb10e591569aad1750d7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_1.png",
+      "bytes": 2309,
+      "sha256": "abd33ee868e91de8a1be01536b1b271fa8c4d1de21c64b3d5912d62089933be1"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_10.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_10.png",
+      "bytes": 2384,
+      "sha256": "731ad1270b31df0b54ea1b7f69271931dadddb57752abc4aa0189ad86741a672"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_11.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_11.png",
+      "bytes": 2351,
+      "sha256": "fc9e22343516b2e1a6bad0346f779f70441c1f4ce00ad27db40613f460a24f1d"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_12.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_12.png",
+      "bytes": 2344,
+      "sha256": "5ddba8c7887ba418ab918c4f5d5b534521d30b63c2dc4b8e6c9f70f63e70b4e3"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_13.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_13.png",
+      "bytes": 2482,
+      "sha256": "8207b198ee19f46d6d3cc536ca1c399d8e68bb8ecc0c6be68fee6478c28fb147"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_14.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_14.png",
+      "bytes": 2357,
+      "sha256": "78c97c28cbbf412daea8b0fc1a81a03eb5aeff2007c8ba7e5a9f79de942a0ff4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_15.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_15.png",
+      "bytes": 2404,
+      "sha256": "b230d45f2cfb3d7e4ee8c6df08288c4bad57e2a578bb340c1dc23b8a3f0ea460"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_16.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_16.png",
+      "bytes": 2341,
+      "sha256": "50ab8c4398f8a7fc15998947b3c796b6db1a8f3c5a0a32c4be682cb965175ad4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_17.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_17.png",
+      "bytes": 2183,
+      "sha256": "7a6575b8fc4c26af9dc8bf465634359df0731cb94329c57418fee18a0d9c332a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_2.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_2.png",
+      "bytes": 2344,
+      "sha256": "a34578ab91cb8ac4e48fcb5a4dc84fae549ca45a54bd00eea0b895623c3e0a6b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_3.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_3.png",
+      "bytes": 2443,
+      "sha256": "56796de46bcee4ac131326f85e7f37502c57b56bfa4b711349a157bd430dd759"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_4.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_4.png",
+      "bytes": 2401,
+      "sha256": "3d898d6c460e3a045149c144b34b6ead569593b15924edcd5ead2f73be5a4e2b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_5.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_5.png",
+      "bytes": 2357,
+      "sha256": "5d2989445fca3b6376a5aab6b94b39cceb876e4b74c1d951473769373512a4bc"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_6.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_6.png",
+      "bytes": 2506,
+      "sha256": "70ff30cadd205616c7bb6c771be36544cb4c2b1dd6ebf2889f3af02a5e459334"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_7.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_7.png",
+      "bytes": 2276,
+      "sha256": "19ca7bc03c32cddb648a2faae40010883d6ceed820d3708753990bc07d24359a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_8.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_8.png",
+      "bytes": 2384,
+      "sha256": "6a1a101703200e016e0aa782efdafc4d27230df7fb7a01a12f741f9122b68ecd"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_9.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_9.png",
+      "bytes": 2436,
+      "sha256": "e2a95487182421fc0f062a79ee818cc6293ef9e3fb7fcdac56873b25fe7a1bda"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_rick.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/new_maid_fairy/maid_fairy_rick.png",
+      "bytes": 1662,
+      "sha256": "97326181737d2c5e3ac6ec832e56be8f2c87ccbe1092a16a75f6b960f93ba0f4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/bedrock/entity/reimu_yukkuri.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/entity/reimu_yukkuri.png",
+      "bytes": 1917,
+      "sha256": "6b0905a746a1b2eeffe61f3ef3d103bdac42fa0c92b70984413e088301b6c487"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/chat_bubble/type1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/chat_bubble/type1.png",
+      "bytes": 1044,
+      "sha256": "4caf00497046fbe71ecfd5938dd161d12c4a669baf29613a8b60ddac8188df2a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/chat_bubble/yinyang_orb.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/chat_bubble/yinyang_orb.png",
+      "bytes": 171,
+      "sha256": "9b706ad7be557699f27057bc08ec0299f240819f220c51cbb66d6bac6443fa5b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/danmaku.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/danmaku.png",
+      "bytes": 17230,
+      "sha256": "3f48e209fd8e79ff93fde61b5847e75cb7d54401725d78fabb88434ff1ebcc86"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/empty.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/empty.png",
+      "bytes": 119,
+      "sha256": "afb00bb81069c591d33c4d3bf6a50faba0fb830bcc208af39aa690d97d5458a3"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/point_item.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/point_item.png",
+      "bytes": 1684,
+      "sha256": "52172b62006749559d0e00b6879767472890d3ce8f89cded3ca86276a1e6c65b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/power_point.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/entity/power_point.png",
+      "bytes": 1554,
+      "sha256": "e9f2bc381785975dd8671ce182014dce9395c5a7d3f88ecdccd4df7410dd013a"
+    },
+    {
+      "path": "assets/geckolib/animation/qingluka.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/animation/qingluka.animation.json",
+      "bytes": 14050,
+      "sha256": "6fe90454a8a9e323d9e7f6033e0bc631d6053e082c8ca03228644e279256e44b"
+    },
+    {
+      "path": "assets/geckolib/animation/winefox_nine_tailed.iss.animation.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/animation/winefox_nine_tailed.iss.animation.json",
+      "bytes": 117828,
+      "sha256": "c55278f1b9e10bb31a0afc76ca404dcaf0c463293dce7b1cd21ecfcc0e6c78e9"
+    },
+    {
+      "path": "assets/geckolib/maid_chair.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/maid_chair.json",
+      "bytes": 441,
+      "sha256": "ad08fc4c5d0fee5590badf6bbbade5848925be3feeb6133fecb3381a48fb2ca1"
+    },
+    {
+      "path": "assets/geckolib/models/entity/qingluka.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/models/entity/qingluka.json",
+      "bytes": 40809,
+      "sha256": "4c859c1f2d15a04325a69b6b99b56521e90fc2cff0f4515cc0a11fb09beebf60"
+    },
+    {
+      "path": "assets/geckolib/settings/kluonoa.yml",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/settings/kluonoa.yml",
+      "bytes": 3054,
+      "sha256": "9880c59b0b9f2409088bc12b10811d734c8b3f779a4d01ceec277af3a874d928"
+    },
+    {
+      "path": "assets/geckolib/settings/winefox.yml",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/settings/winefox.yml",
+      "bytes": 2298,
+      "sha256": "5a259a3fe9a6d9382170dc36ccaffc0762f860552a33c4fd579dc049bd9cf56e"
+    },
+    {
+      "path": "assets/geckolib/settings/zhiban.yml",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/settings/zhiban.yml",
+      "bytes": 2379,
+      "sha256": "8b28d57dd90f97c2cbfb801778a8e88bd4b63025c87e9d244e4a2f46ffaf5d85"
+    },
+    {
+      "path": "assets/geckolib/textures/entity/qingluka.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/geckolib/textures/entity/qingluka.png",
+      "bytes": 1416,
+      "sha256": "ccfea0dc0e9f5e2faa2fdc648753bde834de9a120d8fbe2e23184a909ccc34c7"
+    },
+    {
+      "path": "assets/next_update_model/lang/de_de.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/de_de.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/en_us.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/en_us.json",
+      "bytes": 1665,
+      "sha256": "fba64806def362a9d648fca580b139a7af45b8dc537f476a9c4ec7d057f821a5"
+    },
+    {
+      "path": "assets/next_update_model/lang/es_es.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/es_es.json",
+      "bytes": 1754,
+      "sha256": "5040dd8317365d9e41546644b185c13a67a65cfc0b24d3a6ab39029e1a4630f7"
+    },
+    {
+      "path": "assets/next_update_model/lang/fr_fr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/fr_fr.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/id_id.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/id_id.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/it_it.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/it_it.json",
+      "bytes": 1761,
+      "sha256": "94da44897bb24a222b3ff3bbb407c42af3a72dcf1fb4b7a826b27be48bf90367"
+    },
+    {
+      "path": "assets/next_update_model/lang/ja_jp.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/ja_jp.json",
+      "bytes": 1837,
+      "sha256": "1666712a56d123a8db65aff0658ca414baf6a95e205cc2508fb3adc9a81bec44"
+    },
+    {
+      "path": "assets/next_update_model/lang/ko_kr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/ko_kr.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/la_la.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/la_la.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/pt_br.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/pt_br.json",
+      "bytes": 1715,
+      "sha256": "040250a25962b431fcc8f5ab02694c612221665f6e4a8aba6da13deef9dc1084"
+    },
+    {
+      "path": "assets/next_update_model/lang/pt_pt.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/pt_pt.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/ru_ru.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/ru_ru.json",
+      "bytes": 2043,
+      "sha256": "18622b9b1cc7a987d3a09a2ce47fc581493671c46e5f587d88104ba3b72f64b8"
+    },
+    {
+      "path": "assets/next_update_model/lang/tr_tr.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/tr_tr.json",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "assets/next_update_model/lang/vi_vn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/vi_vn.json",
+      "bytes": 1826,
+      "sha256": "ff9f55b65b826bbbda9f6d212b9773f943353151ae8600bfbe2db757cb1ae765"
+    },
+    {
+      "path": "assets/next_update_model/lang/zh_cn.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/zh_cn.json",
+      "bytes": 1640,
+      "sha256": "97f01ae0d715e455b72e409ed16791b7aa11a180788f35b436d1ae12f397fde1"
+    },
+    {
+      "path": "assets/next_update_model/lang/zh_tw.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/lang/zh_tw.json",
+      "bytes": 1643,
+      "sha256": "79571050cb52145bb8bf888aa98d52b94e996467c0312c774b35bd744bf841d4"
+    },
+    {
+      "path": "assets/next_update_model/maid_chair.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/maid_chair.json",
+      "bytes": 5217,
+      "sha256": "fbd7c53fd669f3d98d978a2922c8371472a8f270e533fe35beb3756613398471"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/3d_printer.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/3d_printer.json",
+      "bytes": 18955,
+      "sha256": "f83b9d5cba056b64a1cd132d2dee28294e9c62226ecc4b509c90bc83d4cc1a73"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/backpack.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/backpack.json",
+      "bytes": 2572,
+      "sha256": "867b57ce55bae4af2415fbb7fcfc9ef3c6b53d99de00236048d6becce2632874"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/bathroom.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/bathroom.json",
+      "bytes": 1776,
+      "sha256": "cda45d8bc8274ed5b1fb0879b56671066a7e03835318d7bd3fe897ba6114ea2a"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/cabinet.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/cabinet.json",
+      "bytes": 2373,
+      "sha256": "c94d28f62270e9a056b7131edc274a25aa1c105372fcc3123b0a5378c6808aa8"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/cumin_lamb_chop.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/cumin_lamb_chop.json",
+      "bytes": 2853,
+      "sha256": "5aab39ed4b71d0d0a149786e10c41f8021e9d6b7efbe5e52cbb7969b6699b8e4"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/dining_table_default.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/dining_table_default.json",
+      "bytes": 10292,
+      "sha256": "02d138eabdafc759bfd0d44bd936f65c41fe55e2d496ea22ce19e95cd9c82af5"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/doorbell_ground.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/doorbell_ground.json",
+      "bytes": 5648,
+      "sha256": "d0427b3fd6332e9353eeef0d81094d633bdec7f4e33f4fbb17dfe13f776b6def"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/doorbell_wall.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/doorbell_wall.json",
+      "bytes": 4021,
+      "sha256": "804f7714ec8f1fef985d487b5fb693cf09d71d47c9a046f977617135ea802e08"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/double_bed.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/double_bed.json",
+      "bytes": 11579,
+      "sha256": "0760cefbf616ce90c6433971af033a35774416e6f5feae9c06cff4f3ef551e72"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/elite_slime.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/elite_slime.json",
+      "bytes": 8213,
+      "sha256": "9350857cb45d6a0ed9fcd67bead45cc09929c3af38383ee99804d8d056912cb3"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/exchange_machine.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/exchange_machine.json",
+      "bytes": 7207,
+      "sha256": "82fd66a54da473df8182561ef9a748bfce54b64b304d86ac6083e63e065021cf"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/fishpond.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/fishpond.json",
+      "bytes": 15211,
+      "sha256": "521d6b79fa347f183b98fd7f48f459c5847fea9e09821c3e670e5ff5777365ed"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/flip_phone.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/flip_phone.json",
+      "bytes": 4886,
+      "sha256": "475352806b69bcf84cef10b85f126aae10f88d8ac9a9a5afa07b536f5ad5a08b"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/fox_demon_statue.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/fox_demon_statue.json",
+      "bytes": 8270,
+      "sha256": "c0f11490ffe042eca59df931a87bcfc90bdae61ba386e2ca2a1ac3c0ad4687e8"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/hot_spring.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/hot_spring.json",
+      "bytes": 23424,
+      "sha256": "626d954ba6f87320b81fb564a78012fbbb262a63a404974a1649d77ee6dde63b"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/japanese_lottery_machine.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/japanese_lottery_machine.json",
+      "bytes": 8575,
+      "sha256": "544885154b9bdb3625d48b6919dba34ff6aef75b69b2648da125f6a52bbf067a"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/kitchen.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/kitchen.json",
+      "bytes": 59972,
+      "sha256": "31341f7d2b8d419a4a4cddd55b0772352b70a952feb4914fe43a5742a9bd18e9"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/logging_hut.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/logging_hut.json",
+      "bytes": 17288,
+      "sha256": "b8ebc6f7ef0dd910dbe28603bf0a0f45a8024cb08765a26c57d8df603d56d29c"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/mine.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/mine.json",
+      "bytes": 17384,
+      "sha256": "036d3af8b6cad494f3aa8e0adfa3d083383c74b72ef5ad60412aa25379f4781b"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/picnic_cloth.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/picnic_cloth.json",
+      "bytes": 15015,
+      "sha256": "273c501d6417188135403bcc8d0f79815d73a30d489bd0cd2eacb14d2288c56a"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/shrine.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/shrine.json",
+      "bytes": 31553,
+      "sha256": "cc1b9a751f563606d8955cc28779b8521e15725dc52abf67c9f5c130901c6183"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/single_bed.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/single_bed.json",
+      "bytes": 1893,
+      "sha256": "90f0bf624e16a8e289fce9f7f5f1a00e8681f5a24f9a1c9fbafc4276620a640f"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/slime.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/slime.json",
+      "bytes": 2549,
+      "sha256": "bf472a7c914a76bbb5a0a3ab11810aa5430e9b6bdd4e469af5fa50e9415a3a9b"
+    },
+    {
+      "path": "assets/next_update_model/models/entity/stage.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/models/entity/stage.json",
+      "bytes": 20570,
+      "sha256": "7b4b459692c0b516a84bc42f5474bfaaa72e897218d9f8ccbe4333ae11c704f1"
+    },
+    {
+      "path": "assets/next_update_model/textures/chair_icon.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/chair_icon.png",
+      "bytes": 228,
+      "sha256": "f25f25163c3c45ed9e80093c7fb59aa44690487b2dfd7b093a5f7e9bc13a31b7"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/3d_printer.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/3d_printer.png",
+      "bytes": 3190,
+      "sha256": "4e489436ddadb598f022415a89b930e46eb241dbd097785e20f65aee93c2e469"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/backpack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/backpack.png",
+      "bytes": 3101,
+      "sha256": "ccfc4ac0bb3d70419acf0e2ad88292fd1c4d3b2775df57f5015c02cad138aab8"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/bathroom.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/bathroom.png",
+      "bytes": 18605,
+      "sha256": "853138f9539cc91da84caaedda000bbd1bef443533b498220b8559236efec897"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/cabinet.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/cabinet.png",
+      "bytes": 816,
+      "sha256": "9da564956bab2130f2f6a0bb999d422bedf54f3c8d6086a7c4e33c63bba7692f"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/cumin_lamb_chop.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/cumin_lamb_chop.png",
+      "bytes": 1208,
+      "sha256": "2961900a0d6a50ad5224e7d3608de3d1ebca82b29ca320186e17c53e2313a8be"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/dining_table_autumn.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/dining_table_autumn.png",
+      "bytes": 75227,
+      "sha256": "6946768ac7f1e7cdfd8d930709c58b78d4f61e845ad2657f73ed9b8f180aa415"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/dining_table_default.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/dining_table_default.png",
+      "bytes": 52442,
+      "sha256": "e65779da40daa3d800871fb4a2c25c095b4cf0b129b36e97626fe911d429bfc3"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/dining_table_spring.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/dining_table_spring.png",
+      "bytes": 73808,
+      "sha256": "e78c7fb8a9c25b8e2ccf3c296946c8f2d3370219dde5f3c5348411a4ce1e359c"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/dining_table_summer.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/dining_table_summer.png",
+      "bytes": 52351,
+      "sha256": "4ca15d9b21145c8e633f3913d1ac98c900c2f4133a6646d9a09be8c2d47da08e"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/dining_table_winter.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/dining_table_winter.png",
+      "bytes": 73657,
+      "sha256": "27ab4d307d7805c802da5d6d083bd247a8bcd2a9d3cd9c71e21310000e8b8a17"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/doorbell_ground.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/doorbell_ground.png",
+      "bytes": 1558,
+      "sha256": "6fdfccfd5fbf28c02d2edd84a99bb7ff2c95bc359f28d6f87e75bd48ac12aec5"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/doorbell_wall.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/doorbell_wall.png",
+      "bytes": 1389,
+      "sha256": "cf9385b50b07d86d496a1ae3e2fdd7d74ebd3f59c5bd8f695703a547aff377af"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/double_bed.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/double_bed.png",
+      "bytes": 5179,
+      "sha256": "2bb1786401819249f87a1095fcfd00e94fa41db3340440bbb94538d869f6b28b"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/elite_slime.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/elite_slime.png",
+      "bytes": 10062,
+      "sha256": "5d4a247854d14c8d2dbb347ca4c4cbca9ec5932b3ad023a92d6356d8a9f79053"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/exchange_machine.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/exchange_machine.png",
+      "bytes": 6701,
+      "sha256": "b4b374bbd71144ae90c87b75f463ef8ba552644aa6414d5e0b55fc686297532d"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/fishpond.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/fishpond.png",
+      "bytes": 216587,
+      "sha256": "ba008e3c7752db88794accd4db1d6afa7295a781811c6604a9f9c82113b4e288"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/flip_phone.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/flip_phone.png",
+      "bytes": 688,
+      "sha256": "3b9b809481c5cc40ca02b9ea9714d1dee4f14de76f90c035a91a5b0a98f16e4a"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/fox_demon_statue.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/fox_demon_statue.png",
+      "bytes": 2056,
+      "sha256": "1e17a18ac98de7c97f33c13753f27acf56d968621297ca4a9b548d6bf0ce57ef"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/fox_demon_statue_1.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/fox_demon_statue_1.png",
+      "bytes": 1598,
+      "sha256": "badb550e3d003e19f0742dbbc43d6b7cf3f2647b6d0782fb6b74530b5b02c45b"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/hot_spring.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/hot_spring.png",
+      "bytes": 238548,
+      "sha256": "c4e0c90008c68e20606a5da3b5c734248e3c873c805aa8e9fcd5853983672600"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/japanese_lottery_machine.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/japanese_lottery_machine.png",
+      "bytes": 6871,
+      "sha256": "b4fe1edcc9cd9e21c5d73803b5f2286764f32ca5359ba09266d269a5a4e06bc7"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/kitchen.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/kitchen.png",
+      "bytes": 96679,
+      "sha256": "1e0346ba6ce1be381003e913f8d7b5a97d47984ae51e7e5d86c4108c6b7d2a00"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/logging_hut.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/logging_hut.png",
+      "bytes": 156490,
+      "sha256": "0b4dfd109b52b5ffb76bae4337abc2b38d6392b3a562ec522879dc2e9ee4c846"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/mine.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/mine.png",
+      "bytes": 291207,
+      "sha256": "aea5972469c2fb5867d86e7e6f64da0dc129e7ba51ffed48e363af2132829980"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/picnic_cloth.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/picnic_cloth.png",
+      "bytes": 14504,
+      "sha256": "8f8d6ccfa0d8035d7cdd824c503c67cca800152d2df5696ee6bdda99f20f783c"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/shrine.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/shrine.png",
+      "bytes": 961741,
+      "sha256": "aa1db708d2092022b1130374524df5af047d9b47eda57190d2c8ba9283608da8"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/single_bed.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/single_bed.png",
+      "bytes": 3525,
+      "sha256": "ca578ae123ea8ed755500ca494d154650ee68da052a4dbfe7e22dac2faabda9b"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/slime.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/slime.png",
+      "bytes": 1902,
+      "sha256": "716b2b5463cf4303497279ece8b86b4275402f2ad21786db3dce94ecd7a685a8"
+    },
+    {
+      "path": "assets/next_update_model/textures/entity/stage.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/next_update_model/textures/entity/stage.png",
+      "bytes": 25890,
+      "sha256": "a5f29d62fc934a3c78a9dd5a03f04a8bd74c70acc36ed33596ad708557dd7158"
+    },
+    {
+      "path": "assets/touhou_little_maid/maid_chair.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/maid_chair.json",
+      "bytes": 5555,
+      "sha256": "c86184ce5a7f5373bc588121710f0e23d2ff132ca50ed286ade28b4ad45e9f53"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/alice.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/alice.json",
+      "bytes": 12049,
+      "sha256": "121d0c30ea2225db7e340fe1f935374f5e112bd504431d2598a70fa56840f6fd"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/anti_collision_bucket.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/anti_collision_bucket.json",
+      "bytes": 4019,
+      "sha256": "4872b2090e2aae92d16a274279c5fcc4701a12639fa4f7db31087e6dafa9c18c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/barbecue_booth.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/barbecue_booth.json",
+      "bytes": 39839,
+      "sha256": "1084446f0d7c3310b9ce620b77e7271ceea360b45155cd47198fc00b52709853"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/barbecue_booth_2.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/barbecue_booth_2.json",
+      "bytes": 7364,
+      "sha256": "a7ec4840e0f66afa1096eee37ce4a22524fdef97c9f407f6541c63746bf06fc2"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/beach_chair.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/beach_chair.json",
+      "bytes": 4022,
+      "sha256": "cd5f16f5d1817bdd0cdccca2d410732c94f05459ae5a2eec27d2c7158178e251"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/bowl.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/bowl.json",
+      "bytes": 12207,
+      "sha256": "3a73316e5a0344dd49cb9b97eb511c17d2744f1c5555b1b76cbc0fea96746e13"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/class_chair.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/class_chair.json",
+      "bytes": 2770,
+      "sha256": "d55b1a826e43d14b12c3e6ac645a665483e4ec95782adc44dd8c939c2599c0d6"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/class_desk.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/class_desk.json",
+      "bytes": 1821,
+      "sha256": "933a591cdc43d9a7660ee8247cfd8a6cd80259c1ecefb04e6b87facbe232846d"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/crystalizedsuns_moms_tombstone.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/crystalizedsuns_moms_tombstone.json",
+      "bytes": 14504,
+      "sha256": "af690e806ca9fa6904bf18e770a5937577c6eda065fdf18d3e14ec54703b4d08"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/cushion.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/cushion.json",
+      "bytes": 401,
+      "sha256": "4e8ebb18e10ce08af6bf44a7c4a1a289b96d946e79c320d6eafc96d53fdfc025"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/ema.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/ema.json",
+      "bytes": 11179,
+      "sha256": "271c388ac4f6c76f78b8599659334c2245aae14dd852776619e5f1156df3d935"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/fogg05.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/fogg05.json",
+      "bytes": 19110,
+      "sha256": "8c940649e3aa93ebecad73c1a54899153a5b4efdd75ff603d453c193da6def4d"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/head_of_academycraft.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/head_of_academycraft.json",
+      "bytes": 10941,
+      "sha256": "73f11471b442700cdf6abe441cf03b824066c167d861e119f1db273a5f50fe3a"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/kotatsu.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/kotatsu.json",
+      "bytes": 4021,
+      "sha256": "905214c59786ad074598b9926f1746fa0df0e4fc08399cc9c4cc593a58be8b1d"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/legendary_pig_man.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/legendary_pig_man.json",
+      "bytes": 10975,
+      "sha256": "b1eeba4add05c2a304fc15a497a5ed9dbe556a6d5ca85bc9ca27e06ca31ea259"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/long_stool.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/long_stool.json",
+      "bytes": 1656,
+      "sha256": "dca7eb550ee507f829b7f856840bb1147d1c849cd216d22bddc101dacd6d63ae"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/lucky_cat_2m.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/lucky_cat_2m.json",
+      "bytes": 3201,
+      "sha256": "90ddc157d1ba0e041ab8288f9e59d0dd8d756c376d7f193da6f249f9a1514103"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/mahjong_table.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/mahjong_table.json",
+      "bytes": 5132,
+      "sha256": "3308f74e719a9f9a3925d89a84b72ee8c6c7541a717efee26a438033178dfd77"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/mima.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/mima.json",
+      "bytes": 14195,
+      "sha256": "dd84dab1ef5533286edb14773162c50691c486159232f129e54e0d57d6652693"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/moto.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/moto.json",
+      "bytes": 17857,
+      "sha256": "d89280d2797221b31bac631aa89c379d7485ddc11ea72606222e575d2685d97c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/native_drum.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/native_drum.json",
+      "bytes": 37298,
+      "sha256": "df76d3a53cd85bcf3535d0715c0a63d7035e49d377236799f161b6733a18a68c"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/parasol.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/parasol.json",
+      "bytes": 12004,
+      "sha256": "bf28cd6001daaf8ab8f00ae170d00d80aa5664a1ac9e5b4e46b3ed118d71795b"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/park_bench.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/park_bench.json",
+      "bytes": 3401,
+      "sha256": "0900af04051e9ea5f941ff5cb8d6bc971145fa9c92309ae4a840286ed0cc4e37"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/play_station.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/play_station.json",
+      "bytes": 9447,
+      "sha256": "a0d997ba6833cd478991d750f9c77b6ba669c8fe4ef2ea920b8b50f28b5d2c49"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/rinnosuke_children_toys.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/rinnosuke_children_toys.json",
+      "bytes": 11098,
+      "sha256": "6cec5f181b9ad22e51385332790fe88b01ac7ae3dea816afbef4fb67e1f2bad1"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/saisen_bako.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/saisen_bako.json",
+      "bytes": 2215,
+      "sha256": "f3f36612090d3bd202b4c39322e7f6bf77a18dfe5928798cdcd7b02fe785a35a"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/square_table.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/square_table.json",
+      "bytes": 2665,
+      "sha256": "914d1fbb17dbce623f5a81b6e1f7603dfae3e136da1056bffb3d3022602aaaca"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/tall_stool.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/tall_stool.json",
+      "bytes": 2296,
+      "sha256": "1c0da04b00c3d7f8d741caac058579cf277f6a57af639c00ff420ac2ab29a2bb"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/torii.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/torii.json",
+      "bytes": 2631,
+      "sha256": "8413f53f7b219eab6a409ce1005577c73873037bb0e53598e5fc95c023c98ded"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/torii_2.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/torii_2.json",
+      "bytes": 5498,
+      "sha256": "a74d4c5d9aa487152c59fa79c1d354df3364dff8a6daadcb4229223c9a196f85"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/torii_3.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/torii_3.json",
+      "bytes": 6686,
+      "sha256": "0716977510141b68d83e229a072bd62b5f000260203f783033d851d2b9b3623e"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/water_wheel.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/water_wheel.json",
+      "bytes": 15991,
+      "sha256": "86f7c2d4936ec36d5d23a00703ac1952c999d82bc3ae802d1e4ded84c4e30efa"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/well.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/well.json",
+      "bytes": 5244,
+      "sha256": "0427ebcf8fed756f3115fc971d23a8f54cc496b4c0830a293674ff1a5badca44"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/yumemi_okazaki.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/yumemi_okazaki.json",
+      "bytes": 12001,
+      "sha256": "0b2a9320c94c97a3867661217adf5dddcfdb50db24586b0a614e9c0fd841b503"
+    },
+    {
+      "path": "assets/touhou_little_maid/models/entity/yumemi_strawberry_milk.json",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/models/entity/yumemi_strawberry_milk.json",
+      "bytes": 672,
+      "sha256": "4f13c7af6853204c638c262ce61543d23320e64893deffc3a764c82a54b67673"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/chair_icon.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/chair_icon.png",
+      "bytes": 1782,
+      "sha256": "f956225a71c8b8aa3f4f6695ef2a2b08641dbf6411346c9d227943c489444ed6"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/alice.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/alice.png",
+      "bytes": 2072,
+      "sha256": "c7f6b66e3baf15bdaff430c6321e725e67671d3a3e5d6859176d6b49bd17be75"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/anti_collision_bucket.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/anti_collision_bucket.png",
+      "bytes": 417,
+      "sha256": "51d89daffb2cdc86201441df65e872ba415dea5f084e4a12954bffde91ae961b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/barbecue_booth.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/barbecue_booth.png",
+      "bytes": 37952,
+      "sha256": "c0822512d628a158ca803a62fd5c9869854118f2c5c4f8095f08dc8e9cf2145f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/beach_chair.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/beach_chair.png",
+      "bytes": 747,
+      "sha256": "32089732afe9a302a3a565f493f523b04b112891015c84d1e21fb3208e8c2c46"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/cat_cart.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/cat_cart.png",
+      "bytes": 2335,
+      "sha256": "8fa583f2f48ce4b3fb8050e68e78839df1d0bc4b22316869f695028e1e868267"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/class_chair.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/class_chair.png",
+      "bytes": 832,
+      "sha256": "12f1c4037c7482effdbf79ff33d8019b3fdfb5641871d94ae15cbcf0f2ede950"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/class_desk.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/class_desk.png",
+      "bytes": 959,
+      "sha256": "6b2475bc2290b0de06221ab881fe5398e153cf52266619c4312c47a0393f6a3b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/crystalizedsuns_moms_tombstone.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/crystalizedsuns_moms_tombstone.png",
+      "bytes": 3617,
+      "sha256": "9094d24ff38affd71c4aed2333d29453c33072b1fa5c1d5107d6cf747a0f14ff"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/cushion.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/cushion.png",
+      "bytes": 705,
+      "sha256": "cf3ec737a14086e2064236fe325be7640e81b2c6cca11e452d9e738bf3eca311"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/ema.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/ema.png",
+      "bytes": 16980,
+      "sha256": "13a9a07b7a5e7823fbadc1059a758abcc9676c48f87b83d8b9cbf038fa167796"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/fogg05.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/fogg05.png",
+      "bytes": 13272,
+      "sha256": "6a8a62f3531fa9916a328cfad7d2a59d83cc73e09a355e6c8dc16d5c7cc4f4fb"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/head_of_academycraft.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/head_of_academycraft.png",
+      "bytes": 14824,
+      "sha256": "c064a16aa452a9d1fc9657968de0ed25d698e09219f2df3850feab0d5b5a6895"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/kotatsu.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/kotatsu.png",
+      "bytes": 5967,
+      "sha256": "4a9ed87cffdfbf5872c0bcc40ea6c166a574a54f2af4fba8aa0ee90bba36587b"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/legendary_pig_man.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/legendary_pig_man.png",
+      "bytes": 16707,
+      "sha256": "a990c7e41101f599b9576a6f76fff96eafc44dcaadac1c111f475e2bbe736da4"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/long_stool.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/long_stool.png",
+      "bytes": 2221,
+      "sha256": "504b6e30f5e143c3c9b03c834eeda2a4d54615fd29c762da2f30b1d54d23bc2e"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/lucky_cat_2m.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/lucky_cat_2m.png",
+      "bytes": 2273,
+      "sha256": "2857f816d600827e1f62ab40ab464aea234c1f1f939f9d66f49c758da2cd9ef0"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/mahjong_table.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/mahjong_table.png",
+      "bytes": 2998,
+      "sha256": "c4b5b83a1e027e28995aab46444fbf070cda4089f36ea66ff370291ee05d34f0"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/marisa_broom.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/marisa_broom.png",
+      "bytes": 2801,
+      "sha256": "c061fdda21b52de09908f5135d5340bb613f18c5b7f712f0a0436fd7b58258d5"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/mima.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/mima.png",
+      "bytes": 4381,
+      "sha256": "d68e1004f7a7c97d4bea9ef3a830125c30efc550c70411b41ee0404bcde0ef92"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/moto.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/moto.png",
+      "bytes": 6643,
+      "sha256": "2aefc835d4303b4b10d4d93f9dc92eb2aba1c412aa4572ce64381814be0c2a54"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/native_drum.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/native_drum.png",
+      "bytes": 2926,
+      "sha256": "459998552eeefd740d705d75b164759e90ef45f72ea8d2d8d3649a26edbfddc1"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/parasol.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/parasol.png",
+      "bytes": 917,
+      "sha256": "acad969f0b5280a385069276f84ae552cf78345ec9a7b542dd5301f0d1a83364"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/park_bench.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/park_bench.png",
+      "bytes": 9810,
+      "sha256": "b5751e10f591ee3bb161f482b28d16b664e683a56b990ef0cb91d58ccc1360c2"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/play_station.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/play_station.png",
+      "bytes": 4304,
+      "sha256": "283192f63c214060287040aa7d86ec45a8cd25d5446e2f7331d115a158ee4b32"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/rickshaw.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/rickshaw.png",
+      "bytes": 2250,
+      "sha256": "d6d509a3f3e730a624e1afc715642d43bcd3d359c49e4857324d5bcfeeecee9c"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/rinnosuke_children_toys.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/rinnosuke_children_toys.png",
+      "bytes": 4725,
+      "sha256": "03fdbf5c9e590db6efd602b56ea9f4ee5f60986ae4b1cffd2bac89b031eabca9"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/saisen_bako.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/saisen_bako.png",
+      "bytes": 14296,
+      "sha256": "2fa195ddc5b3da87e3b97b2b70afc362d40a3f719b59fe8ccc27f5922221fb7d"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/singe_plane_danmaku.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/singe_plane_danmaku.png",
+      "bytes": 40142,
+      "sha256": "2cacc46b426a83ad5f61fc4b60d85c2cffb136e87f6173b70761c54c4a8e846f"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/square_table.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/square_table.png",
+      "bytes": 6387,
+      "sha256": "94f6b551dc3a08f1307e95ba44856de87eacc54ad551f80702ce86fbaa1aaed5"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/star_danmaku.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/star_danmaku.png",
+      "bytes": 15243,
+      "sha256": "e7abe78e589d5c5e1586b9e1d18bb41b6c8b2959dbf0ececf20f5d582252bd7a"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/tall_stool.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/tall_stool.png",
+      "bytes": 916,
+      "sha256": "295b3e6683d00c8aee63501e4816956b27f0f724250ce746219a888d8a2c96e7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/torii.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/torii.png",
+      "bytes": 292297,
+      "sha256": "51408bc3c83e74025cd9d38bcbdb6cad3849e6be1fcb1383f9336174d48d7e8d"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/water_wheel.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/water_wheel.png",
+      "bytes": 15653,
+      "sha256": "60d0b72be6c5691f9b75a3043f971e161de995d63540b4119e737ece032f6294"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/well.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/well.png",
+      "bytes": 4090,
+      "sha256": "765ccb3dc3118547989b8ebf0c51498b3e578024a27a890d783477ca67d10abd"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/wheel_chair.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/wheel_chair.png",
+      "bytes": 2408,
+      "sha256": "dd44a219ddff9689228ad75a0444cd8268b812e3007ddc4aaf8772292fb776b7"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/yukkuri.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/yukkuri.png",
+      "bytes": 2520,
+      "sha256": "da0061c38b60908bd8721d884015186eeabf9590e579dc8a332a3f37259f4633"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/yumemi_okazaki.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/yumemi_okazaki.png",
+      "bytes": 4645,
+      "sha256": "361360a14a2dd13788f2dde3ed05611a4d5ce0b41077053ebee9fcf392ad92a9"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/entity/yumemi_strawberry_milk.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/touhou_little_maid/textures/entity/yumemi_strawberry_milk.png",
+      "bytes": 7713,
+      "sha256": "84ed71bacec8a2b86b04d23f4192465ab1d535074b4e65b44dba10612b719c12"
+    },
+    {
+      "path": "assets/tlmnh/retained-builtin-pack/pack.mcmeta",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/pack.mcmeta",
+      "bytes": 97,
+      "sha256": "595f13f09777d8ecd28aacfa8f82bb8d14d656b290f50fc0aad02489e75944e1"
+    },
+    {
+      "path": "assets/tlmnh/retained-builtin-pack/pack.png",
+      "source": "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/pack.png",
+      "bytes": 1234,
+      "sha256": "af1714bb66a877021ede496e61f35d2358fb69b8878eda7b553f07fb4588075f"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/altar.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/altar.json",
+      "bytes": 28472,
+      "sha256": "f5a6ffbe091b1332685f12aa1fa69a00b8c9949ae47de8704dd704b080c356ca"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/bookshelf.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/bookshelf.json",
+      "bytes": 94891,
+      "sha256": "9fa5392c3cb5d4dd578fa5c791052d076d829b4dada412977d66819f75958041"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/computer.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/computer.json",
+      "bytes": 29752,
+      "sha256": "2c0d9759bf4a464205c0c307aea811c8439197f3a994b651cb3fecce80a3d11c"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/gomoku.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/gomoku.json",
+      "bytes": 2533,
+      "sha256": "30775dcb024da968b10fadf5e2789865bad88c4930a0a4ab5bb900513629ae7d"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/keyboard.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/keyboard.json",
+      "bytes": 15544,
+      "sha256": "2c24354e0cd225c67888d4bbb7b1d6fc6bd3ecf7ce6d3417fdd3e33603b5d67d"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/picnic_basket.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/picnic_basket.json",
+      "bytes": 2174,
+      "sha256": "321571492a4887a9e01aa1e11a7b2917d75567b39740fddf382f5d0466107334"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/picnic_mat.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/picnic_mat.json",
+      "bytes": 54378,
+      "sha256": "92d33266c2bc58c5dda2a2dde08edbe4844ff89587cac8cc91f998527f91de9e"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/block/shrine.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/block/shrine.json",
+      "bytes": 12102,
+      "sha256": "bf69aa8647bae094a129dad6c5d70e9356dba2f593a51c486cf309af3eb2c371"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/big_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/big_backpack.json",
+      "bytes": 17341,
+      "sha256": "30b930185f48326b8fc42d21a7712132d97c2ff1c44c4781187453f9f17d3f4b"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/crafting_table_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/crafting_table_backpack.json",
+      "bytes": 6469,
+      "sha256": "bc7b124302bc34d6f40041bf6451f0eedc88281659f13cf623664b496893154c"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/end_chest_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/end_chest_backpack.json",
+      "bytes": 4995,
+      "sha256": "2fa42a7ecddf7cbd05bc96b8b571a7ac0b119d2b375df32ff07b2e992f251e0d"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/furnace_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/furnace_backpack.json",
+      "bytes": 6469,
+      "sha256": "bc7b124302bc34d6f40041bf6451f0eedc88281659f13cf623664b496893154c"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/middle_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/middle_backpack.json",
+      "bytes": 26467,
+      "sha256": "3d5c5ab74a3320ce0e0df1412e09fc4c0dfbf6e01594977d5e3f253f56172bab"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/small_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/small_backpack.json",
+      "bytes": 15171,
+      "sha256": "2de0a4a0acb588b6968a75be0d0b5572f9a4a86641a3f00f484f51b04ef1eae8"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/tank_backpack.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/backpack/tank_backpack.json",
+      "bytes": 10776,
+      "sha256": "385f5d04ae57e6c30866c6a5ecbc8053b76b789812e538e249951dee0a62905b"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/broom.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/broom.json",
+      "bytes": 9254,
+      "sha256": "56e88949bc3ecc4c314358e138dee3ca6b587ff1c512f7dd80dabfad49bf52bc"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/cake_box.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/cake_box.json",
+      "bytes": 1367,
+      "sha256": "1be7b6c50db38d5d87dbe7cb36fbab4454976fed11fc981a124b5238df889b44"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/maid_banner.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/maid_banner.json",
+      "bytes": 1503,
+      "sha256": "95a1560bf458ff2c2699770911f85e78de3dbc397554dbb81a1d73d4903d7443"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/marisa_yukkuri.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/marisa_yukkuri.json",
+      "bytes": 3232,
+      "sha256": "40e94cc6868460caae4a0552f654f501edff6c4945e05d7b3f89aef462885883"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/models/bedrock/entity/reimu_yukkuri.json",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/models/bedrock/entity/reimu_yukkuri.json",
+      "bytes": 2389,
+      "sha256": "4ccb00162608a09cedcf983c722ef1bcf40c60a1b82dc7e6a11d159b945d3bcf"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/altar.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/altar.png",
+      "bytes": 15134,
+      "sha256": "4c5d72b34177e8213883b292f252e7d0391a4cfd62ba638727a9d2994ef113b0"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/bookshelf.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/bookshelf.png",
+      "bytes": 26472,
+      "sha256": "425067a6654bcda23ee095354f0dbae0403c663cda3e50892000ce6e2e6a33ce"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/computer.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/computer.png",
+      "bytes": 15461,
+      "sha256": "e76083593247545ff9eb7bc476ed9dbcca609cc5991f4b751c19803981298977"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/gomoku.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/gomoku.png",
+      "bytes": 30647,
+      "sha256": "be37e021e2940c7dbfbfeb6cd008192049c842481b49b69dd81abc656630c305"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/keyboard.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/keyboard.png",
+      "bytes": 2168,
+      "sha256": "c66f14aaa87231fcaf024c65f06c77cb722f667cfc39300621955f02e07224f1"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/picnic_basket.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/picnic_basket.png",
+      "bytes": 4246,
+      "sha256": "5f2cbf03be69a6b18d2c33e04ae1aff4ac5c5532155d37cc1aff36b0bc9dfa9d"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/picnic_mat.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/picnic_mat.png",
+      "bytes": 14209,
+      "sha256": "9992f71c14332c6dfa7df679127dbad7308b1623eef845d2efbda42db458713f"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/block/shrine.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/block/shrine.png",
+      "bytes": 2752,
+      "sha256": "e56e35476e07e2cbcf006615d8e8c23202bd2dc04e5e0464c1cfc8b366d79f3b"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/big_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/big_backpack.png",
+      "bytes": 811,
+      "sha256": "ea42a6addf01a192e0d1c03b8ec13d05bbab49412377fdb3e4f3e77cd183d1ac"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/crafting_table_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/crafting_table_backpack.png",
+      "bytes": 8310,
+      "sha256": "8b141989e6ce9e2f9aacbb5c4d99ea9db4c804f78b44c63baa486a4ac99ceba2"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/ender_chest_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/ender_chest_backpack.png",
+      "bytes": 8028,
+      "sha256": "62d4419c6a17e03a91d76aa794c99c870e25dc55873469c22c77fd8759fbfbaf"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/furnace_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/furnace_backpack.png",
+      "bytes": 8296,
+      "sha256": "be9191a2372ac3e81131d5cf9cc55511b62fa10fee5be1c786b59c83da0e0e6d"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/middle_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/middle_backpack.png",
+      "bytes": 6483,
+      "sha256": "9376215f853f9b5343c6e5e4df6bde6997fb36de82df958a7d6cbd87b929244f"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/small_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/small_backpack.png",
+      "bytes": 1046,
+      "sha256": "b7a25f3c27e2dc4129d17569606a1e0ba7890fe6ddbc7102bda6cdbe409b2ca3"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/tank_backpack.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/backpack/tank_backpack.png",
+      "bytes": 7726,
+      "sha256": "b4efeee9df52e912284b1769bb59bcc9e379da43c3dbf8e1a3cadb7aef1498ad"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/broom.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/broom.png",
+      "bytes": 3216,
+      "sha256": "a5cf8f3d9a738ee0ef863fff957ac6e512510b451696fbfd37887c312c2bf736"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_0.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_0.png",
+      "bytes": 4407,
+      "sha256": "f633019e13aca8444d22d09f7d610b7c35965b096555c388d27d808b88d52561"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_1.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_1.png",
+      "bytes": 5612,
+      "sha256": "8884e41c9da227ae9a8001dc6e5f3cea617846cab62f3b88d7f6367e4e68399a"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_2.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_2.png",
+      "bytes": 6754,
+      "sha256": "622929a1f6aa9cd7f521bb829835fcc3468d57af1a79616ddc0adcf3c50818a7"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_3.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_3.png",
+      "bytes": 7104,
+      "sha256": "347f34fe8f5375a843e20b46650958ff7eee5abff642167fe9b2db96c0fab976"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_4.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_4.png",
+      "bytes": 2461,
+      "sha256": "73aa514663acddb791fdbc939923c0a4d103558243a562ca7f8cc2197d3b7e4f"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_5.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_5.png",
+      "bytes": 5596,
+      "sha256": "f42de7777ebdd2a23ad5f39995a7a6312b2fe035d520d45b4f1aa8a268ae8b87"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_6.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_6.png",
+      "bytes": 6801,
+      "sha256": "be79ebdca083addafd62a17605f4550a5572fb629218d77e24b8a1b83f928940"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_7.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/cake_box/cake_box_7.png",
+      "bytes": 3082,
+      "sha256": "9c140b690d278378b945f27f08312f7b16a8071c33f250fd6763e358df25371c"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/maid_banner.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/maid_banner.png",
+      "bytes": 548,
+      "sha256": "9801fe16fd684eb678d3a10b183365476138e0de04a5113c712464d2e71627ff"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/marisa_yukkuri.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/marisa_yukkuri.png",
+      "bytes": 2520,
+      "sha256": "83503d0ee2b4194107cee9a99f8e788e50323644951723c6c8e673c025261508"
+    },
+    {
+      "path": "legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/reimu_yukkuri.png",
+      "source": "src/main/resources/legacy_pack/assets/touhou_little_maid/textures/bedrock/entity/reimu_yukkuri.png",
+      "bytes": 2520,
+      "sha256": "da0061c38b60908bd8721d884015186eeabf9590e579dc8a332a3f37259f4633"
+    }
+  ]
+}

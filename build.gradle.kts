@@ -92,15 +92,108 @@ val verifyBuiltinSounds = tasks.register("verifyBuiltinSounds") {
     doLast { verifyBuiltinSoundDirectory(file("src/main/resources")) }
 }
 
+// 保留范围按固定Git树完整枚举，与可玩254目录分开；资源和产物检查不触发本地导入
+fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<String>, label: String) {
+    fun requireRetention(condition: Boolean, message: String) {
+        if (!condition) throw GradleException("Builtin retention [$label]: $message")
+    }
+    fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    val counts = names.groupingBy { it }.eachCount()
+    val manifestPath = "assets/tlmnh/builtin-retention-provenance.json"
+    val raw = read(manifestPath)
+    requireRetention(sha256(raw) == "928fc5489c4cd05178a604aa690dec4f73d3f818100647799bca27c5edd059f9",
+        "authority manifest differs from the complete fixed Git-tree inventory")
+    val manifest = JsonSlurper().parseText(raw.toString(Charsets.UTF_8)) as Map<*, *>
+    requireRetention(manifest["schema"] == 1 && manifest["commit"] == "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
+        && manifest["license"] == "CC-BY-NC-SA-4.0", "unexpected source schema, commit or license")
+    requireRetention(counts[manifestPath] == 1, "missing or duplicate retention manifest")
+    fun check(path: String, entry: Map<*, *>) {
+        requireRetention(path.isNotEmpty() && !path.startsWith('/') && '\\' !in path && ':' !in path
+            && path.split('/').none { it.isEmpty() || it == "." || it == ".." }, "unsafe resource path: $path")
+        requireRetention(counts[path] == 1, "missing or duplicate retained/protected resource: $path")
+        val bytes = read(path)
+        requireRetention(sha256(bytes) == entry["sha256"]
+            && (entry["bytes"] == null || bytes.size.toLong() == (entry["bytes"] as Number).toLong()),
+            "original resource bytes differ: $path")
+    }
+    val files = manifest["files"] as List<*>
+    val recorded = mutableSetOf<String>()
+    var totalBytes = 0L
+    for (value in files) {
+        val entry = value as Map<*, *>
+        val path = entry["path"] as String
+        requireRetention(recorded.add(path), "duplicate retention declaration: $path")
+        check(path, entry)
+        totalBytes += (entry["bytes"] as Number).toLong()
+    }
+    requireRetention(recorded.size == 332 && totalBytes == 5538204L, "expected all 332 reviewed original files")
+    val catalog = manifest["catalog"] as Map<*, *>
+    check(catalog["path"] as String, catalog)
+    for (value in manifest["baseline_manifests"] as List<*>) {
+        val baseline = value as Map<*, *>
+        val path = baseline["path"] as String
+        check(path, baseline)
+        // 声音已有独立完整门槛；这里只绑定既有清单，避免重复扫描全部OGG
+        if (path.endsWith("builtin-sounds-provenance.json")) continue
+        val summary = JsonSlurper().parseText(read(path).toString(Charsets.UTF_8)) as Map<*, *>
+        val entries = summary["files"]
+        val targets: List<Pair<String, Map<*, *>>> = when (entries) {
+            is Map<*, *> -> entries.entries.map { (target, entry) -> target as String to (entry as Map<*, *>) }
+            is List<*> -> entries.map { entry ->
+                val record = entry as Map<*, *>
+                record["path"] as String to record
+            }
+            else -> throw GradleException("Builtin retention [$label]: invalid protected manifest: $path")
+        }
+        for ((target, entry) in targets) {
+            val resource = if (target.startsWith("licenses/")) "META-INF/$target"
+                else target.removePrefix("src/main/resources/")
+            requireRetention(resource !in recorded, "retained resource would override an existing effective asset: $resource")
+            check(resource, entry)
+        }
+    }
+}
+
+fun verifyBuiltinRetentionDirectory(directory: File) {
+    val names = directory.walkTopDown().filter { it.isFile }.map { it.relativeTo(directory).invariantSeparatorsPath }.toList()
+    // 处理后资源尚不含Jar阶段加入的许可；此阶段核源码许可，Jar阶段只读实际ZIP条目
+    val licenses = file("licenses").listFiles()?.filter { it.isFile } ?: emptyList()
+    verifyBuiltinRetentionResources({ name ->
+        if (name.startsWith("META-INF/licenses/")) file(name.removePrefix("META-INF/")).readBytes()
+        else File(directory, name).readBytes()
+    }, names + licenses.map { "META-INF/licenses/${it.name}" }, directory.path)
+}
+
+fun verifyBuiltinRetentionJar(file: File) {
+    ZipFile(file).use { archive ->
+        val names = archive.entries().asSequence().filter { !it.isDirectory }.map { it.name }.toList()
+        verifyBuiltinRetentionResources({ name -> archive.getInputStream(archive.getEntry(name)).use { it.readBytes() } }, names, file.path)
+    }
+}
+
+val verifyBuiltinRetention = tasks.register("verifyBuiltinRetention") {
+    group = "verification"
+    description = "Verifies all 332 retained original files and protects the existing fixed model resources"
+    inputs.files(fileTree("src/main/resources") { exclude("**/*.ogg") }, fileTree("licenses"))
+    doLast { verifyBuiltinRetentionDirectory(file("src/main/resources")) }
+}
+
 tasks.named<ProcessResources>("processResources") {
-    dependsOn(verifyBuiltinSounds)
-    doLast { verifyBuiltinSoundDirectory(destinationDir) }
+    dependsOn(verifyBuiltinSounds, verifyBuiltinRetention)
+    doLast {
+        verifyBuiltinSoundDirectory(destinationDir)
+        verifyBuiltinRetentionDirectory(destinationDir)
+    }
 }
 
 listOf("jar", "shadowJar").forEach { taskName ->
     tasks.named<Jar>(taskName) {
-        dependsOn(verifyBuiltinSounds)
-        doLast { verifyBuiltinSoundJar(archiveFile.get().asFile) }
+        dependsOn(verifyBuiltinSounds, verifyBuiltinRetention)
+        doLast {
+            verifyBuiltinSoundJar(archiveFile.get().asFile)
+            verifyBuiltinRetentionJar(archiveFile.get().asFile)
+        }
     }
 }
 
@@ -108,12 +201,15 @@ tasks.named("reobfJar") {
     doLast {
         val artifacts = outputs.files.files.filter { it.isFile && it.extension.equals("jar", ignoreCase = true) }
         if (artifacts.isEmpty()) throw GradleException("No final reobfuscated JAR was produced for sound verification")
-        artifacts.forEach(::verifyBuiltinSoundJar)
+        artifacts.forEach {
+            verifyBuiltinSoundJar(it)
+            verifyBuiltinRetentionJar(it)
+        }
     }
 }
 
-tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds) }
-tasks.named("check") { dependsOn(verifyBuiltinSounds) }
+tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds, verifyBuiltinRetention) }
+tasks.named("check") { dependsOn(verifyBuiltinSounds, verifyBuiltinRetention) }
 
 tasks.withType<Jar>().configureEach {
     from("licenses") { into("META-INF/licenses") }

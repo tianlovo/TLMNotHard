@@ -212,7 +212,8 @@ ConditionalUse、InnerClassify和ConditionArmor，不引入外部内容模组的
 保留8个前置层、主层、双手持物、挥动、使用物品、乞食、乘客、8个并行层和4个护甲条件层；主层按死亡、睡眠、游泳、攀爬、乘坐、坐姿、水中站立、受击、跳跃、跑、走、空闲选择；物品先匹配注册ID，再匹配类型和使用动作；
 护甲条件动画不等于外部装备已经渲染到女仆身上，装备渲染层仍待完成
 
-BuiltinGeckoAnimations按固定GeckoModelLoader.registerMaidAnimations补齐默认女仆动画，仅填充缺少的片段，保留模型自带动作；不补入外部枪械、魔法或奏乐联动的默认动画；
+BuiltinGeckoAnimations按固定GeckoModelLoader.registerMaidAnimations注册默认女仆动画，填充缺少的片段并保留模型自带动作
+其他原始默认动画的文件保留记录见下方“内置补充资源与legacy来源”，运行时动作接线范围见开发说明
 默认文件中first_person_mod_hide与上游一致为false，不查询外部第一人称模组
 
 实体只在取帧时读取游戏状态，播放器持有纯数据、骨骼、变量和物理；资源重载或模型切换会创建新实例；独立时钟保留小数tick，暂停冻结，恢复时重新对齐输入，重复或倒退输入不回拨；骨骼求值后按上游叠加头部看向，重复绘制不会积累角度；
@@ -1414,3 +1415,16 @@ schema4兼容旧1/2/3，严格读取隔离字段，旧版本会拒绝新账本�
 独立增强根在危险/氧气之后、一般战斗之前调度回血，保留刚受击且合法威胁的即时反击；床柜按实际Tile身份暂停失败候选并尝试可达替代
 不可达战斗目标消费既有导航失败时间与有限重试，此项运行超时仍待定位，不描述为已验
 女仆实际箭碰撞前重新读取服务器PvP规则，关闭时在原生点火和伤害前拒绝，不弱化来源或完整物品校验
+
+## 内置补充资源与legacy来源
+
+191补齐固定上游提交8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6中此前未列入依赖导入清单的332个资源文件，共5,538,204字节
+范围包含九尾酒狐ISS动画、公共chair/im/iss/tac动画、椅子目录依赖、next_update_model语言和元数据、其他模型贴图及legacy_pack资源
+原作者与包说明使用上游原文件，资源逐字节保留，运行时模型选择目录为既定254个选项
+
+原包pack.mcmeta和pack.png映射到assets/tlmnh/retained-builtin-pack，对应来源在builtin-retention-provenance.json逐项记录
+47个legacy文件保留legacy_pack原子目录；原有效资源的字节摘要由既有来源清单继续核对
+
+scripts/import_builtin_retention.py复用GitBlobReader，从固定Git树重算已审查保留范围，并与既有来源清单合并核对
+scripts/verify_builtin_retention.py绑定清单自身摘要、源枚举摘要、每个源与目标路径、长度和SHA-256，同时核对既有724项资源及目录数据
+资源处理和JAR任务接入强制验证，独立Java编译保留现有入口；静态清单检查已执行，191实际构建与打包负例待合批完成

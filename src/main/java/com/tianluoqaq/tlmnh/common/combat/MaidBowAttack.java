@@ -311,8 +311,8 @@ public final class MaidBowAttack {
         if (!prototype) arrow.setDamage(
             arrow.getDamage() * (float) (maid.getEntityAttribute(SharedMonsterAttributes.attackDamage)
                 .getBaseValue() / 2.0));
-        var arrowBefore = new NBTTagCompound();
-        arrow.writeToNBT(arrowBefore);
+        var arrowBefore = snapshot(arrow);
+        boolean criticalBefore = arrow.getIsCritical();
         var boundsBefore = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
             arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
         if (!world.spawnEntityInWorld(arrow)) {
@@ -320,11 +320,11 @@ public final class MaidBowAttack {
             return reject(Status.SPAWN_REJECTED);
         }
         // spawn事件允许重入；若事件改了库存，撤销箭实体，不能扣另一组资源或免费射击
-        var arrowAfter = new NBTTagCompound();
-        arrow.writeToNBT(arrowAfter);
+        var arrowAfter = snapshot(arrow);
         var boundsAfter = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
             arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
         if (arrow.isDead || arrow.shootingEntity != maid
+            || arrow.getIsCritical() != criticalBefore
             || !arrowBefore.equals(arrowAfter)
             || !java.util.Arrays.equals(boundsBefore, boundsAfter)
             || !launch.isCurrent(arrow)
@@ -348,6 +348,13 @@ public final class MaidBowAttack {
         interrupt();
         status = Status.FIRED;
         return true;
+    }
+
+    private static NBTTagCompound snapshot(EntityArrow arrow) {
+        var tag = new NBTTagCompound();
+        arrow.writeToNBT(tag);
+        // 原生Entity.writeToNBT复用ForgeData，不能让出生回调原地修改已捕获的基线
+        return (NBTTagCompound) tag.copy();
     }
 
     private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks, ArrowPhysics physics) {

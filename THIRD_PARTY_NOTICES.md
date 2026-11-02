@@ -60,3 +60,11 @@ TConstruct 与 TinkersDefense 的开发夹具调用目标环境现有工厂和�
 普通气泡代码来自固定 TLM 提交，沿用 MIT 许可及原包名
 内置 20 张表情 PNG、type2 背景与颜文字数据来自同一提交的 assets/data，按上游素材 CC-BY-NC-SA-4.0 保留原字节，作者署名与许可见上述 TLM 素材条目
 逐文件路径与 SHA-256 记录在 gui-assets-provenance.json，未加入外部图片包或生成式 AI 服务
+
+## 内置补充资源与legacy保留
+
+191增加固定TLM提交中的332个原始资源文件，包含额外模型、贴图、动画、语言与包元数据，共5,538,204字节
+保留原包作者署名和说明，沿用各源文件的上游许可信息及本仓库已有许可原文，逐文件来源与SHA-256见assets/tlmnh/builtin-retention-provenance.json
+
+原包pack.mcmeta及pack.png保存在assets/tlmnh/retained-builtin-pack，47个legacy文件保留原子目录
+资源保留范围与首版运行时功能接线分别登记，详细映射及导入依据见SOURCE_PROVENANCE.md
