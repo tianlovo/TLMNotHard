@@ -43,6 +43,14 @@ public final class ItemMaidBed extends Item {
             world.setBlockToAir(x, y, z);
             return false;
         }
+        if (!(world.getTileEntity(headX, y, headZ) instanceof TileEntityMaidBed tile)
+            || !tile.initializeItemColor(stack)) {
+            // 放置尚未扣物；只撤销本次仍然存在的两半，不调用掉落路径
+            if (world.getBlock(headX, y, headZ) == bed)
+                world.setBlock(headX, y, headZ, net.minecraft.init.Blocks.air, 0, 2);
+            if (world.getBlock(x, y, z) == bed) world.setBlock(x, y, z, net.minecraft.init.Blocks.air, 0, 2);
+            return false;
+        }
         world.notifyBlocksOfNeighborChange(x, y, z, bed);
         world.notifyBlocksOfNeighborChange(headX, y, headZ, bed);
         if (!player.capabilities.isCreativeMode) stack.stackSize--;

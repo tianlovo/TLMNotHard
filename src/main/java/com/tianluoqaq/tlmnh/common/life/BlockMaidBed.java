@@ -1,13 +1,16 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import net.minecraft.block.BlockBed;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
@@ -37,8 +40,13 @@ public final class BlockMaidBed extends BlockBed {
             x += field_149981_a[direction][0];
             z += field_149981_a[direction][1];
         }
-        if (!world.blockExists(x, y, z) || !(world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed)
-            || !bed.complete()) return false;
+        if (!world.blockExists(x, y, z) || !(world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed))
+            return false;
+        if (bed.unverifiedQueuedDrop()) {
+            tellRetained(player);
+            return false;
+        }
+        if (!bed.complete()) return false;
         if (bed.getColor() == null) {
             if (!world.isRemote) {
                 player.addChatMessage(new ChatComponentTranslation("message.tlmnh.maid_bed.unreadable_color"));
@@ -75,7 +83,109 @@ public final class BlockMaidBed extends BlockBed {
 
     @Override
     public Item getItemDropped(int metadata, Random random, int fortune) {
-        return isBlockHeadOfBed(metadata) ? null : MaidLifeContent.maidBedItem;
+        return isBlockHeadOfBed(metadata) ? MaidLifeContent.maidBedItem : null;
+    }
+
+    private TileEntityMaidBed head(World world, int x, int y, int z, int metadata) {
+        if (!isBlockHeadOfBed(metadata)) {
+            x += field_149981_a[metadata & 3][0];
+            z += field_149981_a[metadata & 3][1];
+        }
+        return world.blockExists(x, y, z) && world.getBlock(x, y, z) == this
+            && world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed ? bed : null;
+    }
+
+    @Override
+    public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
+        var drops = new ArrayList<ItemStack>();
+        if (isBlockHeadOfBed(metadata)) {
+            var bed = head(world, x, y, z, metadata);
+            if (bed != null && !bed.dropQueued()) drops.add(bed.coloredItem());
+        }
+        return drops;
+    }
+
+    @Override
+    public void dropBlockAsItemWithChance(World world, int x, int y, int z, int metadata, float chance, int fortune) {
+        if (world.isRemote || world.restoringBlockSnapshots) return;
+        // 不能调用BlockBed父实现，它只允许床尾掉落；仍沿用Block的Forge事件及概率流程
+        var items = getDrops(world, x, y, z, metadata, fortune);
+        float admitted = net.minecraftforge.event.ForgeEventFactory
+            .fireBlockHarvesting(items, world, this, x, y, z, metadata, fortune, chance, false, harvesters.get());
+        for (var stack : items) if (world.rand.nextFloat() <= admitted) dropBlockAsItem(world, x, y, z, stack);
+    }
+
+    @Override
+    protected void dropBlockAsItem(World world, int x, int y, int z, ItemStack stack) {
+        if (world.isRemote || world.restoringBlockSnapshots
+            || !world.getGameRules()
+                .getGameRuleBooleanValue("doTileDrops"))
+            return;
+        if (!captureDrops.get() && stack != null
+            && stack.getItem() == MaidLifeContent.maidBedItem
+            && world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed) {
+            bed.queueItemDrop(stack);
+            return;
+        }
+        super.dropBlockAsItem(world, x, y, z, stack);
+    }
+
+    @Override
+    public void onNeighborBlockChange(World world, int x, int y, int z, net.minecraft.block.Block neighbor) {
+        int metadata = world.getBlockMetadata(x, y, z), direction = metadata & 3;
+        int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
+        int otherX = x + sign * field_149981_a[direction][0], otherZ = z + sign * field_149981_a[direction][1];
+        if (!world.blockExists(otherX, y, otherZ) || world.getBlock(otherX, y, otherZ) == this) return;
+        if (isBlockHeadOfBed(metadata)) {
+            var bed = head(world, x, y, z, metadata);
+            if (bed != null && bed.unverifiedQueuedDrop()) return;
+            dropBlockAsItem(world, x, y, z, metadata, 0);
+        }
+        world.setBlockToAir(x, y, z);
+    }
+
+    @Override
+    public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean willHarvest) {
+        var bed = head(world, x, y, z, world.getBlockMetadata(x, y, z));
+        if (bed != null && bed.unverifiedQueuedDrop()) {
+            tellRetained(player);
+            return false;
+        }
+        // 原生采集先删方块再求掉落；保留Tile直到带色物品已提交
+        return willHarvest || super.removedByPlayer(world, player, x, y, z, false);
+    }
+
+    @Override
+    public void harvestBlock(World world, EntityPlayer player, int x, int y, int z, int metadata) {
+        var bed = head(world, x, y, z, metadata);
+        if (bed != null && bed.unverifiedQueuedDrop()) {
+            tellRetained(player);
+            return;
+        }
+        super.harvestBlock(world, player, x, y, z, metadata);
+        // 不放finally：提交抛异常时保留仍持有原数据的床头
+        world.setBlockToAir(x, y, z);
+    }
+
+    @Override
+    public void onBlockHarvested(World world, int x, int y, int z, int metadata, EntityPlayer player) {
+        var bed = head(world, x, y, z, metadata);
+        if (world.isRemote || !player.capabilities.isCreativeMode || bed != null && bed.unverifiedQueuedDrop()) return;
+        int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
+        int otherX = x + sign * field_149981_a[metadata & 3][0], otherZ = z + sign * field_149981_a[metadata & 3][1];
+        if (world.blockExists(otherX, y, otherZ) && world.getBlock(otherX, y, otherZ) == this)
+            world.setBlock(otherX, y, otherZ, net.minecraft.init.Blocks.air, 0, 2);
+    }
+
+    @Override
+    public ItemStack getPickBlock(MovingObjectPosition target, World world, int x, int y, int z, EntityPlayer player) {
+        var bed = head(world, x, y, z, world.getBlockMetadata(x, y, z));
+        return bed == null || bed.dropQueued() ? null : bed.coloredItem();
+    }
+
+    private static void tellRetained(EntityPlayer player) {
+        if (player != null && !player.worldObj.isRemote)
+            player.addChatMessage(new ChatComponentTranslation("message.tlmnh.maid_bed.transfer_retained"));
     }
 
     @Override

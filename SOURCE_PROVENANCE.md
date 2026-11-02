@@ -1249,3 +1249,11 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 无颜色的旧移植存档采用新床默认粉色；无法识别的颜色编号或NBT类型原样保留、拒绝染色并提示，不用默认值覆写未知原值
 当前方块视觉仍是原生床占位，原七模型/纹理及蓝色半透明属于随后表现批次，不能由七色数据接口推导已完成原床外观
 原 `ItemMaidBed` 与 `BlockMaidBed.setPlacedBy/getDrops/getCloneItemStack` 还定义了物品颜色链；该部分另列后续，当前只移植床头数据与染料交互
+
+## 床物品颜色链与掉落入口
+
+164继续上述固定原版的 `ItemMaidBed` 与 `BlockMaidBed.setPlacedBy/getDrops/getCloneItemStack`，由床头导出/恢复原始颜色并支持头尾克隆入口
+低平台差异依据实际Minecraft1.7.10 `BlockBed.onNeighborBlockChange/dropBlockAsItemWithChance`
+以及 `ItemInWorldManager.removeBlock/tryHarvestBlock` 和Forge `Block` 掉落流程
+原生床尾掉物、床头过滤及采集前删Tile会丢失颜色来源，因此本工程改为床头唯一掉落、延后生存采集删除，并保留原Forge事件/概率/捕获与回滚规则
+交付复用本工程既有 `MaidFilmRecovery.queueOwnedItem`；重载交接记录只保留、不自动重发，原数据与世界账本是否在崩溃后同时持久化仍需独立验收

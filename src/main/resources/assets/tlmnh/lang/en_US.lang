@@ -138,3 +138,4 @@ feature.tlmnh.protection.client_tombstone=Maid tombstone rendering
 feature.tlmnh.protection.client_tombstone_dimension_texture=Tombstone dimension texture
 entity.touhou_little_maid.tombstone.display=Laid to rest here
 message.tlmnh.maid_bed.unreadable_color=The saved bed color is unreadable. Its data is preserved and no dye was consumed.
+message.tlmnh.maid_bed.transfer_retained=This bed has an unverified item transfer. Its data is retained and no duplicate drop will be created.

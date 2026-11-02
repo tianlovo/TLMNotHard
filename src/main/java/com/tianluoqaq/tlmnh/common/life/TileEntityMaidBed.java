@@ -2,9 +2,11 @@ package com.tianluoqaq.tlmnh.common.life;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
@@ -14,19 +16,22 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
+import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColorData;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 只有床头保存临时占用；睡眠动作每 tick 续租 */
 public final class TileEntityMaidBed extends TileEntity {
 
-    private static final String COLOR_TAG = "BedColor";
+    private static final String DROP_TAG = "TLMNHBedDropQueued";
     private final MaidBedLease lease = new MaidBedLease();
     private EntityMaid occupant;
     private NBTBase savedColor;
+    private NBTBase queuedDrop;
+    private boolean queuedDuringThisLoad, warnedQueuedDrop;
 
     /** 无颜色的旧移植存档沿新床默认粉色；未知类型/编号返回null并原样保存 */
     public MaidBedColor getColor() {
-        if (savedColor == null) return MaidBedColor.PINK;
-        return savedColor instanceof NBTTagInt value ? MaidBedColor.byId(value.func_150287_d()) : null;
+        return MaidBedColorData.decode(savedColor);
     }
 
     public boolean setColor(MaidBedColor color) {
@@ -43,13 +48,62 @@ public final class TileEntityMaidBed extends TileEntity {
     }
 
     private void writeColor(NBTTagCompound tag) {
-        tag.setTag(COLOR_TAG, savedColor == null ? new NBTTagInt(MaidBedColor.PINK.id) : savedColor.copy());
+        MaidBedColorData.write(tag, savedColor);
+    }
+
+    public ItemStack coloredItem() {
+        var stack = new ItemStack(MaidLifeContent.maidBedItem);
+        var tag = new NBTTagCompound();
+        writeColor(tag);
+        stack.setTagCompound(tag);
+        return stack;
+    }
+
+    /** 仅用于完成两半放置后的新床头，原始未知颜色也按源物品保留 */
+    boolean initializeItemColor(ItemStack stack) {
+        if (stack == null || stack.getItem() != MaidLifeContent.maidBedItem
+            || worldObj == null
+            || worldObj.isRemote
+            || !complete()
+            || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this) return false;
+        savedColor = MaidBedColorData.read(stack.getTagCompound());
+        markDirty();
+        worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+        return true;
+    }
+
+    public boolean dropQueued() {
+        return queuedDrop != null;
+    }
+
+    /** 重载后无法由消失的交付记录证明物品所有权，保留原Tile而不自动再发一份 */
+    public boolean unverifiedQueuedDrop() {
+        return queuedDrop != null && !queuedDuringThisLoad;
+    }
+
+    public void queueItemDrop(ItemStack stack) {
+        if (dropQueued()) return;
+        if (worldObj == null || worldObj.isRemote
+            || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this
+            || worldObj.getBlock(xCoord, yCoord, zCoord) != MaidLifeContent.maidBed
+            || stack == null
+            || stack.getItem() != MaidLifeContent.maidBedItem
+            || stack.stackSize <= 0)
+            throw new IllegalStateException("Authoritative bed head required for item transfer");
+        // 先保管，无世界出生回调；再标记源已移交，真实交付由既有世界tick推进
+        var token = com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmRecovery
+            .queueOwnedItem(worldObj, stack, xCoord + .5, yCoord + .5, zCoord + .5);
+        queuedDrop = new NBTTagString(token.toString());
+        queuedDuringThisLoad = true;
+        markDirty();
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
         writeColor(tag);
+        if (queuedDrop == null) tag.removeTag(DROP_TAG);
+        else tag.setTag(DROP_TAG, queuedDrop.copy());
     }
 
     @Override
@@ -66,13 +120,13 @@ public final class TileEntityMaidBed extends TileEntity {
             || packet.func_148855_d() != yCoord
             || packet.func_148854_e() != zCoord) return;
         var tag = packet.func_148857_g();
-        savedColor = tag.hasKey(COLOR_TAG) ? tag.getTag(COLOR_TAG)
-            .copy() : null;
+        savedColor = MaidBedColorData.read(tag);
         worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
     }
 
     public boolean complete() {
-        if (worldObj == null || isInvalid()
+        if (dropQueued() || worldObj == null
+            || isInvalid()
             || !worldObj.blockExists(xCoord, yCoord, zCoord)
             || !(worldObj.getBlock(xCoord, yCoord, zCoord) instanceof BlockMaidBed)) return false;
         int meta = worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
@@ -126,6 +180,22 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     public void updateEntity() {
         if (worldObj == null || worldObj.isRemote) return;
+        if (dropQueued()) {
+            clear();
+            if (queuedDuringThisLoad && worldObj.getTileEntity(xCoord, yCoord, zCoord) == this
+                && worldObj.getBlock(xCoord, yCoord, zCoord) == MaidLifeContent.maidBed) {
+                worldObj.setBlockToAir(xCoord, yCoord, zCoord);
+            } else if (!warnedQueuedDrop) {
+                warnedQueuedDrop = true;
+                com.tianluoqaq.tlmnh.TLMNotHard.LOG.warn(
+                    "Reloaded bed item transfer state retained at {},{},{}",
+                    xCoord,
+                    yCoord,
+                    zCoord,
+                    new IllegalStateException("Bed item ownership needs review; no automatic reissue"));
+            }
+            return;
+        }
         if (occupant == null || !occupant.isEntityAlive()
             || occupant.worldObj != worldObj
             || worldObj.getEntityByID(occupant.getEntityId()) != occupant
@@ -143,8 +213,10 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
-        savedColor = tag.hasKey(COLOR_TAG) ? tag.getTag(COLOR_TAG)
+        savedColor = MaidBedColorData.read(tag);
+        queuedDrop = tag.hasKey(DROP_TAG) ? tag.getTag(DROP_TAG)
             .copy() : null;
+        queuedDuringThisLoad = warnedQueuedDrop = false;
         lease.clear();
         occupant = null;
     }
