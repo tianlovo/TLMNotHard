@@ -612,3 +612,12 @@ Indev152 新增最近连续两次观测的速度对照，沿用同一目标切�
 `ModernLifeTests.nearestOccupiedBedWaitsForReleaseBrokenBedWakesAndRetiredMemoryCannotSleep` 在真实床头保持外来占用60tick，检查F仍选择最近床且未偷租或换远床，再观察释放入睡、拆床、旧actor拒绝及他人复用
 `EnhancedLifeTests` 当前从生产入口选择完整 `ENHANCED`，逐帧核实际profile；旧组件样本的身份不改，不由本次一项控制宣称该类其它方法新跑
 159同进程的F正常44tick、占用生命周期88tick及完整N23tick范围见PROGRESS，没有新CPU测试或原版睡眠采样
+
+## 床头七色交互与实装线包
+
+`MaidBedColorTests` 通过受控FakePlayer调用真实方块入口，验证七色、床头/尾、消耗与创造、同色拒绝、保存及未知NBT保留；它不代表真实鼠标点击或玩家聊天收到
+占用位夹具使用setBlockMetadataWithNotify并核Tile身份，不能用setBlock模拟metadata变化；后者会经过原生breakBlock替换Tile
+七色例把真实S35的writePacketData结果保存为七个 `bed-color-<color>.s35`，避免在专用服务端调用被剥除的客户端getter
+`check_bed_color_packets.py` 接受 `--run`、`--candidate-jar`、`--pilot-jar`、`--hodgepodge-jar` 和 `--output`
+它检查实际成功记录与JAR摘要、已审Hodgepodge协议资源、S35包头、额外mode0字节、gzip与精确颜色NBT，不能按纯原版格式直接读其NBT
+这是出站数据检查，实际客户端接收/模型、完整变换后定义及床物品颜色链另验；首轮失败、两次失败重跑、最终七色与未知数据分次通过见PROGRESS，不拼成一次全过
