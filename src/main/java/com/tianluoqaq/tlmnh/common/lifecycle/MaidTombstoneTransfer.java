@@ -47,6 +47,14 @@ public final class MaidTombstoneTransfer {
             MaidLifecycleService.tell(player, MaidLifecycleService.Result.WRONG_OWNER);
             return false;
         }
+        if (ledger.isTombstoneHeld(token)) {
+            IntegrationGuard.report(
+                Side.SERVER,
+                "player_inventory/tombstone/" + token,
+                new IllegalStateException("Tombstone claim remains held after an unconfirmed overflow cleanup"),
+                owner);
+            return false;
+        }
         var source = ledger.reserveTombstone(token);
         if (source == null) {
             if (ledger.tombstoneEmpty(token)) player.worldObj.removeEntity(tombstone);
@@ -152,7 +160,9 @@ public final class MaidTombstoneTransfer {
                         world,
                         dropIdentities.get(i),
                         dropIds.get(i),
-                        owner);
+                        owner,
+                        ledger,
+                        token);
                 } finally {
                     ledger.rollback(token);
                 }
@@ -174,7 +184,7 @@ public final class MaidTombstoneTransfer {
     }
 
     private static void discardOwnedDrop(EntityItem drop, ItemStack expected, World world, UUID identity, int id,
-        UUID owner) {
+        UUID owner, MaidLifecycleData ledger, UUID token) {
         try {
             if (drop.worldObj != world || drop.getEntityId() != id
                 || !identity.equals(drop.getUniqueID())
@@ -184,6 +194,13 @@ public final class MaidTombstoneTransfer {
             world.removeEntity(drop);
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
+            try {
+                ledger.holdTombstone(token);
+            } catch (Exception | LinkageError | AssertionError holdFailure) {
+                IntegrationGuard.throwIfFatal(holdFailure);
+                if (holdFailure != failure) failure.addSuppressed(holdFailure);
+            }
+            IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone/" + token, failure, owner);
             IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone_cleanup/" + identity, failure, owner);
         }
     }

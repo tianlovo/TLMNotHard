@@ -90,6 +90,17 @@ public final class MaidDeathExperience {
             world.removeEntity(orb);
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
+            try {
+                ledger.holdDeathExperience(token);
+            } catch (Exception | LinkageError | AssertionError holdFailure) {
+                IntegrationGuard.throwIfFatal(holdFailure);
+                if (holdFailure != failure) failure.addSuppressed(holdFailure);
+            }
+            IntegrationGuard.report(
+                Side.SERVER,
+                "death_experience/" + token,
+                failure,
+                ledger.owner(token, MaidLifecycleData.Kind.FILM));
             IntegrationGuard.report(
                 Side.SERVER,
                 "death_experience/" + token + "/cleanup",
