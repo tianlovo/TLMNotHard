@@ -559,8 +559,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     /** 增强调用者需要区分预算等待，原F的nullable createPath合同保持 */
     public com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation requestEnhancedPath(BlockPos target) {
         guard();
-        if (runtime.getProfile() != com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT)
-            throw new IllegalStateException("Enhanced query requires its actual component profile");
+        if (!runtime.getProfile()
+            .isEnhanced()) throw new IllegalStateException("Enhanced query requires its actual policy profile");
         var result = com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.NOT_NAVIGABLE;
         if (!navigation.canUpdatePath())
             return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, null);
@@ -1680,8 +1680,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && attack.hasAssaultWeapon(maid)
             && attack.canAttack(maid, view.entity)
             && (targetVisible(view) || runtime.getProfile()
-                == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT
-                && maid.canEntityBeSeen(view.entity))
+                .isEnhanced() && maid.canEntityBeSeen(view.entity))
             && withinMeleeRange(view);
         meleeAttempts++;
         var result = MaidMeleeAttack.hurtForModern(maid, view.entity, admitted, completion);

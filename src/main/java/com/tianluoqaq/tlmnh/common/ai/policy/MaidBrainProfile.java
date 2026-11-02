@@ -7,7 +7,7 @@ public enum MaidBrainProfile {
     FOLLOW_CORE_COMPONENT("follow_core_component", true, true),
     FAITHFUL_TLM("faithful_tlm", true, true),
     ENHANCED_CORE_COMPONENT("enhanced_core_component", true, true),
-    ENHANCED("enhanced", false);
+    ENHANCED("enhanced", true, true);
 
     private final String id;
     private final boolean available;
@@ -33,5 +33,9 @@ public enum MaidBrainProfile {
 
     public boolean isDevelopmentOnly() {
         return developmentOnly;
+    }
+
+    public boolean isEnhanced() {
+        return this == ENHANCED_CORE_COMPONENT || this == ENHANCED;
     }
 }

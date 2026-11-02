@@ -204,7 +204,8 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         var policy = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         return policy != null && policy.isReady()
-            && policy.getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.ENHANCED_CORE_COMPONENT;
+            && policy.getProfile()
+                .isEnhanced();
     }
 
     /** Pure query used by the guarded production create/install boundary */

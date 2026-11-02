@@ -17,8 +17,8 @@ import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
-/** 独立增强决策的开发切片；复用执行适配，不调用F或旧原型的决策入口 */
-public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedCoreActions {
+/** 首版保留活动的独立增强根；复用执行适配，不调用F或旧原型的决策入口 */
+public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedActions {
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;

@@ -137,7 +137,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             runtime.invalidate(InvalidationReason.OWNER_CHANGED);
         observedWorld = maid.worldObj;
         observedOwner = maid.func_152113_b();
-        boolean enhanced = runtime.getProfile() == MaidBrainProfile.ENHANCED_CORE_COMPONENT;
+        boolean enhanced = runtime.getProfile()
+            .isEnhanced();
         if ((!runtime.requiresAfterNativeNavigation() || enhanced) && maid.getHomeArea()
             .refreshActivity()) {
             runtime.invalidate(InvalidationReason.HOME_ACTIVITY_CHANGED);
@@ -304,7 +305,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (policy == null) {
             if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
                 afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(maid);
-            else if (requestedBrainProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+            else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
                 afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(maid);
             policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
 
@@ -423,7 +424,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             throw new IllegalStateException("Development component selection failed");
     }
 
-    /** 显式开发选择；F由本协调器创建完整保留Brain，普通回调不作为替代实现 */
+    /** 显式开发选择；F/N由本协调器创建独立根，普通回调不作为替代实现 */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested) {
         Objects.requireNonNull(requested, "requested");
         if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
@@ -437,14 +438,13 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || transitioningPolicy) return MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE;
         if (policy != null && policy.getProfile() == requested
             && policy.isReady()
-            && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested == MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+            && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced())
                 || requestedBrainProfile == requested))
             return MaidPolicyRuntime.SelectionResult.UNCHANGED;
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
         afterNavigationActions = null;
-        requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM
-            || requested == MaidBrainProfile.ENHANCED_CORE_COMPONENT ? requested : null;
+        requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced() ? requested : null;
         var runtime = getPolicyRuntime();
         if (requestedBrainProfile != null) return runtime.isReady() ? MaidPolicyRuntime.SelectionResult.SELECTED
             : MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
@@ -461,11 +461,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 : null;
     }
 
-    /** 只观察独立增强切片，不创建或恢复实现 */
+    /** 只观察当前已绑定的独立增强根，不创建或恢复实现 */
     public com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain peekEnhancedCore() {
         return policy != null && policy.isReady()
             && policyWorld == maid.worldObj
-            && policy.getProfile() == MaidBrainProfile.ENHANCED_CORE_COMPONENT
+            && policy.getProfile()
+                .isEnhanced()
             && afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain brain ? brain
                 : null;
     }
