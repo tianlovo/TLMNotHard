@@ -163,3 +163,5 @@ chat.tlmnh.acquisition.biomes_none=Local configuration notice %s: no usable natu
 
 feature.tlmnh.protection.shrine_sounds=Shrine interaction sounds
 tooltips.touhou_little_maid.film.no_data.desc=This Film Is Missing Maid Data
+gui.touhou_little_maid.name_tag.edit_box=Name Tag Edit Box
+gui.touhou_little_maid.tag.always_show=Whether to always show the name

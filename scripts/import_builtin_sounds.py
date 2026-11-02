@@ -1,4 +1,4 @@
-"""读取固定上游声音目录；配音只写入被忽略的本机构建输入，不上传素材集合"""
+"""从固定 Git blob 导入全部内置声音，原始 OGG 作为可离线构建的源码资源"""
 
 import argparse
 import hashlib
@@ -13,6 +13,16 @@ PROJECT = Path(__file__).resolve().parents[1]
 BASE = "src/main/resources/assets/touhou_little_maid/tlm_custom_pack/touhou_little_maid-1.0.0/assets/"
 JAVA = "src/main/java/com/github/tartaricacid/touhoulittlemaid/"
 PACKS = ("littlemaid_peco", "touhou_little_maid")
+BASE_ROOT = "src/main/resources/assets/touhou_little_maid/"
+BASE_AUDIO = (
+    "block/altar_craft_1.ogg", "block/altar_craft_2.ogg", "block/gomoku_reset.ogg", "block/piece.ogg",
+    "entity/box.ogg", "item/camera_use.ogg", "item/point.ogg", "maid/empty.ogg",
+    "ui/recording_end.ogg", "ui/recording_start.ogg",
+)
+
+
+def json_bytes(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
 def collect(upstream):
@@ -24,37 +34,70 @@ def collect(upstream):
             r'buffers.put\(InitSounds\.(\w+)\.get\(\)\.getLocation\(\), loadSounds\(rootPath.resolve\("([^"]+)"\), "([^"]+)"\)\)', loader)]
         reuse = [(constants[a], constants[b]) for a, b in re.findall(r'reuseSounds\(buffers, InitSounds\.(\w+)\.get\(\), InitSounds\.(\w+)\.get\(\)\)', loader)]
         assert len(events) == 31
-        files, local_audio, packs = {}, {}, []
+        files, audio, packs = {}, {}, []
+        groups = {}
+        base_definitions = json.loads(read(BASE_ROOT + "sounds.json"))
+        base_ids = {"touhou_little_maid:" + path[:-4] for path in BASE_AUDIO}
+        base_events = {}
+        for event, definition in base_definitions.items():
+            references = [value if isinstance(value, str) else value["name"] for value in definition["sounds"]]
+            if event not in {value[0] for value in events} and references and all(value in base_ids for value in references):
+                # 旧版没有voice类别；不引入fairy/rabbit外部资源或新的Java触发
+                base_events[event] = {"category": "neutral" if definition.get("category") == "voice"
+                                      else definition.get("category", "master"), "sounds": definition["sounds"]}
+        for relative in BASE_AUDIO:
+            source = BASE_ROOT + "sounds/" + relative
+            target = "assets/touhou_little_maid/sounds/" + relative
+            data = read(source)
+            if not data.startswith(b"OggS"):
+                raise ValueError("Not an original Ogg resource: " + source)
+            audio[target] = (data, source)
+            groups[target] = "base"
         for pack in PACKS:
             prefix = BASE + pack + "/"
             info_path = prefix + "maid_sound.json"
             info = json.loads(read(info_path))
-            audio = [path for path in paths if path.startswith(prefix + "sounds/maid/") and path.endswith(".ogg")]
+            voice_audio = [path for path in paths if path.startswith(prefix + "sounds/maid/") and path.endswith(".ogg")]
             event_files = {}
             for event, folder, name in events:
                 pattern = re.compile(re.escape(prefix + "sounds/maid/" + folder + "/" + name) + r"\d*\.ogg$")
-                event_files[event] = [pack + ":" + path[len(prefix + "sounds/"):-4] for path in audio if pattern.fullmatch(path)]
+                event_files[event] = [pack + ":" + path[len(prefix + "sounds/"):-4] for path in voice_audio if pattern.fullmatch(path)]
             for source, target in reuse:
                 event_files[target].extend(event_files[source])
             native = {event: {"category": "neutral", "sounds": sounds} for event, sounds in event_files.items()}
+            if pack == "touhou_little_maid":
+                native.update({event: definition for event, definition in base_events.items() if event not in native})
             for path in [info_path] + [path for path in paths if path.startswith(prefix + "lang/") and path.endswith(".json")]:
                 files["assets/" + pack + "/" + path[len(prefix):]] = (read(path), path)
-            for path in audio:
+            for path in voice_audio:
                 data = read(path)
                 assert data[:4] == b"OggS"
-                local_audio["assets/" + pack + "/" + path[len(prefix):]] = (data, path)
+                target = "assets/" + pack + "/" + path[len(prefix):]
+                audio[target] = (data, path)
+                groups[target] = "voice"
             packs.append({"id": pack, "info": info, "events": {key: len(value) for key, value in event_files.items()}})
-            files["assets/" + pack + "/sounds.json"] = ((json.dumps(native, ensure_ascii=False, indent=2) + "\n").encode(), None)
+            files["assets/" + pack + "/sounds.json"] = (json_bytes(native), None)
         for target, source in [
             ("assets/touhou_little_maid/textures/gui/maid_custom_sound.png", "src/main/resources/assets/touhou_little_maid/textures/gui/maid_custom_sound.png"),
             ("assets/touhou_little_maid/textures/sound_icon.png", BASE + "touhou_little_maid/textures/sound_icon.png")]:
             files[target] = (read(source), source)
-        catalog = {"schema": 1, "upstream_commit": UPSTREAM_COMMIT, "packs": packs}
-        provenance = {"commit": UPSTREAM_COMMIT, "audio_distribution_cleared": False,
-                      "audio_scope": "local generated build input only; creator terms require separate release review",
+        source_audio = {path for path in paths if path.endswith(".ogg")}
+        if len(audio) != 445 or len([value for value in groups.values() if value == "voice"]) != 435:
+            raise ValueError("Expected exactly 435 voice and 10 base Ogg resources")
+        if {source for _, source in audio.values()} != source_audio:
+            raise ValueError("Fixed upstream Ogg tree contains an omitted or unexpected resource")
+        catalog = {"schema": 1, "upstream_commit": UPSTREAM_COMMIT, "packs": packs, "base_events": base_events}
+        provenance = {"schema": 2, "commit": UPSTREAM_COMMIT, "audio_distribution_cleared": False,
+                      "audio_scope": "tracked original-byte source resources; release attribution/reporting remains recorded separately",
+                      "audio_files": 445, "voice_files": 435, "base_files": 10,
+                      "catalog_sha256": hashlib.sha256(json_bytes(catalog)).hexdigest(),
+                      "derivation_sources": [{"path": path, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+                                             for path in [JAVA + "init/InitSounds.java", JAVA + "client/sound/CustomSoundLoader.java", BASE_ROOT + "sounds.json"]
+                                             for data in [read(path)]],
                       "files": [{"path": path, "source": source, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
-                                 "local_audio": path in local_audio} for path, (data, source) in sorted({**files, **local_audio}.items())]}
-        return files, local_audio, catalog, provenance
+                                 "audio": path in audio, "audio_group": groups.get(path)}
+                                for path, (data, source) in sorted({**files, **audio}.items())]}
+        return files, audio, catalog, provenance
 
 
 def main():
@@ -65,7 +108,7 @@ def main():
     args = parser.parse_args()
     files, audio, catalog, provenance = collect(args.upstream)
     if args.write:
-        for base, entries in [(PROJECT / "src/main/resources", files), (PROJECT / "build/generated/maid-sounds", audio)]:
+        for base, entries in [(PROJECT / "src/main/resources", {**files, **audio})]:
             for name, (data, _) in entries.items():
                 path = base / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,6 +116,8 @@ def main():
         for name, value in [("builtin-sounds.json", catalog), ("builtin-sounds-provenance.json", provenance)]:
             (PROJECT / "src/main/resources/assets/tlmnh" / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     report = {"passed": True, "metadata_files": len(files), "audio_files": len(audio), "audio_bytes": sum(len(data) for data, _ in audio.values()),
+              "voice_files": 435, "base_files": 10, "base_events": len(catalog["base_events"]),
+              "provenance_sha256": hashlib.sha256(json_bytes(provenance)).hexdigest(),
               "events": {pack["id"]: pack["events"] for pack in catalog["packs"]}, "audio_distribution_cleared": False}
     if args.report:
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

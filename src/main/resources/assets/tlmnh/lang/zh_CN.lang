@@ -162,3 +162,5 @@ chat.tlmnh.acquisition.biomes_none=本地配置提示 %s：自然生成未找到
 
 feature.tlmnh.protection.shrine_sounds=神龛交互音效
 tooltips.touhou_little_maid.film.no_data.desc=这张胶片没有女仆数据
+gui.touhou_little_maid.name_tag.edit_box=命名牌文本框
+gui.touhou_little_maid.tag.always_show=是否总是显示名称

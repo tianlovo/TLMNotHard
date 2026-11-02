@@ -2,19 +2,21 @@
  * Copyright (c) 2019-2025 tartaric_acid, for the code part
  * Adapted from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: client/gui/item/NameTagGui.java, MIT, see licenses/TouhouLittleMaid-MIT.txt
- * Adaptation: Forge 1.7.10 container window and server-authoritative name request
+ * Adaptation: original screen layout with native beacon icons, legacy authoritative container window
  */
 package com.tianluoqaq.tlmnh.client.gui;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.interaction.MaidNameRules;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
@@ -26,6 +28,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class GuiMaidNaming extends GuiContainer {
 
+    private static final ResourceLocation TEXTURES = new ResourceLocation("textures/gui/container/beacon.png");
     private final ContainerMaidNaming container;
     private GuiTextField nameField;
     private GuiButton done, cancel, visibility;
@@ -34,8 +37,8 @@ public final class GuiMaidNaming extends GuiContainer {
     public GuiMaidNaming(ContainerMaidNaming container) {
         super(container);
         this.container = container;
-        xSize = 280;
-        ySize = 144;
+        xSize = 200;
+        ySize = 60;
     }
 
     @Override
@@ -44,14 +47,15 @@ public final class GuiMaidNaming extends GuiContainer {
             .getCustomNameTag() : nameField.getText();
         super.initGui();
         Keyboard.enableRepeatEvents(true);
-        nameField = new GuiTextField(fontRendererObj, guiLeft + 12, guiTop + 38, 256, 20);
+        int middleX = width / 2, middleY = height / 2;
+        nameField = new GuiTextField(fontRendererObj, middleX - 99, middleY - 26, 176, 20);
         nameField.setMaxStringLength(MaidNameRules.MAX_LENGTH);
         nameField.setText(name);
         nameField.setFocused(true);
         buttonList.clear();
-        visibility = new GuiButton(0, guiLeft + 12, guiTop + 66, 256, 20, "");
-        done = new GuiButton(1, guiLeft + 12, guiTop + 112, 124, 20, text("gui.done"));
-        cancel = new GuiButton(2, guiLeft + 144, guiTop + 112, 124, 20, text("gui.cancel"));
+        visibility = new GuiButton(0, middleX + 80, middleY - 26, 20, 20, "");
+        done = new GuiButton(1, middleX - 100, middleY, 98, 20, text("gui.done"));
+        cancel = new GuiButton(2, middleX + 2, middleY, 98, 20, text("gui.cancel"));
         buttonList.add(visibility);
         buttonList.add(done);
         buttonList.add(cancel);
@@ -71,6 +75,10 @@ public final class GuiMaidNaming extends GuiContainer {
 
     public EntityMaid getMaid() {
         return container.getMaid();
+    }
+
+    public ContainerMaidNaming getContainer() {
+        return container;
     }
 
     public boolean submitName(String name, boolean showName) {
@@ -120,26 +128,24 @@ public final class GuiMaidNaming extends GuiContainer {
     }
 
     @Override
-    protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
-        drawRect(guiLeft, guiTop, guiLeft + xSize, guiTop + ySize, 0xEF242424);
-    }
-
-    @Override
-    protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
-        fontRendererObj.drawString(text("gui.tlmnh.naming.title"), 12, 10, 0xFFFFFF);
-        fontRendererObj.drawString(text("gui.tlmnh.naming.limit"), 12, 24, 0xBBBBBB);
-        String status = pending ? "gui.tlmnh.naming.pending" : "gui.tlmnh.naming.cost";
-        fontRendererObj.drawString(text(status), 12, 94, 0xBBBBBB);
-    }
+    protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {}
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         super.drawScreen(mouseX, mouseY, partialTicks);
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_CURRENT_BIT);
         try {
             GL11.glDisable(GL11.GL_LIGHTING);
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             nameField.drawTextBox();
+            GL11.glColor4f(1, 1, 1, 1);
+            mc.getTextureManager()
+                .bindTexture(TEXTURES);
+            drawTexturedModalRect(width / 2 + 80, height / 2 - 26, alwaysShow ? 88 : 110, 220, 20, 20);
+            if (mouseX >= visibility.xPosition && mouseX < visibility.xPosition + visibility.width
+                && mouseY >= visibility.yPosition
+                && mouseY < visibility.yPosition + visibility.height)
+                drawCreativeTabHoveringText(text("gui.touhou_little_maid.tag.always_show"), mouseX, mouseY);
         } finally {
             GL11.glPopAttrib();
         }
@@ -148,7 +154,61 @@ public final class GuiMaidNaming extends GuiContainer {
     private void refreshButtons() {
         done.enabled = !pending && MaidNameRules.isValid(nameField.getText());
         visibility.enabled = !pending;
-        visibility.displayString = text(alwaysShow ? "gui.tlmnh.naming.always_show" : "gui.tlmnh.naming.normal_show");
+    }
+
+    /** 开发入口复用文本框键入和按钮鼠标分发，不直接改字段或提交协议 */
+    public boolean requestAction(String action, String value) {
+        if (mc.currentScreen != this || mc.thePlayer.openContainer != container
+            || !container.canInteractWith(mc.thePlayer)) return false;
+        if (action.equals("naming_text")) {
+            if (pending || value == null || value.length() > MaidNameRules.MAX_LENGTH) return false;
+            int x = nameField.xPosition + nameField.width / 2, y = nameField.yPosition + nameField.height / 2;
+            mouseClicked(x, y, 0);
+            mouseMovedOrUp(x, y, 0);
+            keyTyped('\0', Keyboard.KEY_HOME);
+            int previousLength = nameField.getText()
+                .length();
+            for (int i = 0; i < previousLength; i++) keyTyped('\0', Keyboard.KEY_DELETE);
+            for (int i = 0; i < value.length(); i++) keyTyped(value.charAt(i), Keyboard.KEY_NONE);
+            return nameField.getText()
+                .equals(value);
+        }
+        if (action.equals("naming_escape") || action.equals("naming_enter")) {
+            keyTyped('\0', action.equals("naming_escape") ? Keyboard.KEY_ESCAPE : Keyboard.KEY_RETURN);
+            return true;
+        }
+        var button = switch (action) {
+            case "naming_visibility" -> visibility;
+            case "naming_save" -> done;
+            case "naming_cancel" -> cancel;
+            default -> throw new IllegalArgumentException("Unknown naming action");
+        };
+        if (!button.visible || !button.enabled) return false;
+        int x = button.xPosition + button.width / 2, y = button.yPosition + button.height / 2;
+        mouseClicked(x, y, 0);
+        mouseMovedOrUp(x, y, 0);
+        return true;
+    }
+
+    public JsonObject observation() {
+        var result = new JsonObject();
+        result.addProperty("text", nameField.getText());
+        result.addProperty("alwaysShow", alwaysShow);
+        result.addProperty("pending", pending);
+        result.addProperty("windowId", container.windowId);
+        result.addProperty("containerCurrent", mc.thePlayer.openContainer == container);
+        result.addProperty("canInteract", container.canInteractWith(mc.thePlayer));
+        result.addProperty("doneEnabled", done.enabled);
+        result.addProperty("inputX", nameField.xPosition);
+        result.addProperty("inputY", nameField.yPosition);
+        result.addProperty("inputWidth", nameField.width);
+        result.addProperty("inputHeight", nameField.height);
+        result.addProperty("visibilityX", visibility.xPosition);
+        result.addProperty("visibilityY", visibility.yPosition);
+        result.addProperty("visibilityWidth", visibility.width);
+        result.addProperty("visibilityHeight", visibility.height);
+        result.addProperty("visibilityTextureU", alwaysShow ? 88 : 110);
+        return result;
     }
 
     private static String text(String key) {

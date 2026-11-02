@@ -25,3 +25,4 @@ licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt -text
 # 冻结证据包按原字节校验，manifest与canonical资产不能随checkout转换换行
 tools/animation-reference-1.20.1/baselines/** -text whitespace=cr-at-eol
 
+src/main/resources/assets/littlemaid_peco/** -text

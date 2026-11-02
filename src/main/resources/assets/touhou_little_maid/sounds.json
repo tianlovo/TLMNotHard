@@ -706,5 +706,66 @@
     "sounds": [
       "touhou_little_maid:maid/other/credit"
     ]
+  },
+  "maid.ai_chat": {
+    "category": "neutral",
+    "sounds": [
+      {
+        "name": "touhou_little_maid:maid/empty",
+        "stream": true
+      }
+    ]
+  },
+  "item.camera_use": {
+    "category": "neutral",
+    "sounds": [
+      {
+        "name": "touhou_little_maid:item/camera_use",
+        "stream": true
+      }
+    ]
+  },
+  "block.altar_craft": {
+    "category": "neutral",
+    "sounds": [
+      "touhou_little_maid:block/altar_craft_1",
+      "touhou_little_maid:block/altar_craft_2"
+    ]
+  },
+  "block.gomoku": {
+    "category": "block",
+    "sounds": [
+      "touhou_little_maid:block/piece"
+    ]
+  },
+  "block.gomoku_reset": {
+    "category": "block",
+    "sounds": [
+      "touhou_little_maid:block/gomoku_reset"
+    ]
+  },
+  "entity.box": {
+    "category": "neutral",
+    "sounds": [
+      "touhou_little_maid:entity/box"
+    ]
+  },
+  "item.compass": {
+    "category": "neutral",
+    "sounds": [
+      "touhou_little_maid:item/point"
+    ]
+  },
+  "ui.recording_start": {
+    "category": "master",
+    "sounds": [
+      "touhou_little_maid:ui/recording_start"
+    ]
+  },
+  "ui.recording_end": {
+    "category": "master",
+    "sounds": [
+      "touhou_little_maid:ui/recording_end"
+    ]
   }
 }
