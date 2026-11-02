@@ -183,7 +183,7 @@ public final class MaidLifecycleService {
                 .equals(maid.func_152113_b())) return Result.INVALID_CREDENTIAL;
             maid.setHealth(maid.getMaxHealth());
             maid.setLocationAndAngles(shrine.xCoord + 0.5D, shrine.yCoord + 1.0D, shrine.zCoord + 0.5D, 0, 0);
-            if (!safeSpawn(maid)) return Result.BLOCKED;
+            if (!safeSpawn(maid, shrine)) return Result.BLOCKED;
             if (!world.spawnEntityInWorld(maid) || !maid.isEntityAlive() || !MaidSpawnChecks.present(maid, world))
                 return Result.SPAWN_REJECTED;
             if (!maid.isTamed() || !owner.toString()
@@ -217,13 +217,27 @@ public final class MaidLifecycleService {
     }
 
     private static boolean safeSpawn(EntityMaid maid) {
+        return safeSpawn(maid, null);
+    }
+
+    private static boolean safeSpawn(EntityMaid maid, MaidShrineTile shrine) {
         var world = maid.worldObj;
         int x = (int) Math.floor(maid.posX);
         int y = (int) Math.floor(maid.posY);
         int z = (int) Math.floor(maid.posZ);
         return y > 0 && y + 2 < world.getHeight()
             && world.blockExists(x, y + 2, z)
-            && World.doesBlockHaveSolidTopSurface(world, x, y - 1, z)
+            && (shrine == null ? World.doesBlockHaveSolidTopSurface(world, x, y - 1, z)
+                : !shrine.isInvalid() && shrine.getWorldObj() == world
+                    && shrine.xCoord == x
+                    && shrine.yCoord == y - 1
+                    && shrine.zCoord == z
+                    && maid.posX == x + 0.5D
+                    && maid.posY == y
+                    && maid.posZ == z + 0.5D
+                    && world.getTileEntity(x, y - 1, z) == shrine
+                    // 自有神龛中心有真实屋顶碰撞，但原三层形状不构成整面UP支撑
+                    && world.getBlock(x, y - 1, z) == MaidResurrectionContent.SHRINE)
             && world.getCollidingBoundingBoxes(maid, maid.boundingBox)
                 .isEmpty()
             && world.checkNoEntityCollision(maid.boundingBox)
