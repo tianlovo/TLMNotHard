@@ -39,6 +39,19 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 采集完成或GameTest成功表示观察路径完成，结果始终保持 `NOT_EVALUATED`，不能改为完整B10或移植验收
 硬杀、崩溃原子性、多人、床被占用/拆除/受击与移植侧配对仍在本工具当前范围之外
 
+## 移植侧观察
+
+`tools/horizon-qa` 的 `NaturalSleepPortTests` 使用同一合同，在独立HQA世界分别选择完整F和N
+它直接绑定离线UUID，不构造玩家；家园三个活动点、六格睡眠范围、日时、北向床和初始位置在移植侧实际检查
+每组观察三只全新女仆，各150帧；采集成功只表示记录完整，不能把自然睡眠缺失或轨迹异常判为功能通过
+
+`compare_port.py` 接收原样本、冻结原工具/构建身份/agent、两个移植捕获、实际候选和pilot JAR，以及HQA JSON、observed和JUnit
+原版参数为 `--original-capture`、`--original-tool`、`--original-build`、`--original-agent`
+移植参数为重复的 `--port-capture`、`--candidate-jar`、`--pilot-jar`
+运行与输出参数为 `--hqa-result`、`--observed`、`--junit` 和 `--output`
+检查实际资源身份、工厂选择、自然tick序列和清理后，只报告首次入睡、睡眠帧数、床头水平偏移、高度及运动范围
+原版尚未记录全部初始场地、天气等实际输入，世界RNG及跨版本物理也未控制；因此保持 `NOT_EVALUATED`，没有完整配对输入、B10或统计准入
+
 ## 许可证
 
 本工具原创代码沿用项目许可证；固定上游及复用只读agent各自保留原有来源与许可
