@@ -98,6 +98,7 @@ public final class TileEntityShrineRenderer extends TileEntitySpecialRenderer {
                     icon.getIconWidth(),
                     icon.getIconHeight(),
                     1F / 16F);
+                com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineItemRenderEffects.glint(display);
             }
             com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation
                 .completed(shrine, model, display != null);

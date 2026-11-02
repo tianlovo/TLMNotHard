@@ -31,7 +31,7 @@ public final class MaidResurrectionContent {
         .setUnlocalizedName("tlmnh.smart_slab_empty")
         .setTextureName("touhou_little_maid:smart_slab_empty")
         .setCreativeTab(CreativeTabs.tabMisc);
-    public static final Item FILM = new MaidLifecycleItems.StoredMaidItem().setMaxStackSize(1)
+    public static final Item FILM = new com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmItem().setMaxStackSize(1)
         .setUnlocalizedName("tlmnh.film")
         .setTextureName("touhou_little_maid:film")
         .setCreativeTab(CreativeTabs.tabMisc);

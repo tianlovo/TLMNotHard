@@ -116,6 +116,7 @@ public final class MaidShrineBlock extends BlockContainer {
             if (film != null) {
                 player.inventory.setInventorySlotContents(player.inventory.currentItem, film);
                 player.inventory.markDirty();
+                com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, false);
             }
             return true;
         }
@@ -124,6 +125,7 @@ public final class MaidShrineBlock extends BlockContainer {
                 // block callback不经过ItemInWorldManager的创造栈数量恢复分支
                 player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
                 player.inventory.markDirty();
+                com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, true);
             } else MaidLifecycleService.tell(player, MaidLifecycleService.Result.INVALID_CREDENTIAL);
             return true;
         }

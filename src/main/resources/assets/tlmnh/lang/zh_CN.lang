@@ -155,3 +155,6 @@ block.touhou_little_maid.snack_cabinet.tip=可以存储物品。女仆会食用�
 feature.tlmnh.protection.cabinet_sounds=零食柜音效
 
 feature.tlmnh.protection.client_shrine=神龛显示
+
+feature.tlmnh.protection.shrine_sounds=神龛交互音效
+tooltips.touhou_little_maid.film.no_data.desc=这张胶片没有女仆数据

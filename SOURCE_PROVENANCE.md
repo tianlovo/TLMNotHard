@@ -1313,3 +1313,10 @@ Et Futurum Requiem 2.6.65实际TileEntityBarrel第183/202行以Reference.MCAsset
 174补实际原版对照：上述ShrineRenderer、BlockShrine、TileEntityShrine三份源与固定Git blob比较一致（只规范CRLF），运行时三类资源和首次定义字节相同且各定义一次，范围仅为选定三类
 原版实际外部图同样看不到内部胶片轮廓，内部相机可看到胶片；旧平台EntityRenderer.orientCamera第一人称额外translateZ(-0.1)，校正测试镜头后移植版内部也实际可见并旋转，没有改原渲染器或原物品偏移
 该结论是实际指定场景的定向显示对照，不替代全模型、光影或整个classpath/逐像素等价证明
+
+## 神龛交互音效与胶片状态
+
+固定TLM的BlockShrine在成功放片和取片后播放ITEM_FRAME_ADD_ITEM/REMOVE_ITEM，音量和音高均为1；本工程保留已有物品交付边界，仅在成功后追加反馈，声音失败不重放或撤销物品转移
+实读EFR2.6.65的EtFuturum第912/915行与ServerEventHandler第380/1620行，确认其现代资源域提供entity.item_frame.add_item/remove_item及player声音类别，本工程仍由compat/etfuturum/common/sound适配
+固定ItemFilm第103～113行恒常isFoil=true，并为空女仆数据添加原深红提示；MaidFilmItem保留原文和闪光，空数据判断适配本项目凭证形状，不在客户端查询或公开服务端女仆账本
+神龛中的闪光按实际旧平台ItemRenderer的原生双层深度相等效果适配，使用游戏自有闪光纹理和时钟，不新增或复制音频/纹理资产，原神龛与胶片位置变换保持

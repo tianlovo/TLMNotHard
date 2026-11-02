@@ -156,3 +156,6 @@ block.touhou_little_maid.snack_cabinet.tip=Storage container for items. Maids wi
 feature.tlmnh.protection.cabinet_sounds=Snack cabinet sounds
 
 feature.tlmnh.protection.client_shrine=Shrine rendering
+
+feature.tlmnh.protection.shrine_sounds=Shrine interaction sounds
+tooltips.touhou_little_maid.film.no_data.desc=This Film Is Missing Maid Data
