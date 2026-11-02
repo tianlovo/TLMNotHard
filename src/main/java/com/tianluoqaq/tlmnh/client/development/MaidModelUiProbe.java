@@ -72,6 +72,23 @@ public final class MaidModelUiProbe {
                     } else if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
                         switch (action) {
                             case "back" -> requested = details.pressButton(2);
+                            case "details_shield_blocking" -> {
+                                if (!"on".equals(model) && !"off".equals(model))
+                                    throw new IllegalArgumentException("Preview blocking requires on/off");
+                                details.previewShieldBlocking("on".equals(model));
+                                requested = true;
+                            }
+                            case "details_shield_fault" -> {
+                                // 仅开发协议：注入同一保护边界的链接错误，再由正常预览按钮验证停用回退
+                                com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
+                                    Side.CLIENT,
+                                    com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS,
+                                    () -> { throw new NoSuchMethodError("Injected unavailable shield preview API"); },
+                                    () -> null);
+                                requested = !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
+                                    Side.CLIENT,
+                                    com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS);
+                            }
                             case "details_toggle" -> {
                                 var keys = java.util.Arrays.asList(
                                     "beg",

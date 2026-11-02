@@ -80,9 +80,18 @@ public final class MaidShieldNativeProbe {
                         Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents"),
                         Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems"),
                         Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldRules"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldArrowCapture"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldArrowCapture$Pending"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldArrowImpact"),
+                        Class.forName("com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess"),
+                        Class.forName(
+                            "com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess$Api"),
+                        Class.forName(
+                            "com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess$ArrowCapture"),
                         Class.forName("com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator"),
                         Class.forName("com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime")));
             }
+            arrowCountProtocol(output, prototypes);
             for (var entry : prototypes.entrySet()) {
                 String id = entry.getKey();
                 boolean tinkers = id.startsWith("tinkersdefense:");
@@ -179,6 +188,45 @@ public final class MaidShieldNativeProbe {
             fixture.positionOpponent(angle);
             row.add("hit", fixture.hit(sourceKind, amount));
         }
+    }
+
+    /** 复用实装物品核计数协议；真实碰撞、原生返回后的体表计数另由自然箭场景验收 */
+    private static void arrowCountProtocol(JsonObject output, Map<String, ItemStack> prototypes) {
+        var rows = new JsonArray();
+        output.add("arrowCountProtocol", rows);
+        for (String id : new String[] { "battlegear2:shield.wood", "tinkersdefense:Round Shield",
+            "tinkersdefense:Heater Shield" }) {
+            var shield = prototypes.get(id)
+                .copy();
+            var before = shield.copy();
+            var proposal = com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.prepareArrowCapture(shield);
+            if (proposal == null || !ItemStack.areItemStacksEqual(before, shield))
+                throw new IllegalStateException("Arrow capture preparation changed the original shield: " + id);
+            var tag = proposal.applyTo(shield);
+            if (tag == null || tag.getShort("arrows") != 1)
+                throw new IllegalStateException("Native shield arrow increment missing: " + id);
+            var row = new JsonObject();
+            row.addProperty("id", id);
+            row.addProperty("preparedCount", tag.getShort("arrows"));
+            row.addProperty("sourceUnchanged", ItemStack.areItemStacksEqual(before, shield));
+            rows.add(row);
+        }
+        var limit = prototypes.get("battlegear2:shield.wood")
+            .copy();
+        if (!limit.hasTagCompound()) limit.setTagCompound(new net.minecraft.nbt.NBTTagCompound());
+        limit.getTagCompound()
+            .setShort("arrows", Short.MAX_VALUE);
+        var proposal = com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.prepareArrowCapture(limit);
+        if (proposal == null || proposal.applyTo(limit)
+            .getShort("arrows") != Short.MAX_VALUE)
+            throw new IllegalStateException("Shield arrow count did not retain the provider capacity limit");
+        // 磨损回调或别的持有者改过计数后，旧提案不得覆盖新值
+        limit.getTagCompound()
+            .setShort("arrows", (short) 7);
+        if (proposal.applyTo(limit) != null || limit.getTagCompound()
+            .getShort("arrows") != 7)
+            throw new IllegalStateException("Stale shield arrow proposal overwrote a later count");
+        output.addProperty("arrowCountCapacityAndStaleProposalPassed", true);
     }
 
     private static void invulnerability(WorldServer world, JsonArray rows, ItemStack shield) {
@@ -336,6 +384,8 @@ public final class MaidShieldNativeProbe {
             result.addProperty("maidRegistered", world.loadedEntityList.contains(maid));
             result.addProperty("opponentRegistered", world.loadedEntityList.contains(opponent));
             result.addProperty("arrowRegistered", world.loadedEntityList.contains(arrow));
+            result.addProperty("bodyArrowCount", maid.getArrowCountInEntity());
+            result.addProperty("arrowDead", arrow.isDead);
             result.add("maidPosition", position(maid));
             result.add("offhand", MaidShieldFixtures.snapshot(maid.getOffhandItem()));
             result.addProperty("usingItemPose", maid.hasPose(MaidPose.USING_ITEM));

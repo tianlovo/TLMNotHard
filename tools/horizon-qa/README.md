@@ -1,5 +1,9 @@
 # Horizon-QA 服务端试点
 
+当前合批入口可组合 `tlmnhqapilot:ShieldArrowCaptureTests`、`tlmnhqapilot:AcquisitionDeliveryTests` 及所需的既有生命周期用例
+在 `horizonqa.tests` 中用逗号分隔 selector，未选中的历史场景不会运行；不能用全历史用例数量代替当前风险判断
+箭场景记录自然实体帧和原始捕获，受控坐姿/离线主人不计完整行为AI、真实玩家输入或多人验收
+
 本工具使用 Horizon-QA **0.15.0**，对应上游提交 `e05abc05be88e9072c7ed298e4ae81c158213515`
 [官方接入文档](https://www.gtnewhorizons.com/Horizon-QA/getting-started/mod-setup/)
 

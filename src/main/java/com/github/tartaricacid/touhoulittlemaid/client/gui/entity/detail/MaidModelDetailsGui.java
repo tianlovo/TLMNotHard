@@ -71,10 +71,19 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     private static ItemStack previewShield() {
         return IntegrationGuard.call(Side.CLIENT, ExternalFeature.SHIELDS, () -> {
-            var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.woodenShieldItem();
+            var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess
+                .woodenShieldItem();
             if (shield == null) throw new IllegalStateException("Native wood shield missing for model preview");
             return new ItemStack(shield);
         }, () -> null);
+    }
+
+    /** 开发观测只改变未登记的预览实体，不发送装备或格挡状态到服务端 */
+    public void previewShieldBlocking(boolean active) {
+        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        boolean using = active && guiEntity.getOffhandItem() != null;
+        guiEntity.setPose(MaidPose.USING_ITEM, using);
+        guiEntity.setPose(MaidPose.USING_OFFHAND, using);
     }
 
     @Override

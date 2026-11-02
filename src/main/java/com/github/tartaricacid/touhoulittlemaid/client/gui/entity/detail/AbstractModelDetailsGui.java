@@ -235,12 +235,28 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
         result.addProperty("floor", showFloor);
         result.add("renderDiagnostic", preview.observation());
         result.addProperty("previewTicks", guiEntity.ticksExisted);
+        result.addProperty("previewHeadYaw", guiEntity.rotationYawHead);
+        result.addProperty("previewPreviousHeadYaw", guiEntity.prevRotationYawHead);
+        result
+            .addProperty("previewUsingItem", guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM));
+        result.addProperty(
+            "previewUsingOffhand",
+            guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND));
         result.addProperty("previewBegging", guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.BEGGING));
         result.addProperty("previewSitting", guiEntity.isSitting());
         result.addProperty("previewRiding", guiEntity.ridingEntity != null);
         result.addProperty("previewMainHand", item(guiEntity.getHeldItem()));
         result.addProperty("previewOffhand", item(guiEntity.getOffhandItem()));
-        result.addProperty("previewRegistered", guiEntity.worldObj.loadedEntityList.contains(guiEntity));
+        // 原生Entity.equals只比较数字ID，未登记预览也可能与网络实体撞ID
+        boolean registered = false;
+        for (Object entity : guiEntity.worldObj.loadedEntityList) if (entity == guiEntity) {
+            registered = true;
+            break;
+        }
+        result.addProperty("previewRegistered", registered);
+        result.addProperty("previewEntityId", guiEntity.getEntityId());
+        var matchingId = guiEntity.worldObj.getEntityByID(guiEntity.getEntityId());
+        result.addProperty("previewIdCollision", matchingId != null && matchingId != guiEntity);
         result.addProperty("limbSwing", guiEntity.limbSwing);
         result.addProperty("limbSwingAmount", guiEntity.limbSwingAmount);
         result.addProperty(

@@ -1228,3 +1228,13 @@ EtFuturum声音适配位于compat/etfuturum/common/sound，惰性读取Reference
 `compare_mechanisms.py --require-deterministic-spawn` 检查实际朝向、插值前值、音色和同份 NBT 的反读值
 它可与 `--require-paired-inputs --require-immediate-hurt-wake` 合用；旧冻结工具与旧合同继续独立保留
 该检查仅证明所列出生输入，不重置随机源，不授予完整 NBT、跨平台物理、B10 或统计准入
+
+## 合并盾牌与生命周期检查
+
+HQA可在同一进程选择 `ShieldArrowCaptureTests`、`AcquisitionDeliveryTests` 和既有生命周期进度用例，以逗号分隔完整 selector
+真实箭场景由世界推进女仆和原生箭，保留取消、背向及直接伤害反例；可选初始赠送场景读取实际 Backhand 空槽策略并恢复全局配置
+这些用例使用受控离线主人，不替代真实玩家输入、多人观察或磁盘崩溃验收
+
+自有开发展台可用 `lab-carry-visual <旁观玩家> bedrock|gecko|status|clear` 建立和恢复受控玩家载体背负场景
+`clear` 仅在本次预期装备仍匹配时恢复完整原物品，载体注册和独立内存通道一并清理，未知后继装备不覆盖
+详情页观测的预览登记按对象身份核对，原生实体数字ID相等不能证明同一对象已进入世界

@@ -292,24 +292,41 @@ public final class MaidLifecycleProbe {
         f.world.setBlockToAir(f.x, f.y + 1, f.z);
         var reject = new RejectSpawn(f.world, true);
         MinecraftForge.EVENT_BUS.register(reject);
+        MaidLifecycleService.Result rejected;
         try {
-            f.click();
+            rejected = MaidLifecycleService.resurrect(f.owner, shrine);
         } finally {
             MinecraftForge.EVENT_BUS.unregister(reject);
         }
-        require(shrine.getFilm() != null && f.owner.getHealth() == 11, "cancelled shrine spawn rolls back both costs");
+        require(
+            rejected == MaidLifecycleService.Result.SPAWN_REJECTED && shrine.getFilm() != null
+                && f.owner.getHealth() == 11,
+            "cancelled shrine spawn rolls back both costs result=" + rejected);
         for (var mutation : new Mutation[] { Mutation.MAID_DEAD, Mutation.MAID_OWNER, Mutation.PLAYER_DISTANCE,
             Mutation.SHRINE_CONTENT }) {
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
+            MaidLifecycleService.Result result;
             try {
-                f.click();
+                result = MaidLifecycleService.resurrect(f.owner, shrine);
             } finally {
                 MinecraftForge.EVENT_BUS.unregister(mutate);
             }
+            var expectedResult = mutation == Mutation.MAID_DEAD ? MaidLifecycleService.Result.SPAWN_REJECTED
+                : MaidLifecycleService.Result.DENIED;
             require(
-                mutate.maidCalls == 1 && shrine.getFilm() != null && f.owner.getHealth() == 11,
-                "mutated resurrection retains film and life " + mutation);
+                result == expectedResult && mutate.maidCalls == 1
+                    && shrine.getFilm() != null
+                    && f.owner.getHealth() == 11,
+                "mutated resurrection retains film and life " + mutation
+                    + " result="
+                    + result
+                    + " callbacks="
+                    + mutate.maidCalls
+                    + " film="
+                    + (shrine.getFilm() != null)
+                    + " health="
+                    + f.owner.getHealth());
             if (mutation == Mutation.SHRINE_CONTENT) require(
                 "retained".equals(
                     shrine.getFilm()

@@ -175,6 +175,22 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("boxHeight", maid.boundingBox.maxY - maid.boundingBox.minY);
                             shape.addProperty("eye", maid.getEyeHeight());
                             shape.addProperty("rideable", maid.isRideable());
+                            shape.addProperty(
+                                "ridingEntityId",
+                                maid.ridingEntity == null ? -1 : maid.ridingEntity.getEntityId());
+                            shape.addProperty(
+                                "ridingEntityClass",
+                                maid.ridingEntity == null ? ""
+                                    : maid.ridingEntity.getClass()
+                                        .getName());
+                            shape.addProperty(
+                                "ridingPlayer",
+                                maid.ridingEntity instanceof net.minecraft.entity.player.EntityPlayer);
+                            shape.addProperty(
+                                "ridingEntityTracked",
+                                maid.ridingEntity != null
+                                    && minecraft.theWorld.getEntityByID(maid.ridingEntity.getEntityId())
+                                        == maid.ridingEntity);
                             var restriction = maid.getHomeArea()
                                 .restrictionCenter();
                             shape.addProperty("restrictionX", restriction.x);

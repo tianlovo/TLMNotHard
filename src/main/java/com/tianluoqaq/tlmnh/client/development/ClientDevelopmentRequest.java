@@ -163,6 +163,8 @@ public final class ClientDevelopmentRequest {
                     "sound_play",
                     "details",
                     "details_toggle",
+                    "details_shield_fault",
+                    "details_shield_blocking",
                     "details_view",
                     "pack",
                     "search",
@@ -179,6 +181,7 @@ public final class ClientDevelopmentRequest {
                 || action.equals("search")
                 || action.equals("details")
                 || action.equals("details_toggle")
+                || action.equals("details_shield_blocking")
                 || action.equals("details_view")
                 || action.equals("sound_play")
                 || action.equals("target_add")

@@ -276,6 +276,11 @@ public final class DevelopmentCommand extends CommandBase {
                 .setVisualFixture(getPlayer(sender, args[1]), args[2]);
             return;
         }
+        if (args.length == 3 && "lab-carry-visual".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.visual.MaidCarryVisualFixture
+                .set(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
         if (args.length == 3 && "lab-shrine-visual".equals(args[0])) {
             com.tianluoqaq.tlmnh.common.development.life.ShrineVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
