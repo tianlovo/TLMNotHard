@@ -53,10 +53,17 @@ public final class SleepNaturalGameTests {
 
     @GameTest(template = "cell", timeoutTicks = 620, batch = "sleep_natural")
     public static void collectThreeFreshHomeActors(GameTestHelper helper) {
+        collect(helper, new Session(helper));
+    }
+
+    static void collectMechanism(GameTestHelper helper, String mechanism) {
+        collect(helper, new SleepMechanismGameTests.Session(helper, mechanism));
+    }
+
+    private static void collect(GameTestHelper helper, Session session) {
         helper.assertTrue(
             Boolean.getBoolean("tlmnh.sleepNaturalProbe") && active == null,
             "Dedicated sleep reference configuration required");
-        var session = new Session(helper);
         active = session;
         helper.onEachTick(() -> {
             if (session.failure != null) helper.fail(session.failure);
@@ -67,7 +74,10 @@ public final class SleepNaturalGameTests {
             helper.runAfterDelay(
                 session.contract.get("warmupTicks")
                     .getAsLong(),
-                session::spawn);
+                () -> {
+                    try { session.spawn(); }
+                    catch (Exception | LinkageError | AssertionError failure) { session.abort(failure); }
+                });
         } catch (Exception failure) {
             session.abort(failure);
         }
@@ -81,9 +91,10 @@ public final class SleepNaturalGameTests {
     @SubscribeEvent
     public static void level(TickEvent.LevelTickEvent event) {
         var session = active;
-        if (session == null || event.phase != TickEvent.Phase.END || event.level != session.level) return;
+        if (session == null || event.level != session.level) return;
         try {
-            session.observe();
+            if (event.phase == TickEvent.Phase.START) session.beforeWorld();
+            else session.observe();
         } catch (Exception | LinkageError | AssertionError failure) {
             session.abort(failure);
         }
@@ -94,7 +105,7 @@ public final class SleepNaturalGameTests {
         if (active != null) active.abort(new IllegalStateException("Server stopped before observation completion"));
     }
 
-    private static final class Session {
+    static class Session {
 
         final GameTestHelper helper;
         final ServerLevel level;
@@ -114,9 +125,13 @@ public final class SleepNaturalGameTests {
         String failure;
 
         Session(GameTestHelper helper) {
+            this(helper, "/tlmnh-sleep/contract.json", "sleep-natural-reference-feasibility-v1", "sleep-natural-");
+        }
+
+        Session(GameTestHelper helper, String resource, String schema, String prefix) {
             this.helper = helper;
             level = helper.getLevel();
-            try (var stream = SleepNaturalGameTests.class.getResourceAsStream("/tlmnh-sleep/contract.json")) {
+            try (var stream = SleepNaturalGameTests.class.getResourceAsStream(resource)) {
                 if (stream == null) throw new IllegalStateException("Missing sleep contract");
                 byte[] bytes = stream.readAllBytes();
                 contract = GSON.fromJson(new String(bytes, StandardCharsets.UTF_8), JsonObject.class);
@@ -130,8 +145,8 @@ public final class SleepNaturalGameTests {
                 .getBoolean(GameRules.RULE_DAYLIGHT);
             oldSpawning = level.getGameRules()
                 .getBoolean(GameRules.RULE_DOMOBSPAWNING);
-            capture = Path.of("captures", "sleep-natural-" + System.nanoTime() + ".json");
-            output.addProperty("schema", "sleep-natural-reference-feasibility-v1");
+            capture = Path.of("captures", prefix + System.nanoTime() + ".json");
+            output.addProperty("schema", schema);
             output.addProperty("benchmarkVerdict", "NOT_EVALUATED");
             output.addProperty("completeB10Accepted", false);
             output.addProperty("randomSourcesReset", false);
@@ -189,7 +204,7 @@ public final class SleepNaturalGameTests {
                     p -> p.getPos()
                         .equals(head))
                 .count();
-            helper.assertTrue(poi == 1, "Actual native bed POI must be registered before spawning");
+            helper.assertTrue(poi == expectedPoiCount(), "Actual native bed POI count differs from the scene input");
             maid = new EntityMaid(level);
             maid.setOwnerUUID(offlineOwner);
             maid.setTame(true);
@@ -235,7 +250,16 @@ public final class SleepNaturalGameTests {
             row.add("frames", frames);
             runs.add(row);
             if (repetition == 0) output.add("identity", identity());
+            afterSpawn();
         }
+
+        int expectedPoiCount() { return 1; }
+
+        protected void afterSpawn() {}
+
+        protected void afterFrame(JsonObject frame) {}
+
+        void beforeWorld() {}
 
         void observe() throws Exception {
             if (maid == null || maid.tickCount == 0) return;
@@ -277,8 +301,8 @@ public final class SleepNaturalGameTests {
                     .toString());
             frame.addProperty(
                 "bedOccupied",
-                level.getBlockState(head)
-                    .getValue(BlockMaidBed.OCCUPIED));
+                level.getBlockState(head).is(InitBlocks.MAID_BED.get())
+                    && level.getBlockState(head).getValue(BlockMaidBed.OCCUPIED));
             frame.addProperty(
                 "walkTarget",
                 maid.getBrain()
@@ -288,6 +312,7 @@ public final class SleepNaturalGameTests {
                 maid.getNavigation()
                     .isDone());
             frames.add(frame);
+            afterFrame(frame);
             previousAge = maid.tickCount;
             livingTicks = 0;
             if (frames.size() != contract.get("framesPerActor")

@@ -55,7 +55,12 @@ public final class NaturalSleepPortTests {
     }
 
     private static void collect(GameTestHelper helper, MaidBrainProfile profile) {
-        var collector = new Collector(helper, profile);
+        collectMechanism(helper, profile, null);
+    }
+
+    static void collectMechanism(GameTestHelper helper, MaidBrainProfile profile, String mechanism) {
+        var collector = mechanism == null ? new Collector(helper, profile)
+            : new SleepMechanismPortTests.Collector(helper, profile, mechanism);
         helper.afterTest(collector::close);
         collector.setup();
         FMLCommonHandler.instance()
@@ -68,10 +73,11 @@ public final class NaturalSleepPortTests {
         helper.succeedWhen(() -> collector.complete);
     }
 
-    public static final class Collector {
+    public static class Collector {
 
         final GameTestHelper helper;
         final MaidBrainProfile profile;
+        final String resource, expectedContract, outputName;
         final GameTestChunkLoader chunks = new GameTestChunkLoader();
         final JsonObject output = new JsonObject();
         final JsonArray runs = new JsonArray();
@@ -91,6 +97,19 @@ public final class NaturalSleepPortTests {
         RuntimeException failure;
 
         Collector(GameTestHelper helper, MaidBrainProfile profile) {
+            this(
+                helper,
+                profile,
+                "/tlmnh-sleep/contract.json",
+                "SLEEP_NATURAL_HOME_OFFLINE_O_V1",
+                "sleep-natural-" + profile.getId() + ".json");
+        }
+
+        Collector(GameTestHelper helper, MaidBrainProfile profile, String resource, String expectedContract,
+            String outputName) {
+            this.resource = resource;
+            this.expectedContract = expectedContract;
+            this.outputName = outputName;
             this.helper = helper;
             this.profile = profile;
             var origin = helper.absolute(0, 0, 0);
@@ -117,7 +136,7 @@ public final class NaturalSleepPortTests {
         }
 
         void setup() {
-            try (var stream = NaturalSleepPortTests.class.getResourceAsStream("/tlmnh-sleep/contract.json")) {
+            try (var stream = NaturalSleepPortTests.class.getResourceAsStream(resource)) {
                 if (stream == null) throw new IllegalStateException("Missing natural sleep input contract");
                 byte[] bytes = com.google.common.io.ByteStreams.toByteArray(stream);
                 contract = new JsonParser().parse(new String(bytes, StandardCharsets.UTF_8))
@@ -147,7 +166,7 @@ public final class NaturalSleepPortTests {
             helper.assertTrue(
                 contract.get("contract")
                     .getAsString()
-                    .equals("SLEEP_NATURAL_HOME_OFFLINE_O_V1")
+                    .equals(expectedContract)
                     && contract.get("dayTime")
                         .getAsLong() == 6000
                     && contract.get("bedFacing")
@@ -246,7 +265,12 @@ public final class NaturalSleepPortTests {
                     .getBlockMetadata(x + 7, y + 1, z + 4));
             row.add("frames", frames);
             runs.add(row);
+            afterSpawn();
         }
+
+        protected void afterSpawn() {}
+
+        protected void afterFrame(JsonObject sample) {}
 
         private void observe() {
             if (maid == null) {
@@ -316,6 +340,7 @@ public final class NaturalSleepPortTests {
                 maid.getNavigator()
                     .noPath());
             frames.add(sample);
+            afterFrame(sample);
             previousAge = maid.ticksExisted;
             livingTicks = 0;
             if (frames.size() < contract.get("framesPerActor")
@@ -378,9 +403,7 @@ public final class NaturalSleepPortTests {
                 output.addProperty("observationComplete", complete && failure == null);
                 try {
                     Files.write(
-                        Paths.get(
-                            System.getProperty("horizonqa.reportDir"),
-                            "sleep-natural-" + profile.getId() + ".json"),
+                        Paths.get(System.getProperty("horizonqa.reportDir"), outputName),
                         new Gson().toJson(output)
                             .getBytes(StandardCharsets.UTF_8));
                 } catch (java.io.IOException error) {

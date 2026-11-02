@@ -14,6 +14,7 @@ def port = new File(tool, '../..').canonicalFile
 if (home.toPath().startsWith(port.toPath())) throw new GradleException('Sleep runtime must remain outside the port checkout')
 apply from: new File(original, 'reference.init.gradle')
 
+def paired = System.getenv('TLMNH_SLEEP_PAIRED') == 'true'
 def selected = [
     'com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid',
     'com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos',
@@ -25,7 +26,9 @@ def selected = [
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests$Session'
 ].sort()
-def identityFile = new File(home, 'identity/sleep-natural-build.json')
+if (paired) selected.addAll(['com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests$Session'])
+selected.sort()
+def identityFile = new File(home, paired ? 'identity/sleep-paired-build.json' : 'identity/sleep-natural-build.json')
 def sha = { byte[] b -> MessageDigest.getInstance('SHA-256').digest(b).encodeHex().toString() }
 
 gradle.projectsEvaluated {
@@ -34,6 +37,8 @@ gradle.projectsEvaluated {
     project.sourceSets.main.resources.srcDir(new File(tool, 'resources'))
     project.tasks.named('processResources').configure {
         from(new File(tool, 'contract.json')) { into 'tlmnh-sleep' }
+        from(new File(tool, 'paired-contract.json')) { into 'tlmnh-sleep' }
+        if (paired) from(new File(tool, 'resources/data/tlmnh_sleep_natural/structures/cell.nbt')) { into 'data/tlmnh_sleep_paired/structures' }
     }
     def agentRoot = new File(tool, '../geometry-reference/agent').canonicalFile
     def agentSources = project.sourceSets.create('sleepDefinitionAgent') { java.srcDir(agentRoot) }
@@ -68,17 +73,17 @@ gradle.projectsEvaluated {
             def value = [schema: 'sleep-natural-build-v1', upstreamCommit: base.upstreamCommit,
                 minecraft: '1.20.1', forge: '47.2.0', javaFeature: 17,
                 baseReferenceBuildIdentitySha256: sha(baseFile.bytes), baseReferenceBuildIdentity: base,
-                contractSha256: sha(new File(tool, 'contract.json').bytes),
+                contractSha256: sha(new File(tool, paired ? 'paired-contract.json' : 'contract.json').bytes),
                 definitionAgentSha256: sha(agent.get().archiveFile.get().asFile.bytes),
                 compiledClasses: compiled, toolInputs: inputs,
-                scope: 'original home/offline sleep feasibility and selected resource/first-definition identities; no paired benchmark or full classpath acceptance']
+                scope: paired ? 'five sleep mechanism exploration with selected resource/first-definition identities; not full B10, statistical or whole-classpath acceptance' : 'original home/offline sleep feasibility and selected resource/first-definition identities; no paired benchmark or full classpath acceptance']
             identityFile.parentFile.mkdirs()
             identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
         }
     }
     project.minecraft.runs.gameTestServer {
-        workingDirectory new File(home, 'sleep-gametest')
-        property 'forge.enabledGameTestNamespaces', 'tlmnh_sleep_natural'
+        workingDirectory new File(home, paired ? 'sleep-paired-gametest' : 'sleep-gametest')
+        property 'forge.enabledGameTestNamespaces', paired ? 'tlmnh_sleep_paired' : 'tlmnh_sleep_natural'
         property 'forge.gameTestServer', 'true'
         property 'tlmnh.sleepNaturalProbe', 'true'
         property 'tlmnh.referenceProbe', 'false'

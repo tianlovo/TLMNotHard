@@ -37,7 +37,7 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 校验历史样本时，`--tool` 须指向该次冻结的工具源码；工具后续改动不能替换历史输入身份
 定义字节摘要与资源摘要分别记录，差异原样报告，不凭摘要单独宣称已解释服务端变换或整个classpath完全相同
 采集完成或GameTest成功表示观察路径完成，结果始终保持 `NOT_EVALUATED`，不能改为完整B10或移植验收
-硬杀、崩溃原子性、多人、床被占用/拆除/受击与移植侧配对仍在本工具当前范围之外
+硬杀、崩溃原子性、多人及完整统计验收仍在本工具当前范围之外；五机制探索见下文
 
 ## 移植侧观察
 
@@ -57,3 +57,20 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 ## 许可证
 
 本工具原创代码沿用项目许可证；固定上游及复用只读agent各自保留原有来源与许可
+
+## 五机制成对探索
+
+`paired-contract.json` 与 `SleepMechanismGameTests` / HQA `SleepMechanismPortTests` 独立于旧三只女仆基础合同
+显式设置 `TLMNH_SLEEP_PAIRED=true` 时，原版使用独立namespace `tlmnh_sleep_paired` 与 `sleep-paired-gametest` 工作目录；原模板另复制到该namespace，避免Forge按模板域过滤成零测试
+五种机制为正常、占用后释放、不可达、睡后拆床、睡中受伤，每场一只全新自然实体观察240帧
+受控占用者只用于提供场景输入，不替代被测女仆；移植使用真实Tile租约，原版使用实际床占用状态
+原 `MaidPoiManager` 只注册未占用床头，故占用场景出生时实际POI数为0，其余为1；不伪造POI补齐旧断言
+
+原版LevelTick与移植WorldTick末尾在已记录帧之后执行干预，同时保存即时睡姿/健康/床占用及后续自然轨迹
+未入睡或未触发干预的记录保留，GameTest成功仅表示采集完成
+新捕获还保存实际方块布局、属性、天气、难度及完整初始SNBT；`compare_mechanisms.py` 核选定类资源、原版首次定义、合同、全根F/N、自然tick、15只独立实体及HQA/JUnit，分别列出输入差异和各机制结果
+运行参数见该检查器 `--help`；历史验证应指向该次冻结工具，不用新源码替换历史输入
+
+176实际完成原版5例、完整F/N10例，共3600帧；难度原版EASY/移植HARD，其余已比较的标量、家园和语义布局一致，完整NBT/库存语义仍未准入
+实际原版受伤立即醒来，F延迟10帧、N下一帧醒来；这些差异与首轮零测试、POI旧断言导致的3例失败分别保留，不把采集通过写成机制等价
+完整B10、同随机流/跨版本物理、非劣效余量和统计结论仍为 `NOT_EVALUATED`

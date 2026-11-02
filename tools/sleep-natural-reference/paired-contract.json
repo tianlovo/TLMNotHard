@@ -1,0 +1,84 @@
+{
+  "schema": "sleep-paired-mechanisms-contract-v1",
+  "contract": "SLEEP_PAIRED_MECHANISMS_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "repetitions": 1,
+  "framesPerActor": 240,
+  "warmupTicks": 30,
+  "dayTime": 6000,
+  "schedule": "NIGHT",
+  "owner": "offline_uuid_no_player",
+  "homeCenter": [
+    7,
+    1,
+    4
+  ],
+  "maidSpawnBlock": [
+    2,
+    1,
+    4
+  ],
+  "bedHead": [
+    7,
+    1,
+    4
+  ],
+  "bedFoot": [
+    7,
+    1,
+    5
+  ],
+  "bedFacing": "NORTH",
+  "randomSourcesReset": false,
+  "layoutVolume": [
+    17,
+    8,
+    9
+  ],
+  "floor": "stone_y0",
+  "weather": "clear_no_thunder",
+  "mechanisms": [
+    "normal",
+    "occupied_release",
+    "unreachable",
+    "bed_removed",
+    "hurt_sleeping"
+  ],
+  "reservationHolder": [
+    15.5,
+    1,
+    7.5
+  ],
+  "releaseFrame": 40,
+  "afterFirstSleepingFrames": 5,
+  "damage": 1.0,
+  "unreachableShell": {
+    "minimum": [
+      4,
+      1,
+      1
+    ],
+    "maximum": [
+      10,
+      4,
+      7
+    ],
+    "interiorAir": {
+      "minimum": [
+        7,
+        1,
+        4
+      ],
+      "maximum": [
+        7,
+        4,
+        5
+      ]
+    }
+  },
+  "eventPhase": "WorldTick.END after the recorded primary-actor frame; record immediate post-event sleeping/health/occupied state",
+  "pairing": "Same scenario/input layout/event rule; independent fresh actor; no shared random-stream or cross-engine timing equivalence assumption",
+  "completeB10Accepted": false,
+  "statisticalVerdict": "NOT_EVALUATED",
+  "scope": "Five paired mechanism/input exploration scenes before frozen statistical validation; one fresh actor per scene/profile, not full B10 or all fourteen benchmark acceptance"
+}
