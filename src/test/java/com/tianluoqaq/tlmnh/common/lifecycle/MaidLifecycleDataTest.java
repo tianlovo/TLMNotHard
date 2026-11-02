@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 4);
+        invalid.setInteger("Schema", 5);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -172,7 +172,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(3, current.getInteger("Schema"));
+        assertEquals(4, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -275,6 +275,135 @@ public class MaidLifecycleDataTest {
         }
     }
 
+    @Test
+    public void legacySchemaThreeKeepsExperienceWithoutInventingHolds() {
+        var data = new MaidLifecycleData("fixture");
+        var token = data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            new NBTTagList(),
+            0,
+            1,
+            5,
+            2,
+            "xp",
+            53,
+            40);
+        var restored = new MaidLifecycleData("fixture");
+        restored.readFromNBT(legacy(data, 3));
+        assertEquals(53, restored.remainingDeathExperience(token));
+        assertFalse(restored.isTombstoneHeld(token));
+        assertFalse(restored.isDeathExperienceHeld(token));
+        assertEquals(java.util.Collections.singletonList(token), restored.pendingDeathExperience(0, 40));
+    }
+
+    @Test
+    public void tombstoneHoldSurvivesReloadWithoutConsumingItemsExperienceOrFilm() {
+        var data = new MaidLifecycleData("fixture");
+        var items = new NBTTagList();
+        var original = new NBTTagCompound();
+        original.setString("Opaque", "original-nine-items");
+        items.appendTag(original);
+        var token = data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            items,
+            0,
+            1,
+            5,
+            2,
+            "held",
+            53,
+            40);
+        data.markPublished(token);
+        assertNotNull(data.reserveTombstone(token));
+        data.holdTombstone(token);
+        data.rollback(token);
+        var restored = roundtrip(data);
+        assertTrue(restored.isTombstoneHeld(token));
+        assertFalse(restored.isDeathExperienceHeld(token));
+        assertNull(restored.reserveTombstone(token));
+        assertFalse(restored.tombstoneEmpty(token));
+        var saved = new NBTTagCompound();
+        restored.writeToNBT(saved);
+        assertEquals(
+            items,
+            saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0)
+                .getTagList("TombstoneItems", 10));
+        assertEquals(53, restored.reserveDeathExperience(token));
+        restored.finishDeathExperience(token, 53, 53);
+        assertNotNull(restored.reserve(token, MaidLifecycleData.Kind.FILM));
+        restored.commit(token);
+        assertTrue(roundtrip(restored).isTombstoneHeld(token));
+    }
+
+    @Test
+    public void experienceHoldSurvivesReloadWithoutBlockingTombstoneOrFilm() {
+        var data = new MaidLifecycleData("fixture");
+        var items = new NBTTagList();
+        items.appendTag(new NBTTagCompound());
+        var token = data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            items,
+            0,
+            1,
+            5,
+            2,
+            "held",
+            53,
+            40);
+        data.markPublished(token);
+        assertEquals(53, data.reserveDeathExperience(token));
+        data.holdDeathExperience(token);
+        data.rollback(token);
+        var restored = roundtrip(data);
+        assertTrue(restored.isDeathExperienceHeld(token));
+        assertFalse(restored.isTombstoneHeld(token));
+        assertEquals(53, restored.remainingDeathExperience(token));
+        assertTrue(
+            restored.pendingDeathExperience(0, Long.MAX_VALUE)
+                .isEmpty());
+        assertEquals(0, restored.reserveDeathExperience(token));
+        assertNotNull(restored.reserveTombstone(token));
+        restored.finishTombstone(token, items, new NBTTagList());
+        assertNotNull(restored.reserve(token, MaidLifecycleData.Kind.FILM));
+        restored.commit(token);
+        assertEquals(53, roundtrip(restored).remainingDeathExperience(token));
+        assertTrue(roundtrip(restored).isDeathExperienceHeld(token));
+    }
+
+    @Test
+    public void malformedOrMissingSchemaFourHoldsCannotBeOverwritten() {
+        var data = new MaidLifecycleData("fixture");
+        data.depositDeath(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new NBTTagCompound(),
+            new NBTTagList(),
+            0,
+            1,
+            5,
+            2,
+            "held");
+        for (int mutation = 0; mutation < 3; mutation++) {
+            var saved = new NBTTagCompound();
+            data.writeToNBT(saved);
+            var entry = saved.getTagList("Entries", 10)
+                .getCompoundTagAt(0);
+            if (mutation == 0) entry.setString("TombstoneHeld", "true");
+            else if (mutation == 1) entry.setByte("ExperienceHeld", (byte) 2);
+            else entry.removeTag("TombstoneHeld");
+            var restored = new MaidLifecycleData("fixture");
+            assertThrows(IllegalStateException.class, () -> restored.readFromNBT(saved));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
+    }
+
     private static NBTTagCompound legacy(MaidLifecycleData data, int schema) {
         var tag = new NBTTagCompound();
         data.writeToNBT(tag);
@@ -282,8 +411,12 @@ public class MaidLifecycleDataTest {
         var entries = tag.getTagList("Entries", 10);
         for (int index = 0; index < entries.tagCount(); index++) {
             var entry = entries.getCompoundTagAt(index);
-            entry.removeTag("DeathExperience");
-            entry.removeTag("ExperienceReadyAt");
+            if (schema < 3) {
+                entry.removeTag("DeathExperience");
+                entry.removeTag("ExperienceReadyAt");
+            }
+            entry.removeTag("TombstoneHeld");
+            entry.removeTag("ExperienceHeld");
         }
         return tag;
     }

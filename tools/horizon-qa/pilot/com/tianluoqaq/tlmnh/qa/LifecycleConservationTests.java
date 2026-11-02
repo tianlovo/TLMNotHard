@@ -39,6 +39,7 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
@@ -111,6 +112,10 @@ public final class LifecycleConservationTests {
             f.ledger()
                 .rollback(token);
             helper.assertTrue(items.equals(retained), "Failed claim changed the original complete escrow");
+            helper.assertTrue(
+                !f.ledger()
+                    .isTombstoneHeld(token),
+                "Safely retracted overflow permanently held the claim");
             if (changed[0] != null) helper.assertTrue(
                 changed[0].equals(f.owner.inventory.writeToNBT(new NBTTagList())) && f.owner.inventory.currentItem == 1
                     && f.owner.inventory.getItemStack().stackSize == 3,
@@ -127,6 +132,140 @@ public final class LifecycleConservationTests {
             System.out.println("TLMNH_CLAIM_CONSERVATION_PASS mutation=" + mutation + " callback=1 delivery=once");
         }
         helper.succeed();
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 40, batch = "lifecycle_claim_quarantine")
+    public static void rewrittenOverflowAndXpRemainHeldAcrossReloadWithoutAnotherSpawn(GameTestHelper helper) {
+        var f = new Fixture(helper);
+        for (int slot = 0; slot < f.owner.inventory.mainInventory.length; slot++)
+            f.owner.inventory.mainInventory[slot] = new ItemStack(Items.stick, 64);
+        f.owner.setSneaking(true);
+        var original = new ItemStack(Items.diamond, 9, 3);
+        original.setStackDisplayName("Held original");
+        original.getTagCompound()
+            .setString("ClaimMarker", f.owner.getUniqueID() + "/held");
+        var changed = original.copy();
+        changed.stackSize = 10;
+        var items = new NBTTagList();
+        items.appendTag(ProtectedItemCodec.encode(original));
+        var token = f.ledger()
+            .depositDeath(
+                f.owner.getUniqueID(),
+                UUID.randomUUID(),
+                new NBTTagCompound(),
+                items,
+                helper.getWorld().provider.dimensionId,
+                f.x + 6.5,
+                f.y + 1,
+                f.z + 4.5,
+                "[QA-Held]");
+        f.ledger()
+            .markPublished(token);
+        var grave = new MaidTombstoneEntity(helper.getWorld());
+        grave.initialize(token, f.owner.getUniqueID(), "[QA-Held]");
+        f.owned.add(grave);
+        helper.spawnEntity(grave, 6.5, 1, 4.5);
+        int[] callbacks = { 0 };
+        EntityItem[] external = { null };
+        f.itemCallback = drop -> {
+            callbacks[0]++;
+            external[0] = drop;
+            drop.setEntityItemStack(changed.copy());
+        };
+        var inventory = f.owner.inventory.writeToNBT(new NBTTagList());
+        helper.assertTrue(!MaidTombstoneTransfer.collect(grave, f.owner), "Rewritten overflow claim committed");
+        helper.assertTrue(
+            callbacks[0] == 1 && external[0] != null
+                && MaidSpawnChecks.itemPresent(external[0], changed, helper.getWorld())
+                && inventory.equals(f.owner.inventory.writeToNBT(new NBTTagList()))
+                && !grave.isDead
+                && f.ledger()
+                    .isTombstoneHeld(token)
+                && !f.ledger()
+                    .isDeathExperienceHeld(token)
+                && !IntegrationGuard.available(Side.SERVER, "player_inventory/tombstone/" + token),
+            "Unknown overflow was deleted, replaced inventory or left the original token redeemable");
+        helper.assertTrue(
+            !MaidTombstoneTransfer.collect(grave, f.owner) && callbacks[0] == 1,
+            "Second held claim spawned another copy");
+        var restored = ledgerCopy(f.ledger());
+        helper.assertTrue(
+            restored.isTombstoneHeld(token) && restored.reserveTombstone(token) == null
+                && items.equals(storedTombstoneItems(restored, token))
+                && restored.reserve(token, MaidLifecycleData.Kind.FILM) != null,
+            "Reload lost the hold, original item NBT or independent film right");
+        restored.rollback(token);
+
+        f.itemCallback = null;
+        f.trackXp = true;
+        f.rewriteXp = true;
+        f.xpX = f.x + 9.5;
+        f.xpY = f.y + 1;
+        f.xpZ = f.z + 4.5;
+        var xpToken = f.ledger()
+            .depositDeath(
+                f.owner.getUniqueID(),
+                UUID.randomUUID(),
+                new NBTTagCompound(),
+                new NBTTagList(),
+                helper.getWorld().provider.dimensionId,
+                f.xpX,
+                f.xpY,
+                f.xpZ,
+                "[QA-Held-XP]",
+                53,
+                0);
+        f.ledger()
+            .markPublished(xpToken);
+        MaidDeathExperience.retryPending(helper.getWorld());
+        int changedXp = EntityXPOrb.getXPSplit(53) + 1;
+        helper.assertTrue(
+            f.xpCallbacks == 1 && f.liveXp() == changedXp
+                && f.ledger()
+                    .remainingDeathExperience(xpToken) == 53
+                && f.ledger()
+                    .isDeathExperienceHeld(xpToken)
+                && !f.ledger()
+                    .isTombstoneHeld(xpToken)
+                && !IntegrationGuard.available(Side.SERVER, "death_experience/" + xpToken),
+            "Unknown native orb was deleted, consumed the balance or left XP publication eligible");
+        MaidDeathExperience.retryPending(helper.getWorld());
+        helper.assertTrue(f.xpCallbacks == 1 && f.liveXp() == changedXp, "Held XP published another native orb");
+        var reloadedXp = ledgerCopy(f.ledger());
+        helper.assertTrue(
+            reloadedXp.isDeathExperienceHeld(xpToken) && reloadedXp.remainingDeathExperience(xpToken) == 53
+                && reloadedXp.reserveDeathExperience(xpToken) == 0
+                && !reloadedXp.pendingDeathExperience(helper.getWorld().provider.dimensionId, Long.MAX_VALUE)
+                    .contains(xpToken)
+                && reloadedXp.reserve(xpToken, MaidLifecycleData.Kind.FILM) != null,
+            "Reload discarded held XP or linked the hold to film redemption");
+        reloadedXp.rollback(xpToken);
+        f.assertPriorFaultsRetained();
+        System.out.println(
+            "TLMNH_LIFECYCLE_HOLD_PASS overflow=9_to_10 secondSpawn=0 escrow=retained xp=held reload=retained film=independent");
+        helper.succeed();
+    }
+
+    private static MaidLifecycleData ledgerCopy(MaidLifecycleData original) {
+        var saved = new NBTTagCompound();
+        original.writeToNBT(saved);
+        var restored = new MaidLifecycleData("[QA-Held-Copy]");
+        restored.readFromNBT(saved);
+        return restored;
+    }
+
+    private static NBTTagList storedTombstoneItems(MaidLifecycleData data, UUID token) {
+        var saved = new NBTTagCompound();
+        data.writeToNBT(saved);
+        var entries = saved.getTagList("Entries", 10);
+        for (int index = 0; index < entries.tagCount(); index++) {
+            var entry = entries.getCompoundTagAt(index);
+            if (token.toString()
+                .equals(entry.getString("Token")))
+                return (NBTTagList) entry.getTagList("TombstoneItems", 10)
+                    .copy();
+        }
+        throw new IllegalStateException("Fixture death entry is absent");
     }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 40, batch = "lifecycle_core_conservation")
@@ -210,7 +349,9 @@ public final class LifecycleConservationTests {
             if (complete[0] || f.xpCallbacks == 0) return;
             helper.assertTrue(
                 f.ledger()
-                    .remainingDeathExperience(token) == 53 && f.liveXp() == 0,
+                    .remainingDeathExperience(token) == 53 && f.liveXp() == 0
+                    && !f.ledger()
+                        .isDeathExperienceHeld(token),
                 "Canceled native orb consumed XP or retained a second active copy");
             var saved = new NBTTagCompound();
             f.ledger()
@@ -226,6 +367,8 @@ public final class LifecycleConservationTests {
             helper.assertTrue(
                 f.liveXp() == 0 && f.ledger()
                     .remainingDeathExperience(token) == 53
+                    && !f.ledger()
+                        .isDeathExperienceHeld(token)
                     && IntegrationGuard.faults(Side.SERVER)
                         .containsKey("death_experience/" + token),
                 "Throwing XP callback consumed balance or retained another live orb");
@@ -328,7 +471,7 @@ public final class LifecycleConservationTests {
         EntityMaid revived;
         double xpX, xpY, xpZ;
         int xpCallbacks;
-        boolean cancelXp, throwXp, trackXp;
+        boolean cancelXp, throwXp, trackXp, rewriteXp;
         IllegalStateException xpFailure;
 
         Fixture(GameTestHelper helper) {
@@ -473,6 +616,7 @@ public final class LifecycleConservationTests {
                 && orb.posZ == xpZ) {
                     xpCallbacks++;
                     owned.add(orb);
+                    if (rewriteXp) orb.xpValue++;
                     if (cancelXp) event.setCanceled(true);
                     if (throwXp) throw xpFailure;
                 } else if (event.entity instanceof EntityItem item && itemCallback != null) {
