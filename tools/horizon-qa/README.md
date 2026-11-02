@@ -621,3 +621,10 @@ Indev152 新增最近连续两次观测的速度对照，沿用同一目标切�
 `check_bed_color_packets.py` 接受 `--run`、`--candidate-jar`、`--pilot-jar`、`--hodgepodge-jar` 和 `--output`
 它检查实际成功记录与JAR摘要、已审Hodgepodge协议资源、S35包头、额外mode0字节、gzip与精确颜色NBT，不能按纯原版格式直接读其NBT
 这是出站数据检查，实际客户端接收/模型、完整变换后定义及床物品颜色链另验；首轮失败、两次失败重跑、最终七色与未知数据分次通过见PROGRESS，不拼成一次全过
+
+## 床物品颜色与交付
+
+`MaidBedItemTests` 使用已有受控玩家连接，实际调用ItemMaidBed放置、ItemInWorldManager采集和World删除接口；头尾pick是直接API调用，不能替代真实鼠标输入
+四组覆盖头尾生存采集、未知原色往返与重复掉落、创造拆除与真实EntityJoinWorld拒收/恢复、人工构造的未确认交接记录NBT保留
+出生拒收时检查无世界物品且保管账本恰有一份，放开后核世界一件、账本无待交付且后续不重发；只清自有测试物品和模板
+初候选因继承BlockBed的床头过滤而三组失败，修生产入口后复用相同pilot及断言，最终四组范围见PROGRESS；没有磁盘重启、断电或全部外部回调准入
