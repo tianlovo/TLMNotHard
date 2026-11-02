@@ -41,6 +41,10 @@
     "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.FlatColorButton",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.SoundPackButton",
     "com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.SoundElementButton",
-    "com.github.tartaricacid.touhoulittlemaid.client.sound.CustomSoundLoader"
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.CustomSoundLoader",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityShrineRenderer",
+    "com.github.tartaricacid.touhoulittlemaid.tileentity.TileEntityShrine",
+    "com.github.tartaricacid.touhoulittlemaid.block.BlockShrine",
+    "com.tianluoqaq.tlmnh.reference.ShrineReferenceProbe"
   ]
 }

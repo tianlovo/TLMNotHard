@@ -1309,3 +1309,7 @@ Et Futurum Requiem 2.6.65实际TileEntityBarrel第183/202行以Reference.MCAsset
 神龛模型JSON、纹理和物品PNG的固定Git原blob与路径映射列于 `assets/tlmnh/shrine-assets-provenance.json`，三项资产均沿CC-BY-NC-SA-4.0，不改原字节
 原胶片模型继承item/generated；本目标实际1.20.1 client-extra.jar内 `assets/minecraft/models/item/generated.json` 的GROUND平移为(0,2,0)/16、缩放为(0.5,0.5,0.5)，低平台按该变换挤出既有胶片图标
 原TileEntityShrine保存并同步完整StorageItem；本工程保留服务端完整存储，只同步最小显示种类，属于本项目数据边界适配，不能把显示物品当原始凭证或客户端回包当持久数据
+
+174补实际原版对照：上述ShrineRenderer、BlockShrine、TileEntityShrine三份源与固定Git blob比较一致（只规范CRLF），运行时三类资源和首次定义字节相同且各定义一次，范围仅为选定三类
+原版实际外部图同样看不到内部胶片轮廓，内部相机可看到胶片；旧平台EntityRenderer.orientCamera第一人称额外translateZ(-0.1)，校正测试镜头后移植版内部也实际可见并旋转，没有改原渲染器或原物品偏移
+该结论是实际指定场景的定向显示对照，不替代全模型、光影或整个classpath/逐像素等价证明

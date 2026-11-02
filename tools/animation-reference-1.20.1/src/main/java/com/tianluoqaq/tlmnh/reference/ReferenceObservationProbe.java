@@ -177,6 +177,10 @@ public final class ReferenceObservationProbe {
                 case "gui_models_search" -> response = GuiReferenceProbe.modelsSearch(request);
                 case "gui_status" -> response = GuiReferenceProbe.status();
                 case "gui_capture" -> response = GuiReferenceProbe.capture(request, root, name);
+                case "shrine_fixture" -> response = ShrineReferenceProbe.fixture(request);
+                case "shrine_view" -> response = ShrineReferenceProbe.view(request);
+                case "shrine_status" -> response = ShrineReferenceProbe.snapshot();
+                case "shrine_capture" -> response = ShrineReferenceProbe.capture(request, root, name);
                 case "create_lab" -> response = ReferenceScene.createLab();
                 case "open_lab" -> response = ReferenceScene.openLab();
                 case "spawn_case" -> response = ReferenceScene.spawn(request);
