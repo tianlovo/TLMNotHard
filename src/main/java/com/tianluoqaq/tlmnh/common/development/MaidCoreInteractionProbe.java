@@ -328,17 +328,28 @@ public final class MaidCoreInteractionProbe {
                 com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.restore(maid);
             return;
         }
-        require(action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
+        boolean headFixture = action.equals("reimu-head") || action.equals("winefox-head");
+        require(headFixture || action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
         if (!com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
             com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
         com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.verifyBackSlot(maid);
+        if (headFixture) com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.verifyHeadSlot(maid);
         maid.getChatBubbleManager()
             .clear();
-        maid.setModelId(action.equals("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
+        maid.setModelId(action.startsWith("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
         maid.setSitting(false);
         maid.setPose(MaidPose.SLEEPING, false);
         maid.getMaidInventory()
-            .setInventorySlotContents(5, new ItemStack(Items.diamond_sword));
+            .setInventorySlotContents(
+                5,
+                headFixture ? new ItemStack(
+                    action.equals("reimu-head") ? net.minecraft.init.Blocks.pumpkin
+                        : net.minecraft.init.Blocks.red_flower)
+                    : new ItemStack(Items.diamond_sword));
+        if (headFixture) {
+            maid.setCurrentItemOrArmor(4, new ItemStack(Items.skull, 1, 4));
+            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.trackHeadSlot(maid);
+        }
         maid.getConfigManager()
             .setShowBackItem(true);
         maid.getConfigManager()

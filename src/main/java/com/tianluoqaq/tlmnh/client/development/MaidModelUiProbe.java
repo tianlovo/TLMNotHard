@@ -271,6 +271,8 @@ public final class MaidModelUiProbe {
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("maidSitting", maid.isSitting());
+        response
+            .addProperty("headItemNativeMask", com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.drawnMask(maid));
         response.addProperty("maidSoundPack", maid.getSoundPackId());
         if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds)
             response.add("sounds", sounds.observation());

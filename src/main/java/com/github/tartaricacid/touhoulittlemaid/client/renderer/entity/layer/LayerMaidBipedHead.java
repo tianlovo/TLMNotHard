@@ -18,6 +18,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class LayerMaidBipedHead {
 
     public void render(EntityMaid maid, BuiltinMaidModel model) {
+        MaidHeadItemRenderer.beginFrame(maid);
         if (!model.hasCompletedPoseFor(maid)) return;
         IntegrationGuard.call(Side.CLIENT, ExternalFeature.CLIENT_HEAD_ITEMS, () -> {
             MaidHeadItemRenderer.render(maid, model);

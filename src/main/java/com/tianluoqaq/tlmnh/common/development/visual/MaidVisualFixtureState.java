@@ -38,7 +38,7 @@ public final class MaidVisualFixtureState {
         scope(maid);
         require(!exists(maid), "Previous visual fixture snapshot must be restored first");
         var data = new NBTTagCompound();
-        data.setInteger("Schema", 1);
+        data.setInteger("Schema", 2);
         data.setString(
             "Actor",
             maid.getUniqueID()
@@ -69,6 +69,8 @@ public final class MaidVisualFixtureState {
             "ExpectedBack",
             maid.getMaidInventory()
                 .getStackInSlot(5));
+        writeItem(data, "OriginalHead", maid.getEquipmentInSlot(4));
+        writeItem(data, "ExpectedHead", maid.getEquipmentInSlot(4));
         var original = new NBTTagCompound();
         maid.writeToNBT(original);
         // 原生writeToNBT会借用ForgeData，先深复制再存入活实体，避免形成自引用NBT
@@ -99,7 +101,7 @@ public final class MaidVisualFixtureState {
         require(parent.hasKey(TAG, 10), "Tracked visual fixture snapshot required");
         var data = parent.getCompoundTag(TAG);
         require(
-            data.hasKey("Schema", 3) && data.getInteger("Schema") == 1
+            data.hasKey("Schema", 3) && (data.getInteger("Schema") == 1 || data.getInteger("Schema") == 2)
                 && maid.getUniqueID()
                     .toString()
                     .equals(data.getString("Actor"))
@@ -126,6 +128,19 @@ public final class MaidVisualFixtureState {
             "ExpectedBack",
             maid.getMaidInventory()
                 .getStackInSlot(5));
+    }
+
+    public static void verifyHeadSlot(EntityMaid maid) {
+        var data = saved(maid);
+        require(
+            data.getInteger("Schema") == 2 && matches(data, "ExpectedHead", maid.getEquipmentInSlot(4)),
+            "Head slot changed or old snapshot lacks head tracking; item and snapshot retained");
+    }
+
+    public static void trackHeadSlot(EntityMaid maid) {
+        var data = saved(maid);
+        require(data.getInteger("Schema") == 2, "Old snapshot cannot track head changes");
+        writeItem(data, "ExpectedHead", maid.getEquipmentInSlot(4));
     }
 
     public static void restore(EntityMaid maid) {
@@ -155,11 +170,25 @@ public final class MaidVisualFixtureState {
             ? ProtectedItemCodec.decodeField(data, "OriginalBack")
             : null;
         require(!data.getBoolean("OriginalBackPresent") || original != null, "Original back item could not be decoded");
+        boolean tracksHead = data.getInteger("Schema") == 2;
+        ItemStack originalHead = null;
+        if (tracksHead) {
+            require(
+                data.hasKey("OriginalHeadPresent", 1) && (matches(data, "ExpectedHead", maid.getEquipmentInSlot(4))
+                    || matches(data, "OriginalHead", maid.getEquipmentInSlot(4))),
+                "Head slot changed outside fixture; original snapshot retained");
+            originalHead = data.getBoolean("OriginalHeadPresent") ? ProtectedItemCodec.decodeField(data, "OriginalHead")
+                : null;
+            require(
+                !data.getBoolean("OriginalHeadPresent") || originalHead != null,
+                "Original head item could not be decoded");
+        }
         maid.setModelId(data.getString("Model"));
         maid.setSitting(data.getBoolean("Sitting"));
         maid.setPose(MaidPose.SLEEPING, data.getBoolean("Sleeping"));
         maid.getMaidInventory()
             .setInventorySlotContents(5, original);
+        if (tracksHead) maid.setCurrentItemOrArmor(4, originalHead);
         maid.getConfigManager()
             .setShowBackItem(data.getBoolean("ShowBack"));
         maid.getConfigManager()
@@ -169,11 +198,12 @@ public final class MaidVisualFixtureState {
         maid.getChatBubbleManager()
             .clear();
         require(
-            matches(
-                data,
-                "OriginalBack",
-                maid.getMaidInventory()
-                    .getStackInSlot(5))
+            (!tracksHead || matches(data, "OriginalHead", maid.getEquipmentInSlot(4)))
+                && matches(
+                    data,
+                    "OriginalBack",
+                    maid.getMaidInventory()
+                        .getStackInSlot(5))
                 && maid.getModelId()
                     .equals(data.getString("Model"))
                 && maid.isSitting() == data.getBoolean("Sitting")

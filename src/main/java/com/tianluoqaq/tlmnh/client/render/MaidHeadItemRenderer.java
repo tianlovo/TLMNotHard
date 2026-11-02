@@ -31,6 +31,21 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidHeadItemRenderer {
 
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
+    private static final java.util.Map<EntityMaid, Integer> LAST_DRAWN = new java.util.WeakHashMap<>();
+
+    public static void beginFrame(EntityMaid maid) {
+        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 0);
+    }
+
+    /** bit 1头颅、bit 2方块，只表示原生绘制正常返回，不代替画面验收 */
+    public static int drawnMask(EntityMaid maid) {
+        return LAST_DRAWN.getOrDefault(maid, 0);
+    }
+
+    private static void drawn(EntityMaid maid, int bit) {
+        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, drawnMask(maid) | bit);
+    }
+
     private MaidHeadItemRenderer() {}
 
     public static void render(EntityMaid maid, BuiltinMaidModel model) {
@@ -47,6 +62,7 @@ public final class MaidHeadItemRenderer {
                 apply(matrix);
                 TileEntitySkullRenderer.field_147536_b
                     .func_152674_a(-.5F, 0, -.5F, 1, 180, helmet.getItemDamage(), profile(helmet));
+                drawn(maid, 1);
             }
         }
         ItemStack stack = maid.getBackpackShowItem();
@@ -77,6 +93,7 @@ public final class MaidHeadItemRenderer {
                 .bindTexture(TextureMap.locationBlocksTexture);
             // 独立实例避免原生或第三方渲染器把bounds留给后续女仆
             new RenderBlocks().renderBlockAsItem(block, metadata, 1);
+            drawn(maid, 2);
         }
     }
 
