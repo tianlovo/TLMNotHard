@@ -57,7 +57,7 @@ def verify_packaged_resources(identity, artifact, expected_sha, classes):
 def verify_policy(value, row, expected_profile):
     assert value["profile"] == expected_profile
     assert value["ready"] is value["afterNativeNavigation"] is value["developmentOnly"] is value["bindingStable"] is True
-    enhanced = expected_profile == "enhanced_core_component"
+    enhanced = expected_profile in ("enhanced_core_component", "enhanced")
     assert value["brainClass"] == ("com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain" if enhanced
                                    else "com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain")
     if enhanced:
@@ -77,7 +77,7 @@ def main():
     parser.add_argument("--hqa-result", type=Path, required=True)
     parser.add_argument("--observed", type=Path, required=True)
     parser.add_argument("--candidate-sha256", required=True)
-    parser.add_argument("--expected-port-profile", choices=("follow_core_component", "faithful_tlm", "enhanced_core_component"),
+    parser.add_argument("--expected-port-profile", choices=("follow_core_component", "faithful_tlm", "enhanced_core_component", "enhanced"),
                         default="follow_core_component")
     parser.add_argument("--candidate-jar", type=Path)
     parser.add_argument("--pilot-jar", type=Path)
@@ -94,7 +94,7 @@ def main():
     assert port["schema"] in ("follow-natural-port-observation-v1", "follow-natural-port-observation-v2")
     version_two = port["schema"] == "follow-natural-port-observation-v2"
     faithful = args.expected_port_profile == "faithful_tlm"
-    enhanced = args.expected_port_profile == "enhanced_core_component"
+    enhanced = args.expected_port_profile in ("enhanced_core_component", "enhanced")
     factory = faithful or enhanced
     assert version_two or not factory, "Historical component captures cannot establish F or N identity"
     port_label = "N_development" if enhanced else "F_development" if faithful else "port_component"
@@ -117,7 +117,11 @@ def main():
         if faithful:
             assert observed["canonical_faithful_profile"] is True
         if enhanced:
-            assert observed["requested_natural_profile"] == "enhanced_core_component"
+            assert observed["requested_natural_profile"] == args.expected_port_profile
+            if args.expected_port_profile == "enhanced":
+                assert port["fullEnhancedModeBound"] is True
+            elif "fullEnhancedModeBound" in port:
+                assert port["fullEnhancedModeBound"] is False
             assert observed["canonical_faithful_profile"] is False
             assert port["candidateIsCompleteEnhancedProfile"] is False
         production_classes = (
@@ -214,6 +218,7 @@ def main():
         "policy_provenance_verified": version_two,
         "canonical_faithful_binding_verified": faithful and version_two,
         "independent_enhanced_binding_verified": enhanced and version_two,
+        "full_enhanced_mode_binding_verified": args.expected_port_profile == "enhanced" and version_two,
         "full_enhanced_profile_passed": False,
         "packaged_class_resources_verified": version_two,
         "post_transform_definitions_verified": False,

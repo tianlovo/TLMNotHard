@@ -149,8 +149,7 @@ public final class NaturalFollowPortTests {
                     "productionArtifact",
                     com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity.capture(
                         EntityMaid.class,
-                        expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT ? EnhancedCoreBrain.class
-                            : MaidFaithfulBrain.class,
+                        expectedProfile.isEnhanced() ? EnhancedCoreBrain.class : MaidFaithfulBrain.class,
                         com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.class,
                         ModernFollowCoreActor.class));
                 output.add(
@@ -169,6 +168,7 @@ public final class NaturalFollowPortTests {
                     .getAsString());
             output.addProperty("candidateIsCompleteFaithfulProfile", false);
             output.addProperty("candidateIsCompleteEnhancedProfile", false);
+            output.addProperty("fullEnhancedModeBound", expectedProfile == MaidBrainProfile.ENHANCED);
             output.addProperty("originalEquivalencePassed", false);
             output.addProperty("statisticalAdmission", false);
             output.addProperty("worldRngAndSensorPhaseUncontrolled", true);
@@ -177,8 +177,7 @@ public final class NaturalFollowPortTests {
                 "standard Forge FakePlayer in online/world tables, synthetic position inputs");
             output.addProperty(
                 "sourceFlightProfile",
-                expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT
-                    ? "NATIVE_MOTION_COMPENSATION (no bow in these scenes)"
+                expectedProfile.isEnhanced() ? "NATIVE_MOTION_COMPENSATION (no bow in these scenes)"
                     : "SOURCE_ORIGINAL (no bow in these scenes)");
             output.add("runs", runs);
             var potions = new JsonArray();
@@ -396,13 +395,12 @@ public final class NaturalFollowPortTests {
                     .getAsDouble() + 1,
                 spawn.get(2)
                     .getAsDouble());
-            if (expectedProfile == MaidBrainProfile.FAITHFUL_TLM
-                || expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT) {
+            if (expectedProfile == MaidBrainProfile.FAITHFUL_TLM || expectedProfile.isEnhanced()) {
                 var selected = maid.selectBrainProfileForDevelopment(expectedProfile);
                 helper.assertTrue(
                     selected == com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.SELECTED,
                     "Natural actor requested factory selection failed");
-                if (expectedProfile == MaidBrainProfile.ENHANCED_CORE_COMPONENT) enhanced = maid.getBrainCoordinator()
+                if (expectedProfile.isEnhanced()) enhanced = maid.getBrainCoordinator()
                     .peekEnhancedCore();
                 else core = maid.getBrainCoordinator()
                     .peekFaithfulBrain();
@@ -501,6 +499,7 @@ public final class NaturalFollowPortTests {
 
         private static MaidBrainProfile requestedProfile() {
             String profile = System.getProperty("tlmnh.qaNaturalProfile", "");
+            if (profile.equals("enhanced")) return MaidBrainProfile.ENHANCED;
             if (profile.equals("enhanced_core_component")) return MaidBrainProfile.ENHANCED_CORE_COMPONENT;
             if (profile.equals("faithful_tlm")) return MaidBrainProfile.FAITHFUL_TLM;
             if (!profile.isEmpty()) throw new IllegalArgumentException("Explicit natural profile unsupported");

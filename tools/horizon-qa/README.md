@@ -546,3 +546,10 @@ Indev145 的 `tlmnhqapilot:EnhancedFollowRecoveryTests` 核超64格的实际恢�
 旧清理回调抛接口缺失异常时，新N工厂和其他模式恢复均被阻止，清理仅一次、附魔苹果保持8tick；同包F未绑定follow组件拒绝/NBT重建13tick、旧N组件NBT后原身份10tick通过，五项JSON/XML/process0一致
 56项选定策略检查另核窄回调不能取得完整N资格；首轮一旧available元数据断言失败，保留后修正，未放宽拒绝/取消/不回退语义
 该模式仍仅开发可选；未把旧component自然轨迹改为完整N结果，未验收十四类O/F/N、性能收益、多客户端或首版
+
+### 完整增强模式的冻结合同观察
+
+151复用150玩法包，`NaturalFollowPortTests` / `NaturalWaterPortTests` 可用 `tlmnh.qaNaturalProfile=enhanced` 从生产工厂选择完整N
+每帧保留真实模式/根/上下文/epoch/决策数及实际N弹道，新增完整模式绑定元数据，不将旧component结果换标签；该元数据与完整验收旗分开
+两项1980/1320tick同轮通过，共十五轮3000帧，比较器核实际工件、冻结原O合同/输入/地形/清理与属性；清除完整绑定标记、帧内冒称旧组件均被拒绝，旧144组件平坦复算指标保持
+低水道两轮N未进入2.5格等实际差异保留；本批没有新生产、CPU或主双端运行，不代表完整十四类测评、统计收益、真实网络主人或首版验收
