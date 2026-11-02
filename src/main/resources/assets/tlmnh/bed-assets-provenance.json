@@ -1,0 +1,83 @@
+{
+  "upstream": "https://github.com/TartaricAcid/TouhouLittleMaid",
+  "commit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "license": "CC-BY-NC-SA-4.0",
+  "license_file": "licenses/TouhouLittleMaid-CC-BY-NC-SA-4.0.txt",
+  "files": {
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/white.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/white.json",
+      "bytes": 3130,
+      "sha256": "be7541894545ddbf9cacb78d2019a7e5145a56afe80ffce0b70fdb09bdbe8226"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/white.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/white.png",
+      "bytes": 1351,
+      "sha256": "cf33aa04e9a77342d0b2fde2ddd2efa367d78f50a6db5938c0a19e8001524827"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/black.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/black.json",
+      "bytes": 2732,
+      "sha256": "36bbda070b549af3f35b1c40d101b156851c53947f7d3adc61f346e5645f27e3"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/black.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/black.png",
+      "bytes": 1242,
+      "sha256": "c1efeed4c3c52aceef4f8dc012d9b07a78fd748a5deac94205f8e42ad07a0a37"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/yellow.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/yellow.json",
+      "bytes": 2731,
+      "sha256": "2e22d16beb9a9c810ed74b0ea33b781784bc24f1bb9cc92cb31bba6d62aab2b3"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/yellow.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/yellow.png",
+      "bytes": 1695,
+      "sha256": "bbb629cbbaa495566404352068e829db4da1d2c32c897a89b0ff1ae199543a91"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/blue.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/blue.json",
+      "bytes": 23001,
+      "sha256": "fdb5a02c97b148bacf52de9d282e8c621554c88b2871a3d1113e3203a634f9f8"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/blue.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/blue.png",
+      "bytes": 2309,
+      "sha256": "d4f683b7c451e6f144995b78218820625ca46eb64482128a6b9f5a8c63f9dfc4"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/green.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/green.json",
+      "bytes": 3190,
+      "sha256": "e533eb42140cc97289eb92d8e8ed37895ba4a885d0cb106d9bee536705ab7993"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/green.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/green.png",
+      "bytes": 1746,
+      "sha256": "1df5e854227fbf374150214ebb9e4060688305e2dedda6e4c19792e1d4e81897"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/purple.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/purple.json",
+      "bytes": 2745,
+      "sha256": "43f6f4d3f516abab307b451ae643bc64f9d3ec02e0db632ec5f8c63993c06c2e"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/purple.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/purple.png",
+      "bytes": 1636,
+      "sha256": "1f129b089a3ec9ae638727255673298801a4eedadb433a709a71629558d8d000"
+    },
+    "assets/touhou_little_maid/models/bedrock/block/maid_bed/pink.json": {
+      "source": "src/main/resources/assets/touhou_little_maid/models/bedrock/block/maid_bed/pink.json",
+      "bytes": 6310,
+      "sha256": "b4419dcb71df07a2de43fc7ae12504c27bf0ee9ca1bfddffeaef1170d38d6aac"
+    },
+    "assets/touhou_little_maid/textures/bedrock/block/maid_bed/pink.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/bedrock/block/maid_bed/pink.png",
+      "bytes": 1893,
+      "sha256": "52ec8f4a2d21af1419dfef9708e29ba0d99ed2b9bdeba95b237da2e234e9e500"
+    },
+    "assets/touhou_little_maid/textures/items/maid_bed.png": {
+      "source": "src/main/resources/assets/touhou_little_maid/textures/item/maid_bed.png",
+      "bytes": 233,
+      "sha256": "959b84e8c0165bc7e9d84df23c34ae11077baf50f814963cbb71f1c0c2e823fe"
+    }
+  }
+}

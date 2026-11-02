@@ -68,6 +68,12 @@ public final class ClientProxy extends CommonProxy {
         ((IReloadableResourceManager) manager).registerReloadListener(tombstoneModels);
         RenderingRegistry
             .registerEntityRenderingHandler(MaidTombstoneEntity.class, new EntityTombstoneRenderer(tombstoneModels));
+        var bedModels = new com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources();
+        ((IReloadableResourceManager) manager).registerReloadListener(bedModels);
+        cpw.mods.fml.client.registry.ClientRegistry.bindTileEntitySpecialRenderer(
+            com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed.class,
+            new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityMaidBedRenderer(
+                bedModels));
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             try {
                 FMLCommonHandler.instance()

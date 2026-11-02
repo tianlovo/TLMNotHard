@@ -29,6 +29,19 @@ public final class TileEntityMaidBed extends TileEntity {
     private NBTBase queuedDrop;
     private boolean queuedDuringThisLoad, warnedQueuedDrop;
 
+    @Override
+    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    public boolean shouldRenderInPass(int pass) {
+        return pass == (getColor() == MaidBedColor.BLUE ? 1 : 0);
+    }
+
+    @Override
+    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    public net.minecraft.util.AxisAlignedBB getRenderBoundingBox() {
+        // 原renderer.shouldRenderOffScreen=true；旧平台用无限渲染包围盒保留该选择
+        return INFINITE_EXTENT_AABB;
+    }
+
     /** 无颜色的旧移植存档沿新床默认粉色；未知类型/编号返回null并原样保存 */
     public MaidBedColor getColor() {
         return MaidBedColorData.decode(savedColor);

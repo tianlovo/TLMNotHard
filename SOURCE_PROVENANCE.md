@@ -1247,7 +1247,7 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 原 `tileentity/TileEntityMaidBed.java` 默认粉色，以 `BedColor` 保存颜色并发送更新
 本工程 `common/life/bed/MaidBedColor` 将现代颜色ID映射旧版ItemDye编号，床头Tile保存并仅同步颜色字段，服务端不接纳收到的显示包
 无颜色的旧移植存档采用新床默认粉色；无法识别的颜色编号或NBT类型原样保留、拒绝染色并提示，不用默认值覆写未知原值
-当前方块视觉仍是原生床占位，原七模型/纹理及蓝色半透明属于随后表现批次，不能由七色数据接口推导已完成原床外观
+Indev163时方块视觉仍是原生床占位，原七模型/纹理及蓝色半透明另由165接入，不能由七色数据接口推导外观已验收
 原 `ItemMaidBed` 与 `BlockMaidBed.setPlacedBy/getDrops/getCloneItemStack` 还定义了物品颜色链；该部分另列后续，当前只移植床头数据与染料交互
 
 ## 床物品颜色链与掉落入口
@@ -1257,3 +1257,10 @@ EntityMaid.startSleeping 与 thunderHit 的适配分别接到实际女仆床入�
 以及 `ItemInWorldManager.removeBlock/tryHarvestBlock` 和Forge `Block` 掉落流程
 原生床尾掉物、床头过滤及采集前删Tile会丢失颜色来源，因此本工程改为床头唯一掉落、延后生存采集删除，并保留原Forge事件/概率/捕获与回滚规则
 交付复用本工程既有 `MaidFilmRecovery.queueOwnedItem`；重载交接记录只保留、不自动重发，原数据与世界账本是否在崩溃后同时持久化仍需独立验收
+
+## 原版女仆床模型与纹理
+
+固定TLM提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `client/renderer/tileentity/TileEntityMaidBedRenderer.java` 保留MIT来源及原包名，桥接Forge1.7.10的TESR、原生渲染pass、旧GL状态和资源重载
+保留原四方向变换、蓝色透明及其余裁切语义；七套模型/纹理与物品图标共15项Git原blob列于 `assets/tlmnh/bed-assets-provenance.json`，沿原资产CC-BY-NC-SA-4.0许可
+现代 `textures/item/maid_bed.png` 映射旧版 `textures/items/maid_bed.png`，字节不改；JSON取固定Gitblob，源工作树的CRLF差异另留私有证据，不把不同换行资源冒称字节一致
+本工程 `MaidBedModelResources`、颜色提示和独立显示失效保护是低平台适配，实际代表验证及未验范围见PROGRESS

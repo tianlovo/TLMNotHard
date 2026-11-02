@@ -18,7 +18,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
-/** 女仆专用双格床，首批复用原生床的可见外观，不调用玩家睡眠或爆炸分支 */
+/** 女仆专用双格床，外观由床头TESR负责，不调用玩家睡眠或爆炸分支 */
 public final class BlockMaidBed extends BlockBed {
 
     public BlockMaidBed() {
@@ -26,6 +26,11 @@ public final class BlockMaidBed extends BlockBed {
         setBlockTextureName("bed");
         setHardness(0.2F);
         setStepSound(soundTypeWood);
+    }
+
+    @Override
+    public int getRenderType() {
+        return -1;
     }
 
     @Override

@@ -1167,3 +1167,10 @@ N的 `EnhancedLifeController` 使用自身传感器和合法床检查，仍可�
 正常出生路径先调用既有queueOwnedItem保管，再给源Tile写入TLMNHBedDropQueued，防止后续调用再交付；捕获掉落、关闭掉落和恢复快照时沿对应原规则
 本次加载中已移交的旧床头可清理；从NBT读到的交接标记不能仅凭缺失的交付记录推断已经发放，因此保留数据并拒绝再次采集/染色/出物，等待人工核对
 L3定向验证与初失败修正见PROGRESS；人工构造标记的内存NBT往返不代表磁盘重启或硬崩溃原子性，真实客户端和完整生命周期仍另验
+
+## 原版女仆床显示
+
+`TileEntityMaidBedRenderer` 保留上游包名与原方向/坐标变换，以旧平台TESR和既有Bedrock桥提交几何；蓝色走原生pass1并启用混合，其余走pass0裁切
+`client/life/bed/MaidBedModelResources` 按颜色懒载，资源重载清全部缓存；显示使用独立CLIENT_MAID_BED保护能力，未知颜色或资源/API异常只停止显示，不覆盖床头原NBT
+Block不再绘制原生红床，Tile的客户端渲染边界对应上游离屏渲染，物品图标与颜色提示单独接入；权威库存、掉落、颜色和睡眠逻辑保持前批实现
+原资产来源及许可见SOURCE_PROVENANCE，本批原生绘制、同步和截图范围见PROGRESS；可见几何不等于完整原版成像、光影或数据生命周期验收
