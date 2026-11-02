@@ -127,6 +127,10 @@ public final class ModernLifeTests {
                 }
                 if (f.maid.hasPose(MaidPose.SLEEPING)) {
                     helper.assertTrue(
+                        f.maid.getSleepingBedDirection() == (helper.getWorld()
+                            .getBlockMetadata(closeBed.xCoord, closeBed.yCoord, closeBed.zCoord) & 3),
+                        "Natural sleep did not publish the owned bed direction");
+                    helper.assertTrue(
                         closeBed.isOwnedBy(f.maid) && !farBed.isOwnedBy(f.maid),
                         "Released nearest bed was not acquired by the natural faithful root");
                     helper.setBlock(3, 1, 4, Blocks.air);
@@ -135,6 +139,9 @@ public final class ModernLifeTests {
                 }
             } else if (phase[0] == 1 && age > broken[0]) {
                 helper.assertFalse(f.maid.hasPose(MaidPose.SLEEPING), "Removed bed left a sleeping maid");
+                helper.assertTrue(
+                    f.maid.getSleepingBedDirection() == -1,
+                    "Removed bed left stale synchronized direction");
                 helper.assertFalse(closeBed.isOwnedBy(f.maid), "Removed bed retained its occupant lease");
                 helper.assertTrue(farBed.claim(other[0]), "Foreign farther-bed setup failed");
                 other[0].setPose(MaidPose.SLEEPING, true);

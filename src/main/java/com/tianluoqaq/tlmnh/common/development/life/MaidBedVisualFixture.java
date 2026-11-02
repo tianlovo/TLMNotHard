@@ -44,8 +44,10 @@ public final class MaidBedVisualFixture {
             log(world, journal);
             return;
         }
-        if (!(action.equals("palette") || action.equals("rotation") || action.equals("clear")))
-            throw new IllegalArgumentException("Unknown bed visual fixture action");
+        if (!(action.equals("palette") || action.equals("rotation")
+            || action.equals("sleep-north")
+            || action.equals("sleep-east")
+            || action.equals("clear"))) throw new IllegalArgumentException("Unknown bed visual fixture action");
         if (!journal.kind.isEmpty()) {
             validate(world, journal);
             for (var cell : cells(journal)) {
@@ -126,6 +128,8 @@ public final class MaidBedVisualFixture {
     }
 
     private static Cell[] cells(Journal journal) {
+        if (journal.kind.equals("sleep-north") || journal.kind.equals("sleep-east"))
+            return new Cell[] { new Cell(0, 0, journal.kind.equals("sleep-north") ? 2 : 3, MaidBedColor.PINK) };
         if (journal.kind.equals("rotation"))
             return new Cell[] { new Cell(-6, 0, 0, MaidBedColor.PINK), new Cell(-2, 0, 1, MaidBedColor.PINK),
                 new Cell(2, 0, 2, MaidBedColor.PINK), new Cell(6, 0, 3, MaidBedColor.PINK) };
@@ -207,7 +211,10 @@ public final class MaidBedVisualFixture {
             owner = tag.getString("Owner");
             kind = tag.getString("Kind");
             require(
-                kind.isEmpty() || kind.equals("palette") || kind.equals("rotation"),
+                kind.isEmpty() || kind.equals("palette")
+                    || kind.equals("rotation")
+                    || kind.equals("sleep-north")
+                    || kind.equals("sleep-east"),
                 "Unknown fixture layout retained");
             if (!kind.isEmpty()) UUID.fromString(owner);
             ready = tag.getBoolean("Ready");

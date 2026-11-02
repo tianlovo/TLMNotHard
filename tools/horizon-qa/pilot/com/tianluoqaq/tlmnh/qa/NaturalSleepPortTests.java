@@ -296,6 +296,11 @@ public final class NaturalSleepPortTests {
             sample.add("position", vector(maid.posX - x, maid.posY - y, maid.posZ - z));
             sample.add("motion", vector(maid.motionX, maid.motionY, maid.motionZ));
             sample.addProperty("sleeping", maid.hasPose(MaidPose.SLEEPING));
+            sample.addProperty("sleepDirection", maid.getSleepingBedDirection());
+            helper.assertTrue(
+                maid.getSleepingBedDirection() == (maid.hasPose(MaidPose.SLEEPING) ? helper.getWorld()
+                    .getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3 : -1),
+                "Natural sleep direction missing or stale while awake");
             sample.addProperty("health", maid.getHealth());
             sample.addProperty(
                 "activity",

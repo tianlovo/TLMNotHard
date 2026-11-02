@@ -195,6 +195,9 @@ public final class ClientDevelopmentControl {
                     response.add(
                         "beds",
                         com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.snapshot(minecraft));
+                    response.add(
+                        "maidSleepRenders",
+                        com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation.snapshot());
                     response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
                     response.add(
                         "worldSounds",

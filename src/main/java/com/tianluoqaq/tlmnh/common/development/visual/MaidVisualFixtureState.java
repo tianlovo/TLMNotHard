@@ -47,6 +47,7 @@ public final class MaidVisualFixtureState {
         data.setString("Model", maid.getModelId());
         data.setBoolean("Sitting", maid.isSitting());
         data.setBoolean("Sleeping", maid.hasPose(MaidPose.SLEEPING));
+        data.setInteger("SleepDirection", maid.getSleepingBedDirection());
         data.setBoolean(
             "Suspended",
             maid.getBrainCoordinator()
@@ -185,6 +186,7 @@ public final class MaidVisualFixtureState {
         }
         maid.setModelId(data.getString("Model"));
         maid.setSitting(data.getBoolean("Sitting"));
+        maid.setSleepingBedDirection(data.hasKey("SleepDirection", 3) ? data.getInteger("SleepDirection") : -1);
         maid.setPose(MaidPose.SLEEPING, data.getBoolean("Sleeping"));
         maid.getMaidInventory()
             .setInventorySlotContents(5, original);
@@ -208,6 +210,8 @@ public final class MaidVisualFixtureState {
                     .equals(data.getString("Model"))
                 && maid.isSitting() == data.getBoolean("Sitting")
                 && maid.hasPose(MaidPose.SLEEPING) == data.getBoolean("Sleeping")
+                && (!data.hasKey("SleepDirection", 3)
+                    || maid.getSleepingBedDirection() == data.getInteger("SleepDirection"))
                 && maid.getConfigManager()
                     .isShowBackItem() == data.getBoolean("ShowBack")
                 && maid.getConfigManager()

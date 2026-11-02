@@ -643,3 +643,10 @@ Indev152 新增最近连续两次观测的速度对照，沿用同一目标切�
 断言原数据/后继手持保留、未提交床无法出物、原生NBT重建保留完整来源记录；警告通过隔离通道上的实际S02序列化和故障编号核对，不声称客户端登录收包
 Forge取消例直接调用 `ForgeHooks.onPlaceItemIntoWorld` 并取消实际MultiPlace事件，检查两格和原物品恢复及捕获状态清理；正常头尾采集复用MaidBedItemTests
 测试运行、首轮警告观测失败和定向复测分别记录，不将不同pilot或玩家身份拼成同一轮全通过；磁盘崩溃和任意外部模组数据改写不由该夹具验收
+
+## 睡眠方向与原生卧姿观察
+
+NaturalSleepPortTests在完整F/N每帧记录实际sleepDirection，并检查自然睡眠对应真实床头metadata、醒着为-1；ModernLifeTests最近占用床/拆床场景另核入睡方向与醒来清理
+`tlmnhdev lab-sleep-visual <player> reimu-north|reimu-east|winefox-east|clear` 仅在本人安全虚空场景建立可恢复的显示姿态，不模拟自然AI或物品消费
+夹具保存原实体字段、头背槽完整NBT以及原位置/朝向，意外移动或装备拒覆盖；清理核并删除自有无物品床，同命令恢复原女仆，不让中间world tick驱动场景
+客户端maidSleepRenders记录实际根变换返回、同步方向、模型及位置；计数不代替可见像素，也不代替自然行为采样、完整原版成像或真实多人验收

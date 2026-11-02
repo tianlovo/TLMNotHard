@@ -131,6 +131,7 @@ public final class MaidRenderer extends RenderLiving {
         GL11.glRotatef(rotation, 0, 1, 0);
         GL11.glRotatef(getDeathMaxRotation(entity), 0, 0, 1);
         GL11.glRotatef(270, 0, 1, 0);
+        com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation.completed(maid, direction, rotation);
     }
 
     @Override
