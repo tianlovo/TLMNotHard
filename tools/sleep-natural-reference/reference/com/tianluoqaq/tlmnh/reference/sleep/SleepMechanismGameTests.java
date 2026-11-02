@@ -48,6 +48,7 @@ public final class SleepMechanismGameTests {
 
     static final class Session extends SleepNaturalGameTests.Session {
         final String mechanism;
+        final net.minecraft.world.Difficulty oldDifficulty;
         final boolean oldRain, oldThunder;
         final int oldRainTime, oldThunderTime, oldClearTime;
         EntityMaid holder;
@@ -57,6 +58,7 @@ public final class SleepMechanismGameTests {
         Session(GameTestHelper helper, String mechanism) {
             super(helper, "/tlmnh-sleep/paired-contract.json", "sleep-paired-reference-mechanisms-v1", "sleep-paired-" + mechanism + "-");
             this.mechanism = mechanism;
+            oldDifficulty = level.getDifficulty();
             var data = level.getServer().getWorldData().overworldData();
             oldRain = data.isRaining(); oldThunder = data.isThundering();
             oldRainTime = data.getRainTime(); oldThunderTime = data.getThunderTime(); oldClearTime = data.getClearWeatherTime();
@@ -70,6 +72,7 @@ public final class SleepMechanismGameTests {
             for (int a = 0; a < 21; a++) for (int b = 0; b < 11; b++) for (int c = 0; c < 9; c++)
                 helper.setBlock(a, b, c, Blocks.AIR);
             super.setup();
+            level.getServer().setDifficulty(net.minecraft.world.Difficulty.valueOf(contract.get("difficulty").getAsString()), true);
             level.setWeatherParameters(1000000, 1000000, false, false);
             if (mechanism.equals("unreachable")) {
                 for (int a = 4; a <= 10; a++) for (int b = 1; b <= 4; b++) for (int c = 1; c <= 7; c++)
@@ -118,6 +121,15 @@ public final class SleepMechanismGameTests {
                     ? "maid_bed_" + state.getValue(BlockMaidBed.PART).getSerializedName() + "_" + state.getValue(BlockMaidBed.FACING).getSerializedName() : "unknown");
                 blocks.add(value);
             }
+            int nonEmpty = 0;
+            for (var inv : java.util.List.of(maid.getMaidInv(), maid.getHideInv(), maid.getMaidBauble()))
+                for (int slot = 0; slot < inv.getSlots(); slot++) if (!inv.getStackInSlot(slot).isEmpty()) nonEmpty++;
+            if (!maid.getMainHandItem().isEmpty()) nonEmpty++;
+            if (!maid.getOffhandItem().isEmpty()) nonEmpty++;
+            for (var stack : maid.getArmorSlots()) if (!stack.isEmpty()) nonEmpty++;
+            initial.addProperty("nonEmptyItemStackCount", nonEmpty);
+            initial.addProperty("activeEffectCount", maid.getActiveEffects().size());
+            helper.assertTrue(nonEmpty == 0 && maid.getActiveEffects().isEmpty(), "Fresh paired original actor has items/effects");
             initial.add("nonAirBlocks", blocks); row.add("actualInputs", initial); row.add("events", new JsonArray());
             row.add("initialPosition", framesVector(maid.getX() - origin.getX(), maid.getY() - origin.getY(), maid.getZ() - origin.getZ()));
             row.add("homeCenter", framesVector(home.getX() - origin.getX(), home.getY() - origin.getY(), home.getZ() - origin.getZ()));
@@ -152,6 +164,7 @@ public final class SleepMechanismGameTests {
             data.setRaining(oldRain); data.setThundering(oldThunder);
             data.setRainTime(oldRainTime); data.setThunderTime(oldThunderTime); data.setClearWeatherTime(oldClearTime);
             output.addProperty("controlledReservationAndWeatherRestored", true);
+            level.getServer().setDifficulty(oldDifficulty, true);
             super.restoreWorld();
         }
     }

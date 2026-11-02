@@ -26,7 +26,7 @@ def selected = [
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests$Session'
 ].sort()
-if (paired) selected.addAll(['com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests$Session'])
+if (paired) selected.addAll(['com.github.tartaricacid.touhoulittlemaid.entity.poi.MaidPoiManager', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests', 'com.tianluoqaq.tlmnh.reference.sleep.SleepMechanismGameTests$Session'])
 selected.sort()
 def identityFile = new File(home, paired ? 'identity/sleep-paired-build.json' : 'identity/sleep-natural-build.json')
 def sha = { byte[] b -> MessageDigest.getInstance('SHA-256').digest(b).encodeHex().toString() }

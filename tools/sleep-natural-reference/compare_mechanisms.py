@@ -10,6 +10,8 @@ from check import UPSTREAM, require, sha
 from compare_port import OBSERVER, PRODUCTION, artifact, metrics
 
 MECHANISMS = ("normal", "occupied_release", "unreachable", "bed_removed", "hurt_sleeping")
+SLEEP_OWNER = ["com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator",
+               "com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife"]
 PAIRED_OBSERVER = ["com.tianluoqaq.tlmnh.qa.SleepMechanismPortTests" + s for s in ("", "$Collector")]
 
 
@@ -26,7 +28,7 @@ def original_identity(data, build_bytes, tool, agent_bytes):
             "original premain manifest mismatch")
     require(identity["agent"]["agentSha256"] == build["definitionAgentSha256"] == sha(agent_bytes), "agent mismatch")
     require(identity["wholeClasspathOrPostDefinitionBytesVerified"] is False, "identity scope upgraded")
-    require(set(identity["classes"]) == set(build["compiledClasses"]) and len(identity["classes"]) == 11,
+    require(set(identity["classes"]) == set(build["compiledClasses"]) and len(identity["classes"]) == (12 if "difficulty" in data["contract"] else 11),
             "selected original class set changed")
     differences = []
     for name, item in identity["classes"].items():
@@ -99,6 +101,19 @@ def inspect(data, contract, contract_hash, profile):
     return summary
 
 
+def immediate_hurt_wake(data):
+    require(data["mechanism"] == "hurt_sleeping", "wrong wake mechanism")
+    row = data["runs"][0]
+    require(len(row["events"]) == 1, "sleeping damage event absent")
+    event = row["events"][0]
+    require(event["preSleeping"] is True and event["damageAccepted"] is True
+            and event["healthAfter"] == event["healthBefore"] - data["contract"]["damage"], "actual sleeping damage not observed")
+    require(event["postSleeping"] is False and event["postBedOccupied"] is False,
+            "accepted sleeping damage did not immediately wake/release the bed")
+    require(row["frames"][event["frame"] + 1]["sleeping"] is False, "next natural frame did not remain awake")
+    return {"passed": True, "scope": "accepted generic sleeping damage immediate pose/bed release and next natural frame only"}
+
+
 def pair_inputs(original, port):
     a, b = original["runs"][0], port["runs"][0]
     differences = []
@@ -107,7 +122,8 @@ def pair_inputs(original, port):
             differences.append({"key": key, "original": a[key], "port": b[key]})
     x, y = a["actualInputs"], b["actualInputs"]
     for key in ("width", "height", "health", "maxHealth", "movementSpeed", "hunger", "favorability",
-                "model", "pickup", "difficulty", "raining", "thundering"):
+                "model", "pickup", "difficulty", "raining", "thundering") + (("nonEmptyItemStackCount", "activeEffectCount")
+                if "difficulty" in original["contract"] else ()):
         same = (math.isclose(x[key], y[key], abs_tol=1e-6, rel_tol=0) if
                 isinstance(x[key], (int, float)) and not isinstance(x[key], bool) else x[key] == y[key])
         if not same:
@@ -121,6 +137,10 @@ def pair_inputs(original, port):
     require(all((v["metadata"] & 3) == 2 for v in y["nonAirBlocks"] if v["semantic"].startswith("maid_bed")),
             "port bed north metadata incorrectly labelled")
     require(x["rawInitialNBT"] and y["rawInitialNBT"], "raw entity inputs absent")
+    if "difficulty" in original["contract"]:
+        require(x["difficulty"] == y["difficulty"] == original["contract"]["difficulty"], "actual difficulty not frozen")
+        require(x["nonEmptyItemStackCount"] == y["nonEmptyItemStackCount"] == x["activeEffectCount"] == y["activeEffectCount"] == 0,
+                "fresh actual items/effects not empty")
     return {"recorded_field_differences": differences, "semantic_block_layout_equal": layout_equal,
             "raw_task_ids": tasks, "inventory_and_full_NBT_semantic_equivalence_evaluated": False,
             "complete_actual_environment_pair_accepted": False,
@@ -136,6 +156,8 @@ def main():
     p.add_argument("--port-run", type=Path, required=True)
     p.add_argument("--candidate-jar", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--require-immediate-hurt-wake", action="store_true")
+    p.add_argument("--require-paired-inputs", action="store_true")
     args = p.parse_args()
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
@@ -166,6 +188,8 @@ def main():
         differences = original_identity(original, args.original_build.read_bytes(), tool, args.original_agent.read_bytes())
         require(json.loads(args.original_build.read_bytes())["contractSha256"] == sha(contract_bytes), "build contract differs")
         summaries = [inspect(original, contract, sha(contract_bytes), "original")]
+        if args.require_immediate_hurt_wake and mechanism == "hurt_sleeping":
+            summaries[0]["immediate_hurt_wake"] = immediate_hurt_wake(original)
         pairs = {}
         actors = [original]
         for profile in ("faithful_tlm", "enhanced"):
@@ -173,8 +197,15 @@ def main():
             artifact(port["productionArtifact"], args.candidate_jar, PRODUCTION)
             artifact(port["observerArtifact"], pilot, OBSERVER)
             artifact(port["pairedObserverArtifact"], pilot, PAIRED_OBSERVER)
+            if "difficulty" in contract:
+                artifact(port["sleepOwnerArtifact"], args.candidate_jar, SLEEP_OWNER)
             summaries.append(inspect(port, contract, sha(contract_bytes), profile))
             pairs[profile] = pair_inputs(original, port)
+            if args.require_paired_inputs:
+                require(not pairs[profile]["recorded_field_differences"] and pairs[profile]["semantic_block_layout_equal"]
+                        and len(set(pairs[profile]["raw_task_ids"].values())) == 1, "recorded paired inputs differ")
+            if args.require_immediate_hurt_wake and mechanism == "hurt_sleeping":
+                summaries[-1]["immediate_hurt_wake"] = immediate_hurt_wake(port)
             actors.append(port)
         for actor in actors:
             uid = actor["runs"][0]["uuid"]

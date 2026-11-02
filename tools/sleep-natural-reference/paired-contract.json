@@ -80,5 +80,7 @@
   "pairing": "Same scenario/input layout/event rule; independent fresh actor; no shared random-stream or cross-engine timing equivalence assumption",
   "completeB10Accepted": false,
   "statisticalVerdict": "NOT_EVALUATED",
-  "scope": "Five paired mechanism/input exploration scenes before frozen statistical validation; one fresh actor per scene/profile, not full B10 or all fourteen benchmark acceptance"
+  "scope": "Five paired mechanism/input exploration scenes before frozen statistical validation; one fresh actor per scene/profile, not full B10 or all fourteen benchmark acceptance",
+  "difficulty": "HARD",
+  "emptyInventoryAndEffects": true
 }

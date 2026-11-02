@@ -144,6 +144,24 @@ public final class SleepMechanismPortTests {
             } catch (Exception error) {
                 throw new IllegalStateException("Paired observer identity unavailable", error);
             }
+            try {
+                output.add(
+                    "sleepOwnerArtifact",
+                    DevelopmentArtifactIdentity.capture(
+                        com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator.class,
+                        Class.forName(
+                            "com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife",
+                            false,
+                            EntityMaid.class.getClassLoader())));
+            } catch (Exception error) {
+                throw new IllegalStateException("Sleep owner identity unavailable", error);
+            }
+            helper.assertTrue(
+                helper.getWorld().difficultySetting.name()
+                    .equals(
+                        contract.get("difficulty")
+                            .getAsString()),
+                "Actual native difficulty differs from paired contract");
             var info = helper.getWorld()
                 .getWorldInfo();
             info.setRaining(false);
@@ -225,6 +243,19 @@ public final class SleepMechanismPortTests {
                             : "unknown");
                 blocks.add(value);
             }
+            int nonEmpty = 0;
+            var inventory = maid.getMaidInventory();
+            for (int slot = 0; slot < inventory.getSizeInventory(); slot++)
+                if (inventory.getStackInSlot(slot) != null) nonEmpty++;
+            initial.addProperty("nonEmptyItemStackCount", nonEmpty);
+            initial.addProperty(
+                "activeEffectCount",
+                maid.getActivePotionEffects()
+                    .size());
+            helper.assertTrue(
+                nonEmpty == 0 && maid.getActivePotionEffects()
+                    .isEmpty(),
+                "Fresh paired native actor has items/effects");
             initial.add("nonAirBlocks", blocks);
             var row = runs.get(runs.size() - 1)
                 .getAsJsonObject();
