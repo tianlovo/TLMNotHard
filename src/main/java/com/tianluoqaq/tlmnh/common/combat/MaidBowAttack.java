@@ -178,7 +178,7 @@ public final class MaidBowAttack {
 
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
     public boolean fireForModern(EntityLivingBase target, float charge, BooleanSupplier admitted) {
-        if (!NativeArrowGravity.available()) return false;
+        if (!NativeArrowGravity.available() || !MaidProjectileImpactProtection.available(maid)) return false;
         if (firing || !admitted.getAsBoolean()) return false;
         int slot = modernArrowSlot(maid);
         if (slot < 0) return false;
@@ -252,6 +252,10 @@ public final class MaidBowAttack {
                 arrow.setDead();
                 return reject(safety);
             }
+        }
+        if (!MaidProjectileImpactProtection.admit(maid, arrow)) {
+            arrow.setDead();
+            return false;
         }
         NativeArrowGravity.forArrow(arrow);
         if (!NativeArrowGravity.available()) {
@@ -378,7 +382,8 @@ public final class MaidBowAttack {
     }
 
     private boolean canFire(EntityLivingBase target) {
-        return !maid.worldObj.isRemote && maid.getTask() == MaidTask.RANGED_ATTACK
+        return !maid.worldObj.isRemote && MaidProjectileImpactProtection.available(maid)
+            && maid.getTask() == MaidTask.RANGED_ATTACK
             && !maid.getBrainCoordinator()
                 .isSuspended()
             && !maid.isSitting()
