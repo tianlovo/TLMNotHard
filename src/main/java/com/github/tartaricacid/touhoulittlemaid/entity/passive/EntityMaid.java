@@ -180,6 +180,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return result[0];
     }
 
+    public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
+        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile,
+        com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile flightProfile) {
+        var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
+            com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
+        behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
+        return result[0];
+    }
+
     public void clearBehaviorInputs() {
         moveForward = moveStrafing = 0;
         setAIMoveSpeed(0);

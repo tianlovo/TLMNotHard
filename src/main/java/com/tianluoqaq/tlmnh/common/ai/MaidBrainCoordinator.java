@@ -36,6 +36,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
@@ -68,6 +69,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private World observedWorld, policyWorld;
     private MaidBrainProfile requestedBrainProfile;
     private com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+    private ModernFlightProfile requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
     private String observedOwner;
     private String lastPolicyState;
     private boolean transitioningPolicy, lifecycleFailed, unloaded, persistentReadFailed, behaviorProtected;
@@ -309,7 +311,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                     maid,
                     requestedFaithfulFlight);
             else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
-                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(maid);
+                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(
+                    maid,
+                    requestedEnhancedFlight);
             policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
 
                 @Override
@@ -420,6 +424,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         policy = null;
         requestedBrainProfile = null;
         requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+        requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
         afterNavigationActions = actions;
         var runtime = getPolicyRuntime();
         if (runtime == null) throw new IllegalStateException("No development policy runtime");
@@ -443,6 +448,26 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (requested != MaidBrainProfile.FAITHFUL_TLM
             && flightProfile != com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL)
             return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
+        return selectProfileForDevelopment(requested, flightProfile, ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
+    }
+
+    /** 完整N的开发消融规格在根创建时绑定，原生NBT重建仍沿用同对象的请求 */
+    public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
+        ModernFlightProfile flightProfile) {
+        Objects.requireNonNull(requested, "requested");
+        Objects.requireNonNull(flightProfile, "flightProfile");
+        if (requested != MaidBrainProfile.ENHANCED
+            || !com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain.supportsFlightProfile(flightProfile))
+            return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
+        return selectProfileForDevelopment(
+            requested,
+            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
+            flightProfile);
+    }
+
+    private MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
+        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile faithfulFlight,
+        ModernFlightProfile enhancedFlight) {
         if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
             || maid.worldObj.isRemote
             || !maid.isEntityAlive()
@@ -455,8 +480,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (policy != null && policy.getProfile() == requested
             && policy.isReady()
             && (requested != MaidBrainProfile.FAITHFUL_TLM
-                || requestedFaithfulFlight == flightProfile && peekFaithfulBrain() != null
+                || requestedFaithfulFlight == faithfulFlight && peekFaithfulBrain() != null
                     && peekFaithfulBrain().hasFlightContract())
+            && (!requested.isEnhanced() || requestedEnhancedFlight == enhancedFlight && peekEnhancedCore() != null
+                && peekEnhancedCore().hasFlightContract())
             && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced())
                 || requestedBrainProfile == requested))
             return MaidPolicyRuntime.SelectionResult.UNCHANGED;
@@ -464,7 +491,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         policy = null;
         afterNavigationActions = null;
         requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced() ? requested : null;
-        requestedFaithfulFlight = flightProfile;
+        requestedFaithfulFlight = faithfulFlight;
+        requestedEnhancedFlight = enhancedFlight;
         var runtime = getPolicyRuntime();
         if (requestedBrainProfile != null) return runtime.isReady() ? MaidPolicyRuntime.SelectionResult.SELECTED
             : MaidPolicyRuntime.SelectionResult.UNAVAILABLE;

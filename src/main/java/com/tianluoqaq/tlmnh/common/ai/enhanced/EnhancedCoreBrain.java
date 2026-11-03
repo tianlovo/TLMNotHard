@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.Objects;
+
 import net.minecraft.entity.Entity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidInteractWithDoor;
@@ -12,6 +14,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
@@ -45,15 +48,21 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
     private Entity observedMount;
     private boolean observedSitting;
     private long nextMeal, lastCareTick = Long.MIN_VALUE;
+    private final ModernFlightProfile flightProfile;
 
     public EnhancedCoreBrain(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this(maid, ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
+    }
+
+    public EnhancedCoreBrain(EntityMaid maid, ModernFlightProfile flightProfile) {
+        this.maid = Objects.requireNonNull(maid, "maid");
+        if (!supportsFlightProfile(flightProfile))
+            throw new IllegalArgumentException("Unsupported enhanced flight profile");
+        this.flightProfile = flightProfile;
         // 新增强实例不继承其他策略的攻击执行记忆或冷却
         maid.getModernCombatMemory()
             .clear();
-        actor = new ModernFollowCoreActor(
-            maid,
-            com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
+        actor = new ModernFollowCoreActor(maid, flightProfile);
         sensing = new com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession(
             maid.worldObj,
             maid.getUniqueID(),
@@ -76,6 +85,21 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
         snowball = new EnhancedSnowballController(maid, actor, perception);
         buoyancy = new EnhancedBuoyancyController(maid, actor);
+    }
+
+    public static boolean supportsFlightProfile(ModernFlightProfile profile) {
+        return profile == ModernFlightProfile.NATIVE_STATIC_COMPENSATION
+            || profile == ModernFlightProfile.NATIVE_LAST_SAMPLE_COMPENSATION
+            || profile == ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
+    }
+
+    public ModernFlightProfile getFlightProfile() {
+        return flightProfile;
+    }
+
+    public boolean hasFlightContract() {
+        return actor.rangedBow()
+            .flightProfile() == flightProfile;
     }
 
     @Override
