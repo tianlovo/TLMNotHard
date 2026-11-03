@@ -33,6 +33,7 @@ public final class MaidDeathService {
         var ledger = MaidLifecycleData.get(world);
         var token = ledger.deathToken(maid.getUniqueID());
         if (token != null && ledger.delivered(token)) return true;
+        MaidInteractionTransfer.preserveDeathBalance(maid);
         var full = new NBTTagCompound();
         maid.writeToNBT(full);
         var identity = MaidFilmData.identity(full);
@@ -55,7 +56,7 @@ public final class MaidDeathService {
         double y = Math.max(5.0D, Math.min(world.getHeight() - 2.0D, Math.floor(maid.posY)));
         double z = Math.floor(maid.posZ) + 0.5D;
         int experience = world.getGameRules()
-            .getGameRuleBooleanValue("doMobLoot") ? maid.getExperience() : 0;
+            .getGameRuleBooleanValue("doMobLoot") ? MaidInteractionTransfer.availableExperience(maid) : 0;
         long now = Math.max(0, world.getTotalWorldTime());
         ledger.depositDeath(
             owner,

@@ -168,6 +168,7 @@ public final class MaidLifecycleService {
             maid = new EntityMaid(world);
             // 与原版readAdditionalSaveData一致：新实体UUID，原主人与设置来自胶片身份
             maid.readEntityFromNBT(identity);
+            MaidInteractionTransfer.restoreFilmHold(maid, identity);
             if (!maid.isTamed() || !owner.toString()
                 .equals(maid.func_152113_b())) return Result.INVALID_CREDENTIAL;
             maid.setHealth(maid.getMaxHealth());

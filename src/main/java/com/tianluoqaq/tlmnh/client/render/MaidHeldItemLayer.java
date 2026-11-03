@@ -227,6 +227,14 @@ public final class MaidHeldItemLayer {
                         && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND),
                     bridge);
                 if (bridge == null) return;
+                bridge = com.tianluoqaq.tlmnh.compat.tinkersdefense.client.render.TinkersDefenseShieldRenderTransforms
+                    .adapt(
+                        stack,
+                        selectedRenderer,
+                        maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM)
+                            && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND),
+                        bridge);
+                if (bridge == null) return;
             }
             var entry = new Matrix4f(source).mul(bridge);
             matrixBuffer.clear();

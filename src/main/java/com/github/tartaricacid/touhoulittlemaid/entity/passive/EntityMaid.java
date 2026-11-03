@@ -1044,10 +1044,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         }
     }
 
-    /** 原版始终掉落保存的经验；驯服死亡的余额已先交世界账本，不能再次走动物随机经验 */
+    /** 输出可兑现的保存经验，死亡账本和交互保留分别持有已移交或锁定的余额 */
     @Override
     protected int getExperiencePoints(EntityPlayer player) {
-        return getExperience();
+        return com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer.availableExperience(this);
     }
 
     /** 1.7.10该protected标志只用于经验掉落的最近玩家攻击门槛 */

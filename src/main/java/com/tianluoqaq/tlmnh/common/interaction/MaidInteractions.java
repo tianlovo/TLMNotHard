@@ -10,7 +10,6 @@ package com.tianluoqaq.tlmnh.common.interaction;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -87,36 +86,37 @@ public final class MaidInteractions {
         }
         if (player.isSneaking()) {
             if (held.getItem() == Items.golden_apple) {
-                if (!maid.worldObj.isRemote && consume(player, held, 1, null)) {
+                if (!maid.worldObj.isRemote) consume(maid, player, held, 1, null, () -> {
                     feedGoldenApple(maid, held.getItemDamage() > 0);
                     maid.playSound("random.eat", 0.6F, 1.0F);
-                }
+                });
                 return true;
             }
             // 1.7.10以metadata区分喷溅药水，上游的POTION仅指可饮用药水
             if (held.getItem() == Items.potionitem && !ItemPotion.isSplash(held.getItemDamage())) {
                 if (!maid.worldObj.isRemote) {
                     var effects = ((ItemPotion) held.getItem()).getEffects(held);
-                    if (!consume(player, held, 1, new ItemStack(Items.glass_bottle))) return true;
-                    if (effects != null) {
-                        for (PotionEffect effect : effects) {
-                            var potion = Potion.potionTypes[effect.getPotionID()];
-                            if (potion.isInstant()) {
-                                potion.affectEntity(player, maid, effect.getAmplifier(), 1.0D);
-                            } else {
-                                maid.addPotionEffect(new PotionEffect(effect));
+                    consume(maid, player, held, 1, new ItemStack(Items.glass_bottle), () -> {
+                        if (effects != null) {
+                            for (PotionEffect effect : effects) {
+                                var potion = Potion.potionTypes[effect.getPotionID()];
+                                if (potion.isInstant()) {
+                                    potion.affectEntity(player, maid, effect.getAmplifier(), 1.0D);
+                                } else {
+                                    maid.addPotionEffect(new PotionEffect(effect));
+                                }
                             }
                         }
-                    }
-                    maid.playSound("random.drink", 0.6F, 1.0F);
+                        maid.playSound("random.drink", 0.6F, 1.0F);
+                    });
                 }
                 return true;
             }
             if (held.getItem() == Items.milk_bucket) {
-                if (!maid.worldObj.isRemote && consume(player, held, 1, new ItemStack(Items.bucket))) {
+                if (!maid.worldObj.isRemote) consume(maid, player, held, 1, new ItemStack(Items.bucket), () -> {
                     maid.curePotionEffects(held);
                     maid.playSound("random.drink", 0.6F, 1.0F);
-                }
+                });
                 return true;
             }
         }
@@ -159,28 +159,28 @@ public final class MaidInteractions {
     private static void exchangeExperience(EntityMaid maid, EntityPlayer player, ItemStack held) {
         int count = player.isSneaking() ? Math.min(held.stackSize, maid.getExperience() / EXPERIENCE_PER_BOTTLE) : 1;
         count = Math.min(count, Items.experience_bottle.getItemStackLimit());
-        var reward = new EntityItem(
-            maid.worldObj,
-            player.posX,
-            player.posY,
-            player.posZ,
-            new ItemStack(Items.experience_bottle, count));
-        reward.delayBeforeCanPickup = 10;
-        // 拒绝生成掉落物时不扣材料，避免事件或世界边界造成静默损失
-        if (!maid.worldObj.spawnEntityInWorld(reward)) return;
-        maid.setExperience(maid.getExperience() - count * EXPERIENCE_PER_BOTTLE);
-        // 上游Player.interactOn恢复创造玩家的原栈数量，不恢复女仆经验
-        consume(player, held, count, null);
-        maid.playSound("random.pop", 0.2F, 2.0F);
+        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer.publish(
+            maid,
+            player,
+            held,
+            count,
+            new ItemStack(Items.experience_bottle, count),
+            count * EXPERIENCE_PER_BOTTLE,
+            () -> maid.playSound("random.pop", 0.2F, 2.0F))) player.inventoryContainer.detectAndSendChanges();
     }
 
-    private static boolean consume(EntityPlayer player, ItemStack held, int count, ItemStack container) {
-        if (player.capabilities.isCreativeMode) return true;
+    private static boolean consume(EntityMaid maid, EntityPlayer player, ItemStack held, int count, ItemStack container,
+        Runnable effect) {
+        if (player.capabilities.isCreativeMode) {
+            effect.run();
+            return true;
+        }
         int remaining = held.stackSize - count;
         if (remaining > 0 && container != null && !player.inventory.addItemStackToInventory(container)) {
-            var drop = new EntityItem(player.worldObj, player.posX, player.posY, player.posZ, container);
-            drop.delayBeforeCanPickup = 10;
-            if (!player.worldObj.spawnEntityInWorld(drop)) return false;
+            boolean delivered = com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer
+                .publish(maid, player, held, count, container, 0, effect);
+            if (delivered) player.inventoryContainer.detectAndSendChanges();
+            return delivered;
         }
         ItemStack replacement = remaining > 0 ? held.copy() : container;
         if (remaining > 0) replacement.stackSize = remaining;
@@ -188,6 +188,7 @@ public final class MaidInteractions {
         player.inventory.setInventorySlotContents(player.inventory.currentItem, replacement);
         player.inventory.markDirty();
         player.inventoryContainer.detectAndSendChanges();
+        effect.run();
         return true;
     }
 }
