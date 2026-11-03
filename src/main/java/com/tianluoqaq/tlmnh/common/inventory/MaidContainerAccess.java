@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.inventory;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
@@ -16,5 +17,12 @@ public final class MaidContainerAccess {
             && maid.getMaidInventory()
                 .isUseableByPlayer(player)
             && player.worldObj.getEntityByID(maid.getEntityId()) == maid;
+    }
+
+    /** 写入沿用会话权限检查，并拒绝旁观模式 */
+    public static boolean canModify(EntityPlayer viewer, EntityPlayer player, EntityMaid maid) {
+        return canInteract(viewer, player, maid)
+            && (!(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
+                .getID() != 3);
     }
 }

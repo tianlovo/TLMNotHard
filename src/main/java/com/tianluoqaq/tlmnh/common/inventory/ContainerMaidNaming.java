@@ -64,6 +64,7 @@ public final class ContainerMaidNaming extends Container {
     public boolean submit(EntityPlayer player, String name, boolean alwaysShow) {
         if (maid.worldObj.isRemote || player.openContainer != this
             || !canInteractWith(player)
+            || !MaidContainerAccess.canModify(viewer, player, maid)
             || !MaidNameRules.isValid(name)) return false;
         submitted = true;
         maid.setCustomNameTag(name);

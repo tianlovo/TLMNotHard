@@ -86,7 +86,7 @@ public class ContainerMaid extends Container {
 
             @Override
             public boolean canTakeStack(EntityPlayer player) {
-                return canInteractWith(player);
+                return canModifyWith(player);
             }
         });
     }
@@ -106,9 +106,14 @@ public class ContainerMaid extends Container {
         return MaidContainerAccess.canInteract(viewer, player, maid);
     }
 
+    /** 保留原版子类的睡眠等会话限制，再核真正写操作权限 */
+    public final boolean canModifyWith(EntityPlayer player) {
+        return canInteractWith(player) && MaidContainerAccess.canModify(viewer, player, maid);
+    }
+
     @Override
     public ItemStack slotClick(int slot, int button, int mode, EntityPlayer player) {
-        return canInteractWith(player) ? super.slotClick(slot, button, mode, player) : null;
+        return canModifyWith(player) ? super.slotClick(slot, button, mode, player) : null;
     }
 
     @Override
@@ -117,6 +122,7 @@ public class ContainerMaid extends Container {
             || action < ACTION_IDLE
             || action > ACTION_TASK_CONFIG
             || lastActionTick == maid.ticksExisted) return false;
+        if (!isReadOnlyNavigation(action) && !canModifyWith(player)) return false;
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
         if (action == ACTION_RIDEABLE && player.inventory.getItemStack() != null) return false;
         if ((action == ACTION_MODELS || action == ACTION_SOUNDS
@@ -187,6 +193,13 @@ public class ContainerMaid extends Container {
         return true;
     }
 
+    private static boolean isReadOnlyNavigation(int action) {
+        return action == ACTION_MODELS || action == ACTION_SOUNDS
+            || action == ACTION_CONFIG
+            || action == ACTION_ORIGINAL_MAIN
+            || action == ACTION_TASK_CONFIG;
+    }
+
     protected int modelGuiId() {
         return CommonProxy.GUI_MAID_MODELS;
     }
@@ -209,7 +222,7 @@ public class ContainerMaid extends Container {
 
     @Override
     public ItemStack transferStackInSlot(EntityPlayer player, int index) {
-        if (!canInteractWith(player) || index < 0 || index >= inventorySlots.size()) return null;
+        if (!canModifyWith(player) || index < 0 || index >= inventorySlots.size()) return null;
         var slot = inventorySlots.get(index);
         if (!slot.getHasStack()) return null;
         var stack = slot.getStack();

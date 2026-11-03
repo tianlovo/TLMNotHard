@@ -13,6 +13,7 @@
     "MixinEntityPose",
     "MixinPathNavigate",
     "MixinEntityPlayerVehicle",
+    "MixinMaidWorldGenSpawning",
     "MixinArrowFlightState",
     "MixinArrowImpact",
     "MixinArrowSource",

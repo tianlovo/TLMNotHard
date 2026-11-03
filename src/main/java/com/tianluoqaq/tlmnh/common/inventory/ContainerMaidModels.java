@@ -60,7 +60,8 @@ public final class ContainerMaidModels extends Container {
             return true;
         }
         var choice = BuiltinModelSelection.choiceForAction(action);
-        if (choice == null || !BuiltinModelCatalog.contains(choice.getId())) return false;
+        if (choice == null || !BuiltinModelCatalog.contains(choice.getId())
+            || !MaidContainerAccess.canModify(viewer, player, maid)) return false;
         lastActionTick = maid.ticksExisted;
         maid.setModelId(choice.getId());
         if (!choice.getPreferredSoundPack()

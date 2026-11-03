@@ -25,7 +25,7 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
         if (action < FREQUENCY_DOWN || action > TOGGLE_CHAT_BUBBLE) return super.enchantItem(player, action);
-        if (maid.worldObj.isRemote || !canInteractWith(player) || player.inventory.getItemStack() != null) return false;
+        if (maid.worldObj.isRemote || !canModifyWith(player) || player.inventory.getItemStack() != null) return false;
         var config = maid.getConfigManager();
         switch (action) {
             case FREQUENCY_DOWN -> config.setSoundFreq(config.getSoundFreq() - 0.1F);
@@ -50,7 +50,7 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
 
     @Override
     public ItemStack transferStackInSlot(EntityPlayer player, int index) {
-        if (!canInteractWith(player) || index < 0 || index >= inventorySlots.size()) return null;
+        if (!canModifyWith(player) || index < 0 || index >= inventorySlots.size()) return null;
         var slot = inventorySlots.get(index);
         if (!slot.getHasStack()) return null;
         var stack = slot.getStack();

@@ -15,10 +15,13 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineBlock;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.registry.EntityRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
 
 /** 获取与复活内容注册；蒸汽核心及LV神龛配方由进度层在postInit注册 */
 public final class MaidResurrectionContent {
@@ -58,6 +61,15 @@ public final class MaidResurrectionContent {
 
     public static void registerSpawns() {
         if (!MaidAcquisitionConfig.naturalSpawning) return;
+        try {
+            // Load the native class before inspecting the post-apply hook result.
+            Class.forName("net.minecraft.world.SpawnerAnimals", true, MaidResurrectionContent.class.getClassLoader());
+            if (!MixinCompatibilityPlugin.hasNaturalWorldGenHook())
+                throw new IllegalStateException("Native worldgen dimension gate unavailable");
+        } catch (Exception | LinkageError failure) {
+            IntegrationGuard.report(Side.SERVER, "acquisition/natural_worldgen", failure);
+            return;
+        }
         var biomes = MaidAcquisitionDiagnostics.resolveBiomes(MaidAcquisitionConfig.naturalBiomes);
         if (biomes.length == 0) return;
         EntityRegistry

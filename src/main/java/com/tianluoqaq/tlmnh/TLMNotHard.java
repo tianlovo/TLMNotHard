@@ -68,6 +68,7 @@ public final class TLMNotHard {
         AnimationLab.register();
         MaidBrainLifecycle.register();
         MaidShieldEvents.register();
+        com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.register();
         net.minecraftforge.common.MinecraftForge.EVENT_BUS
             .register(new com.github.tartaricacid.touhoulittlemaid.event.EntityHurtEvent());
     }

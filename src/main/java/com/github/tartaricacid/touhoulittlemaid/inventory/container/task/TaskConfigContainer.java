@@ -70,6 +70,7 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
 
     public boolean serverEditable() {
         return attackPage && !submitted
+            && canModifyWith(viewer)
             && maid.getTask() == openedTask
             && maid.getAttackListData()
                 .attackGroups()
@@ -140,7 +141,7 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
             || !payload.matchesIdentity(this)
             || payload.task() != openedTask
             || maid.getTask() != openedTask
-            || !canInteractWith(player)
+            || !canModifyWith(player)
             || player.inventory.getItemStack() != null
             || player.openContainer != this && expired()
             || !MaidAttackListPayload.fits(baseline)

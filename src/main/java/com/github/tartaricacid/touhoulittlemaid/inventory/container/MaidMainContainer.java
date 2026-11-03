@@ -46,7 +46,7 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
 
             @Override
             public boolean canTakeStack(EntityPlayer player) {
-                return canInteractWith(player);
+                return canModifyWith(player);
             }
 
             @Override

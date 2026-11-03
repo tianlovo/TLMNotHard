@@ -18,13 +18,19 @@ import org.spongepowered.asm.service.MixinService;
 public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     private static volatile boolean shieldCaptureHook;
+    private static volatile boolean naturalWorldGenHook;
 
     public static boolean hasShieldCaptureHook() {
         return shieldCaptureHook;
     }
 
+    public static boolean hasNaturalWorldGenHook() {
+        return naturalWorldGenHook;
+    }
+
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) return supportsNaturalWorldGen(targetClassName);
         if (mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return supportsShieldCapture(targetClassName);
         if (!mixinClassName.endsWith(".MixinArrowImpact")) return true;
         if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.qaProjectileImpactFallback"))
@@ -61,6 +67,43 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
         } catch (Exception | LinkageError failure) {
             LogManager.getLogger("tlmnh")
                 .warn("Cannot inspect native arrow impact hook; using pre-damage protection", failure);
+        }
+        return false;
+    }
+
+    private static boolean isWorldGenSpawning(MethodNode method) {
+        return (method.name.equals("performWorldGenSpawning") || method.name.equals("func_77191_a"))
+            && method.desc
+                .equals("(Lnet/minecraft/world/World;Lnet/minecraft/world/biome/BiomeGenBase;IIIILjava/util/Random;)V")
+            && (method.access & Opcodes.ACC_STATIC) != 0;
+    }
+
+    private static boolean supportsNaturalWorldGen(String targetClassName) {
+        if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.qaNaturalWorldgenHookDisabled"))
+            return false;
+        try {
+            var node = MixinService.getService()
+                .getBytecodeProvider()
+                .getClassNode(targetClassName);
+            int methods = 0, calls = 0;
+            for (Object rawMethod : node.methods) {
+                var method = (MethodNode) rawMethod;
+                if (!isWorldGenSpawning(method)) continue;
+                methods++;
+                for (var instruction = method.instructions.getFirst(); instruction
+                    != null; instruction = instruction.getNext()) {
+                    if (instruction instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKEVIRTUAL
+                        && call.owner.equals("net/minecraft/world/World")
+                        && (call.name.equals("spawnEntityInWorld") || call.name.equals("func_72838_d"))
+                        && call.desc.equals("(Lnet/minecraft/entity/Entity;)Z")) calls++;
+                }
+            }
+            if (methods == 1 && calls == 1) return true;
+            LogManager.getLogger("tlmnh")
+                .warn("Native worldgen spawning shape changed; natural maid spawning disabled");
+        } catch (Exception | LinkageError failure) {
+            LogManager.getLogger("tlmnh")
+                .warn("Cannot inspect native worldgen spawning hook; natural maid spawning disabled", failure);
         }
         return false;
     }
@@ -147,6 +190,22 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+        if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) {
+            int calls = 0;
+            for (Object rawMethod : targetClass.methods) {
+                var method = (MethodNode) rawMethod;
+                if (!isWorldGenSpawning(method)) continue;
+                for (var instruction = method.instructions.getFirst(); instruction
+                    != null; instruction = instruction.getNext()) {
+                    if (instruction instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKESTATIC
+                        && call.owner.equals(targetClass.name)
+                        && call.name.contains("tlmnh$naturalMaidWorldGen")
+                        && call.desc.equals("(Lnet/minecraft/world/World;Lnet/minecraft/entity/Entity;)Z")) calls++;
+                }
+            }
+            naturalWorldGenHook = calls == 1;
+            return;
+        }
         if (!mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return;
         int calls = 0;
         for (Object rawMethod : targetClass.methods) {

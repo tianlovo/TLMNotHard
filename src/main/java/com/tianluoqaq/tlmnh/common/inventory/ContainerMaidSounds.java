@@ -31,7 +31,7 @@ public final class ContainerMaidSounds extends Container {
 
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
-        if (maid.worldObj.isRemote || !canInteractWith(player)
+        if (maid.worldObj.isRemote || !MaidContainerAccess.canModify(viewer, player, maid)
             || player.inventory.getItemStack() != null
             || lastActionTick == maid.ticksExisted
             || action < 0

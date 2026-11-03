@@ -71,6 +71,6 @@ public abstract class AbstractMaidContainer extends ContainerMaid {
 
     @Override
     public ItemStack transferStackInSlot(EntityPlayer player, int index) {
-        return canInteractWith(player) ? OriginalMaidTransfers.transfer(this, player, index) : null;
+        return canModifyWith(player) ? OriginalMaidTransfers.transfer(this, player, index) : null;
     }
 }
