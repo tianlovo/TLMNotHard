@@ -34,7 +34,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 /** Real client care inputs use a fresh empty actor; the existing scene and its equipment remain untouched. */
 public final class MaidCareInteractionFixture {
 
-    private static final String TAG = "TLMNHCareInteractionFixture";
+    static final String TAG = "TLMNHCareInteractionFixture";
     private static final String REIMU = "touhou_little_maid:hakurei_reimu", HANFU = "geckolib:winefox_hanfu";
     private static final java.util.Set<String> FIELDS = new java.util.HashSet<>(
         java.util.Arrays.asList(
@@ -68,10 +68,16 @@ public final class MaidCareInteractionFixture {
             "CheckpointTime",
             "AwaitLogin",
             "Rejoined",
-            "WorldActions"));
+            "WorldActions",
+            "ModelLifecycle",
+            "NaturalShield"));
     private static Session active;
 
     private MaidCareInteractionFixture() {}
+
+    static boolean owns(Session session) {
+        return active == session;
+    }
 
     public static boolean isActivePlayer(EntityPlayerMP player) {
         if (active == null) return recoveryObserver(player);
@@ -89,6 +95,9 @@ public final class MaidCareInteractionFixture {
     }
 
     public static boolean isSpawning(Entity entity) {
+        if (currentLabWorld(entity.worldObj)
+            && (MaidModelLifecycleActions.isSpawning(entity) || MaidNaturalShieldActions.isSpawning(entity)))
+            return true;
         if (!(entity instanceof EntityMaid maid) || !currentLabWorld(maid.worldObj)) return false;
         if (active == null) {
             if (!recoveryIdentity(
@@ -299,7 +308,7 @@ public final class MaidCareInteractionFixture {
             return;
         }
         var session = active;
-        if (session == null && action.equals("restore")
+        if (session == null && (action.equals("restore") || action.equals("world-life-resume"))
             && player.getEntityData()
                 .hasKey(TAG, 10)) {
             var saved = player.getEntityData()
@@ -321,6 +330,20 @@ public final class MaidCareInteractionFixture {
                 "Load the original retained care actor; no replacement is spawned");
             session = new Session(player, found, saved);
             active = session;
+            if (action.equals("world-life-resume")) {
+                session.validateSnapshot();
+                require(
+                    recoveryObserver(player),
+                    "Exact startup recovery identity and protected original player required");
+                session.validate();
+                session.inventoryOwned();
+                MaidModelLifecycleActions.resumed(session);
+                FMLCommonHandler.instance()
+                    .bus()
+                    .register(session);
+                session.record(action);
+                return;
+            }
         }
         require(session != null, "No live care fixture; restore its retained snapshot first");
         if (session.player != player) session.attach(player);
@@ -341,6 +364,16 @@ public final class MaidCareInteractionFixture {
         session.validate();
         session.inventoryOwned();
         if (action.equals("status")) {
+            session.record(action);
+            return;
+        }
+        if (MaidModelLifecycleActions.handles(action)) {
+            MaidModelLifecycleActions.run(session, action);
+            session.record(action);
+            return;
+        }
+        if (MaidNaturalShieldActions.handles(action)) {
+            MaidNaturalShieldActions.run(session, action);
             session.record(action);
             return;
         }
@@ -625,6 +658,8 @@ public final class MaidCareInteractionFixture {
                         .tagCount(),
                 "Invalid care result snapshot");
             MaidNaturalWorldActions.validateSnapshot(data);
+            MaidModelLifecycleActions.validateSnapshot(data);
+            MaidNaturalShieldActions.validateSnapshot(data);
         }
 
         void validatePlayer() {
@@ -642,13 +677,15 @@ public final class MaidCareInteractionFixture {
                     && slot() < 9
                     && player.inventory.currentItem == slot()
                     && player.inventory.getItemStack() == null
-                    && player.getHealth() == data.getFloat("OriginalHealth"),
+                    && (player.getHealth() == data.getFloat("OriginalHealth")
+                        || MaidModelLifecycleActions.allowedHealth(this)),
                 "Care fixture identity changed; retained");
         }
 
         void validate() {
             validateSnapshot();
             validatePlayer();
+            if (MaidModelLifecycleActions.validateActor(this)) return;
             require(
                 player.worldObj == maid.worldObj && validNonce(maid)
                     && player.worldObj.getEntityByID(maid.getEntityId()) == maid
@@ -672,7 +709,8 @@ public final class MaidCareInteractionFixture {
         }
 
         void emptyActor() {
-            if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
+            if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
+            else if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
             else for (int i = 0; i < maid.getMaidInventory()
                 .getSizeInventory(); i++)
                 require(
@@ -993,6 +1031,8 @@ public final class MaidCareInteractionFixture {
                     validate();
                     inventoryOwned();
                 }
+                MaidNaturalShieldActions.restore(this);
+                MaidModelLifecycleActions.restore(this);
                 MaidNaturalWorldActions.restore(this);
                 var hand = originalHand();
                 var original = data.getTagList("OriginalInventory", 10);
@@ -1061,7 +1101,8 @@ public final class MaidCareInteractionFixture {
                 require(++ticks < 12000, "Care fixture timed out");
                 validate();
                 inventoryOwned();
-                protect();
+                if (MaidModelLifecycleActions.restart(this)) protectObserver(player);
+                else protect();
             } catch (RuntimeException | LinkageError failure) {
                 abort(failure);
             }
@@ -1128,7 +1169,16 @@ public final class MaidCareInteractionFixture {
             result.addProperty("favorability", maid.getFavorability());
             result.addProperty("workMealCooldown", cooldown());
             result.addProperty("worldTime", maid.worldObj.getTotalWorldTime());
+            result.addProperty(
+                "expectedInventoryMatches",
+                inventory(player).equals(data.getTagList("ExpectedInventory", 10)));
+            result.addProperty(
+                "resultInventoryMatches",
+                data.hasKey("ResultInventory", 9) && inventory(player).equals(data.getTagList("ResultInventory", 10)));
             if (data.hasKey("WorldActions")) result.add("worldActions", MaidNaturalWorldActions.observation(this));
+            if (data.hasKey("ModelLifecycle"))
+                result.add("modelLifecycle", MaidModelLifecycleActions.observation(this));
+            if (data.hasKey("NaturalShield")) result.add("naturalShield", MaidNaturalShieldActions.observation(this));
             result.addProperty(
                 "mode",
                 player.theItemInWorldManager.getGameType()

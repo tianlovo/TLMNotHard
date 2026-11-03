@@ -129,8 +129,14 @@ public final class ClientDevelopmentRequest {
         }
         if (command == Command.CARE_INTERACT) {
             action = text(json, "action");
-            if (!Arrays.asList("interact", "open", "sneak_on", "sneak_off", "status")
+            if (!Arrays.asList("interact", "open", "grave", "shrine", "sneak_on", "sneak_off", "status")
                 .contains(action)) throw new IllegalArgumentException("Unknown native care action");
+            if (action.equals("grave")) {
+                model = text(json, "model");
+                int id = Integer.parseInt(model);
+                if (id <= 0 || !Integer.toString(id)
+                    .equals(model)) throw new IllegalArgumentException("Actual native tombstone entity ID required");
+            }
             if (action.equals("interact") || action.equals("open") || action.equals("status")) {
                 model = text(json, "model");
                 if (!java.util.UUID.fromString(model)
@@ -200,6 +206,7 @@ public final class ClientDevelopmentRequest {
                     "details_shield_fault",
                     "details_shield_blocking",
                     "details_equipment",
+                    "details_action",
                     "details_view",
                     "pack",
                     "search",
@@ -218,6 +225,7 @@ public final class ClientDevelopmentRequest {
                 || action.equals("details_toggle")
                 || action.equals("details_shield_blocking")
                 || action.equals("details_equipment")
+                || action.equals("details_action")
                 || action.equals("details_view")
                 || action.equals("sound_play")
                 || action.equals("naming_text")
@@ -234,6 +242,10 @@ public final class ClientDevelopmentRequest {
                 && !Arrays.asList("clear_main", "clear_offhand")
                     .contains(model))
                 throw new IllegalArgumentException("Reviewed native preview equipment required");
+            if (action.equals("details_action")
+                && !Arrays.asList("idle", "look_left", "look_right", "attack", "aim", "eat", "sleep", "wake", "hurt")
+                    .contains(model))
+                throw new IllegalArgumentException("Reviewed preview action required");
         }
         return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }

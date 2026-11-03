@@ -44,6 +44,16 @@ public class ClientDevelopmentRequestTest {
             request.addProperty("model", invalid);
             assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
         }
+        request.addProperty("action", "details_action");
+        for (String action : new String[] { "idle", "look_left", "look_right", "attack", "aim", "eat", "sleep", "wake",
+            "hurt" }) {
+            request.addProperty("model", action);
+            assertEquals(action, ClientDevelopmentRequest.parse(request).model);
+        }
+        for (String invalid : new String[] { "", "ATTACK", "set_health", "unknown" }) {
+            request.addProperty("model", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
     }
 
     @Test

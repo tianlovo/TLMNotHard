@@ -36,7 +36,58 @@ public final class MaidCareInteractionProbe {
         var result = new JsonObject();
         result.addProperty("action", action);
         result.add("playerBefore", playerState());
-        if (action.equals("sneak_on") || action.equals("sneak_off")) {
+        if (action.equals("shrine")) {
+            if (!player.capabilities.disableDamage || !player.capabilities.allowFlying
+                || !player.capabilities.isFlying
+                || mc.theWorld.getBlock(7, 65, 0) != com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE
+                || player.getDistanceSq(7.5, 65.5, .5) > 64)
+                throw new IllegalStateException("Actual protected player near the prepared native shrine required");
+            boolean previous = player.isSneaking();
+            player.setSneaking(false);
+            connection.addToSendQueue(new C0BPacketEntityAction(player, 2));
+            try {
+                result.addProperty(
+                    "clientInteractionResult",
+                    mc.playerController.onPlayerRightClick(
+                        player,
+                        mc.theWorld,
+                        player.inventory.getCurrentItem(),
+                        7,
+                        65,
+                        0,
+                        1,
+                        net.minecraft.util.Vec3.createVectorHelper(7.5, 66, .5)));
+            } finally {
+                player.setSneaking(previous);
+                connection.addToSendQueue(new C0BPacketEntityAction(player, previous ? 1 : 2));
+            }
+            result.addProperty("nativePacket", "C0B_STOP_SNEAKING/C08_BLOCK_PLACEMENT/C0B_RESTORE_SNEAKING");
+        } else if (action.equals("grave")) {
+            var entity = mc.theWorld.getEntityByID(Integer.parseInt(identity));
+            if (!(entity instanceof com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity actual)
+                || player.getDistanceSqToEntity(actual) > 64
+                || !player.capabilities.disableDamage
+                || !player.capabilities.allowFlying
+                || !player.capabilities.isFlying)
+                throw new IllegalStateException("Tracked native tombstone and actual protected player required");
+            boolean previous = player.isSneaking();
+            player.setSneaking(false);
+            connection.addToSendQueue(new C0BPacketEntityAction(player, 2));
+            try {
+                result.addProperty(
+                    "clientInteractionResult",
+                    mc.playerController.interactWithEntitySendPacket(player, actual));
+            } finally {
+                player.setSneaking(previous);
+                connection.addToSendQueue(new C0BPacketEntityAction(player, previous ? 1 : 2));
+            }
+            result.addProperty("entityId", actual.getEntityId());
+            result.addProperty(
+                "localUuid",
+                actual.getUniqueID()
+                    .toString());
+            result.addProperty("nativePacket", "C0B_STOP_SNEAKING/C02_INTERACT/C0B_RESTORE_SNEAKING");
+        } else if (action.equals("sneak_on") || action.equals("sneak_off")) {
             boolean sneaking = action.equals("sneak_on");
             player.setSneaking(sneaking);
             connection.addToSendQueue(new C0BPacketEntityAction(player, sneaking ? 1 : 2));

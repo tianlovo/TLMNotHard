@@ -57,6 +57,16 @@ public final class MaidRenderer extends RenderLiving {
             HeldItemGpuProbe.beforeMaidBody((EntityMaid) entity, model);
             mainModel = model;
             super.doRender(entity, x, y, z, yaw, partialTick);
+            if (Boolean.getBoolean("tlmnh.devCommands")) {
+                var maid = (EntityMaid) entity;
+                var cached = entities.get(maid);
+                if (cached != null && cached.model == model
+                    && model.hasCompletedPoseFor(maid)
+                    && cached.textureTick == maid.ticksExisted) {
+                    cached.lastRenderTick = maid.ticksExisted;
+                    cached.poseSerial = model.getPoseSerial();
+                }
+            }
             chatBubbles.render((EntityMaid) entity, x, y, z, partialTick);
         } finally {
             mainModel = previous;
@@ -110,6 +120,21 @@ public final class MaidRenderer extends RenderLiving {
     protected ResourceLocation getEntityTexture(Entity entity) {
         return modelFor((EntityMaid) entity).getChoice()
             .getTexture();
+    }
+
+    @Override
+    protected void bindEntityTexture(Entity entity) {
+        super.bindEntityTexture(entity);
+        if (Boolean.getBoolean("tlmnh.devCommands") && entity instanceof EntityMaid maid) {
+            var cached = entities.get(maid);
+            if (cached != null) {
+                cached.texture = cached.model.getChoice()
+                    .getTexture();
+                cached.textureId = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+                cached.textureGeneration = generation;
+                cached.textureTick = maid.ticksExisted;
+            }
+        }
     }
 
     @Override
@@ -179,6 +204,13 @@ public final class MaidRenderer extends RenderLiving {
         var cached = entities.get(maid);
         if (cached == null) return result;
         result.addProperty("completedPose", cached.model.hasCompletedPoseFor(maid));
+        result.addProperty("texture", cached.texture == null ? null : cached.texture.toString());
+        result.addProperty("textureId", cached.textureId);
+        result.addProperty("resourceGeneration", cached.textureGeneration);
+        result.addProperty("currentResourceGeneration", models.getGeneration());
+        result.addProperty("lastTextureTick", cached.textureTick);
+        result.addProperty("lastRenderTick", cached.lastRenderTick);
+        result.addProperty("poseSerial", cached.poseSerial);
         result.addProperty(
             "model",
             cached.model.getChoice()
@@ -200,6 +232,9 @@ public final class MaidRenderer extends RenderLiving {
 
         private final String requested;
         private final BuiltinMaidModel model;
+        private ResourceLocation texture;
+        private int textureId = -1, textureGeneration = -1, textureTick = -1, lastRenderTick = -1;
+        private long poseSerial;
 
         private CachedModel(String requested, BuiltinMaidModel model) {
             this.requested = requested;

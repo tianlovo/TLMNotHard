@@ -41,6 +41,12 @@ public final class MaidLifecycleProbe {
     private MaidLifecycleProbe() {}
 
     public static void run(WorldServer world) {
+        var server = MinecraftServer.getServer();
+        boolean animals = server.getCanSpawnAnimals();
+        // 已核CoreTweaks会在setPosition后同步调用原生WorldServer动物准入，CI默认false不是本例死亡入口
+        server.setCanSpawnAnimals(true);
+        TLMNotHard.LOG
+            .info("TLMNH_LIFECYCLE_NATIVE_ANIMALS original={} active={}", animals, server.getCanSpawnAnimals());
         try (var f = new Fixture(world)) {
             acquisition(f);
             releaseRequestRevocation(f);
@@ -62,6 +68,8 @@ public final class MaidLifecycleProbe {
             brokenShrineRecovery(f);
             TLMNotHard.LOG.info(
                 "TLMNH_LIFECYCLE_TEST_PASS acquisition=4-combinations initial=bound-single-use death=tombstone-and-void shrine=health-and-spawn-rollback duplicates=rejected restart=not-claimed visuals=not-claimed");
+        } finally {
+            server.setCanSpawnAnimals(animals);
         }
     }
 

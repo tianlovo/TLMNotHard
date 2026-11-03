@@ -112,10 +112,29 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         return true;
     }
 
+    public boolean previewAction(String action) {
+        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        for (var value : buttonList) if (value instanceof ModelDetailsButton button && button.id >= 10
+            && button.id < 10 + STATES.length
+            && button.isSelected()) button.press();
+        ((MaidPreviewEntity) guiEntity).setDevelopmentAction(action);
+        walk = false;
+        guiEntity.limbSwing = guiEntity.limbSwingAmount = guiEntity.prevLimbSwingAmount = 0;
+        return true;
+    }
+
     @Override
     public com.google.gson.JsonObject observation() {
         var result = super.observation();
         result.addProperty("previewWalk", walk);
+        var preview = (MaidPreviewEntity) guiEntity;
+        result.addProperty("previewAction", preview.getDevelopmentAction());
+        result.addProperty("actionTicks", preview.getActionTicks());
+        result.addProperty("previewSwing", preview.swingProgress);
+        result.addProperty("previewSwingTick", preview.swingProgressInt);
+        result.addProperty("previewHurtTime", preview.hurtTime);
+        result.addProperty("previewAimingBow", preview.hasPose(MaidPose.AIMING_BOW));
+        result.addProperty("previewSleeping", preview.hasPose(MaidPose.SLEEPING));
         result.add("equipmentFixture", new com.google.gson.JsonParser().parse(equipmentFixture.toString()));
         result.add(
             "sourceVisibleState",
@@ -131,6 +150,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         super.updateScreen();
         if (guiEntity == null) return;
         guiEntity.ticksExisted++;
+        ((MaidPreviewEntity) guiEntity).advanceDevelopmentAction();
         guiEntity.prevLimbSwingAmount = guiEntity.limbSwingAmount;
         guiEntity.limbSwingAmount += ((walk ? 0.5F : 0) - guiEntity.limbSwingAmount) * 0.4F;
         guiEntity.limbSwing += guiEntity.limbSwingAmount;

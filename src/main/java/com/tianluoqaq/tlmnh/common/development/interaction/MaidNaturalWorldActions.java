@@ -227,7 +227,7 @@ final class MaidNaturalWorldActions {
                             .peek() == null
                         && !maid.hasPose(MaidPose.USING_ITEM)
                         && !maid.hasPose(MaidPose.USING_OFFHAND)
-                        && maid.getHealth() > 10,
+                        && maid.getHealth() >= 10,
                     "Natural soup use, bowl and released lease required");
                 maid.getBrainCoordinator()
                     .setSuspended(true);

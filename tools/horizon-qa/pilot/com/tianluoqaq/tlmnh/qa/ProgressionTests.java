@@ -591,7 +591,7 @@ public final class ProgressionTests {
         }
     }
 
-    private static final class NativeMachine {
+    static final class NativeMachine {
 
         final Fixture fixture;
         final BaseMetaTileEntity base;
@@ -671,7 +671,7 @@ public final class ProgressionTests {
         }
     }
 
-    private static final class Fixture {
+    static final class Fixture {
 
         final GameTestHelper helper;
         final int x, y, z;

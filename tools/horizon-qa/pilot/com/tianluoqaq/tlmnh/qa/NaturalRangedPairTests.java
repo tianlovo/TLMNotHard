@@ -119,11 +119,13 @@ public final class NaturalRangedPairTests {
         h.succeedWhen(() -> c.complete);
     }
 
-    public static final class Collector {
+    public static class Collector {
 
         final GameTestHelper h;
         final String scene, arm;
         final MaidBrainProfile profile;
+        final MaidBowAttack.ModernFlightProfile requestedFlight;
+        final boolean stationaryInput, comparePair;
         final JsonObject report = new JsonObject();
         final JsonArray frames = new JsonArray(), inputs = new JsonArray(), shots = new JsonArray(),
             damage = new JsonArray();
@@ -148,10 +150,26 @@ public final class NaturalRangedPairTests {
         RuntimeException failure;
 
         Collector(GameTestHelper h, String scene, boolean enhanced) {
+            this(
+                h,
+                scene,
+                enhanced ? "N" : "F-R",
+                enhanced ? MaidBrainProfile.ENHANCED : MaidBrainProfile.FAITHFUL_TLM,
+                enhanced ? MaidBowAttack.ModernFlightProfile.NATIVE_MOTION_COMPENSATION
+                    : MaidBowAttack.ModernFlightProfile.NATIVE_STATIC_COMPENSATION,
+                false,
+                true);
+        }
+
+        Collector(GameTestHelper h, String scene, String arm, MaidBrainProfile profile,
+            MaidBowAttack.ModernFlightProfile requestedFlight, boolean stationaryInput, boolean comparePair) {
             this.h = h;
             this.scene = scene;
-            arm = enhanced ? "N" : "F-R";
-            profile = enhanced ? MaidBrainProfile.ENHANCED : MaidBrainProfile.FAITHFUL_TLM;
+            this.arm = arm;
+            this.profile = profile;
+            this.requestedFlight = requestedFlight;
+            this.stationaryInput = stationaryInput;
+            this.comparePair = comparePair;
             report.addProperty("schema", "natural-ranged-pair-v1");
             report.addProperty("scene", scene);
             if (scene.equals("safety")) report.addProperty(
@@ -165,7 +183,9 @@ public final class NaturalRangedPairTests {
             report.addProperty("randomSourcesReset", false);
             report.addProperty(
                 "targetInput",
-                "actual EntityPig with controlled positions, movement base 0, knockback base 1 and health 2000; mod attributes/effects retained");
+                "actual EntityPig with controlled positions, movement base 0, knockback base 1 and health "
+                    + targetHealthInput()
+                    + "; mod attributes/effects retained");
             report.addProperty(
                 "withdrawalInput",
                 "reactive per-arm draw boundaries, not an identical absolute-tick script");
@@ -188,7 +208,7 @@ public final class NaturalRangedPairTests {
             f.maid.setSchedule(MaidSchedule.ALL);
             f.maid.setPickup(false);
             // 安全场景固定正常坐姿射击输入，仍由完整根的RIDE_WORK/stationary入口执行
-            if (scene.equals("safety")) f.maid.setSitting(true);
+            if (scene.equals("safety") || stationaryInput) f.maid.setSitting(true);
             if (scene.equals("safety")) weapon.addEnchantment(Enchantment.flame, 1);
             f.maid.setCurrentItemOrArmor(0, weapon);
             f.maid.setOffhandItem(null);
@@ -202,12 +222,12 @@ public final class NaturalRangedPairTests {
             nativeOwner();
             target = new EntityPig(h.getWorld());
             target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
-                .setBaseValue(2000);
+                .setBaseValue(targetHealthInput());
             target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
                 .setBaseValue(0);
             target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
                 .setBaseValue(1);
-            target.setHealth(2000);
+            target.setHealth(targetHealthInput());
             report.add("targetBeforeJoin", entity(target, true));
             h.spawnEntity(target, 17.5, 1, 4.5);
             friend = new EntityWolf(h.getWorld());
@@ -222,19 +242,20 @@ public final class NaturalRangedPairTests {
             f.maid.getAttackListData()
                 .attackGroups()
                 .put(MaidCombatEntities.id(target), MonsterType.HOSTILE);
-            var selected = profile == MaidBrainProfile.ENHANCED ? f.maid.selectBrainProfileForDevelopment(profile)
-                : f.maid.selectBrainProfileForDevelopment(profile, MaidFaithfulFlightProfile.NATIVE_STATIC_CONTROL);
+            var selected = profile == MaidBrainProfile.ENHANCED
+                ? f.maid.selectBrainProfileForDevelopment(profile, requestedFlight)
+                : f.maid.selectBrainProfileForDevelopment(
+                    profile,
+                    requestedFlight == MaidBowAttack.ModernFlightProfile.SOURCE_ORIGINAL
+                        ? MaidFaithfulFlightProfile.SOURCE_ORIGINAL
+                        : MaidFaithfulFlightProfile.NATIVE_STATIC_CONTROL);
             h.assertTrue(
                 selected == MaidPolicyRuntime.SelectionResult.SELECTED,
                 "Complete ranged factory rejected the declared arm");
             runtime = f.maid.getBrainCoordinator()
                 .peekPolicyRuntime();
             bow = actor().rangedBow();
-            h.assertTrue(
-                bow.flightProfile() == (profile == MaidBrainProfile.ENHANCED
-                    ? MaidBowAttack.ModernFlightProfile.NATIVE_MOTION_COMPENSATION
-                    : MaidBowAttack.ModernFlightProfile.NATIVE_STATIC_COMPENSATION),
-                "Factory flight contract differs");
+            h.assertTrue(bow.flightProfile() == requestedFlight, "Factory flight contract differs");
             report.add(
                 "productionArtifact",
                 DevelopmentArtifactIdentity.capture(
@@ -280,6 +301,9 @@ public final class NaturalRangedPairTests {
             conditions.add("maid", physicalConditions(f.maid));
             conditions.addProperty("sitting", f.maid.isSitting());
             conditions.addProperty("nativeGravity", (double) .05F);
+            conditions.addProperty(
+                "effectiveGravity",
+                requestedFlight == MaidBowAttack.ModernFlightProfile.SOURCE_ORIGINAL ? 0 : (double) .05F);
             conditions.addProperty("nativeDrag", (double) .99F);
             conditions.add("weapon", item(weapon));
             conditions.add("ammunition", item(ammunition));
@@ -382,7 +406,7 @@ public final class NaturalRangedPairTests {
             }
         }
 
-        private void applyInputs() {
+        void applyInputs() {
             owner.setPosition(f.x + 8.5, f.y + 1, f.z + 7);
             owner.motionX = owner.motionY = owner.motionZ = 0;
             owner.fallDistance = 0;
@@ -489,7 +513,7 @@ public final class NaturalRangedPairTests {
             ally.motionX = ally.motionY = ally.motionZ = 0;
         }
 
-        private void observe() {
+        void observe() {
             var brain = f.maid.getBrainCoordinator();
             h.assertTrue(
                 f.maid.isEntityAlive() && f.maid.ticksExisted == age + 1
@@ -509,6 +533,22 @@ public final class NaturalRangedPairTests {
             var row = new JsonObject();
             row.addProperty("frame", frame);
             row.addProperty("age", age);
+            row.addProperty("livingTicks", 1);
+            row.addProperty(
+                "actualProfile",
+                runtime.getProfile()
+                    .getId());
+            row.addProperty("fullRootAuthorized", runtime.isReady());
+            row.addProperty(
+                "legacyTicks",
+                brain.getCombatController()
+                    .getTicks()
+                    + brain.getFollowController()
+                        .getTicks());
+            row.addProperty(
+                "actualFlightProfile",
+                bow.flightProfile()
+                    .name());
             row.addProperty("phase", phase);
             row.addProperty("wall", wall);
             row.add("maid", entity(f.maid, false));
@@ -546,10 +586,7 @@ public final class NaturalRangedPairTests {
             }
             row.add("arrows", airborne);
             frames.add(row);
-            h.assertTrue(
-                arrowCount() + (heldAmmo == null ? 0 : heldAmmo.stackSize) + bow.getShots() == 24
-                    && weapon.getItemDamage() == bow.getShots(),
-                "Finite ammunition or original bow wear lost conservation");
+            validateResources();
             if (wall) h.assertTrue(
                 flights.stream()
                     .noneMatch(v -> v.spawnFrame >= 60 && v.spawnFrame < 105),
@@ -557,10 +594,25 @@ public final class NaturalRangedPairTests {
             if (scene.equals("withdraw")) withdrawal();
             damageThisFrame = 0;
             drain();
-            if (++frame == (scene.equals("withdraw") ? 280 : 220)) finish();
+            if (++frame == frameLimit()) finish();
         }
 
-        private void withdrawal() {
+        float targetHealthInput() {
+            return 2000;
+        }
+
+        int frameLimit() {
+            return scene.equals("withdraw") ? 280 : 220;
+        }
+
+        void validateResources() {
+            h.assertTrue(
+                arrowCount() + (heldAmmo == null ? 0 : heldAmmo.stackSize) + bow.getShots() == 24
+                    && weapon.getItemDamage() == bow.getShots(),
+                "Finite ammunition or original bow wear lost conservation");
+        }
+
+        void withdrawal() {
             boolean drawing = f.maid.getItemUseState()
                 .peek() != null
                 && f.maid.getItemUseState()
@@ -622,7 +674,7 @@ public final class NaturalRangedPairTests {
                 && a.shootingEntity == f.maid) h.fail("Maid arrow reached an allied LivingHurt gate");
         }
 
-        private int arrowCount() {
+        int arrowCount() {
             int count = 0;
             var inventory = f.maid.getMaidInventory();
             for (int i = 0; i < inventory.getSizeInventory(); i++) {
@@ -632,7 +684,7 @@ public final class NaturalRangedPairTests {
             return count;
         }
 
-        private void finish() {
+        void finish() {
             h.assertTrue(bow.getShots() > 0 && !flights.isEmpty(), "Natural root produced no actual arrow");
             if (scene.equals("safety")) h.assertTrue(
                 !wall && crossings == 2,
@@ -658,8 +710,10 @@ public final class NaturalRangedPairTests {
             report.addProperty("rejectedShots", bow.getRejectedShots());
             report.add("targetFinal", entity(target, true));
             report.addProperty("collectedFramesComplete", true);
-            var other = FIRST.remove(scene);
-            if (other == null) {
+            var other = comparePair ? FIRST.remove(scene) : null;
+            if (!comparePair) {
+                report.addProperty("pairedInputCheck", "OFFLINE_COMPARISON_REQUIRED");
+            } else if (other == null) {
                 FIRST.put(scene, this);
                 report.addProperty("pairedInputCheck", "WAITING_OTHER_ARM");
             } else {
@@ -681,7 +735,7 @@ public final class NaturalRangedPairTests {
             save();
         }
 
-        private void input(String name) {
+        void input(String name) {
             var row = new JsonObject();
             row.addProperty("frame", frame);
             row.addProperty("action", name);
@@ -691,7 +745,7 @@ public final class NaturalRangedPairTests {
             inputs.add(row);
         }
 
-        private JsonObject entity(Entity e, boolean full) {
+        JsonObject entity(Entity e, boolean full) {
             var row = new JsonObject();
             row.addProperty(
                 "class",
@@ -756,12 +810,14 @@ public final class NaturalRangedPairTests {
             while ((p = channel.readInbound()) != null) ReferenceCountUtil.release(p);
         }
 
-        private void save() {
+        String outputName() {
+            return "natural-ranged-" + scene + "-" + arm + ".json";
+        }
+
+        void save() {
             try {
                 Files.write(
-                    Paths.get(
-                        System.getProperty("horizonqa.reportDir"),
-                        "natural-ranged-" + scene + "-" + arm + ".json"),
+                    Paths.get(System.getProperty("horizonqa.reportDir"), outputName()),
                     new Gson().toJson(report)
                         .getBytes(StandardCharsets.UTF_8));
             } catch (Exception e) {
@@ -819,15 +875,18 @@ public final class NaturalRangedPairTests {
             this.c = c;
             arrow = a;
             spawnFrame = c.frame;
-            gravity = NativeArrowGravity.forArrow(a);
+            boolean original = c.requestedFlight == MaidBowAttack.ModernFlightProfile.SOURCE_ORIGINAL;
+            float providerGravity = NativeArrowGravity.forArrow(a);
+            gravity = original ? 0 : providerGravity;
             c.h.assertTrue(
-                a.getClass() == EntityArrow.class && a instanceof MaidArrowSourceState
+                (original ? a.getClass() == com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class
+                    : a.getClass() == EntityArrow.class) && a instanceof MaidArrowSourceState
                     && a instanceof MaidArrowImpactState
                     && !a.getIsCritical()
-                    && c.bow.getLastPhysics() != null
-                    && c.bow.getLastPhysics().gravity == gravity
-                    && c.bow.getLastPhysics().drag == (double) .99F
-                    && gravity == .05F,
+                    && (original ? c.bow.getLastPhysics() == null && c.bow.getLastSolution() == null
+                        : c.bow.getLastPhysics() != null && c.bow.getLastPhysics().gravity == gravity
+                            && c.bow.getLastPhysics().drag == (double) .99F
+                            && gravity == .05F),
                 "Natural paired release changed native arrow physics/class");
             var source = (MaidArrowSourceState) a;
             c.h.assertTrue(source.tlmnh$source() instanceof NBTTagCompound, "Exact source record missing");
@@ -849,17 +908,21 @@ public final class NaturalRangedPairTests {
                     .toString());
             row.addProperty("spawnFrame", spawnFrame);
             row.addProperty("gravity", gravity);
+            row.addProperty("providerGravity", providerGravity);
+            row.addProperty("sourceOriginal", original);
             row.addProperty("drag", (double) .99F);
             row.add("launch", c.entity(a, true));
             row.add("source", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) tag.copy()));
             var solution = c.bow.getLastSolution();
-            row.addProperty("predictedFlightTicks", solution.flightTicks);
-            row.add(
-                "predictedTarget",
-                vector(
-                    solution.predictedTarget.x - c.f.x,
-                    solution.predictedTarget.y - c.f.y,
-                    solution.predictedTarget.z - c.f.z));
+            if (solution != null) {
+                row.addProperty("predictedFlightTicks", solution.flightTicks);
+                row.add(
+                    "predictedTarget",
+                    vector(
+                        solution.predictedTarget.x - c.f.x,
+                        solution.predictedTarget.y - c.f.y,
+                        solution.predictedTarget.z - c.f.z));
+            }
             remember();
         }
 
@@ -983,7 +1046,7 @@ public final class NaturalRangedPairTests {
         return result;
     }
 
-    private static JsonArray vector(double x, double y, double z) {
+    static JsonArray vector(double x, double y, double z) {
         var a = new JsonArray();
         a.add(new JsonPrimitive(x));
         a.add(new JsonPrimitive(y));
@@ -991,7 +1054,7 @@ public final class NaturalRangedPairTests {
         return a;
     }
 
-    private static JsonObject item(ItemStack stack) {
+    static JsonObject item(ItemStack stack) {
         var tag = new NBTTagCompound();
         stack.writeToNBT(tag);
         return SleepAttributePortSnapshot.binaryNbt(tag);

@@ -41,6 +41,10 @@ public final class TombstoneRenderObservation {
             if (result.size() == 32) break;
             var item = new JsonObject();
             item.addProperty("entityId", tombstone.getEntityId());
+            item.addProperty(
+                "localUuid",
+                tombstone.getUniqueID()
+                    .toString());
             item.addProperty("maidName", tombstone.getMaidName());
             var frame = FRAMES.get(tombstone);
             if (frame != null) {

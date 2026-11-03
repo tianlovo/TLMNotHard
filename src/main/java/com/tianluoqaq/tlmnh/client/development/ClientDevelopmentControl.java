@@ -178,6 +178,7 @@ public final class ClientDevelopmentControl {
                                 var diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
                                 shape.add("renderDiagnostic", diagnostic);
                                 shape.add("renderedPose", diagnostic);
+                                shape.add("renderObservation", diagnostic);
                             }
                             for (var entry : com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot
                                 .capture(maid)

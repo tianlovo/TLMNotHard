@@ -157,26 +157,36 @@ public final class ProtectionTests {
             !IntegrationGuard.faults()
                 .get(ExternalFeature.PLAYER_OFFHAND.id).code.equals(clientFault.code),
             "Client and server diagnostics share one fault record");
+        var ownFault = IntegrationGuard.faults(Side.SERVER)
+            .get(ExternalFeature.PLAYER_OFFHAND.id);
+        helper.assertTrue(ownFault != null, "Exact injected server diagnostic required for native chat assertion");
         ProtectionEvents.warn(owner);
         ProtectionEvents.warn(owner);
         channel.runPendingTasks();
         int warnings = 0;
+        int otherWarnings = 0;
         Object packet;
         while ((packet = channel.readOutbound()) != null) {
             if (packet instanceof S02PacketChat chat) {
                 var bytes = new net.minecraft.network.PacketBuffer(io.netty.buffer.Unpooled.buffer());
                 try {
                     chat.writePacketData(bytes);
-                    if (bytes.readStringFromBuffer(32767)
-                        .contains("TLMNH-P")) warnings++;
+                    var text = bytes.readStringFromBuffer(32767);
+                    if (text.contains('"' + ownFault.code + '"')) warnings++;
+                    else if (text.contains("TLMNH-P")) otherWarnings++;
                 } finally {
                     bytes.release();
                 }
             }
             ReferenceCountUtil.release(packet);
         }
-        helper.assertTrue(warnings == 1, "Expected one real S02PacketChat warning on isolated server player channel");
-        System.out.println("TLMNH_PROTECTION118_PASS mechanism=removed-api appleCycles=3 chatPackets=" + warnings);
+        helper.assertTrue(warnings == 1, "Expected one real S02PacketChat for exact diagnostic " + ownFault.code);
+        System.out.println(
+            "TLMNH_PROTECTION118_PASS mechanism=removed-api appleCycles=3 chatPackets=" + warnings
+                + " code="
+                + ownFault.code
+                + " unrelatedDiagnosticsRetained="
+                + otherWarnings);
 
         var missing = ProtectedItemCodec.encode(apple);
         missing.getCompoundTag("TLMNHProtection")

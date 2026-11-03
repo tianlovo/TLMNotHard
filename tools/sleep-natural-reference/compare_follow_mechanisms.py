@@ -262,9 +262,9 @@ def verify_port_results(hqa, observed, xml_cases, allow_additional=False, allow_
     expected = ({label + suffix for label in ("faithful", "enhanced")
                  for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")}
                 if expected_names is None else set(expected_names))
-    require(len(selected) == 6 and {t["name"] for t in selected} == expected
+    require(len(selected) == len(expected) and {t["name"] for t in selected} == expected
             and all(t["status"] == "passed" for t in selected), "required follow cases failed or missing")
-    require(len(tests) >= 6 if allow_additional else len(tests) == 6, "unexpected additional HQA cases")
+    require(len(tests) >= len(expected) if allow_additional else len(tests) == len(expected), "unexpected additional HQA cases")
     require(all(t["status"] in ("passed", "failed") for t in tests), "HQA case incomplete")
     failures = [t for t in tests if t["status"] == "failed"]
     require(not failures or allow_failed_additional, "additional HQA cases failed")
