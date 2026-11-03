@@ -51,11 +51,11 @@ import com.google.gson.JsonObject;
 @PrefixGameTestTemplate(false)
 public final class BehaviorConvergenceGameTests {
     static final String RESOURCE = "/tlmnh-behavior-convergence/contract.json";
-    static final String CONTRACT = "BEHAVIOR_CONVERGENCE_V2";
+    static final String CONTRACT = "BEHAVIOR_CONVERGENCE_V3";
 
     private BehaviorConvergenceGameTests() {}
 
-    @GameTest(template = "cell", timeoutTicks = 840, batch = "convergence_door")
+    // The completed V2 door calibration is retained; this batch registers only the two unfinished mechanisms.
     public static void redstoneDoorRecovery(GameTestHelper h) { collect(h, "redstone_door_recovery"); }
 
     @GameTest(template = "cell", timeoutTicks = 460, batch = "convergence_source")
@@ -301,7 +301,11 @@ public final class BehaviorConvergenceGameTests {
 
     public static final class PantrySession extends TerrainLifeMechanismGameTests.PantrySession {
         int firstBite = -1, sleepAt = -1, commandAt = -1, releaseAt = -1, resumedAt = -1, resleptAt = -1;
-        int lastMouths, firstWaitMouths, commandMouths, waitViolations, initialFavorability;
+        int firstWaitAt = -1, restAt = -1, restoredRestAt = -1;
+        int lastMouths, firstWaitMouths, commandMouths, releaseMouths = -1, initialFavorability;
+        int waitingMouthEvents, waitingChangedFrames;
+        String pendingCommand;
+        int commandObservedAt = -1;
 
         PantrySession(GameTestHelper h) {
             super(h, "pantry_sleep_command", RESOURCE, CONTRACT, "behavior-convergence-original-v1", "behavior-convergence-original-");
@@ -312,7 +316,7 @@ public final class BehaviorConvergenceGameTests {
         @Override void setup() {
             super.setup();
             plannedOwner = absolute(scene.getAsJsonArray("ownerPosition"));
-            output.addProperty("pantryScope", "one finite cake; normal wait/rest/ALL/release/rest sequence; no forced sleep or cooldown reset");
+            output.addProperty("pantryScope", "one finite cake; next-START commands and fresh release mouth baseline; waiting transition mouths observed without a fabricated sitting prohibition");
             var bed = InitBlocks.MAID_BED.get().defaultBlockState().setValue(BlockMaidBed.FACING, Direction.NORTH);
             helper.setBlock(10, 1, 13, bed.setValue(BlockMaidBed.PART, BedPart.FOOT));
             helper.setBlock(10, 1, 12, bed.setValue(BlockMaidBed.PART, BedPart.HEAD));
@@ -326,30 +330,93 @@ public final class BehaviorConvergenceGameTests {
             helper.assertTrue(initialFavorability == 0 && cold, "Fresh primary steal reward input is not cold");
         }
 
+        void queueCommand(int observedAt, String kind) {
+            helper.assertTrue(pendingCommand == null, "Two pantry commands claimed one native boundary");
+            pendingCommand = kind;
+            commandObservedAt = observedAt;
+        }
+
+        JsonObject commandState(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid actor) {
+            var state = new JsonObject();
+            state.addProperty("age", actor.tickCount);
+            state.addProperty("sitting", actor.isInSittingPose());
+            state.addProperty("schedule", actor.getSchedule().name());
+            state.addProperty("sleeping", actor.isSleeping());
+            return state;
+        }
+
+        @Override void beforeWorld() {
+            super.beforeWorld();
+            if (maid == null || pendingCommand == null) return;
+            String kind = pendingCommand;
+            int index = frames.size();
+            var event = new JsonObject();
+            event.addProperty("frame", index);
+            event.addProperty("kind", kind);
+            event.addProperty("phase", "START_before_native_world_update");
+            event.addProperty("triggerCompletedFrame", commandObservedAt);
+            event.add("maidBefore", commandState(maid));
+            event.add("secondBefore", commandState(second));
+            event.addProperty("mouthsBefore", cakeBites());
+            if (kind.equals("first_bite_normal_wait_both")) {
+                firstWaitAt = index;
+                firstWaitMouths = cakeBites();
+                maid.setInSittingPose(true);
+                second.setInSittingPose(true);
+            } else if (kind.equals("release_primary_to_night_rest")) {
+                restAt = index;
+                maid.setInSittingPose(false);
+                maid.setSchedule(MaidSchedule.DAY);
+            } else if (kind.equals("sleep_then_normal_all_and_wait")) {
+                commandAt = index;
+                commandMouths = cakeBites();
+                maid.setSchedule(MaidSchedule.ALL);
+                maid.setInSittingPose(true);
+            } else if (kind.equals("release_owner_wait_allow_natural_food")) {
+                releaseAt = index;
+                releaseMouths = cakeBites();
+                maid.setInSittingPose(false);
+            } else if (kind.equals("resumed_bite_restore_day_shift")) {
+                restoredRestAt = index;
+                maid.setSchedule(MaidSchedule.DAY);
+            } else throw new IllegalStateException("Unknown queued pantry command: " + kind);
+            event.add("maidAfter", commandState(maid));
+            event.add("secondAfter", commandState(second));
+            events.add(event);
+            pendingCommand = null;
+        }
+
         @Override void cakeFrame(int index, JsonObject row) {
             int mouths = cakeBites();
             helper.assertTrue(mouths >= lastMouths && mouths <= 7 && mouths - lastMouths <= 2
                 && count(maid, Items.CAKE) + count(second, Items.CAKE) == 0, "Finite original single cake changed");
             row.addProperty("cakeBitesConsumed", mouths); row.addProperty("sleeping", maid.isSleeping());
+            row.addProperty("mouthDelta", mouths - lastMouths);
+            row.addProperty("releaseMouthBaseline", releaseMouths);
+            row.addProperty("primaryConsumeCounterAvailable", false);
             row.addProperty("primarySchedule", maid.getSchedule().name());
+            boolean waiting = firstWaitAt >= 0 && restAt < 0 || commandAt >= 0 && releaseAt < 0;
+            row.addProperty("waitingWindow", waiting);
+            if (waiting && mouths > lastMouths) waitingMouthEvents++;
+            if (firstWaitAt >= 0 && restAt < 0 && mouths != firstWaitMouths
+                || commandAt >= 0 && releaseAt < 0 && mouths != commandMouths) waitingChangedFrames++;
             if (firstBite < 0 && mouths > 0 && maid.getFavorability() > initialFavorability) {
-                firstBite = index; firstWaitMouths = mouths; maid.setInSittingPose(true); second.setInSittingPose(true);
-                event(index, "first_bite_normal_wait_both");
-            } else if (firstBite >= 0 && index == firstBite + 30) {
-                maid.setInSittingPose(false); maid.setSchedule(MaidSchedule.DAY); event(index, "release_primary_to_night_rest");
+                firstBite = index;
+                queueCommand(index, "first_bite_normal_wait_both");
+            } else if (firstWaitAt >= 0 && restAt < 0 && index >= firstWaitAt + 29) {
+                queueCommand(index, "release_primary_to_night_rest");
             }
-            if (firstBite >= 0 && index < firstBite + 30 && mouths != firstWaitMouths) waitViolations++;
-            if (sleepAt < 0 && firstBite >= 0 && maid.isSleeping()) {
-                sleepAt = index; commandAt = index; commandMouths = mouths;
-                maid.setSchedule(MaidSchedule.ALL); maid.setInSittingPose(true); event(index, "sleep_then_normal_all_and_wait");
-            } else if (commandAt >= 0 && releaseAt < 0 && index >= commandAt + 40 && !maid.isSleeping()) {
-                releaseAt = index; maid.setInSittingPose(false); event(index, "release_owner_wait_allow_natural_food");
+            if (sleepAt < 0 && restAt >= 0 && maid.isSleeping()) {
+                sleepAt = index;
+                queueCommand(index, "sleep_then_normal_all_and_wait");
+            } else if (commandAt >= 0 && releaseAt < 0 && index >= commandAt + 39 && !maid.isSleeping()) {
+                queueCommand(index, "release_owner_wait_allow_natural_food");
             }
-            if (commandAt >= 0 && releaseAt < 0 && mouths != commandMouths) waitViolations++;
-            if (releaseAt >= 0 && resumedAt < 0 && mouths > commandMouths) {
-                resumedAt = index; maid.setSchedule(MaidSchedule.DAY); event(index, "resumed_bite_restore_day_shift");
+            if (releaseAt >= 0 && resumedAt < 0 && mouths > releaseMouths) {
+                resumedAt = index;
+                queueCommand(index, "resumed_bite_restore_day_shift");
             }
-            if (resumedAt >= 0 && maid.isSleeping() && resleptAt < 0) resleptAt = index;
+            if (restoredRestAt >= 0 && maid.isSleeping() && resleptAt < 0) resleptAt = index;
             lastMouths = mouths;
         }
 
@@ -359,8 +426,14 @@ public final class BehaviorConvergenceGameTests {
             output.addProperty("firstBiteFrame", firstBite); output.addProperty("naturalSleepFrame", sleepAt);
             output.addProperty("ownerWaitFrame", commandAt); output.addProperty("ownerReleaseFrame", releaseAt);
             output.addProperty("resumedBiteFrame", resumedAt); output.addProperty("restoredSleepFrame", resleptAt);
-            output.addProperty("waitConsumptionViolations", waitViolations);
-            output.addProperty("behaviorSuccess", firstBite >= 0 && sleepAt >= 0 && releaseAt >= 0 && resumedAt >= 0 && resleptAt >= 0 && waitViolations == 0);
+            output.addProperty("firstWaitCommandFrame", firstWaitAt);
+            output.addProperty("firstRestCommandFrame", restAt);
+            output.addProperty("restoredRestCommandFrame", restoredRestAt);
+            output.addProperty("releaseMouthBaseline", releaseMouths);
+            output.addProperty("waitingMouthChangeEvents", waitingMouthEvents);
+            output.addProperty("waitingChangedObservationFrames", waitingChangedFrames);
+            output.addProperty("resumeAttribution", "Fresh shared mouth delta after release while secondary remains waiting; no original per-actor consume counter is claimed");
+            output.addProperty("behaviorSuccess", firstBite >= 0 && sleepAt >= 0 && releaseAt >= 0 && resumedAt >= 0 && resleptAt >= 0);
             output.addProperty("resourceAssertionsPassed", true);
             output.addProperty("resourceAssertionScope", "one world cake, monotonic0..7 mouths, no backpack cakes or external withdrawal");
         }

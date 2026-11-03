@@ -11,6 +11,7 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglContainerMouseInput;
@@ -41,56 +42,72 @@ public final class MaidNativeContainerProbe {
         var result = new JsonObject();
         result.addProperty("action", action);
         result.add("before", snapshot(mc));
-        if (action.equals("container_status")) {
-            require(spec == null || spec.isEmpty(), "Container status takes no input");
-        } else if (action.equals("container_replay_button")) {
-            require(spec == null || spec.isEmpty(), "Replay uses only the previously submitted native button");
-            var saved = lastButton;
-            require(
-                saved != null && saved.sameConnection(mc) && tracked(mc, saved.maid),
-                "Previous native button and its same live player/world/maid required");
-            mc.playerController.sendEnchantPacket(saved.windowId, saved.button);
-            result.addProperty("windowId", saved.windowId);
-            result.addProperty("button", saved.button);
-            result.addProperty(
-                "maidUUID",
-                saved.maid.getUniqueID()
-                    .toString());
-            result.addProperty("nativePacket", "C11_ENCHANT_ITEM_REPLAY");
-        } else {
-            var container = actualWindow(mc);
-            result.addProperty("windowId", container.windowId);
-            result.addProperty(
-                "maidUUID",
-                container.getMaid()
-                    .getUniqueID()
-                    .toString());
-            if (action.equals("container_click")) {
-                var values = integers(spec, 3);
-                int slot = values[0], button = values[1], mode = values[2];
+        try {
+            if (action.equals("container_status")) {
+                require(spec == null || spec.isEmpty(), "Container status takes no input");
+            } else if (action.equals("container_replay_button")) {
+                require(spec == null || spec.isEmpty(), "Replay uses only the previously submitted native button");
+                var saved = lastButton;
                 require(
-                    slot >= 0 && slot < container.inventorySlots.size() && button >= 0 && button <= 1 && mode == 0,
-                    "Actual in-window slot and ordinary left/right native mouse click required; Shift is not synthesized");
-                result.add(
-                    "nativeMouse",
-                    LwjglContainerMouseInput
-                        .click(mc, (GuiContainer) mc.currentScreen, container.getSlot(slot), button, mode));
-                result.addProperty("slot", slot);
-                result.addProperty("button", button);
-                result.addProperty("mode", mode);
-                result.addProperty("nativePacket", "C0E_CLICK_WINDOW");
-            } else if (action.equals("container_button")) {
-                int button = integers(spec, 1)[0];
-                require(
-                    button >= ContainerMaid.ACTION_IDLE && button <= ContainerMaid.ACTION_TASK_CONFIG,
-                    "Declared native maid container action required");
-                mc.playerController.sendEnchantPacket(container.windowId, button);
-                lastButton = new ButtonInput(mc, container, button);
-                result.addProperty("button", button);
-                result.addProperty("nativePacket", "C11_ENCHANT_ITEM");
-            } else throw new IllegalArgumentException("Unknown native container action");
+                    saved != null && saved.sameConnection(mc) && tracked(mc, saved.maid),
+                    "Previous native button and its same live player/world/maid required");
+                mc.playerController.sendEnchantPacket(saved.windowId, saved.button);
+                result.addProperty("windowId", saved.windowId);
+                result.addProperty("button", saved.button);
+                result.addProperty(
+                    "maidUUID",
+                    saved.maid.getUniqueID()
+                        .toString());
+                result.addProperty("nativePacket", "C11_ENCHANT_ITEM_REPLAY");
+            } else {
+                var container = actualWindow(mc);
+                result.addProperty("windowId", container.windowId);
+                result.addProperty(
+                    "maidUUID",
+                    container.getMaid()
+                        .getUniqueID()
+                        .toString());
+                if (action.equals("container_click")) {
+                    var values = integers(spec, 3);
+                    int slot = values[0], button = values[1], mode = values[2];
+                    require(
+                        slot >= 0 && slot < container.inventorySlots.size() && button >= 0 && button <= 1 && mode == 0,
+                        "Actual in-window slot and ordinary left/right native mouse click required; Shift is not synthesized");
+                    result.add(
+                        "nativeMouse",
+                        LwjglContainerMouseInput
+                            .click(mc, (GuiContainer) mc.currentScreen, container.getSlot(slot), button, mode));
+                    result.addProperty("slot", slot);
+                    result.addProperty("button", button);
+                    result.addProperty("mode", mode);
+                    result.addProperty("nativePacket", "C0E_CLICK_WINDOW");
+                } else if (action.equals("container_button")) {
+                    int button = integers(spec, 1)[0];
+                    require(
+                        button >= ContainerMaid.ACTION_IDLE && button <= ContainerMaid.ACTION_TASK_CONFIG,
+                        "Declared native maid container action required");
+                    mc.playerController.sendEnchantPacket(container.windowId, button);
+                    lastButton = new ButtonInput(mc, container, button);
+                    result.addProperty("button", button);
+                    result.addProperty("nativePacket", "C11_ENCHANT_ITEM");
+                } else throw new IllegalArgumentException("Unknown native container action");
+            }
+        } catch (RuntimeException failure) {
+            // The server may already own this click. Preserve observations and fail; never issue a replacement.
+            result.addProperty("status", "failed");
+            result.addProperty("error", failure.toString());
+            result.addProperty("inputFailed", true);
+            if (failure instanceof LwjglContainerMouseInput.InputFailure observed)
+                result.add("nativeMouseFailure", observed.observation());
+            TLMNotHard.LOG.warn("TLMNH_NATIVE_CONTAINER_INPUT_FAILED action=" + action + " spec=" + spec, failure);
+        } finally {
+            try {
+                result.add("after", snapshot(mc));
+            } catch (RuntimeException failure) {
+                result.addProperty("status", "failed");
+                result.addProperty("afterObservationFailure", failure.toString());
+            }
         }
-        result.add("after", snapshot(mc));
         result.addProperty("serverAcknowledged", false);
         return result;
     }
@@ -137,6 +154,13 @@ public final class MaidNativeContainerProbe {
             "containerClass",
             container.getClass()
                 .getName());
+        result.addProperty("containerIdentity", identity(container));
+        result.addProperty("screenIdentity", identity(mc.currentScreen));
+        result.addProperty(
+            "sameScreenContainer",
+            mc.currentScreen instanceof GuiContainer gui && gui.inventorySlots == container);
+        if (mc.currentScreen instanceof GuiContainer gui)
+            result.addProperty("screenContainerIdentity", identity(gui.inventorySlots));
         result.addProperty(
             "screenClass",
             mc.currentScreen == null ? ""
@@ -184,6 +208,13 @@ public final class MaidNativeContainerProbe {
         }
         result.add("slots", slots);
         return result;
+    }
+
+    private static String identity(Object value) {
+        return value == null ? "null"
+            : value.getClass()
+                .getName() + "@"
+                + Integer.toHexString(System.identityHashCode(value));
     }
 
     private static void require(boolean valid, String message) {

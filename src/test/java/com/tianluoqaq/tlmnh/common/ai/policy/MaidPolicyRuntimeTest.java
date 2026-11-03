@@ -70,6 +70,8 @@ public class MaidPolicyRuntimeTest {
             return true;
         }));
         events(actor, "combat", "permission", "life:true", "follow");
+        assertEquals(1, runtime.legacyDispatchCount());
+        assertEquals(0, runtime.modernDispatchCount());
         assertSame(runtime.getContext(), actor.lifeContext);
         assertSame(
             runtime.getContext()
@@ -118,7 +120,7 @@ public class MaidPolicyRuntimeTest {
                 assertFalse(runtime.isReady());
             };
             assertTrue(profile.isAvailable());
-            assertTrue(profile.isDevelopmentOnly());
+            assertEquals(profile == MaidBrainProfile.FAITHFUL_TLM, profile.isDevelopmentOnly());
             assertEquals(SelectionResult.UNAVAILABLE, runtime.select(profile));
             assertEquals(profile, runtime.getProfile());
             assertFalse(runtime.isReady());

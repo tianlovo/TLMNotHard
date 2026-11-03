@@ -35,6 +35,16 @@ PRIMARY_BITE_SOURCE = {"com.github.tartaricacid.touhoulittlemaid.entity.ai.edibl
 ORIGINAL |= PRIMARY_BITE_SOURCE
 
 
+def mechanism_names(contract):
+    return MECHANISMS[1:] if contract["contract"] == "BEHAVIOR_CONVERGENCE_V3" else MECHANISMS
+
+
+def expected_names(contract):
+    return {arm + name for arm in ("faithful", "enhanced")
+            for name in (("SourceExitArrow", "PantrySleepCommand") if contract["contract"] == "BEHAVIOR_CONVERGENCE_V3"
+                         else ("RedstoneDoorRecovery", "SourceExitArrow", "PantrySleepCommand"))}
+
+
 def expected_layout(mechanism):
     size, height = (25, 8) if mechanism == "pantry_sleep_command" else (33, 12)
     cells = {(x, 0, z): "stone" for x in range(size) for z in range(size)}
@@ -105,6 +115,7 @@ def metrics(data):
         result["both_crossings_observed"] = data.get("firstCrossFrame", -1) >= 0 and data.get("secondCrossFrame", -1) >= 0
     if data["mechanism"] == "pantry_sleep_command":
         frames = data["frames"]
+        next_start = data["contract"]["contract"] == "BEHAVIOR_CONVERGENCE_V3"
         released = data.get("ownerReleaseFrame", -1)
         command = data.get("ownerWaitFrame", -1)
         changes = []
@@ -117,16 +128,23 @@ def metrics(data):
                             "primary_activity": row["maid"]["activity"], "secondary_activity": row["second"]["activity"],
                             "primary_work_observation": row.get("maidLifeTargets"),
                             "secondary_work_observation": row.get("secondLifeTargets")})
-        fresh = next((change["frame"] for change in changes if released >= 0 and change["frame"] > released), None)
+        release_baseline = data.get("releaseMouthBaseline") if next_start else (
+            frames[released]["cakeBitesConsumed"] if 0 <= released < len(frames) else None)
+        fresh = next((change["frame"] for change in changes if released >= 0
+                      and (change["frame"] >= released if next_start else change["frame"] > released)
+                      and (not next_start or frames[change["frame"]]["cakeBitesConsumed"] > release_baseline)), None)
         claimed = data.get("resumedBiteFrame", -1)
-        claim_fresh = claimed >= 0 and released >= 0 and claimed > released and any(change["frame"] == claimed for change in changes)
-        primary_counter = next((index for index in range(max(1, released + 1), len(frames))
+        claim_fresh = claimed >= 0 and released >= 0 and (claimed >= released if next_start else claimed > released) \
+            and any(change["frame"] == claimed for change in changes) \
+            and (not next_start or frames[claimed]["cakeBitesConsumed"] > release_baseline)
+        primary_counter = next((index for index in range(max(1, released if next_start else released + 1), len(frames))
                                 if released >= 0 and "cakeBites" in frames[index].get("maidLifeTargets", {})
                                 and frames[index]["maidLifeTargets"]["cakeBites"] > frames[index - 1]["maidLifeTargets"]["cakeBites"]), None)
         counter_captured = any("cakeBites" in row.get("maidLifeTargets", {}) for row in frames)
         result["derived_pantry_observations"] = {
             "actual_mouth_change_events": changes,
-            "mouth_change_events_during_second_wait": [change for change in changes if command < change["frame"] <= released],
+            "mouth_change_events_during_second_wait": [change for change in changes if
+                (command <= change["frame"] < released if next_start else command < change["frame"] <= released)],
             "raw_wait_counter_measures_observation_frames_not_unique_bites": True,
             "raw_wait_counter_is_not_an_automatic_native_semantic_violation_judgment": True,
             "raw_collector_resume_frame": claimed,
@@ -136,7 +154,11 @@ def metrics(data):
             "primary_consume_counter_captured": counter_captured,
             "primary_resume_counter_observation": "NOT_CAPTURED" if not counter_captured else "OBSERVED" if primary_counter is not None else "NOT_OBSERVED_IN_WINDOW",
             "primary_counter_scope": "Port existing actor consume counter where captured; original absence remains unknown",
-            "release_snapshot_mouths": frames[released]["cakeBitesConsumed"] if 0 <= released < len(frames) else None,
+            "release_snapshot_mouths": release_baseline,
+            "release_baseline_phase": "START_before_native_update" if next_start else "legacy_END_after_recorded_frame",
+            "waiting_unique_mouth_events": data.get("waitingMouthChangeEvents"),
+            "waiting_changed_observation_frames": data.get("waitingChangedObservationFrames"),
+            "original_primary_resume_attribution": data.get("resumeAttribution"),
             "night_restore_claim_precedes_fresh_mouth": claimed >= 0 and not claim_fresh,
             "fixed_original_source_semantics": "Original setInSittingPose changes flags/order; activity switches to RIDE on the scheduled >20tick update. Original move/search/use do not independently reject sitting. Port phase semantics must use its actual observations; this reference note does not classify every port consume as allowed or broken.",
             "scope": "Retain every raw phase label; no fresh consume is inferred from an old cumulative mouth count or from a later sleep alone",
@@ -167,7 +189,7 @@ def inspect(data, scene, contract, digest, original):
     second = None
     if pantry:
         second = binding(data["secondAttributeInputs"], data["secondInitial"]["binaryNBT"], data["secondInitial"]["rawNBT"])
-        if contract["contract"] == "BEHAVIOR_CONVERGENCE_V2":
+        if contract["contract"] != "BEHAVIOR_CONVERGENCE_V1":
             require(data["initialPrimaryFavorability"] == 0 and data["initialPrimaryStealRewardCold"] is True,
                     "primary first-bite deterministic reward was not cold")
     frames = data["frames"]
@@ -183,6 +205,18 @@ def inspect(data, scene, contract, digest, original):
                     and row["candidateDimension"] == 1 and row["candidateProfile"] == data["profile"], "source exit or new shooter contract failed")
             for arrow in row["freshArrows"]:
                 require(arrow["sourceStopped"] is False, "new legitimate arrow inherited source revocation")
+            if contract["contract"] == "BEHAVIOR_CONVERGENCE_V3":
+                state = row["destinationUpdateEligibility"]
+                require(state["candidateAvailable"] is state["candidateWorldObjectMatches"] is True
+                        and state["dimension"] == 1 and state["candidateAge"] == row["candidate"]["age"]
+                        and type(state["candidateAddedToChunk"]) is bool
+                        and type(state["candidateInLoadedEntityList"]) is bool
+                        and type(state["candidateRegisteredById"]) is bool
+                        and type(state["serverAllowNether"]) is bool
+                        and type(state["dimensionManagerObjectMatches"]) is bool
+                        and state["nativeEligibilityRadius"] == (0 if state["currentChunkForced"] else 32)
+                        and type(state["nativeEligibilityChunksExist"]) is bool,
+                        "destination natural-update eligibility was not observed")
         else:
             require(row["age"] == index + 1 and row["livingTicks"] == 1, "normal actor natural tick changed")
             if not original:
@@ -213,10 +247,27 @@ def inspect(data, scene, contract, digest, original):
                     require(event["formed"] is True and 1 <= event["plannedOwner"][0] <= 10.5
                             and event["plannedOwner"][0] == event["actualMaid"][0] - 8
                             and 36 <= event["distanceSquared"] < 100, "owner input skipped native door/teleport bounds")
-    if pantry and contract["contract"] == "BEHAVIOR_CONVERGENCE_V2" and data.get("firstBiteFrame", -1) >= 0:
+    if pantry and contract["contract"] != "BEHAVIOR_CONVERGENCE_V1" and data.get("firstBiteFrame", -1) >= 0:
         first = frames[data["firstBiteFrame"]]
         require(first["cakeBitesConsumed"] > 0 and first["maid"]["favorability"] > data["initialPrimaryFavorability"],
                 "first mouth change was not attributed to the primary actor's cold deterministic reward")
+    if pantry and contract["contract"] == "BEHAVIOR_CONVERGENCE_V3":
+        kinds = ("first_bite_normal_wait_both", "release_primary_to_night_rest", "sleep_then_normal_all_and_wait",
+                 "release_owner_wait_allow_natural_food", "resumed_bite_restore_day_shift")
+        seen = [event["kind"] for event in data["events"]]
+        require(seen == list(kinds[:len(seen)]), "pantry native command sequence changed")
+        for event in data["events"]:
+            require(event["phase"] == "START_before_native_world_update"
+                    and event["triggerCompletedFrame"] == event["frame"] - 1, "command changed a completed END observation")
+        if data.get("ownerReleaseFrame", -1) >= 0:
+            release = next(event for event in data["events"] if event["kind"] == "release_owner_wait_allow_natural_food")
+            require(data["releaseMouthBaseline"] == release["mouthsBefore"], "resume reused pre-wait mouth count")
+        if data.get("resumedBiteFrame", -1) >= 0:
+            resumed = frames[data["resumedBiteFrame"]]
+            require(data["resumedBiteFrame"] >= data["ownerReleaseFrame"]
+                    and resumed["cakeBitesConsumed"] > data["releaseMouthBaseline"], "no fresh post-release mouth delta")
+            if not original:
+                require(resumed["primaryConsumeCounter"] > data["releasePrimaryCounterBaseline"], "new primary consume not observed")
     if data.get("sourceRequestFrame", -1) >= 0:
         require(data["endPlatformRestored"] is True and len(data["endPlatformOriginal"]) == 100, "End original data restore unproven")
         request = next(e for e in data["events"] if e["kind"] in ("normal_maid_change_dimension_request", "normal_maid_travel_to_dimension_request"))
@@ -225,6 +276,8 @@ def inspect(data, scene, contract, digest, original):
             require(data["sourceExitExercised"] is False and data["nativeRequestOutcome"] == "REMAINED_IN_SOURCE_WORLD", "upstream capability scope changed")
         else:
             require(data["sourceExitExercised"] is True and data["nativeRequestOutcome"] == "SOURCE_EXIT", "port never exercised real source exit")
+            if contract["contract"] == "BEHAVIOR_CONVERGENCE_V3":
+                require(data["destinationNaturalUpdateObserved"] is True, "new shooter never naturally updated")
     return {"metrics": metrics(data), "same_side_complete_initial_binding": bound, "second_initial_binding": second,
             "actual_actor_inputs": inputs, "source_request_is_a_platform_capability_difference_not_original_zero_score": True}
 
@@ -238,23 +291,25 @@ def main():
     args = parser.parse_args()
     cb = (args.original_tool / "behavior-convergence-contract.json").read_bytes()
     contract = json.loads(cb)
-    require(contract["contract"] in ("BEHAVIOR_CONVERGENCE_V1", "BEHAVIOR_CONVERGENCE_V2") and contract["noninferiorityDelta"] is None
-            and tuple(s["id"] for s in contract["mechanisms"]) == MECHANISMS, "unapproved convergence contract")
+    require(contract["contract"] in ("BEHAVIOR_CONVERGENCE_V1", "BEHAVIOR_CONVERGENCE_V2", "BEHAVIOR_CONVERGENCE_V3")
+            and contract["noninferiorityDelta"] is None
+            and tuple(s["id"] for s in contract["mechanisms"]) == mechanism_names(contract), "unapproved convergence contract")
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
     xml = list(ET.parse(args.port_run / "TEST-horizonqa.xml").getroot().iter("testcase"))
     batch = verify_port_results(hqa, observed, xml, args.allow_additional_port_tests, args.allow_failed_additional_port_tests,
-                                "tlmnhqapilot:BehaviorConvergencePortTests", EXPECTED)
+                                "tlmnhqapilot:BehaviorConvergencePortTests", expected_names(contract))
     require(hqa["configuration"]["turbo"] == observed["horizonqa_turbo"] == contract["calibrationTurbo"] == 1, "actual door/native clock contract changed")
     pilot = args.port_run / "tested-pilot.jar"
     require(observed["candidate_sha256"] == sha(args.candidate_jar.read_bytes()) and observed["pilot_sha256"] == sha(pilot.read_bytes()), "actual artifacts changed")
     originals = [json.loads(p.read_bytes()) for p in args.original_captures.glob("behavior-convergence-original-*.json")]
-    require(len(originals) == 3 and {d["mechanism"] for d in originals} == set(MECHANISMS), "missing/duplicate original cases")
+    require(len(originals) == len(contract["mechanisms"]) and {d["mechanism"] for d in originals} == set(mechanism_names(contract)),
+            "missing/duplicate original cases")
     rows = []
     for scene in contract["mechanisms"]:
         original = next(d for d in originals if d["mechanism"] == scene["id"])
         definitions = original_identity(original, args.original_build.read_bytes(), args.original_tool, args.original_agent,
-                                        ORIGINAL if contract["contract"] == "BEHAVIOR_CONVERGENCE_V2" else ORIGINAL - PRIMARY_BITE_SOURCE,
+                                        ORIGINAL if contract["contract"] != "BEHAVIOR_CONVERGENCE_V1" else ORIGINAL - PRIMARY_BITE_SOURCE,
                                         "behavior-convergence-build-v1")
         row = {"mechanism": scene["id"], "original": inspect(original, scene, contract, sha(cb), True), "ports": {},
                "selected_original_resource_definition_differences": definitions}
@@ -265,7 +320,7 @@ def main():
                       ("observerArtifact", PANTRY_OBSERVER if scene["id"] == "pantry_sleep_command" else FOLLOW_OBSERVER, pilot),
                       ("terrainObserverArtifact", TERRAIN_OBSERVER, pilot), ("terrainProductionArtifact", TERRAIN_PRODUCTION, args.candidate_jar),
                       ("convergenceObserverArtifact", OBSERVER, pilot),
-                      ("convergenceProductionArtifact", EXTRA_PRODUCTION + (FAVOR_PRODUCTION if contract["contract"] == "BEHAVIOR_CONVERGENCE_V2" else []), args.candidate_jar))
+                      ("convergenceProductionArtifact", EXTRA_PRODUCTION + (FAVOR_PRODUCTION if contract["contract"] != "BEHAVIOR_CONVERGENCE_V1" else []), args.candidate_jar))
             for field, classes, jar in groups:
                 artifact(port[field], jar, classes)
             result = inspect(port, scene, contract, sha(cb), False)

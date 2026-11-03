@@ -1,7 +1,11 @@
 package com.tianluoqaq.tlmnh.common.development.interaction;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,8 +17,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
+import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.server.MinecraftServer;
@@ -643,6 +649,15 @@ final class MaidPlayerInputActions {
         result.addProperty("secondaryOffhandSlot", value.offhand(value.secondary));
         result.addProperty("primaryCursor", raw(session.player.inventory.getItemStack()).toString());
         result.addProperty("secondaryCursor", raw(value.secondary.inventory.getItemStack()).toString());
+        result.addProperty("primaryCursorNativeNbtBase64", nativeItem(session.player.inventory.getItemStack()));
+        result.addProperty("secondaryCursorNativeNbtBase64", nativeItem(value.secondary.inventory.getItemStack()));
+        result.addProperty("primaryInventoryNativeNbtBase64", nativeInventory(playerInventory(session.player)));
+        result.addProperty("secondaryInventoryNativeNbtBase64", nativeInventory(playerInventory(value.secondary)));
+        result.addProperty(
+            "maidInventoryNativeNbtBase64",
+            nativeInventory(protectedState(session.maid).getTagList("Inventory", 10)));
+        result.add("primaryContainer", containerObservation(session.player));
+        result.add("secondaryContainer", containerObservation(value.secondary));
         result.addProperty("primaryWindow", session.player.openContainer.windowId);
         result.addProperty("secondaryWindow", value.secondary.openContainer.windowId);
         result.add("primaryPhysics", physics(session.player));
@@ -698,6 +713,57 @@ final class MaidPlayerInputActions {
         }
         result.add("drops", drops);
         return result;
+    }
+
+    private static JsonObject containerObservation(EntityPlayerMP player) {
+        var result = new JsonObject();
+        var container = player.openContainer;
+        result.addProperty("windowId", container.windowId);
+        result.addProperty(
+            "containerClass",
+            container.getClass()
+                .getName());
+        result.addProperty(
+            "containerIdentity",
+            container.getClass()
+                .getName() + "@"
+                + Integer.toHexString(System.identityHashCode(container)));
+        result.addProperty("cursorNativeNbtBase64", nativeItem(player.inventory.getItemStack()));
+        var slots = new JsonArray();
+        for (Object raw : container.inventorySlots) {
+            var slot = (Slot) raw;
+            var row = new JsonObject();
+            row.addProperty("containerSlot", slot.slotNumber);
+            row.addProperty("inventorySlot", slot.getSlotIndex());
+            row.addProperty(
+                "inventoryClass",
+                slot.inventory.getClass()
+                    .getName());
+            row.addProperty("nativeNbtBase64", nativeItem(slot.getStack()));
+            slots.add(row);
+        }
+        result.add("slots", slots);
+        return result;
+    }
+
+    private static String nativeItem(ItemStack stack) {
+        return stack == null ? "" : nativeBinary(raw(stack));
+    }
+
+    private static String nativeInventory(NBTTagList inventory) {
+        var tag = new NBTTagCompound();
+        tag.setTag("Inventory", inventory.copy());
+        return nativeBinary(tag);
+    }
+
+    private static String nativeBinary(NBTTagCompound tag) {
+        try (var bytes = new ByteArrayOutputStream(); var output = new DataOutputStream(bytes)) {
+            CompressedStreamTools.write(tag, output);
+            return Base64.getEncoder()
+                .encodeToString(bytes.toByteArray());
+        } catch (IOException failure) {
+            throw new IllegalStateException("Cannot encode native two-player input observation", failure);
+        }
     }
 
     private static JsonObject physics(Entity entity) {

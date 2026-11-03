@@ -58,7 +58,7 @@
     "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
   },
   "schema": "behavior-convergence-contract-v2",
-  "contract": "BEHAVIOR_CONVERGENCE_V2",
+  "contract": "BEHAVIOR_CONVERGENCE_V3",
   "repetitions": 1,
   "warmupTicks": 80,
   "framesPerActor": 700,
@@ -102,42 +102,6 @@
       "initialSitting": false,
       "health": 20,
       "events": [],
-      "homeEnabled": false,
-      "arenaVolume": [
-        33,
-        12,
-        33
-      ],
-      "ownerMode": "creative",
-      "initialSchedule": "ALL",
-      "id": "redstone_door_recovery",
-      "family": "B02",
-      "frames": 700,
-      "task": "idle",
-      "maidSpawn": [
-        8.5,
-        1,
-        4.5
-      ],
-      "ownerPosition": [
-        16.5,
-        1,
-        4.5
-      ],
-      "waypoints": [
-        [
-          16.5,
-          1,
-          4.5
-        ]
-      ],
-      "scope": "Real native redstone power/unpower and doorway collision readback; two opposite-direction crossings. Keep prior198 two-grid-distance failures separate."
-    },
-    {
-      "foodPresent": false,
-      "initialSitting": false,
-      "health": 20,
-      "events": [],
       "homeEnabled": true,
       "arenaVolume": [
         33,
@@ -167,7 +131,7 @@
           8.5
         ]
       ],
-      "scope": "After first natural shot shift controlled neutral target laterally; next natural bow lease plus a live registered old arrow triggers one actual maid End request. O refusal/world-preserving override recorded. Port old-world arrow stop and real new same-UUID shooter fire checked."
+      "scope": "One normal maid source-dimension request while an existing registered arrow and bow lease are present. Preserve original refusal. Port records destination native WorldTick and update eligibility before requiring natural same-UUID new-source firing; no manual tick, extra chunk forcing, or production policy change."
     },
     {
       "foodPresent": false,
@@ -214,7 +178,7 @@
         12.5
       ],
       "backpackCake": 0,
-      "scope": "Two normal roots, one finite world cake. Fresh primary favor0 and independent StealEdibleBlock reward cold are checked. First mouth change plus deterministic primary steal reward identifies primary bite (cake does not change hunger). Normal wait30 -> rest -> actual sleep -> ALL+wait40 and natural awake -> release -> later actual primary bite (second stays waiting) -> rest. No RNG/hunger/cooldown resets."
+      "scope": "Two normal roots and one finite cake. First consume uses a cold deterministic primary reward. Every command is queued after completed END observation and applied at the next native START. Wait30 -> DAY/rest -> actual sleep -> ALL+wait40 and actual awake -> release with a new mouth baseline -> fresh later mouth -> DAY/rest. Port additionally requires its real primary consume counter to increase after release. Original has no per-actor counter: retain that attribution limit. Record waiting transition-window mouths without inventing a source sitting prohibition. No RNG/hunger/cooldown resets."
     }
   ],
   "campaign": {
@@ -222,7 +186,6 @@
     "plannedIndependentPairedReplicates": 30,
     "noninferiorityDelta": null,
     "primaryMechanisms": [
-      "redstone_door_recovery",
       "source_exit_arrow",
       "pantry_sleep_command"
     ],
@@ -295,17 +258,23 @@
     "scope": "One normal request, never bypass upstream override; source-world-preserving refusal is a capability outcome. Port follow-up moves owner through normal SCM, disables destination home, selects the same complete factory and normal stationary ranged task; new controlled target on native5x5 End platform, full original100 cells/tiles restored.",
     "oldArrow": "Registered live arrows must stop after true source exit; old lease cleared without extra payment. Actual collision hook/API failure remains shooter-level protection, ordinary old-source invalidation is arrow-level diagnostic.",
     "newArrow": "Same-UUID live destination actor must naturally emit and update a fresh arrow; old+new joins+remaining ammo==24, durability equals all paid joins.",
-    "retirementObservation": "At normal request return, old source may already be dead while native ID map removal is pending. Unique live same-UUID destination actor establishes committed transfer; only the subsequent real source-world END observation checks ID removal/old arrows/lease. No forced map clearing or manually ticked actors."
+    "retirementObservation": "At normal request return, old source may already be dead while native ID map removal is pending. Unique live same-UUID destination actor establishes committed transfer; only the subsequent real source-world END observation checks ID removal/old arrows/lease. No forced map clearing or manually ticked actors.",
+    "destinationAdmission": "Read actual runtime getAllowNether, DimensionManager world object identity, native destination START/END counts and totalWorldTime, candidate ticksExisted/LivingUpdate/addedToChunk/loaded-ID lists/current chunk/forced status and native radius0-or32 chunk eligibility. These reads do not load chunks or stand in for CanUpdate event outcome. Record first facts and terminal state before requiring new natural fire."
   },
   "retainedCalibrationContracts": [
     {
       "contract": "BEHAVIOR_CONVERGENCE_V1",
       "sha256": "08e3d00db61f4274ad0be2c042fa93a717d398c96c75f2208a109d0241c31a6e",
       "status": "RETAINED_FIRST_CALIBRATION_WITH_INPUT_AND_OBSERVATION_FAULTS"
+    },
+    {
+      "contract": "BEHAVIOR_CONVERGENCE_V2",
+      "sha256": "5e80bb90cfd7f947ad7f0cc7dfd783e226b5b3edf64c3eca5aa7e64af96746b6",
+      "status": "RETAINED_2_PASS_4_FAIL_WITH_STRICT_DOOR_SUBSET_AND_UNTICKED_DESTINATION_OR_EXPIRED_FRAME_FAULTS"
     }
   ],
   "pantryInputMapping": {
-    "primaryFirstBite": "fresh primary favor0 and StealEdibleBlock cooldown available; mouth change plus primary deterministic steal reward+1 identifies its first consume. No hunger inference; no RNG/cooldown reset. Subsequent bite uses mouths while secondary remains waiting, not a second favor increment during3600tick reward cooldown.",
+    "primaryFirstBite": "Fresh primary favor0 and StealEdibleBlock cooldown available; first mouth change plus primary deterministic reward+1 identifies first consume. Cake does not change hunger. Release snapshots actual current world mouths at START and the port last-completed primary counter; only a later fresh delta is resumed food. Original reports the fresh shared delta while the secondary stays waiting, with absent per-actor counter explicit. Favor cooldown is not reset or reused to infer later bites.",
     "sourceBasis": [
       "fixed CakeEdible.consume/getFavorabilityPoints",
       "fixed MaidStealEdibleUseTask.handle consume-success then apply(STEAL_EDIBLE_BLOCK,1)",
@@ -317,6 +286,16 @@
       "portRegistry": "tlmnh:snack_cabinet",
       "portMetadata": 4,
       "sourceBasis": "Native BlockSnackCabinet.refreshDisplay maps full cake cover to TYPE_FULL<<2 and retains low two orientation bits0 (default north); original updateShape maps cake tag to TYPE_FULL1. Keep both raw states, do not compare synthetic original metadata0 to native4."
+    },
+    "commandPhase": "All observations finish at native END before any command. Queue one command from that completed frame and apply it next START before the next native update. First wait has30 completed ticks, second wait at least40 completed ticks plus actual awake; no guarded completed frame is queried after mutation.",
+    "waitingConsumption": "Retain each unique mouth-delta event and repeated changed observation-frame count separately. Original sitting flag changes immediately but RIDE activity is scheduled, and existing nearby steal-use conditions have no separate sitting prohibition. No automatic violation or failed behavior solely from a transition-window bite."
+  },
+  "reusedCompletedMechanisms": [
+    {
+      "id": "redstone_door_recovery",
+      "contract": "BEHAVIOR_CONVERGENCE_V2",
+      "contractSha256": "5e80bb90cfd7f947ad7f0cc7dfd783e226b5b3edf64c3eca5aa7e64af96746b6",
+      "scope": "Completed O/F/N two-blockage calibration retained separately; not rerun or counted as a new V3 observation or formal sample."
     }
-  }
+  ]
 }

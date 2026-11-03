@@ -16,7 +16,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.util.BlockSnapshot;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
@@ -40,12 +43,13 @@ import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 
 /** Reuses normal native-root collectors; post-exit frames observe the old world, not a fictitious live source tick. */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class BehaviorConvergencePortTests {
 
-    static final String RESOURCE = "/tlmnh-behavior-convergence/contract.json", CONTRACT = "BEHAVIOR_CONVERGENCE_V2";
+    static final String RESOURCE = "/tlmnh-behavior-convergence/contract.json", CONTRACT = "BEHAVIOR_CONVERGENCE_V3";
 
     private BehaviorConvergencePortTests() {}
 
@@ -125,11 +129,95 @@ public final class BehaviorConvergencePortTests {
         int shiftedAt = -1, requestedAt = -1, boundaryShots;
         float boundaryTargetHealth;
         boolean reversePending, shiftPending, exitPending, sourceExited, secondOpportunityUnavailable;
+        int destinationStarts, destinationEnds, candidateLivingUpdates;
+        long lastDestinationStartTime = -1, lastDestinationEndTime = -1;
+        final JsonArray destinationTickSamples = new JsonArray();
 
         Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
             super(h, profile, mechanism, RESOURCE, CONTRACT, "behavior-convergence-port-v1", "behavior-convergence-");
             output.add("shots", shots);
             output.add("freshShots", freshShots);
+            output.add("destinationTickSamples", destinationTickSamples);
+        }
+
+        @Override
+        void onLiving(net.minecraft.entity.Entity entity) {
+            super.onLiving(entity);
+            if (candidate != null && entity == candidate) candidateLivingUpdates++;
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public void destinationTick(TickEvent.WorldTickEvent event) {
+            if (closed || complete || failure != null || destination == null || event.world != destination) return;
+            try {
+                if (event.phase == TickEvent.Phase.START) {
+                    destinationStarts++;
+                    lastDestinationStartTime = destination.getTotalWorldTime();
+                } else {
+                    destinationEnds++;
+                    lastDestinationEndTime = destination.getTotalWorldTime();
+                }
+                if (destinationTickSamples.size() < 8) {
+                    var sample = destinationState();
+                    sample.addProperty("eventPhase", event.phase.name());
+                    destinationTickSamples.add(sample);
+                }
+            } catch (Exception | LinkageError | AssertionError error) {
+                com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(error);
+                failure = new IllegalStateException("Destination native tick observation failed", error);
+                output.addProperty("error", error.toString());
+            }
+        }
+
+        JsonObject destinationState() {
+            var state = new JsonObject();
+            state.addProperty("sourceObservationFrame", frames.size());
+            state.addProperty("worldObjectIdentity", System.identityHashCode(destination));
+            state.addProperty("dimension", destination.provider.dimensionId);
+            state.addProperty("dimensionManagerObjectMatches", DimensionManager.getWorld(1) == destination);
+            state.addProperty(
+                "serverAllowNether",
+                MinecraftServer.getServer()
+                    .getAllowNether());
+            state.addProperty("totalWorldTime", destination.getTotalWorldTime());
+            state.addProperty("observedWorldStarts", destinationStarts);
+            state.addProperty("observedWorldEnds", destinationEnds);
+            state.addProperty("lastWorldStartTime", lastDestinationStartTime);
+            state.addProperty("lastWorldEndTime", lastDestinationEndTime);
+            state.addProperty("candidateLivingUpdateEvents", candidateLivingUpdates);
+            state.addProperty("candidateAvailable", candidate != null);
+            if (candidate == null) return state;
+            int blockX = MathHelper.floor_double(candidate.posX), blockZ = MathHelper.floor_double(candidate.posZ);
+            int chunkX = blockX >> 4, chunkZ = blockZ >> 4;
+            boolean forced = destination.getPersistentChunks()
+                .containsKey(new ChunkCoordIntPair(chunkX, chunkZ));
+            int radius = forced ? 0 : 32;
+            state.addProperty("candidateAge", candidate.ticksExisted);
+            state.addProperty("candidateWorldObjectMatches", candidate.worldObj == destination);
+            state.addProperty("candidateAddedToChunk", candidate.addedToChunk);
+            state.addProperty("candidateInLoadedEntityList", destination.loadedEntityList.contains(candidate));
+            state.addProperty(
+                "candidateRegisteredById",
+                destination.getEntityByID(candidate.getEntityId()) == candidate);
+            state.addProperty("currentChunkX", chunkX);
+            state.addProperty("currentChunkZ", chunkZ);
+            state.addProperty("recordedChunkX", candidate.chunkCoordX);
+            state.addProperty("recordedChunkY", candidate.chunkCoordY);
+            state.addProperty("recordedChunkZ", candidate.chunkCoordZ);
+            state.addProperty(
+                "currentChunkExists",
+                destination.getChunkProvider()
+                    .chunkExists(chunkX, chunkZ));
+            state.addProperty("currentChunkForced", forced);
+            state.addProperty("nativeEligibilityRadius", radius);
+            state.addProperty(
+                "nativeEligibilityChunksExist",
+                destination.checkChunksExist(blockX - radius, 0, blockZ - radius, blockX + radius, 0, blockZ + radius));
+            state.addProperty("canUpdateEventOverrideObserved", false);
+            state.addProperty(
+                "scope",
+                "Read-only native preconditions; CanUpdate event outcome is not inferred. No chunks loaded or entities ticked by this observation.");
+            return state;
         }
 
         @Override
@@ -329,6 +417,7 @@ public final class BehaviorConvergencePortTests {
                     .peek() != null);
             row.add("oldSource", raw(maid, x, y, z));
             row.add("candidate", raw(candidate, x, y, z));
+            row.add("destinationUpdateEligibility", destinationState());
             row.addProperty("candidateImpactAvailable", MaidProjectileImpactProtection.available(candidate));
             row.addProperty("candidateDimension", candidate.dimension);
             row.addProperty(
@@ -388,6 +477,12 @@ public final class BehaviorConvergencePortTests {
                 output.addProperty("sourceExitExercised", true);
                 output.addProperty("behaviorSuccess", freshShots.size() > 0);
                 output.addProperty("resourceAssertionsPassed", true);
+                boolean updated = destinationEnds > 0 && candidate.ticksExisted > 0 && candidateLivingUpdates > 0;
+                output.addProperty("destinationNaturalUpdateObserved", updated);
+                output.add("terminalDestinationEligibility", destinationState());
+                helper.assertTrue(
+                    updated,
+                    "Destination candidate never received an observed natural world/entity update");
                 helper.assertTrue(
                     freshShots.size() > 0 && freshArrows.stream()
                         .anyMatch(a -> a.ticksExisted > 0),
@@ -527,6 +622,7 @@ public final class BehaviorConvergencePortTests {
             }
             output.add("endPlatformOriginal", platform);
             var row = event("normal_maid_travel_to_dimension_request");
+            row.add("destinationBeforeRequest", destinationState());
             row.add("before", raw(maid, x, y, z));
             row.addProperty(
                 "usingBefore",
@@ -592,6 +688,7 @@ public final class BehaviorConvergencePortTests {
                 .put(com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities.id(freshEnemy), MonsterType.HOSTILE);
             row.add("freshTarget", raw(freshEnemy, x, y, z));
             row.add("newShooter", raw(candidate, x, y, z));
+            row.add("destinationAfterCommands", destinationState());
             row.addProperty(
                 "followupScope",
                 "native owner End entry, normal home-disable/ALL/ranged/sitting commands and fresh complete factory; no direct bow tick or future target input");
@@ -624,7 +721,11 @@ public final class BehaviorConvergencePortTests {
     public static final class PantryCollector extends TerrainLifeMechanismPortTests.PantryCollector {
 
         int firstBite = -1, sleepAt = -1, commandAt = -1, releasedAt = -1, resumedAt = -1, resleptAt = -1;
-        int lastMouths, firstWaitMouths, commandMouths, waitViolations, initialFavorability;
+        int firstWaitAt = -1, restAt = -1, restoredRestAt = -1;
+        int lastMouths, firstWaitMouths, commandMouths, releaseMouths = -1, initialFavorability;
+        int lastPrimaryBites, releasePrimaryBites = -1, waitingMouthEvents, waitingChangedFrames;
+        String pendingCommand;
+        int commandObservedAt = -1;
 
         PantryCollector(GameTestHelper h, MaidBrainProfile profile) {
             super(
@@ -643,7 +744,7 @@ public final class BehaviorConvergencePortTests {
             identity(output);
             output.addProperty(
                 "pantryScope",
-                "one finite cake; normal wait/rest/ALL/release/rest sequence; no forced sleep or cooldown reset");
+                "one finite cake; commands queued from completed END observation to next START; fresh release baseline; waiting transition mouths recorded, no forced sleep or cooldown reset");
             setPlannedOwner(scene.getAsJsonArray("ownerPosition"));
             helper.setBlock(10, 1, 13, MaidLifeContent.maidBed, 2);
             helper.setBlock(10, 1, 12, MaidLifeContent.maidBed, 10);
@@ -660,6 +761,68 @@ public final class BehaviorConvergencePortTests {
             helper.assertTrue(initialFavorability == 0 && cold, "Fresh primary steal reward input is not cold");
         }
 
+        void queueCommand(int observedAt, String kind) {
+            helper.assertTrue(pendingCommand == null, "Two pantry commands claimed one native boundary");
+            pendingCommand = kind;
+            commandObservedAt = observedAt;
+        }
+
+        JsonObject commandState(EntityMaid actor) {
+            var state = new JsonObject();
+            state.addProperty("age", actor.ticksExisted);
+            state.addProperty("sitting", actor.isSitting());
+            state.addProperty(
+                "schedule",
+                actor.getSchedule()
+                    .name());
+            state.addProperty("sleeping", actor.hasPose(MaidPose.SLEEPING));
+            return state;
+        }
+
+        @Override
+        void applyOwner() {
+            super.applyOwner();
+            if (maid == null || pendingCommand == null) return;
+            String kind = pendingCommand;
+            int index = frames.size();
+            var event = new JsonObject();
+            event.addProperty("frame", index);
+            event.addProperty("kind", kind);
+            event.addProperty("phase", "START_before_native_world_update");
+            event.addProperty("triggerCompletedFrame", commandObservedAt);
+            event.add("maidBefore", commandState(maid));
+            event.add("secondBefore", commandState(second));
+            event.addProperty("mouthsBefore", cakeBites());
+            if (kind.equals("first_bite_normal_wait_both")) {
+                firstWaitAt = index;
+                firstWaitMouths = cakeBites();
+                maid.setSitting(true);
+                second.setSitting(true);
+            } else if (kind.equals("release_primary_to_night_rest")) {
+                restAt = index;
+                maid.setSitting(false);
+                maid.setSchedule(MaidSchedule.DAY);
+            } else if (kind.equals("sleep_then_normal_all_and_wait")) {
+                commandAt = index;
+                commandMouths = cakeBites();
+                maid.setSchedule(MaidSchedule.ALL);
+                maid.setSitting(true);
+            } else if (kind.equals("release_owner_wait_allow_natural_food")) {
+                releasedAt = index;
+                releaseMouths = cakeBites();
+                releasePrimaryBites = lastPrimaryBites;
+                event.addProperty("releasePrimaryCounterFromCompletedFrame", lastPrimaryBites);
+                maid.setSitting(false);
+            } else if (kind.equals("resumed_bite_restore_day_shift")) {
+                restoredRestAt = index;
+                maid.setSchedule(MaidSchedule.DAY);
+            } else throw new IllegalStateException("Unknown queued pantry command: " + kind);
+            event.add("maidAfter", commandState(maid));
+            event.add("secondAfter", commandState(second));
+            events.add(event);
+            pendingCommand = null;
+        }
+
         @Override
         void cakeFrame(int index, JsonObject row) {
             int mouths = cakeBites();
@@ -669,44 +832,42 @@ public final class BehaviorConvergencePortTests {
                     && count(maid, Items.cake) + count(second, Items.cake) == 0,
                 "Finite native single cake changed");
             row.addProperty("cakeBitesConsumed", mouths);
+            row.addProperty("mouthDelta", mouths - lastMouths);
             row.addProperty("sleeping", maid.hasPose(MaidPose.SLEEPING));
             row.addProperty(
                 "primarySchedule",
                 maid.getSchedule()
                     .name());
+            int primaryBites = lifeTargets(maid).get("cakeBites")
+                .getAsInt();
+            row.addProperty("primaryConsumeCounter", primaryBites);
+            row.addProperty("releaseMouthBaseline", releaseMouths);
+            row.addProperty("releasePrimaryCounterBaseline", releasePrimaryBites);
+            boolean waiting = firstWaitAt >= 0 && restAt < 0 || commandAt >= 0 && releasedAt < 0;
+            row.addProperty("waitingWindow", waiting);
+            if (waiting && mouths > lastMouths) waitingMouthEvents++;
+            if (firstWaitAt >= 0 && restAt < 0 && mouths != firstWaitMouths
+                || commandAt >= 0 && releasedAt < 0 && mouths != commandMouths) waitingChangedFrames++;
             if (firstBite < 0 && mouths > 0 && maid.getFavorability() > initialFavorability) {
                 firstBite = index;
-                firstWaitMouths = mouths;
-                maid.setSitting(true);
-                second.setSitting(true);
-                event(index, "first_bite_normal_wait_both");
-            } else if (firstBite >= 0 && index == firstBite + 30) {
-                maid.setSitting(false);
-                maid.setSchedule(MaidSchedule.DAY);
-                event(index, "release_primary_to_night_rest");
+                queueCommand(index, "first_bite_normal_wait_both");
+            } else if (firstWaitAt >= 0 && restAt < 0 && index >= firstWaitAt + 29) {
+                queueCommand(index, "release_primary_to_night_rest");
             }
-            if (firstBite >= 0 && index < firstBite + 30 && mouths != firstWaitMouths) waitViolations++;
-            if (sleepAt < 0 && firstBite >= 0 && maid.hasPose(MaidPose.SLEEPING)) {
+            if (sleepAt < 0 && restAt >= 0 && maid.hasPose(MaidPose.SLEEPING)) {
                 sleepAt = index;
-                commandAt = index;
-                commandMouths = mouths;
-                maid.setSchedule(MaidSchedule.ALL);
-                maid.setSitting(true);
-                event(index, "sleep_then_normal_all_and_wait");
+                queueCommand(index, "sleep_then_normal_all_and_wait");
             } else
-                if (commandAt >= 0 && releasedAt < 0 && index >= commandAt + 40 && !maid.hasPose(MaidPose.SLEEPING)) {
-                    releasedAt = index;
-                    maid.setSitting(false);
-                    event(index, "release_owner_wait_allow_natural_food");
+                if (commandAt >= 0 && releasedAt < 0 && index >= commandAt + 39 && !maid.hasPose(MaidPose.SLEEPING)) {
+                    queueCommand(index, "release_owner_wait_allow_natural_food");
                 }
-            if (commandAt >= 0 && releasedAt < 0 && mouths != commandMouths) waitViolations++;
-            if (releasedAt >= 0 && resumedAt < 0 && mouths > commandMouths) {
+            if (releasedAt >= 0 && resumedAt < 0 && mouths > releaseMouths && primaryBites > releasePrimaryBites) {
                 resumedAt = index;
-                maid.setSchedule(MaidSchedule.DAY);
-                event(index, "resumed_bite_restore_day_shift");
+                queueCommand(index, "resumed_bite_restore_day_shift");
             }
-            if (resumedAt >= 0 && maid.hasPose(MaidPose.SLEEPING) && resleptAt < 0) resleptAt = index;
+            if (restoredRestAt >= 0 && maid.hasPose(MaidPose.SLEEPING) && resleptAt < 0) resleptAt = index;
             lastMouths = mouths;
+            lastPrimaryBites = primaryBites;
         }
 
         @Override
@@ -719,14 +880,16 @@ public final class BehaviorConvergencePortTests {
             output.addProperty("ownerReleaseFrame", releasedAt);
             output.addProperty("resumedBiteFrame", resumedAt);
             output.addProperty("restoredSleepFrame", resleptAt);
-            output.addProperty("waitConsumptionViolations", waitViolations);
+            output.addProperty("firstWaitCommandFrame", firstWaitAt);
+            output.addProperty("firstRestCommandFrame", restAt);
+            output.addProperty("restoredRestCommandFrame", restoredRestAt);
+            output.addProperty("releaseMouthBaseline", releaseMouths);
+            output.addProperty("releasePrimaryCounterBaseline", releasePrimaryBites);
+            output.addProperty("waitingMouthChangeEvents", waitingMouthEvents);
+            output.addProperty("waitingChangedObservationFrames", waitingChangedFrames);
             output.addProperty(
                 "behaviorSuccess",
-                firstBite >= 0 && sleepAt >= 0
-                    && releasedAt >= 0
-                    && resumedAt >= 0
-                    && resleptAt >= 0
-                    && waitViolations == 0);
+                firstBite >= 0 && sleepAt >= 0 && releasedAt >= 0 && resumedAt >= 0 && resleptAt >= 0);
             output.addProperty("resourceAssertionsPassed", true);
             output.addProperty(
                 "resourceAssertionScope",

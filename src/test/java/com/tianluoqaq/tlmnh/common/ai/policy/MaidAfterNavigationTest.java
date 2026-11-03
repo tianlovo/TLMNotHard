@@ -28,6 +28,8 @@ public class MaidAfterNavigationTest {
         assertEquals(TickResult.COMPLETED, sample.runtime.tickAfterNativeNavigation());
         assertEquals(TickResult.COMPLETED, sample.runtime.tickAfterLivingUpdate());
         assertEquals(Arrays.asList("component", "after_living"), sample.events);
+        assertEquals(0, sample.runtime.legacyDispatchCount());
+        assertEquals(2, sample.runtime.modernDispatchCount());
     }
 
     @Test
@@ -66,7 +68,7 @@ public class MaidAfterNavigationTest {
                 .isDevelopmentOnly());
         assertTrue(MaidBrainProfile.FAITHFUL_TLM.isAvailable());
         assertTrue(MaidBrainProfile.ENHANCED.isAvailable());
-        assertTrue(MaidBrainProfile.ENHANCED.isDevelopmentOnly());
+        assertFalse(MaidBrainProfile.ENHANCED.isDevelopmentOnly());
         assertEquals(SelectionResult.UNAVAILABLE, sample.runtime.select(MaidBrainProfile.FAITHFUL_TLM));
         assertEquals(SelectionResult.UNAVAILABLE, sample.runtime.select(MaidBrainProfile.ENHANCED));
     }
