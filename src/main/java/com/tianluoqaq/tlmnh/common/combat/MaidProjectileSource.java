@@ -89,13 +89,19 @@ public final class MaidProjectileSource {
         if (arrow.worldObj.isRemote || !(arrow instanceof MaidArrowSourceState state)) return true;
         if (state.tlmnh$source() == null && !state.tlmnh$sourceStopped()) return true;
         Source source = null;
+        boolean sourceRevoked = false;
         try {
             source = read(state.tlmnh$source());
-            if (state.tlmnh$sourceStopped()) throw new IllegalStateException("Projectile remains stopped after reload");
             if (!(arrow instanceof MaidArrowImpactState) || !IntegrationGuard.available(Side.SERVER, key(source)))
                 throw new IllegalStateException("Projectile impact capability unavailable; original entity retained");
-            if (source.dimension != arrow.worldObj.provider.dimensionId)
+            if (state.tlmnh$sourceStopped()) {
+                sourceRevoked = true;
+                throw new IllegalStateException("Projectile remains stopped after reload");
+            }
+            if (source.dimension != arrow.worldObj.provider.dimensionId) {
+                sourceRevoked = true;
                 throw new IllegalStateException("Projectile source dimension changed");
+            }
             EntityMaid shooter;
             if (arrow.shootingEntity == null) shooter = loadedShooter(arrow, source.shooter);
             else if (arrow.shootingEntity instanceof EntityMaid maid) shooter = maid;
@@ -104,8 +110,10 @@ public final class MaidProjectileSource {
                 || shooter.worldObj != arrow.worldObj
                 || !source.shooter.equals(shooter.getUniqueID())
                 || arrow.worldObj.getEntityByID(shooter.getEntityId()) != shooter
-                || !Objects.equals(source.owner, owner(shooter)))
+                || !Objects.equals(source.owner, owner(shooter))) {
+                sourceRevoked = true;
                 throw new IllegalStateException("Exact live projectile source cannot be verified");
+            }
             // 只绑定本模组原记录、原世界表中的同UUID/原主人实体，不构造或搜索未加载的射手
             arrow.shootingEntity = shooter;
             return true;
@@ -113,7 +121,7 @@ public final class MaidProjectileSource {
             state.tlmnh$stopSource();
             IntegrationGuard.report(
                 Side.SERVER,
-                source == null ? "projectile_source/" + arrow.getUniqueID() : key(source),
+                source == null || sourceRevoked ? "projectile_source/" + arrow.getUniqueID() : key(source),
                 failure,
                 source == null ? null : source.owner);
             return false;
