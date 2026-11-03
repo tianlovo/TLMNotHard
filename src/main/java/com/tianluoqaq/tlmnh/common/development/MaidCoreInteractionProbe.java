@@ -329,6 +329,37 @@ public final class MaidCoreInteractionProbe {
                 com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.restore(maid);
             return;
         }
+        if (action.equals("td-round-idle") || action.equals("td-round-block")
+            || action.equals("td-heater-idle")
+            || action.equals("td-heater-block")) {
+            require(
+                player.openContainer == player.inventoryContainer,
+                "Close the current menu before world shield input");
+            var construction = new com.google.gson.JsonObject();
+            ItemStack shield;
+            String id = action.startsWith("td-round-") ? "tinkersdefense:Round Shield" : "tinkersdefense:Heater Shield";
+            try {
+                shield = com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures
+                    .createWoodShields(construction)
+                    .get(id);
+            } catch (Exception failure) {
+                throw new IllegalStateException("Native world shield construction failed before staging", failure);
+            }
+            boolean blocking = action.endsWith("-block");
+            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState
+                .stageHeldShield(maid, shield, blocking);
+            var result = com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(maid);
+            result.addProperty("action", action);
+            result.addProperty(
+                "uuid",
+                maid.getUniqueID()
+                    .toString());
+            result.addProperty("blockingPose", blocking);
+            result.addProperty("naturalShieldAi", false);
+            result.add("construction", construction);
+            TLMNotHard.LOG.info("TLMNH_VISUAL_TD_SHIELD {}", result);
+            return;
+        }
         boolean accessories = action.equals("reimu-accessories") || action.equals("winefox-accessories");
         boolean headFixture = accessories || action.equals("reimu-head") || action.equals("winefox-head");
         require(headFixture || action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");

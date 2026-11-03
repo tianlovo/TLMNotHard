@@ -152,6 +152,9 @@ public final class ClientDevelopmentControl {
             switch (request.command) {
                 case STATUS:
                     response.add("carePlayer", MaidCareInteractionProbe.playerState());
+                    var heldCounters = com.tianluoqaq.tlmnh.client.render.MaidHeldItemLayer.getNativeCounters();
+                    response.addProperty("heldItemNativeAttempts", heldCounters.attempts);
+                    response.addProperty("heldItemNativeReturned", heldCounters.returnedNormally);
                     var aquatic = new com.google.gson.JsonArray();
                     if (AnimationLab.isLab(minecraft.theWorld))
                         for (Object entity : minecraft.theWorld.loadedEntityList) {
@@ -201,6 +204,12 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("pitch", maid.rotationPitch);
                             shape.addProperty("model", maid.getModelId());
                             shape.addProperty("sitting", maid.isSitting());
+                            shape.addProperty(
+                                "usingItem",
+                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM));
+                            shape.addProperty(
+                                "usingOffhand",
+                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND));
                             shape.addProperty(
                                 "swimPrevious",
                                 com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 0));

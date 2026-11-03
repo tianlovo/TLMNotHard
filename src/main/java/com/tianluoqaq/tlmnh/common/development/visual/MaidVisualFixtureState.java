@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.development.visual;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
@@ -144,6 +145,169 @@ public final class MaidVisualFixtureState {
         writeItem(data, "ExpectedHead", maid.getEquipmentInSlot(4));
     }
 
+    /** 仅给本次世界持物成像提供同步输入；不是自然战斗/举盾AI入口 */
+    public static void stageHeldShield(EntityMaid maid, ItemStack shield, boolean blocking) {
+        scope(maid);
+        require(
+            maid.getBrainCoordinator()
+                .isSuspended()
+                && maid.getNavigator()
+                    .noPath()
+                && maid.ridingEntity == null
+                && maid.riddenByEntity == null
+                && maid.getItemUseState()
+                    .peek() == null,
+            "Idle suspended unmounted actor without a live item lease required");
+        require(shield != null && shield.stackSize == 1, "One native shield required");
+        var encoded = ProtectedItemCodec.encode(shield);
+        var admitted = ProtectedItemCodec.decode(encoded);
+        require(ItemStack.areItemStacksEqual(shield, admitted), "Native shield protected round trip differs");
+        if (!exists(maid)) capture(maid);
+        var data = saved(maid);
+        require(!data.hasKey("HeldFixture") || data.hasKey("HeldFixture", 10), "Unknown held snapshot retained");
+        if (!data.hasKey("HeldFixture")) {
+            require(poseFlags(maid) == 0, "Do not replace an existing action pose");
+            var held = new NBTTagCompound();
+            held.setInteger("Schema", 1);
+            held.setTag("OriginalInventory", inventory(maid));
+            held.setTag("ExpectedInventory", inventory(maid));
+            held.setInteger("OriginalPose", poseFlags(maid));
+            held.setInteger("ExpectedPose", poseFlags(maid));
+            writeItem(held, "OriginalMain", maid.getHeldItem());
+            writeItem(held, "OriginalOff", maid.getOffhandItem());
+            data.setTag("HeldFixture", held);
+        }
+        var held = held(maid, data);
+        require(
+            inventory(maid).equals(held.getTagList("ExpectedInventory", 10))
+                && poseFlags(maid) == held.getInteger("ExpectedPose"),
+            "Foreign equipment or pose retained before shield staging");
+        var expected = inventory(maid);
+        var next = new NBTTagList();
+        int off = com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND;
+        for (int i = 0; i < expected.tagCount(); i++) {
+            var entry = expected.getCompoundTagAt(i);
+            if ((entry.getByte("Slot") & 255) != off) next.appendTag(entry.copy());
+        }
+        var item = (NBTTagCompound) encoded.copy();
+        item.setByte("Slot", (byte) off);
+        next.appendTag(item);
+        // Canonical slot order matches inventory(), including the armor slots following offhand.
+        var ordered = new NBTTagList();
+        for (int slot = 0; slot < maid.getMaidInventory()
+            .getSizeInventory(); slot++) for (int i = 0; i < next.tagCount(); i++)
+                if ((next.getCompoundTagAt(i)
+                    .getByte("Slot") & 255) == slot) ordered.appendTag(
+                        next.getCompoundTagAt(i)
+                            .copy());
+        int flags = blocking ? MaidPose.USING_ITEM.getMask() | MaidPose.USING_OFFHAND.getMask() : 0;
+        held.setTag("ExpectedInventory", ordered);
+        held.setInteger("ExpectedPose", flags);
+        maid.setOffhandItem(admitted);
+        maid.setPose(MaidPose.USING_ITEM, blocking);
+        maid.setPose(MaidPose.USING_OFFHAND, blocking);
+        require(
+            inventory(maid).equals(ordered) && poseFlags(maid) == flags,
+            "Shield staging callback changed equipment or pose; snapshot retained");
+    }
+
+    private static NBTTagList inventory(EntityMaid maid) {
+        var result = new NBTTagList();
+        for (int slot = 0; slot < maid.getMaidInventory()
+            .getSizeInventory(); slot++) {
+            var stack = maid.getMaidInventory()
+                .getStackInSlot(slot);
+            if (stack == null) continue;
+            var tag = ProtectedItemCodec.encode(stack);
+            tag.setByte("Slot", (byte) slot);
+            result.appendTag(tag);
+        }
+        return result;
+    }
+
+    private static int poseFlags(EntityMaid maid) {
+        int flags = 0;
+        for (var pose : MaidPose.values()) if (maid.hasPose(pose)) flags |= pose.getMask();
+        return flags;
+    }
+
+    private static NBTTagCompound held(EntityMaid maid, NBTTagCompound data) {
+        require(data.hasKey("HeldFixture", 10), "Typed held snapshot required");
+        var held = data.getCompoundTag("HeldFixture");
+        require(
+            held.hasKey("Schema", 3) && held.getInteger("Schema") == 1
+                && held.hasKey("OriginalInventory", 9)
+                && held.hasKey("ExpectedInventory", 9)
+                && held.hasKey("OriginalPose", 3)
+                && held.getInteger("OriginalPose") == 0
+                && held.hasKey("ExpectedPose", 3)
+                && (held.getInteger("ExpectedPose") == 0 || held.getInteger("ExpectedPose")
+                    == (MaidPose.USING_ITEM.getMask() | MaidPose.USING_OFFHAND.getMask()))
+                && held.hasKey("OriginalMainPresent", 1)
+                && held.hasKey("OriginalOffPresent", 1)
+                && held.hasKey("OriginalMain") == held.getBoolean("OriginalMainPresent")
+                && held.hasKey("OriginalOff") == held.getBoolean("OriginalOffPresent")
+                && maid.getItemUseState()
+                    .peek() == null,
+            "Unknown held snapshot or live item lease retained");
+        return held;
+    }
+
+    private static boolean originalHandMatches(NBTTagCompound held, String key, int slot) {
+        var original = held.getTagList("OriginalInventory", 10);
+        NBTTagCompound entry = null;
+        for (int i = 0; i < original.tagCount(); i++) {
+            var item = original.getCompoundTagAt(i);
+            require(item.hasKey("Slot", 1), "Unknown original inventory slot retained");
+            if ((item.getByte("Slot") & 255) == slot) {
+                require(entry == null, "Ambiguous original hand retained");
+                entry = (NBTTagCompound) item.copy();
+                entry.removeTag("Slot");
+            }
+        }
+        return entry == null ? !held.getBoolean(key + "Present")
+            : held.hasKey(key, 10) && entry.equals(held.getCompoundTag(key));
+    }
+
+    private static boolean heldRestored(EntityMaid maid, NBTTagCompound data) {
+        if (!data.hasKey("HeldFixture")) return true;
+        var held = held(maid, data);
+        return inventory(maid).equals(held.getTagList("OriginalInventory", 10))
+            && poseFlags(maid) == held.getInteger("OriginalPose");
+    }
+
+    private static void restoreHeld(EntityMaid maid, NBTTagCompound data) {
+        if (!data.hasKey("HeldFixture")) return;
+        var held = held(maid, data);
+        require(
+            originalHandMatches(held, "OriginalMain", com.tianluoqaq.tlmnh.common.inventory.MaidInventory.MAIN_HAND)
+                && originalHandMatches(
+                    held,
+                    "OriginalOff",
+                    com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND),
+            "Original hand and complete inventory backups differ; retained");
+        var actual = inventory(maid);
+        require(
+            (actual.equals(held.getTagList("ExpectedInventory", 10))
+                || actual.equals(held.getTagList("OriginalInventory", 10)))
+                && (poseFlags(maid) == held.getInteger("ExpectedPose")
+                    || poseFlags(maid) == held.getInteger("OriginalPose")),
+            "Foreign complete inventory or pose retained during held restore");
+        var main = held.getBoolean("OriginalMainPresent") ? ProtectedItemCodec.decodeField(held, "OriginalMain") : null;
+        var off = held.getBoolean("OriginalOffPresent") ? ProtectedItemCodec.decodeField(held, "OriginalOff") : null;
+        require(
+            matches(held, "OriginalMain", main) && matches(held, "OriginalOff", off),
+            "Original hands cannot be decoded exactly");
+        if (!matches(held, "OriginalMain", maid.getHeldItem())) maid.setCurrentItemOrArmor(0, main);
+        if (!matches(held, "OriginalOff", maid.getOffhandItem())) maid.setOffhandItem(off);
+        maid.setPose(MaidPose.USING_ITEM, false);
+        maid.setPose(MaidPose.USING_OFFHAND, false);
+        require(
+            inventory(maid).equals(held.getTagList("OriginalInventory", 10))
+                && poseFlags(maid) == held.getInteger("OriginalPose"),
+            "Original complete inventory or pose restore differs; snapshot retained");
+    }
+
     /** 饱食/饥饿只作为真实同步输入，不在渲染中伪造头角 */
     public static void stageHunger(EntityMaid maid, int hunger) {
         scope(maid);
@@ -214,6 +378,7 @@ public final class MaidVisualFixtureState {
                 !data.getBoolean("OriginalHeadPresent") || originalHead != null,
                 "Original head item could not be decoded");
         }
+        restoreHeld(maid, data);
         maid.setModelId(data.getString("Model"));
         if (tracksHunger) maid.setHunger(data.getInteger("OriginalHunger"));
         maid.setSitting(data.getBoolean("Sitting"));
@@ -231,7 +396,7 @@ public final class MaidVisualFixtureState {
         maid.getChatBubbleManager()
             .clear();
         require(
-            (!tracksHunger || maid.getHunger() == data.getInteger("OriginalHunger"))
+            heldRestored(maid, data) && (!tracksHunger || maid.getHunger() == data.getInteger("OriginalHunger"))
                 && (!tracksHead || matches(data, "OriginalHead", maid.getEquipmentInSlot(4)))
                 && matches(
                     data,
