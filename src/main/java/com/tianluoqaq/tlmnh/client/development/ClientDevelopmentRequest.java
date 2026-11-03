@@ -129,7 +129,17 @@ public final class ClientDevelopmentRequest {
         }
         if (command == Command.CARE_INTERACT) {
             action = text(json, "action");
-            if (!Arrays.asList("interact", "open", "grave", "shrine", "sneak_on", "sneak_off", "status")
+            if (!Arrays
+                .asList(
+                    "interact",
+                    "open",
+                    "grave",
+                    "shrine",
+                    "sneak_on",
+                    "sneak_off",
+                    "status",
+                    "native_click",
+                    "native_sneak_click")
                 .contains(action)) throw new IllegalArgumentException("Unknown native care action");
             if (action.equals("grave")) {
                 model = text(json, "model");
@@ -137,7 +147,10 @@ public final class ClientDevelopmentRequest {
                 if (id <= 0 || !Integer.toString(id)
                     .equals(model)) throw new IllegalArgumentException("Actual native tombstone entity ID required");
             }
-            if (action.equals("interact") || action.equals("open") || action.equals("status")) {
+            if (action.equals("interact") || action.equals("open")
+                || action.equals("status")
+                || action.equals("native_click")
+                || action.equals("native_sneak_click")) {
                 model = text(json, "model");
                 if (!java.util.UUID.fromString(model)
                     .toString()
@@ -149,6 +162,10 @@ public final class ClientDevelopmentRequest {
             if (!Arrays
                 .asList(
                     "status",
+                    "container_status",
+                    "container_click",
+                    "container_button",
+                    "container_replay_button",
                     "naming_text",
                     "naming_visibility",
                     "naming_save",
@@ -229,6 +246,8 @@ public final class ClientDevelopmentRequest {
                 || action.equals("details_view")
                 || action.equals("sound_play")
                 || action.equals("naming_text")
+                || action.equals("container_click")
+                || action.equals("container_button")
                 || action.equals("target_add")
                 || action.equals("target_remove")
                 || action.equals("target_previous")

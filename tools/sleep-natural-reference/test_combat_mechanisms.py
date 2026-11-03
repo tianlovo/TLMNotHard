@@ -3,10 +3,21 @@
 import copy
 import unittest
 
-from compare_combat_mechanisms import layout, native_pair
+from compare_combat_mechanisms import gravity_metadata, layout, native_pair
 
 
 class CombatInputCounterexamples(unittest.TestCase):
+    def test_known_java_float_gravity_keeps_raw_decimal_and_exact_promoted_bits(self):
+        result = gravity_metadata({"gravity": 0.05}, False)
+        self.assertEqual(result["binary32_hex"], "3d4ccccd")
+        self.assertEqual(result["promoted_binary64_value"], 0.05000000074505806)
+        self.assertFalse(result["raw_json_vs_promoted"]["exact_equal"])
+        self.assertFalse(result["numeric_tolerance_added"])
+        self.assertEqual(gravity_metadata({"gravity": 0.0}, True, True)["binary32_hex"], "00000000")
+        for changed in (0.050001, 0.05000000074505806, 0.005):
+            with self.assertRaises(ValueError):
+                gravity_metadata({"gravity": changed}, False)
+
     def test_native_pair_preserves_modifiers_and_cannot_hide_physics_or_equipment_changes(self):
         conditions = {"nativeGravity": 0.05000000074505806, "effectiveGravity": 0.05000000074505806,
                       "nativeDrag": 0.9900000095367432,

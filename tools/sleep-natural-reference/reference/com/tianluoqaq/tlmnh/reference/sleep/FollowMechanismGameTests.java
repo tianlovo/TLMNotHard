@@ -275,8 +275,17 @@ public final class FollowMechanismGameTests {
             f.addProperty("activeActivities", maid.getBrain().getActiveActivities().toString()); f.add("food", foodSnapshot());
             frames.add(f); afterFrame(index); previousAge = maid.tickCount; livingTicks = 0; drain();
             if (frames.size() == frameLimit()) {
-                output.addProperty("observationComplete", true); close(); write(); complete = true; active = null;
+                finishObservation("window_end");
             }
+        }
+
+        void finishObservation(String reason) throws Exception {
+            output.addProperty("terminalReason", reason);
+            output.addProperty("observationComplete", true);
+            close();
+            write();
+            complete = true;
+            active = null;
         }
 
         int frameLimit() { return contract.get("framesPerActor").getAsInt(); }

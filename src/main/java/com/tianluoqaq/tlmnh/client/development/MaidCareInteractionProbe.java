@@ -24,6 +24,9 @@ public final class MaidCareInteractionProbe {
     private MaidCareInteractionProbe() {}
 
     public static JsonObject perform(String action, String identity) {
+        if (action.equals("native_click") || action.equals("native_sneak_click"))
+            return com.tianluoqaq.tlmnh.compat.backhand.client.development.NativeBackhandInput
+                .perform(identity, action.equals("native_sneak_click"));
         var mc = Minecraft.getMinecraft();
         if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(mc.theWorld)
             || mc.thePlayer == null
@@ -157,6 +160,7 @@ public final class MaidCareInteractionProbe {
         result.addProperty("model", maid.getModelId());
         result.addProperty("health", maid.getHealth());
         result.addProperty("favorability", maid.getFavorability());
+        result.addProperty("experience", maid.getExperience());
         var effects = new JsonArray();
         for (Object object : maid.getActivePotionEffects()) {
             var effect = (PotionEffect) object;
@@ -173,7 +177,7 @@ public final class MaidCareInteractionProbe {
         return result;
     }
 
-    private static String nativeNbt(ItemStack stack) {
+    public static String nativeNbt(ItemStack stack) {
         return stack == null ? ""
             : binary(
                 stack.copy()

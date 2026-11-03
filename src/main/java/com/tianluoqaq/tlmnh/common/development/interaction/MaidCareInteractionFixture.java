@@ -70,7 +70,8 @@ public final class MaidCareInteractionFixture {
             "Rejoined",
             "WorldActions",
             "ModelLifecycle",
-            "NaturalShield"));
+            "NaturalShield",
+            "PlayerInputs"));
     private static Session active;
 
     private MaidCareInteractionFixture() {}
@@ -80,6 +81,7 @@ public final class MaidCareInteractionFixture {
     }
 
     public static boolean isActivePlayer(EntityPlayerMP player) {
+        if (MaidPlayerInputActions.isActivePlayer(active, player)) return true;
         if (active == null) return recoveryObserver(player);
         return player != null && currentLabWorld(player.worldObj)
             && (active.player == player
@@ -96,7 +98,8 @@ public final class MaidCareInteractionFixture {
 
     public static boolean isSpawning(Entity entity) {
         if (currentLabWorld(entity.worldObj)
-            && (MaidModelLifecycleActions.isSpawning(entity) || MaidNaturalShieldActions.isSpawning(entity)))
+            && (MaidModelLifecycleActions.isSpawning(entity) || MaidNaturalShieldActions.isSpawning(entity)
+                || MaidPlayerInputActions.isSpawning(entity)))
             return true;
         if (!(entity instanceof EntityMaid maid) || !currentLabWorld(maid.worldObj)) return false;
         if (active == null) {
@@ -374,6 +377,11 @@ public final class MaidCareInteractionFixture {
         }
         if (MaidNaturalShieldActions.handles(action)) {
             MaidNaturalShieldActions.run(session, action);
+            session.record(action);
+            return;
+        }
+        if (MaidPlayerInputActions.handles(action)) {
+            MaidPlayerInputActions.run(session, action);
             session.record(action);
             return;
         }
@@ -660,6 +668,7 @@ public final class MaidCareInteractionFixture {
             MaidNaturalWorldActions.validateSnapshot(data);
             MaidModelLifecycleActions.validateSnapshot(data);
             MaidNaturalShieldActions.validateSnapshot(data);
+            MaidPlayerInputActions.validateSnapshot(data);
         }
 
         void validatePlayer() {
@@ -675,8 +684,7 @@ public final class MaidCareInteractionFixture {
                     && currentLabWorld(player.worldObj)
                     && slot() >= 0
                     && slot() < 9
-                    && player.inventory.currentItem == slot()
-                    && player.inventory.getItemStack() == null
+                    && MaidPlayerInputActions.playerShape(this)
                     && (player.getHealth() == data.getFloat("OriginalHealth")
                         || MaidModelLifecycleActions.allowedHealth(this)),
                 "Care fixture identity changed; retained");
@@ -685,6 +693,7 @@ public final class MaidCareInteractionFixture {
         void validate() {
             validateSnapshot();
             validatePlayer();
+            if (MaidPlayerInputActions.validateActor(this)) return;
             if (MaidModelLifecycleActions.validateActor(this)) return;
             require(
                 player.worldObj == maid.worldObj && validNonce(maid)
@@ -709,7 +718,8 @@ public final class MaidCareInteractionFixture {
         }
 
         void emptyActor() {
-            if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
+            if (data.hasKey("PlayerInputs")) MaidPlayerInputActions.verifyInventory(this);
+            else if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
             else if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
             else for (int i = 0; i < maid.getMaidInventory()
                 .getSizeInventory(); i++)
@@ -726,6 +736,7 @@ public final class MaidCareInteractionFixture {
         }
 
         void inventoryOwned() {
+            if (MaidPlayerInputActions.inventoryOwned(this)) return;
             var actual = inventory(player);
             require(
                 actual.equals(data.getTagList("ExpectedInventory", 10))
@@ -1021,6 +1032,7 @@ public final class MaidCareInteractionFixture {
                         data.getDouble("ExpectedY"),
                         data.getDouble("ExpectedZ")) < .01 || authorizedRecoveryCamera(),
                     "Foreign camera move retained with original snapshot");
+                MaidPlayerInputActions.beforeClose(this);
                 if (player.openContainer != player.inventoryContainer) {
                     boolean own = player.openContainer instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels models
                         && models.getMaid() == maid
@@ -1102,7 +1114,7 @@ public final class MaidCareInteractionFixture {
                 validate();
                 inventoryOwned();
                 if (MaidModelLifecycleActions.restart(this)) protectObserver(player);
-                else protect();
+                else if (!MaidPlayerInputActions.protect(this)) protect();
             } catch (RuntimeException | LinkageError failure) {
                 abort(failure);
             }
@@ -1179,6 +1191,7 @@ public final class MaidCareInteractionFixture {
             if (data.hasKey("ModelLifecycle"))
                 result.add("modelLifecycle", MaidModelLifecycleActions.observation(this));
             if (data.hasKey("NaturalShield")) result.add("naturalShield", MaidNaturalShieldActions.observation(this));
+            if (data.hasKey("PlayerInputs")) result.add("playerInputs", MaidPlayerInputActions.observation(this));
             result.addProperty(
                 "mode",
                 player.theItemInWorldManager.getGameType()

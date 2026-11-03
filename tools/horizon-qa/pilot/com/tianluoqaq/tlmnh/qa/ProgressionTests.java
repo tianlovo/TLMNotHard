@@ -679,6 +679,10 @@ public final class ProgressionTests {
         final HashSet<Entity> original = new HashSet<>();
 
         Fixture(GameTestHelper helper) {
+            this(helper, true);
+        }
+
+        Fixture(GameTestHelper helper, boolean cleanupSpawned) {
             this.helper = helper;
             var origin = helper.absolute(0, 0, 0);
             x = origin.x();
@@ -695,7 +699,7 @@ public final class ProgressionTests {
                 MaidAcquisitionConfig.giveInitialSlab = oldGift;
                 MinecraftServer.getServer()
                     .setCanSpawnAnimals(animals);
-                for (var entity : new ArrayList<>(helper.getWorld().loadedEntityList)) {
+                if (cleanupSpawned) for (var entity : new ArrayList<>(helper.getWorld().loadedEntityList)) {
                     if (!original.contains(entity) && (entity instanceof EntityMaid || entity instanceof EntityItem)) {
                         entity.setDead();
                         helper.getWorld()

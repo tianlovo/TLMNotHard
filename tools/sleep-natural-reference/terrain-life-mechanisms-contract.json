@@ -1,0 +1,334 @@
+{
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "schema": "terrain-life-mechanisms-contract-v2",
+  "contract": "TERRAIN_LIFE_MECHANISMS_V2",
+  "repetitions": 1,
+  "warmupTicks": 80,
+  "framesPerActor": 480,
+  "dayTime": 6000,
+  "difficulty": "HARD",
+  "layoutVolume": [
+    33,
+    12,
+    33
+  ],
+  "maidSpawn": [
+    2.5,
+    1,
+    12.5
+  ],
+  "ownerStart": [
+    8.5,
+    1,
+    12.5
+  ],
+  "ownerMode": "CREATIVE_except_native_creeper_SURVIVAL",
+  "hunger": 20,
+  "homeEnabled": false,
+  "arrivalDistance": 2.0,
+  "food": {
+    "position": [
+      13.5,
+      1.25,
+      12.5
+    ],
+    "registry": "minecraft:apple",
+    "count": 1
+  },
+  "sharedCake": {
+    "cabinet": [
+      12,
+      1,
+      12
+    ],
+    "cake": [
+      12,
+      2,
+      12
+    ],
+    "primarySpawn": [
+      10.5,
+      1,
+      12.5
+    ],
+    "secondSpawn": [
+      15.5,
+      1,
+      12.5
+    ],
+    "waitTicks": 40
+  },
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "complete14ClassBenchmarkAccepted": false,
+  "ownerInputScope": "controlled native registered players with isolated memory connections; not real network login or multiple real clients",
+  "fireRule": false,
+  "mobGriefing": false,
+  "mechanisms": [
+    {
+      "id": "terrain_circuit",
+      "family": "B01",
+      "primary": true,
+      "frames": 480,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "maidSpawn": [
+        2.5,
+        1,
+        12.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          12.5
+        ],
+        [
+          13.5,
+          1.5,
+          12.5
+        ],
+        [
+          18.5,
+          2,
+          12.5
+        ],
+        [
+          21.5,
+          2,
+          19.5
+        ],
+        [
+          21.5,
+          1,
+          26.5
+        ]
+      ],
+      "events": [],
+      "scope": "continuous normal follow through turn, half slabs, full step, one-block-wide doorway; an open doorway, not a closed-door benchmark",
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ]
+    },
+    {
+      "id": "fire_cliff",
+      "family": "B03",
+      "primary": true,
+      "frames": 480,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "maidSpawn": [
+        2.5,
+        9,
+        12.5
+      ],
+      "waypoints": [
+        [
+          9.5,
+          9,
+          12.5
+        ],
+        [
+          16.5,
+          9,
+          12.5
+        ],
+        [
+          23.5,
+          9,
+          12.5
+        ]
+      ],
+      "events": [],
+      "scope": "fixed active fire strip with doFireTick=false and an eight-block drop with a supported alternative route; natural damage remains enabled",
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ]
+    },
+    {
+      "id": "native_creeper",
+      "family": "B03_B04_B11",
+      "primary": true,
+      "frames": 360,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "maidSpawn": [
+        16.5,
+        1,
+        16.5
+      ],
+      "waypoints": [
+        [
+          18.5,
+          1,
+          19.5
+        ]
+      ],
+      "events": [],
+      "threatSpawn": [
+        22.5,
+        1,
+        16.5
+      ],
+      "scope": "persistent native Creeper with normal initialization and AI, survival native owner after actual protection expiration; mobGriefing=false controls terrain only",
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ]
+    },
+    {
+      "id": "pantry_near",
+      "family": "B09_B11",
+      "primary": true,
+      "frames": 2200,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "hunger": 0,
+      "primarySpawn": [
+        11.5,
+        1,
+        12.5
+      ],
+      "secondarySpawn": [
+        13.5,
+        1,
+        12.5
+      ],
+      "homeEnabled": true,
+      "backpackCake": 1,
+      "events": [],
+      "scope": "two natural roots near one cake/cabinet, wait40 after first bite, then release and withdraw remaining original cake as an explicit external block input; one conserved backpack cake may naturally place; native cooldowns unchanged",
+      "arenaVolume": [
+        25,
+        8,
+        25
+      ]
+    },
+    {
+      "id": "pantry_approach",
+      "family": "B09",
+      "primary": false,
+      "frames": 1000,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "hunger": 0,
+      "primarySpawn": [
+        10.5,
+        1,
+        12.5
+      ],
+      "secondarySpawn": [
+        15.5,
+        1,
+        12.5
+      ],
+      "homeEnabled": false,
+      "backpackCake": 0,
+      "events": [],
+      "scope": "retain original195 2.5-block primary approach condition with passive work-target/path observations; non-trigger is an outcome, not successful eating",
+      "arenaVolume": [
+        25,
+        8,
+        25
+      ]
+    }
+  ],
+  "campaign": {
+    "status": "CALIBRATION_ONLY",
+    "plannedIndependentPairedReplicates": 30,
+    "primaryMechanisms": [
+      "terrain_circuit",
+      "fire_cliff",
+      "native_creeper",
+      "pantry_near"
+    ],
+    "execution": "after calibration freeze: existing original/HQA launch chains, fresh world/process/actors for every replicate, same pinned artifacts and contract; no automatic outcome-selective retry",
+    "primaryMetrics": {
+      "terrain_circuit": "all waypoints reached alive by fixed window",
+      "fire_cliff": "safe-route completion alive, preserve fire contact/drop/damage separately",
+      "native_creeper": "maid survival, observed natural danger response, owner death separately terminal",
+      "pantry_near": "first natural bite, conserved wait, natural finite placement separately; no activity inferred from capture completion"
+    },
+    "deathTimeoutPolicy": "retain death, owner death, timeout, non-trigger and target loss; no padded entity frames; measurement faults separately invalid and kept",
+    "statistics": "report counts/denominators, paired descriptive differences and predeclared intervals; no noninferiority verdict without user delta",
+    "noninferiorityDelta": null
+  },
+  "enclosure": {
+    "block": "minecraft:glass",
+    "placement": "four walls at x/z boundary from y1 through roof, full roof at height-1; original stone y0 remains",
+    "scope": "controlled closed arena prevents unowned gravity blocks and fluid entry; sides and roof are real collision/vision inputs"
+  },
+  "creeperAvoidanceMapping": {
+    "source": "fixed TLM normal EntityJoinLevelEvent adds priority1 AvoidEntityGoal for EntityMaid, distance6 walk1 sprint1.2",
+    "port": "normal EntityJoinWorldEvent adds one source-control-flow adapter per actual Creeper object; nearest source-visible maid, native RandomPositionGenerator and PathNavigate, nonempty partial paths accepted",
+    "preserved": "priority1, MOVE, nearest qualifying target, distance/visibility bounds, random16x7 away, nonempty path, near distance squared49, speed modifiers1/1.2",
+    "unmapped": "modern Forge visibility multiplier event and actual cross-version native navigation/random-position algorithms; no complete goal/physics equivalence"
+  }
+}

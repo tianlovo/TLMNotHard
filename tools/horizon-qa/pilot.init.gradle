@@ -41,6 +41,10 @@ gradle.projectsEvaluated {
             into 'tlmnh-combat-mechanisms'
             rename { 'contract.json' }
         }
+        from(project.file('tools/sleep-natural-reference/terrain-life-mechanisms-contract.json')) {
+            into 'tlmnh-terrain-life-mechanisms'
+            rename { 'contract.json' }
+        }
         from(project.file('tools/follow-natural-reference')) {
             include 'contract.json', 'flat-contract-v1.json'
             into 'tlmnh-follow-contracts'

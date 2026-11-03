@@ -39,7 +39,7 @@ public final class ActivityCompetitionGameTests {
         FollowMechanismGameTests.collect(h,new Session(h,mechanism),"tlmnh.activityCompetitionProbe");
     }
 
-    static final class Session extends FollowMechanismGameTests.Session {
+    static class Session extends FollowMechanismGameTests.Session {
         final String mechanism;
         EntityMaid second;
         Creeper threat;
@@ -47,8 +47,12 @@ public final class ActivityCompetitionGameTests {
         boolean extrasClosed;
 
         Session(GameTestHelper h,String mechanism){
-            super(h,mechanism,"/tlmnh-activity-competition/contract.json","ACTIVITY_COMPETITION_V1",
+            this(h,mechanism,"/tlmnh-activity-competition/contract.json","ACTIVITY_COMPETITION_V1",
                 "activity-competition-original-v1","activity-competition-original-");
+        }
+
+        Session(GameTestHelper h,String mechanism,String resource,String expectedContract,String schema,String prefix){
+            super(h,mechanism,resource,expectedContract,schema,prefix);
             this.mechanism=mechanism;
         }
 
@@ -130,13 +134,7 @@ public final class ActivityCompetitionGameTests {
                 }else if(triggerAt>=0&&releaseAt<0&&index==triggerAt+40){
                     releaseAt=index;event(index,"clear_water_input");water(false);
                 }
-            }else{
-                int bites=cakeBites();row.addProperty("cakeBitesConsumed",bites);
-                helper.assertTrue(bites>=previousBites&&bites<=7&&bites-previousBites<=2,
-                    "One original shared cake produced an impossible per-tick bite change");previousBites=bites;
-                if(triggerAt<0&&bites>0){triggerAt=index;event(index,"first_shared_cake_bite_wait");maid.setInSittingPose(true);second.setInSittingPose(true);}
-                else if(triggerAt>=0&&releaseAt<0&&index==triggerAt+40){releaseAt=index;event(index,"release_both_waiting");maid.setInSittingPose(false);second.setInSittingPose(false);}
-            }
+            }else cakeFrame(index,row);
             if(index+1==frameLimit()){
                 output.addProperty("reactiveTriggerFrame",triggerAt);output.addProperty("reactiveReleaseFrame",releaseAt);
                 output.addProperty("scenarioInputExercised",mechanism.equals("waiting_threat_food")||triggerAt>=0&&releaseAt>=0);
@@ -145,6 +143,14 @@ public final class ActivityCompetitionGameTests {
                     :mechanism.equals("shared_cake_interruption")?"one_native_cake_monotonic_bites_zero_to_seven"
                     :"no_material_assertion_dropped_apple_may_be_naturally_consumed");
             }
+        }
+
+        void cakeFrame(int index,JsonObject row){
+                int bites=cakeBites();row.addProperty("cakeBitesConsumed",bites);
+                helper.assertTrue(bites>=previousBites&&bites<=7&&bites-previousBites<=2,
+                    "One original shared cake produced an impossible per-tick bite change");previousBites=bites;
+                if(triggerAt<0&&bites>0){triggerAt=index;event(index,"first_shared_cake_bite_wait");maid.setInSittingPose(true);second.setInSittingPose(true);}
+                else if(triggerAt>=0&&releaseAt<0&&index==triggerAt+40){releaseAt=index;event(index,"release_both_waiting");maid.setInSittingPose(false);second.setInSittingPose(false);}
         }
 
         JsonObject event(int index,String kind){var r=new JsonObject();r.addProperty("frame",index);r.addProperty("kind",kind);

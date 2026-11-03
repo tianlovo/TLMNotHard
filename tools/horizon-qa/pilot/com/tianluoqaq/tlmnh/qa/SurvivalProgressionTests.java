@@ -147,7 +147,7 @@ public final class SurvivalProgressionTests {
             var facilities = new JsonArray();
             for (var name : new String[] { "registered bronze alloy smelter", "registered LV assembler",
                 "bronze boiler", "three steel boilers", "LV steam turbine directly adjacent to assembler",
-                "vanilla furnace", "workbench", "steel hammer, mortar and wrench" })
+                "vanilla furnace", "workbench", "steel hammer, mortar and wrench; native wooden soft mallet" })
                 facilities.add(new com.google.gson.JsonPrimitive(name));
             report.add("preexistingFacilities", facilities);
             helper.assertTrue(
@@ -164,7 +164,8 @@ public final class SurvivalProgressionTests {
                 new ItemStack(Blocks.planks, 64),
                 new ItemStack(Blocks.log, 4),
                 new ItemStack(Items.flint),
-                new ItemStack(Blocks.wool, 6),
+                new ItemStack(Blocks.wool, 9),
+                new ItemStack(Items.stick, 12),
                 new ItemStack(Items.wheat, 2),
                 new ItemStack(Items.sugar, 2),
                 new ItemStack(Items.coal, 64),
@@ -181,7 +182,8 @@ public final class SurvivalProgressionTests {
                 ore("cableGt01Tin", 2),
                 hammer,
                 mortar,
-                tool(IDMetaTool01.WRENCH));
+                tool(IDMetaTool01.WRENCH),
+                tool(IDMetaTool01.SOFTMALLET));
             for (int i = 0; i < 6; i++) seed(new ItemStack(Items.water_bucket));
             report.add("initialPlayerInventory", SleepAttributePortSnapshot.binaryNbt(inventory()));
             for (var base : boilers()) {
@@ -278,11 +280,23 @@ public final class SurvivalProgressionTests {
                     ore("cableGt01Tin", 1)));
             var wood = new ItemStack(Blocks.planks);
             var wool = new ItemStack(Blocks.wool);
-            craft(new ItemStack(Items.bed), new ItemStack[] { wool, wool, wool, wood, wood, wood, null, null, null });
+            var stick = new ItemStack(Items.stick);
+            var carpet = new ItemStack(Blocks.carpet);
+            var fence = new ItemStack(Blocks.fence);
+            for (int i = 0; i < 3; i++) craft(carpet, grid(0, wool, 1, wool));
+            for (int i = 0; i < 2; i++)
+                craft(fence, new ItemStack[] { stick, wood, stick, stick, wood, stick, stick, wood, stick });
+            var bed = whiteBed();
+            craft(
+                bed,
+                new ItemStack[] { carpet, carpet, carpet, wood, wood, wood, fence, tool(IDMetaTool01.SOFTMALLET),
+                    fence });
+            helper.assertTrue(
+                toolDamage(find(tool(IDMetaTool01.SOFTMALLET))) > 0,
+                "Actual GTNH bed crafting did not retain its genuinely worn wooden mallet");
             craft(
                 new ItemStack(MaidLifeContent.maidBedItem),
-                new ItemStack[] { wool, wool, wool, steelPlate, new ItemStack(Items.bed), steelPlate, wood, wood,
-                    wood });
+                new ItemStack[] { wool, wool, wool, steelPlate, bed, steelPlate, wood, wood, wood });
             var log = new ItemStack(Blocks.log);
             craft(
                 new ItemStack(Blocks.chest),
@@ -778,7 +792,13 @@ public final class SurvivalProgressionTests {
             var instance = field.get(null);
             if (instance == null || instance.getClass() != type)
                 throw new IllegalStateException("Actual registered tool factory instance differs");
-            var result = factory.invoke(instance, kind.ID, 1, Materials.Steel, Materials.Wood, null);
+            var result = factory.invoke(
+                instance,
+                kind.ID,
+                1,
+                kind == IDMetaTool01.SOFTMALLET ? Materials.Wood : Materials.Steel,
+                Materials.Wood,
+                null);
             if (!(result instanceof ItemStack stack) || stack.stackSize != 1 || stack.getItem() != instance)
                 throw new IllegalStateException("Actual native tool factory did not return its own single tool");
             return stack;
@@ -800,5 +820,21 @@ public final class SurvivalProgressionTests {
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException("Cannot read actual native tool wear", failure);
         }
+    }
+
+    private static ItemStack whiteBed() {
+        // Fixed EFR constructor names each color *_bed; iterate its real ore member, avoiding namespace aliases.
+        for (var member : OreDictionary.getOres("bedWood")) if (member.getItem()
+            .getClass()
+            .getName()
+            .equals("ganymedes01.etfuturum.blocks.itemblocks.ItemBlockDyedBed")
+            && member.getItem()
+                .getUnlocalizedName()
+                .endsWith(".white_bed")) {
+                    var result = member.copy();
+                    result.stackSize = 1;
+                    return result;
+                }
+        throw new IllegalStateException("Actual native white EFR bed absent from bedWood");
     }
 }

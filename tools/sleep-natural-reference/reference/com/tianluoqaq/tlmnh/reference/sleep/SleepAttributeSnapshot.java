@@ -123,7 +123,7 @@ final class SleepAttributeSnapshot {
         }
     }
 
-    private static JsonArray modifiers(AttributeInstance instance) {
+    static JsonArray modifiers(AttributeInstance instance) {
         Set<UUID> saved = new HashSet<>();
         var serialized = instance.save().getList("Modifiers", 10);
         for (int index = 0; index < serialized.size(); index++) saved.add(serialized.getCompound(index).getUUID("UUID"));

@@ -66,7 +66,7 @@ public final class ActivityCompetitionPortTests {
         c.setup();
     }
 
-    public static final class Collector extends FollowMechanismPortTests.Collector {
+    public static class Collector extends FollowMechanismPortTests.Collector {
 
         final String mechanism;
         EntityMaid second;
@@ -75,7 +75,7 @@ public final class ActivityCompetitionPortTests {
         boolean extrasClosed;
 
         Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
-            super(
+            this(
                 h,
                 profile,
                 mechanism,
@@ -83,6 +83,11 @@ public final class ActivityCompetitionPortTests {
                 "ACTIVITY_COMPETITION_V1",
                 "activity-competition-port-v1",
                 "activity-competition-");
+        }
+
+        Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism, String resource,
+            String expectedContract, String schema, String prefix) {
+            super(h, profile, mechanism, resource, expectedContract, schema, prefix);
             this.mechanism = mechanism;
         }
 
@@ -256,25 +261,7 @@ public final class ActivityCompetitionPortTests {
                     event(index, "clear_water_input");
                     water(false);
                 }
-            } else {
-                int bites = cakeBites();
-                row.addProperty("cakeBitesConsumed", bites);
-                helper.assertTrue(
-                    bites >= previousBites && bites <= 7 && bites - previousBites <= 2,
-                    "One shared native cake produced an impossible per-tick bite change");
-                previousBites = bites;
-                if (triggerAt < 0 && bites > 0) {
-                    triggerAt = index;
-                    event(index, "first_shared_cake_bite_wait");
-                    maid.setSitting(true);
-                    second.setSitting(true);
-                } else if (triggerAt >= 0 && releaseAt < 0 && index == triggerAt + 40) {
-                    releaseAt = index;
-                    event(index, "release_both_waiting");
-                    maid.setSitting(false);
-                    second.setSitting(false);
-                }
-            }
+            } else cakeFrame(index, row);
             if (index + 1 == frameLimit()) {
                 output.addProperty("reactiveTriggerFrame", triggerAt);
                 output.addProperty("reactiveReleaseFrame", releaseAt);
@@ -287,6 +274,26 @@ public final class ActivityCompetitionPortTests {
                     mechanism.equals("meal_low_air") ? "one_soup_or_bowl_total_each_frame"
                         : mechanism.equals("shared_cake_interruption") ? "one_native_cake_monotonic_bites_zero_to_seven"
                             : "no_material_assertion_dropped_apple_may_be_naturally_consumed");
+            }
+        }
+
+        void cakeFrame(int index, JsonObject row) {
+            int bites = cakeBites();
+            row.addProperty("cakeBitesConsumed", bites);
+            helper.assertTrue(
+                bites >= previousBites && bites <= 7 && bites - previousBites <= 2,
+                "One shared native cake produced an impossible per-tick bite change");
+            previousBites = bites;
+            if (triggerAt < 0 && bites > 0) {
+                triggerAt = index;
+                event(index, "first_shared_cake_bite_wait");
+                maid.setSitting(true);
+                second.setSitting(true);
+            } else if (triggerAt >= 0 && releaseAt < 0 && index == triggerAt + 40) {
+                releaseAt = index;
+                event(index, "release_both_waiting");
+                maid.setSitting(false);
+                second.setSitting(false);
             }
         }
 

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -39,6 +40,20 @@ FLIGHTS = {"O": "SOURCE_ORIGINAL", "F": "SOURCE_ORIGINAL", "F-R": "NATIVE_STATIC
 
 def typed(record):
     return binary_snapshot(record, record["rawSNBT"])[1]
+
+
+def gravity_metadata(shot, source_original, original=False):
+    # Native observer row.addProperty receives Java float; Gson writes its shortest float32 decimal.
+    # Accept only the known surface provider's canonical 0.05 (or source zero), never a numeric tolerance.
+    expected_json = 0.0 if source_original else 0.05
+    require(shot["gravity"] == expected_json, "actual arrow gravity metadata differs from known canonical float output")
+    bits = struct.pack(">f", shot["gravity"])
+    require(bits == struct.pack(">f", expected_json), "actual arrow gravity float32 bits differ")
+    promoted = struct.unpack(">f", bits)[0]
+    return {"raw_json_number": shot["gravity"], "java_observer_field_type": "double_source_zero" if original else "float",
+            "binary32_hex": bits.hex(), "promoted_binary64_value": promoted,
+            "raw_json_vs_promoted": measurement(shot["gravity"], promoted, 0),
+            "numeric_tolerance_added": False}
 
 
 def owner(owner, original):
@@ -140,13 +155,13 @@ def inspect(data, scene, contract_hash, original):
     require(len({s["uuid"] for s in shots}) == len(shots), "duplicate actual arrow identity")
     for shot in shots:
         require(shot["sourceOriginal"] is (data["arm"] in ("O", "F")), "source/native arrow group changed")
-        require(shot["gravity"] == (0 if data["arm"] in ("O", "F") else float.fromhex("0x1.99999a0000000p-5")),
-                "actual arrow gravity differs from declared group")
+        gravity_metadata(shot, data["arm"] in ("O", "F"), original)
         typed(shot["fullNbt"] if original else shot["launch"]["fullNbt"])
     opportunities = sum(row.get("observedOpportunity", row.get("canObserveShotOpportunity", False)) for row in frames)
     result = {"arm": data["arm"], "frames": len(frames), "same_side_initial_binding": binding,
               "current_fact_opportunity_frames": opportunities, "actual_arrow_joins": len(shots),
               "actual_confirmed_hits": sum(s.get("hit") is True for s in shots),
+              "gravity_metadata": [gravity_metadata(s, data["arm"] in ("O", "F"), original) for s in shots],
               "actual_rejected_releases": "UNKNOWN" if original else data.get("rejectedShots", 0),
               "accepted_melee": data.get("acceptedMelee", "UNKNOWN_original_native_counter"),
               "owner_defense_and_competition_exercised": data.get("defenseAndCompetitionExercised"),

@@ -35,6 +35,7 @@ public final class MaidModelUiProbe {
     }
 
     public static JsonObject perform(String action, String model) {
+        if (action.startsWith("container_")) return MaidNativeContainerProbe.perform(action, model);
         if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming)
             return namingObservation(naming, action, model);
         requireWindow();

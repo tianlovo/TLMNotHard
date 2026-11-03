@@ -867,6 +867,9 @@ public final class NaturalRangedPairTests {
         final float gravity;
         double x, y, z, vx, vy, vz;
         int age, physicsSamples;
+        int airTicks;
+        boolean wasGrounded;
+        JsonObject before;
         int ignoredBeforeCrossing;
         boolean usedForCrossing;
         Float pendingHealth;
@@ -932,18 +935,61 @@ public final class NaturalRangedPairTests {
                 c.f.maid.getBrainCoordinator()
                     .getTelemetry()
                     .isConfirmedProjectile(arrow));
-            if (!arrow.isDead && !grounded(arrow) && arrow.ticksExisted == age + 1) {
-                c.h.assertTrue(
-                    !arrow.isInWater() && Math.abs(arrow.posX - x - vx) < 1E-9
+            var after = state();
+            int currentAirTicks = ((com.tianluoqaq.tlmnh.mixin.MixinArrowFlightState) arrow).tlmnh$getAirTicks();
+            var step = new JsonObject();
+            step.addProperty("frame", c.frame);
+            step.add("before", before);
+            step.add("after", after);
+            row.add("lastStep", step);
+            if (!arrow.isDead && wasGrounded && !grounded(arrow) && arrow.ticksExisted == age + 1) {
+                step.addProperty("branch", "GROUND_RELEASE_NO_AIR_STEP");
+                var ratios = new JsonArray();
+                double[] previous = { vx, vy, vz }, current = { arrow.motionX, arrow.motionY, arrow.motionZ };
+                for (int i = 0; i < 3; i++) ratios.add(
+                    previous[i] == 0 ? new JsonPrimitive("UNDEFINED_ZERO_PREVIOUS_COMPONENT")
+                        : new JsonPrimitive(current[i] / previous[i]));
+                step.add("velocityRatios", ratios);
+                boolean released = !arrow.isInWater() && !before.get("inWater")
+                    .getAsBoolean()
+                    && Math.abs(arrow.posX - x) < 1E-9
+                    && Math.abs(arrow.posY - y) < 1E-9
+                    && Math.abs(arrow.posZ - z) < 1E-9
+                    && currentAirTicks == 0
+                    && nativeDamping(vx, arrow.motionX)
+                    && nativeDamping(vy, arrow.motionY)
+                    && nativeDamping(vz, arrow.motionZ);
+                step.addProperty("nativeReleaseBranchPassed", released);
+                if (!released) c.save();
+                c.h.assertTrue(released, "Native ground-release branch changed; complete before/after retained");
+                var releases = row.has("groundReleaseSteps") ? row.getAsJsonArray("groundReleaseSteps")
+                    : new JsonArray();
+                releases.add(step);
+                row.add("groundReleaseSteps", releases);
+            } else if (!arrow.isDead && !wasGrounded
+                && !grounded(arrow)
+                && arrow.ticksExisted == age + 1
+                && currentAirTicks == airTicks + 1) {
+                    step.addProperty("branch", "FREE_AIR_STEP");
+                    step.add("expectedPosition", vector(x + vx - c.f.x, y + vy - c.f.y, z + vz - c.f.z));
+                    step.add(
+                        "expectedVelocity",
+                        vector(vx * (double) .99F, vy * (double) .99F - gravity, vz * (double) .99F));
+                    boolean free = !arrow.isInWater() && Math.abs(arrow.posX - x - vx) < 1E-9
                         && Math.abs(arrow.posY - y - vy) < 1E-9
                         && Math.abs(arrow.posZ - z - vz) < 1E-9
                         && Math.abs(arrow.motionX - vx * (double) .99F) < 1E-12
                         && Math.abs(arrow.motionY - (vy * (double) .99F - gravity)) < 1E-12
-                        && Math.abs(arrow.motionZ - vz * (double) .99F) < 1E-12,
-                    "Actual natural arrow physics changed");
-                physicsSamples++;
-                row.addProperty("nativePhysicsSamples", physicsSamples);
-            }
+                        && Math.abs(arrow.motionZ - vz * (double) .99F) < 1E-12;
+                    step.addProperty("freeAirStepPassed", free);
+                    if (!free) c.save();
+                    c.h.assertTrue(free, "Actual natural arrow physics changed; complete before/after retained");
+                    physicsSamples++;
+                    row.addProperty("nativePhysicsSamples", physicsSamples);
+                } else step.addProperty(
+                    "branch",
+                    arrow.isDead ? "TERMINATED"
+                        : grounded(arrow) ? "GROUNDED_OR_BLOCK_IMPACT" : "OTHER_NATIVE_BRANCH_NO_FREE_STEP_CLAIM");
             if (pendingHealth != null) {
                 row.addProperty("healthBeforeCandidate", pendingHealth);
                 row.addProperty("healthAfterFrame", c.target.getHealth());
@@ -967,12 +1013,24 @@ public final class NaturalRangedPairTests {
                 arrow.getUniqueID()
                     .toString());
             r.addProperty("age", arrow.ticksExisted);
+            r.addProperty("dead", arrow.isDead);
+            r.addProperty("inWater", arrow.isInWater());
+            r.addProperty("airTicks", ((com.tianluoqaq.tlmnh.mixin.MixinArrowFlightState) arrow).tlmnh$getAirTicks());
             r.addProperty("inGround", grounded(arrow));
             r.addProperty("registered", arrow.worldObj.getEntityByID(arrow.getEntityId()) == arrow);
             r.addProperty("sourceStopped", ((MaidArrowSourceState) arrow).tlmnh$sourceStopped());
             r.add("position", vector(arrow.posX - c.f.x, arrow.posY - c.f.y, arrow.posZ - c.f.z));
             r.add("velocity", vector(arrow.motionX, arrow.motionY, arrow.motionZ));
             return r;
+        }
+
+        private static double ratio(double previous, double current) {
+            return previous == 0 ? 0 : current / previous;
+        }
+
+        private static boolean nativeDamping(double previous, double current) {
+            return previous == 0 ? current == 0
+                : ratio(previous, current) >= 0 && ratio(previous, current) < (double) .2F;
         }
 
         private void remember() {
@@ -983,6 +1041,9 @@ public final class NaturalRangedPairTests {
             vy = arrow.motionY;
             vz = arrow.motionZ;
             age = arrow.ticksExisted;
+            airTicks = ((com.tianluoqaq.tlmnh.mixin.MixinArrowFlightState) arrow).tlmnh$getAirTicks();
+            wasGrounded = grounded(arrow);
+            before = state();
         }
     }
 
