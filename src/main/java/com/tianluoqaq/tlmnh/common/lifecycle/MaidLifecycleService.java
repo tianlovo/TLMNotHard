@@ -34,7 +34,7 @@ public final class MaidLifecycleService {
     private MaidLifecycleService() {}
 
     public static boolean isPendingRedemption(EntityMaid maid) {
-        return MaidRedemptionDelivery.blocks(maid);
+        return MaidRedemptionDelivery.blocks(maid) || MaidDeathService.blocksSource(maid);
     }
 
     public static boolean canUse(EntityPlayer player) {

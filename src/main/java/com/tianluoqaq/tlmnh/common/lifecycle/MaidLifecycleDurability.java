@@ -44,6 +44,7 @@ final class MaidLifecycleDurability {
             if (MaidLifecycleData.get(world) != ledger)
                 throw new IllegalStateException("Lifecycle storage no longer owns the active ledger");
             server.checkSessionLock();
+            com.tianluoqaq.tlmnh.compat.hodgepodge.common.storage.HodgepodgeWorldDataBarrier.beforeLedgerWrite();
             var target = server.getSaveHandler()
                 .getMapFileFromName(MaidLifecycleData.NAME)
                 .getCanonicalFile();
@@ -440,6 +441,7 @@ final class MaidLifecycleDurability {
         final String type;
         final ItemStack item;
         private NBTTagCompound maid;
+        private boolean deathSource;
         private boolean retracted;
 
         Publication(EntityItem entity, ItemStack expected) {
@@ -452,6 +454,17 @@ final class MaidLifecycleDurability {
 
         Publication(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid entity,
             NBTTagCompound expected) {
+            this(entity, null, 0);
+            maid = (NBTTagCompound) expected.copy();
+        }
+
+        Publication(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid entity, NBTTagCompound expected,
+            boolean deathSource) {
+            this(entity, expected);
+            this.deathSource = deathSource;
+        }
+
+        Publication(MaidTombstoneEntity entity, NBTTagCompound expected) {
             this(entity, null, 0);
             maid = (NBTTagCompound) expected.copy();
         }
@@ -484,15 +497,17 @@ final class MaidLifecycleDurability {
                 && entity.posZ == z
                 && (world.getEntityByID(id) == null || world.getEntityByID(id) == entity)
                 && (maid != null
-                    ? entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid actual
-                        && maid.equals(maidSnapshot(actual))
+                    ? entity instanceof MaidTombstoneEntity || deathSource
+                        ? maid.equals(MaidDeathIngress.snapshot(entity))
+                        : entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid actual
+                            && maid.equals(maidSnapshot(actual))
                     : item == null ? entity instanceof EntityXPOrb orb && orb.xpValue == experience
                         : entity instanceof EntityItem drop
                             && ItemStack.areItemStacksEqual(item, drop.getEntityItem()));
         }
 
         void discard(World world) {
-            if (!owned(world) || entity.isDead && maid == null)
+            if (!owned(world) || entity.isDead && (maid == null || entity instanceof MaidTombstoneEntity))
                 throw new IllegalStateException("Unknown material successor or prior consumption must remain intact");
             world.removeEntity(entity);
             retracted = true;

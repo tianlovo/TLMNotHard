@@ -4,12 +4,14 @@ import java.util.function.BooleanSupplier;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
 /** 原版回血/日常进食时序，临时换手用背包原槽交换，不另藏一份物品 */
 public final class MaidMealController {
@@ -17,7 +19,7 @@ public final class MaidMealController {
     private final EntityMaid maid;
     private MaidItemUseState.Lease lease;
     private MaidFoodProfile profile;
-    private ItemStack food, expected, displaced;
+    private ItemStack food, expected, displaced, displacedExpected;
     private int handSlot, sourceSlot = -1, remaining, nextCheck;
     private boolean breathing, modernMeal;
 
@@ -151,6 +153,7 @@ public final class MaidMealController {
             handSlot = inventory.getStackInSlot(MaidInventory.MAIN_HAND) == null ? MaidInventory.MAIN_HAND
                 : MaidInventory.OFF_HAND;
             displaced = inventory.getStackInSlot(handSlot);
+            displacedExpected = displaced == null ? null : displaced.copy();
             inventory.setInventorySlotContents(sourceSlot, displaced);
             inventory.setInventorySlotContents(handSlot, stack);
         }
@@ -241,7 +244,7 @@ public final class MaidMealController {
             }
         }
         sourceSlot = -1;
-        food = expected = displaced = null;
+        food = expected = displaced = displacedExpected = null;
         profile = null;
         remaining = 0;
         breathing = false;
@@ -259,7 +262,88 @@ public final class MaidMealController {
     }
 
     public void save(NBTTagCompound tag) {
-        cancel();
+        var capturedLease = lease;
+        var capturedFood = food;
+        var capturedDisplaced = displaced;
+        int source = sourceSlot, hand = handSlot;
+        if (!ownsExchange(capturedLease, capturedFood, capturedDisplaced, source, hand)) return;
+
+        // 原生NBT既用于持久保存，也用于外部只读查询；只归位输出副本，不终止活体使用
+        var backpack = tag.getTagList("MaidInventory", 10);
+        if (!tag.hasKey("MaidInventory", 9)
+            || backpack.tagCount() != ((NBTTagList) tag.getTag("MaidInventory")).tagCount()
+            || backpack.func_150303_d() != 0 && backpack.func_150303_d() != 10) return;
+        var sourceTag = new NBTTagCompound();
+        int previous = -1;
+        for (int i = 0; i < backpack.tagCount(); i++) {
+            var entry = backpack.getCompoundTagAt(i);
+            if (!entry.hasKey("Slot", 1)) return;
+            int slot = entry.getByte("Slot") & 255;
+            if (slot <= previous || slot >= MaidInventory.BACKPACK_SIZE) return;
+            previous = slot;
+            if (slot == source) {
+                sourceTag = (NBTTagCompound) entry.copy();
+                sourceTag.removeTag("Slot");
+            }
+        }
+        var equipment = tag.getTagList("Equipment", 10);
+        if (!tag.hasKey("Equipment", 9) || equipment.tagCount() < 1
+            || equipment.func_150303_d() != 10
+            || equipment.tagCount() != ((NBTTagList) tag.getTag("Equipment")).tagCount()) return;
+        var handTag = hand == MaidInventory.MAIN_HAND ? equipment.getCompoundTagAt(0)
+            : tag.getCompoundTag("TLMNHOffhand");
+        var foodTag = ProtectedItemCodec.encode(expected);
+        var displacedTag = capturedDisplaced == null ? new NBTTagCompound()
+            : ProtectedItemCodec.encode(displacedExpected);
+        if (!handTag.equals(foodTag) || !sourceTag.equals(displacedTag)
+            || !ownsExchange(capturedLease, capturedFood, capturedDisplaced, source, hand)) return;
+
+        var restoredFood = (NBTTagCompound) handTag.copy();
+        restoredFood.setByte("Slot", (byte) source);
+        var restoredBackpack = new NBTTagList();
+        boolean inserted = false;
+        for (int i = 0; i < backpack.tagCount(); i++) {
+            var entry = backpack.getCompoundTagAt(i);
+            int slot = entry.getByte("Slot") & 255;
+            if (!inserted && slot >= source) {
+                restoredBackpack.appendTag(restoredFood);
+                inserted = true;
+            }
+            if (slot != source) restoredBackpack.appendTag(entry.copy());
+        }
+        if (!inserted) restoredBackpack.appendTag(restoredFood);
+        tag.setTag("MaidInventory", restoredBackpack);
+        if (hand == MaidInventory.MAIN_HAND) {
+            var restoredEquipment = new NBTTagList();
+            for (int i = 0; i < equipment.tagCount(); i++) restoredEquipment.appendTag(
+                i == 0 ? sourceTag.copy()
+                    : equipment.getCompoundTagAt(i)
+                        .copy());
+            tag.setTag("Equipment", restoredEquipment);
+        } else if (sourceTag.hasNoTags()) tag.removeTag("TLMNHOffhand");
+        else tag.setTag("TLMNHOffhand", sourceTag.copy());
+    }
+
+    private boolean ownsExchange(MaidItemUseState.Lease capturedLease, ItemStack capturedFood,
+        ItemStack capturedDisplaced, int source, int hand) {
+        var inventory = maid.getMaidInventory();
+        return capturedLease != null && capturedFood != null
+            && expected != null
+            && capturedFood.stackSize > 0
+            && lease == capturedLease
+            && food == capturedFood
+            && displaced == capturedDisplaced
+            && sourceSlot == source
+            && handSlot == hand
+            && source >= 0
+            && source < MaidInventory.BACKPACK_SIZE
+            && (hand == MaidInventory.MAIN_HAND || hand == MaidInventory.OFF_HAND)
+            && maid.getItemUseState()
+                .peek() == capturedLease
+            && inventory.getStackInSlot(hand) == capturedFood
+            && inventory.getStackInSlot(source) == capturedDisplaced
+            && ItemStack.areItemStacksEqual(capturedFood, expected)
+            && ItemStack.areItemStacksEqual(capturedDisplaced, displacedExpected);
     }
 
     public void load(NBTTagCompound tag) {

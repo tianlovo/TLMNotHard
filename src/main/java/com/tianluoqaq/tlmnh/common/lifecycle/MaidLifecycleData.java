@@ -61,7 +61,9 @@ public final class MaidLifecycleData extends WorldSavedData {
         "AcquisitionSource",
         "AcquisitionReceipt",
         "AcquisitionCredential",
-        "Redemption");
+        "Redemption",
+        "DeathIngress",
+        "TombstonePublication");
     private static final Set<String> RETURNED_FIELDS = fields(
         "Id",
         "Stack",
@@ -81,6 +83,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Set<UUID> acquisitionAttempts = new HashSet<>();
     private final Set<UUID> redemptionAttempts = new HashSet<>();
     private final Set<UUID> returnedAttempts = new HashSet<>();
+    private final Set<UUID> deathAttempts = new HashSet<>(), tombstonePublications = new HashSet<>();
     private final Map<UUID, UUID> redemptionCandidates = new HashMap<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
@@ -338,11 +341,182 @@ public final class MaidLifecycleData extends WorldSavedData {
         return token;
     }
 
+    NBTTagCompound deathIngress(UUID token) {
+        var entry = entries.get(token);
+        return entry == null ? new NBTTagCompound() : (NBTTagCompound) entry.deathIngress.copy();
+    }
+
+    boolean pendingDeath(UUID subject) {
+        var token = deathToken(subject);
+        return token != null && !deathReady(entries.get(token));
+    }
+
+    private static boolean deathReady(Entry entry) {
+        return entry.deathIngress.hasNoTags() || "COMMITTED".equals(entry.deathIngress.getString("Stage"));
+    }
+
+    void prepareDeath(UUID token, UUID owner, UUID subject, NBTTagCompound identity, NBTTagList items, int dimension,
+        double x, double y, double z, String name, int experience, long readyAt, NBTTagCompound receipt) {
+        MaidDeathIngress.validate(receipt, token, owner, subject);
+        var existing = deathToken(subject);
+        if (existing != null && !existing.equals(token) || returnedFilms.containsKey(token))
+            throw new IllegalStateException("Conflicting death source identity retained");
+        var entry = entries.get(token);
+        if (entry == null) {
+            entry = new Entry(Kind.FILM, owner, subject, (NBTTagCompound) identity.copy(), false, false);
+            entries.put(token, entry);
+        }
+        if (entry.kind != Kind.FILM || !entry.owner.equals(owner) || !entry.subject.equals(subject))
+            throw new IllegalStateException("Death escrow belongs to a different source");
+        if (entry.delivered) {
+            if (!entry.deathIngress.equals(receipt)) throw new IllegalStateException("Death source receipt changed");
+            return;
+        }
+        if (experience < 0 || readyAt < 0 || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
+            throw new IllegalArgumentException("Invalid prepared death escrow");
+        entry.tombstoneItems = (NBTTagList) items.copy();
+        entry.dimension = dimension;
+        entry.x = x;
+        entry.y = y;
+        entry.z = z;
+        entry.name = name;
+        entry.experience = experience;
+        entry.experienceReadyAt = readyAt;
+        entry.deathIngress = (NBTTagCompound) receipt.copy();
+        entry.delivered = true;
+        markDirty();
+    }
+
+    void beginDeathAttempt(UUID token, NBTTagCompound receipt) {
+        var entry = entries.get(token);
+        if (entry == null || !entry.delivered
+            || !entry.deathIngress.equals(receipt)
+            || !"PREPARED".equals(receipt.getString("Stage"))
+            || !deathAttempts.add(token)) throw new IllegalStateException("No exact owned death ingress attempt");
+    }
+
+    void finishDeathAttempt(World world, UUID token, NBTTagCompound receipt) {
+        var entry = entries.get(token);
+        if (entry == null || !deathAttempts.contains(token) || !entry.deathIngress.equals(receipt))
+            throw new IllegalStateException("Death source changed before acknowledgement");
+        entry.deathIngress.setString("Stage", "COMMITTED");
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.deathIngress.setString("Stage", "PREPARED");
+                markDirty();
+            }
+        }
+    }
+
+    void endDeathAttempt(UUID token) {
+        deathAttempts.remove(token);
+    }
+
+    void holdDeathIngress(UUID token, NBTTagCompound observed) {
+        var entry = entries.get(token);
+        if (entry == null || entry.deathIngress.hasNoTags() || deathReady(entry))
+            throw new IllegalStateException("Missing pending death source record");
+        if (!"HELD".equals(entry.deathIngress.getString("Stage"))) {
+            entry.deathIngress.setString("Stage", "HELD");
+            entry.deathIngress.setTag("Observed", observed.copy());
+            markDirty();
+        }
+    }
+
+    NBTTagCompound tombstonePublication(UUID token) {
+        var entry = entries.get(token);
+        return entry == null ? new NBTTagCompound() : (NBTTagCompound) entry.tombstonePublication.copy();
+    }
+
+    void beginTombstonePublication(World world, UUID token, NBTTagCompound receipt) {
+        var entry = deathEscrow(token);
+        MaidDeathService.validatePublication(receipt, token, entry.owner);
+        if (!deathReady(entry) || entry.published
+            || !reservations.contains(token)
+            || !entry.tombstonePublication.hasNoTags()
+            || !tombstonePublications.add(token))
+            throw new IllegalStateException("No owned tombstone publication attempt");
+        entry.tombstonePublication = (NBTTagCompound) receipt.copy();
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void finishTombstonePublication(World world, UUID token, NBTTagCompound receipt) {
+        var entry = deathEscrow(token);
+        if (!tombstonePublications.contains(token) || !reservations.contains(token)
+            || !entry.tombstonePublication.equals(receipt)
+            || !"PREPARED".equals(receipt.getString("Stage")))
+            throw new IllegalStateException("Unknown tombstone successor cannot be acknowledged");
+        entry.published = true;
+        entry.tombstonePublication.setString("Stage", "PUBLISHED");
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.published = false;
+                entry.tombstonePublication.setString("Stage", "PREPARED");
+                markDirty();
+            }
+        }
+    }
+
+    void cancelTombstonePublication(World world, UUID token, NBTTagCompound receipt) {
+        var entry = deathEscrow(token);
+        if (!tombstonePublications.contains(token) || entry.published || !entry.tombstonePublication.equals(receipt))
+            throw new IllegalStateException("No safely retracted tombstone publication");
+        entry.tombstonePublication = new NBTTagCompound();
+        boolean durable = false;
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+            durable = true;
+        } finally {
+            if (!durable) {
+                entry.tombstonePublication = (NBTTagCompound) receipt.copy();
+                markDirty();
+            }
+        }
+    }
+
+    void resumeTombstonePublication(UUID token, NBTTagCompound receipt) {
+        var entry = deathEscrow(token);
+        if (!reservations.contains(token) || !entry.tombstonePublication.equals(receipt)
+            || !"PREPARED".equals(receipt.getString("Stage"))
+            || !tombstonePublications.add(token))
+            throw new IllegalStateException("No exact pending tombstone to resume");
+    }
+
+    void holdTombstonePublication(UUID token, NBTTagCompound observed) {
+        var entry = deathEscrow(token);
+        if (entry.tombstonePublication.hasNoTags())
+            throw new IllegalStateException("Missing tombstone publication record");
+        if (!"HELD".equals(entry.tombstonePublication.getString("Stage"))) {
+            entry.tombstonePublication.setString("Stage", "HELD");
+            entry.tombstonePublication.setTag("Observed", observed.copy());
+            entry.published = false;
+            markDirty();
+        }
+    }
+
+    void endTombstonePublication(UUID token) {
+        tombstonePublications.remove(token);
+        reservations.remove(token);
+    }
+
     public java.util.List<UUID> pendingDeathExperience(int dimension, long now) {
         var result = new java.util.ArrayList<UUID>();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
             if (entry.kind == Kind.FILM && entry.delivered
+                && deathReady(entry)
                 && !entry.experienceHeld
                 && entry.dimension == dimension
                 && entry.experience > 0
@@ -362,7 +536,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public int reserveDeathExperience(UUID token) {
-        if (isDeathExperienceHeld(token)) return 0;
+        var entry = entries.get(token);
+        if (entry == null || !deathReady(entry) || isDeathExperienceHeld(token)) return 0;
         int remaining = remainingDeathExperience(token);
         return remaining > 0 && reservations.add(token) ? remaining : 0;
     }
@@ -523,6 +698,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
             if (entry.kind == Kind.FILM && entry.delivered
+                && deathReady(entry)
+                && !"HELD".equals(entry.tombstonePublication.getString("Stage"))
                 && !entry.tombstoneHeld
                 && !entry.published
                 && entry.dimension == dimension) result.add(item.getKey());
@@ -541,7 +718,10 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public void markPublished(UUID token) {
-        entries.get(token).published = true;
+        var entry = entries.get(token);
+        if (entry == null || entry.kind != Kind.FILM || !deathReady(entry) || !entry.tombstonePublication.hasNoTags())
+            throw new IllegalStateException("Pending source or handle requires durable acknowledgement");
+        entry.published = true;
         markDirty();
     }
 
@@ -549,6 +729,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.FILM
             || !entry.delivered
+            || !deathReady(entry)
             || entry.tombstoneHeld
             || !entry.published
             || entry.tombstoneItems.tagCount() == 0
@@ -610,6 +791,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = entries.get(token);
         if (entry == null || entry.kind != kind
             || entry.consumed
+            || !deathReady(entry)
             || entry.acquisitionPhase != AcquisitionPhase.NONE
             || !entry.redemption.hasNoTags()
             || !reservations.add(token)) return null;
@@ -632,6 +814,24 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public UUID queueReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z) {
         return addReturnedFilm(stack, dimension, x, y, z, ReturnedPhase.READY, new NBTTagCompound());
+    }
+
+    /** 未知野生死亡数据只封存原raw，永远不是可解码投放的ItemStack */
+    void retainUnownedDeath(UUID id, NBTTagCompound raw, int dimension, double x, double y, double z) {
+        if (entries.containsKey(id) || raw.hasNoTags()
+            || !Double.isFinite(x)
+            || !Double.isFinite(y)
+            || !Double.isFinite(z)) throw new IllegalStateException("Invalid opaque unowned death hold");
+        var existing = returnedFilms.get(id);
+        if (existing != null) {
+            if (existing.phase != ReturnedPhase.HELD || !existing.stack.equals(raw))
+                throw new IllegalStateException("Unknown opaque death hold successor preserved");
+            return;
+        }
+        var entry = new ReturnedFilm((NBTTagCompound) raw.copy(), dimension, x, y, z);
+        entry.phase = ReturnedPhase.HELD;
+        returnedFilms.put(id, entry);
+        markDirty();
     }
 
     UUID prepareReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z,
@@ -761,11 +961,13 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty()
             || !acquisitionAttempts.isEmpty()
             || !redemptionAttempts.isEmpty()
-            || !returnedAttempts.isEmpty())
+            || !returnedAttempts.isEmpty()
+            || !deathAttempts.isEmpty()
+            || !tombstonePublications.isEmpty())
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 7)
+        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 8)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
@@ -834,6 +1036,29 @@ public final class MaidLifecycleData extends WorldSavedData {
                 if (candidates.put(UUID.fromString(entry.redemption.getString("Candidate")), token) != null)
                     throw new IllegalStateException("Duplicate pending maid candidate");
             }
+            if (schema >= 8) {
+                if (!item.hasKey("DeathIngress", 10) || !item.hasKey("TombstonePublication", 10))
+                    throw new IllegalStateException("Invalid death transfer records");
+                entry.deathIngress = (NBTTagCompound) item.getCompoundTag("DeathIngress")
+                    .copy();
+                entry.tombstonePublication = (NBTTagCompound) item.getCompoundTag("TombstonePublication")
+                    .copy();
+                if (!entry.deathIngress.hasNoTags()) {
+                    MaidDeathIngress.validate(entry.deathIngress, token, owner, subject);
+                    if (kind != Kind.FILM || !entry.delivered
+                        || !deathReady(entry) && (entry.consumed || entry.published))
+                        throw new IllegalStateException("Invalid pending death source");
+                }
+                if (!entry.tombstonePublication.hasNoTags()) {
+                    MaidDeathService.validatePublication(entry.tombstonePublication, token, owner);
+                    if (kind != Kind.FILM || !entry.delivered
+                        || !deathReady(entry)
+                        || entry.published != "PUBLISHED".equals(entry.tombstonePublication.getString("Stage")))
+                        throw new IllegalStateException("Invalid tombstone publication state");
+                }
+            } else if (item.hasKey("DeathIngress") || item.hasKey("TombstonePublication")) {
+                throw new IllegalStateException("Death transfer records require lifecycle schema 8");
+            }
             if ((entry.tombstoneHeld || entry.experienceHeld) && (kind != Kind.FILM || !entry.delivered))
                 throw new IllegalStateException("Invalid held death escrow");
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
@@ -886,6 +1111,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         acquisitionAttempts.clear();
         redemptionAttempts.clear();
         returnedAttempts.clear();
+        deathAttempts.clear();
+        tombstonePublications.clear();
         redemptionCandidates.clear();
         redemptionCandidates.putAll(candidates);
         experienceCursors.clear();
@@ -895,7 +1122,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 7);
+        tag.setInteger("Schema", 8);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -926,6 +1153,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             data.setTag("AcquisitionReceipt", entry.acquisitionReceipt.copy());
             data.setTag("AcquisitionCredential", entry.acquisitionCredential.copy());
             data.setTag("Redemption", entry.redemption.copy());
+            data.setTag("DeathIngress", entry.deathIngress.copy());
+            data.setTag("TombstonePublication", entry.tombstonePublication.copy());
             list.appendTag(data);
         }
         tag.setTag("Entries", list);
@@ -1047,6 +1276,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         private NBTTagCompound acquisitionSource = new NBTTagCompound(), acquisitionReceipt = new NBTTagCompound(),
             acquisitionCredential = new NBTTagCompound();
         private NBTTagCompound redemption = new NBTTagCompound();
+        private NBTTagCompound deathIngress = new NBTTagCompound(), tombstonePublication = new NBTTagCompound();
 
         private Entry(Kind kind, UUID owner, UUID subject, NBTTagCompound identity, boolean consumed,
             boolean delivered) {

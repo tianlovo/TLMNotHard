@@ -877,7 +877,6 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void writeEntityToNBT(NBTTagCompound tag) {
-        meals.save(tag);
         super.writeEntityToNBT(tag);
         var extension = (NBTTagCompound) extraSaveData.copy();
         extension.setInteger("Schema", Math.max(SAVE_VERSION, extension.getInteger("Schema")));
@@ -913,6 +912,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         tag.setTag("Equipment", equipment);
         if (offhand != null) tag.setTag(OFFHAND_TAG, ProtectedItemCodec.encode(offhand));
         else tag.removeTag(OFFHAND_TAG);
+        meals.save(tag);
     }
 
     @Override
@@ -1019,6 +1019,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     @Override
+    protected void onDeathUpdate() {
+        if (!worldObj.isRemote && !MaidDeathService.canFinishDeath(this, dead)) return;
+        super.onDeathUpdate();
+    }
+
+    @Override
     public void setDead() {
         try {
             if (hasServerBrain()) brain.onUnload();
@@ -1035,19 +1041,13 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (!worldObj.isRemote && dead)
             favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.DEATH);
         if (MaidDeathService.preserve(this)) return;
-        for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
-            var stack = inventory.getStackInSlot(slot);
-            if (stack != null) {
-                entityDropItem(stack, 0.0F);
-                inventory.setInventorySlotContents(slot, null);
-            }
-        }
+        MaidDeathService.dropUnowned(this);
     }
 
     /** 输出可兑现的保存经验，死亡账本和交互保留分别持有已移交或锁定的余额 */
     @Override
     protected int getExperiencePoints(EntityPlayer player) {
-        return com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer.availableExperience(this);
+        return MaidDeathService.nativeDeathExperience(this);
     }
 
     /** 1.7.10该protected标志只用于经验掉落的最近玩家攻击门槛 */
