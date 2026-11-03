@@ -1,0 +1,268 @@
+{
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "warmupTicks": 80,
+  "arrivalDistance": 2.0,
+  "food": {
+    "position": [
+      13.5,
+      1.25,
+      12.5
+    ],
+    "registry": "minecraft:apple",
+    "count": 1
+  },
+  "ownerInputScope": "controlled native registered players with isolated memory connections; not real network login or multiple real clients",
+  "enclosure": {
+    "block": "minecraft:glass",
+    "placement": "four walls at x/z boundary from y1 through roof, full roof at height-1; original stone y0 remains",
+    "scope": "controlled closed arena prevents unowned gravity blocks and fluid entry; sides and roof are real collision/vision inputs"
+  },
+  "schema": "life-condition-mechanisms-contract-v1",
+  "contract": "LIFE_CONDITION_MECHANISMS_V1",
+  "repetitions": 1,
+  "framesPerActor": 3000,
+  "dayTime": 18000,
+  "difficulty": "NORMAL",
+  "layoutVolume": [
+    25,
+    8,
+    25
+  ],
+  "maidSpawn": [
+    9.5,
+    1,
+    11.5
+  ],
+  "ownerStart": [
+    9.5,
+    1,
+    7.5
+  ],
+  "ownerMode": "creative",
+  "hunger": 20,
+  "homeEnabled": false,
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "complete14ClassBenchmarkAccepted": false,
+  "crossEngineFullNbtEqualityRequired": false,
+  "calibrationTurbo": 1,
+  "mechanisms": [
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "homeEnabled": true,
+      "arenaVolume": [
+        25,
+        8,
+        25
+      ],
+      "ownerMode": "creative",
+      "ownerPosition": [
+        9.5,
+        1,
+        7.5
+      ],
+      "task": "idle",
+      "id": "cabinet_conditions",
+      "family": "B09",
+      "frames": 3000,
+      "initialSchedule": "ALL",
+      "primarySpawn": [
+        9.5,
+        1,
+        11.5
+      ],
+      "secondarySpawn": [
+        9.5,
+        1,
+        13.5
+      ],
+      "backpackCake": 1,
+      "initialHunger": 0,
+      "scope": "One tagged finite backpack cake, two complete natural roots: no cabinet0..199; native empty cabinet in the pre-existing closed inner shell atSTART200; open its two-high gate atSTART800; wait through2200 further native ticks for real placement/shared consumption. Negative-window input stack must remain completely identical. No clock/RNG reset, direct task tick, actor relocation or invented successful consume.",
+      "initialHomeRadius": 12
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "homeEnabled": true,
+      "arenaVolume": [
+        25,
+        8,
+        25
+      ],
+      "ownerMode": "creative",
+      "ownerPosition": [
+        9.5,
+        1,
+        7.5
+      ],
+      "task": "idle",
+      "id": "shared_bed_handoff",
+      "family": "B10",
+      "frames": 1200,
+      "initialSchedule": "DAY",
+      "primarySpawn": [
+        11.5,
+        1,
+        12.5
+      ],
+      "secondarySpawn": [
+        13.5,
+        1,
+        12.5
+      ],
+      "backpackCake": 0,
+      "initialHunger": 20,
+      "scope": "Two complete natural roots compete for one native bed. Observe the actual first sleeper without preclaim; after40completed sleeping-window ticks queue normal ALL+sitting for that first actor at the nextSTART; the other remainsDAY/rest and must naturally succeed. Preserve legitimate pending reservations separately from simultaneous sleep; never call a bed action or alter a lease.",
+      "initialHomeRadius": 6
+    }
+  ],
+  "cabinet": {
+    "position": [
+      12,
+      1,
+      12
+    ],
+    "cakePosition": [
+      12,
+      2,
+      12
+    ],
+    "emptyType": {
+      "original": "type=0,facing=north",
+      "portMetadata": 0
+    },
+    "outerInteriorShell": [
+      8,
+      16,
+      8,
+      16,
+      5
+    ],
+    "innerClosedShell": [
+      10,
+      14,
+      10,
+      14,
+      4
+    ],
+    "gateRemovedAt800": [
+      [
+        10,
+        1,
+        12
+      ],
+      [
+        10,
+        2,
+        12
+      ]
+    ],
+    "shellDefinition": "All four boundary walls y1..top plus complete top roof. Both shells exist before actor registration; source actors stay in the ring and cannot be trapped by later shell construction.",
+    "finiteUnits": 1,
+    "mouthsPerCake": 7,
+    "protectedItemNbt": {
+      "LifeConditionInput": 201,
+      "UnknownCakePayload": [
+        7,
+        -17,
+        65537
+      ]
+    },
+    "balance": "actual owned-actor native consume callbacks + actual world remaining mouths + current backpack cake count*7 ==7, each END; block disappearance alone is never consumption",
+    "consumeBinding": "Target platform event has exact actor identity. Original retains AtEntity exact identity or AtPosition exact coordinates of the controlled actors; overlapping shared positions are explicitly ambiguous and never credited to both actors.",
+    "nativeCadence": "Fixed source MaidStealEdibleMoveBlockTask and target MaidLifeRules use45*20 snack checks. All random/check/task clocks evolve naturally; horizon is a bounded observation, not a promise to trigger."
+  },
+  "bed": {
+    "head": [
+      12,
+      1,
+      12
+    ],
+    "foot": [
+      12,
+      1,
+      13
+    ],
+    "facing": "north",
+    "portHeadMetadata": 10,
+    "portFootMetadata": 2,
+    "holdCompletedFrames": 40,
+    "release": "Normal scheduleALL+sitting to observed first occupant nextSTART. No direct wake, teleport, claim/release or ownership edits.",
+    "invariants": "Never two sleeping actors at once. Port actual bed leases never two owners, and every sleeping actor owns this bed. Original actual native occupied flag and each entity sleeping-position are retained; absent per-actor native lease API remains unclaimed.",
+    "homeInput": "Native normal rest radius6; original explicit native restrictTo6 after schedule/home preparation, target restrictToCurrentSchedule using actual server home.sleepRange (must actually equal6). No per-tick reset or hidden global config change."
+  },
+  "campaign": {
+    "status": "CALIBRATION_ONLY",
+    "noninferiorityDelta": null,
+    "plannedIndependentPairedReplicates": 30,
+    "failurePolicy": "Retain setup/measurement fault, death, timeout, partial capture, resource violation and untriggered behaviors. A collected episode is not a passed behavior; do not retry under the same sample id."
+  },
+  "clockScope": {
+    "turbo": 1,
+    "sample": "Native END observations and real START input changes only; full root factories, natural RNG and clocks.",
+    "limits": "No performance, real-network owner, statistical noninferiority or completeB09/B10/14-class admission."
+  }
+}

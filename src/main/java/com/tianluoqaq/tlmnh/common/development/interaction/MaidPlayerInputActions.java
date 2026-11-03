@@ -203,6 +203,7 @@ final class MaidPlayerInputActions {
                 .equals(value.session.data.getString("Run"))) return true;
             if (!(entity instanceof EntityItem drop)) continue;
             if (value.drops.contains(drop)) return true;
+            if (value.admitCursorDrop(drop)) return true;
             var maid = value.session.maid;
             if (!value.row.getString("Stage")
                 .startsWith("xp-")
@@ -412,6 +413,15 @@ final class MaidPlayerInputActions {
             }
             case "world-player-approach-output" -> value.approachOutput();
             case "world-player-return-output-camera" -> value.restorePickupCamera();
+            case "world-player-arm-cursor-close" -> value.armCursorClose(false);
+            case "world-player-arm-cursor-close-full" -> value.armCursorClose(true);
+            case "world-player-verify-cursor-return" -> value.verifyCursorReturn();
+            case "world-player-verify-cursor-drop" -> value.verifyCursorDrop();
+            case "world-player-free-cursor-slot" -> value.freeCursorSlot();
+            case "world-player-approach-cursor-drop" -> value.approachOutput();
+            case "world-player-verify-cursor-pickup" -> value.verifyCursorPickup();
+            case "world-player-clear-cursor-filler" -> value.clearCursorFiller();
+            case "world-player-finish-cursor-close" -> value.finishCursorClose();
             case "world-player-verify-output-pickup" -> {
                 require(
                     value.count("output") == 1 && value.drops.stream()
@@ -696,6 +706,7 @@ final class MaidPlayerInputActions {
                     .toString());
             row.addProperty("entityId", drop.getEntityId());
             row.addProperty("dead", drop.isDead);
+            row.addProperty("registered", drop.worldObj.getEntityByID(drop.getEntityId()) == drop);
             row.addProperty("pickupDelay", drop.delayBeforeCanPickup);
             row.addProperty("nativeItem", raw(drop.getEntityItem()).toString());
             row.addProperty("nativeOwner", drop.func_145798_i());
@@ -712,6 +723,34 @@ final class MaidPlayerInputActions {
             drops.add(row);
         }
         result.add("drops", drops);
+        if (value.cursorClose != null) {
+            var close = value.cursorClose;
+            var row = new JsonObject();
+            row.addProperty("windowId", close.windowId);
+            row.addProperty("currentContainerWindowId", close.window.windowId);
+            row.addProperty("armedAtWorldTick", close.armedAt);
+            row.addProperty("fullInventory", close.fullInventory);
+            row.addProperty("slotFreed", close.slotFreed);
+            row.addProperty("dropObserved", close.drop != null);
+            row.addProperty("returnVerified", close.returnVerified);
+            row.addProperty("originalCursorNativeNbtBase64", nativeItem(close.cursor));
+            row.addProperty(
+                "containerIdentity",
+                close.window.getClass()
+                    .getName() + "@" + Integer.toHexString(System.identityHashCode(close.window)));
+            if (close.drop != null) {
+                row.addProperty(
+                    "dropUuid",
+                    close.drop.getUniqueID()
+                        .toString());
+                row.addProperty("dropEntityId", close.drop.getEntityId());
+                row.addProperty("originalDropItemNativeNbtBase64", nativeItem(close.cursor));
+                row.addProperty("nativeEntityAtJoin", close.nativeAtJoin.toString());
+                row.addProperty("nativeEntityAtJoinBase64", nativeBinary(close.nativeAtJoin));
+                row.addProperty("dropDead", close.drop.isDead);
+            }
+            result.add("cursorClose", row);
+        }
         return result;
     }
 
@@ -825,6 +864,7 @@ final class MaidPlayerInputActions {
         final List<EntityItem> drops = new ArrayList<>();
         NBTTagCompound secondaryMarker;
         NBTTagCompound pickupCamera, pickupTarget;
+        CursorClose cursorClose;
         EntityMaid wild;
 
         Attempt(Session session, EntityPlayerMP secondary, NBTTagCompound row) {
@@ -834,9 +874,13 @@ final class MaidPlayerInputActions {
         }
 
         void approachOutput() {
+            boolean closeOutput = cursorClose != null && (row.getString("Stage")
+                .equals("gui-cursor-pickup")
+                || row.getString("Stage")
+                    .equals("gui-cursor-close-armed"));
             require(
-                row.getString("Stage")
-                    .equals("xp-pickup") && pickupCamera == null,
+                (row.getString("Stage")
+                    .equals("xp-pickup") || closeOutput) && pickupCamera == null,
                 "One verified original output and an unmodified controlled camera required");
             var player = session.player;
             require(
@@ -854,9 +898,11 @@ final class MaidPlayerInputActions {
                     && target.worldObj.getEntityByID(target.getEntityId()) == target
                     && target.worldObj.loadedEntityList.stream()
                         .anyMatch(value -> value == exact)
-                    && target.getEntityItem()
-                        .getItem() == Items.experience_bottle
-                    && target.getEntityItem().stackSize == 1
+                    && (closeOutput
+                        ? target == cursorClose.drop
+                            && ItemStack.areItemStacksEqual(target.getEntityItem(), cursorClose.cursor)
+                        : target.getEntityItem()
+                            .getItem() == Items.experience_bottle && target.getEntityItem().stackSize == 1)
                     && target.delayBeforeCanPickup <= 0
                     && target.getDistanceSqToEntity(session.maid) <= 64,
                 "Exact live original output in the controlled scene required");
@@ -879,6 +925,205 @@ final class MaidPlayerInputActions {
                 pickupTarget.getDouble("Z"),
                 pickupTarget.getFloat("Yaw"),
                 pickupTarget.getFloat("Pitch"));
+        }
+
+        void armCursorClose(boolean fullInventory) {
+            require(
+                cursorClose == null && row.getString("Stage")
+                    .equals("gui-armed"),
+                "Finish the previous exact cursor transaction before staging another");
+            var player = session.player;
+            require(
+                player.openContainer instanceof ContainerMaid window && window.getMaid() == session.maid
+                    && window.windowId > 0
+                    && window.canModifyWith(player)
+                    && online(player)
+                    && player.inventory.currentItem == session.slot()
+                    && player.getHealth() == 20,
+                "Actual owned native maid window and original main hand required");
+            var cursor = player.inventory.getItemStack();
+            var stored = session.maid.getMaidInventory()
+                .getStackInSlot(0);
+            require(
+                label(cursor).equals("stone") && cursor.stackSize == 16
+                    && label(stored).equals("stone")
+                    && stored.stackSize == 16
+                    && countInPlayer("stone", player) == 0
+                    && drops.stream()
+                        .noneMatch(drop -> !drop.isDead),
+                "Exactly the ordinary half-stack cursor and its original stored remainder required");
+            cursorClose = new CursorClose(
+                (ContainerMaid) player.openContainer,
+                cursor.copy(),
+                player.worldObj.getTotalWorldTime(),
+                fullInventory);
+            if (fullInventory) fillEmpty();
+            row.setString("Stage", "gui-cursor-close-armed");
+        }
+
+        boolean admitCursorDrop(EntityItem drop) {
+            var close = cursorClose;
+            var player = session.player;
+            if (close == null || close.drop != null
+                || !row.getString("Stage")
+                    .equals("gui-cursor-close-armed")
+                || !online(player)
+                || player.openContainer != close.window
+                || close.window.windowId != close.windowId
+                || !close.window.canModifyWith(player)
+                || close.window.getMaid() != session.maid
+                || !session.validNonce(session.maid)
+                || drop.worldObj != player.worldObj
+                || player.worldObj.getTotalWorldTime() - close.armedAt < 0
+                || player.worldObj.getTotalWorldTime() - close.armedAt > 200
+                || !ItemStack.areItemStacksEqual(player.inventory.getItemStack(), close.cursor)
+                || !ItemStack.areItemStacksEqual(drop.getEntityItem(), close.cursor)
+                || drop.delayBeforeCanPickup != 40
+                || drop.isDead
+                || Math.abs(drop.posX - player.posX) > 1e-7
+                || Math.abs(drop.posZ - player.posZ) > 1e-7
+                || Math.abs(drop.posY - (player.posY - .30000001192092896 + player.getEyeHeight())) > 1e-7)
+                return false;
+            // Native Container.onContainerClosed calls ForgeHooks.onPlayerTossEvent before clearing its cursor.
+            // This one authenticated object is admitted; no other lab item or replacement is authorized.
+            close.drop = drop;
+            close.nativeAtJoin = new NBTTagCompound();
+            drop.writeToNBT(close.nativeAtJoin);
+            drops.add(drop);
+            return true;
+        }
+
+        void verifyCursorDrop() {
+            var close = cursorClose;
+            require(
+                close != null && row.getString("Stage")
+                    .equals("gui-cursor-close-armed")
+                    && close.drop != null
+                    && session.player.openContainer == session.player.inventoryContainer
+                    && session.player.inventory.getItemStack() == null,
+                "Native close must create the same single full-NBT cursor drop and leave an empty cursor");
+            require(
+                close.drop.isDead ? !close.fullInventory && countInPlayer("stone", session.player) == 16
+                    : close.drop.worldObj.getEntityByID(close.drop.getEntityId()) == close.drop
+                        && ItemStack.areItemStacksEqual(close.drop.getEntityItem(), close.cursor),
+                "The original cursor drop or its natural owner pickup must remain exact");
+            if (close.fullInventory) {
+                for (var stack : session.player.inventory.mainInventory)
+                    require(stack != null, "Full native inventory must remain full before releasing one slot");
+                require(
+                    close.drop.delayBeforeCanPickup <= 0,
+                    "Observe the original native pickup delay before the full-inventory check");
+                require(
+                    pickupCamera != null && session.player.boundingBox.expand(1, .5, 1)
+                        .intersectsWith(close.drop.boundingBox),
+                    "The actual full player must overlap the original live drop during its native pickup window");
+            }
+            row.setString("Stage", close.fullInventory ? "gui-cursor-full-waiting" : "gui-cursor-pickup");
+        }
+
+        void freeCursorSlot() {
+            require(
+                cursorClose != null && cursorClose.fullInventory
+                    && !cursorClose.slotFreed
+                    && row.getString("Stage")
+                        .equals("gui-cursor-full-waiting"),
+                "Verified original full-inventory cursor drop required");
+            int slot = -1;
+            for (int i = 0; i < session.player.inventory.mainInventory.length; i++)
+                if (label(session.player.inventory.mainInventory[i]).equals("filler")) {
+                    slot = i;
+                    break;
+                }
+            require(slot >= 0, "Exact generated filler slot required");
+            var removed = session.player.inventory.mainInventory[slot];
+            material("filler").count -= removed.stackSize;
+            session.player.inventory.mainInventory[slot] = null;
+            cursorClose.slotFreed = true;
+            row.setString("Stage", "gui-cursor-pickup");
+        }
+
+        void verifyCursorReturn() {
+            var close = cursorClose;
+            require(
+                close != null && row.getString("Stage")
+                    .equals("gui-cursor-close-armed")
+                    && !close.fullInventory
+                    && close.drop == null
+                    && session.player.openContainer == session.player.inventoryContainer
+                    && session.player.inventory.getItemStack() == null
+                    && countInPlayer("stone", session.player) == 16
+                    && countInPlayer("stone", secondary) == 0
+                    && ItemStack.areItemStacksEqual(
+                        session.maid.getMaidInventory()
+                            .getStackInSlot(0),
+                        close.cursor)
+                    && drops.stream()
+                        .noneMatch(drop -> !drop.isDead),
+                "Native close must return the exact cursor stack without creating a drop or changing its remainder");
+            int exact = 0;
+            for (var stack : session.player.inventory.mainInventory)
+                if (ItemStack.areItemStacksEqual(stack, close.cursor)) exact++;
+            require(exact == 1, "Exactly one complete native cursor stack must return to the actual owner's inventory");
+            // The installed Hodgepodge closes by returning the native toss stack and canceling that toss on success.
+            // This verifies the observed result; it never inserts, moves or replaces an inventory item.
+            close.returnVerified = true;
+            row.setString("Stage", "gui-cursor-picked");
+        }
+
+        void verifyCursorPickup() {
+            var close = cursorClose;
+            require(
+                close != null && row.getString("Stage")
+                    .equals("gui-cursor-pickup")
+                    && close.drop != null
+                    && close.drop.isDead
+                    && close.drop.worldObj.getEntityByID(close.drop.getEntityId()) != close.drop
+                    && countInPlayer("stone", session.player) == 16
+                    && countInPlayer("stone", secondary) == 0
+                    && session.player.inventory.getItemStack() == null,
+                "The same original item entity must be naturally picked up by the actual owner");
+            int exact = 0;
+            for (var stack : session.player.inventory.mainInventory)
+                if (ItemStack.areItemStacksEqual(stack, close.cursor)) exact++;
+            require(exact == 1, "One complete typed cursor stack must reach the player's native inventory");
+            row.setString("Stage", "gui-cursor-picked");
+        }
+
+        void clearCursorFiller() {
+            require(
+                cursorClose != null && row.getString("Stage")
+                    .equals("gui-cursor-picked"),
+                "Verified native cursor completion required before removing this fixture's filler");
+            if (!cursorClose.fullInventory) return;
+            for (int i = 0; i < session.player.inventory.mainInventory.length; i++) {
+                var stack = session.player.inventory.mainInventory[i];
+                if (label(stack).equals("filler")) {
+                    material("filler").count -= stack.stackSize;
+                    session.player.inventory.mainInventory[i] = null;
+                }
+            }
+            require(material("filler").count == 0, "Unknown filler successor retained");
+        }
+
+        void finishCursorClose() {
+            require(
+                cursorClose != null && row.getString("Stage")
+                    .equals("gui-cursor-picked")
+                    && pickupCamera == null
+                    && (cursorClose.returnVerified && !cursorClose.fullInventory && cursorClose.drop == null
+                        || !cursorClose.returnVerified && cursorClose.drop != null && cursorClose.drop.isDead)
+                    && countInPlayer("stone", session.player) == 0
+                    && session.player.inventory.getItemStack() == null
+                    && match(
+                        "stone",
+                        session.maid.getMaidInventory()
+                            .getStackInSlot(0)),
+                "Native full-NBT recombination and original camera required before closing this plan");
+            if (cursorClose.fullInventory) require(
+                material("filler").count == 0,
+                "Remove only this fixture's remaining filler before another native input");
+            cursorClose = null;
+            row.setString("Stage", "gui-armed");
         }
 
         void restorePickupCamera() {
@@ -1142,6 +1387,7 @@ final class MaidPlayerInputActions {
                 drop.worldObj.removePlayerEntityDangerously(drop);
             }
             drops.clear();
+            cursorClose = null;
             materials.clear();
             row.setTag("Materials", new NBTTagList());
             row.setString("XPSource", "");
@@ -1160,6 +1406,27 @@ final class MaidPlayerInputActions {
                 if (player.openContainer != player.inventoryContainer) player.openContainer.detectAndSendChanges();
                 player.sendPlayerAbilities();
             }
+        }
+    }
+
+    private static final class CursorClose {
+
+        final ContainerMaid window;
+        final int windowId;
+        final ItemStack cursor;
+        final long armedAt;
+        final boolean fullInventory;
+        EntityItem drop;
+        NBTTagCompound nativeAtJoin;
+        boolean slotFreed;
+        boolean returnVerified;
+
+        CursorClose(ContainerMaid window, ItemStack cursor, long armedAt, boolean fullInventory) {
+            this.window = window;
+            this.windowId = window.windowId;
+            this.cursor = cursor;
+            this.armedAt = armedAt;
+            this.fullInventory = fullInventory;
         }
     }
 }
