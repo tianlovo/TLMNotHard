@@ -1508,3 +1508,14 @@ MaidCreeperAvoidance保留最近合格女仆选择、基础可见性规则和非
 
 容器写入沿服务端原生GameType检查旁观模式，只读页面导航继续复用会话权限
 开发输入复用原生C0E/C11和实装Backhand1.8.18注入的Minecraft右键入口，客户端请求与服务端接受结果分别记录
+
+## 原生输入、世界光影与容量观测
+
+198的容器开发输入依据实装lwjgl3ify3.0.42的公开Mouse.addMoveEvent和addButtonEvent排入鼠标事件，交给GuiScreen.handleInput处理
+实装ModularUI在该循环中分发MouseInputEvent.Pre/Post，Bogosorter1.3.55在正常事件链内管理客户端取槽准入
+适配核对提供方和实际Mouse类所属产物，保留原生容器事务及模组事件处理；没有安全原生键状态入口的Shift操作保持未覆盖
+
+世界光影开发入口依据实装Angelica2.2.43的Iris.toggleShaders及reload，切换已选光影并恢复原配置文件
+实际渲染管线、加载代次和回退状态分别记录，原始配置文件与选项保持精确恢复
+原生容量观测使用Java ThreadMXBean的当前服务端线程CPU及MinecraftServer.tickTimeArray，分别保留原始CPU、MSPT、堆和GC数据
+当前Windows运行的CPU读数呈15.625ms量化，零读数不用于宣称细粒度CPU开销为零

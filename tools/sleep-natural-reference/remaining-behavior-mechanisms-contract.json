@@ -1,0 +1,347 @@
+{
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "schema": "remaining-behavior-mechanisms-contract-v2",
+  "contract": "REMAINING_BEHAVIOR_MECHANISMS_V2",
+  "repetitions": 1,
+  "warmupTicks": 80,
+  "framesPerActor": 480,
+  "dayTime": 18000,
+  "difficulty": "NORMAL",
+  "layoutVolume": [
+    33,
+    12,
+    33
+  ],
+  "maidSpawn": [
+    8.5,
+    1,
+    4.5
+  ],
+  "ownerStart": [
+    14.5,
+    1,
+    4.5
+  ],
+  "ownerMode": "per_scene_actual_native_mode",
+  "hunger": 20,
+  "homeEnabled": false,
+  "arrivalDistance": 2.0,
+  "food": {
+    "position": [
+      13.5,
+      1.25,
+      12.5
+    ],
+    "registry": "minecraft:apple",
+    "count": 1
+  },
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "complete14ClassBenchmarkAccepted": false,
+  "ownerInputScope": "controlled native registered players with isolated memory connections; not real network login or multiple real clients",
+  "mechanisms": [
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "id": "closed_door_recovery",
+      "family": "B02",
+      "frames": 480,
+      "task": "idle",
+      "homeEnabled": false,
+      "scope": "native iron door twice blocked then opened with same-path requests; source AI cannot open iron; observed failure/recovery retained",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        14.5,
+        1,
+        4.5
+      ],
+      "waypoints": [
+        [
+          14.5,
+          1,
+          4.5
+        ]
+      ],
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "creative",
+      "initialSchedule": "ALL"
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "id": "melee_boundary_variant",
+      "family": "B05",
+      "frames": 360,
+      "task": "attack",
+      "homeEnabled": true,
+      "scope": "persistent native baby Zombie after normal initialization, allied seated wolf, controlled outside-home target phase then normal re-entry; normal monster AI retained",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        8.5,
+        1,
+        8.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          8.5
+        ]
+      ],
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "survival",
+      "initialSchedule": "ALL"
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "id": "owner_dimension_arrow",
+      "family": "B08",
+      "frames": 240,
+      "task": "ranged_attack",
+      "homeEnabled": true,
+      "scope": "actual native owner End migration after first natural arrow; old-world lease/arrow/resource facts retained; original refusal/source telemetry unknown",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        8.5,
+        1,
+        8.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          8.5
+        ]
+      ],
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "creative",
+      "initialSchedule": "ALL"
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "id": "sleep_defense_crisis",
+      "family": "B11",
+      "frames": 720,
+      "task": "attack",
+      "homeEnabled": true,
+      "scope": "natural night sleep then actual owner/maid hurt, normal work command, wait plus native Creeper crisis, withdrawal and restore night sleep; nontrigger/death retained",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        8.5,
+        1,
+        8.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          8.5
+        ]
+      ],
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "survival",
+      "initialSchedule": "DAY"
+    }
+  ],
+  "campaign": {
+    "status": "CALIBRATION_ONLY",
+    "plannedIndependentPairedReplicates": 30,
+    "block": "one independent fresh JVM/world per side and replicate containing the four frozen mechanisms; repeated frames/actors in one JVM are not independent replicates",
+    "primaryMechanisms": [
+      "closed_door_recovery",
+      "melee_boundary_variant",
+      "owner_dimension_arrow",
+      "sleep_defense_crisis"
+    ],
+    "primaryMetrics": {
+      "closed_door_recovery": "both post-open arrivals within fixed window; actual native path requests/deferrals separately",
+      "melee_boundary_variant": "allied harm zero and forbidden outside-home accepted attacks zero; reacquisition/kill counts separate",
+      "owner_dimension_arrow": "port finite materials/no phantom post-migration release, active lease canceled, stale-arrow effect zero; O native outcome descriptive",
+      "sleep_defense_crisis": "natural sleep, actual hurt wake/defense, crisis/wait arbitration and return sleep phases separately; untriggered phases retained"
+    },
+    "failurePolicy": "death, timeout, nontrigger and migration/target loss retained; measurement faults separately invalid but kept; no outcome-selective retries",
+    "statistics": "JVM-block denominators, paired differences and uncertainty; no performance data from turbo; no noninferiority verdict without user delta",
+    "noninferiorityDelta": null
+  },
+  "enclosure": {
+    "block": "minecraft:glass",
+    "placement": "four walls at x/z boundary from y1 through roof, full roof at height-1; original stone y0 remains",
+    "scope": "controlled closed arena prevents unowned gravity blocks and fluid entry; sides and roof are real collision/vision inputs"
+  },
+  "calibrationTurbo": 4,
+  "clockScope": {
+    "worldTicks": "full native server/world/entity START-END updates; each primary maid age and totalWorldTime increments once per frame",
+    "turbo": "headless HQA4 calibration; scheduled player/world autosaves skipped by framework; no CPU/MSPT/network/durability conclusion",
+    "wallClockTasksAbsent": "no snowball task or items; observed solver/path nanoTime is telemetry only"
+  },
+  "door": {
+    "position": [
+      11,
+      1,
+      4
+    ],
+    "closedFrames": [
+      0
+    ],
+    "openFrames": [
+      100
+    ],
+    "reverseOwnerAt": "next natural START after actual first arrival; otherwise no second cycle",
+    "reverseOwnerPosition": [
+      4.5,
+      1,
+      4.5
+    ],
+    "closedPlane": "west edge of door block; legacy facing0 maps modern EAST",
+    "scope": "iron door is externally powered/unpowered by native setOpen API; no forced NPC navigation",
+    "woodenPosition": [
+      9,
+      1,
+      4
+    ],
+    "secondOpenAt": "second close +100 actual world ticks"
+  },
+  "melee": {
+    "enemyStart": [
+      14.5,
+      1,
+      4.5
+    ],
+    "friendStart": [
+      10.5,
+      1,
+      4.5
+    ],
+    "outsidePosition": [
+      25.5,
+      1,
+      4.5
+    ],
+    "outsideBegin": "next natural START after first actual nonfatal maid melee (health reduced, enemy alive, paid sword wear)",
+    "outsideEnd": "outsideBegin+60 actual world ticks",
+    "idleAt": 260,
+    "variant": "native baby Zombie set through actual API after native normal initialization; not randomized-population variant probability"
+  },
+  "bed": {
+    "head": [
+      9,
+      1,
+      4
+    ],
+    "foot": [
+      9,
+      1,
+      5
+    ],
+    "facing": "north",
+    "scheduleSemantics": "DAY shift works by day and rests at captured18000; ALL input wakes work, restoreDAY returns night rest"
+  },
+  "finiteAmmo": 24,
+  "dimension": {
+    "destination": "minecraft:the_end",
+    "portId": 1,
+    "inputEntryOriginal": "ServerPlayer.changeDimension(ServerLevel.END)",
+    "inputEntryPort": "ServerConfigurationManager.transferPlayerToDimension(owner,1)",
+    "originalMaidOverride": "EntityMaid.changeDimension does not directly honor the argument; never called to fake a paired transfer",
+    "scope": "normal native memory-connected owner, not a real network login; End platform raw blocks/tiles restored"
+  }
+}

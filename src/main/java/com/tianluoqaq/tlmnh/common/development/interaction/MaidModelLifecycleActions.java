@@ -12,11 +12,17 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
+import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
@@ -46,7 +52,8 @@ final class MaidModelLifecycleActions {
             "FilmInventory",
             "RevivedNative",
             "LedgerSchema",
-            "OriginalMetadata"));
+            "OriginalMetadata",
+            "Long"));
     private static final Set<String> STAGES = new HashSet<>(
         Arrays.asList(
             "ready",
@@ -59,6 +66,9 @@ final class MaidModelLifecycleActions {
             "revived",
             "restart"));
     private static Session owner;
+    private static Session longOwner;
+    private static MaidServerLoadProbe longProbe;
+    private static JsonObject lastLongLoad;
 
     private MaidModelLifecycleActions() {}
 
@@ -98,6 +108,24 @@ final class MaidModelLifecycleActions {
             state.hasKey("OriginalMetadata", 3) && state.getInteger("OriginalMetadata") == 0,
             "Unknown original air metadata retained");
         if (state.hasKey("LedgerSchema")) require(state.hasKey("LedgerSchema", 3), "Unknown ledger schema retained");
+        if (state.hasKey("Long")) {
+            require(state.hasKey("Long", 10), "Unknown long-session data retained");
+            var record = state.getCompoundTag("Long");
+            for (Object key : record.func_150296_c()) require(
+                Arrays.asList("Profile", "StartedAt", "Ticks", "Stage")
+                    .contains(key),
+                "Unknown long-session field retained");
+            require(
+                record.hasKey("Profile", 8) && Arrays.asList("faithful_tlm", "enhanced")
+                    .contains(record.getString("Profile"))
+                    && record.hasKey("StartedAt", 4)
+                    && record.hasKey("Ticks", 3)
+                    && record.getInteger("Ticks") == 9000
+                    && record.hasKey("Stage", 8)
+                    && Arrays.asList("running", "finished")
+                        .contains(record.getString("Stage")),
+                "Invalid long-session plan retained");
+        }
         if (state.hasKey("FilmInventory")) require(
             state.hasKey("FilmInventory", 9)
                 && ((NBTTagList) state.getTag("FilmInventory")).tagCount() == state.getTagList("FilmInventory", 10)
@@ -473,6 +501,74 @@ final class MaidModelLifecycleActions {
                     .writeToNBT(ledger);
                 state.setInteger("LedgerSchema", ledger.getInteger("Schema"));
             }
+            case "world-life-long-f", "world-life-long-n" -> {
+                require(
+                    state.getString("Stage")
+                        .equals("revived") && longProbe == null
+                        && (!state.hasKey("Long") || state.getCompoundTag("Long")
+                            .getString("Stage")
+                            .equals("finished")),
+                    "Settled original revived actor and a separate timed segment required");
+                var profile = action.endsWith("-f") ? MaidBrainProfile.FAITHFUL_TLM : MaidBrainProfile.ENHANCED;
+                session.maid.setTask(MaidTask.IDLE);
+                session.maid.setSchedule(MaidSchedule.DAY);
+                session.maid.setSitting(false);
+                var selected = session.maid.getBrainCoordinator()
+                    .selectProfileForDevelopment(profile);
+                require(
+                    selected == MaidPolicyRuntime.SelectionResult.SELECTED
+                        || selected == MaidPolicyRuntime.SelectionResult.UNCHANGED,
+                    "Actual complete long-session factory required");
+                session.maid.getBrainCoordinator()
+                    .setSuspended(false);
+                var record = new NBTTagCompound();
+                record.setString("Profile", profile.getId());
+                record.setLong("StartedAt", session.maid.worldObj.getTotalWorldTime());
+                record.setInteger("Ticks", 9000);
+                record.setString("Stage", "running");
+                state.setTag("Long", record);
+                try {
+                    longProbe = MaidServerLoadProbe.start(
+                        session.data.getString("Run"),
+                        "two-client-" + profile.getId(),
+                        (WorldServer) session.maid.worldObj);
+                    longOwner = session;
+                    lastLongLoad = null;
+                    int listed = 0;
+                    for (Object entity : session.maid.worldObj.loadedEntityList)
+                        if (entity instanceof EntityMaid living && !living.isDead) listed++;
+                    longProbe.phase(profile.getId(), listed);
+                } catch (Exception failure) {
+                    throw new IllegalStateException(
+                        "Native server load observation unavailable; no wall-clock replacement",
+                        failure);
+                }
+            }
+            case "world-life-long-arm-relogin" -> {
+                requireLong(session);
+                require(!session.data.getBoolean("AwaitLogin"), "Original reconnect already armed");
+                session.data.setBoolean("Rejoined", false);
+                session.data.setBoolean("AwaitLogin", true);
+            }
+            case "world-life-long-verify-relogin" -> {
+                requireLong(session);
+                require(
+                    !session.data.getBoolean("AwaitLogin") && session.data.getBoolean("Rejoined"),
+                    "Actual native owner reconnect required");
+            }
+            case "world-life-long-finish" -> {
+                requireLong(session);
+                var record = state.getCompoundTag("Long");
+                require(
+                    session.maid.worldObj.getTotalWorldTime() - record.getLong("StartedAt")
+                        >= record.getInteger("Ticks"),
+                    "Nine thousand actual server ticks required");
+                closeLong(session);
+                record.setString("Stage", "finished");
+                session.maid.getBrainCoordinator()
+                    .setSuspended(true);
+                session.maid.setSitting(true);
+            }
             case "world-life-arm-restart" -> {
                 require(
                     state.getString("Stage")
@@ -530,6 +626,9 @@ final class MaidModelLifecycleActions {
         require(
             stage.equals("ready") || stage.equals("revived"),
             "Finish the original native lifecycle before cleanup; snapshot retained");
+        closeLong(session);
+        session.maid.getBrainCoordinator()
+            .setSuspended(true);
         var tile = shrine(session);
         require(tile.getFilm() == null, "Unknown or unconsumed shrine material retained");
         require(session.player.worldObj.setBlockToAir(7, 65, 0), "Owned empty shrine removal failed");
@@ -571,6 +670,58 @@ final class MaidModelLifecycleActions {
         result.addProperty("restartOwner", session.data.getString("Owner"));
         result.addProperty("restartActor", session.data.getString("Actor"));
         result.addProperty("restartRun", session.data.getString("Run"));
+        if (state.hasKey("Long", 10)) {
+            var record = state.getCompoundTag("Long");
+            var timed = new JsonObject();
+            timed.addProperty("stage", record.getString("Stage"));
+            timed.addProperty("selectedProfile", record.getString("Profile"));
+            timed.addProperty("elapsedTicks", session.maid.worldObj.getTotalWorldTime() - record.getLong("StartedAt"));
+            timed.addProperty("requiredTicks", record.getInteger("Ticks"));
+            var runtime = session.maid.getBrainCoordinator()
+                .peekPolicyRuntime();
+            timed.addProperty(
+                "actualProfile",
+                runtime == null ? "none"
+                    : runtime.getProfile()
+                        .getId());
+            timed.addProperty("controlledFullProfiledActors", 1);
+            timed.addProperty("crossRestartContinuousPolicy", false);
+            if (longOwner == session && longProbe != null) timed.addProperty("nativeLoadRecording", true);
+            else if (lastLongLoad != null) timed.add("nativeLoad", lastLongLoad);
+            result.add("longSession", timed);
+        }
         return result;
+    }
+
+    private static void requireLong(Session session) {
+        var state = state(session);
+        require(
+            state.getString("Stage")
+                .equals("revived") && state.hasKey("Long", 10)
+                && state.getCompoundTag("Long")
+                    .getString("Stage")
+                    .equals("running")
+                && longOwner == session
+                && longProbe != null
+                && session.validNonce(session.maid),
+            "Original current-process long session required");
+        var runtime = session.maid.getBrainCoordinator()
+            .peekPolicyRuntime();
+        require(
+            runtime != null && runtime.isReady()
+                && runtime.getProfile()
+                    .getId()
+                    .equals(
+                        state.getCompoundTag("Long")
+                            .getString("Profile")),
+            "Long-session factory changed; no automatic policy fallback accepted");
+    }
+
+    private static void closeLong(Session session) {
+        if (longOwner != session || longProbe == null) return;
+        longProbe.close();
+        lastLongLoad = longProbe.snapshot();
+        longProbe = null;
+        longOwner = null;
     }
 }

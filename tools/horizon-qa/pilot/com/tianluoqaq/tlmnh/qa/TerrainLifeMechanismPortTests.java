@@ -154,7 +154,7 @@ public final class TerrainLifeMechanismPortTests {
         return row;
     }
 
-    public static final class Collector extends FollowMechanismPortTests.Collector {
+    public static class Collector extends FollowMechanismPortTests.Collector {
 
         static final java.lang.reflect.Field IGNITION = cpw.mods.fml.relauncher.ReflectionHelper
             .findField(EntityCreeper.class, "timeSinceIgnited", "field_70833_d");
@@ -168,7 +168,12 @@ public final class TerrainLifeMechanismPortTests {
         String oldFire, oldGrief;
 
         Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
-            super(h, profile, mechanism, RESOURCE, CONTRACT, "terrain-life-port-v1", "terrain-life-");
+            this(h, profile, mechanism, RESOURCE, CONTRACT, "terrain-life-port-v1", "terrain-life-");
+        }
+
+        Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism, String resource, String contract,
+            String schema, String prefix) {
+            super(h, profile, mechanism, resource, contract, schema, prefix);
             this.mechanism = mechanism;
         }
 

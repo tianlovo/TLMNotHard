@@ -202,6 +202,29 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("x", maid.posX);
                             shape.addProperty("y", maid.posY);
                             shape.addProperty("z", maid.posZ);
+                            int lightX = net.minecraft.util.MathHelper.floor_double(maid.posX);
+                            int lightY = net.minecraft.util.MathHelper.floor_double(maid.posY);
+                            int lightZ = net.minecraft.util.MathHelper.floor_double(maid.posZ);
+                            shape.addProperty(
+                                "skyLight",
+                                maid.worldObj
+                                    .getSavedLightValue(net.minecraft.world.EnumSkyBlock.Sky, lightX, lightY, lightZ));
+                            shape.addProperty(
+                                "blockLight",
+                                maid.worldObj.getSavedLightValue(
+                                    net.minecraft.world.EnumSkyBlock.Block,
+                                    lightX,
+                                    lightY,
+                                    lightZ));
+                            shape
+                                .addProperty("combinedLight", maid.worldObj.getBlockLightValue(lightX, lightY, lightZ));
+                            shape.addProperty("canSeeSky", maid.worldObj.canBlockSeeTheSky(lightX, lightY, lightZ));
+                            shape.addProperty(
+                                "sleeping",
+                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING));
+                            shape.addProperty(
+                                "aimingBow",
+                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.AIMING_BOW));
                             shape.addProperty("pitch", maid.rotationPitch);
                             shape.addProperty("model", maid.getModelId());
                             shape.addProperty("sitting", maid.isSitting());
@@ -430,6 +453,14 @@ public final class ClientDevelopmentControl {
                 case WORLD_SOUND_PROBE:
                     var soundState = MaidWorldSoundProbe.perform(request.action);
                     for (var entry : soundState.entrySet()) response.add(entry.getKey(), entry.getValue());
+                    break;
+                case WORLD_SHADER_PROBE:
+                    if (submissionPending || !captures.isEmpty())
+                        throw new IllegalStateException("Finish the active submission or screenshot first");
+                    response.add(
+                        "worldShader",
+                        com.tianluoqaq.tlmnh.compat.angelica.client.development.MaidWorldShaderProbe
+                            .perform(request.action));
                     break;
                 case MODELS_UI:
                     var observed = MaidModelUiProbe.perform(request.action, request.model);

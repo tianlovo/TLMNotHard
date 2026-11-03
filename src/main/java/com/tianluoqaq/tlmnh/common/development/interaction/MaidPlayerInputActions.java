@@ -404,6 +404,8 @@ final class MaidPlayerInputActions {
                 session.player.inventory.mainInventory[found] = null;
                 value.row.setString("Stage", "xp-pickup");
             }
+            case "world-player-approach-output" -> value.approachOutput();
+            case "world-player-return-output-camera" -> value.restorePickupCamera();
             case "world-player-verify-output-pickup" -> {
                 require(
                     value.count("output") == 1 && value.drops.stream()
@@ -541,6 +543,9 @@ final class MaidPlayerInputActions {
         var value = attempt(session);
         value.validateMaterials();
         require(
+            value.pickupCamera == null,
+            "Return the exact controlled pickup camera before restoring the care session");
+        require(
             session.player.inventory.currentItem == session.slot(),
             "Wait for native main-hand restoration before cleanup");
         require(
@@ -640,6 +645,12 @@ final class MaidPlayerInputActions {
         result.addProperty("secondaryCursor", raw(value.secondary.inventory.getItemStack()).toString());
         result.addProperty("primaryWindow", session.player.openContainer.windowId);
         result.addProperty("secondaryWindow", value.secondary.openContainer.windowId);
+        result.add("primaryPhysics", physics(session.player));
+        result.addProperty("pickupCameraPending", value.pickupCamera != null);
+        if (value.pickupCamera != null) {
+            result.addProperty("pickupCameraOriginal", value.pickupCamera.toString());
+            result.addProperty("pickupCameraTarget", value.pickupTarget.toString());
+        }
         result.addProperty(
             "primaryMode",
             session.player.theItemInWorldManager.getGameType()
@@ -672,10 +683,45 @@ final class MaidPlayerInputActions {
             row.addProperty("dead", drop.isDead);
             row.addProperty("pickupDelay", drop.delayBeforeCanPickup);
             row.addProperty("nativeItem", raw(drop.getEntityItem()).toString());
+            row.addProperty("nativeOwner", drop.func_145798_i());
+            row.addProperty("nativeThrower", drop.func_145800_j());
+            row.add("physics", physics(drop));
+            row.addProperty("distanceSquaredToPlayer", drop.getDistanceSqToEntity(session.player));
+            row.addProperty(
+                "intersectsNativePlayerPickupBox",
+                session.player.boundingBox.expand(1, .5, 1)
+                    .intersectsWith(drop.boundingBox));
+            var nativeNbt = new NBTTagCompound();
+            drop.writeToNBT(nativeNbt);
+            row.addProperty("nativeEntityNbt", nativeNbt.toString());
             drops.add(row);
         }
         result.add("drops", drops);
         return result;
+    }
+
+    private static JsonObject physics(Entity entity) {
+        var out = new JsonObject();
+        out.addProperty("x", entity.posX);
+        out.addProperty("y", entity.posY);
+        out.addProperty("z", entity.posZ);
+        out.addProperty("motionX", entity.motionX);
+        out.addProperty("motionY", entity.motionY);
+        out.addProperty("motionZ", entity.motionZ);
+        out.addProperty("noClip", entity.noClip);
+        out.addProperty("onGround", entity.onGround);
+        out.addProperty("dead", entity.isDead);
+        out.addProperty("dimension", entity.dimension);
+        out.addProperty(
+            "registered",
+            entity.worldObj.getEntityByID(entity.getEntityId()) == entity && entity.worldObj.loadedEntityList.stream()
+                .anyMatch(value -> value == entity));
+        var box = entity.boundingBox;
+        var bounds = new JsonArray();
+        for (double value : new double[] { box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ })
+            bounds.add(new com.google.gson.JsonPrimitive(value));
+        out.add("boxMinMax", bounds);
+        return out;
     }
 
     private static NBTTagCompound raw(ItemStack stack) {
@@ -712,12 +758,90 @@ final class MaidPlayerInputActions {
         final List<Material> materials = new ArrayList<>();
         final List<EntityItem> drops = new ArrayList<>();
         NBTTagCompound secondaryMarker;
+        NBTTagCompound pickupCamera, pickupTarget;
         EntityMaid wild;
 
         Attempt(Session session, EntityPlayerMP secondary, NBTTagCompound row) {
             this.session = session;
             this.secondary = secondary;
             this.row = row;
+        }
+
+        void approachOutput() {
+            require(
+                row.getString("Stage")
+                    .equals("xp-pickup") && pickupCamera == null,
+                "One verified original output and an unmodified controlled camera required");
+            var player = session.player;
+            require(
+                Math.abs(player.posX - 4.5) < 1e-7 && Math.abs(player.posY - 65) < 1e-7
+                    && Math.abs(player.posZ + 1.5) < 1e-7,
+                "Foreign native input camera retained");
+            EntityItem target = null;
+            for (var drop : drops) if (!drop.isDead) {
+                require(target == null, "Ambiguous native output retained");
+                target = drop;
+            }
+            var exact = target;
+            require(
+                target != null && target.worldObj == player.worldObj
+                    && target.worldObj.getEntityByID(target.getEntityId()) == target
+                    && target.worldObj.loadedEntityList.stream()
+                        .anyMatch(value -> value == exact)
+                    && target.getEntityItem()
+                        .getItem() == Items.experience_bottle
+                    && target.getEntityItem().stackSize == 1
+                    && target.delayBeforeCanPickup <= 0
+                    && target.getDistanceSqToEntity(session.maid) <= 64,
+                "Exact live original output in the controlled scene required");
+            require(
+                Double.isFinite(target.posX) && Double.isFinite(target.posY)
+                    && Double.isFinite(target.posZ)
+                    && target.posY >= 64.9
+                    && target.posY <= 66.5,
+                "Native output moved outside the controlled floor; retained");
+            pickupCamera = camera(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
+            pickupTarget = camera(
+                target.posX,
+                target.boundingBox.minY,
+                target.posZ,
+                player.rotationYaw,
+                player.rotationPitch);
+            player.playerNetServerHandler.setPlayerLocation(
+                pickupTarget.getDouble("X"),
+                pickupTarget.getDouble("Y"),
+                pickupTarget.getDouble("Z"),
+                pickupTarget.getFloat("Yaw"),
+                pickupTarget.getFloat("Pitch"));
+        }
+
+        void restorePickupCamera() {
+            if (pickupCamera == null) return;
+            var player = session.player;
+            require(
+                player.worldObj == session.maid.worldObj && online(player)
+                    && player.getDistanceSq(
+                        pickupTarget.getDouble("X"),
+                        pickupTarget.getDouble("Y"),
+                        pickupTarget.getDouble("Z")) < .0001,
+                "Unknown pickup-camera successor retained with the original snapshot");
+            player.playerNetServerHandler.setPlayerLocation(
+                pickupCamera.getDouble("X"),
+                pickupCamera.getDouble("Y"),
+                pickupCamera.getDouble("Z"),
+                pickupCamera.getFloat("Yaw"),
+                pickupCamera.getFloat("Pitch"));
+            pickupCamera = pickupTarget = null;
+        }
+
+        static NBTTagCompound camera(double x, double y, double z, float yaw, float pitch) {
+            var out = new NBTTagCompound();
+            out.setDouble("X", x);
+            out.setDouble("Y", y);
+            out.setDouble("Z", z);
+            out.setFloat("Yaw", yaw);
+            out.setFloat("Pitch", pitch);
+            return out;
         }
 
         int offhand(EntityPlayerMP player) {

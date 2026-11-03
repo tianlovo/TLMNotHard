@@ -69,6 +69,11 @@ public final class ClientDevelopmentRequest {
             if (!Arrays.asList("global_0", "global_100", "vanilla", "close_gui", "disconnect")
                 .contains(action)) throw new IllegalArgumentException("Unknown world sound probe action");
         }
+        if (command == Command.WORLD_SHADER_PROBE) {
+            action = text(json, "action");
+            if (!Arrays.asList("status", "off", "selected", "restore")
+                .contains(action)) throw new IllegalArgumentException("Unknown world shader probe action");
+        }
         if (command == Command.LOOK) {
             yaw = number(json, "yaw", -360, 360);
             pitch = number(json, "pitch", -90, 90);
@@ -315,6 +320,7 @@ public final class ClientDevelopmentRequest {
         STATUS,
         CARE_INTERACT,
         WORLD_SOUND_PROBE,
+        WORLD_SHADER_PROBE,
         PROTECTION_PROBE,
         CONNECT_LOCAL,
         LAB_VIEW,

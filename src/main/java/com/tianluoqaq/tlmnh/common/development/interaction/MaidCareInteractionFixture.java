@@ -71,6 +71,7 @@ public final class MaidCareInteractionFixture {
             "WorldActions",
             "ModelLifecycle",
             "NaturalShield",
+            "WorldPresentation",
             "PlayerInputs"));
     private static Session active;
 
@@ -99,7 +100,8 @@ public final class MaidCareInteractionFixture {
     public static boolean isSpawning(Entity entity) {
         if (currentLabWorld(entity.worldObj)
             && (MaidModelLifecycleActions.isSpawning(entity) || MaidNaturalShieldActions.isSpawning(entity)
-                || MaidPlayerInputActions.isSpawning(entity)))
+                || MaidPlayerInputActions.isSpawning(entity)
+                || MaidWorldPresentationActions.isSpawning(entity)))
             return true;
         if (!(entity instanceof EntityMaid maid) || !currentLabWorld(maid.worldObj)) return false;
         if (active == null) {
@@ -355,6 +357,7 @@ public final class MaidCareInteractionFixture {
             var loaded = session.loadedActor(player.worldObj);
             require(loaded != null, "Loaded original care actor required for cleanup; snapshot retained");
             session.maid = loaded;
+            MaidWorldPresentationActions.recover(session);
             session.close();
             return;
         }
@@ -382,6 +385,11 @@ public final class MaidCareInteractionFixture {
         }
         if (MaidPlayerInputActions.handles(action)) {
             MaidPlayerInputActions.run(session, action);
+            session.record(action);
+            return;
+        }
+        if (MaidWorldPresentationActions.handles(action)) {
+            MaidWorldPresentationActions.run(session, action);
             session.record(action);
             return;
         }
@@ -669,6 +677,7 @@ public final class MaidCareInteractionFixture {
             MaidModelLifecycleActions.validateSnapshot(data);
             MaidNaturalShieldActions.validateSnapshot(data);
             MaidPlayerInputActions.validateSnapshot(data);
+            MaidWorldPresentationActions.validateSnapshot(data);
         }
 
         void validatePlayer() {
@@ -718,7 +727,8 @@ public final class MaidCareInteractionFixture {
         }
 
         void emptyActor() {
-            if (data.hasKey("PlayerInputs")) MaidPlayerInputActions.verifyInventory(this);
+            if (data.hasKey("WorldPresentation")) MaidWorldPresentationActions.verifyInventory(this);
+            else if (data.hasKey("PlayerInputs")) MaidPlayerInputActions.verifyInventory(this);
             else if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
             else if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
             else for (int i = 0; i < maid.getMaidInventory()
@@ -1043,6 +1053,7 @@ public final class MaidCareInteractionFixture {
                     validate();
                     inventoryOwned();
                 }
+                MaidWorldPresentationActions.restore(this);
                 MaidNaturalShieldActions.restore(this);
                 MaidModelLifecycleActions.restore(this);
                 MaidNaturalWorldActions.restore(this);
@@ -1192,6 +1203,8 @@ public final class MaidCareInteractionFixture {
                 result.add("modelLifecycle", MaidModelLifecycleActions.observation(this));
             if (data.hasKey("NaturalShield")) result.add("naturalShield", MaidNaturalShieldActions.observation(this));
             if (data.hasKey("PlayerInputs")) result.add("playerInputs", MaidPlayerInputActions.observation(this));
+            if (data.hasKey("WorldPresentation"))
+                result.add("worldPresentation", MaidWorldPresentationActions.observation(this));
             result.addProperty(
                 "mode",
                 player.theItemInWorldManager.getGameType()

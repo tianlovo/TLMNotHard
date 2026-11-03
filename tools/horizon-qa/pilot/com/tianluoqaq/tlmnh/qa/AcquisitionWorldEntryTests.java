@@ -21,6 +21,7 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.SpawnerAnimals;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
@@ -32,6 +33,7 @@ import com.google.gson.JsonObject;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
+import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
@@ -195,6 +197,8 @@ public final class AcquisitionWorldEntryTests {
         final List<EntityMaid> joined = new ArrayList<>();
         final List<EntityMaid> worldgenJoined = new ArrayList<>();
         final List<SavedBlock> blocks = new ArrayList<>();
+        final GameTestChunkLoader platformChunks = new GameTestChunkLoader();
+        final Map<ChunkCoordIntPair, Chunk> retainedChunks = new java.util.LinkedHashMap<>();
         final SpawnerAnimals spawner = new SpawnerAnimals();
         final JsonObject report = new JsonObject();
         final long originalTime;
@@ -315,6 +319,25 @@ public final class AcquisitionWorldEntryTests {
                 }
             report.add("existingNativeCreaturesRetained", existing);
             world.setWorldTime(6000);
+            // A getChunk call only loads once; the far native-spawn platform is outside the test cell ticket.
+            // Hold the real Forge tickets until exact actor cleanup and original block restoration have finished.
+            // World.updateLightByType requires the real 17-block neighbor radius to exist as well.
+            final int lightRadius = 17;
+            platformChunks.forceChunksStrict(
+                world,
+                x - lightRadius,
+                platformY,
+                z - lightRadius,
+                x + 31 + lightRadius,
+                platformY + 3,
+                z + 31 + lightRadius);
+            for (int chunkX = (x - lightRadius) >> 4; chunkX <= (x + 31 + lightRadius) >> 4; chunkX++)
+                for (int chunkZ = (z - lightRadius) >> 4; chunkZ <= (z + 31 + lightRadius) >> 4; chunkZ++) {
+                    var chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
+                    helper.assertTrue(chunk.isChunkLoaded, "Native platform ticket did not load its actual chunk");
+                    retainedChunks.put(new ChunkCoordIntPair(chunkX, chunkZ), chunk);
+                }
+            int changedBlocks = 0, unchangedAir = 0;
             for (int dx = 0; dx < 32; dx++) for (int dz = 0; dz < 32; dz++) {
                 for (int dy = 0; dy < 4; dy++) {
                     int bx = x + dx, by = platformY + dy, bz = z + dz;
@@ -324,9 +347,21 @@ public final class AcquisitionWorldEntryTests {
                         "Native sky platform must not replace another fixture or unknown block");
                     blocks.add(
                         new SavedBlock(bx, by, bz, world.getBlock(bx, by, bz), world.getBlockMetadata(bx, by, bz)));
-                    world.setBlock(bx, by, bz, dy == 0 ? Blocks.grass : Blocks.air, 0, 2);
+                    var target = dy == 0 ? Blocks.grass : Blocks.air;
+                    boolean changed = world.setBlock(bx, by, bz, target, 0, 2);
+                    if (changed) changedBlocks++;
+                    else if (target == Blocks.air) unchangedAir++;
+                    helper.assertTrue(
+                        (changed || target == Blocks.air) && world.getBlock(bx, by, bz) == target
+                            && world.getBlockMetadata(bx, by, bz) == 0,
+                        "Native platform setBlock/readback rejected at " + bx + "," + by + "," + bz);
                 }
             }
+            report.addProperty("setBlockChanged", changedBlocks);
+            report.addProperty("setBlockAlreadyAir", unchangedAir);
+            report.addProperty("platformChunkRetention", "HorizonQA GameTestChunkLoader real Forge NORMAL ticket");
+            report.addProperty("nativeLightNeighborRadius", lightRadius);
+            report.add("platformChunksAfterPlacement", chunkSnapshot());
             var candidates = world.getChunkProvider()
                 .getPossibleCreatures(EnumCreatureType.creature, x, platformY + 1, z);
             boolean nativeCandidate = false;
@@ -444,7 +479,12 @@ public final class AcquisitionWorldEntryTests {
                 table.getKey()
                     .addAll(table.getValue());
             }
-            for (var block : blocks) world.setBlock(block.x, block.y, block.z, block.block, block.meta, 2);
+            try {
+                for (var block : blocks) world.setBlock(block.x, block.y, block.z, block.block, block.meta, 2);
+                report.add("platformChunksBeforeRelease", chunkSnapshot());
+            } finally {
+                platformChunks.releaseAll();
+            }
             world.setWorldTime(originalTime + world.getTotalWorldTime() - started);
             world.getGameRules()
                 .setOrCreateGameRule("doMobSpawning", originalMobSpawning);
@@ -489,6 +529,18 @@ public final class AcquisitionWorldEntryTests {
             if (lastLightingTick == now) return false;
             lastLightingTick = now;
             lightingTicks++;
+            report.add("platformChunksBeforeLightingReads", chunkSnapshot());
+            boolean retained = true;
+            for (var entry : retainedChunks.entrySet()) {
+                var key = entry.getKey();
+                retained &= world.getChunkProvider()
+                    .chunkExists(key.chunkXPos, key.chunkZPos) && entry.getValue().isChunkLoaded
+                    && world.getChunkFromChunkCoords(key.chunkXPos, key.chunkZPos) == entry.getValue();
+            }
+            if (!retained) evidence("platform-ticket-lost-before-lighting");
+            helper.assertTrue(
+                retained,
+                "Native platform chunk identity was lost despite its held Forge ticket; no diagnostic reload fallback");
             boolean ready = true;
             var samples = new JsonArray();
             for (var offset : new int[][] { { 0, 0 }, { 31, 0 }, { 0, 31 }, { 31, 31 }, { 16, 16 } }) {
@@ -515,6 +567,7 @@ public final class AcquisitionWorldEntryTests {
             }
             stableLightTicks = ready ? stableLightTicks + 1 : 0;
             report.add("nativePlatformLighting", samples);
+            report.add("platformChunksDuringLighting", chunkSnapshot());
             report.addProperty("lightingTicks", lightingTicks);
             report.addProperty("stableLightTicks", stableLightTicks);
             report.addProperty("worldTime", world.getWorldTime());
@@ -524,6 +577,24 @@ public final class AcquisitionWorldEntryTests {
                 lightingTicks <= 200 || stableLightTicks >= 2,
                 "Native grass/sky/light did not stabilize within 200 actual world ticks; no light value was overridden");
             return stableLightTicks >= 2;
+        }
+
+        JsonArray chunkSnapshot() {
+            var result = new JsonArray();
+            for (var entry : retainedChunks.entrySet()) {
+                int x = entry.getKey().chunkXPos, z = entry.getKey().chunkZPos;
+                boolean exists = world.getChunkProvider()
+                    .chunkExists(x, z);
+                var row = new JsonObject();
+                row.addProperty("x", x);
+                row.addProperty("z", z);
+                row.addProperty("loaded", exists && entry.getValue().isChunkLoaded);
+                // provideChunk must not be used here when absent: a diagnostic must not silently reload a lost
+                // platform.
+                row.addProperty("sameRetainedChunk", exists && world.getChunkFromChunkCoords(x, z) == entry.getValue());
+                result.add(row);
+            }
+            return result;
         }
 
         JsonObject capSnapshot() {

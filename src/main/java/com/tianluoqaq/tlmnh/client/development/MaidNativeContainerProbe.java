@@ -13,6 +13,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglContainerMouseInput;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -68,17 +69,15 @@ public final class MaidNativeContainerProbe {
                 var values = integers(spec, 3);
                 int slot = values[0], button = values[1], mode = values[2];
                 require(
-                    slot >= 0 && slot < container.inventorySlots.size()
-                        && button >= 0
-                        && button <= 1
-                        && mode >= 0
-                        && mode <= 1,
-                    "Actual in-window slot and ordinary/shift left/right click required");
-                var returned = mc.playerController.windowClick(container.windowId, slot, button, mode, mc.thePlayer);
+                    slot >= 0 && slot < container.inventorySlots.size() && button >= 0 && button <= 1 && mode == 0,
+                    "Actual in-window slot and ordinary left/right native mouse click required; Shift is not synthesized");
+                result.add(
+                    "nativeMouse",
+                    LwjglContainerMouseInput
+                        .click(mc, (GuiContainer) mc.currentScreen, container.getSlot(slot), button, mode));
                 result.addProperty("slot", slot);
                 result.addProperty("button", button);
                 result.addProperty("mode", mode);
-                result.addProperty("localReturnNativeNbtBase64", MaidCareInteractionProbe.nativeNbt(returned));
                 result.addProperty("nativePacket", "C0E_CLICK_WINDOW");
             } else if (action.equals("container_button")) {
                 int button = integers(spec, 1)[0];
@@ -146,6 +145,12 @@ public final class MaidNativeContainerProbe {
         result.addProperty("selected", player.inventory.currentItem);
         result.addProperty("canInteractWith", container.canInteractWith(player));
         result.addProperty("creativeController", mc.playerController.isInCreativeMode());
+        var nativeMode = cpw.mods.fml.common.ObfuscationReflectionHelper.getPrivateValue(
+            net.minecraft.client.multiplayer.PlayerControllerMP.class,
+            mc.playerController,
+            "currentGameType",
+            "field_78779_k");
+        result.addProperty("nativeControllerMode", ((net.minecraft.world.WorldSettings.GameType) nativeMode).getID());
         result
             .addProperty("cursorNativeNbtBase64", MaidCareInteractionProbe.nativeNbt(player.inventory.getItemStack()));
         if (container instanceof ContainerMaid maidContainer) {

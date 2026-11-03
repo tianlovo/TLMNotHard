@@ -123,7 +123,7 @@ public final class TerrainLifeMechanismGameTests {
                 helper.setBlock(x, y, z, Blocks.GLASS);
     }
 
-    public static final class Session extends FollowMechanismGameTests.Session {
+    public static class Session extends FollowMechanismGameTests.Session {
         static final java.lang.reflect.Field OWNER_PROTECTION = field(net.minecraft.server.level.ServerPlayer.class, "spawnInvulnerableTime");
         final String mechanism;
         final JsonArray damage = new JsonArray();
@@ -132,7 +132,11 @@ public final class TerrainLifeMechanismGameTests {
         boolean oldFire, oldGrief;
 
         Session(GameTestHelper h, String mechanism) {
-            super(h, mechanism, RESOURCE, CONTRACT, "terrain-life-original-v1", "terrain-life-original-");
+            this(h, mechanism, RESOURCE, CONTRACT, "terrain-life-original-v1", "terrain-life-original-");
+        }
+
+        Session(GameTestHelper h, String mechanism, String resource, String contract, String schema, String prefix) {
+            super(h, mechanism, resource, contract, schema, prefix);
             this.mechanism = mechanism;
             output.add("damageEvents", damage);
         }
