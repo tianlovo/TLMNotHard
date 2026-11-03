@@ -86,6 +86,8 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
             docs["provenance/" + name] = archive.read(name)
         audio_cleared = json.loads(archive.read("assets/tlmnh/builtin-sounds-provenance.json"))["audio_distribution_cleared"]
     docs["source-reference/SOURCE_PROVENANCE.md"] = (PROJECT / "SOURCE_PROVENANCE.md").read_bytes()
+    for guide in ("USER_GUIDE.md", "USER_GUIDE.en.md"):
+        docs["guides/" + guide] = (PROJECT / "docs" / guide).read_bytes()
     docs["source-inputs.json"] = update.encoded(binding)
     docs["audit-report.json"] = update.encoded(report)
     docs["STATUS.txt"] = ("INDEV LOCAL VALIDATION ONLY\nNot a formal release or distribution clearance.\n"

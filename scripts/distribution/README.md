@@ -25,6 +25,8 @@ python scripts/package_overlay.py build/libs/tlmnh-VERSION.jar `
 
 输出分为 client 和 server 两个 ZIP，使用字节相同的 JAR
 包内保留六份许可证、原署名、来源清单、候选审计、源码输入摘要和 `SHA256SUMS.txt`
+玩家使用与配置说明位于 `.tlmnh-distribution/<端别>/guides/USER_GUIDE.md`，英文为 `USER_GUIDE.en.md`
+对应源码文件在 `docs/`；两份指南同样纳入包清单和摘要，随 TLM 资料管理
 便携清单不包含本机目录、运行存档或安装日志
 两个 ZIP 先在同输出目录中完整暂存并核对摘要，再写入最终文件名
 第二个 ZIP 发布失败时，只清理本次创建且身份和 SHA 仍匹配的文件；未知后继保留
@@ -55,6 +57,9 @@ TLM 使用 `.tlmnh-managed-client.json` / `.tlmnh-managed-server.json` 记录自
 操作失败会尝试恢复原文件；进程被中断后，可沿回滚菜单恢复未完成记录
 恢复前先检查全部目标，未知后继、用户改写或较新的更新都保留，不直接覆盖
 多次更新按从新到旧的顺序回滚
+这里的回滚只恢复 TLM JAR、资料及其托管记录，不回滚存档或整包配置
+新版已保存世界后若要降级，先正常停两端，保留新版世界副本，再恢复升级前配对的旧双端 JAR、完整世界和配置
+完整世界包括各维度、playerdata、实体区块及生命周期账本，不能只替换 JAR、还原单个玩家文件或修改 schema 数字
 目标文件采用更新锁内的写入前、写入后摘要核对及单文件原子替换
 它不能阻止未使用此锁的外部程序在检查与写入之间修改文件，因此必须先正常退出目标
 
@@ -76,3 +81,5 @@ Windows 下只核对所选目标匹配端别和真实游戏目录的 `process.js
 测试默认使用仓库相邻 `cache/validation/overlay-update-tests` 下的独立临时目录
 也可用 `TLMNH_UPDATE_TEST_ROOT` 指定自有 QA 临时根目录，不连接游戏
 实际候选双端打包与更新、回滚应在合批时另行核对
+`audit_candidate_distribution.py --local-zip` 只产生审计用静态布局，不包含上述交互更新器
+需要可更新的双端验证包时，使用本页的 `package_overlay.py` 入口

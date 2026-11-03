@@ -2,7 +2,6 @@ package com.tianluoqaq.tlmnh.common.ai.faithful;
 
 import java.util.function.BooleanSupplier;
 
-import net.minecraft.block.BlockBed;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.ChunkCoordIntPair;
@@ -115,7 +114,15 @@ final class MaidModernLife {
         if (maid.worldObj != world || maid.ridingEntity != null
             || maid.riddenByEntity != null
             || maid.getDistanceSq(bed.xCoord + .5, bed.yCoord + .8, bed.zCoord + .5) > 16) return;
-        for (int[] offset : BlockBed.field_149981_a) {
+        // Modern LivingEntity only resolves ordered bed exits while the actual bed still exists
+        if (!world.blockExists(bed.xCoord, bed.yCoord, bed.zCoord)
+            || world.getTileEntity(bed.xCoord, bed.yCoord, bed.zCoord) != bed
+            || !bed.complete()
+            || !Float.isFinite(maid.rotationYaw)) return;
+        int facing = world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3;
+        float angle = maid.rotationYaw * 0.017453292F;
+        var offsets = MaidBedExitOffsets.ordered(facing, -MathHelper.sin(angle), MathHelper.cos(angle));
+        for (int[] offset : offsets) {
             double x = bed.xCoord + offset[0] + .5, y = bed.yCoord, z = bed.zCoord + offset[1] + .5;
             int ix = MathHelper.floor_double(x), iz = MathHelper.floor_double(z);
             if (!world.blockExists(ix, bed.yCoord - 1, iz) || !world.blockExists(ix, bed.yCoord + 2, iz)

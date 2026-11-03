@@ -1557,3 +1557,11 @@ MaidBrainCoordinator复用已有完整增强工厂和原生箭运动补偿，在
 avoidDroppingItemsWhenClosing开启且背包可接收时，原生事件取消掉落；满包时继续原生掉落
 开发验证增加明确的原生归还分支，完整物品和总量仍严格核对，满包分支继续检查原掉落实体UUID及自然拾取
 生产容器和提供方处理保持既有实现
+
+## 起床出口顺序
+
+202的MaidBedExitOffsets依据实际Minecraft1.20.1的LivingEntity.stopSleeping、BedBlock.findStandUpPosition及bedStandUpOffsets实现水平候选顺序
+Direction.isFacingAngle使用float点积决定左右侧，移植端以实际床metadata朝向及原生MathHelper计算当前视线向量
+十个周围候选与两个床内候选按原顺序检查，床已移除或被替换时结束床位出口选择
+MaidModernLife继续检查区块已加载、完整支撑、站立碰撞盒、液体和外部位移
+平台的半砖落脚高度、危险方块双遍检查及上下铺垂直搜索差异单独保留
