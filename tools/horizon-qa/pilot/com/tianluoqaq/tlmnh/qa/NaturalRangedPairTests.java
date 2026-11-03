@@ -241,7 +241,11 @@ public final class NaturalRangedPairTests {
                     com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid.class,
                     com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain.class,
                     com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain.class,
+                    com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController.class,
                     MaidBowAttack.class,
+                    com.tianluoqaq.tlmnh.common.combat.NativeArrowMedium.class,
+                    com.tianluoqaq.tlmnh.common.combat.ArrowPhysics.class,
+                    com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver.class,
                     com.tianluoqaq.tlmnh.common.combat.ObservedTargetMotion.class));
             report.add(
                 "observerArtifact",
@@ -919,7 +923,7 @@ public final class NaturalRangedPairTests {
         }
     }
 
-    private static JsonObject physicalConditions(EntityLivingBase e) {
+    static JsonObject physicalConditions(EntityLivingBase e) {
         var result = new JsonObject();
         result.addProperty(
             "class",

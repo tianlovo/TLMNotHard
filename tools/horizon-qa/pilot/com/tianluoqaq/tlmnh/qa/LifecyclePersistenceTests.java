@@ -73,7 +73,7 @@ public final class LifecyclePersistenceTests {
         String phase = System.getProperty("tlmnh.qaPersistencePhase", "");
         String contract = System.getProperty("tlmnh.qaPersistenceContract", "");
         int expectedSchema = expectedSchema();
-        helper.assertTrue(expectedSchema >= 4 && expectedSchema <= 6, "Explicit supported lifecycle schema required");
+        helper.assertTrue(expectedSchema >= 4 && expectedSchema <= 7, "Explicit supported lifecycle schema required");
         helper.assertTrue(
             contract.equals("baseline") || contract.equals("durable"),
             "Explicit persistence contract required");

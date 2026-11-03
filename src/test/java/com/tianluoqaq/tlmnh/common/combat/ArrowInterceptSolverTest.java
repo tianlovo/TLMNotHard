@@ -123,4 +123,50 @@ public class ArrowInterceptSolverTest {
                 .length() > 2);
         assertTrue(result.initialVelocity.z > 0 && result.initialVelocity.y > 0);
     }
+
+    @Test
+    public void nativeFlowActsBeforeMovementAndDragIncludingFractionalCollisionTime() {
+        var physics = new ArrowPhysics(.99F, .05F)
+            .withMedium(p -> new ArrowPhysics.Medium(.8F, new BallisticVector(.014, 0, 0)));
+        var state = new ArrowPhysics.State(BallisticVector.ZERO, new BallisticVector(2, .25, 0));
+        var next = physics.step(state);
+        assertEquals(2.014, next.position.x, 0);
+        assertEquals(.25, next.position.y, 0);
+        assertEquals(2.014 * (double) .8F, next.velocity.x, 0);
+        assertEquals(.25 * (double) .8F - (double) .05F, next.velocity.y, 0);
+        assertEquals(1.007, physics.positionAt(state, .5).x, 0);
+    }
+
+    @Test
+    public void spatialWaterMatchesClosedFormAndBoundarySolutionMatchesActualSteps() {
+        var target = new BallisticVector(9, 1, 0);
+        var water = ArrowPhysics.OVERWORLD_AIR
+            .withMedium(p -> new ArrowPhysics.Medium((double) .8F, BallisticVector.ZERO));
+        var exact = ArrowInterceptSolver
+            .solve(BallisticVector.ZERO, target, BallisticVector.ZERO, 3, 40, ArrowPhysics.OVERWORLD_WATER);
+        var sampled = ArrowInterceptSolver.solve(BallisticVector.ZERO, target, BallisticVector.ZERO, 3, 40, water);
+        assertTrue(exact.isSolved() && sampled.isSolved());
+        assertEquals(exact.flightTicks, sampled.flightTicks, 1E-10);
+        assertTrue(
+            exact.initialVelocity.subtract(sampled.initialVelocity)
+                .length() < 1E-10);
+        for (boolean startsInWater : new boolean[] { false, true }) {
+            var boundary = ArrowPhysics.OVERWORLD_AIR.withMedium(
+                p -> new ArrowPhysics.Medium(
+                    (p.x < 6 == startsInWater) ? (double) .8F : (double) .99F,
+                    (p.x < 6 == startsInWater) ? new BallisticVector(.014, 0, 0) : BallisticVector.ZERO));
+            var destination = new BallisticVector(13, 0, 0);
+            var result = ArrowInterceptSolver
+                .solve(BallisticVector.ZERO, destination, BallisticVector.ZERO, 3, 40, boundary);
+            assertTrue("Boundary direction=" + startsInWater, result.isSolved());
+            assertTrue(
+                boundary
+                    .positionAt(
+                        new ArrowPhysics.State(BallisticVector.ZERO, result.initialVelocity),
+                        result.flightTicks)
+                    .subtract(destination)
+                    .length() < 1E-6);
+            assertEquals(3, result.initialVelocity.length(), 1E-9);
+        }
+    }
 }

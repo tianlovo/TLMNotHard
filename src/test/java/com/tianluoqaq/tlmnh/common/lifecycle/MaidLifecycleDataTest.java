@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 7);
+        invalid.setInteger("Schema", 8);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -102,13 +102,14 @@ public class MaidLifecycleDataTest {
         assertNotNull(attempt);
         assertNull(data.reserveReturnedFilm(id));
         attempt.setString("fixture-film", "callback-mutation");
-        data.rollback(id);
+        data.abandonReturnedFilm(id);
         var restored = roundtrip(data);
         assertEquals(java.util.Collections.singletonList(id), restored.pendingReturnedFilms(7));
         assertEquals(
             "original-credential",
             restored.reserveReturnedFilm(id)
                 .getString("fixture-film"));
+        restored.beginReturnedFilm(id);
         restored.finishReturnedFilm(id);
         assertTrue(
             roundtrip(restored).pendingReturnedFilms(7)
@@ -122,6 +123,100 @@ public class MaidLifecycleDataTest {
         var restored = new MaidLifecycleData("fixture");
         restored.readFromNBT(tag);
         return restored;
+    }
+
+    @Test
+    public void legacyReturnedMaterialSchemasMigrateWithoutChangingRawSource() {
+        var source = new MaidLifecycleData("fixture");
+        var raw = new NBTTagCompound();
+        raw.setString("ForeignRawItem", "full payload");
+        raw.setIntArray("Unrecognized", new int[] { 7, 2, 9 });
+        var id = source.queueReturnedFilm(raw, 7, 1.5, 20, 3.5);
+        for (int schema = 1; schema <= 6; schema++) {
+            var saved = new NBTTagCompound();
+            source.writeToNBT(saved);
+            saved.setInteger("Schema", schema);
+            var row = saved.getTagList("ReturnedFilms", 10)
+                .getCompoundTagAt(0);
+            row.removeTag("Phase");
+            row.removeTag("Context");
+            var restored = new MaidLifecycleData("fixture");
+            restored.readFromNBT(saved);
+            assertEquals(MaidLifecycleData.ReturnedPhase.READY, restored.returnedPhase(id));
+            assertEquals(raw, restored.reserveReturnedFilm(id));
+            restored.abandonReturnedFilm(id);
+            var upgraded = new NBTTagCompound();
+            roundtrip(restored).writeToNBT(upgraded);
+            assertEquals(7, upgraded.getInteger("Schema"));
+            assertEquals(
+                raw,
+                upgraded.getTagList("ReturnedFilms", 10)
+                    .getCompoundTagAt(0)
+                    .getCompoundTag("Stack"));
+        }
+    }
+
+    @Test
+    public void interruptedAndHeldReturnsPreserveRawMaterialAndCannotAcquireFreshRuntimeOwnership() {
+        var raw = new NBTTagCompound();
+        raw.setString("ForeignRawItem", "retain exact");
+        var opaque = new NBTTagCompound();
+        opaque.setString("FutureSourceField", "unmodified");
+        var context = new NBTTagCompound();
+        context.setString("Kind", "tile_break");
+        context.setTag("Source", opaque);
+        var data = new MaidLifecycleData("fixture");
+        var prepared = data.prepareReturnedFilm(raw, 0, 1, 2, 3, context);
+        var issuing = data.queueReturnedFilm(raw, 0, 4, 5, 6);
+        assertEquals(raw, data.reserveReturnedFilm(issuing));
+        data.beginReturnedFilm(issuing);
+        var held = data.queueReturnedFilm(raw, 0, 7, 8, 9);
+        data.holdReturnedFilm(held);
+        var restored = roundtrip(data);
+        for (var id : new UUID[] { prepared, issuing, held }) {
+            assertNull(restored.reserveReturnedFilm(id));
+            assertThrows(IllegalStateException.class, () -> restored.finishReturnedFilm(id));
+        }
+        assertThrows(IllegalStateException.class, () -> restored.readyPreparedReturn(prepared, context));
+        var saved = new NBTTagCompound();
+        restored.writeToNBT(saved);
+        var rows = saved.getTagList("ReturnedFilms", 10);
+        assertEquals(3, rows.tagCount());
+        for (int i = 0; i < rows.tagCount(); i++) assertEquals(
+            raw,
+            rows.getCompoundTagAt(i)
+                .getCompoundTag("Stack"));
+        data.readyPreparedReturn(prepared, context);
+        assertEquals(raw, data.reserveReturnedFilm(prepared));
+        data.beginReturnedFilm(prepared);
+        data.retryReturnedFilm(prepared);
+        assertEquals(raw, data.reserveReturnedFilm(prepared));
+        data.beginReturnedFilm(prepared);
+        data.finishReturnedFilm(prepared);
+        assertNull(roundtrip(data).returnedPhase(prepared));
+    }
+
+    @Test
+    public void malformedOrUnknownOwnedReturnStateCannotOverwriteOriginalData() {
+        for (int mutation = 0; mutation < 5; mutation++) {
+            var data = new MaidLifecycleData("fixture");
+            var raw = new NBTTagCompound();
+            raw.setString("OpaqueItem", "keep");
+            data.queueReturnedFilm(raw, 0, 1, 2, 3);
+            var saved = new NBTTagCompound();
+            data.writeToNBT(saved);
+            var row = saved.getTagList("ReturnedFilms", 10)
+                .getCompoundTagAt(0);
+            if (mutation == 0) row.setInteger("Phase", 0);
+            else if (mutation == 1) row.setString("Phase", "UNKNOWN");
+            else if (mutation == 2) row.setString("Phase", "PREPARED");
+            else if (mutation == 3) row.getCompoundTag("Context")
+                .setString("UnknownOwnedField", "keep");
+            else row.setString("Dimension", "0");
+            var restored = new MaidLifecycleData("fixture");
+            assertThrows(RuntimeException.class, () -> restored.readFromNBT(saved));
+            assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
+        }
     }
 
     @Test
@@ -172,7 +267,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(6, current.getInteger("Schema"));
+        assertEquals(7, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -458,7 +553,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var saved = new NBTTagCompound();
         restored.writeToNBT(saved);
-        assertEquals(6, saved.getInteger("Schema"));
+        assertEquals(7, saved.getInteger("Schema"));
         assertEquals(
             items,
             saved.getTagList("Entries", 10)
@@ -549,7 +644,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var upgraded = new NBTTagCompound();
         restored.writeToNBT(upgraded);
-        assertEquals(6, upgraded.getInteger("Schema"));
+        assertEquals(7, upgraded.getInteger("Schema"));
     }
 
     @Test

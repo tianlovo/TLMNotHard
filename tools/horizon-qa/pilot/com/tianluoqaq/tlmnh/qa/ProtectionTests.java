@@ -23,6 +23,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow;
+import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
@@ -34,6 +35,7 @@ import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
 import cpw.mods.fml.relauncher.Side;
@@ -105,6 +107,7 @@ public final class ProtectionTests {
         var channel = new EmbeddedChannel(manager);
         manager.setConnectionState(EnumConnectionState.PLAY);
         new NetHandlerPlayServer(MinecraftServer.getServer(), manager, owner);
+        IsolatedPlayerChannel.verify(manager, channel);
         helper.afterTest(() -> {
             owner.setDead();
             channel.finish();
@@ -210,8 +213,12 @@ public final class ProtectionTests {
         System.out.println(
             "TLMNH_PROTECTION118_PASS mechanism=unresolved-item exactRawCycles=3 futureSchema=sealed ownerChange=sealed");
 
-        var cabinet = new TileEntitySnackCabinet();
+        helper.setBlock(6, 1, 4, MaidLifeContent.snackCabinet);
+        var cabinetPos = helper.absolute(6, 1, 4);
+        owner.setPosition(cabinetPos.x() - .5, cabinetPos.y(), cabinetPos.z() + .5);
+        var cabinet = (TileEntitySnackCabinet) world.getTileEntity(cabinetPos.x(), cabinetPos.y(), cabinetPos.z());
         var storage = new NBTTagCompound();
+        cabinet.writeToNBT(storage);
         var entries = new NBTTagList();
         var first = ProtectedItemCodec.encode(apple);
         first.setByte("Slot", (byte) 0);

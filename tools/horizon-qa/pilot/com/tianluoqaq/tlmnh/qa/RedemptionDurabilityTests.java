@@ -75,10 +75,11 @@ public final class RedemptionDurabilityTests {
                     .getCanonicalFile()
                     .equals(expectedWorld)
                 && world.provider.dimensionId == 0
-                && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) == 6
+                && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) >= 6
+                && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) <= 7
                 && System.getProperty("tlmnh.qaPersistenceContract", "")
                     .equals("durable"),
-            "Explicit owned schema6 crash contract required");
+            "Explicit owned supported-schema crash contract required");
         String version = cpw.mods.fml.common.Loader.instance()
             .getIndexedModList()
             .get("tlmnh")
@@ -228,6 +229,37 @@ public final class RedemptionDurabilityTests {
         helper.assertTrue(
             changed.release(other) != MaidLifecycleService.Result.SUCCESS && changed.calls == calls,
             "Persistent unknown successor admitted another spawn");
+        var recovery = new NBTTagList();
+        recovery
+            .appendTag(com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(new ItemStack(Items.arrow, 9)));
+        changed.last.getMaidInventory()
+            .recovery()
+            .read(recovery);
+        var pendingSource = new NBTTagCompound();
+        changed.last.writeToNBT(pendingSource);
+        var playerSource = (NBTTagList) changed.player.inventory.writeToNBT(new NBTTagList())
+            .copy();
+        new com.tianluoqaq.tlmnh.common.protection.ProtectionCommand()
+            .processCommand(changed.player, new String[] { "recover", Integer.toString(changed.last.getEntityId()) });
+        var afterClaim = new NBTTagCompound();
+        changed.last.writeToNBT(afterClaim);
+        helper.assertTrue(
+            pendingSource.equals(afterClaim)
+                && playerSource.equals(changed.player.inventory.writeToNBT(new NBTTagList()))
+                && changed.last.getMaidInventory()
+                    .recovery()
+                    .size() == 1,
+            "Normal recovery command changed an unsettled candidate or delivered its inventory before costs");
+        String candidateKey = "redemption/candidate/" + changed.last.getUniqueID();
+        var candidateFault = IntegrationGuard.faults(Side.SERVER)
+            .get(candidateKey);
+        if (candidateFault != null) {
+            helper.assertTrue(
+                !changed.priorFaults.containsKey(candidateKey) && changed.player.getUniqueID()
+                    .equals(candidateFault.owner),
+                "Pending recovery fixture collided with an unknown candidate diagnostic");
+            changed.controlledFaults.put(candidateKey, candidateFault);
+        }
         changed.assertPending(held);
         helper.succeed();
     }
@@ -741,7 +773,8 @@ public final class RedemptionDurabilityTests {
         void assertPending(UUID token) throws Exception {
             var raw = diskLedger();
             helper.assertTrue(
-                raw.getInteger("Schema") == 6 && !diskEntry(token).getBoolean("Consumed")
+                raw.getInteger("Schema") == Integer.getInteger("tlmnh.qaPersistenceSchema", 7)
+                    && !diskEntry(token).getBoolean("Consumed")
                     && !diskEntry(token).getCompoundTag("Redemption")
                         .hasNoTags(),
                 "Actual disk lost the pending barrier");

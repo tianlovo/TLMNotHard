@@ -29,12 +29,17 @@ import com.google.gson.JsonPrimitive;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
+import com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver;
 import com.tianluoqaq.tlmnh.common.combat.ArrowPhysics;
+import com.tianluoqaq.tlmnh.common.combat.BallisticVector;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
+import com.tianluoqaq.tlmnh.common.combat.NativeArrowMedium;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.physics.NativeLiquidPhysics;
 import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -59,6 +64,69 @@ public final class ActualArrowPhysicsTests {
         var trial = new Trial(helper, true, "moon");
         helper.onEachTick("installed lunar provider and actual native arrow flight", trial::tick);
         helper.succeedWhen(() -> trial.complete);
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 45, batch = "actual_arrow_water")
+    public static void nativeWaterDragAndFlowTimingMatchSolverAndExactlyOncePayment(GameTestHelper helper) {
+        mediumFlight(helper, false);
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 45, batch = "actual_arrow_water_boundary")
+    public static void nativeAirWaterAirBoundaryMatchesSolverAndSafetyOnTheSameArrow(GameTestHelper helper) {
+        mediumFlight(helper, true);
+    }
+
+    private static void mediumFlight(GameTestHelper helper, boolean boundary) {
+        var trial = new Trial(helper, false, boundary ? "air-water-air" : "water");
+        trial.mediumCase = true;
+        // 静态原生水块作为受控当前输入；水中例保留真实meta坡度与非零水流。
+        // flags=2不邻居更新；不手动tick水、箭或任何演员，也不声称自然水体生成。
+        int left = boundary ? 4 : 1, right = boundary ? 5 : 19;
+        for (int x = left; x <= right; x++) for (int y = 1; y <= 5; y++) for (int z = 1; z <= 7; z++) helper.getWorld()
+            .setBlock(trial.f.x + x, trial.f.y + y, trial.f.z + z, Blocks.water, boundary ? 0 : z - 1, 2);
+        trial.target.setPosition(trial.f.x + (boundary ? 17.5 : 9.5), trial.f.y + 1, trial.f.z + 4.5);
+        trial.report.addProperty(
+            "mediumInput",
+            boundary ? "static native water x4..5, y1..5; air on both sides"
+                : "static native water x1..19, y1..5; z1..7 metadata0..6 native positive-Z flow");
+        trial.report.addProperty("controlledTargetMovementBase", 0);
+        trial.report.addProperty(
+            "installedEfrAdjustedLiquidPhysics",
+            NativeLiquidPhysics.sample()
+                .adjusted());
+        var initial = new NBTTagCompound();
+        trial.target.writeToNBT(initial);
+        trial.report.addProperty("targetInitialRawNBT", initial.toString());
+        trial.report
+            .add("targetInitialTypedNBT", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) initial.copy()));
+        trial.report.add("targetInitialPhysicalConditions", NaturalRangedPairTests.physicalConditions(trial.target));
+        var maidInitial = new NBTTagCompound();
+        trial.f.maid.writeToNBT(maidInitial);
+        trial.report.addProperty("maidInitialRawNBT", maidInitial.toString());
+        trial.report
+            .add("maidInitialTypedNBT", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) maidInitial.copy()));
+        trial.report.add("maidInitialPhysicalConditions", NaturalRangedPairTests.physicalConditions(trial.f.maid));
+        var ownerInitial = new NBTTagCompound();
+        trial.f.owner.writeToNBT(ownerInitial);
+        trial.report.addProperty("ownerInitialRawNBT", ownerInitial.toString());
+        trial.report
+            .add("ownerInitialTypedNBT", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) ownerInitial.copy()));
+        trial.report.addProperty(
+            "ownerProfile",
+            "Existing actuator fixture Forge FakePlayer, isolated PLAY channel; not a complete-root/native-login benchmark");
+        helper.onEachTick("native water physics and actual natural collision", trial::tick);
+        helper.succeedWhen(() -> {
+            if (!trial.complete) return false;
+            helper.assertTrue(
+                trial.waterSamples > 0
+                    && (boundary ? trial.airSamples >= 2 && trial.mediumTransitions >= 2 : trial.flowSamples > 0),
+                "Actual samples did not traverse the required media: water=" + trial.waterSamples
+                    + ", air="
+                    + trial.airSamples
+                    + ", transitions="
+                    + trial.mediumTransitions);
+            return true;
+        });
     }
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 20, batch = "actual_arrow_spawn_invalidation")
@@ -167,6 +235,10 @@ public final class ActualArrowPhysicsTests {
         long previousTime = Long.MIN_VALUE;
         int previousAge, flightSamples, hurtEvents, spawnCallbacks;
         boolean complete;
+        boolean mediumCase;
+        int waterSamples, airSamples, mediumTransitions, flowSamples;
+        Boolean previousWater;
+        ArrowPhysics.State predicted;
 
         Trial(GameTestHelper helper, boolean lunar, String name) {
             this.helper = helper;
@@ -233,9 +305,26 @@ public final class ActualArrowPhysicsTests {
             try {
                 report.add(
                     "productionArtifact",
+                    DevelopmentArtifactIdentity.capture(
+                        MaidBowAttack.class,
+                        ArrowPhysics.class,
+                        ArrowInterceptSolver.class,
+                        NativeArrowMedium.class,
+                        NativeArrowGravity.class,
+                        NativeLiquidPhysics.class));
+                report.add(
+                    "observerArtifact",
+                    DevelopmentArtifactIdentity.capture(
+                        ActualArrowPhysicsTests.class,
+                        Trial.class,
+                        ModernCoreTests.Fixture.class,
+                        SleepAttributePortSnapshot.class,
+                        NaturalRangedPairTests.class));
+                report.add("connectionArtifact", DevelopmentArtifactIdentity.capture(IsolatedPlayerChannel.class));
+                if (cpw.mods.fml.common.Loader.isModLoaded("etfuturum")) report.add(
+                    "liquidProviderArtifact",
                     DevelopmentArtifactIdentity
-                        .capture(MaidBowAttack.class, ArrowPhysics.class, NativeArrowGravity.class));
-                report.add("observerArtifact", DevelopmentArtifactIdentity.capture(ActualArrowPhysicsTests.class));
+                        .capture(Class.forName("ganymedes01.etfuturum.configuration.configs.ConfigMixins")));
                 if (lunar) report.add("providerArtifact", DevelopmentArtifactIdentity.capture(provider.getClass()));
             } catch (Exception failure) {
                 throw new IllegalStateException("Cannot bind actual arrow physics artifacts", failure);
@@ -287,6 +376,7 @@ public final class ActualArrowPhysicsTests {
                 previous = state(arrow);
                 previousAge = arrow.ticksExisted;
                 recordFrame();
+                predictNext();
                 return;
             }
             if (hurtEvents > 0) {
@@ -305,11 +395,62 @@ public final class ActualArrowPhysicsTests {
                 report.addProperty("nativePhysicsSamples", flightSamples);
                 report.addProperty("bowWear", weapon.getItemDamage());
                 report.addProperty("remainingArrows", ammunition.stackSize);
+                report.addProperty("waterSamples", waterSamples);
+                report.addProperty("airSamples", airSamples);
+                report.addProperty("mediumTransitions", mediumTransitions);
+                report.addProperty("flowSamples", flowSamples);
                 restoreProvider();
                 return;
             }
             if (arrow.ticksExisted == previousAge) return;
             var next = state(arrow);
+            if (mediumCase) {
+                // 先保存失败的真实帧，避免assert抛出后只剩上一个起点而丢失首差。
+                recordFrame();
+                var row = frames.get(frames.size() - 1)
+                    .getAsJsonObject();
+                row.addProperty("previousArrowAge", previousAge);
+                row.addProperty("nativeInWater", arrow.isInWater());
+                row.addProperty("nativeDead", arrow.isDead);
+                if (predicted != null) {
+                    double[] expected = { predicted.position.x, predicted.position.y, predicted.position.z,
+                        predicted.velocity.x, predicted.velocity.y, predicted.velocity.z };
+                    var expectedValues = new JsonArray();
+                    var deltas = new JsonArray();
+                    int firstNonExact = -1;
+                    for (int i = 0; i < next.length; i++) {
+                        expectedValues.add(new JsonPrimitive(expected[i]));
+                        deltas.add(new JsonPrimitive(next[i] - expected[i]));
+                        if (firstNonExact < 0
+                            && Double.doubleToLongBits(next[i]) != Double.doubleToLongBits(expected[i]))
+                            firstNonExact = i;
+                    }
+                    row.add("expectedPositionAndVelocity", expectedValues);
+                    row.add("actualMinusExpected", deltas);
+                    row.addProperty("firstNonExactComponent", firstNonExact);
+                    row.addProperty(
+                        "positionResidual",
+                        new BallisticVector(next[0], next[1], next[2]).subtract(predicted.position)
+                            .length());
+                    row.addProperty(
+                        "velocityResidual",
+                        new BallisticVector(next[3], next[4], next[5]).subtract(predicted.velocity)
+                            .length());
+                }
+                helper.assertTrue(
+                    !arrow.isDead && arrow.ticksExisted == previousAge + 1
+                        && predicted != null
+                        && new BallisticVector(next[0], next[1], next[2]).subtract(predicted.position)
+                            .length() < 1E-9
+                        && new BallisticVector(next[3], next[4], next[5]).subtract(predicted.velocity)
+                            .length() < 1E-11,
+                    "Actual native start-box water/flow, movement, drag or gravity differs from shared step: " + row);
+                previous = next;
+                previousAge = arrow.ticksExisted;
+                flightSamples++;
+                predictNext();
+                return;
+            }
             helper.assertTrue(
                 !arrow.isDead && !arrow.isInWater()
                     && arrow.ticksExisted == previousAge + 1
@@ -324,6 +465,32 @@ public final class ActualArrowPhysicsTests {
             previousAge = arrow.ticksExisted;
             flightSamples++;
             recordFrame();
+        }
+
+        private void predictNext() {
+            if (!mediumCase) return;
+            // 发射事务快照的许可已结束；观察器独立读取此真实箭的当前盒，不复用已失效的发射租约。
+            var medium = new NativeArrowMedium(
+                arrow,
+                () -> !arrow.isDead && arrow.worldObj == helper.getWorld() && helper.getWorld().provider == provider);
+            var position = new BallisticVector(arrow.posX, arrow.posY, arrow.posZ);
+            var sample = medium.at(position);
+            boolean water = sample.drag == (double) .8F;
+            if (water) waterSamples++;
+            else airSamples++;
+            if (sample.push.length() > 0) flowSamples++;
+            if (previousWater != null && previousWater.booleanValue() != water) mediumTransitions++;
+            previousWater = water;
+            predicted = ArrowPhysics.OVERWORLD_AIR.withGravity(gravity)
+                .step(
+                    new ArrowPhysics.State(position, new BallisticVector(arrow.motionX, arrow.motionY, arrow.motionZ)),
+                    sample);
+            var row = frames.get(frames.size() - 1)
+                .getAsJsonObject();
+            row.addProperty("nextNativeDrag", sample.drag);
+            row.addProperty("nextWaterPushX", sample.push.x);
+            row.addProperty("nextWaterPushY", sample.push.y);
+            row.addProperty("nextWaterPushZ", sample.push.z);
         }
 
         private boolean terrainCollisionWithGravity(EntityArrow arrow, float wrongGravity) {

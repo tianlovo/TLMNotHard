@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.qa;
 
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.entity.item.EntityItem;
@@ -22,6 +24,7 @@ import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.relauncher.Side;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ProtectionNumericTests {
@@ -139,30 +142,70 @@ public final class ProtectionNumericTests {
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 30, batch = "protection_delivery")
     public static void externalPublicationFailureKeepsEscrowAndStopsRepeatedCallbacks(GameTestHelper helper) {
-        IntegrationGuard.resetForDevelopment();
-        helper.afterTest(IntegrationGuard::resetForDevelopment);
+        helper.assertTrue(
+            IntegrationGuard.available(Side.SERVER, ExternalFeature.ITEM_DELIVERY),
+            "Actual item API fault test requires this capability to be initially available");
         var count = new AtomicInteger();
         var hook = new PublicationFailureHook(helper, count);
         MinecraftForge.EVENT_BUS.register(hook);
-        helper.afterTest(() -> MinecraftForge.EVENT_BUS.unregister(hook));
+        helper.afterTest(() -> {
+            MinecraftForge.EVENT_BUS.unregister(hook);
+            for (var item : hook.outputs) if (item.worldObj == helper.getWorld() && (helper.getWorld()
+                .getEntityByID(item.getEntityId()) == null
+                || helper.getWorld()
+                    .getEntityByID(item.getEntityId()) == item))
+                helper.getWorld()
+                    .removeEntity(item);
+        });
         var pos = helper.absolute(5, 2, 4);
         var stack = new ItemStack(PilotMod.PROTECTION_CANARY, 7, 17);
         var token = MaidFilmRecovery.returnOwnedItem(helper.getWorld(), stack, pos.x(), pos.y(), pos.z());
         var ledger = MaidLifecycleData.get(helper.getWorld());
-        helper.afterTest(() -> {
-            ledger.rollback(token);
-            if (ledger.reserveReturnedFilm(token) != null) ledger.finishReturnedFilm(token);
-        });
+        MaidFilmRecovery.retryPending(helper.getWorld());
+        var fault = IntegrationGuard.faults(Side.SERVER)
+            .get(ExternalFeature.ITEM_DELIVERY.id);
+        helper.assertTrue(
+            count.get() == 1 && fault != null
+                && fault.cause instanceof NoSuchMethodError
+                && !IntegrationGuard.available(Side.SERVER, ExternalFeature.ITEM_DELIVERY),
+            "Failed external publication API was retried after its capability circuit break");
+        var saved = new NBTTagCompound();
+        ledger.writeToNBT(saved);
+        var rows = saved.getTagList("ReturnedFilms", 10);
+        NBTTagCompound raw = null;
+        for (int i = 0; i < rows.tagCount(); i++) if (token.toString()
+            .equals(
+                rows.getCompoundTagAt(i)
+                    .getString("Id")))
+            raw = rows.getCompoundTagAt(i)
+                .getCompoundTag("Stack");
+        helper.assertTrue(
+            raw != null && raw.equals(ProtectedItemCodec.encode(stack))
+                && ledger.returnedPhase(token) == MaidLifecycleData.ReturnedPhase.READY,
+            "Safely retracted API failure lost its complete original escrow");
+        hook.fail = false;
+        synchronized (IntegrationGuard.class) {
+            try {
+                var field = IntegrationGuard.class.getDeclaredField("FAULTS");
+                field.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                var all = (Map<Side, Map<String, IntegrationGuard.Fault>>) field.get(null);
+                var server = all.get(Side.SERVER);
+                helper.assertTrue(
+                    server != null && server.get(ExternalFeature.ITEM_DELIVERY.id) == fault,
+                    "Fixture refused to clear an unknown API fault successor");
+                server.remove(ExternalFeature.ITEM_DELIVERY.id);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Could not restore the exact injected API fault", failure);
+            }
+        }
+        MaidFilmRecovery.retryPending(helper.getWorld());
         MaidFilmRecovery.retryPending(helper.getWorld());
         helper.assertTrue(
-            count.get() == 1 && !IntegrationGuard.available(ExternalFeature.ITEM_DELIVERY),
-            "Failed external publication was retried after circuit break");
-        var raw = ledger.reserveReturnedFilm(token);
-        helper.assertTrue(
-            raw != null && raw.equals(ProtectedItemCodec.encode(stack)),
-            "Failed publication lost escrow payload");
-        ledger.rollback(token);
-        System.out.println("TLMNH_PROTECTION_DELIVERY_PASS callbacks=1 escrow=retained retry=stopped");
+            count.get() == 2 && ledger.returnedPhase(token) == null,
+            "Restored fixture API did not complete exactly one actual native publication");
+        System.out.println(
+            "TLMNH_PROTECTION_DELIVERY_PASS faultCallbacks=1 escrow=retained capability=stopped restoredApi=oneNativeDelivery");
         helper.succeedWhen(() -> true);
     }
 
@@ -170,6 +213,8 @@ public final class ProtectionNumericTests {
 
         private final GameTestHelper helper;
         private final AtomicInteger count;
+        final java.util.List<EntityItem> outputs = new ArrayList<>();
+        boolean fail = true;
 
         public PublicationFailureHook(GameTestHelper helper, AtomicInteger count) {
             this.helper = helper;
@@ -182,7 +227,8 @@ public final class ProtectionNumericTests {
                 && item.getEntityItem()
                     .getItem() == PilotMod.PROTECTION_CANARY) {
                 count.incrementAndGet();
-                throw new NoSuchMethodError("QA external item publication API removed");
+                outputs.add(item);
+                if (fail) throw new NoSuchMethodError("QA external item publication API removed");
             }
         }
     }

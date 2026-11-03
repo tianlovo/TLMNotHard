@@ -639,6 +639,18 @@ public final class MaidLifecycleProbe {
                 "broken shrine keeps failed film delivery " + mutation);
             MaidFilmRecovery.retryPending(f.world);
             MaidFilmRecovery.retryPending(f.world);
+            if (mutation != Mutation.ITEM_CANCEL) {
+                require(
+                    ledger.returnedPhase(returnedId) == MaidLifecycleData.ReturnedPhase.HELD
+                        && expected.equals(queuedStack.get())
+                        && mutate.items.size() == 1,
+                    "unknown returned successor retains exact held raw without another publication " + mutation);
+                // Full preservation assertions precede removal of this fixture's exact injected object.
+                for (var item : mutate.items)
+                    if (item.worldObj == f.world && (f.world.getEntityByID(item.getEntityId()) == null
+                        || f.world.getEntityByID(item.getEntityId()) == item)) f.world.removeEntity(item);
+                continue;
+            }
             require(
                 !ledger.pendingReturnedFilms(f.world.provider.dimensionId)
                     .contains(returnedId) && queuedStack.get() == null,

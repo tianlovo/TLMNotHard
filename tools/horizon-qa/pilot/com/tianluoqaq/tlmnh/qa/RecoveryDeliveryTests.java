@@ -24,6 +24,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
+import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
@@ -31,6 +32,7 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 
 import cpw.mods.fml.relauncher.Side;
@@ -61,7 +63,7 @@ public final class RecoveryDeliveryTests {
 
         var recoveryPlayer = player(helper);
         int recoveryOffhand = fillRegular(helper, recoveryPlayer);
-        var recovery = recovery(original);
+        var recovery = recovery(helper, original);
         var retained = recovery.write();
         var full = inventory(recoveryPlayer);
         boolean blockedRecovery = recovery.recoverOne(recoveryPlayer);
@@ -145,7 +147,7 @@ public final class RecoveryDeliveryTests {
             "Native tombstone planner did not honor enabled offhand pickup");
         var allowedRecoveryPlayer = player(helper);
         int allowedRecoveryOffhand = fillRegular(helper, allowedRecoveryPlayer);
-        var allowedRecovery = recovery(original);
+        var allowedRecovery = recovery(helper, original);
         boolean recoveredOffhand = allowedRecovery.recoverOne(allowedRecoveryPlayer);
         helper.assertTrue(
             recoveredOffhand && allowedRecovery.size() == 0
@@ -239,11 +241,16 @@ public final class RecoveryDeliveryTests {
         helper.succeedWhen(() -> true);
     }
 
-    private static RecoveryStore recovery(ItemStack original) {
+    private static RecoveryStore recovery(GameTestHelper helper, ItemStack original) {
         var data = new NBTTagList();
         data.appendTag(ProtectedItemCodec.encode(original));
-        var result = new RecoveryStore();
+        helper.setBlock(6, 1, 4, MaidLifeContent.snackCabinet);
+        var position = helper.absolute(6, 1, 4);
+        var cabinet = (TileEntitySnackCabinet) helper.getWorld()
+            .getTileEntity(position.x(), position.y(), position.z());
+        var result = cabinet.recovery();
         result.read(data);
+        cabinet.markDirty();
         return result;
     }
 
