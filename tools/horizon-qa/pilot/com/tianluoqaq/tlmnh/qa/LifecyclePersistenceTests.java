@@ -73,7 +73,7 @@ public final class LifecyclePersistenceTests {
         String phase = System.getProperty("tlmnh.qaPersistencePhase", "");
         String contract = System.getProperty("tlmnh.qaPersistenceContract", "");
         int expectedSchema = expectedSchema();
-        helper.assertTrue(expectedSchema >= 4 && expectedSchema <= 7, "Explicit supported lifecycle schema required");
+        helper.assertTrue(expectedSchema >= 4 && expectedSchema <= 8, "Explicit supported lifecycle schema required");
         helper.assertTrue(
             contract.equals("baseline") || contract.equals("durable"),
             "Explicit persistence contract required");
@@ -564,6 +564,10 @@ public final class LifecyclePersistenceTests {
         var entries = writer.data.getTagList("Entries", 10);
         for (int i = 0; i < entries.tagCount(); i++) {
             var entry = entries.getCompoundTagAt(i);
+            if (schema < 8) {
+                entry.removeTag("DeathIngress");
+                entry.removeTag("TombstonePublication");
+            }
             if (schema < 6) entry.removeTag("Redemption");
             if (schema < 4) {
                 entry.removeTag("TombstoneHeld");

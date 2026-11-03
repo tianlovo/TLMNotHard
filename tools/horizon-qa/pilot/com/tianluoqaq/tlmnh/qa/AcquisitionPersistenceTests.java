@@ -351,7 +351,7 @@ public final class AcquisitionPersistenceTests {
                     .getCompoundTag("data");
                 int schema = Integer.getInteger("tlmnh.qaAcquisitionSchema", 5);
                 helper.assertTrue(
-                    (schema == 5 || schema == 6 || schema == 7) && data.getInteger("Schema") == schema,
+                    (schema == 5 || schema == 6 || schema == 7 || schema == 8) && data.getInteger("Schema") == schema,
                     "Wrong explicit acquisition disk schema inside native save");
                 var entries = data.getTagList("Entries", 10);
                 for (int i = 0; i < entries.tagCount(); i++) if (entries.getCompoundTagAt(i)

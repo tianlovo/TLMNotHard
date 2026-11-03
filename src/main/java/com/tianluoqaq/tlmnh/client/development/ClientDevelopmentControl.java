@@ -204,6 +204,14 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("pitch", maid.rotationPitch);
                             shape.addProperty("model", maid.getModelId());
                             shape.addProperty("sitting", maid.isSitting());
+                            shape.addProperty("inWater", maid.isInWater());
+                            shape.addProperty("air", maid.getAir());
+                            shape.addProperty("swingProgress", maid.getSwingProgress(1));
+                            shape.addProperty(
+                                "ridingEntityUuid",
+                                maid.ridingEntity == null ? ""
+                                    : maid.ridingEntity.getUniqueID()
+                                        .toString());
                             shape.addProperty(
                                 "usingItem",
                                 maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM));
@@ -279,6 +287,7 @@ public final class ClientDevelopmentControl {
                     response.add(
                         "worldSounds",
                         com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.observation());
+                    response.add("nativeWorldSound", NativeSoundPlaybackObservation.capture());
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
                     response.addProperty("playerPresent", minecraft.thePlayer != null);
                     response.addProperty(

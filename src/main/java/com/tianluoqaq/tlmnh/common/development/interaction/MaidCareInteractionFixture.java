@@ -67,7 +67,8 @@ public final class MaidCareInteractionFixture {
             "CheckpointCounter",
             "CheckpointTime",
             "AwaitLogin",
-            "Rejoined"));
+            "Rejoined",
+            "WorldActions"));
     private static Session active;
 
     private MaidCareInteractionFixture() {}
@@ -340,6 +341,11 @@ public final class MaidCareInteractionFixture {
         session.validate();
         session.inventoryOwned();
         if (action.equals("status")) {
+            session.record(action);
+            return;
+        }
+        if (action.startsWith("world-")) {
+            MaidNaturalWorldActions.run(session, action);
             session.record(action);
             return;
         }
@@ -618,6 +624,7 @@ public final class MaidCareInteractionFixture {
                     || data.hasKey(key, 9) && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, 10)
                         .tagCount(),
                 "Invalid care result snapshot");
+            MaidNaturalWorldActions.validateSnapshot(data);
         }
 
         void validatePlayer() {
@@ -665,7 +672,8 @@ public final class MaidCareInteractionFixture {
         }
 
         void emptyActor() {
-            for (int i = 0; i < maid.getMaidInventory()
+            if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
+            else for (int i = 0; i < maid.getMaidInventory()
                 .getSizeInventory(); i++)
                 require(
                     maid.getMaidInventory()
@@ -985,6 +993,7 @@ public final class MaidCareInteractionFixture {
                     validate();
                     inventoryOwned();
                 }
+                MaidNaturalWorldActions.restore(this);
                 var hand = originalHand();
                 var original = data.getTagList("OriginalInventory", 10);
                 var beforeHand = player.inventory.getStackInSlot(slot());
@@ -1119,6 +1128,7 @@ public final class MaidCareInteractionFixture {
             result.addProperty("favorability", maid.getFavorability());
             result.addProperty("workMealCooldown", cooldown());
             result.addProperty("worldTime", maid.worldObj.getTotalWorldTime());
+            if (data.hasKey("WorldActions")) result.add("worldActions", MaidNaturalWorldActions.observation(this));
             result.addProperty(
                 "mode",
                 player.theItemInWorldManager.getGameType()

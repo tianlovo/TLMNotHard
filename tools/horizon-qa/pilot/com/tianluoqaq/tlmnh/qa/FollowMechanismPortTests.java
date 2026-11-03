@@ -97,7 +97,7 @@ public final class FollowMechanismPortTests {
         collector.setup();
     }
 
-    public static final class Collector {
+    public static class Collector {
 
         final GameTestHelper helper;
         final MaidBrainProfile profile;
@@ -105,7 +105,7 @@ public final class FollowMechanismPortTests {
         final JsonArray frames = new JsonArray(), events = new JsonArray();
         final GameTestChunkLoader chunks = new GameTestChunkLoader();
         final int x, y, z;
-        final String outputName, oldDaylight, oldSpawning;
+        final String outputName, oldDaylight, oldSpawning, expectedContract;
         final long oldTime;
         final EnumDifficulty oldDifficulty;
         final boolean oldRain, oldThunder, oldAnimals;
@@ -123,14 +123,26 @@ public final class FollowMechanismPortTests {
         RuntimeException failure;
 
         Collector(GameTestHelper helper, MaidBrainProfile profile, String mechanism) {
+            this(
+                helper,
+                profile,
+                mechanism,
+                "/tlmnh-follow-mechanisms/contract.json",
+                "FOLLOW_PAIRED_MECHANISMS_V1",
+                "follow-paired-port-mechanisms-v1",
+                "follow-mechanism-");
+        }
+
+        Collector(GameTestHelper helper, MaidBrainProfile profile, String mechanism, String resource,
+            String expectedContract, String schema, String prefix) {
             this.helper = helper;
             this.profile = profile;
+            this.expectedContract = expectedContract;
             var origin = helper.absolute(0, 0, 0);
             x = origin.x();
             y = origin.y();
             z = origin.z();
-            try (var stream = FollowMechanismPortTests.class
-                .getResourceAsStream("/tlmnh-follow-mechanisms/contract.json")) {
+            try (var stream = FollowMechanismPortTests.class.getResourceAsStream(resource)) {
                 if (stream == null) throw new IllegalStateException("Missing follow mechanism contract");
                 byte[] bytes = com.google.common.io.ByteStreams.toByteArray(stream);
                 contract = new JsonParser().parse(new String(bytes, StandardCharsets.UTF_8))
@@ -166,8 +178,8 @@ public final class FollowMechanismPortTests {
                 .getRainTime();
             oldThunderTime = world.getWorldInfo()
                 .getThunderTime();
-            outputName = "follow-mechanism-" + profile.getId() + "-" + mechanism + ".json";
-            output.addProperty("schema", "follow-paired-port-mechanisms-v1");
+            outputName = prefix + profile.getId() + "-" + mechanism + ".json";
+            output.addProperty("schema", schema);
             output.addProperty("profile", profile.getId());
             output.addProperty("mechanism", mechanism);
             output.add("contract", contract);
@@ -189,7 +201,7 @@ public final class FollowMechanismPortTests {
             helper.assertTrue(
                 contract.get("contract")
                     .getAsString()
-                    .equals("FOLLOW_PAIRED_MECHANISMS_V1"),
+                    .equals(expectedContract),
                 "Wrong follow contract");
             FMLCommonHandler.instance()
                 .bus()
@@ -302,7 +314,11 @@ public final class FollowMechanismPortTests {
 
         @SubscribeEvent
         public void living(LivingEvent.LivingUpdateEvent event) {
-            if (event.entityLiving == maid) livingTicks++;
+            onLiving(event.entityLiving);
+        }
+
+        void onLiving(net.minecraft.entity.Entity entity) {
+            if (entity == maid) livingTicks++;
         }
 
         @SubscribeEvent
@@ -588,11 +604,15 @@ public final class FollowMechanismPortTests {
             previousAge = maid.ticksExisted;
             livingTicks = 0;
             drain();
-            if (frames.size() == contract.get("framesPerActor")
-                .getAsInt()) {
+            if (frames.size() == frameLimit()) {
                 complete = true;
                 close();
             }
+        }
+
+        int frameLimit() {
+            return contract.get("framesPerActor")
+                .getAsInt();
         }
 
         void afterFrame(int index) {

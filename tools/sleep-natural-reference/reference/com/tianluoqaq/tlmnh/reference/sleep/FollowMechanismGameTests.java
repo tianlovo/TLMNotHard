@@ -66,9 +66,12 @@ public final class FollowMechanismGameTests {
     public static void waitingOwnerFood(GameTestHelper helper) { collect(helper, "waiting_owner_food"); }
 
     private static void collect(GameTestHelper helper, String mechanism) {
-        helper.assertTrue(Boolean.getBoolean("tlmnh.followMechanismProbe") && active == null,
+        collect(helper, new Session(helper, mechanism), "tlmnh.followMechanismProbe");
+    }
+
+    static void collect(GameTestHelper helper, Session session, String mode) {
+        helper.assertTrue(Boolean.getBoolean(mode) && active == null,
             "Independent follow-mechanism reference mode required");
-        var session = new Session(helper, mechanism);
         active = session;
         helper.onEachTick(() -> {
             if (session.failure != null) helper.fail(session.failure);
@@ -85,7 +88,7 @@ public final class FollowMechanismGameTests {
 
     @SubscribeEvent
     public static void living(LivingEvent.LivingTickEvent event) {
-        if (active != null && event.getEntity() == active.maid) active.livingTicks++;
+        if (active != null) active.onLiving(event.getEntity());
     }
 
     @SubscribeEvent
@@ -103,7 +106,7 @@ public final class FollowMechanismGameTests {
         if (active != null) active.abort(new IllegalStateException("Reference stopped before capture completion"));
     }
 
-    static final class Session {
+    static class Session {
         final GameTestHelper helper;
         final ServerLevel level;
         final JsonObject contract, scene, output = new JsonObject();
@@ -113,6 +116,7 @@ public final class FollowMechanismGameTests {
         final boolean oldDaylight, oldSpawning, oldRain, oldThunder;
         final int oldRainTime, oldThunderTime, oldClearTime;
         final Difficulty oldDifficulty;
+        final String expectedContract;
         BlockPos origin;
         ServerPlayer owner;
         Connection connection;
@@ -126,8 +130,14 @@ public final class FollowMechanismGameTests {
         String failure;
 
         Session(GameTestHelper helper, String mechanism) {
+            this(helper, mechanism, "/tlmnh-follow-mechanisms/contract.json", "FOLLOW_PAIRED_MECHANISMS_V1",
+                "follow-paired-reference-mechanisms-v1", "follow-mechanism-original-");
+        }
+
+        Session(GameTestHelper helper, String mechanism, String resource, String expectedContract, String schema, String prefix) {
             this.helper = helper; level = helper.getLevel();
-            try (var stream = FollowMechanismGameTests.class.getResourceAsStream("/tlmnh-follow-mechanisms/contract.json")) {
+            this.expectedContract = expectedContract;
+            try (var stream = FollowMechanismGameTests.class.getResourceAsStream(resource)) {
                 if (stream == null) throw new IllegalStateException("Missing follow-mechanism contract");
                 byte[] bytes = stream.readAllBytes();
                 contract = GSON.fromJson(new String(bytes, StandardCharsets.UTF_8), JsonObject.class);
@@ -142,8 +152,8 @@ public final class FollowMechanismGameTests {
             var data = level.getServer().getWorldData().overworldData();
             oldRain = data.isRaining(); oldThunder = data.isThundering();
             oldRainTime = data.getRainTime(); oldThunderTime = data.getThunderTime(); oldClearTime = data.getClearWeatherTime();
-            capture = Path.of("captures", "follow-mechanism-original-" + mechanism + "-" + System.nanoTime() + ".json");
-            output.addProperty("schema", "follow-paired-reference-mechanisms-v1");
+            capture = Path.of("captures", prefix + mechanism + "-" + System.nanoTime() + ".json");
+            output.addProperty("schema", schema);
             output.addProperty("profile", "original"); output.addProperty("mechanism", mechanism);
             output.add("contract", contract.deepCopy()); output.add("scene", scene.deepCopy());
             output.add("frames", frames); output.add("events", events);
@@ -153,7 +163,7 @@ public final class FollowMechanismGameTests {
         }
 
         void setup() {
-            helper.assertTrue(contract.get("contract").getAsString().equals("FOLLOW_PAIRED_MECHANISMS_V1"), "Wrong follow contract");
+            helper.assertTrue(contract.get("contract").getAsString().equals(expectedContract), "Wrong follow contract");
             origin = helper.absolutePos(BlockPos.ZERO);
             level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
             level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
@@ -215,7 +225,7 @@ public final class FollowMechanismGameTests {
             livingTicks = previousAge = 0;
             output.addProperty("maidUuid", maid.getUUID().toString()); output.addProperty("entityClass", maid.getClass().getName());
             output.addProperty("brainClass", maid.getBrain().getClass().getName());
-            output.add("identity", SleepNaturalGameTests.identity("tlmnh.followMechanism.buildIdentity"));
+            output.add("identity", SleepNaturalGameTests.identity(identityProperty()));
             output.add("attributeInputs", SleepAttributeSnapshot.capture(maid));
             var inputs = new JsonObject(); var raw = new CompoundTag(); maid.saveWithoutId(raw);
             inputs.addProperty("rawInitialNBT", raw.toString()); inputs.add("rawInitialNbtBinary", SleepAttributeSnapshot.binaryNbt(raw));
@@ -264,10 +274,14 @@ public final class FollowMechanismGameTests {
             if (path != null) { f.addProperty("pathLength", path.getNodeCount()); f.addProperty("pathIndex", path.getNextNodeIndex()); f.addProperty("pathCanReach", path.canReach()); }
             f.addProperty("activeActivities", maid.getBrain().getActiveActivities().toString()); f.add("food", foodSnapshot());
             frames.add(f); afterFrame(index); previousAge = maid.tickCount; livingTicks = 0; drain();
-            if (frames.size() == contract.get("framesPerActor").getAsInt()) {
+            if (frames.size() == frameLimit()) {
                 output.addProperty("observationComplete", true); close(); write(); complete = true; active = null;
             }
         }
+
+        int frameLimit() { return contract.get("framesPerActor").getAsInt(); }
+        String identityProperty() { return "tlmnh.followMechanism.buildIdentity"; }
+        void onLiving(Entity entity) { if (entity == maid) livingTicks++; }
 
         void afterFrame(int index) {
             for (var value : scene.getAsJsonArray("events")) {

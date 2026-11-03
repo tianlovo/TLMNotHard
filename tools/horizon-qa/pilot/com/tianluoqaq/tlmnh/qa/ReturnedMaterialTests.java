@@ -361,7 +361,7 @@ public final class ReturnedMaterialTests {
         return null;
     }
 
-    private static NBTTagCompound diskLedger(LifecycleConservationTests.Fixture f) throws Exception {
+    static NBTTagCompound diskLedger(LifecycleConservationTests.Fixture f) throws Exception {
         try (var input = new FileInputStream(
             f.helper.getWorld()
                 .getSaveHandler()
@@ -400,7 +400,7 @@ public final class ReturnedMaterialTests {
         return result;
     }
 
-    private static NBTTagCompound diskEntity(LifecycleConservationTests.Fixture f, Entity entity) throws Exception {
+    static NBTTagCompound diskEntity(LifecycleConservationTests.Fixture f, Entity entity) throws Exception {
         var rows = diskChunk(f, (int) Math.floor(entity.posX), (int) Math.floor(entity.posZ))
             .getTagList("Entities", 10);
         NBTTagCompound result = null;
@@ -414,7 +414,7 @@ public final class ReturnedMaterialTests {
         return result;
     }
 
-    private static void saveChunk(LifecycleConservationTests.Fixture f, Entity entity) throws Exception {
+    static void saveChunk(LifecycleConservationTests.Fixture f, Entity entity) throws Exception {
         var world = f.helper.getWorld();
         var loader = (AnvilChunkLoader) world.theChunkProviderServer.currentChunkLoader;
         loader.saveChunk(

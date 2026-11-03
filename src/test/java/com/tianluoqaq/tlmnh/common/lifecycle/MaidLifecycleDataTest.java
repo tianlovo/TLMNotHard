@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 8);
+        invalid.setInteger("Schema", 9);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -147,7 +147,7 @@ public class MaidLifecycleDataTest {
             restored.abandonReturnedFilm(id);
             var upgraded = new NBTTagCompound();
             roundtrip(restored).writeToNBT(upgraded);
-            assertEquals(7, upgraded.getInteger("Schema"));
+            assertEquals(8, upgraded.getInteger("Schema"));
             assertEquals(
                 raw,
                 upgraded.getTagList("ReturnedFilms", 10)
@@ -267,7 +267,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(7, current.getInteger("Schema"));
+        assertEquals(8, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -506,6 +506,10 @@ public class MaidLifecycleDataTest {
         var entries = tag.getTagList("Entries", 10);
         for (int index = 0; index < entries.tagCount(); index++) {
             var entry = entries.getCompoundTagAt(index);
+            if (schema < 8) {
+                entry.removeTag("DeathIngress");
+                entry.removeTag("TombstonePublication");
+            }
             if (schema < 6) entry.removeTag("Redemption");
             if (schema < 3) {
                 entry.removeTag("DeathExperience");
@@ -515,8 +519,8 @@ public class MaidLifecycleDataTest {
                 entry.removeTag("TombstoneHeld");
                 entry.removeTag("ExperienceHeld");
             }
-            for (String key : new String[] { "AcquisitionPhase", "AcquisitionSource", "AcquisitionReceipt",
-                "AcquisitionCredential" }) entry.removeTag(key);
+            if (schema < 5) for (String key : new String[] { "AcquisitionPhase", "AcquisitionSource",
+                "AcquisitionReceipt", "AcquisitionCredential" }) entry.removeTag(key);
         }
         return tag;
     }
@@ -553,7 +557,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var saved = new NBTTagCompound();
         restored.writeToNBT(saved);
-        assertEquals(7, saved.getInteger("Schema"));
+        assertEquals(8, saved.getInteger("Schema"));
         assertEquals(
             items,
             saved.getTagList("Entries", 10)
@@ -632,6 +636,13 @@ public class MaidLifecycleDataTest {
         var saved = new NBTTagCompound();
         old.writeToNBT(saved);
         saved.setInteger("Schema", 5);
+        var oldRows = saved.getTagList("Entries", 10);
+        for (int i = 0; i < oldRows.tagCount(); i++) {
+            oldRows.getCompoundTagAt(i)
+                .removeTag("DeathIngress");
+            oldRows.getCompoundTagAt(i)
+                .removeTag("TombstonePublication");
+        }
         saved.getTagList("Entries", 10)
             .getCompoundTagAt(0)
             .removeTag("Redemption");
@@ -644,7 +655,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var upgraded = new NBTTagCompound();
         restored.writeToNBT(upgraded);
-        assertEquals(7, upgraded.getInteger("Schema"));
+        assertEquals(8, upgraded.getInteger("Schema"));
     }
 
     @Test
@@ -665,4 +676,109 @@ public class MaidLifecycleDataTest {
             assertThrows(IllegalStateException.class, () -> restored.writeToNBT(new NBTTagCompound()));
         }
     }
+
+    @Test
+    public void schemaOneThroughSevenKeepExistingDeathRightsWhenAddingEmptyIngressRecords() {
+        var owner = UUID.randomUUID();
+        var source = new MaidLifecycleData("fixture");
+        var initial = source.initialToken(owner);
+        source.reserve(initial, MaidLifecycleData.Kind.INITIAL);
+        source.commit(initial);
+        var raw = new NBTTagCompound();
+        raw.setIntArray("ForeignExactPayload", new int[] { 9, 2, 7 });
+        var items = new NBTTagList();
+        items.appendTag(raw);
+        var film = source.depositDeath(owner, UUID.randomUUID(), raw, items, 0, 1, 5, 3, "legacy", 31, 20);
+        for (int schema = 1; schema <= 7; schema++) {
+            var restored = new MaidLifecycleData("fixture");
+            restored.readFromNBT(legacy(source, schema));
+            assertNull(restored.reserve(initial, MaidLifecycleData.Kind.INITIAL));
+            assertEquals(raw, restored.reserve(film, MaidLifecycleData.Kind.FILM));
+            restored.rollback(film);
+            assertTrue(
+                restored.deathIngress(film)
+                    .hasNoTags());
+            assertTrue(
+                restored.tombstonePublication(film)
+                    .hasNoTags());
+            assertEquals(schema < 3 ? 0 : 31, restored.remainingDeathExperience(film));
+            assertTrue(
+                roundtrip(restored).pendingTombstones(0)
+                    .contains(film));
+        }
+    }
+
+    @Test
+    public void preparedDeathKeepsOriginalRawAndBlocksAllOutgoingRightsAndActiveLedgerReplacement() {
+        var data = new MaidLifecycleData("fixture");
+        var owner = UUID.randomUUID();
+        var subject = UUID.randomUUID();
+        var token = UUID.randomUUID();
+        var source = new NBTTagCompound();
+        source.setLong("UUIDMost", subject.getMostSignificantBits());
+        source.setLong("UUIDLeast", subject.getLeastSignificantBits());
+        source.setString("OwnerUUID", owner.toString());
+        source.setFloat("HealF", 0);
+        source.setInteger("MaidExperience", 31);
+        source.setString("UnknownSourceExtension", "keep full source");
+        var cleared = (NBTTagCompound) source.copy();
+        cleared.setInteger("MaidExperience", 0);
+        cleared.setTag("MaidInventory", new NBTTagList());
+        cleared.setTag("TLMNHRecovery", new NBTTagList());
+        var equipment = new NBTTagList();
+        for (int i = 0; i < 5; i++) equipment.appendTag(new NBTTagCompound());
+        cleared.setTag("Equipment", equipment);
+        var items = new NBTTagList();
+        var raw = new NBTTagCompound();
+        raw.setString("UnknownItemPayload", "unchanged");
+        items.appendTag(raw);
+        var receipt = new NBTTagCompound();
+        receipt.setInteger("Version", 1);
+        receipt.setString("Token", token.toString());
+        receipt.setString("Stage", "PREPARED");
+        receipt.setTag("Source", source.copy());
+        receipt.setTag("Cleared", cleared);
+        receipt.setTag("Items", items.copy());
+        receipt.setInteger("Experience", 31);
+        receipt.setLong("ReadyAt", 20);
+        data.prepareDeath(token, owner, subject, new NBTTagCompound(), items, 0, 1, 5, 3, "fixture", 31, 20, receipt);
+        assertTrue(data.pendingDeath(subject));
+        assertNull(data.reserve(token, MaidLifecycleData.Kind.FILM));
+        assertNull(data.reserveTombstone(token));
+        assertTrue(
+            data.pendingDeathExperience(0, Long.MAX_VALUE)
+                .isEmpty());
+        assertTrue(
+            data.pendingTombstones(0)
+                .isEmpty());
+        assertThrows(IllegalStateException.class, () -> data.markPublished(token));
+        data.beginDeathAttempt(token, receipt);
+        var saved = new NBTTagCompound();
+        data.writeToNBT(saved);
+        assertThrows(IllegalStateException.class, () -> data.readFromNBT(saved));
+        data.endDeathAttempt(token);
+        var restored = roundtrip(data);
+        assertEquals(
+            source,
+            restored.deathIngress(token)
+                .getCompoundTag("Source"));
+        var observed = new NBTTagCompound();
+        observed.setString("UnknownSuccessor", "also retained");
+        restored.holdDeathIngress(token, observed);
+        restored = roundtrip(restored);
+        assertEquals(
+            source,
+            restored.deathIngress(token)
+                .getCompoundTag("Source"));
+        assertEquals(
+            observed,
+            restored.deathIngress(token)
+                .getCompoundTag("Observed"));
+        assertNull(restored.reserve(token, MaidLifecycleData.Kind.FILM));
+        assertEquals(
+            "HELD",
+            restored.deathIngress(token)
+                .getString("Stage"));
+    }
+
 }

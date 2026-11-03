@@ -26,13 +26,29 @@ public final class MaidPoseRuntimeProbe {
             world = (WorldServer) observer.worldObj;
             if (maid != null) {
                 require(maid.worldObj == world, "Same-world fixture cleanup required");
+                require(
+                    maid.isOwner(observer) && maid.getEntityData()
+                        .getBoolean("TLMNHAquaticProbe"),
+                    "Original owned aquatic actor required");
+                for (int slot = 0; slot < maid.getMaidInventory()
+                    .getSizeInventory(); slot++)
+                    require(
+                        maid.getMaidInventory()
+                            .getStackInSlot(slot) == null,
+                        "Foreign aquatic equipment retained");
+                require(
+                    maid.getMaidInventory()
+                        .recovery()
+                        .write()
+                        .tagCount() == 0,
+                    "Foreign aquatic recovery contents retained");
                 maid.setDead();
                 world.removeEntity(maid);
                 maid = null;
             }
             clearPool();
             world = null;
-        } else if (action.equals("swim")) {
+        } else if (action.equals("swim") || action.equals("swim-bedrock") || action.equals("swim-gecko")) {
             require(maid == null, "Previous pose fixture must be cleaned");
             world = (WorldServer) observer.worldObj;
             for (int x = 3; x <= 7; x++) for (int z = -2; z <= 2; z++)
@@ -48,6 +64,10 @@ public final class MaidPoseRuntimeProbe {
             require(world.setBlock(6, 69, 0, Blocks.air, 0, 2), "Reachable air opening required");
             maid = new EntityMaid(world);
             require(maid.bindTo(observer.getUniqueID()), "Fresh maid owner binding required");
+            maid.setModelId(
+                action.equals("swim-gecko") ? "geckolib:winefox_hanfu" : "touhou_little_maid:hakurei_reimu");
+            maid.setPickupItems(false);
+            maid.setPickupExperience(false);
             maid.getEntityData()
                 .setBoolean("TLMNHAquaticProbe", true);
             maid.setPosition(5.5, 66.2, .5);
@@ -58,6 +78,17 @@ public final class MaidPoseRuntimeProbe {
                 maid != null && maid.isEntityAlive() && maid.worldObj == observer.worldObj,
                 "Live same-world fixture required");
             switch (action) {
+                case "drain":
+                    // 改变真实环境输入，保留池底让实体自然落地；不写Pose、不手动推进AI
+                    for (int x = 4; x <= 6; x++) for (int z = -1; z <= 1; z++) for (int y = 66; y <= 68; y++) {
+                        var block = world.getBlock(x, y, z);
+                        require(
+                            block == Blocks.water || block == Blocks.flowing_water || block == Blocks.air,
+                            "Unknown pool successor retained");
+                    }
+                    for (int x = 4; x <= 6; x++) for (int z = -1; z <= 1; z++)
+                        for (int y = 66; y <= 68; y++) world.setBlock(x, y, z, Blocks.air, 0, 2);
+                    break;
                 case "ceiling":
                     require(
                         maid.height < .61F && maid.getAquaticController()

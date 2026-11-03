@@ -76,7 +76,7 @@ public final class RedemptionDurabilityTests {
                     .equals(expectedWorld)
                 && world.provider.dimensionId == 0
                 && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) >= 6
-                && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) <= 7
+                && Integer.getInteger("tlmnh.qaPersistenceSchema", 0) <= 8
                 && System.getProperty("tlmnh.qaPersistenceContract", "")
                     .equals("durable"),
             "Explicit owned supported-schema crash contract required");
@@ -773,7 +773,7 @@ public final class RedemptionDurabilityTests {
         void assertPending(UUID token) throws Exception {
             var raw = diskLedger();
             helper.assertTrue(
-                raw.getInteger("Schema") == Integer.getInteger("tlmnh.qaPersistenceSchema", 7)
+                raw.getInteger("Schema") == Integer.getInteger("tlmnh.qaPersistenceSchema", 8)
                     && !diskEntry(token).getBoolean("Consumed")
                     && !diskEntry(token).getCompoundTag("Redemption")
                         .hasNoTags(),

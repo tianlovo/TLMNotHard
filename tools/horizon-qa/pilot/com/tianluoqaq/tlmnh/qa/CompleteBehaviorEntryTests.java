@@ -43,6 +43,151 @@ public final class CompleteBehaviorEntryTests {
 
     private CompleteBehaviorEntryTests() {}
 
+    @GameTest(template = "modern_core_cell", timeoutTicks = 330, batch = "complete_entry_f_meal_nbt")
+    public static void faithfulNativeNbtQueriesPreserveNaturalHandAndBackpackMealCompletion(GameTestHelper h)
+        throws Exception {
+        var s = new Scene(h, "faithful-meal-native-nbt", MaidBrainProfile.FAITHFUL_TLM);
+        var f = s.f;
+        var inv = f.maid.getMaidInventory();
+        f.maid.setSitting(true);
+        f.maid.setHealth(10);
+        var main = new ItemStack(Items.iron_sword);
+        main.setStackDisplayName("native-query-main");
+        var off = new ItemStack(Items.diamond, 2);
+        off.setStackDisplayName("native-query-displaced");
+        ItemStack[] food = { new ItemStack(Items.mushroom_stew) };
+        food[0].setStackDisplayName("native-query-soup-0");
+        var nutrition = MaidFoodProfile.inspect(food[0]);
+        h.assertTrue(nutrition != null && nutrition.duration > 1, "Actual native soup profile required");
+        inv.setInventorySlotContents(MaidInventory.MAIN_HAND, main);
+        inv.setInventorySlotContents(MaidInventory.OFF_HAND, food[0]);
+        s.report
+            .addProperty("mealInput", "natural full F; direct offhand, borrowed empty main, borrowed occupied offhand");
+        s.report.addProperty(
+            "serializationScope",
+            "two actual native writes per active-use sample; unregistered reload copies only inspect saved logical slots");
+        s.report.addProperty("actualUseDuration", nutrition.duration);
+        s.bindInputs();
+        s.report.add(
+            "mealArtifact",
+            DevelopmentArtifactIdentity.capture(
+                com.tianluoqaq.tlmnh.common.life.meal.MaidMealController.class,
+                MaidItemUseState.class,
+                MaidInventory.class,
+                com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.class));
+        int[] phase = { 0 }, started = { -1 }, finished = { -1 }, writes = { 0 };
+        MaidItemUseState.Lease[] owned = { null };
+        h.succeedWhen(() -> {
+            var row = s.sample(phase[0]);
+            int age = f.maid.ticksExisted;
+            row.addProperty("soup", count(f, Items.mushroom_stew));
+            row.addProperty("bowls", count(f, Items.bowl));
+            if (phase[0] == 3) {
+                h.assertTrue(
+                    count(f, Items.mushroom_stew) == 0 && count(f, Items.bowl) == 3
+                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
+                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off,
+                    "Later natural tick repeated settlement or changed either restored hand");
+                return s.finishWhen(age >= finished[0] + 4);
+            }
+            if (f.maid.getMealController()
+                .isEating()) {
+                if (started[0] < 0) {
+                    started[0] = age;
+                    owned[0] = f.maid.getItemUseState()
+                        .peek();
+                    s.event("natural meal started, phase=" + phase[0]);
+                }
+                int hand = phase[0] == 1 ? MaidInventory.MAIN_HAND : MaidInventory.OFF_HAND;
+                h.assertTrue(
+                    inv.getStackInSlot(hand) == food[0] && count(f, Items.bowl) == phase[0],
+                    "Natural hand use consumed early or replaced its finite food");
+                int used = f.maid.getItemUseState()
+                    .getUsedTicks();
+                float health = f.maid.getHealth();
+                for (int copy = 0; copy < 2; copy++) {
+                    var saved = new NBTTagCompound();
+                    f.maid.writeToNBT(saved);
+                    writes[0]++;
+                    h.assertTrue(
+                        f.maid.getMealController()
+                            .isEating()
+                            && f.maid.getItemUseState()
+                                .peek() == owned[0]
+                            && f.maid.getItemUseState()
+                                .getUsedTicks() == used
+                            && f.maid.hasPose(MaidPose.USING_ITEM)
+                            && f.maid.hasPose(MaidPose.USING_OFFHAND) == (hand == MaidInventory.OFF_HAND)
+                            && f.maid.getHealth() == health
+                            && inv.getStackInSlot(hand) == food[0]
+                            && (phase[0] == 0 || inv.getStackInSlot(0) == (phase[0] == 1 ? null : off)),
+                        "Native NBT query changed live lease, timer, pose, health or borrowed inventory");
+                    if (age == started[0] && copy == 0) {
+                        s.event("native serialized logical view, phase=" + phase[0])
+                            .add("typedNBT", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) saved.copy()));
+                        var restored = new com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid(
+                            h.getWorld());
+                        restored.readFromNBT(saved);
+                        var loaded = restored.getMaidInventory();
+                        h.assertTrue(
+                            h.getWorld()
+                                .getEntityByID(restored.getEntityId()) != restored
+                                && restored.getItemUseState()
+                                    .peek() == null,
+                            "Reload-copy inspection must not create another updating actor or use lease");
+                        h.assertTrue(
+                            ItemStack.areItemStacksEqual(loaded.getStackInSlot(phase[0] == 0 ? hand : 0), food[0])
+                                && ItemStack.areItemStacksEqual(
+                                    loaded.getStackInSlot(MaidInventory.MAIN_HAND),
+                                    phase[0] == 1 ? null : main)
+                                && ItemStack.areItemStacksEqual(
+                                    loaded.getStackInSlot(MaidInventory.OFF_HAND),
+                                    phase[0] == 0 ? food[0] : off),
+                            "Reloaded snapshot failed complete logical food/source/hand restoration");
+                        restored.getBrainCoordinator()
+                            .setSuspended(true);
+                    }
+                }
+                row.addProperty("nativeWrites", writes[0]);
+                return false;
+            }
+            if (started[0] < 0) return false;
+            h.assertTrue(
+                age - started[0] + 1 == nutrition.duration && count(f, Items.mushroom_stew) == 0
+                    && count(f, Items.bowl) == phase[0] + 1
+                    && f.maid.getItemUseState()
+                        .peek() == null
+                    && inv.getStackInSlot(MaidInventory.MAIN_HAND) == (phase[0] == 1 ? null : main)
+                    && inv.getStackInSlot(MaidInventory.OFF_HAND) == (phase[0] == 0 ? null : off),
+                "Native queries interrupted natural duration or finite food/container settlement");
+            s.event("natural meal completed once, phase=" + phase[0]);
+            phase[0]++;
+            if (phase[0] == 3) {
+                finished[0] = age;
+                s.report.addProperty("nativeWrites", writes[0]);
+                return false;
+            }
+            // 改变下一次真实库存输入，既有碗只换槽保存，不重置根或任何随机/检查计数器
+            inv.setInventorySlotContents(phase[0], inv.getStackInSlot(0));
+            if (phase[0] == 1) {
+                inv.setInventorySlotContents(3, main);
+                inv.setInventorySlotContents(MaidInventory.MAIN_HAND, null);
+                inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
+            } else {
+                inv.setInventorySlotContents(MaidInventory.MAIN_HAND, inv.getStackInSlot(3));
+                inv.setInventorySlotContents(3, null);
+            }
+            food[0] = new ItemStack(Items.mushroom_stew);
+            food[0].setStackDisplayName("native-query-soup-" + phase[0]);
+            inv.setInventorySlotContents(0, food[0]);
+            f.maid.setHealth(10);
+            started[0] = -1;
+            owned[0] = null;
+            s.event("next finite meal input prepared, phase=" + phase[0]);
+            return false;
+        });
+    }
+
     @GameTest(template = "modern_core_cell", timeoutTicks = 150, batch = "complete_entry_f_meal")
     public static void faithfulMealInventoryCancellationPreservesFoodThenNaturallyFinishesOneContainer(GameTestHelper h)
         throws Exception {
@@ -636,7 +781,7 @@ public final class CompleteBehaviorEntryTests {
 
         void save() {
             report.addProperty("observationComplete", complete);
-            // MaidMealController.save会取消物品使用，故观测过程中绝不序列化活跃使用者。
+            // 普通轨迹只采实时事实；专门的NBT查询回归显式记录其序列化输入与结果
             try {
                 var dir = Paths.get(System.getProperty("horizonqa.reportDir", "horizonqa-report"));
                 Files.createDirectories(dir);

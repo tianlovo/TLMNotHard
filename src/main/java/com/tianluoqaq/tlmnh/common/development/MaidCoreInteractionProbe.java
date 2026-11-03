@@ -555,15 +555,32 @@ public final class MaidCoreInteractionProbe {
                 maid.setHealth(2);
                 meal.tick();
                 require(meal.isEating(), "save eating started");
+                var savingLease = maid.getItemUseState()
+                    .peek();
+                var savingFood = inv.getStackInSlot(7);
                 var saved = new NBTTagCompound();
                 maid.writeEntityToNBT(saved);
-                require(!meal.isEating() && inv.getStackInSlot(7) == oldOff, "save restores before serializing");
+                require(
+                    meal.isEating() && maid.getItemUseState()
+                        .peek() == savingLease
+                        && inv.getStackInSlot(7) == savingFood
+                        && inv.getStackInSlot(0) == oldOff
+                        && maid.hasPose(MaidPose.USING_OFFHAND),
+                    "native serialization preserves live meal lease and exchanged slots");
                 var restored = f.newMaid();
                 restored.readEntityFromNBT(saved);
                 require(
                     count(restored.getMaidInventory(), Items.apple) == 4
-                        && count(restored.getMaidInventory(), Items.diamond) == 2,
-                    "save/load conserves");
+                        && count(restored.getMaidInventory(), Items.diamond) == 2
+                        && ItemStack.areItemStacksEqual(
+                            restored.getMaidInventory()
+                                .getStackInSlot(0),
+                            savingFood)
+                        && ItemStack.areItemStacksEqual(
+                            restored.getMaidInventory()
+                                .getStackInSlot(7),
+                            oldOff),
+                    "serialized/reloaded logical slots conserve complete items without changing the live actor");
                 meal.load(new NBTTagCompound());
                 maid.setHealth(2);
                 meal.tick();

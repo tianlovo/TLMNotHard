@@ -380,15 +380,34 @@ public final class ActualArrowPhysicsTests {
                 return;
             }
             if (hurtEvents > 0) {
+                // 终局事实先落盘；近水靶第三tick即撞膨胀身体盒，只有两个完整未碰撞步进。
+                report.addProperty("nativeDamageEvents", hurtEvents);
+                report.addProperty("targetHealth", target.getHealth());
+                report.addProperty("confirmedShots", bow.getShots());
+                report.addProperty("nativePhysicsSamples", flightSamples);
+                report.addProperty("bowWear", weapon.getItemDamage());
+                report.addProperty("remainingArrows", ammunition.stackSize);
+                report.addProperty(
+                    "sameAmmunitionObject",
+                    f.maid.getMaidInventory()
+                        .getStackInSlot(0) == ammunition);
+                report.addProperty("minimumUncollidedSamples", name.equals("water") ? 2 : 3);
+                boolean sampleCountPassed = flightSamples >= (name.equals("water") ? 2 : 3);
+                boolean collisionPassed = hurtEvents == 1 && target.getHealth() < 200;
+                boolean paymentPassed = bow.getShots() == 1 && weapon.getItemDamage() == 1
+                    && f.maid.getMaidInventory()
+                        .getStackInSlot(0) == ammunition
+                    && ammunition.stackSize == 7;
+                report.addProperty("flightSampleCountPassed", sampleCountPassed);
+                report.addProperty("nativeCollisionPassed", collisionPassed);
+                report.addProperty("finitePaymentPassed", paymentPassed);
+                helper.assertTrue(sampleCountPassed, "Natural flight has too few complete uncollided physics samples");
                 helper.assertTrue(
-                    flightSamples >= 3 && hurtEvents == 1
-                        && target.getHealth() < 200
-                        && bow.getShots() == 1
-                        && weapon.getItemDamage() == 1
-                        && f.maid.getMaidInventory()
-                            .getStackInSlot(0) == ammunition
-                        && ammunition.stackSize == 7,
-                    "Actual native collision or exactly-once finite payment failed");
+                    collisionPassed,
+                    "Actual native arrow collision did not damage this target exactly once");
+                helper.assertTrue(
+                    paymentPassed,
+                    "Actual native arrow did not pay its finite bow/ammunition exactly once");
                 complete = true;
                 report.addProperty("nativeDamageEvents", hurtEvents);
                 report.addProperty("targetHealth", target.getHealth());

@@ -80,10 +80,13 @@ public final class ProtectionTests {
     /** 同批顺序执行，避免隔离故障夹具相互修改进程熔断状态 */
     @GameTest(template = "modern_core_cell", timeoutTicks = 50, batch = "protection_contract")
     public static void losslessStorageAndUnavailableApis(GameTestHelper helper) throws Exception {
-        IntegrationGuard.resetForDevelopment();
-        helper.afterTest(IntegrationGuard::resetForDevelopment);
-        IntegrationGuard.resetForDevelopment(Side.CLIENT);
-        helper.afterTest(() -> IntegrationGuard.resetForDevelopment(Side.CLIENT));
+        var priorServer = IntegrationGuard.faults(Side.SERVER);
+        var priorClient = IntegrationGuard.faults(Side.CLIENT);
+        helper.assertTrue(
+            IntegrationGuard.available(Side.SERVER, ExternalFeature.PLAYER_OFFHAND)
+                && IntegrationGuard.available(Side.CLIENT, ExternalFeature.PLAYER_OFFHAND),
+            "Offhand failure injection requires these two actual capabilities to be available");
+        helper.afterTest(() -> clearFixtureFaults(helper, priorServer, priorClient));
         var clientFault = IntegrationGuard
             .trip(Side.CLIENT, ExternalFeature.PLAYER_OFFHAND, new NoSuchMethodError("QA client-only offhand failure"));
         helper.assertTrue(
@@ -254,7 +257,7 @@ public final class ProtectionTests {
         System.out.println(
             "TLMNH_PROTECTION118_PASS mechanism=malformed-inventory duplicate=retained outOfRange=retained fullInventory=retained");
 
-        IntegrationGuard.resetForDevelopment();
+        clearFixtureFaults(helper, priorServer, priorClient);
         var sampleSource = java.nio.file.Files.createTempFile("tlmnh-dependency-", ".jar");
         try {
             java.nio.file.Files.write(sampleSource, new byte[] { 1, 2, 3 });
@@ -278,7 +281,7 @@ public final class ProtectionTests {
         helper.assertTrue(
             emptyAfter.hasNoTags() && !IntegrationGuard.available(ExternalFeature.SHIELDS),
             "Empty loaded ledger treated as new world");
-        IntegrationGuard.resetForDevelopment();
+        clearFixtureFaults(helper, priorServer, priorClient);
         var baseline = new CompatibilityLedger("qa");
         baseline.check();
         var original = new NBTTagCompound();
@@ -303,13 +306,17 @@ public final class ProtectionTests {
         System.out.println(
             "TLMNH_PROTECTION118_PASS mechanism=environment-baseline changedFingerprint=disabled baseline=retained futureLedger=retained");
 
+        // 正常死亡不应复用刚才由本例故意熔断的外部能力；只撤掉已确认的同异常对象
+        clearFixtureFaults(helper, priorServer, priorClient);
         maid.getMaidInventory()
             .recovery()
             .retain(missing);
+        helper.assertTrue(world.spawnEntityInWorld(maid), "Real protected death source registration failed");
+        maid.setHealth(0);
+        maid.onDeath(net.minecraft.util.DamageSource.generic);
         helper.assertTrue(MaidDeathService.preserve(maid), "Death escrow refused protected inventory");
         var ledger = MaidLifecycleData.get(world);
         var token = ledger.deathToken(maid.getUniqueID());
-        ledger.markPublished(token);
         var contents = ledger.reserveTombstone(token);
         helper.assertTrue(
             contents != null && contents.tagCount() == 3
@@ -346,7 +353,7 @@ public final class ProtectionTests {
         System.out.println(
             "TLMNH_PROTECTION118_PASS mechanism=death-escrow itemEntries=3 repeatedDeath=singleOwner filmInventory=excluded entityIds=distinct");
 
-        IntegrationGuard.resetForDevelopment();
+        clearFixtureFaults(helper, priorServer, priorClient);
         var fatal = new OutOfMemoryError("QA sentinel, no allocation attempted");
         try {
             IntegrationGuard.call(
@@ -424,4 +431,45 @@ public final class ProtectionTests {
             return type;
         }
     }
+
+    @SuppressWarnings("unchecked")
+    private static void clearFixtureFaults(GameTestHelper helper,
+        java.util.Map<String, IntegrationGuard.Fault> priorServer,
+        java.util.Map<String, IntegrationGuard.Fault> priorClient) {
+        synchronized (IntegrationGuard.class) {
+            try {
+                var field = IntegrationGuard.class.getDeclaredField("FAULTS");
+                field.setAccessible(true);
+                var all = (java.util.Map<Side, java.util.Map<String, IntegrationGuard.Fault>>) field.get(null);
+                for (Side side : new Side[] { Side.SERVER, Side.CLIENT }) {
+                    var prior = side == Side.SERVER ? priorServer : priorClient;
+                    var actual = IntegrationGuard.faults(side);
+                    var mutable = all.get(side);
+                    for (var original : prior.entrySet()) helper.assertTrue(
+                        actual.get(original.getKey()) == original.getValue(),
+                        "Protection fixture replaced a pre-existing diagnostic");
+                    for (ExternalFeature feature : ExternalFeature.values()) {
+                        var fault = actual.get(feature.id);
+                        if (fault == null || prior.containsKey(feature.id)) continue;
+                        var frames = fault.cause.getStackTrace();
+                        boolean compatibility = frames.length > 0 && frames[0].getClassName()
+                            .equals(CompatibilityLedger.class.getName())
+                            && frames[0].getMethodName()
+                                .equals("check");
+                        boolean ownApi = fault.cause instanceof NoSuchMethodError
+                            && ("QA client-only offhand failure".equals(fault.cause.getMessage())
+                                || "QA removed offhand API".equals(fault.cause.getMessage()));
+                        if (!compatibility && !ownApi) continue;
+                        helper.assertTrue(
+                            mutable != null && mutable.get(feature.id) == fault,
+                            "Refusing to remove an unknown diagnostic successor");
+                        mutable.remove(feature.id);
+                    }
+                }
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Could not isolate the exact protection fixture diagnostics", failure);
+            }
+        }
+    }
+
 }

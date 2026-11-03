@@ -45,12 +45,14 @@ public final class MaidLifecycleProbe {
             acquisition(f);
             releaseRequestRevocation(f);
             var maid = release(f, false);
+            registration(f, maid, "released");
             maid.setCustomNameTag("生命周期 酒狐");
             maid.setModelId("geckolib:winefox_hanfu");
             maid.setExperience(155);
             maid.setFavorability(23);
             for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) maid.getMaidInventory()
                 .setInventorySlotContents(slot, new ItemStack(Items.arrow, slot + 1));
+            registration(f, maid, "death-input-ready");
             var tombstone = death(f, maid, true);
             collect(f, tombstone);
             revive(f);
@@ -243,7 +245,11 @@ public final class MaidLifecycleProbe {
         try {
             f.world.getGameRules()
                 .setOrCreateGameRule("doMobLoot", Boolean.toString(loot));
+            registration(f, maid, "before-void-position");
             maid.setPosition(f.x + 0.5D, -80, f.z + 0.5D);
+            registration(f, maid, "after-void-position");
+            // 已登记对象失配不能盲目再spawn；Tracker可能仍持有它，重复登记会破坏源身份
+            require(MaidSpawnChecks.present(maid, f.world), "original death source remains registered");
             maid.setHealth(0);
             maid.onDeath(DamageSource.outOfWorld);
             require(MaidDeathService.preserve(maid), "death already handled on repeated callback");
@@ -518,7 +524,28 @@ public final class MaidLifecycleProbe {
         require(maid.bindTo(f.owner.getUniqueID()), "independent overflow death owner");
         maid.getMaidInventory()
             .setInventorySlotContents(0, new ItemStack(Items.diamond, 3));
+        maid.setPosition(f.x + 0.5D, -80, f.z + 0.5D);
+        require(f.world.spawnEntityInWorld(maid), "new overflow death source registered once");
         return death(f, maid, false);
+    }
+
+    private static void registration(Fixture f, EntityMaid maid, String phase) {
+        var actual = f.world.getEntityByID(maid.getEntityId());
+        int occurrences = 0;
+        for (var entity : f.world.loadedEntityList) if (entity == maid) occurrences++;
+        TLMNotHard.LOG.info(
+            "TLMNH_LIFECYCLE_SOURCE phase={} uuid={} entityId={} dead={} sameWorld={} loadedOccurrences={} sameIdObject={} idObject={}",
+            phase,
+            maid.getUniqueID(),
+            maid.getEntityId(),
+            maid.isDead,
+            maid.worldObj == f.world,
+            occurrences,
+            actual == maid,
+            actual == null ? "null"
+                : actual.getClass()
+                    .getName() + "/"
+                    + actual.getUniqueID());
     }
 
     private static NBTTagList storedTombstoneItems(MaidLifecycleData ledger, UUID token) {
@@ -558,6 +585,8 @@ public final class MaidLifecycleProbe {
             maid.getMaidInventory()
                 .setInventorySlotContents(0, new ItemStack(Items.emerald, 3));
             maid.setPosition(f.x + 0.5D, -80, f.z + 0.5D);
+            if (!MaidSpawnChecks.present(maid, f.world))
+                require(f.world.spawnEntityInWorld(maid), "real death source registered");
             maid.setHealth(0);
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
@@ -568,6 +597,25 @@ public final class MaidLifecycleProbe {
             }
             var ledger = MaidLifecycleData.get(f.world);
             var token = ledger.deathToken(maid.getUniqueID());
+            if (mutation == Mutation.TOMB_DEAD) {
+                var retained = storedTombstoneItems(ledger, token);
+                require(
+                    token != null && retained.tagCount() == 2
+                        && "HELD".equals(
+                            ledger.tombstonePublication(token)
+                                .getString("Stage")),
+                    "unknown dead tombstone retains exact material and held handle " + mutation);
+                MaidDeathService.retryPending(f.world);
+                MaidDeathService.retryPending(f.world);
+                require(
+                    retained.equals(storedTombstoneItems(ledger, token)) && mutate.tombstones.size() == 1
+                        && f.tombstone(token) == null,
+                    "unknown dead tombstone is not republished " + mutation);
+                for (var actual : mutate.tombstones)
+                    if (actual.worldObj == f.world && (f.world.getEntityByID(actual.getEntityId()) == null
+                        || f.world.getEntityByID(actual.getEntityId()) == actual)) f.world.removeEntity(actual);
+                continue;
+            }
             require(
                 token != null && ledger.pendingTombstones(f.world.provider.dimensionId)
                     .contains(token),
@@ -714,6 +762,7 @@ public final class MaidLifecycleProbe {
         private final EntityPlayerMP recipient;
         private int maidCalls;
         private final ArrayList<EntityItem> items = new ArrayList<>();
+        private final ArrayList<MaidTombstoneEntity> tombstones = new ArrayList<>();
         private final ArrayList<ItemStack> itemStacks = new ArrayList<>();
         private NBTTagList afterInventory;
 
@@ -759,6 +808,7 @@ public final class MaidLifecycleProbe {
                     shrine.readFromNBT(saved);
                 }
             } else if (event.entity instanceof MaidTombstoneEntity tombstone) {
+                tombstones.add(tombstone);
                 if (mutation == Mutation.TOMB_CANCEL) event.setCanceled(true);
                 if (mutation == Mutation.TOMB_DEAD) tombstone.setDead();
             } else if (event.entity instanceof EntityItem item) {

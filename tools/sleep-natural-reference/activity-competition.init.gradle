@@ -1,0 +1,107 @@
+// Independent original-side feasibility tool; apply this init alone, never to the GTNH project
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+def probePath = System.getenv('TLMNH_REFERENCE_PROBE')
+def toolPath = System.getenv('TLMNH_FOLLOW_MECHANISMS_PROBE')
+def homePath = System.getenv('TLMNH_REFERENCE_HOME')
+if (!probePath || !toolPath || !homePath) throw new GradleException('Explicit original reference, follow mechanism tool and external HOME required')
+def original = new File(probePath).canonicalFile
+def tool = new File(toolPath).canonicalFile
+def home = new File(homePath).canonicalFile
+def port = new File(tool, '../..').canonicalFile
+if (home.toPath().startsWith(port.toPath())) throw new GradleException('Follow runtime must remain outside the port checkout')
+apply from: new File(original, 'reference.init.gradle')
+
+def selected = [
+    'com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid',
+    'com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidBrain',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.task.TaskIdle',
+    'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
+    'com.tianluoqaq.tlmnh.reference.sleep.SleepAttributeSnapshot',
+    'com.tianluoqaq.tlmnh.reference.sleep.FollowMechanismGameTests',
+    'com.tianluoqaq.tlmnh.reference.sleep.FollowMechanismGameTests$Session',
+    'com.tianluoqaq.tlmnh.reference.sleep.ActivityCompetitionGameTests',
+    'com.tianluoqaq.tlmnh.reference.sleep.ActivityCompetitionGameTests$Session',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidPanicTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidHealSelfTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask',
+    'com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleUseTask'
+].sort()
+def identityFile = new File(home, 'identity/activity-competition-build.json')
+
+def sha = { byte[] b -> MessageDigest.getInstance('SHA-256').digest(b).encodeHex().toString() }
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    project.sourceSets.main.java.srcDir(new File(tool, 'reference'))
+    project.sourceSets.main.resources.srcDir(new File(tool, 'resources'))
+    project.tasks.named('processResources').configure {
+        from(new File(tool, 'activity-competition-contract.json')) { into 'tlmnh-activity-competition'; rename { 'contract.json' } }
+        from(new File(tool, 'resources/data/tlmnh_sleep_natural/structures/cell.nbt')) { into 'data/tlmnh_activity_competition/structures' }
+    }
+    def agentRoot = new File(tool, '../geometry-reference/agent').canonicalFile
+    def agentSources = project.sourceSets.create('activityCompetitionDefinitionAgent') { java.srcDir(agentRoot) }
+    project.tasks.named(agentSources.compileJavaTaskName).configure { options.release.set(17) }
+    def agent = project.tasks.register('activityCompetitionDefinitionAgentJar', Jar) {
+        dependsOn agentSources.classesTaskName
+        from agentSources.output
+        archiveFileName.set('activity-competition-definition-agent.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('activity-competition-reference'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        manifest.attributes('Premain-Class': 'com.tianluoqaq.tlmnh.geometry.identity.GeometryDefinitionAgent',
+            'Can-Redefine-Classes': 'false', 'Can-Retransform-Classes': 'false')
+    }
+    def identity = project.tasks.register('prepareActivityCompetitionReferenceIdentity') {
+        dependsOn project.tasks.named('tlmnhReferenceRuntimeIdentity'), agent
+        doLast {
+            def baseFile = new File(home, 'identity/build-identity.json')
+            def base = new JsonSlurper().parse(baseFile)
+            if (base.status != 'LOCK_VERIFIED' || base.upstreamCommit != '8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6')
+                throw new GradleException('Fixed original build identity is not verified')
+            def compiled = selected.collectEntries { name ->
+                def files = project.sourceSets.main.output.classesDirs.files.collect {
+                    new File(it, name.replace('.', '/') + '.class')
+                }.findAll { it.isFile() }
+                if (files.size() != 1) throw new GradleException('Missing/duplicate follow class: ' + name)
+                [(name): sha(files[0].bytes)]
+            }
+            def inputs = project.fileTree(tool).matching {
+                include '**/*.java', '*.gradle', '*.json', '*.py', 'resources/**/*.nbt'
+            }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
+            def value = [schema: 'activity-competition-build-v1', upstreamCommit: base.upstreamCommit,
+                minecraft: '1.20.1', forge: '47.2.0', javaFeature: 17,
+                baseReferenceBuildIdentitySha256: sha(baseFile.bytes), baseReferenceBuildIdentity: base,
+                contractSha256: sha(new File(tool, 'activity-competition-contract.json').bytes),
+                definitionAgentSha256: sha(agent.get().archiveFile.get().asFile.bytes),
+                compiledClasses: compiled, toolInputs: inputs,
+                scope: 'three natural activity competition mechanisms; selected identities, relevant input mapping and controlled native owners; not real-client or statistical admission']
+            identityFile.parentFile.mkdirs()
+            identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+    }
+    project.minecraft.runs.gameTestServer {
+        workingDirectory new File(home, 'activity-competition-gametest')
+        property 'forge.enabledGameTestNamespaces', 'tlmnh_activity_competition'
+        property 'forge.gameTestServer', 'true'
+        property 'tlmnh.sleepNaturalProbe', 'false'
+        property 'tlmnh.followMechanismProbe', 'false'
+        property 'tlmnh.activityCompetitionProbe', 'true'
+        property 'tlmnh.referenceProbe', 'false'
+        property 'tlmnh.activityCompetition.buildIdentity', identityFile.absolutePath
+        property 'tlmnh.geometry.buildIdentity', identityFile.absolutePath
+    }
+    project.tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+        dependsOn identity
+        doFirst {
+            jvmArgs '-XX:+DisableAttachMechanism',
+                '-javaagent:' + agent.get().archiveFile.get().asFile.absolutePath + '=' + selected.join(',')
+        }
+    }
+}

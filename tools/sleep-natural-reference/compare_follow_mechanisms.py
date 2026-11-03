@@ -206,9 +206,10 @@ def metrics(data):
     return result
 
 
-def original_identity(data, build_bytes, tool, agent):
+def original_identity(data, build_bytes, tool, agent, expected_classes=None, expected_schema="follow-mechanisms-build-v1"):
     build = json.loads(build_bytes)
-    require(build["schema"] == "follow-mechanisms-build-v1" and build["upstreamCommit"] == UPSTREAM
+    expected_classes = ORIGINAL_CLASSES if expected_classes is None else expected_classes
+    require(build["schema"] == expected_schema and build["upstreamCommit"] == UPSTREAM
             and build["baseReferenceBuildIdentity"]["status"] == "LOCK_VERIFIED", "original base identity unverified")
     for entry in build["toolInputs"]:
         path = (tool / entry["file"]).resolve()
@@ -216,7 +217,7 @@ def original_identity(data, build_bytes, tool, agent):
     identity = data["identity"]
     require(identity["buildIdentitySha256"] == identity["agent"]["manifestSha256"] == sha(build_bytes)
             and identity["agent"]["agentSha256"] == build["definitionAgentSha256"] == sha(agent.read_bytes()), "original agent manifest mismatch")
-    require(set(identity["classes"]) == set(build["compiledClasses"]) == ORIGINAL_CLASSES
+    require(set(identity["classes"]) == set(build["compiledClasses"]) == expected_classes
             and identity["wholeClasspathOrPostDefinitionBytesVerified"] is False, "original selected identity scope changed")
     differences = []
     for name, row in identity["classes"].items():
@@ -252,13 +253,15 @@ def input_differences(original, port):
     return result
 
 
-def verify_port_results(hqa, observed, xml_cases, allow_additional=False, allow_failed_additional=False):
+def verify_port_results(hqa, observed, xml_cases, allow_additional=False, allow_failed_additional=False,
+                        selected_class="tlmnhqapilot:FollowMechanismPortTests", expected_names=None):
     require(not allow_failed_additional or allow_additional, "failed additional cases require explicit batch scope")
     require(observed["status"] == hqa and observed["full_release_passed"] is False, "HQA report binding differs")
     tests = hqa["tests"]
-    selected = [t for t in tests if t["classname"] == "tlmnhqapilot:FollowMechanismPortTests"]
-    expected = {label + suffix for label in ("faithful", "enhanced")
-                for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")}
+    selected = [t for t in tests if t["classname"] == selected_class]
+    expected = ({label + suffix for label in ("faithful", "enhanced")
+                 for suffix in ("TemporaryObstacle", "OwnerReversal", "WaitingOwnerFood")}
+                if expected_names is None else set(expected_names))
     require(len(selected) == 6 and {t["name"] for t in selected} == expected
             and all(t["status"] == "passed" for t in selected), "required follow cases failed or missing")
     require(len(tests) >= 6 if allow_additional else len(tests) == 6, "unexpected additional HQA cases")
@@ -285,7 +288,8 @@ def verify_port_results(hqa, observed, xml_cases, allow_additional=False, allow_
     require(counts["junitFailures"] == sum(c.find("failure") is not None for c in xml_cases)
             and counts["junitErrors"] == sum(c.find("error") is not None for c in xml_cases), "JUnit aggregate differs")
     return {"status": hqa["status"], "process_exit": observed["process_exit"],
-            "whole_batch_passed": not failures, "required_follow_cases_passed": True,
+            "whole_batch_passed": not failures, "required_follow_cases_passed": selected_class.endswith(":FollowMechanismPortTests"),
+            "required_selected_cases_passed": True, "selected_case_class": selected_class,
             "additional_failures": [{"id": t["id"], "failure": t.get("failure")} for t in failures]}
 
 

@@ -1,0 +1,183 @@
+{
+  "schema": "activity-competition-contract-v1",
+  "contract": "ACTIVITY_COMPETITION_V1",
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "repetitions": 1,
+  "framesPerActor": 1000,
+  "warmupTicks": 20,
+  "dayTime": 6000,
+  "difficulty": "HARD",
+  "layoutVolume": [
+    25,
+    8,
+    25
+  ],
+  "maidSpawn": [
+    12.5,
+    1,
+    12.5
+  ],
+  "ownerStart": [
+    14.5,
+    1,
+    15.5
+  ],
+  "ownerMode": "CREATIVE",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "task": "idle",
+  "homeEnabled": false,
+  "hunger": 0,
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "floor": "stone_y0",
+  "food": {
+    "position": [
+      13.5,
+      1.25,
+      12.5
+    ],
+    "registry": "minecraft:apple",
+    "count": 1
+  },
+  "threat": {
+    "position": [
+      16.5,
+      1,
+      12.5
+    ],
+    "class": "native_creeper",
+    "movementBase": 0,
+    "persistent": true
+  },
+  "meal": {
+    "registry": "minecraft:mushroom_stew",
+    "count": 1,
+    "slot": 0,
+    "initialHealth": 10,
+    "airInput": 60,
+    "waterTicks": 40
+  },
+  "sharedCake": {
+    "cabinet": [
+      12,
+      1,
+      12
+    ],
+    "cake": [
+      12,
+      2,
+      12
+    ],
+    "primarySpawn": [
+      10.5,
+      1,
+      12.5
+    ],
+    "secondSpawn": [
+      15.5,
+      1,
+      12.5
+    ],
+    "waitTicks": 40
+  },
+  "mechanisms": [
+    {
+      "id": "waiting_threat_food",
+      "frames": 240,
+      "foodPresent": true,
+      "initialSitting": true,
+      "health": 20,
+      "events": [
+        {
+          "frame": 80,
+          "kind": "remove_threat"
+        },
+        {
+          "frame": 120,
+          "kind": "release_wait",
+          "ownerPosition": [
+            21.5,
+            1,
+            15.5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meal_low_air",
+      "frames": 300,
+      "foodPresent": false,
+      "initialSitting": true,
+      "health": 10,
+      "events": [],
+      "reactiveInput": "after first actual natural stew-use frame, place current-body 3x3x3 source water and set air60; clear after40 frames"
+    },
+    {
+      "id": "shared_cake_interruption",
+      "frames": 1000,
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "reactiveInput": "after first actual cake bite, sit both maids for40 frames then release"
+    }
+  ],
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "crossEngineInputScope": "compare documented behavior-relevant values; preserve full raw typed NBT and all unmapped fields without requiring cross-version byte identity",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "complete14ClassBenchmarkAccepted": false
+}

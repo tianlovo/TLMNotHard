@@ -180,13 +180,23 @@ public final class MaidBreathProbe {
                 maid.posZ,
                 breath.routeDiagnostic());
             if (phase == 0 && meals.isBreathing()) {
+                var lease = maid.getItemUseState()
+                    .peek();
+                var main = maid.getHeldItem();
+                var off = maid.getOffhandItem();
                 maid.writeToNBT(new NBTTagCompound());
                 require(
-                    !meals.isEating() && count(Items.potionitem) == 1 && count(Items.glass_bottle) == 0,
-                    "Save cancels drink without consumption or bottle");
-                hands();
+                    meals.isBreathing() && maid.getItemUseState()
+                        .peek() == lease
+                        && maid.getHeldItem() == main
+                        && maid.getOffhandItem() == off
+                        && count(Items.potionitem) == 1
+                        && count(Items.glass_bottle) == 0,
+                    "Native serialization keeps live breathing use without early consumption or bottle");
                 maid.getBrainCoordinator()
                     .setSuspended(true);
+                require(!meals.isEating(), "Explicit lifecycle suspension still cancels the owned drink");
+                hands();
                 maid.setAir(90);
                 maid.getBrainCoordinator()
                     .setSuspended(false);
@@ -198,7 +208,7 @@ public final class MaidBreathProbe {
                     "Single breathing potion/bottle, no work meal reward");
                 hands();
                 TLMNotHard.LOG.info(
-                    "TLMNH_BREATH_PHASE_PASS phase=potion elapsed={} save_cancel=conserved hands=restored",
+                    "TLMNH_BREATH_PHASE_PASS phase=potion elapsed={} save_query=continuous hands=restored",
                     elapsed);
                 prepare(false, false);
                 phase = 2;
@@ -229,7 +239,7 @@ public final class MaidBreathProbe {
                 maid.getBrainCoordinator()
                     .setSuspended(true);
                 require(!breath.isActive() && !meals.isEating(), "Lifecycle cleanup releases survival and item use");
-                finish(true, "save-cancel;potion;open-surface;overhang;sealed;cleanup");
+                finish(true, "save-query;potion;open-surface;overhang;sealed;cleanup");
             }
             if (elapsed > 180) throw new IllegalStateException(
                 "Phase timeout: " + phase
