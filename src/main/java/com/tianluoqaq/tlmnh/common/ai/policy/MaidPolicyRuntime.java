@@ -99,6 +99,7 @@ public final class MaidPolicyRuntime {
     private MaidBrainProfile profile = MaidBrainProfile.LEGACY_PROTOTYPE;
     private InvalidationReason lastInvalidationReason = InvalidationReason.INITIALIZED;
     private boolean dispatching, changing, faulted, retired;
+    private long legacyDispatches, modernDispatches;
 
     public MaidPolicyRuntime(UUID maidId, LegacyActions actions) {
         this(maidId, actions, null);
@@ -137,10 +138,12 @@ public final class MaidPolicyRuntime {
         var token = context.getToken();
         try {
             if (afterNativeNavigation) {
+                modernDispatches++;
                 if (afterLiving) afterNavigation.afterLivingUpdate(token);
                 else afterNavigation.tick(token);
                 return context.isCurrent(token) ? TickResult.COMPLETED : invalidatedTickResult();
             }
+            legacyDispatches++;
             boolean surviving = actions.tickSurvival();
             if (!context.isCurrent(token)) return invalidatedTickResult();
             boolean panicking = !surviving && actions.tickPanic();
@@ -166,6 +169,15 @@ public final class MaidPolicyRuntime {
         } finally {
             dispatching = false;
         }
+    }
+
+    /** 实际进入动作分支的只读计数；afterLiving也属于现代阶段，不授予或恢复执行资格 */
+    public long legacyDispatchCount() {
+        return legacyDispatches;
+    }
+
+    public long modernDispatchCount() {
+        return modernDispatches;
     }
 
     /** 不可用模式停止执行并明确报告，不回落到旧原型 */

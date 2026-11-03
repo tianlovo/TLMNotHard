@@ -49,6 +49,7 @@ public final class MaidAcquisitionConfig {
         MaidPerceptionConfig.load(config);
         MaidTemptationConfig.load(config);
         MaidCombatConfig.load(config);
+        MaidBehaviorConfig.load(config);
         if (config.hasChanged()) config.save();
     }
 

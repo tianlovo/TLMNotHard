@@ -37,6 +37,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReaso
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
+import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
@@ -68,6 +69,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private MaidPolicyRuntime.AfterNavigationActions afterNavigationActions;
     private World observedWorld, policyWorld;
     private MaidBrainProfile requestedBrainProfile;
+    private MaidBrainProfile configuredBrainProfile;
+    private boolean developmentOverride, creatingPolicy;
     private com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
     private ModernFlightProfile requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
     private String observedOwner;
@@ -209,6 +212,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (runtime == null || maid.worldObj.isRemote
             || suspended
             || behaviorProtected
+            || creatingPolicy
             || unloaded
             || persistentReadDepth > 0
             || lifecycleFailed
@@ -285,10 +289,11 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (runtime != null) runtime.invalidate(InvalidationReason.RESET);
     }
 
-    /** 延迟绑定持久UUID；原生NBT读取会在实体构造之后恢复UUID */
+    /** 延迟绑定持久UUID；正常N在完整NBT读取及真实世界登记之后由相同完整工厂创建 */
     public MaidPolicyRuntime getPolicyRuntime() {
         if (maid.worldObj == null || maid.worldObj.isRemote
             || transitioningPolicy
+            || creatingPolicy
             || lifecycleFailed
             || behaviorProtected
             || unloaded
@@ -306,104 +311,118 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             afterNavigationActions = null;
         }
         if (policy == null) {
-            if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
-                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(
-                    maid,
-                    requestedFaithfulFlight);
-            else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
-                afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(
-                    maid,
-                    requestedEnhancedFlight);
-            policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
+            if (!developmentOverride) {
+                var configured = configuredBrainProfile == null ? MaidBehaviorConfig.profile() : configuredBrainProfile;
+                // A join/save observer can query before native registration is complete. Do not activate N there.
+                if (configured == MaidBrainProfile.ENHANCED && !onRegistered()) return null;
+                configuredBrainProfile = configured;
+                requestedBrainProfile = configured == MaidBrainProfile.LEGACY_PROTOTYPE ? null : configured;
+                requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
+            }
+            creatingPolicy = true;
+            try {
+                if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
+                    afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(
+                        maid,
+                        requestedFaithfulFlight);
+                else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
+                    afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(
+                        maid,
+                        requestedEnhancedFlight);
+                policy = new MaidPolicyRuntime(maid.getUniqueID(), new MaidPolicyRuntime.LegacyActions() {
 
-                @Override
-                public boolean tickSurvival() {
-                    boolean breathing = breath.tick();
-                    if (breathing) {
-                        ordinaryArbiter.clear();
-                        ordinaryIntent = null;
-                        panic.cancel();
-                        combat.cancel();
-                        bow.cancel();
-                        pickup.cancel();
-                    }
-                    return breathing;
-                }
-
-                @Override
-                public boolean tickPanic() {
-                    boolean panicking = panic.tick();
-                    if (panicking) {
-                        ordinaryArbiter.clear();
-                        ordinaryIntent = null;
-                        combat.cancel();
-                        bow.cancel();
-                        pickup.cancel();
-                    }
-                    return panicking;
-                }
-
-                @Override
-                public boolean tickCombat() {
-                    boolean fighting = combat.tick();
-                    if (fighting) {
-                        ordinaryArbiter.clear();
-                        ordinaryIntent = null;
-                    }
-                    maid.getShieldController()
-                        .updateActiveTarget(maid.getAttackTarget());
-                    return fighting;
-                }
-
-                @Override
-                public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
-                    boolean living = life.tick(context, token, permitted);
-                    if (!permitted || living) pickup.cancel();
-                    return living;
-                }
-
-                @Override
-                public void tickFollow() {
-                    if (maid.getHomeArea()
-                        .enabled()) {
-                        follow.cancel();
-                        home.tick();
-                        if (actionRunner.getOwner() == Owner.HOME) pickup.cancel();
-                        else pickup.tick(!dangerSensor.hasKnownDanger());
-                    } else {
-                        home.cancel();
-                        if (actionRunner.getOwner() == Owner.FOLLOW) {
-                            follow.tick();
-                            if (actionRunner.getOwner() == Owner.FOLLOW) {
-                                pickup.cancel();
-                                return;
-                            }
+                    @Override
+                    public boolean tickSurvival() {
+                        boolean breathing = breath.tick();
+                        if (breathing) {
+                            ordinaryArbiter.clear();
+                            ordinaryIntent = null;
+                            panic.cancel();
+                            combat.cancel();
+                            bow.cancel();
+                            pickup.cancel();
                         }
-                        if (pickup.tick(!dangerSensor.hasKnownDanger())) follow.cancel();
-                        else follow.tick();
+                        return breathing;
                     }
-                }
 
-                @Override
-                public boolean usesOrdinaryIntents() {
-                    return true;
-                }
+                    @Override
+                    public boolean tickPanic() {
+                        boolean panicking = panic.tick();
+                        if (panicking) {
+                            ordinaryArbiter.clear();
+                            ordinaryIntent = null;
+                            combat.cancel();
+                            bow.cancel();
+                            pickup.cancel();
+                        }
+                        return panicking;
+                    }
 
-                @Override
-                public void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token,
-                    boolean permitted) {
-                    executeOrdinaryIntents(context, token, permitted);
-                }
+                    @Override
+                    public boolean tickCombat() {
+                        boolean fighting = combat.tick();
+                        if (fighting) {
+                            ordinaryArbiter.clear();
+                            ordinaryIntent = null;
+                        }
+                        maid.getShieldController()
+                            .updateActiveTarget(maid.getAttackTarget());
+                        return fighting;
+                    }
 
-                @Override
-                public void cancelAll() {
-                    cancelControllers();
-                }
-            }, afterNavigationActions);
-            policyWorld = maid.worldObj;
-            if (requestedBrainProfile != null
-                && policy.select(requestedBrainProfile) != MaidPolicyRuntime.SelectionResult.SELECTED)
-                throw new IllegalStateException("Requested Brain binding failed");
+                    @Override
+                    public boolean tickLife(MaidPolicyContext context, MaidPolicyContext.Token token,
+                        boolean permitted) {
+                        boolean living = life.tick(context, token, permitted);
+                        if (!permitted || living) pickup.cancel();
+                        return living;
+                    }
+
+                    @Override
+                    public void tickFollow() {
+                        if (maid.getHomeArea()
+                            .enabled()) {
+                            follow.cancel();
+                            home.tick();
+                            if (actionRunner.getOwner() == Owner.HOME) pickup.cancel();
+                            else pickup.tick(!dangerSensor.hasKnownDanger());
+                        } else {
+                            home.cancel();
+                            if (actionRunner.getOwner() == Owner.FOLLOW) {
+                                follow.tick();
+                                if (actionRunner.getOwner() == Owner.FOLLOW) {
+                                    pickup.cancel();
+                                    return;
+                                }
+                            }
+                            if (pickup.tick(!dangerSensor.hasKnownDanger())) follow.cancel();
+                            else follow.tick();
+                        }
+                    }
+
+                    @Override
+                    public boolean usesOrdinaryIntents() {
+                        return true;
+                    }
+
+                    @Override
+                    public void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token,
+                        boolean permitted) {
+                        executeOrdinaryIntents(context, token, permitted);
+                    }
+
+                    @Override
+                    public void cancelAll() {
+                        cancelControllers();
+                    }
+                }, afterNavigationActions);
+                policyWorld = maid.worldObj;
+                if (requestedBrainProfile != null
+                    && policy.select(requestedBrainProfile) != MaidPolicyRuntime.SelectionResult.SELECTED)
+                    throw new IllegalStateException("Requested Brain binding failed");
+            } finally {
+                creatingPolicy = false;
+            }
         }
         return policy;
     }
@@ -418,10 +437,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || unloaded
             || lifecycleFailed
             || behaviorProtected
+            || creatingPolicy
             || transitioningPolicy)
             throw new IllegalStateException("Development component cannot be installed at this lifecycle boundary");
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
+        developmentOverride = true;
         requestedBrainProfile = null;
         requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
         requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
@@ -476,6 +497,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || unloaded
             || lifecycleFailed
             || behaviorProtected
+            || creatingPolicy
             || transitioningPolicy) return MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE;
         if (policy != null && policy.getProfile() == requested
             && policy.isReady()
@@ -485,11 +507,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             && (!requested.isEnhanced() || requestedEnhancedFlight == enhancedFlight && peekEnhancedCore() != null
                 && peekEnhancedCore().hasFlightContract())
             && (!(requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced())
-                || requestedBrainProfile == requested))
+                || requestedBrainProfile == requested)) {
+            developmentOverride = true;
             return MaidPolicyRuntime.SelectionResult.UNCHANGED;
+        }
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
         afterNavigationActions = null;
+        developmentOverride = true;
         requestedBrainProfile = requested == MaidBrainProfile.FAITHFUL_TLM || requested.isEnhanced() ? requested : null;
         requestedFaithfulFlight = faithfulFlight;
         requestedEnhancedFlight = enhancedFlight;
@@ -560,7 +585,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         if (persistentReadDepth > 1) return;
         persistentReadFailed = false;
         try {
-            if (transitioningPolicy) throw new IllegalStateException("Persistent read during policy cleanup");
+            if (transitioningPolicy || creatingPolicy)
+                throw new IllegalStateException("Persistent read during policy cleanup or creation");
             // 旧runtime必须先失效，之后任何新清理失败也不能保留旧授权
             Throwable failure = cancel(() -> retireCurrent(InvalidationReason.IDENTITY_CHANGED), null);
             failure = cancel(
