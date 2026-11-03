@@ -13,6 +13,23 @@ public final class RecoveryStore {
 
     public static final String TAG = "TLMNHRecovery";
     private final List<ItemStack> items = new ArrayList<>();
+    private final com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid;
+    private final com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet cabinet;
+
+    public RecoveryStore() {
+        maid = null;
+        cabinet = null;
+    }
+
+    public RecoveryStore(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
+        this.maid = java.util.Objects.requireNonNull(maid);
+        cabinet = null;
+    }
+
+    public RecoveryStore(com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet cabinet) {
+        maid = null;
+        this.cabinet = java.util.Objects.requireNonNull(cabinet);
+    }
 
     public void retain(NBTTagCompound raw) {
         items.add(ProtectedItemCodec.seal(raw, "inventory_slot"));
@@ -46,10 +63,7 @@ public final class RecoveryStore {
     }
 
     public void depositAll(net.minecraft.world.World world, double x, double y, double z) {
-        while (!items.isEmpty()) {
-            com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmRecovery.queueOwnedItem(world, items.get(0), x, y, z);
-            items.remove(0);
-        }
+        throw new IllegalStateException("Source tile removal must use its owned staged return boundary");
     }
 
     public int size() {
@@ -63,30 +77,29 @@ public final class RecoveryStore {
     /** 只向一个空原生背包槽转移一份，满包不删、也不丢到世界 */
     public boolean recoverOne(EntityPlayer player) {
         if (player == null || items.isEmpty() || player.worldObj.isRemote) return false;
-        var expected = items.get(0);
-        int slot;
-        try {
-            slot = player.inventory.getFirstEmptyStack();
-        } catch (RuntimeException | LinkageError | AssertionError failure) {
-            IntegrationGuard.report(
-                cpw.mods.fml.relauncher.Side.SERVER,
-                "player_inventory/recovery",
-                failure,
-                player.getUniqueID());
-            return false;
-        }
-        if (slot < 0) return false;
-        if (slot >= player.inventory.mainInventory.length || player.inventory.mainInventory[slot] != null) {
-            IntegrationGuard.report(
-                cpw.mods.fml.relauncher.Side.SERVER,
-                "player_inventory/recovery",
-                new IllegalStateException("Native empty slot query returned an occupied or unknown slot"),
-                player.getUniqueID());
-            return false;
-        }
+        if (maid != null) return com.tianluoqaq.tlmnh.common.lifecycle.MaidRecoveryTransfer.recover(this, player, maid);
+        if (cabinet != null)
+            return com.tianluoqaq.tlmnh.common.lifecycle.MaidRecoveryTransfer.recover(this, player, cabinet);
+        IntegrationGuard.report(
+            cpw.mods.fml.relauncher.Side.SERVER,
+            "player_inventory/recovery",
+            new IllegalStateException("Authoritative recovery inventory owner required"),
+            player.getUniqueID());
+        return false;
+    }
+
+    public ItemStack firstForTransfer() {
+        return items.isEmpty() ? null : items.get(0);
+    }
+
+    public boolean takeFirstForTransfer(ItemStack expected) {
         if (items.isEmpty() || items.get(0) != expected) return false;
-        player.inventory.mainInventory[slot] = items.remove(0);
-        player.inventory.markDirty();
+        items.remove(0);
         return true;
+    }
+
+    public void restoreFirstForTransfer(ItemStack stack, NBTTagList remaining) {
+        if (!write().equals(remaining)) throw new IllegalStateException("Unknown recovery contents retained");
+        items.add(0, stack.copy());
     }
 }

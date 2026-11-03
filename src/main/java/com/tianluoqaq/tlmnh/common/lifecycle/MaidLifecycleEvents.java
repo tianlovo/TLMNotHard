@@ -73,6 +73,11 @@ public final class MaidLifecycleEvents {
     }
 
     @SubscribeEvent
+    public void onWorldUnload(net.minecraftforge.event.world.WorldEvent.Unload event) {
+        if (!event.world.isRemote) MaidTileReturns.abandon(event.world);
+    }
+
+    @SubscribeEvent
     public void onJoin(EntityJoinWorldEvent event) {
         if (event.world.isRemote || !(event.entity instanceof EntityMaid maid)) return;
         // 世界账本已确认死亡时，拒绝旧区块快照重新载入这具死亡实体及其库存

@@ -30,6 +30,13 @@ public final class MaidLifecycleData extends WorldSavedData {
         ISSUING
     }
 
+    public enum ReturnedPhase {
+        READY,
+        PREPARED,
+        ISSUING,
+        HELD
+    }
+
     private static final Set<String> ROOT_FIELDS = fields("Schema", "Entries", "ReturnedFilms");
     private static final Set<String> ENTRY_FIELDS = fields(
         "Token",
@@ -55,7 +62,16 @@ public final class MaidLifecycleData extends WorldSavedData {
         "AcquisitionReceipt",
         "AcquisitionCredential",
         "Redemption");
-    private static final Set<String> RETURNED_FIELDS = fields("Id", "Stack", "Dimension", "X", "Y", "Z");
+    private static final Set<String> RETURNED_FIELDS = fields(
+        "Id",
+        "Stack",
+        "Dimension",
+        "X",
+        "Y",
+        "Z",
+        "Phase",
+        "Context");
+    private static final Set<String> RETURN_CONTEXT_FIELDS = fields("Kind", "Source");
 
     private final Map<UUID, Entry> entries = new HashMap<>();
     private final Map<UUID, ReturnedFilm> returnedFilms = new HashMap<>();
@@ -64,6 +80,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Set<UUID> experienceAttempts = new HashSet<>();
     private final Set<UUID> acquisitionAttempts = new HashSet<>();
     private final Set<UUID> redemptionAttempts = new HashSet<>();
+    private final Set<UUID> returnedAttempts = new HashSet<>();
     private final Map<UUID, UUID> redemptionCandidates = new HashMap<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
     private boolean healthy = true;
@@ -614,9 +631,28 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public UUID queueReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z) {
+        return addReturnedFilm(stack, dimension, x, y, z, ReturnedPhase.READY, new NBTTagCompound());
+    }
+
+    UUID prepareReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z,
+        NBTTagCompound context) {
+        validateReturnContext(context, ReturnedPhase.PREPARED);
+        var id = addReturnedFilm(stack, dimension, x, y, z, ReturnedPhase.PREPARED, context);
+        returnedAttempts.add(id);
+        reservations.add(id);
+        return id;
+    }
+
+    private UUID addReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z, ReturnedPhase phase,
+        NBTTagCompound context) {
+        if (stack == null || stack.hasNoTags() || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
+            throw new IllegalArgumentException("Complete returned material required");
         UUID id;
         do id = UUID.randomUUID(); while (entries.containsKey(id) || returnedFilms.containsKey(id));
-        returnedFilms.put(id, new ReturnedFilm((NBTTagCompound) stack.copy(), dimension, x, y, z));
+        var entry = new ReturnedFilm((NBTTagCompound) stack.copy(), dimension, x, y, z);
+        entry.phase = phase;
+        entry.context = (NBTTagCompound) context.copy();
+        returnedFilms.put(id, entry);
         markDirty();
         return id;
     }
@@ -629,7 +665,80 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public NBTTagCompound reserveReturnedFilm(UUID id) {
         var entry = returnedFilms.get(id);
-        return entry != null && reservations.add(id) ? (NBTTagCompound) entry.stack.copy() : null;
+        if (entry == null || entry.phase != ReturnedPhase.READY || !reservations.add(id)) return null;
+        returnedAttempts.add(id);
+        return (NBTTagCompound) entry.stack.copy();
+    }
+
+    void beginReturnedFilm(UUID id) {
+        var entry = returnedFilms.get(id);
+        if (entry == null || entry.phase != ReturnedPhase.READY
+            || !returnedAttempts.contains(id)
+            || !reservations.contains(id)) throw new IllegalStateException("No owned returned material attempt");
+        entry.phase = ReturnedPhase.ISSUING;
+        markDirty();
+    }
+
+    void retryReturnedFilm(UUID id) {
+        var entry = returnedFilms.get(id);
+        if (entry == null || !returnedAttempts.contains(id) || !reservations.contains(id))
+            throw new IllegalStateException("No safely retracted returned material attempt");
+        entry.phase = ReturnedPhase.READY;
+        abandonReturnedFilm(id);
+        markDirty();
+    }
+
+    void abandonReturnedFilm(UUID id) {
+        returnedAttempts.remove(id);
+        reservations.remove(id);
+    }
+
+    void holdReturnedFilm(UUID id) {
+        var entry = returnedFilms.get(id);
+        if (entry == null) throw new IllegalStateException("Missing returned escrow remains unconfirmed");
+        entry.phase = ReturnedPhase.HELD;
+        abandonReturnedFilm(id);
+        markDirty();
+    }
+
+    void readyPreparedReturn(UUID id, NBTTagCompound context) {
+        var entry = preparedReturn(id, context);
+        entry.phase = ReturnedPhase.READY;
+        abandonReturnedFilm(id);
+        markDirty();
+    }
+
+    void finishPreparedReturn(UUID id, NBTTagCompound context) {
+        preparedReturn(id, context);
+        returnedFilms.remove(id);
+        abandonReturnedFilm(id);
+        markDirty();
+    }
+
+    private ReturnedFilm preparedReturn(UUID id, NBTTagCompound context) {
+        var entry = returnedFilms.get(id);
+        if (entry == null || entry.phase != ReturnedPhase.PREPARED
+            || !entry.context.equals(context)
+            || !returnedAttempts.contains(id)
+            || !reservations.contains(id))
+            throw new IllegalStateException("Unknown returned source successor remains held");
+        return entry;
+    }
+
+    void observeReturnedSource(UUID id, NBTTagCompound context, NBTTagCompound observed) {
+        var entry = returnedFilms.get(id);
+        if (entry == null || !(entry.phase == ReturnedPhase.PREPARED || entry.phase == ReturnedPhase.READY)
+            || !entry.context.equals(context)
+            || !entry.context.hasKey("Source", 10))
+            throw new IllegalStateException("Unknown material source observation retained");
+        entry.context.getCompoundTag("Source")
+            .setTag("UnconfirmedSource", observed.copy());
+        markDirty();
+    }
+
+    public ReturnedPhase returnedPhase(UUID id) {
+        var entry = returnedFilms.get(id);
+        return entry == null ? null : entry.phase;
     }
 
     public Vec3 returnedFilmPosition(UUID id) {
@@ -638,8 +747,12 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public void finishReturnedFilm(UUID id) {
-        if (!reservations.remove(id) || returnedFilms.remove(id) == null)
-            throw new IllegalStateException("No returned film reservation");
+        var entry = returnedFilms.get(id);
+        if (entry == null || entry.phase != ReturnedPhase.ISSUING
+            || !returnedAttempts.contains(id)
+            || !reservations.contains(id)) throw new IllegalStateException("No returned film reservation");
+        returnedFilms.remove(id);
+        abandonReturnedFilm(id);
         markDirty();
     }
 
@@ -647,11 +760,12 @@ public final class MaidLifecycleData extends WorldSavedData {
     public void readFromNBT(NBTTagCompound tag) {
         if (!tombstoneAttempts.isEmpty() || !experienceAttempts.isEmpty()
             || !acquisitionAttempts.isEmpty()
-            || !redemptionAttempts.isEmpty())
+            || !redemptionAttempts.isEmpty()
+            || !returnedAttempts.isEmpty())
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 6)
+        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 7)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
@@ -733,18 +847,34 @@ public final class MaidLifecycleData extends WorldSavedData {
             knownFields(film, RETURNED_FIELDS);
             var id = UUID.fromString(film.getString("Id"));
             double x = film.getDouble("X"), y = film.getDouble("Y"), z = film.getDouble("Z");
-            if (restored.containsKey(id) || restoredFilms.containsKey(
-                id) || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z) || !film.hasKey("Stack", 10))
-                throw new IllegalStateException("Invalid returned film escrow");
-            restoredFilms.put(
-                id,
-                new ReturnedFilm(
-                    (NBTTagCompound) film.getCompoundTag("Stack")
-                        .copy(),
-                    film.getInteger("Dimension"),
-                    x,
-                    y,
-                    z));
+            if (restored.containsKey(id) || restoredFilms.containsKey(id)
+                || !Double.isFinite(x)
+                || !Double.isFinite(y)
+                || !Double.isFinite(z)
+                || !film.hasKey("Stack", 10)
+                || !film.hasKey("Id", 8)
+                || !film.hasKey("Dimension", 3)
+                || !film.hasKey("X", 6)
+                || !film.hasKey("Y", 6)
+                || !film.hasKey("Z", 6)) throw new IllegalStateException("Invalid returned film escrow");
+            var entry = new ReturnedFilm(
+                (NBTTagCompound) film.getCompoundTag("Stack")
+                    .copy(),
+                film.getInteger("Dimension"),
+                x,
+                y,
+                z);
+            if (schema >= 7) {
+                if (!film.hasKey("Phase", 8) || !film.hasKey("Context", 10))
+                    throw new IllegalStateException("Invalid returned material state");
+                entry.phase = ReturnedPhase.valueOf(film.getString("Phase"));
+                entry.context = (NBTTagCompound) film.getCompoundTag("Context")
+                    .copy();
+                validateReturnContext(entry.context, entry.phase);
+            } else if (film.hasKey("Phase") || film.hasKey("Context")) {
+                throw new IllegalStateException("Returned material state requires lifecycle schema 7");
+            }
+            restoredFilms.put(id, entry);
         }
         entries.clear();
         entries.putAll(restored);
@@ -755,6 +885,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         experienceAttempts.clear();
         acquisitionAttempts.clear();
         redemptionAttempts.clear();
+        returnedAttempts.clear();
         redemptionCandidates.clear();
         redemptionCandidates.putAll(candidates);
         experienceCursors.clear();
@@ -764,7 +895,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 6);
+        tag.setInteger("Schema", 7);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -811,6 +942,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             film.setDouble("X", entry.x);
             film.setDouble("Y", entry.y);
             film.setDouble("Z", entry.z);
+            film.setString("Phase", entry.phase.name());
+            film.setTag("Context", entry.context.copy());
             films.appendTag(film);
         }
         tag.setTag("ReturnedFilms", films);
@@ -818,6 +951,19 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     private static boolean readHold(NBTTagCompound entry, String key, int schema) {
         return readFlag(entry, key, schema >= 4);
+    }
+
+    private static void validateReturnContext(NBTTagCompound context, ReturnedPhase phase) {
+        if (context.hasNoTags() && phase != ReturnedPhase.PREPARED) return;
+        knownFields(context, RETURN_CONTEXT_FIELDS);
+        if (context.func_150296_c()
+            .size() != RETURN_CONTEXT_FIELDS.size() || !context.hasKey("Kind", 8)
+            || !context.hasKey("Source", 10)
+            || context.getCompoundTag("Source")
+                .hasNoTags()
+            || !Arrays.asList("tile_break", "shrine_insert", "shrine_extract", "recovery_player")
+                .contains(context.getString("Kind")))
+            throw new IllegalStateException("Unknown returned source context retained");
     }
 
     private static boolean readFlag(NBTTagCompound entry, String key, boolean required) {
@@ -918,6 +1064,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         private final NBTTagCompound stack;
         private final int dimension;
         private final double x, y, z;
+        private ReturnedPhase phase = ReturnedPhase.READY;
+        private NBTTagCompound context = new NBTTagCompound();
 
         private ReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z) {
             this.stack = stack;

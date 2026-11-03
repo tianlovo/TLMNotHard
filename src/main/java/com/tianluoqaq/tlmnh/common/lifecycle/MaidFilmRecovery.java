@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.Collections;
 import java.util.UUID;
 
 import net.minecraft.entity.item.EntityItem;
@@ -9,7 +10,9 @@ import net.minecraft.world.World;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
-/** 神龛拆除先保管再交付，掉落取消或回调破坏时可在原区块重试 */
+import cpw.mods.fml.relauncher.Side;
+
+/** 拆除先保管再交付；安全取消可重试，未知后继保留原始保管 */
 public final class MaidFilmRecovery {
 
     private MaidFilmRecovery() {}
@@ -29,26 +32,29 @@ public final class MaidFilmRecovery {
         return id;
     }
 
-    /** 无世界生成回调，调用者可在返回后清空原槽，交付由既有世界tick推进 */
+    /** 提交已独立持有的物品；仍属于自有Tile的物品由MaidTileReturns确认源移除 */
     public static UUID queueOwnedItem(World world, ItemStack stack, double x, double y, double z) {
         if (world.isRemote || stack == null || stack.stackSize <= 0)
             throw new IllegalArgumentException("Server item required");
-        return MaidLifecycleData.get(world)
-            .queueReturnedFilm(
-                com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack),
-                world.provider.dimensionId,
-                x,
-                y,
-                z);
+        var ledger = MaidLifecycleData.get(world);
+        var id = ledger.queueReturnedFilm(
+            com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack),
+            world.provider.dimensionId,
+            x,
+            y,
+            z);
+        MaidLifecycleDurability.ledger(world, ledger);
+        return id;
     }
 
     public static void retryPending(World world) {
+        if (!world.isRemote) MaidTileReturns.completePending(world);
         if (!world.isRemote) for (var id : MaidLifecycleData.get(world)
             .pendingReturnedFilms(world.provider.dimensionId)) attemptSafely(world, id);
     }
 
     private static void attemptSafely(World world, UUID id) {
-        IntegrationGuard.call(ExternalFeature.ITEM_DELIVERY, () -> {
+        IntegrationGuard.call(Side.SERVER, ExternalFeature.ITEM_DELIVERY, () -> {
             attempt(world, id);
             return true;
         }, () -> false);
@@ -61,27 +67,57 @@ public final class MaidFilmRecovery {
             || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord))) return;
         var stored = ledger.reserveReturnedFilm(id);
         if (stored == null) return;
-        EntityItem drop = null;
-        boolean delivered = false;
+        MaidLifecycleDurability.Publication publication = null;
+        boolean begun = false, delivered = false;
         try {
             var expected = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(stored);
             if (expected == null) throw new IllegalStateException("Empty escrowed item retained");
-            drop = new EntityItem(
+            MaidLifecycleDurability.requireEntities(world);
+            ledger.beginReturnedFilm(id);
+            begun = true;
+            MaidLifecycleDurability.ledger(world, ledger);
+            var drop = new EntityItem(
                 world,
                 position.xCoord,
                 Math.max(0.1D, position.yCoord),
                 position.zCoord,
                 expected.copy());
             drop.delayBeforeCanPickup = 10;
+            publication = new MaidLifecycleDurability.Publication(drop, expected);
             if (world.spawnEntityInWorld(drop) && MaidSpawnChecks.itemPresent(drop, expected, world)) {
-                ledger.finishReturnedFilm(id);
+                MaidLifecycleDurability.entities(world, Collections.singletonList(publication), true);
                 delivered = true;
+                ledger.finishReturnedFilm(id);
+                MaidLifecycleDurability.ledger(world, ledger);
             }
         } finally {
             if (!delivered) {
-                MaidSpawnChecks.discard(drop);
-                ledger.rollback(id);
+                try {
+                    if (publication != null) {
+                        publication.discard(world);
+                        MaidLifecycleDurability.entities(world, Collections.singletonList(publication), false);
+                    }
+                    if (begun) {
+                        ledger.retryReturnedFilm(id);
+                        MaidLifecycleDurability.ledger(world, ledger);
+                    }
+                } catch (Exception | LinkageError | AssertionError failure) {
+                    report(id, failure);
+                    ledger.holdReturnedFilm(id);
+                    try {
+                        MaidLifecycleDurability.ledger(world, ledger);
+                    } catch (Exception | LinkageError | AssertionError persistenceFailure) {
+                        report(id, persistenceFailure);
+                    }
+                } finally {
+                    ledger.abandonReturnedFilm(id);
+                }
             }
         }
+    }
+
+    private static void report(UUID id, Throwable failure) {
+        IntegrationGuard.throwIfFatal(failure);
+        IntegrationGuard.report(Side.SERVER, "returned_material/" + id, failure);
     }
 }

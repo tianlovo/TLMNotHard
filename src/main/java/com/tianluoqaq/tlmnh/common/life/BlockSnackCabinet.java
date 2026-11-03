@@ -134,16 +134,39 @@ public final class BlockSnackCabinet extends BlockContainer {
     }
 
     @Override
+    public void onBlockPreDestroy(World world, int x, int y, int z, int metadata) {
+        if (!world.isRemote && world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet)
+            prepareReturn(cabinet);
+        super.onBlockPreDestroy(world, x, y, z, metadata);
+    }
+
+    private static void prepareReturn(TileEntitySnackCabinet cabinet) {
+        var items = new java.util.ArrayList<ItemStack>();
+        for (int slot = 0; slot < cabinet.getSizeInventory(); slot++) {
+            var stack = cabinet.getStackInSlot(slot);
+            if (stack != null) items.add(stack);
+        }
+        var recovery = cabinet.recovery()
+            .write();
+        for (int i = 0; i < recovery.tagCount(); i++) {
+            var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(recovery.getCompoundTagAt(i));
+            if (stack == null) throw new IllegalStateException("Empty recovery contents retained");
+            items.add(stack);
+        }
+        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.prepare(cabinet, items);
+    }
+
+    @Override
     public void breakBlock(World world, int x, int y, int z, Block old, int metadata) {
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet) {
-            cabinet.recovery()
-                .depositAll(world, x + 0.5, y + 0.5, z + 0.5);
-            for (int slot = 0; slot < cabinet.getSizeInventory(); slot++) {
-                var stack = cabinet.getStackInSlot(slot);
-                if (stack != null) com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmRecovery
-                    .queueOwnedItem(world, stack, x + 0.5, y + 0.5, z + 0.5);
-                cabinet.setInventorySlotContents(slot, null);
-            }
+            prepareReturn(cabinet);
+            com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.beforeClear(cabinet);
+            var planned = com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer.snapshot(cabinet);
+            planned.setTag("Items", new net.minecraft.nbt.NBTTagList());
+            planned
+                .setTag(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, new net.minecraft.nbt.NBTTagList());
+            cabinet.clearForReturn();
+            com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.cleared(cabinet, planned);
         }
         if (!world.isRemote) world.func_147453_f(x, y, z, this);
         super.breakBlock(world, x, y, z, old, metadata);

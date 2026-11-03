@@ -132,12 +132,15 @@ public final class TileEntityMaidBed extends TileEntity {
             || stack.getItem() != MaidLifeContent.maidBedItem
             || stack.stackSize <= 0)
             throw new IllegalStateException("Authoritative bed head required for item transfer");
-        // 先保管，无世界出生回调；再标记源已移交，真实交付由既有世界tick推进
-        var token = com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmRecovery
-            .queueOwnedItem(worldObj, stack, xCoord + .5, yCoord + .5, zCoord + .5);
+        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.prepare(this, java.util.Collections.singletonList(stack));
+        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.beforeClear(this);
+        var planned = com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer.snapshot(this);
+        var token = com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.firstId(this);
+        planned.setString(DROP_TAG, token.toString());
         queuedDrop = new NBTTagString(token.toString());
         queuedDuringThisLoad = true;
         markDirty();
+        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.cleared(this, planned);
     }
 
     @Override

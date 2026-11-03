@@ -38,6 +38,7 @@ public final class EnhancedCombatController {
     private final TaskBowAttack ranged = new TaskBowAttack();
     private final MaidUseShieldTask shield = new MaidUseShieldTask();
     private final MaidAttackStrafingTask strafe = new MaidAttackStrafingTask();
+    private final EnhancedRangedRecovery rangedRecovery;
     private final Map<EntityLivingBase, FailedApproach> failedApproaches = new IdentityHashMap<>();
     private EntityLivingBase ownedTarget;
     private Point lastSeen;
@@ -50,6 +51,7 @@ public final class EnhancedCombatController {
         this.maid = maid;
         this.actor = actor;
         this.perception = perception;
+        rangedRecovery = new EnhancedRangedRecovery(maid, actor);
     }
 
     public void offer(MaidIntentFrame frame) {
@@ -57,6 +59,7 @@ public final class EnhancedCombatController {
         long now = actor.worldGameTime();
         if (now < lastOfferTick) failedApproaches.clear();
         lastOfferTick = now;
+        rangedRecovery.refresh(now);
         failedApproaches.entrySet()
             .removeIf(
                 entry -> entry.getValue()
@@ -67,21 +70,26 @@ public final class EnhancedCombatController {
             failedApproaches.put(ownedTarget, new FailedApproach(ownedTarget, now + FAILED_TARGET_RETRY_TICKS));
             abandonedTargets++;
         }
+        var candidates = new java.util.ArrayList<EntityLivingBase>();
         if (ownedTarget != null && legal(ownedTarget, bow) && (visible(ownedTarget, bow) || remembers()))
-            if (!failedApproaches.containsKey(ownedTarget)) offer(frame, ownedTarget, bow);
+            if (!failedApproaches.containsKey(ownedTarget)) candidates.add(ownedTarget);
         // 受击来源是本tick已发生事实，不等待周期附近清单刷新
         var attacker = maid.getAITarget();
         if (attacker != ownedTarget && !failedApproaches.containsKey(attacker)
             && legal(attacker, bow)
-            && visible(attacker, bow)) offer(frame, attacker, bow);
+            && visible(attacker, bow)) candidates.add(attacker);
         int count = 0;
         for (var candidate : perception.nearby()) {
             if (++count > MAX_CANDIDATES) break;
             if (candidate != ownedTarget && candidate != attacker
                 && !failedApproaches.containsKey(candidate)
                 && legal(candidate, bow)
-                && visible(candidate, bow)) offer(frame, candidate, bow);
+                && visible(candidate, bow)) candidates.add(candidate);
         }
+        boolean alternative = bow && candidates.stream()
+            .anyMatch(target -> !rangedRecovery.held(target));
+        for (var candidate : candidates)
+            if (!bow || !alternative || !rangedRecovery.held(candidate)) offer(frame, candidate, bow);
     }
 
     private boolean approachFailed(EntityLivingBase target, boolean bow, long now) {
@@ -236,6 +244,24 @@ public final class EnhancedCombatController {
         actor.rangedBow()
             .observe(target, true, maid.worldObj.getTotalWorldTime());
         boolean stationary = EnhancedRideController.stationary(maid);
+        if (cooldown > 0) cooldown--;
+        if (rangedRecovery.execute(
+            target,
+            stationary,
+            () -> mobility.getAsBoolean() && ownedTarget == target
+                && maid.getModernCombatMemory()
+                    .target() == target
+                && permitted()
+                && legal(target, true)
+                && visible(target, true))) {
+            if (!actor.isCurrent()) return;
+            actor.stopOwnedRangedUse();
+            if (!actor.isCurrent()) return;
+            if (strafing) strafe.stop(actor);
+            strafing = false;
+            if (actor.isCurrent()) actor.lookDirectlyAtRangedTarget(view);
+            return;
+        }
         boolean close = actor.distanceToTarget(view) <= RANGED_STAND_DISTANCE;
         if (stationary || close) actor.eraseWalkTarget();
         else actor.walkToAttackTarget(view, APPROACH_SPEED);
@@ -251,7 +277,6 @@ public final class EnhancedCombatController {
         }
         if (!actor.isCurrent()) return;
         actor.lookDirectlyAtRangedTarget(view);
-        if (cooldown > 0) cooldown--;
         if (actor.ownsRangedUse()) {
             if (actor.rangedUsedTicks() >= MaidBowAttack.DRAW_TICKS) {
                 actor.stopOwnedRangedUse();
@@ -263,6 +288,7 @@ public final class EnhancedCombatController {
                     () -> mobility.getAsBoolean() && permitted() && legal(target, true) && visible(target, true));
                 if (actor.isCurrent()) {
                     if (fired) lastSuccessfulReleaseAt = actor.worldGameTime();
+                    else rangedRecovery.rejected(target);
                     cooldown = actor.shootCooldown();
                 }
             }
@@ -280,6 +306,7 @@ public final class EnhancedCombatController {
 
     /** 旧引用先退出所有权，再触及可能随外部代码变化的内存接口 */
     public void cancel() {
+        rangedRecovery.cancel();
         var target = ownedTarget;
         ownedTarget = null;
         lastSeen = null;
@@ -309,6 +336,22 @@ public final class EnhancedCombatController {
 
     public long abandonedTargets() {
         return abandonedTargets;
+    }
+
+    public long rangedRefusals() {
+        return rangedRecovery.refusals();
+    }
+
+    public long rangedRecoveryProbes() {
+        return rangedRecovery.probes();
+    }
+
+    public long rangedRecoveryMoves() {
+        return rangedRecovery.moves();
+    }
+
+    public MaidBowAttack.Status rangedRecoveryOutcome() {
+        return rangedRecovery.outcome();
     }
 
     private static final class FailedApproach {

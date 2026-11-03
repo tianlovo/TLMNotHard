@@ -20,7 +20,7 @@ public final class MaidInventory implements IInventory {
     public static final int TOTAL_SIZE = 12;
 
     private final EntityMaid maid;
-    private final RecoveryStore recovery = new RecoveryStore();
+    private final RecoveryStore recovery;
 
     public RecoveryStore recovery() {
         return recovery;
@@ -30,6 +30,7 @@ public final class MaidInventory implements IInventory {
 
     public MaidInventory(EntityMaid maid) {
         this.maid = maid;
+        recovery = new RecoveryStore(maid);
     }
 
     @Override

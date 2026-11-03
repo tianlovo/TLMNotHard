@@ -142,6 +142,108 @@ final class MaidLifecycleDurability {
         loader(server(world));
     }
 
+    static void tile(net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+        var world = server(tile.getWorldObj());
+        int x = tile.xCoord, y = tile.yCoord, z = tile.zCoord;
+        if (!world.getChunkProvider()
+            .chunkExists(x >> 4, z >> 4)) throw new IllegalStateException("Source tile chunk is no longer loaded");
+        var block = world.getBlock(x, y, z);
+        int metadata = world.getBlockMetadata(x, y, z);
+        storeTileState(world, x, y, z, block, metadata, tile, expected);
+    }
+
+    static void absentTile(World world, int x, int y, int z, net.minecraft.block.Block original) {
+        var actual = server(world);
+        if (!actual.getChunkProvider()
+            .chunkExists(x >> 4, z >> 4) || actual.getTileEntity(x, y, z) != null
+            || actual.getBlock(x, y, z) == original)
+            throw new IllegalStateException("Original source block removal is not confirmed");
+        storeTileState(actual, x, y, z, actual.getBlock(x, y, z), actual.getBlockMetadata(x, y, z), null, null);
+    }
+
+    private static void storeTileState(WorldServer world, int x, int y, int z, net.minecraft.block.Block block,
+        int metadata, net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+        try {
+            expected = expected == null ? null : (NBTTagCompound) expected.copy();
+            checkTileState(world, x, y, z, block, metadata, tile, expected);
+            var chunks = new LinkedHashMap<Long, Chunk>();
+            addChunk(world, chunks, x >> 4, z >> 4);
+            var loader = loader(world);
+            for (var chunk : chunks.values()) loader.saveChunk(world, chunk);
+            ThreadedFileIOBase.threadedIOInstance.waitForFinish();
+            try (var input = RegionFileCache.getChunkInputStream(loader.chunkSaveLocation, x >> 4, z >> 4)) {
+                if (input == null) throw new IllegalStateException("No native saved source tile chunk");
+                var root = CompressedStreamTools.read(input);
+                var level = root.getCompoundTag("Level");
+                if (!root.hasKey("Level", 10) || !level.hasKey("xPos", 3)
+                    || !level.hasKey("zPos", 3)
+                    || level.getInteger("xPos") != x >> 4
+                    || level.getInteger("zPos") != z >> 4
+                    || !level.hasKey("Sections", 9)
+                    || !level.hasKey("TileEntities", 9))
+                    throw new IllegalStateException("Unknown native source tile chunk layout");
+                var sections = level.getTagList("Sections", 10);
+                if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
+                    throw new IllegalStateException("Unknown source block section entries");
+                int sectionCount = 0;
+                for (int i = 0; i < sections.tagCount(); i++) {
+                    var section = sections.getCompoundTagAt(i);
+                    if (!section.hasKey("Y", 1)) throw new IllegalStateException("Unknown native section index");
+                    if (section.getByte("Y") != y >> 4) continue;
+                    sectionCount++;
+                    int index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
+                    if (EndlessIdsSectionData.blockId(section, index) != net.minecraft.block.Block.getIdFromBlock(block)
+                        || EndlessIdsSectionData.metadata(section, index) != metadata)
+                        throw new IllegalStateException("Native source block or metadata changed during save");
+                }
+                if (sectionCount != 1
+                    && !(sectionCount == 0 && block == net.minecraft.init.Blocks.air && metadata == 0))
+                    throw new IllegalStateException("Native source block section is not unique");
+                var tiles = level.getTagList("TileEntities", 10);
+                if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
+                    throw new IllegalStateException("Unknown source tile list");
+                int count = 0;
+                for (int i = 0; i < tiles.tagCount(); i++) {
+                    var saved = tiles.getCompoundTagAt(i);
+                    if (!saved.hasKey("x", 3) || !saved.hasKey("y", 3) || !saved.hasKey("z", 3))
+                        throw new IllegalStateException("Unknown saved tile position");
+                    if (saved.getInteger("x") != x || saved.getInteger("y") != y || saved.getInteger("z") != z)
+                        continue;
+                    count++;
+                    if (tile == null || !expected.equals(saved))
+                        throw new IllegalStateException("Native source tile contents changed during save");
+                }
+                if (count != (tile == null ? 0 : 1))
+                    throw new IllegalStateException("Native source tile presence differs");
+            }
+            checkTileState(world, x, y, z, block, metadata, tile, expected);
+        } catch (Exception failure) {
+            if (failure instanceof InterruptedException) Thread.currentThread()
+                .interrupt();
+            throw new IllegalStateException(
+                "Cannot confirm native source tile; original material remains held",
+                failure);
+        }
+    }
+
+    private static void checkTileState(WorldServer world, int x, int y, int z, net.minecraft.block.Block block,
+        int metadata, net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+        if (!world.getChunkProvider()
+            .chunkExists(x >> 4, z >> 4) || world.getBlock(x, y, z) != block
+            || world.getBlockMetadata(x, y, z) != metadata
+            || world.getTileEntity(x, y, z) != tile) throw new IllegalStateException("Source tile identity changed");
+        if (tile != null) {
+            var snapshot = new NBTTagCompound();
+            tile.writeToNBT(snapshot);
+            if (tile.isInvalid() || tile.getWorldObj() != world
+                || tile.xCoord != x
+                || tile.yCoord != y
+                || tile.zCoord != z
+                || !expected.equals(snapshot))
+                throw new IllegalStateException("Unknown source tile successor retained");
+        }
+    }
+
     static NBTTagCompound maidSnapshot(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
         var result = new NBTTagCompound();
         var type = EntityList.getEntityString(maid);

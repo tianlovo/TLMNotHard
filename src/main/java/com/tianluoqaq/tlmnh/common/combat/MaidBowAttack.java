@@ -51,7 +51,9 @@ public final class MaidBowAttack {
         BLOCKED,
         UNLOADED,
         LIQUID,
-        SPAWN_REJECTED
+        SPAWN_REJECTED,
+        PHYSICS_UNAVAILABLE,
+        QUERY_LIMIT
     }
 
     private final EntityMaid maid;
@@ -65,6 +67,7 @@ public final class MaidBowAttack {
     private ArrowInterceptSolver.Solution lastSolution;
     private ArrowPhysics lastPhysics;
     private EntityArrow lastArrow;
+    private Refusal lastRefusal;
     private boolean firing;
     private Lease useLease;
     private long generation;
@@ -145,6 +148,7 @@ public final class MaidBowAttack {
 
     public boolean fire(EntityLivingBase target) {
         if (firing) return false;
+        lastRefusal = null;
         maid.getBrainCoordinator()
             .getTelemetry()
             .releaseAttempt(target);
@@ -157,7 +161,10 @@ public final class MaidBowAttack {
     }
 
     private boolean fireOnce(EntityLivingBase target) {
-        if (!NativeArrowGravity.available()) return false;
+        if (!NativeArrowGravity.available()) {
+            status = Status.PHYSICS_UNAVAILABLE;
+            return false;
+        }
         if (!canFire(target) || target != observed
             || drawTicks < DRAW_TICKS
             || drawingBow != maid.getHeldItem()
@@ -179,7 +186,12 @@ public final class MaidBowAttack {
 
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
     public boolean fireForModern(EntityLivingBase target, float charge, BooleanSupplier admitted) {
-        if (!NativeArrowGravity.available() || !MaidProjectileImpactProtection.available(maid)) return false;
+        if (firing) return false;
+        lastRefusal = null;
+        if (!NativeArrowGravity.available() || !MaidProjectileImpactProtection.available(maid)) {
+            status = Status.PHYSICS_UNAVAILABLE;
+            return false;
+        }
         if (firing || !admitted.getAsBoolean()) return false;
         int slot = modernArrowSlot(maid);
         if (slot < 0) return false;
@@ -238,6 +250,7 @@ public final class MaidBowAttack {
         boolean recording = telemetry.isEnabled();
         EntityArrow arrow;
         NativeArrowGravity.LaunchSample launch;
+        NativeAim nativeAim = null;
         if (original) {
             var sourceArrow = new MaidGravityFreeArrow(world, origin.x, origin.y, origin.z);
             sourceArrow.initializeSourceShot(
@@ -254,40 +267,33 @@ public final class MaidBowAttack {
         } else {
             // 查询必须针对真正将要生成的箭，不用代理箭或主世界固定值代替实际provider
             arrow = new EntityArrow(world, origin.x, origin.y, origin.z);
+            arrow.shootingEntity = maid;
             launch = NativeArrowGravity.sampleForLaunch(arrow);
             if (launch == null || !launch.isCurrent(arrow) || !current.getAsBoolean()) {
                 arrow.setDead();
+                status = Status.PHYSICS_UNAVAILABLE;
                 return false;
             }
-            var physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity);
-            lastPhysics = physics;
             long startedAt = recording ? System.nanoTime() : 0;
             try {
-                lastSolution = ArrowInterceptSolver.solve(
-                    origin,
-                    aimPoint(target),
-                    prototype || modernFlightProfile == ModernFlightProfile.NATIVE_MOTION_COMPENSATION
-                        ? motion.velocity()
-                        : modernFlightProfile == ModernFlightProfile.NATIVE_LAST_SAMPLE_COMPENSATION
-                            ? motion.latestVelocity()
-                            : BallisticVector.ZERO,
-                    3.0,
-                    MAX_FLIGHT_TICKS,
-                    physics);
+                nativeAim = nativeAim(
+                    arrow,
+                    target,
+                    launch,
+                    () -> launch.isCurrent(arrow) && current.getAsBoolean(),
+                    prototype);
+                lastSolution = nativeAim.solution;
+                lastPhysics = nativeAim.physics;
             } finally {
                 if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
             }
-            if (!lastSolution.isSolved()) {
+            if (nativeAim.status != Status.READY) {
+                var refusal = (nativeAim.status == Status.BLOCKED || nativeAim.status == Status.NO_SOLUTION)
+                    && current.getAsBoolean() ? new Refusal(maid, target, bow, slot, nativeAim) : null;
                 arrow.setDead();
-                return reject(Status.NO_SOLUTION);
-            }
-            // 使用原生定向接口，零随机散布使预瞄误差可归因；保留其实际浮点归一化结果
-            var velocity = lastSolution.initialVelocity;
-            arrow.setThrowableHeading(velocity.x, velocity.y, velocity.z, 3.0F, 0.0F);
-            var safety = safePath(arrow, target, lastSolution.flightTicks, physics);
-            if (safety != null) {
-                arrow.setDead();
-                return reject(safety);
+                boolean rejected = reject(nativeAim.status);
+                lastRefusal = refusal;
+                return rejected;
             }
         }
         if (!MaidProjectileImpactProtection.admit(maid, arrow)) {
@@ -328,7 +334,8 @@ public final class MaidBowAttack {
             || !arrowBefore.equals(arrowAfter)
             || !java.util.Arrays.equals(boundsBefore, boundsAfter)
             || !launch.isCurrent(arrow)
-            || !current.getAsBoolean()) {
+            || !current.getAsBoolean()
+            || nativeAim != null && !stillSafe(nativeAim, arrow, target)) {
             arrow.setDead();
             return reject(Status.SPAWN_REJECTED);
         }
@@ -357,12 +364,15 @@ public final class MaidBowAttack {
         return (NBTTagCompound) tag.copy();
     }
 
-    private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks, ArrowPhysics physics) {
+    private Status safePath(EntityArrow arrow, EntityLivingBase target, double flightTicks, ArrowPhysics physics,
+        NativeArrowMedium medium, NativeAim result) {
         var state = new ArrowPhysics.State(
             new BallisticVector(arrow.posX, arrow.posY, arrow.posZ),
             new BallisticVector(arrow.motionX, arrow.motionY, arrow.motionZ));
         for (int step = 0; step < Math.ceil(flightTicks); step++) {
-            var end = state.position.add(state.velocity.scale(Math.min(1, flightTicks - step)));
+            var sample = physics.mediumAt(state.position);
+            var moving = state.velocity.add(sample.push);
+            var end = state.position.add(moving.scale(Math.min(1, flightTicks - step)));
             int minX = MathHelper.floor_double(Math.min(state.position.x, end.x) - .3);
             int maxX = MathHelper.floor_double(Math.max(state.position.x, end.x) + .3);
             int minY = MathHelper.floor_double(Math.min(state.position.y, end.y) - .5);
@@ -374,9 +384,10 @@ public final class MaidBowAttack {
                     .chunkExists(x >> 4, z >> 4)) return Status.UNLOADED;
                 for (int y = minY; y <= maxY; y++) {
                     if (!maid.worldObj.blockExists(x, y, z)) return Status.UNLOADED;
-                    Material material = maid.worldObj.getBlock(x, y, z)
-                        .getMaterial();
-                    if (material.isLiquid()) return Status.LIQUID;
+                    var block = medium.getBlock(x, y, z);
+                    Material material = block.getMaterial();
+                    if (material.isLiquid() && block != net.minecraft.init.Blocks.water
+                        && block != net.minecraft.init.Blocks.flowing_water) return Status.LIQUID;
                 }
             }
             var from = vec(state.position);
@@ -398,10 +409,12 @@ public final class MaidBowAttack {
                     || entity == arrow
                     || !entity.canBeCollidedWith()) continue;
                 var collision = entity.boundingBox.expand(.3, .3, .3);
-                if (collision.isVecInside(from) || collision.calculateIntercept(from, to) != null)
+                if (collision.isVecInside(from) || collision.calculateIntercept(from, to) != null) {
+                    result.blocker = entity;
                     return Status.BLOCKED;
+                }
             }
-            state = physics.step(state);
+            state = physics.step(state, sample);
         }
         return null;
     }
@@ -412,6 +425,218 @@ public final class MaidBowAttack {
         interrupt();
         status = reason;
         return false;
+    }
+
+    /** 无出生/扣料/改拉弓计数的当前世界预检；候选位置不被写回射手或目标。 */
+    public Status preview(EntityLivingBase target, BallisticVector origin, BooleanSupplier admitted) {
+        if (firing || !admitted.getAsBoolean()
+            || target == null
+            || !hasBow(maid)
+            || !NativeArrowGravity.available()
+            || !MaidProjectileImpactProtection.available(maid)) return Status.PHYSICS_UNAVAILABLE;
+        var world = maid.worldObj;
+        var provider = world.provider;
+        var bow = maid.getHeldItem();
+        var expected = bow.copy();
+        var owner = maid.func_152113_b();
+        var identity = maid.getUniqueID();
+        var targetIdentity = target.getUniqueID();
+        double x = maid.posX, y = maid.posY, z = maid.posZ;
+        int dimension = maid.dimension;
+        EntityArrow arrow = null;
+        firing = true;
+        try {
+            var candidate = new EntityArrow(world, origin.x, origin.y, origin.z);
+            arrow = candidate;
+            candidate.shootingEntity = maid;
+            BooleanSupplier valid = () -> admitted.getAsBoolean() && maid.worldObj == world
+                && world.provider == provider
+                && maid.dimension == dimension
+                && identity.equals(maid.getUniqueID())
+                && java.util.Objects.equals(owner, maid.func_152113_b())
+                && world.getEntityByID(maid.getEntityId()) == maid
+                && maid.posX == x
+                && maid.posY == y
+                && maid.posZ == z
+                && maid.getHeldItem() == bow
+                && ItemStack.areItemStacksEqual(bow, expected)
+                && target.worldObj == world
+                && target.dimension == dimension
+                && target.isEntityAlive()
+                && !target.isDead
+                && targetIdentity.equals(target.getUniqueID())
+                && world.getEntityByID(target.getEntityId()) == target;
+            var launch = NativeArrowGravity.sampleForLaunch(candidate);
+            if (launch == null || !valid.getAsBoolean()) return Status.PHYSICS_UNAVAILABLE;
+            return nativeAim(
+                candidate,
+                target,
+                launch,
+                () -> valid.getAsBoolean() && launch.isCurrent(candidate),
+                false).status;
+        } finally {
+            if (arrow != null) arrow.setDead();
+            firing = false;
+        }
+    }
+
+    private NativeAim nativeAim(EntityArrow arrow, EntityLivingBase target, NativeArrowGravity.LaunchSample launch,
+        BooleanSupplier current, boolean prototype) {
+        var result = new NativeAim();
+        if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+            .available(cpw.mods.fml.relauncher.Side.SERVER, NativeArrowMedium.GUARD)) return result;
+        try {
+            result.medium = new NativeArrowMedium(arrow, current);
+            result.physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity)
+                .withMedium(result.medium::at);
+            result.targetPoint = aimPoint(target);
+            var velocity = observed == target
+                ? prototype || modernFlightProfile == ModernFlightProfile.NATIVE_MOTION_COMPENSATION ? motion.velocity()
+                    : modernFlightProfile == ModernFlightProfile.NATIVE_LAST_SAMPLE_COMPENSATION
+                        ? motion.latestVelocity()
+                        : BallisticVector.ZERO
+                : BallisticVector.ZERO;
+            result.solution = ArrowInterceptSolver.solve(
+                new BallisticVector(arrow.posX, arrow.posY, arrow.posZ),
+                result.targetPoint,
+                velocity,
+                3,
+                MAX_FLIGHT_TICKS,
+                result.physics);
+            if (!result.solution.isSolved()) {
+                result.status = Status.NO_SOLUTION;
+                return result;
+            }
+            var initial = result.solution.initialVelocity;
+            arrow.setThrowableHeading(initial.x, initial.y, initial.z, 3F, 0F);
+            var safety = safePath(arrow, target, result.solution.flightTicks, result.physics, result.medium, result);
+            result.status = safety == null && result.medium.isCurrent() ? Status.READY
+                : safety == null ? Status.PHYSICS_UNAVAILABLE : safety;
+        } catch (NativeArrowMedium.Unavailable failure) {
+            result.status = failure.reason;
+        } catch (Exception | LinkageError | AssertionError failure) {
+            mediumFault(failure);
+        }
+        return result;
+    }
+
+    private boolean stillSafe(NativeAim result, EntityArrow arrow, EntityLivingBase target) {
+        try {
+            return aimPoint(target).subtract(result.targetPoint)
+                .length() == 0 && result.medium.isCurrent()
+                && safePath(arrow, target, result.solution.flightTicks, result.physics, result.medium, result) == null
+                && result.medium.isCurrent();
+        } catch (NativeArrowMedium.Unavailable failure) {
+            return false;
+        } catch (Exception | LinkageError | AssertionError failure) {
+            mediumFault(failure);
+            return false;
+        }
+    }
+
+    private void mediumFault(Throwable failure) {
+        com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(failure);
+        var owner = maid.getOwner();
+        com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
+            cpw.mods.fml.relauncher.Side.SERVER,
+            NativeArrowMedium.GUARD,
+            failure,
+            owner == null ? null : owner.getUniqueID());
+    }
+
+    public Refusal lastRefusal() {
+        return lastRefusal;
+    }
+
+    private static final class NativeAim {
+
+        Status status = Status.PHYSICS_UNAVAILABLE;
+        ArrowInterceptSolver.Solution solution;
+        ArrowPhysics physics;
+        NativeArrowMedium medium;
+        BallisticVector targetPoint;
+        Entity blocker;
+    }
+
+    /** 仅本次确认的拒发事实；不会把失效、卸载、预算耗尽或出生取消变成目标失败。 */
+    public static final class Refusal {
+
+        public final Status reason;
+        public final long at;
+        private final EntityMaid maid;
+        private final EntityLivingBase target;
+        private final net.minecraft.world.World world;
+        private final net.minecraft.world.WorldProvider provider;
+        private final java.util.UUID maidId, targetId;
+        private final String owner;
+        private final ItemStack bow, bowBefore, ammunition, ammoBefore;
+        private final int slot, dimension;
+        private final double x, y, z;
+        private final NativeAim aim;
+        private final double[] blockerBounds;
+
+        private Refusal(EntityMaid maid, EntityLivingBase target, ItemStack bow, int slot, NativeAim aim) {
+            this.maid = maid;
+            this.target = target;
+            this.bow = bow;
+            this.slot = slot;
+            this.aim = aim;
+            world = maid.worldObj;
+            provider = world.provider;
+            dimension = maid.dimension;
+            owner = maid.func_152113_b();
+            maidId = maid.getUniqueID();
+            targetId = target.getUniqueID();
+            x = target.posX;
+            y = target.posY;
+            z = target.posZ;
+            bowBefore = bow.copy();
+            ammunition = maid.getMaidInventory()
+                .getStackInSlot(slot);
+            ammoBefore = ItemStack.copyItemStack(ammunition);
+            reason = aim.status;
+            at = world.getTotalWorldTime();
+            blockerBounds = aim.blocker == null ? null : bounds(aim.blocker);
+        }
+
+        public boolean matches(EntityMaid actual, EntityLivingBase candidate) {
+            return actual == maid && candidate == target
+                && maid.worldObj == world
+                && world.provider == provider
+                && maid.dimension == dimension
+                && provider.dimensionId == dimension
+                && maidId.equals(maid.getUniqueID())
+                && targetId.equals(target.getUniqueID())
+                && java.util.Objects.equals(owner, maid.func_152113_b())
+                && !maid.isDead
+                && maid.isEntityAlive()
+                && target.worldObj == world
+                && target.dimension == dimension
+                && target.isEntityAlive()
+                && !target.isDead
+                && world.getEntityByID(maid.getEntityId()) == maid
+                && world.getEntityByID(target.getEntityId()) == target
+                && target.posX == x
+                && target.posY == y
+                && target.posZ == z
+                && maid.getHeldItem() == bow
+                && ItemStack.areItemStacksEqual(bow, bowBefore)
+                && maid.getMaidInventory()
+                    .getStackInSlot(slot) == ammunition
+                && ItemStack.areItemStacksEqual(ammunition, ammoBefore);
+        }
+
+        public boolean environmentUnchanged() {
+            return aim.medium != null && aim.medium.environmentUnchanged()
+                && (aim.blocker == null || !aim.blocker.isDead && aim.blocker.worldObj == world
+                    && world.getEntityByID(aim.blocker.getEntityId()) == aim.blocker
+                    && java.util.Arrays.equals(blockerBounds, bounds(aim.blocker)));
+        }
+
+        private static double[] bounds(Entity entity) {
+            return new double[] { entity.boundingBox.minX, entity.boundingBox.minY, entity.boundingBox.minZ,
+                entity.boundingBox.maxX, entity.boundingBox.maxY, entity.boundingBox.maxZ };
+        }
     }
 
     private boolean canFire(EntityLivingBase target) {
@@ -480,6 +705,7 @@ public final class MaidBowAttack {
         return lastSolution;
     }
 
+    /** drag/gravity保留最近输入；空间查询持有发射许可，提交/撤销后不能用作活世界观察器。 */
     public ArrowPhysics getLastPhysics() {
         return lastPhysics;
     }

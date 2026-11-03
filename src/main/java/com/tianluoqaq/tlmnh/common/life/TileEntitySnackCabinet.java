@@ -36,7 +36,8 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         return oldBlock != newBlock;
     }
 
-    private final com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery = new com.tianluoqaq.tlmnh.common.protection.RecoveryStore();
+    private final com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery = new com.tianluoqaq.tlmnh.common.protection.RecoveryStore(
+        this);
 
     public com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery() {
         return recovery;
@@ -56,6 +57,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public ItemStack decrStackSize(int slot, int count) {
+        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)) return null;
         if (count <= 0 || items[slot] == null) return null;
         ItemStack removed;
         if (items[slot].stackSize <= count) {
@@ -68,6 +70,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public ItemStack getStackInSlotOnClosing(int slot) {
+        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)) return null;
         var result = items[slot];
         items[slot] = null;
         markDirty();
@@ -76,8 +79,18 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack) {
+        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this))
+            throw new IllegalStateException("Cabinet material is already held for its original removal");
         stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.admit(stack, getInventoryStackLimit());
         items[slot] = stack;
+        markDirty();
+    }
+
+    void clearForReturn() {
+        if (!com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this))
+            throw new IllegalStateException("Original cabinet escrow required");
+        java.util.Arrays.fill(items, null);
+        recovery.clear();
         markDirty();
     }
 
@@ -106,6 +119,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     @Override
     public boolean isUseableByPlayer(EntityPlayer player) {
         return worldObj != null && player != null
+            && !com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)
             && player.isEntityAlive()
             && player.worldObj == worldObj
             && worldObj.blockExists(xCoord, yCoord, zCoord)

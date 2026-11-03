@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
-/** 在每段真实tick内解截击二次式，补偿固定阻力和下坠，不读取目标未来状态 */
+/** 在每段真实tick内解截击二次式，支持当前介质快照，不读取目标未来状态。 */
 public final class ArrowInterceptSolver {
 
     public static final int MAX_FLIGHT_TICKS = 160;
@@ -18,6 +18,13 @@ public final class ArrowInterceptSolver {
 
     public static Solution solve(BallisticVector origin, BallisticVector target, BallisticVector targetVelocity,
         double speed, int maxTicks, ArrowPhysics physics) {
+        if (physics != null && physics.spatial())
+            return solveSpatial(origin, target, targetVelocity, speed, maxTicks, physics);
+        return solveConstant(origin, target, targetVelocity, speed, maxTicks, physics);
+    }
+
+    private static Solution solveConstant(BallisticVector origin, BallisticVector target,
+        BallisticVector targetVelocity, double speed, int maxTicks, ArrowPhysics physics) {
         if (origin == null || target == null
             || targetVelocity == null
             || physics == null
@@ -56,6 +63,84 @@ public final class ArrowInterceptSolver {
             gravityScale += distanceScale;
             distanceScale += power;
             power *= physics.drag;
+        }
+        return Solution.rejected(Status.NO_INTERCEPT_WITHIN_BUDGET, maxTicks);
+    }
+
+    /** 对当前水域快照求分段系数，再用实际路径验证；不收敛的介质边界拒发而不猜弹道。 */
+    private static Solution solveSpatial(BallisticVector origin, BallisticVector target, BallisticVector targetVelocity,
+        double speed, int maxTicks, ArrowPhysics physics) {
+        Solution first = solveConstant(
+            origin,
+            target,
+            targetVelocity,
+            speed,
+            maxTicks,
+            new ArrowPhysics(physics.drag, physics.gravity));
+        if (first.status == Status.INVALID_INPUT || first.status == Status.TOO_CLOSE) return first;
+        for (double seedDrag : new double[] { physics.drag, (double) .8F }) {
+            var seed = solveConstant(
+                origin,
+                target,
+                targetVelocity,
+                speed,
+                maxTicks,
+                new ArrowPhysics(seedDrag, physics.gravity));
+            if (!seed.isSolved()) continue;
+            for (int iteration = 0; iteration < 8; iteration++) {
+                var candidate = alongSeed(
+                    origin,
+                    target,
+                    targetVelocity,
+                    speed,
+                    maxTicks,
+                    physics,
+                    seed.initialVelocity);
+                if (!candidate.isSolved()) break;
+                var actual = physics
+                    .positionAt(new ArrowPhysics.State(origin, candidate.initialVelocity), candidate.flightTicks);
+                if (actual.subtract(candidate.predictedTarget)
+                    .length() <= 1E-6) return candidate;
+                seed = candidate;
+            }
+        }
+        return Solution.rejected(Status.NO_INTERCEPT_WITHIN_BUDGET, maxTicks);
+    }
+
+    private static Solution alongSeed(BallisticVector origin, BallisticVector target, BallisticVector targetVelocity,
+        double speed, int maxTicks, ArrowPhysics physics, BallisticVector seedVelocity) {
+        double distanceScale = 0, velocityScale = 1;
+        var positionBias = BallisticVector.ZERO;
+        var velocityBias = BallisticVector.ZERO;
+        var seed = new ArrowPhysics.State(origin, seedVelocity);
+        for (int tick = 0; tick < maxTicks; tick++) {
+            var medium = physics.mediumAt(seed.position);
+            var pushedBias = velocityBias.add(medium.push);
+            var p = target.add(targetVelocity.scale(tick))
+                .subtract(origin)
+                .subtract(positionBias);
+            var q = targetVelocity.subtract(pushedBias);
+            double a = q.dot(q) - speed * speed * velocityScale * velocityScale;
+            double b = 2 * (p.dot(q) - speed * speed * distanceScale * velocityScale);
+            double c = p.dot(p) - speed * speed * distanceScale * distanceScale;
+            for (double fraction : roots(a, b, c)) {
+                if (!Double.isFinite(fraction) || fraction < 0 || fraction > 1 || tick + fraction <= 0) continue;
+                double scale = distanceScale + fraction * velocityScale;
+                if (!(scale > 0)) continue;
+                var velocity = p.add(q.scale(fraction))
+                    .scale(1 / scale);
+                if (Math.abs(velocity.length() - speed) > SPEED_RESIDUAL * Math.max(1, speed)) continue;
+                double time = tick + fraction;
+                return new Solution(Status.SOLVED, velocity, time, target.add(targetVelocity.scale(time)), tick + 1);
+            }
+            positionBias = positionBias.add(pushedBias);
+            velocityBias = new BallisticVector(
+                pushedBias.x * medium.drag,
+                pushedBias.y * medium.drag - physics.gravity,
+                pushedBias.z * medium.drag);
+            distanceScale += velocityScale;
+            velocityScale *= medium.drag;
+            seed = physics.step(seed, medium);
         }
         return Solution.rejected(Status.NO_INTERCEPT_WITHIN_BUDGET, maxTicks);
     }

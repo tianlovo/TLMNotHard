@@ -72,8 +72,22 @@ public final class MaidShrineTile extends TileEntity {
 
     ItemStack beginUse() {
         if (busy || film == null) return null;
+        var snapshot = film.copy();
         busy = true;
-        return film.copy();
+        return snapshot;
+    }
+
+    boolean beginInsertUse() {
+        if (busy || film != null) return false;
+        busy = true;
+        return true;
+    }
+
+    void replaceUse(ItemStack expected, ItemStack replacement) {
+        if (!busy || !ItemStack.areItemStacksEqual(film, expected))
+            throw new IllegalStateException("Unknown shrine slot successor retained");
+        film = ItemStack.copyItemStack(replacement);
+        changed();
     }
 
     boolean beginRedemptionUse(ItemStack expected) {

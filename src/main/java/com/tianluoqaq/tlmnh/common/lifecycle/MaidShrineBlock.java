@@ -9,6 +9,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
@@ -112,19 +113,13 @@ public final class MaidShrineBlock extends BlockContainer {
         var held = player.getCurrentEquippedItem();
         if (player.isSneaking()) {
             if (held != null) return true;
-            var film = shrine.extract();
-            if (film != null) {
-                player.inventory.setInventorySlotContents(player.inventory.currentItem, film);
-                player.inventory.markDirty();
+            if (MaidShrineTransfer.transfer(player, shrine, false)) {
                 com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, false);
             }
             return true;
         }
         if (held != null) {
-            if (shrine.insert(held)) {
-                // block callback不经过ItemInWorldManager的创造栈数量恢复分支
-                player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
-                player.inventory.markDirty();
+            if (MaidShrineTransfer.transfer(player, shrine, true)) {
                 com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, true);
             } else MaidLifecycleService.tell(player, MaidLifecycleService.Result.INVALID_CREDENTIAL);
             return true;
@@ -134,13 +129,27 @@ public final class MaidShrineBlock extends BlockContainer {
     }
 
     @Override
+    public void onBlockPreDestroy(World world, int x, int y, int z, int metadata) {
+        if (!world.isRemote && world.getTileEntity(x, y, z) instanceof MaidShrineTile shrine) prepareReturn(shrine);
+        super.onBlockPreDestroy(world, x, y, z, metadata);
+    }
+
+    private static void prepareReturn(MaidShrineTile shrine) {
+        var items = new java.util.ArrayList<ItemStack>();
+        var film = shrine.getFilm();
+        if (film != null) items.add(film);
+        MaidTileReturns.prepare(shrine, items);
+    }
+
+    @Override
     public void breakBlock(World world, int x, int y, int z, Block block, int metadata) {
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof MaidShrineTile shrine) {
-            var film = shrine.getFilm();
-            if (film != null) {
-                MaidFilmRecovery.queueOwnedItem(world, film, x + 0.5D, y + 0.5D, z + 0.5D);
-                shrine.extractForBreak();
-            }
+            prepareReturn(shrine);
+            MaidTileReturns.beforeClear(shrine);
+            var planned = MaidShrineTransfer.snapshot(shrine);
+            planned.removeTag("StorageItem");
+            shrine.extractForBreak();
+            MaidTileReturns.cleared(shrine, planned);
         }
         super.breakBlock(world, x, y, z, block, metadata);
     }
