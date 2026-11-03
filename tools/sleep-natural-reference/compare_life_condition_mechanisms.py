@@ -1,4 +1,4 @@
-"""Strict collection checks and bounded outcomes for cabinet conditions and shared-bed handoff."""
+"""Strict cabinet collection and bounded readonly task-opportunity observations."""
 
 import argparse
 import json
@@ -15,15 +15,16 @@ from compare_terrain_life_mechanisms import (
 )
 
 PREFIX = "com.tianluoqaq.tlmnh."
-MECHANISMS = ("cabinet_conditions", "shared_bed_handoff")
-EXPECTED = {arm + case for arm in ("faithful", "enhanced") for case in ("CabinetConditions", "SharedBedHandoff")}
-ORIGINAL = TERRAIN_ORIGINAL | {PREFIX + "reference.sleep.LifeConditionMechanismGameTests" + suffix for suffix in ("", "$Session")}
+MECHANISMS = ("cabinet_conditions",)
+EXPECTED = {arm + case for arm in ("faithful", "enhanced") for case in ("CabinetConditions",)}
+ORIGINAL = TERRAIN_ORIGINAL | {PREFIX + "reference.sleep.LifeConditionMechanismGameTests" + suffix for suffix in ("", "$Session", "$OpportunityReader")}
 ORIGINAL |= {"com.github.tartaricacid.touhoulittlemaid." + name for name in (
     "entity.ai.brain.task.MaidBedTask", "block.BlockMaidBed", "entity.ai.edible.CakeEdible",
     "entity.favorability.FavorabilityManager", "entity.favorability.Type")}
-OBSERVER = [PREFIX + "qa.LifeConditionMechanismPortTests" + suffix for suffix in ("", "$Collector")]
+OBSERVER = [PREFIX + "qa.LifeConditionMechanismPortTests" + suffix for suffix in ("", "$Collector", "$OpportunityReader")]
 LIFE_PRODUCTION = [PREFIX + name for name in (
-    "common.life.TileEntityMaidBed", "common.ai.faithful.MaidCakeAction", "common.ai.faithful.MaidModernLife")]
+    "common.life.TileEntityMaidBed", "common.ai.faithful.MaidCakeAction", "common.ai.faithful.MaidModernLife",
+    "common.ai.faithful.MaidBedExitOffsets")]
 
 
 def add_shell(cells, low_x, high_x, low_z, high_z, top):
@@ -105,13 +106,98 @@ def metrics(data):
     return common
 
 
+def opportunity_metrics(data, original):
+    """Count observed field changes, retaining the distinction from uninstrumented search/BFS calls."""
+    summaries = {}
+    for actor in ("primary", "secondary"):
+        summaries[actor] = {
+            "available_start_samples": 0, "unavailable_start_samples": 0,
+            "counter_decrements_observed": 0, "positive_counter_assignments_observed": [],
+            "counter_other_transitions": [], "raw_start_gate_candidate_frames": 0,
+            "raw_work_target_became_present": 0, "enhanced_native_scan_count_delta": 0,
+            "direct_search_start_count": None, "direct_bfs_call_count": None,
+            "direct_bfs_success_count": None,
+        }
+    for index, frame in enumerate(data["frames"]):
+        observation = frame["lifeSearchOpportunity"]
+        require(observation["schema"] == "life-search-opportunity-v1", "unknown opportunity snapshot")
+        for actor, summary in summaries.items():
+            after = observation[actor + "End"]
+            require(after["availability"] == "AVAILABLE_RAW_VIEW" and after["nativeAge"] == index + 1
+                    and after["phase"] == "END_after_native_world_update", "missing actual END task observation")
+            require(after["bfsCallObservation"] == "NOT_INSTRUMENTED"
+                    and after["searchStartObservation"] == "NOT_DIRECTLY_OBSERVED", "unobserved search was promoted")
+            check_rate = original or data["profile"] == "faithful_tlm"
+            require(after["checkRateApplicable"] is check_rate, "different cadence was substituted")
+            if not observation["startFrameMatches"]:
+                require(observation["startAvailability"] == "UNAVAILABLE_START_PHASE", "synthetic START inserted")
+                summary["unavailable_start_samples"] += 1
+                continue
+            before = observation[actor + "Start"]
+            require(before["phase"] == "START_before_native_world_update" and before["nativeAge"] == index,
+                    "START task snapshot was taken after the native actor update")
+            if before["availability"] != "AVAILABLE_RAW_VIEW":
+                require(before["availability"] == "UNAVAILABLE_ROOT_PHASE", "unknown missing task phase")
+                summary["unavailable_start_samples"] += 1
+                continue
+            require(before["checkRateApplicable"] is check_rate, "START cadence type differs from END")
+            summary["available_start_samples"] += 1
+            if before["rootIdentity"] != after["rootIdentity"]:
+                summary["counter_other_transitions"].append({"frame": index, "reason": "actual_root_identity_changed"})
+                continue
+            if not before["workTargetRawStored"] and after["workTargetRawStored"]:
+                summary["raw_work_target_became_present"] += 1
+            if not check_rate:
+                require(not before["tasks"] and not after["tasks"], "enhanced controller was relabelled as MaidCheckRateTask")
+                require(before["controllerIdentity"] == after["controllerIdentity"], "life controller changed mid-frame")
+                scans = after["scanCount"] - before["scanCount"]
+                require(scans in (0, 1), "unexpected actual enhanced scan-count change")
+                summary["enhanced_native_scan_count_delta"] += scans
+                continue
+            require(len(before["tasks"]) == len(after["tasks"]) == 2, "original idle/work task pair changed")
+            before_tasks = {row["taskIdentity"]: row for row in before["tasks"]}
+            require(len(before_tasks) == 2, "duplicate native task identity")
+            for current in after["tasks"]:
+                prior = before_tasks.get(current["taskIdentity"])
+                if prior is None:
+                    summary["counter_other_transitions"].append({"frame": index, "reason": "actual_task_identity_changed"})
+                    continue
+                require(prior["taskClass"] == current["taskClass"]
+                        == "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask"
+                        and prior["maxCheckRate"] == current["maxCheckRate"] == 900,
+                        "actual task class or original check rate differs")
+                a, b = prior["nextCheckTickCount"], current["nextCheckTickCount"]
+                require(type(a) is int and type(b) is int and 0 <= a < 1800 and 0 <= b < 1800,
+                        "invalid actual cadence counter")
+                initialized = original or before.get("activityInitialized") is True
+                lifecycle_allows = prior["behaviorStatus"] == "STOPPED" if original else initialized
+                if prior["activityActive"] and prior["requiredRawMemoryAbsent"] and lifecycle_allows:
+                    summary["raw_start_gate_candidate_frames"] += 1
+                change = {"frame": index, "task_identity": current["taskIdentity"], "activity": current["activity"],
+                          "before": a, "after": b, "status_before": prior["behaviorStatus"],
+                          "status_after": current["behaviorStatus"]}
+                if a > 0 and b == a - 1:
+                    summary["counter_decrements_observed"] += 1
+                elif b > a:
+                    summary["positive_counter_assignments_observed"].append(change)
+                elif b != a:
+                    summary["counter_other_transitions"].append(change)
+    return {
+        "actors": summaries,
+        "scope": "Actual same-instance START/END private field transitions and raw memory storage; no task, RNG, clock or expiry method invoked",
+        "raw_start_gate_is_not_actual_tryStart_or_search_call": True,
+        "positive_counter_assignment_is_not_direct_bfs_observation": True,
+        "world_frame_count_is_not_search_count": True,
+    }
+
+
 def inspect(data, scene, contract, digest, original):
     captured = dict(data["contract"])
     captured.setdefault("noninferiorityDelta", None)
     captured["campaign"] = dict(captured["campaign"])
     captured["campaign"].setdefault("noninferiorityDelta", None)
     require(captured == contract and data["contractSha256"] == digest and data["scene"] == scene, "actual contract/scene differs")
-    require(data["schema"] == ("life-condition-original-v1" if original else "life-condition-port-v1")
+    require(data["schema"] == ("life-condition-original-v2" if original else "life-condition-port-v2")
             and data["observationComplete"] is data["ownCleanupComplete"] is True
             and not data.get("error") and not data.get("cleanupError"), "collection or cleanup incomplete")
     require(data["randomSourcesReset"] is data["statisticalAdmission"] is data["complete14ClassBenchmarkAccepted"] is False,
@@ -185,7 +271,9 @@ def inspect(data, scene, contract, digest, original):
                 and event["frame"] == data["firstSleepFrame"] + 40 == data["releaseCommandFrame"]
                 and event["triggerCompletedFrame"] == event["frame"] - 1, "bed released before a real first-sleep window")
     return {"same_side_complete_primary_binding": primary, "same_side_complete_secondary_binding": secondary,
-            "initial_item_mapping": item, "metrics": metrics(data), "business_success_kept_separate": data["behaviorSuccess"]}
+            "initial_item_mapping": item, "metrics": metrics(data),
+            "readonly_search_opportunity": opportunity_metrics(data, original),
+            "business_success_kept_separate": data["behaviorSuccess"]}
 
 
 def main():
@@ -197,7 +285,7 @@ def main():
     args = parser.parse_args()
     raw_contract = (args.original_tool / "life-condition-mechanisms-contract.json").read_bytes()
     contract, digest = json.loads(raw_contract), sha(raw_contract)
-    require(contract["contract"] == "LIFE_CONDITION_MECHANISMS_V1" and contract["noninferiorityDelta"] is None
+    require(contract["contract"] == "LIFE_CONDITION_MECHANISMS_V2" and contract["noninferiorityDelta"] is None
             and tuple(scene["id"] for scene in contract["mechanisms"]) == MECHANISMS, "unapproved life-condition contract")
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
@@ -209,12 +297,12 @@ def main():
             and observed["candidate_sha256"] == sha(args.candidate_jar.read_bytes())
             and observed["pilot_sha256"] == sha(pilot.read_bytes()), "actual execution artifact/tick contract differs")
     originals = [json.loads(path.read_bytes()) for path in args.original_captures.glob("life-condition-original-*.json")]
-    require(len(originals) == 2 and {row["mechanism"] for row in originals} == set(MECHANISMS), "missing/duplicate original cases")
+    require(len(originals) == 1 and {row["mechanism"] for row in originals} == set(MECHANISMS), "missing/duplicate original cases")
     rows = []
     for scene in contract["mechanisms"]:
         original = next(row for row in originals if row["mechanism"] == scene["id"])
         differences = original_identity(original, args.original_build.read_bytes(), args.original_tool, args.original_agent,
-                                        ORIGINAL, "life-condition-mechanisms-build-v1")
+                                        ORIGINAL, "life-condition-mechanisms-build-v2")
         row = {"mechanism": scene["id"], "original": inspect(original, scene, contract, digest, True),
                "selected_resource_definition_differences": differences, "ports": {}}
         for arm in ("faithful_tlm", "enhanced"):
@@ -232,15 +320,15 @@ def main():
             checked["actual_relevant_input_differences"] = input_differences(original, port)
             row["ports"][arm] = checked
         rows.append(row)
-    result = {"schema": "life-condition-mechanisms-evidence-v1", "collection_checks_passed": True, "hqa_batch": batch,
+    result = {"schema": "life-condition-mechanisms-evidence-v2", "collection_checks_passed": True, "hqa_batch": batch,
               "mechanisms": rows, "contract_sha256": digest, "candidate_sha256": sha(args.candidate_jar.read_bytes()),
               "pilot_sha256": sha(pilot.read_bytes()), "original_build_sha256": sha(args.original_build.read_bytes()),
               "analysis_sha256": sha(Path(__file__).read_bytes()), "calibration_used_as_formal": False,
               "noninferiority_delta": None, "statistical_verdict": "NOT_EVALUATED", "complete14_accepted": False,
               "limits": ["Collection integrity does not make an untriggered placement/handoff a passed behavior.",
                          "Native sound callbacks plus actual block/inventory state bind finite mouths; ambiguous original positions are not credited to both actors.",
-                         "Original occupied flag and sleeping anchors differ from target explicit bed leases; both raw mechanisms remain visible.",
-                         "This new cabinet/bed contract does not close the retained200 F pantry sleep-resume failure or rewrite its different input geometry.",
+                         "Original/native task check-rate state and enhanced scan cadence are different mechanisms; neither is renamed as direct BFS telemetry.",
+                         "This cabinet opportunity contract does not close the retained200 F pantry sleep-resume failure or rewrite its different input geometry.",
                          "No cross-engine full-NBT equality, independent statistical result or release acceptance is claimed."]}
     outcomes = [{"mechanism": row["mechanism"], "profile": "original", "success": row["original"]["business_success_kept_separate"]}
                 for row in rows]

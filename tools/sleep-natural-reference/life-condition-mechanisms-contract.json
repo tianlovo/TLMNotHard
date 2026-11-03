@@ -74,8 +74,8 @@
     "placement": "four walls at x/z boundary from y1 through roof, full roof at height-1; original stone y0 remains",
     "scope": "controlled closed arena prevents unowned gravity blocks and fluid entry; sides and roof are real collision/vision inputs"
   },
-  "schema": "life-condition-mechanisms-contract-v1",
-  "contract": "LIFE_CONDITION_MECHANISMS_V1",
+  "schema": "life-condition-mechanisms-v2",
+  "contract": "LIFE_CONDITION_MECHANISMS_V2",
   "repetitions": 1,
   "framesPerActor": 3000,
   "dayTime": 18000,
@@ -140,43 +140,6 @@
       "initialHunger": 0,
       "scope": "One tagged finite backpack cake, two complete natural roots: no cabinet0..199; native empty cabinet in the pre-existing closed inner shell atSTART200; open its two-high gate atSTART800; wait through2200 further native ticks for real placement/shared consumption. Negative-window input stack must remain completely identical. No clock/RNG reset, direct task tick, actor relocation or invented successful consume.",
       "initialHomeRadius": 12
-    },
-    {
-      "foodPresent": false,
-      "initialSitting": false,
-      "health": 20,
-      "events": [],
-      "homeEnabled": true,
-      "arenaVolume": [
-        25,
-        8,
-        25
-      ],
-      "ownerMode": "creative",
-      "ownerPosition": [
-        9.5,
-        1,
-        7.5
-      ],
-      "task": "idle",
-      "id": "shared_bed_handoff",
-      "family": "B10",
-      "frames": 1200,
-      "initialSchedule": "DAY",
-      "primarySpawn": [
-        11.5,
-        1,
-        12.5
-      ],
-      "secondarySpawn": [
-        13.5,
-        1,
-        12.5
-      ],
-      "backpackCake": 0,
-      "initialHunger": 20,
-      "scope": "Two complete natural roots compete for one native bed. Observe the actual first sleeper without preclaim; after40completed sleeping-window ticks queue normal ALL+sitting for that first actor at the nextSTART; the other remainsDAY/rest and must naturally succeed. Preserve legitimate pending reservations separately from simultaneous sleep; never call a bed action or alter a lease.",
-      "initialHomeRadius": 6
     }
   ],
   "cabinet": {
@@ -264,5 +227,18 @@
     "turbo": 1,
     "sample": "Native END observations and real START input changes only; full root factories, natural RNG and clocks.",
     "limits": "No performance, real-network owner, statistical noninferiority or completeB09/B10/14-class admission."
+  },
+  "opportunityObservation": {
+    "schema": "life-search-opportunity-v1",
+    "phase": [
+      "START_before_native_world_update",
+      "END_after_native_world_update"
+    ],
+    "scope": "Read actual task identity/status/private cadence and raw stored WALK/TARGET views; never call Actor.ensureCurrent, TTL-expiring lookups, task methods, RNG or clock reset. Raw counter deltas are not direct BFS/search observations.",
+    "maidCheckRateMax": 900,
+    "worldFramesAreSearchCounts": false,
+    "bfsCallsInstrumented": false,
+    "searchStartDirectlyObserved": false,
+    "retained201ContractSha256": "f7883e051ffff917c6fab9d3b2edcc1ca9cd1407bdc07e39ea3a9ec094226a3a"
   }
 }

@@ -27,7 +27,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 public final class LifeConditionMechanismPortTests {
 
     static final String RESOURCE = "/tlmnh-life-condition-mechanisms/contract.json";
-    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V1";
+    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V2";
 
     private LifeConditionMechanismPortTests() {}
 
@@ -41,12 +41,10 @@ public final class LifeConditionMechanismPortTests {
         collect(h, true, "cabinet_conditions");
     }
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 1340, batch = "life_condition_bed_f")
     public static void faithfulSharedBedHandoff(GameTestHelper h) {
         collect(h, false, "shared_bed_handoff");
     }
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 1340, batch = "life_condition_bed_n")
     public static void enhancedSharedBedHandoff(GameTestHelper h) {
         collect(h, true, "shared_bed_handoff");
     }
@@ -65,11 +63,14 @@ public final class LifeConditionMechanismPortTests {
         int primaryConsumes, secondaryConsumes, previousConsumes;
         int placementFrame = -1, firstSleep = -1, releaseFrame = -1, firstAwake = -1, successorSleep = -1;
         EntityMaid firstOccupant;
+        final OpportunityReader opportunities = new OpportunityReader();
+        JsonObject primaryOpportunityStart, secondaryOpportunityStart;
+        int opportunityStartFrame = -1;
         ItemStack initialCake;
         boolean releasePending;
 
         Collector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
-            super(h, profile, mechanism, RESOURCE, CONTRACT, "life-condition-port-v1", "life-condition-");
+            super(h, profile, mechanism, RESOURCE, CONTRACT, "life-condition-port-v2", "life-condition-");
             output.add("consumeEvents", consumeEvents);
         }
 
@@ -80,13 +81,15 @@ public final class LifeConditionMechanismPortTests {
             try {
                 output.add(
                     "lifeConditionObserverArtifact",
-                    DevelopmentArtifactIdentity.capture(LifeConditionMechanismPortTests.class, Collector.class));
+                    DevelopmentArtifactIdentity
+                        .capture(LifeConditionMechanismPortTests.class, Collector.class, OpportunityReader.class));
                 output.add(
                     "lifeConditionProductionArtifact",
                     DevelopmentArtifactIdentity.capture(
                         TileEntityMaidBed.class,
                         Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidCakeAction"),
-                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife")));
+                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidBedExitOffsets")));
             } catch (Exception error) {
                 throw new IllegalStateException("Life condition identities unavailable", error);
             }
@@ -204,6 +207,11 @@ public final class LifeConditionMechanismPortTests {
                 firstOccupant.setSchedule(MaidSchedule.ALL);
                 firstOccupant.setSitting(true);
             }
+            if (second != null) {
+                opportunityStartFrame = index;
+                primaryOpportunityStart = opportunities.sample(maid, "START_before_native_world_update");
+                secondaryOpportunityStart = opportunities.sample(second, "START_before_native_world_update");
+            }
         }
 
         @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
@@ -313,6 +321,18 @@ public final class LifeConditionMechanismPortTests {
         @Override
         void afterFrame(int index) {
             super.afterFrame(index);
+            var row = frames.get(index)
+                .getAsJsonObject();
+            var observation = new JsonObject();
+            observation.addProperty("schema", "life-search-opportunity-v1");
+            observation.addProperty("startFrameMatches", opportunityStartFrame == index);
+            if (opportunityStartFrame == index) {
+                observation.add("primaryStart", primaryOpportunityStart);
+                observation.add("secondaryStart", secondaryOpportunityStart);
+            } else observation.addProperty("startAvailability", "UNAVAILABLE_START_PHASE");
+            observation.add("primaryEnd", opportunities.sample(maid, "END_after_native_world_update"));
+            observation.add("secondaryEnd", opportunities.sample(second, "END_after_native_world_update"));
+            row.add("lifeSearchOpportunity", observation);
             if (index + 1 != frameLimit()) return;
             boolean pantry = mechanism.equals("cabinet_conditions");
             output.addProperty("naturalPlacementFrame", placementFrame);
@@ -338,4 +358,111 @@ public final class LifeConditionMechanismPortTests {
                     : "One actual native bed; no duplicate sleepers/leases; normal first-occupant release and natural successor");
         }
     }
+
+    /** Reads counters and already stored views only; no Actor guard or TTL-changing lookup is called. */
+    static final class OpportunityReader {
+
+        final java.util.IdentityHashMap<Object, Integer> identities = new java.util.IdentityHashMap<>();
+        final java.util.Map<String, java.lang.reflect.Field> fields = new java.util.HashMap<>();
+
+        int identity(Object value) {
+            Integer known = identities.get(value);
+            if (known != null) return known;
+            int next = identities.size() + 1;
+            identities.put(value, next);
+            return next;
+        }
+
+        Object read(Object value, Class<?> declaring, String name) {
+            try {
+                String key = declaring.getName() + "#" + name;
+                var field = fields.get(key);
+                if (field == null) {
+                    field = declaring.getDeclaredField(name);
+                    field.setAccessible(true);
+                    fields.put(key, field);
+                }
+                return field.get(value);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException(
+                    "Read-only life task field unavailable: " + declaring.getName() + "#" + name,
+                    failure);
+            }
+        }
+
+        JsonObject sample(EntityMaid actor, String phase) {
+            var result = new JsonObject();
+            result.addProperty("phase", phase);
+            result.addProperty("worldTime", actor.worldObj.getTotalWorldTime());
+            result.addProperty("nativeAge", actor.ticksExisted);
+            result.addProperty("bfsCallObservation", "NOT_INSTRUMENTED");
+            result.addProperty("searchStartObservation", "NOT_DIRECTLY_OBSERVED");
+            var core = actor.getBrainCoordinator();
+            var faithful = core.peekFaithfulBrain();
+            var enhanced = core.peekEnhancedCore();
+            var tasks = new JsonArray();
+            result.add("tasks", tasks);
+            if (faithful == null && enhanced == null) {
+                result.addProperty("availability", "UNAVAILABLE_ROOT_PHASE");
+                return result;
+            }
+            result.addProperty("availability", "AVAILABLE_RAW_VIEW");
+            var view = faithful != null ? faithful.getActor() : enhanced.actor();
+            boolean walk = view.peekWalkTarget() != null, target = view.peekWorkTarget() != null;
+            result.addProperty("walkTargetRawStored", walk);
+            result.addProperty("workTargetRawStored", target);
+            result.addProperty("requiredRawMemoryAbsent", !walk && !target);
+            if (faithful != null) {
+                result.addProperty("rootIdentity", identity(faithful));
+                result.addProperty("checkRateApplicable", true);
+                var activities = faithful.getActivities();
+                String active = read(
+                    activities,
+                    com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState.class,
+                    "active").toString();
+                result.addProperty(
+                    "activityInitialized",
+                    (Boolean) read(
+                        activities,
+                        com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState.class,
+                        "initialized"));
+                for (String field : new String[] { "idleStealMove", "workStealMove" }) {
+                    Object task = read(
+                        faithful,
+                        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain.class,
+                        field);
+                    var row = new JsonObject();
+                    row.addProperty(
+                        "taskClass",
+                        task.getClass()
+                            .getName());
+                    row.addProperty("taskIdentity", identity(task));
+                    row.addProperty("activity", field.equals("idleStealMove") ? "IDLE" : "WORK");
+                    row.addProperty(
+                        "activityActive",
+                        row.get("activity")
+                            .getAsString()
+                            .equals(active));
+                    row.addProperty("behaviorStatus", "NOT_APPLICABLE_COMPONENT_LIFECYCLE");
+                    row.addProperty("requiredRawMemoryAbsent", !walk && !target);
+                    var check = com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidCheckRateTask.class;
+                    row.addProperty("maxCheckRate", (Number) read(task, check, "maxCheckRate"));
+                    row.addProperty("nextCheckTickCount", (Number) read(task, check, "nextCheckTickCount"));
+                    tasks.add(row);
+                }
+            } else {
+                result.addProperty("rootIdentity", identity(enhanced));
+                result.addProperty("checkRateApplicable", false);
+                result.addProperty("counterScope", "NOT_APPLICABLE_MAID_CHECK_RATE; actual enhanced life scan cadence");
+                var life = enhanced.life();
+                result.addProperty("controllerIdentity", identity(life));
+                result.addProperty("scanCount", life.scanCount());
+                var type = com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedLifeController.class;
+                result.addProperty("nextScan", (Number) read(life, type, "nextScan"));
+                result.addProperty("nextSnack", (Number) read(life, type, "nextSnack"));
+            }
+            return result;
+        }
+    }
+
 }

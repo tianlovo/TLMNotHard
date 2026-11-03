@@ -38,6 +38,7 @@ def selected = [
     'com.tianluoqaq.tlmnh.reference.sleep.FollowMechanismGameTests$Session',
     'com.tianluoqaq.tlmnh.reference.sleep.LifeConditionMechanismGameTests',
     'com.tianluoqaq.tlmnh.reference.sleep.LifeConditionMechanismGameTests$Session',
+    'com.tianluoqaq.tlmnh.reference.sleep.LifeConditionMechanismGameTests$OpportunityReader',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepAttributeSnapshot',
     'com.tianluoqaq.tlmnh.reference.sleep.SleepNaturalGameTests',
     'com.tianluoqaq.tlmnh.reference.sleep.TerrainLifeMechanismGameTests',
@@ -86,13 +87,13 @@ gradle.projectsEvaluated {
             def inputs = project.fileTree(tool).matching {
                 include '**/*.java', '*.gradle', '*.json', '*.py', 'resources/**/*.nbt'
             }.files.collect { file -> [file: tool.toPath().relativize(file.toPath()).toString().replace('\\', '/'), sha256: sha(file.bytes)] }.sort { it.file }
-            def value = [schema: 'life-condition-mechanisms-build-v1', upstreamCommit: base.upstreamCommit,
+            def value = [schema: 'life-condition-mechanisms-build-v2', upstreamCommit: base.upstreamCommit,
                 minecraft: '1.20.1', forge: '47.2.0', javaFeature: 17,
                 baseReferenceBuildIdentitySha256: sha(baseFile.bytes), baseReferenceBuildIdentity: base,
                 contractSha256: sha(new File(tool, 'life-condition-mechanisms-contract.json').bytes),
                 definitionAgentSha256: sha(agent.get().archiveFile.get().asFile.bytes),
                 compiledClasses: compiled, toolInputs: inputs,
-                scope: 'Two finite life-condition mechanisms: cabinet absence/obstruction/recovery and natural shared-bed handoff; selected identities and controlled native owners; no statistical or whole-release admission']
+                scope: 'One finite cabinet episode with read-only task opportunity snapshots; prior shared-bed evidence is retained separately; selected identities and controlled native owners; no statistical or whole-release admission']
             identityFile.parentFile.mkdirs()
             identityFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
         }

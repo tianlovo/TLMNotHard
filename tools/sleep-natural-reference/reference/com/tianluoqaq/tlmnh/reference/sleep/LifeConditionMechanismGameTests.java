@@ -28,14 +28,13 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class LifeConditionMechanismGameTests {
     static final String RESOURCE = "/tlmnh-life-condition-mechanisms/contract.json";
-    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V1";
+    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V2";
 
     private LifeConditionMechanismGameTests() {}
 
     @GameTest(template = "cell", timeoutTicks = 3140, batch = "life_condition_pantry")
     public static void cabinetConditions(GameTestHelper h) { collect(h, "cabinet_conditions"); }
 
-    @GameTest(template = "cell", timeoutTicks = 1340, batch = "life_condition_bed")
     public static void sharedBedHandoff(GameTestHelper h) { collect(h, "shared_bed_handoff"); }
 
     static void collect(GameTestHelper h, String mechanism) {
@@ -48,11 +47,14 @@ public final class LifeConditionMechanismGameTests {
         int primaryConsumes, secondaryConsumes, sharedAmbiguousConsumes, previousConsumes;
         int placementFrame = -1, firstSleep = -1, releaseFrame = -1, firstAwake = -1, successorSleep = -1;
         EntityMaid firstOccupant;
+        final OpportunityReader opportunities = new OpportunityReader();
+        JsonObject primaryOpportunityStart, secondaryOpportunityStart;
+        int opportunityStartFrame = -1;
         ItemStack initialCake;
         boolean releasePending, observerRegistered;
 
         Session(GameTestHelper h, String mechanism) {
-            super(h, mechanism, RESOURCE, CONTRACT, "life-condition-original-v1", "life-condition-original-");
+            super(h, mechanism, RESOURCE, CONTRACT, "life-condition-original-v2", "life-condition-original-");
             output.add("consumeEvents", consumeEvents);
             output.add("unmatchedConsumeEvents", unmatchedConsumeEvents);
         }
@@ -156,6 +158,11 @@ public final class LifeConditionMechanismGameTests {
                 event.addProperty("triggerCompletedFrame", index - 1);
                 firstOccupant.setSchedule(MaidSchedule.ALL);
                 firstOccupant.setInSittingPose(true);
+            }
+            if (second != null) {
+                opportunityStartFrame = index;
+                primaryOpportunityStart = opportunities.sample(maid, "START_before_native_world_update");
+                secondaryOpportunityStart = opportunities.sample(second, "START_before_native_world_update");
             }
         }
 
@@ -272,6 +279,17 @@ public final class LifeConditionMechanismGameTests {
 
         @Override void afterFrame(int index) {
             super.afterFrame(index);
+            var row = frames.get(index).getAsJsonObject();
+            var observation = new JsonObject();
+            observation.addProperty("schema", "life-search-opportunity-v1");
+            observation.addProperty("startFrameMatches", opportunityStartFrame == index);
+            if (opportunityStartFrame == index) {
+                observation.add("primaryStart", primaryOpportunityStart);
+                observation.add("secondaryStart", secondaryOpportunityStart);
+            } else observation.addProperty("startAvailability", "UNAVAILABLE_START_PHASE");
+            observation.add("primaryEnd", opportunities.sample(maid, "END_after_native_world_update"));
+            observation.add("secondaryEnd", opportunities.sample(second, "END_after_native_world_update"));
+            row.add("lifeSearchOpportunity", observation);
             if (index + 1 != frameLimit()) return;
             boolean pantry = mechanism.equals("cabinet_conditions");
             output.addProperty("naturalPlacementFrame", placementFrame);
@@ -295,4 +313,83 @@ public final class LifeConditionMechanismGameTests {
             super.close();
         }
     }
+    /** Reads task fields and raw memory storage; never invokes Behavior.tryStart or memory expiry accessors. */
+    static final class OpportunityReader {
+        final java.util.IdentityHashMap<Object, Integer> identities = new java.util.IdentityHashMap<>();
+        final java.util.Map<String, java.lang.reflect.Field> fields = new java.util.HashMap<>();
+
+        int identity(Object value) {
+            Integer known = identities.get(value);
+            if (known != null) return known;
+            int next = identities.size() + 1;
+            identities.put(value, next);
+            return next;
+        }
+
+        Object read(Object value, Class<?> declaring, String name) {
+            try {
+                String key = declaring.getName() + "#" + name;
+                var field = fields.get(key);
+                if (field == null) {
+                    field = declaring.getDeclaredField(name);
+                    field.setAccessible(true);
+                    fields.put(key, field);
+                }
+                return field.get(value);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Read-only life task field unavailable: " + declaring.getName() + "#" + name, failure);
+            }
+        }
+
+        boolean stored(java.util.Map<?, ?> memories, Object key) {
+            Object value = memories.get(key);
+            return value instanceof java.util.Optional<?> optional && optional.isPresent();
+        }
+
+        JsonObject sample(EntityMaid actor, String phase) {
+            var result = new JsonObject();
+            result.addProperty("phase", phase);
+            result.addProperty("worldTime", actor.level.getGameTime());
+            result.addProperty("nativeAge", actor.tickCount);
+            result.addProperty("availability", "AVAILABLE_RAW_VIEW");
+            result.addProperty("checkRateApplicable", true);
+            result.addProperty("bfsCallObservation", "NOT_INSTRUMENTED");
+            result.addProperty("searchStartObservation", "NOT_DIRECTLY_OBSERVED");
+            var brain = actor.getBrain();
+            result.addProperty("rootIdentity", identity(brain));
+            var memories = (java.util.Map<?, ?>) read(brain, net.minecraft.world.entity.ai.Brain.class, "memories");
+            var walkType = net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET;
+            var targetType = com.github.tartaricacid.touhoulittlemaid.init.InitEntities.TARGET_POS.get();
+            boolean walk = stored(memories, walkType), target = stored(memories, targetType);
+            result.addProperty("walkMemoryRegistered", memories.containsKey(walkType));
+            result.addProperty("targetMemoryRegistered", memories.containsKey(targetType));
+            result.addProperty("walkTargetRawStored", walk);
+            result.addProperty("workTargetRawStored", target);
+            boolean absent = memories.containsKey(walkType) && memories.containsKey(targetType) && !walk && !target;
+            result.addProperty("requiredRawMemoryAbsent", absent);
+            var tasks = new JsonArray();
+            result.add("tasks", tasks);
+            var table = (java.util.Map<?, ?>) read(brain, net.minecraft.world.entity.ai.Brain.class, "availableBehaviorsByPriority");
+            for (var priority : table.entrySet()) {
+                var activities = (java.util.Map<?, ?>) priority.getValue();
+                for (var activity : activities.entrySet()) for (Object value : (java.util.Set<?>) activity.getValue()) {
+                    if (!(value instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask task)) continue;
+                    var row = new JsonObject();
+                    row.addProperty("taskClass", task.getClass().getName());
+                    row.addProperty("taskIdentity", identity(task));
+                    row.addProperty("activity", activity.getKey().toString());
+                    row.addProperty("activityActive", brain.getActiveActivities().contains(activity.getKey()));
+                    row.addProperty("priority", (Number) priority.getKey());
+                    row.addProperty("behaviorStatus", task.getStatus().name());
+                    row.addProperty("requiredRawMemoryAbsent", absent);
+                    var check = com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidCheckRateTask.class;
+                    row.addProperty("maxCheckRate", (Number) read(task, check, "maxCheckRate"));
+                    row.addProperty("nextCheckTickCount", (Number) read(task, check, "nextCheckTickCount"));
+                    tasks.add(row);
+                }
+            }
+            return result;
+        }
+    }
+
 }
