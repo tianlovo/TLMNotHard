@@ -49,6 +49,10 @@ gradle.projectsEvaluated {
             into 'tlmnh-remaining-behavior-mechanisms'
             rename { 'contract.json' }
         }
+        from(project.file('tools/sleep-natural-reference/behavior-convergence-contract.json')) {
+            into 'tlmnh-behavior-convergence'
+            rename { 'contract.json' }
+        }
         from(project.file('tools/follow-natural-reference')) {
             include 'contract.json', 'flat-contract-v1.json'
             into 'tlmnh-follow-contracts'

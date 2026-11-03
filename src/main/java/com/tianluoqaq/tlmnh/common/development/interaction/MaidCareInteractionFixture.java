@@ -878,8 +878,8 @@ public final class MaidCareInteractionFixture {
             validateSnapshot();
             require(
                 data.getBoolean("AwaitLogin") && !data.getBoolean("Rejoined")
-                    && data.getString("Phase")
-                        .equals("relogin-armed")
+                    && (data.getString("Phase")
+                        .equals("relogin-armed") || MaidModelLifecycleActions.allowsRelogin(this))
                     && next != player
                     && online(next)
                     && next.getUniqueID()
@@ -907,7 +907,26 @@ public final class MaidCareInteractionFixture {
                         data.getDouble("ExpectedY"),
                         data.getDouble("ExpectedZ")) < .01
                     && inventory(next).equals(data.getTagList("ExpectedInventory", 10)),
-                "Unknown relogin snapshot retained");
+                "Unknown relogin snapshot retained phase=" + data.getString("Phase")
+                    + " mode="
+                    + next.theItemInWorldManager.getGameType()
+                        .getID()
+                    + " actualPosition="
+                    + next.posX
+                    + ","
+                    + next.posY
+                    + ","
+                    + next.posZ
+                    + " expectedPosition="
+                    + data.getDouble("ExpectedX")
+                    + ","
+                    + data.getDouble("ExpectedY")
+                    + ","
+                    + data.getDouble("ExpectedZ")
+                    + " snapshotMatches="
+                    + next.getEntityData()
+                        .getCompoundTag(TAG)
+                        .equals(data));
             var loaded = loadedActor(next.worldObj);
             player = next;
             data = next.getEntityData()
@@ -945,6 +964,7 @@ public final class MaidCareInteractionFixture {
             validate();
             inventoryOwned();
             protect();
+            if (MaidModelLifecycleActions.allowsRelogin(this)) data.setBoolean("AwaitLogin", false);
             data.setBoolean("Rejoined", true);
             pendingActor = false;
             pendingActorWorld = null;
@@ -958,8 +978,8 @@ public final class MaidCareInteractionFixture {
             validatePlayer();
             require(
                 data.getBoolean("AwaitLogin") && !data.getBoolean("Rejoined")
-                    && data.getString("Phase")
-                        .equals("relogin-armed")
+                    && (data.getString("Phase")
+                        .equals("relogin-armed") || MaidModelLifecycleActions.allowsRelogin(this))
                     && player.worldObj == pendingActorWorld
                     && player.theItemInWorldManager.getGameType()
                         .getID() == 0

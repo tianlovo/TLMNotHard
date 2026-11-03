@@ -44,7 +44,6 @@ public final class MaidWorldShaderProbe {
                     && player.isEntityAlive()
                     && player.capabilities.disableDamage
                     && player.capabilities.isFlying
-                    && player.noClip
                     && mc.currentScreen == null,
                 "Protected native lab player without a screen required");
         }

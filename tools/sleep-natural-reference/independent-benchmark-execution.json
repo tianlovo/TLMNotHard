@@ -1,0 +1,167 @@
+{
+  "schema": "finite-independent-benchmark-execution-v1",
+  "version": 1,
+  "status": "METRICS_AND_EXECUTION_PLAN_FROZEN_NOT_EXECUTED",
+  "noninferiorityDelta": null,
+  "admission": "Each effective mechanism can begin independent formal blocks after its own inputs/metrics/implementation/analysis artifacts are frozen. Do not wait for all14; do not admit or recycle any calibration sample.",
+  "block": "One fresh original JVM/world and one fresh port JVM/world per family/block. O/F/N/ablation actors inside a JVM are paired or clustered observations, not independent replicates. World seeds and actual order recorded; matching seed is not shared RNG.",
+  "finiteSchedule": {
+    "firstScheduledIndependentBlocksPerReadyFamily": 3,
+    "suggestedExtensionTotal": 30,
+    "extension": "Only extend the predeclared same frozen contract and keep every initial block; no result-driven production tuning and no claim30 guarantees noninferiority. Any input/metric/code change starts a new version and its own fresh formal blocks.",
+    "order": [
+      "terrain T001..T003",
+      "combat C001..C003",
+      "sleep S001..S003"
+    ],
+    "parallelism": "Original and port may run on separate owned instances; all CPU/MSPT/network/persistence/long-duration work has exclusive turbo1 windows. No performance conclusion from behavior turbo."
+  },
+  "families": [
+    {
+      "id": "T",
+      "covers": [
+        "B01",
+        "B03"
+      ],
+      "contract": "terrain-life-mechanisms-contract.json",
+      "contractSha256": "0b87cc2bf2ca02cf9f5ee03b47e668cd11694a3272f86982e9466c158a1ede5d",
+      "referenceBuildCommand": "../scripts/build_follow_mechanisms_reference.ps1 -TerrainLifeMechanisms -Tasks prepareTerrainLifeMechanismsReferenceIdentity,runGameTestServer",
+      "portSelector": "tlmnhqapilot:TerrainLifeMechanismPortTests",
+      "referenceCases": 5,
+      "portCases": 10,
+      "primaryMechanisms": [
+        "terrain_circuit",
+        "fire_cliff"
+      ],
+      "primaryMetrics": {
+        "terrain_circuit": [
+          "arrival at declared final waypoint within480ticks",
+          "arrival latency, sampled path length and large displacements kept separately"
+        ],
+        "fire_cliff": [
+          "survival and supported-route arrival within480ticks",
+          "actual received damage and burning frames, forbidden falls/violations"
+        ]
+      },
+      "inputMapping": [
+        "exact declared block blueprint including slab bottom state and real glass shell",
+        "native position, size, step height, relevant five initial attributes, speed, command/home/schedule, damage enabled and owner flags",
+        "large displacement is not attributed to teleport API without call evidence"
+      ],
+      "keptAdditionalOutcomes": [
+        "native_creeper actual native-size/random modifiers/deaths",
+        "pantry_near and pantry_approach actual untriggered placement/consumption outcomes"
+      ],
+      "scopeExclusions": [
+        "Creeper identical-threat comparison",
+        "water/oxygen claims from dry fire-cliff mechanism",
+        "original A* counts not captured remain unknown"
+      ]
+    },
+    {
+      "id": "C",
+      "covers": [
+        "B05",
+        "B06",
+        "B07"
+      ],
+      "contract": "combat-mechanisms-contract.json",
+      "contractSha256": "bd657e2a2230f92323ffb1270199b25ccc57e270589da5967501903625deb4f5",
+      "referenceBuildCommand": "../scripts/build_follow_mechanisms_reference.ps1 -CombatMechanisms -Tasks prepareCombatMechanismsReferenceIdentity,runGameTestServer",
+      "portSelector": "tlmnhqapilot:CombatMechanismPortTests",
+      "referenceCases": 4,
+      "portCases": 13,
+      "primaryMechanisms": [
+        "melee",
+        "motion",
+        "safety"
+      ],
+      "primaryMetrics": {
+        "melee": [
+          "positive noncanceled friendly or outside-boundary damage must be zero",
+          "actual native owner-defense/competition opportunities and legal target transitions; untriggered is retained"
+        ],
+        "motion": [
+          "confirmed target hit per paid joined projectile",
+          "native release attempts (shots+rejections), rejection/no-fire/draw time, finite ammo/wear and per-shot error"
+        ],
+        "safety": [
+          "positive friendly harm and invalid releases must be zero",
+          "actual obstruction input and restoration-to-natural-shot latency; never ignore post-launch friend crossing"
+        ]
+      },
+      "inputMapping": [
+        "O/F SOURCE_ORIGINAL compared in their source trajectory group; F-R/native N static/last-sample/full algorithm groups keep identical native medium/provider gravity and drag",
+        "target phase actual position/velocity/size/health1000, effects/attributes/modifiers, target/weapon registration and finite inventory captured",
+        "native iron sword actual7/8 retained; cross-engine melee damage/kill-speed benefit excluded",
+        "ordinary neutral target configured hostile is not hostile mob AI; initialized native Zombie stage recorded separately with random attributes intact"
+      ],
+      "scopeExclusions": [
+        "unknown O refusal telemetry never fabricated",
+        "native Zombie/Champion unequal-threat kill-speed attribution",
+        "B08 actual chunk unload requires its own completed mechanism"
+      ]
+    },
+    {
+      "id": "S",
+      "covers": [
+        "B10"
+      ],
+      "contract": "paired-contract.json",
+      "contractSha256": "f7edf0dc32e2b8746eebefb91a8d50ac4000b9f93adfe7492101f503d2847783",
+      "referenceBuildCommand": "../scripts/build_sleep_natural_reference.ps1 -Paired -Tasks prepareSleepNaturalReferenceIdentity,runGameTestServer",
+      "portSelector": "tlmnhqapilot:SleepMechanismPortTests",
+      "referenceCases": 5,
+      "portCases": 10,
+      "primaryMechanisms": [
+        "normal",
+        "occupied_release",
+        "unreachable",
+        "bed_removed",
+        "hurt_sleeping"
+      ],
+      "primaryMetrics": {
+        "all": [
+          "actual native sleep/wake or expected bed rejection within frozen240tick horizon",
+          "occupancy conflict/duplicate owned beds zero; immediate accepted hurt wake and specified activity recovery where actually captured"
+        ]
+      },
+      "inputMapping": [
+        "declared head/foot/facing/occupancy blueprint and exact scenario event schedule",
+        "same-side complete binary/tag/list/float input binding and source-backed relevant five attributes; mapped commands/home/owner/pose held",
+        "occupied/unreachable rejection is expected scope, not counted as an arbitrary failure to sleep"
+      ],
+      "scopeExclusions": [
+        "shared/multi-maid same-bed claim",
+        "all cross-engine NBT byte identity",
+        "B11 full competing-pantry activities inferred from standalone sleep"
+      ]
+    }
+  ],
+  "requiredProvenance": [
+    "unique block id, fresh JVM/run id, world id/seed, order, native tick and actual turbo",
+    "frozen main/pilot/reference selected compiled SHA and resource/definition identities, full contract/tool/agent/analysis SHA",
+    "observed/JUnit/process status plus every raw capture and exact same-side typed input binding",
+    "whole-batch and per-mechanism result scopes separately; every original failure, setup/measurement fault, death, timeout and nontrigger retained"
+  ],
+  "denominators": "Report attempted blocks including setup/runtime/cleanup faults, and behavior-valid observation counts separately. Do not silently discard invalid observations or equate a collected episode with successful behavior. Timeouts/deaths are censored outcomes with the fixed horizon retained.",
+  "analysis": {
+    "binary": "Report numerator/denominator and descriptive Wilson intervals for actual comparable binary outcomes. Safety harm/duplication/permission violations have no tolerated count.",
+    "paired": "Keep each JVM-block paired difference; block bootstrap or an explicitly documented paired interval clusters all actors/frames by independent JVM block. Do not bootstrap individual ticks as independent trials.",
+    "latency": "Report finite observed times plus censored/untriggered counts, not success-only median without denominator.",
+    "noninferiority": "NOT_EVALUATED without approved margin; delta remains null. Intervals/insufficient evidence are useful outputs and do not require the user to accept regression."
+  },
+  "acceleration": "The current manifest does not authorize turbo4 for every family automatically. Runner records exact runner turbo and prior native-tick calibration. New Malisis redstone199 calibration remains turbo1; CPU/network/persistence/long-duration always1.",
+  "new199CalibrationExcluded": {
+    "contract": "behavior-convergence-contract.json",
+    "contractSha256": "5e80bb90cfd7f947ad7f0cc7dfd783e226b5b3edf64c3eca5aa7e64af96746b6",
+    "mechanisms": [
+      "redstone_door_recovery",
+      "source_exit_arrow",
+      "pantry_sleep_command"
+    ],
+    "eligibility": "Only future fresh blocks after actual calibration and frozen input effects; old198/V1/V2 and new199 calibration are never formal samples.",
+    "earlierContractSha256": "08e3d00db61f4274ad0be2c042fa93a717d398c96c75f2208a109d0241c31a6e"
+  },
+  "whole14AndReleaseAccepted": false
+}

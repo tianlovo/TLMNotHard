@@ -292,11 +292,15 @@ public final class TerrainLifeMechanismGameTests {
         }
     }
 
-    public static final class PantrySession extends ActivityCompetitionGameTests.Session {
+    public static class PantrySession extends ActivityCompetitionGameTests.Session {
         int consumed, externalMouths, lastBites, epoch, placedAt = -1;
 
         PantrySession(GameTestHelper h, String mechanism) {
-            super(h, mechanism, RESOURCE, CONTRACT, "terrain-life-original-v1", "terrain-life-original-");
+            this(h, mechanism, RESOURCE, CONTRACT, "terrain-life-original-v1", "terrain-life-original-");
+        }
+
+        PantrySession(GameTestHelper h, String mechanism, String resource, String expectedContract, String schema, String prefix) {
+            super(h, mechanism, resource, expectedContract, schema, prefix);
         }
 
         @Override String identityProperty() { return "tlmnh.terrainLifeMechanisms.buildIdentity"; }

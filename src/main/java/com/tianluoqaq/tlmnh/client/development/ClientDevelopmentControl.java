@@ -493,6 +493,7 @@ public final class ClientDevelopmentControl {
         } catch (IOException | ReflectiveOperationException | RuntimeException error) {
             response.addProperty("status", "failed");
             response.addProperty("error", error.toString());
+            TLMNotHard.LOG.warn("TLMNH_CLIENT_CONTROL_FAILED request=" + name, error);
         }
         Files.move(path, path.resolveSibling(name + ".done"), StandardCopyOption.REPLACE_EXISTING);
         writeResponse(name, response);

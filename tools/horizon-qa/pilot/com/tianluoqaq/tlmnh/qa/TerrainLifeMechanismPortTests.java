@@ -451,12 +451,17 @@ public final class TerrainLifeMechanismPortTests {
         }
     }
 
-    public static final class PantryCollector extends ActivityCompetitionPortTests.Collector {
+    public static class PantryCollector extends ActivityCompetitionPortTests.Collector {
 
         int consumed, externalMouths, lastBites, epoch, placedAt = -1;
 
         PantryCollector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
-            super(h, profile, mechanism, RESOURCE, CONTRACT, "terrain-life-port-v1", "terrain-life-");
+            this(h, profile, mechanism, RESOURCE, CONTRACT, "terrain-life-port-v1", "terrain-life-");
+        }
+
+        PantryCollector(GameTestHelper h, MaidBrainProfile profile, String mechanism, String resource,
+            String expectedContract, String schema, String prefix) {
+            super(h, profile, mechanism, resource, expectedContract, schema, prefix);
         }
 
         @Override

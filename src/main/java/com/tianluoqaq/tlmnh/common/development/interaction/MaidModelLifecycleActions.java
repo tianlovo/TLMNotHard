@@ -603,6 +603,18 @@ final class MaidModelLifecycleActions {
             .equals("restart");
     }
 
+    static boolean allowsRelogin(Session session) {
+        if (!session.data.hasKey(KEY, 10)) return false;
+        var state = state(session);
+        return state.getString("Stage")
+            .equals("revived") && state.hasKey("Long", 10)
+            && state.getCompoundTag("Long")
+                .getString("Stage")
+                .equals("running")
+            && longOwner == session
+            && longProbe != null;
+    }
+
     static void resumed(Session session) {
         require(
             restart(session) && session.validNonce(session.maid)

@@ -44,15 +44,33 @@ public final class LwjglContainerMouseInput {
         int window = gui.inventorySlots.windowId;
         int oldX = Mouse.getX(), oldY = Mouse.getY();
         boolean released = true, inputStarted = false;
+        var diagnostics = new JsonObject();
+        diagnostics.addProperty("window", window);
+        diagnostics.addProperty("slot", slot.slotNumber);
+        RuntimeException inputFailure = null;
         MinecraftForge.EVENT_BUS.register(trace);
         try {
+            diagnostics.addProperty("phase", "preflight");
+            boolean grabbed = Mouse.isGrabbed();
+            int keyboardEvents = Keyboard.getNumKeyboardEvents();
+            diagnostics.addProperty("mouseGrabbed", grabbed);
+            diagnostics.addProperty("touchscreen", mc.gameSettings.touchscreen);
+            diagnostics.addProperty("keyboardEvents", keyboardEvents);
+            // This reviewed backend retains its current event. Keyboard.next advances only when size > 1.
+            diagnostics.addProperty("pendingKeyboardEvents", keyboardEvents - 1);
             require(
-                !Mouse.isGrabbed() && !mc.gameSettings.touchscreen && Keyboard.getNumKeyboardEvents() == 0,
+                !grabbed && !mc.gameSettings.touchscreen && keyboardEvents == 1,
                 "Unqueued ordinary GUI input required");
+            diagnostics.addProperty("phase", "held-keys");
             for (int key = 1; key < 256; key++) require(!Keyboard.isKeyDown(key), "Foreign held key retained");
+            diagnostics.addProperty("phase", "held-mouse-buttons");
             for (int mouse = 0; mouse < Mouse.getButtonCount(); mouse++)
                 require(!Mouse.isButtonDown(mouse), "Foreign held mouse button retained");
-            require(api.pending() == 0, "Foreign native mouse events retained; wait for the normal input loop");
+            diagnostics.addProperty("phase", "mouse-queue");
+            int pendingEvents = api.pending();
+            diagnostics.addProperty("pendingEvents", pendingEvents);
+            require(pendingEvents == 0, "Foreign native mouse events retained; wait for the normal input loop");
+            diagnostics.addProperty("phase", "slot-coordinates");
             int left = integer(gui, "guiLeft", "field_147003_i"), top = integer(gui, "guiTop", "field_147009_r");
             int x = left + slot.xDisplayPosition + 8, y = top + slot.yDisplayPosition + 8;
             require(x >= 0 && y >= 0 && x < gui.width && y < gui.height, "Actual native slot is outside the screen");
@@ -60,17 +78,32 @@ public final class LwjglContainerMouseInput {
             int pixelX = (int) ((x + .5) * mc.displayWidth / gui.width);
             int pixelTop = (int) ((y + .5) * mc.displayHeight / gui.height);
             inputStarted = true;
+            diagnostics.addProperty("phase", "enqueue-move");
             api.move(pixelX, mc.displayHeight - pixelTop);
+            diagnostics.addProperty("phase", "enqueue-press");
             api.button(button, true);
             released = false;
+            diagnostics.addProperty("phase", "enqueue-release");
             api.button(button, false);
             released = true;
             // The transformed native loop dispatches ModularUI Pre -> original mouse handler -> Post.
             // It includes normal mod shortcut arbitration and native press/release handling.
+            diagnostics.addProperty("phase", "native-dispatch");
             gui.handleInput();
+            diagnostics.addProperty("phase", "native-event-trace");
+            diagnostics.addProperty("preEvents", trace.pre);
+            diagnostics.addProperty("postEvents", trace.post);
+            diagnostics.addProperty("canceledEvents", trace.canceled);
+            diagnostics.addProperty("traceFailure", trace.failure);
+            int remainingEvents = api.pending();
+            diagnostics.addProperty("remainingEvents", remainingEvents);
             require(
-                api.pending() == 0 && trace.failure == null && trace.pre >= 3 && trace.post >= 3 && trace.canceled == 0,
+                remainingEvents == 0 && trace.failure == null
+                    && trace.pre >= 3
+                    && trace.post >= 3
+                    && trace.canceled == 0,
                 "Actual complete native GUI mouse event chain was not observed");
+            diagnostics.addProperty("phase", "window-postcondition");
             require(
                 mc.currentScreen == gui && mc.thePlayer.openContainer == gui.inventorySlots
                     && gui.inventorySlots.windowId == window
@@ -90,12 +123,9 @@ public final class LwjglContainerMouseInput {
             result.addProperty("serverAcknowledged", false);
             result.add("probeArtifact", DevelopmentArtifactIdentity.capture(LwjglContainerMouseInput.class));
             return result;
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException(
-                "Reviewed native container mouse API failed; no alternate input issued",
-                failure);
         } catch (Exception failure) {
-            throw new IllegalStateException("Native container mouse input failed; actual inventory retained", failure);
+            inputFailure = new IllegalStateException("Native container mouse input failed " + diagnostics, failure);
+            throw inputFailure;
         } finally {
             try {
                 if (!released) api.button(button, false);
@@ -106,6 +136,9 @@ public final class LwjglContainerMouseInput {
                     api.move(oldX, oldY);
                     gui.handleInput();
                 }
+            } catch (RuntimeException cleanupFailure) {
+                if (inputFailure == null) throw cleanupFailure;
+                inputFailure.addSuppressed(cleanupFailure);
             } finally {
                 MinecraftForge.EVENT_BUS.unregister(trace);
             }

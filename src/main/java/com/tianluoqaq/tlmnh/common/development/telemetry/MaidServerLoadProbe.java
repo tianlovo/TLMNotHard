@@ -3,12 +3,15 @@ package com.tianluoqaq.tlmnh.common.development.telemetry;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.WorldEvent;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -32,9 +35,11 @@ public final class MaidServerLoadProbe implements AutoCloseable {
     private final List<Window> windows = new ArrayList<>();
     private final JsonObject metadata = new JsonObject();
     private final boolean enabledCpu;
+    private final AllocationClock allocation;
     private Window window;
     private int startCounter, totalSamples, phaseCounter;
     private long startCpu;
+    private long observedCpuGrid;
     private String fault;
     private boolean armed, closed, initialEndMayBeUnpaired;
 
@@ -59,7 +64,7 @@ public final class MaidServerLoadProbe implements AutoCloseable {
             cpu.isCurrentThreadCpuTimeSupported(),
             "Server thread CPU time is unsupported; wall time is not a substitute");
         enabledCpu = !cpu.isThreadCpuTimeEnabled();
-        metadata.addProperty("schema", "server-load-native-v1");
+        metadata.addProperty("schema", "server-load-native-v2");
         metadata.addProperty("run", run);
         metadata.addProperty("label", label);
         metadata.addProperty("dimension", world.provider.dimensionId);
@@ -77,15 +82,29 @@ public final class MaidServerLoadProbe implements AutoCloseable {
             "interpretation",
             "Whole-pack capacity observations; no cross-version AI superiority or independent tick replications");
         metadata.addProperty("heapScope", "Whole JVM heap including the bounded passive recorder; no forced GC");
+        metadata.addProperty(
+            "continuousCpuScope",
+            "Current server thread across the complete phase, including controlled owner/observer work between FML markers; excludes async workers");
+        metadata.addProperty(
+            "cpuClockCaveat",
+            "Nanoseconds are units, not guaranteed resolution. Observed delta grid and zero samples must not be interpreted as zero CPU or fine-grained profile rankings");
+        metadata.addProperty(
+            "saveCostScope",
+            "Native counter%900 scheduled-save tick cost and actual WorldEvent.Save counts; asynchronous I/O may continue beyond those ticks");
+        metadata.addProperty(
+            "allocationScope",
+            "Optional current-thread allocated bytes across the complete phase, including recorder/observer allocations; unsupported remains -1");
         metadata.add("productionArtifact", DevelopmentArtifactIdentity.capture(MaidServerLoadProbe.class));
         if (enabledCpu) cpu.setThreadCpuTimeEnabled(true);
         if (cpu.getCurrentThreadCpuTime() < 0) {
             if (enabledCpu) cpu.setThreadCpuTimeEnabled(false);
             throw new IllegalStateException("Server thread CPU clock unavailable");
         }
+        allocation = new AllocationClock();
         FMLCommonHandler.instance()
             .bus()
             .register(this);
+        MinecraftForge.EVENT_BUS.register(this);
         active = this;
     }
 
@@ -168,8 +187,21 @@ public final class MaidServerLoadProbe implements AutoCloseable {
         }
         window.cpuNanos.add(endCpu - startCpu);
         window.nativeNanos.add(nativeTick);
+        window.serverCounters.add((long) server.getTickCounter());
+        long delta = endCpu - startCpu;
+        if (delta > 0) observedCpuGrid = gcd(observedCpuGrid, delta);
         totalSamples++;
         if ((window.ticks % 20) == 0) window.peakHeap = Math.max(window.peakHeap, heapUsed());
+    }
+
+    @SubscribeEvent
+    public void saving(WorldEvent.Save event) {
+        if (closed || window == null || event.world != world) return;
+        if (Thread.currentThread() != thread) {
+            fail("Native WorldSave observation moved off its server thread");
+            return;
+        }
+        window.worldSaveEvents++;
     }
 
     public JsonObject snapshot() {
@@ -180,6 +212,10 @@ public final class MaidServerLoadProbe implements AutoCloseable {
         result.addProperty("valid", fault == null);
         if (fault != null) result.addProperty("fault", fault);
         result.addProperty("totalSampleTicks", totalSamples);
+        result.addProperty("observedCpuDeltaGridNanos", observedCpuGrid);
+        result.addProperty("cpuDeltaGridIsHardwareResolutionCalibration", false);
+        result.addProperty("allocationSupported", allocation.supported());
+        if (allocation.failure != null) result.addProperty("allocationUnavailableReason", allocation.failure);
         var rows = new JsonArray();
         for (var value : windows) rows.add(value.json(value == window && !closed));
         result.add("windows", rows);
@@ -195,6 +231,8 @@ public final class MaidServerLoadProbe implements AutoCloseable {
         FMLCommonHandler.instance()
             .bus()
             .unregister(this);
+        MinecraftForge.EVENT_BUS.unregister(this);
+        allocation.close();
         if (active == this) active = null;
         if (enabledCpu) cpu.setThreadCpuTimeEnabled(false);
     }
@@ -233,11 +271,14 @@ public final class MaidServerLoadProbe implements AutoCloseable {
         final int actors;
         final boolean sampling;
         final long startedAt = System.nanoTime(), startWorldTick = world.getTotalWorldTime(), heapBefore = heapUsed();
+        final long cpuBefore = cpu.getCurrentThreadCpuTime(), allocatedBefore = allocation.read();
         final long[] gcBefore = gcCounts(false), gcTimeBefore = gcCounts(true);
-        final List<Long> cpuNanos = new ArrayList<>(), nativeNanos = new ArrayList<>();
+        final List<Long> cpuNanos = new ArrayList<>(), nativeNanos = new ArrayList<>(),
+            serverCounters = new ArrayList<>();
         long endedAt, heapAfter, peakHeap = heapBefore, endWorldTick;
+        long cpuAfter, allocatedAfter;
         long[] gcAfter, gcTimeAfter;
-        int ticks, skippedPartialEnds;
+        int ticks, skippedPartialEnds, worldSaveEvents;
 
         Window(String label, int actors, boolean sampling) {
             this.label = label;
@@ -248,6 +289,8 @@ public final class MaidServerLoadProbe implements AutoCloseable {
         void finish() {
             if (endedAt != 0) return;
             endedAt = System.nanoTime();
+            cpuAfter = cpu.getCurrentThreadCpuTime();
+            allocatedAfter = allocation.read();
             heapAfter = heapUsed();
             peakHeap = Math.max(peakHeap, heapAfter);
             endWorldTick = world.getTotalWorldTime();
@@ -266,6 +309,20 @@ public final class MaidServerLoadProbe implements AutoCloseable {
             out.addProperty("startWorldTick", startWorldTick);
             out.addProperty("endWorldTick", ongoing ? world.getTotalWorldTime() : endWorldTick);
             out.addProperty("wallNanos", end - startedAt);
+            long actualCpuAfter = ongoing ? cpu.getCurrentThreadCpuTime() : cpuAfter;
+            long actualAllocationAfter = ongoing ? allocation.read() : allocatedAfter;
+            out.addProperty("continuousThreadCpuBeforeNanos", cpuBefore);
+            out.addProperty("continuousThreadCpuAfterNanos", actualCpuAfter);
+            out.addProperty(
+                "continuousThreadCpuDeltaNanos",
+                cpuBefore >= 0 && actualCpuAfter >= cpuBefore ? actualCpuAfter - cpuBefore : -1);
+            out.addProperty("allocatedBytesBefore", allocatedBefore);
+            out.addProperty("allocatedBytesAfter", actualAllocationAfter);
+            out.addProperty(
+                "allocatedBytesDelta",
+                allocatedBefore >= 0 && actualAllocationAfter >= allocatedBefore
+                    ? actualAllocationAfter - allocatedBefore
+                    : -1);
             out.addProperty("observedTps", ticks == 0 ? 0 : ticks * 1e9 / (end - startedAt));
             out.addProperty("heapBefore", heapBefore);
             out.addProperty("heapAfter", ongoing ? heapUsed() : heapAfter);
@@ -282,8 +339,16 @@ public final class MaidServerLoadProbe implements AutoCloseable {
                     .getMax());
             out.add("serverCpuNanos", numbers(cpuNanos));
             out.add("nativeTickNanos", numbers(nativeNanos));
+            out.add("nativeServerTickCounters", numbers(serverCounters));
             out.add("cpuSummary", statistics(cpuNanos));
             out.add("nativeMsptSummary", statistics(nativeNanos));
+            out.addProperty("actualWorldSaveEvents", worldSaveEvents);
+            var saveTicks = new ArrayList<Long>();
+            var regularTicks = new ArrayList<Long>();
+            for (int i = 0; i < serverCounters.size(); i++)
+                (serverCounters.get(i) % 900 == 0 ? saveTicks : regularTicks).add(nativeNanos.get(i));
+            out.add("scheduledSaveTickNativeMspt", statistics(saveTicks));
+            out.add("otherTickNativeMspt", statistics(regularTicks));
             var gc = new JsonArray();
             long[] count = ongoing ? gcCounts(false) : gcAfter, time = ongoing ? gcCounts(true) : gcTimeAfter;
             for (int i = 0; i < collectors.size(); i++) {
@@ -301,6 +366,71 @@ public final class MaidServerLoadProbe implements AutoCloseable {
             out.add("gc", gc);
             return out;
         }
+    }
+
+    private final class AllocationClock {
+
+        Object bean;
+        Method read, enabled;
+        boolean changed;
+        String failure;
+
+        AllocationClock() {
+            try {
+                var api = Class.forName("com.sun.management.ThreadMXBean");
+                bean = ManagementFactory.getThreadMXBean();
+                if (!api.isInstance(bean) || !(Boolean) api.getMethod("isThreadAllocatedMemorySupported")
+                    .invoke(bean)) {
+                    failure = "Native current-thread allocation counter unsupported";
+                    bean = null;
+                    return;
+                }
+                enabled = api.getMethod("setThreadAllocatedMemoryEnabled", boolean.class);
+                read = api.getMethod("getThreadAllocatedBytes", long.class);
+                changed = !(Boolean) api.getMethod("isThreadAllocatedMemoryEnabled")
+                    .invoke(bean);
+                if (changed) enabled.invoke(bean, true);
+            } catch (Exception unavailable) {
+                failure = unavailable.toString();
+                if (changed && enabled != null && bean != null) try {
+                    enabled.invoke(bean, false);
+                } catch (Exception restoreFailure) {
+                    unavailable.addSuppressed(restoreFailure);
+                }
+                bean = null;
+            }
+        }
+
+        boolean supported() {
+            return bean != null && failure == null;
+        }
+
+        long read() {
+            if (!supported()) return -1;
+            try {
+                return (Long) read.invoke(bean, thread.getId());
+            } catch (Exception unavailable) {
+                failure = unavailable.toString();
+                return -1;
+            }
+        }
+
+        void close() {
+            if (changed && bean != null) try {
+                enabled.invoke(bean, false);
+            } catch (Exception unavailable) {
+                failure = unavailable.toString();
+            }
+        }
+    }
+
+    private static long gcd(long a, long b) {
+        while (b != 0) {
+            long next = a % b;
+            a = b;
+            b = next;
+        }
+        return a;
     }
 
     private static JsonArray numbers(List<Long> values) {

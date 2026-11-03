@@ -1,0 +1,322 @@
+{
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "schema": "behavior-convergence-contract-v2",
+  "contract": "BEHAVIOR_CONVERGENCE_V2",
+  "repetitions": 1,
+  "warmupTicks": 80,
+  "framesPerActor": 700,
+  "dayTime": 18000,
+  "difficulty": "NORMAL",
+  "layoutVolume": [
+    33,
+    12,
+    33
+  ],
+  "maidSpawn": [
+    8.5,
+    1,
+    4.5
+  ],
+  "ownerStart": [
+    14.5,
+    1,
+    4.5
+  ],
+  "ownerMode": "per_scene_actual_native_mode",
+  "hunger": 20,
+  "homeEnabled": false,
+  "arrivalDistance": 2.0,
+  "food": {
+    "position": [
+      13.5,
+      1.25,
+      12.5
+    ],
+    "registry": "minecraft:apple",
+    "count": 1
+  },
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "complete14ClassBenchmarkAccepted": false,
+  "ownerInputScope": "controlled native registered players with isolated memory connections; not real network login or multiple real clients",
+  "mechanisms": [
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "homeEnabled": false,
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "creative",
+      "initialSchedule": "ALL",
+      "id": "redstone_door_recovery",
+      "family": "B02",
+      "frames": 700,
+      "task": "idle",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        16.5,
+        1,
+        4.5
+      ],
+      "waypoints": [
+        [
+          16.5,
+          1,
+          4.5
+        ]
+      ],
+      "scope": "Real native redstone power/unpower and doorway collision readback; two opposite-direction crossings. Keep prior198 two-grid-distance failures separate."
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "homeEnabled": true,
+      "arenaVolume": [
+        33,
+        12,
+        33
+      ],
+      "ownerMode": "creative",
+      "initialSchedule": "ALL",
+      "id": "source_exit_arrow",
+      "family": "B08",
+      "frames": 320,
+      "task": "ranged_attack",
+      "maidSpawn": [
+        8.5,
+        1,
+        4.5
+      ],
+      "ownerPosition": [
+        8.5,
+        1,
+        8.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          8.5
+        ]
+      ],
+      "scope": "After first natural shot shift controlled neutral target laterally; next natural bow lease plus a live registered old arrow triggers one actual maid End request. O refusal/world-preserving override recorded. Port old-world arrow stop and real new same-UUID shooter fire checked."
+    },
+    {
+      "foodPresent": false,
+      "initialSitting": false,
+      "health": 20,
+      "events": [],
+      "homeEnabled": true,
+      "arenaVolume": [
+        25,
+        8,
+        25
+      ],
+      "ownerMode": "creative",
+      "initialSchedule": "ALL",
+      "id": "pantry_sleep_command",
+      "family": "B11",
+      "frames": 2200,
+      "task": "idle",
+      "maidSpawn": [
+        11.5,
+        1,
+        12.5
+      ],
+      "ownerPosition": [
+        8.5,
+        1,
+        8.5
+      ],
+      "waypoints": [
+        [
+          8.5,
+          1,
+          8.5
+        ]
+      ],
+      "primarySpawn": [
+        11.5,
+        1,
+        12.5
+      ],
+      "secondarySpawn": [
+        13.5,
+        1,
+        12.5
+      ],
+      "backpackCake": 0,
+      "scope": "Two normal roots, one finite world cake. Fresh primary favor0 and independent StealEdibleBlock reward cold are checked. First mouth change plus deterministic primary steal reward identifies primary bite (cake does not change hunger). Normal wait30 -> rest -> actual sleep -> ALL+wait40 and natural awake -> release -> later actual primary bite (second stays waiting) -> rest. No RNG/hunger/cooldown resets."
+    }
+  ],
+  "campaign": {
+    "status": "CALIBRATION_ONLY",
+    "plannedIndependentPairedReplicates": 30,
+    "noninferiorityDelta": null,
+    "primaryMechanisms": [
+      "redstone_door_recovery",
+      "source_exit_arrow",
+      "pantry_sleep_command"
+    ],
+    "failurePolicy": "Keep death, timeout, nontrigger, rejected native capability and input/measurement fault separately. No hidden retries or calibration samples in formal denominator.",
+    "statistics": "Freeze each valid input/metric contract independently before formal JVM blocks; need not wait for all14. Delta may remain null; report descriptive intervals and insufficient evidence, no unapproved noninferiority verdict."
+  },
+  "enclosure": {
+    "block": "minecraft:glass",
+    "placement": "four walls at x/z boundary from y1 through roof, full roof at height-1; original stone y0 remains",
+    "scope": "controlled closed arena prevents unowned gravity blocks and fluid entry; sides and roof are real collision/vision inputs"
+  },
+  "calibrationTurbo": 1,
+  "clockScope": {
+    "worldTicks": "Complete native START/END world/entity updates; normal source actors checked until actual source exit; old-world projectile frames explicitly cease claiming live-source ticks.",
+    "turbo": "HQA1, periodic native autosaves retained. Malisis animation uses its native clock, no forced completion or tile-state edits. No performance verdict.",
+    "original": "Native GameTest fast tick schedule recorded; source iron door is instantaneous while target provider has animation. Compare actual completed openings and recoveries, not an assumed identical animation delay."
+  },
+  "door": {
+    "position": [
+      11,
+      1,
+      4
+    ],
+    "powerPosition": [
+      11,
+      1,
+      3
+    ],
+    "openFrames": [
+      100
+    ],
+    "initialOwnerPosition": [
+      16.5,
+      1,
+      4.5
+    ],
+    "openOwnerPosition": [
+      18.5,
+      1,
+      4.5
+    ],
+    "firstCrossMinX": 12.35,
+    "secondCrossMaxX": 10.5,
+    "secondClose": "next actual START after first crossing, while normal waiting prevents crossing a still-closing animated panel",
+    "secondOpen": "second approach release+100 actual world ticks",
+    "scope": "Native redstone only; normal wait behavior is observed, not assumed to stop an original in-flight path. Bounded current-position owner input forms a real closed-door request without native distance teleport. No maid motion/path/RNG reset.",
+    "firstCross": "actual centerX>=12.35 after native first power-on; normal wait command until native closing/collision is observed",
+    "reverseOwnerAt": "after at least20 close ticks and actual non-open collision; planned owner is actual maidX-8 on left side, repeated at second opening; only if x in[1,10.5] and actual squared distance in[36,100), otherwise preserve unformed opportunity"
+  },
+  "bed": {
+    "head": [
+      10,
+      1,
+      12
+    ],
+    "foot": [
+      10,
+      1,
+      13
+    ],
+    "facing": "north",
+    "scheduleSemantics": "DAY at18000 is rest; ALL returns work. Owner waiting is normal sitting API, released normally."
+  },
+  "finiteAmmo": 24,
+  "dimension": {
+    "destination": "minecraft:the_end",
+    "portId": 1,
+    "sourceRequestOriginal": "EntityMaid.changeDimension(ServerLevel.END)",
+    "sourceRequestPort": "EntityMaid.travelToDimension(1)",
+    "scope": "One normal request, never bypass upstream override; source-world-preserving refusal is a capability outcome. Port follow-up moves owner through normal SCM, disables destination home, selects the same complete factory and normal stationary ranged task; new controlled target on native5x5 End platform, full original100 cells/tiles restored.",
+    "oldArrow": "Registered live arrows must stop after true source exit; old lease cleared without extra payment. Actual collision hook/API failure remains shooter-level protection, ordinary old-source invalidation is arrow-level diagnostic.",
+    "newArrow": "Same-UUID live destination actor must naturally emit and update a fresh arrow; old+new joins+remaining ammo==24, durability equals all paid joins.",
+    "retirementObservation": "At normal request return, old source may already be dead while native ID map removal is pending. Unique live same-UUID destination actor establishes committed transfer; only the subsequent real source-world END observation checks ID removal/old arrows/lease. No forced map clearing or manually ticked actors."
+  },
+  "retainedCalibrationContracts": [
+    {
+      "contract": "BEHAVIOR_CONVERGENCE_V1",
+      "sha256": "08e3d00db61f4274ad0be2c042fa93a717d398c96c75f2208a109d0241c31a6e",
+      "status": "RETAINED_FIRST_CALIBRATION_WITH_INPUT_AND_OBSERVATION_FAULTS"
+    }
+  ],
+  "pantryInputMapping": {
+    "primaryFirstBite": "fresh primary favor0 and StealEdibleBlock cooldown available; mouth change plus primary deterministic steal reward+1 identifies its first consume. No hunger inference; no RNG/cooldown reset. Subsequent bite uses mouths while secondary remains waiting, not a second favor increment during3600tick reward cooldown.",
+    "sourceBasis": [
+      "fixed CakeEdible.consume/getFavorabilityPoints",
+      "fixed MaidStealEdibleUseTask.handle consume-success then apply(STEAL_EDIBLE_BLOCK,1)",
+      "fixed FavorabilityManager.apply/add and Type.STEAL_EDIBLE_BLOCK",
+      "ported MaidStealEdibleUseTask and ModernFollowCoreActor.rewardSteal/FavorabilityManager.apply"
+    ],
+    "cabinetInitial": {
+      "original": "Block{touhou_little_maid:snack_cabinet}[facing=north,type=1]",
+      "portRegistry": "tlmnh:snack_cabinet",
+      "portMetadata": 4,
+      "sourceBasis": "Native BlockSnackCabinet.refreshDisplay maps full cake cover to TYPE_FULL<<2 and retains low two orientation bits0 (default north); original updateShape maps cake tag to TYPE_FULL1. Keep both raw states, do not compare synthetic original metadata0 to native4."
+    }
+  }
+}
