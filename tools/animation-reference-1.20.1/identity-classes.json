@@ -45,6 +45,11 @@
     "com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityShrineRenderer",
     "com.github.tartaricacid.touhoulittlemaid.tileentity.TileEntityShrine",
     "com.github.tartaricacid.touhoulittlemaid.block.BlockShrine",
-    "com.tianluoqaq.tlmnh.reference.ShrineReferenceProbe"
+    "com.tianluoqaq.tlmnh.reference.ShrineReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.AccessoryReferenceProbe",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBipedHead",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBackItem",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.geckolayer.GeckoLayerMaidBipedHead",
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.geckolayer.GeckoLayerMaidBackItem"
   ]
 }

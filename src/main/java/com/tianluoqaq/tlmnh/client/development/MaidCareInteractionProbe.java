@@ -1,0 +1,141 @@
+package com.tianluoqaq.tlmnh.client.development;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.UUID;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.play.client.C0BPacketEntityAction;
+import net.minecraft.potion.PotionEffect;
+
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+
+/** 仅给已由服务端准备的开发场景发送原生玩家操作，不直接给予照料效果或奖励 */
+public final class MaidCareInteractionProbe {
+
+    private MaidCareInteractionProbe() {}
+
+    public static JsonObject perform(String action, String identity) {
+        var mc = Minecraft.getMinecraft();
+        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(mc.theWorld)
+            || mc.thePlayer == null
+            || !mc.thePlayer.isEntityAlive()
+            || mc.currentScreen != null
+            || mc.getNetHandler() == null)
+            throw new IllegalStateException("Actual connected lab player without an open screen required");
+        var player = mc.thePlayer;
+        var connection = player.sendQueue;
+        var result = new JsonObject();
+        result.addProperty("action", action);
+        result.add("playerBefore", playerState());
+        if (action.equals("sneak_on") || action.equals("sneak_off")) {
+            boolean sneaking = action.equals("sneak_on");
+            player.setSneaking(sneaking);
+            connection.addToSendQueue(new C0BPacketEntityAction(player, sneaking ? 1 : 2));
+            result.addProperty("nativePacket", sneaking ? "C0B_START_SNEAKING" : "C0B_STOP_SNEAKING");
+        } else {
+            UUID target = UUID.fromString(identity);
+            EntityMaid actual = null;
+            for (Object entity : mc.theWorld.loadedEntityList)
+                if (entity instanceof EntityMaid maid && maid.getUniqueID()
+                    .equals(target)) {
+                        if (actual != null) throw new IllegalStateException("Ambiguous actual maid identity");
+                        actual = maid;
+                    }
+            if (actual == null) throw new IllegalStateException("Tracked native maid required");
+            result.addProperty("uuid", target.toString());
+            result.addProperty("entityId", actual.getEntityId());
+            result.add("maidBefore", maidState(actual));
+            if (action.equals("interact") || action.equals("open")) {
+                // Keep START/INTERACT/restore in one ordered network request; a later movement tick must not
+                // release the native sneak flag between two independent control requests.
+                boolean previous = player.isSneaking();
+                boolean care = action.equals("interact");
+                player.setSneaking(care);
+                connection.addToSendQueue(new C0BPacketEntityAction(player, care ? 1 : 2));
+                try {
+                    result.addProperty(
+                        "clientInteractionResult",
+                        mc.playerController.interactWithEntitySendPacket(player, actual));
+                } finally {
+                    player.setSneaking(previous);
+                    connection.addToSendQueue(new C0BPacketEntityAction(player, previous ? 1 : 2));
+                }
+                result.addProperty(
+                    "nativePacket",
+                    (care ? "C0B_START_SNEAKING" : "C0B_STOP_SNEAKING") + "/C02_INTERACT/C0B_RESTORE_SNEAKING");
+            } else if (!action.equals("status")) throw new IllegalArgumentException("Unknown native care action");
+            result.add("maidAfterLocalCall", maidState(actual));
+        }
+        result.add("playerAfterLocalCall", playerState());
+        result.addProperty("serverAcknowledged", false);
+        return result;
+    }
+
+    public static JsonObject playerState() {
+        var player = Minecraft.getMinecraft().thePlayer;
+        var result = new JsonObject();
+        if (player == null) return result;
+        result.addProperty(
+            "uuid",
+            player.getUniqueID()
+                .toString());
+        result.addProperty("sneaking", player.isSneaking());
+        result.addProperty("selected", player.inventory.currentItem);
+        result.addProperty("health", player.getHealth());
+        result.addProperty(
+            "handNativeNbtBase64",
+            nativeNbt(player.inventory.getStackInSlot(player.inventory.currentItem)));
+        return result;
+    }
+
+    public static JsonObject maidState(EntityMaid maid) {
+        var result = new JsonObject();
+        result.addProperty(
+            "uuid",
+            maid.getUniqueID()
+                .toString());
+        result.addProperty("model", maid.getModelId());
+        result.addProperty("health", maid.getHealth());
+        result.addProperty("favorability", maid.getFavorability());
+        var effects = new JsonArray();
+        for (Object object : maid.getActivePotionEffects()) {
+            var effect = (PotionEffect) object;
+            var tag = new NBTTagCompound();
+            effect.writeCustomPotionEffectToNBT(tag);
+            var row = new JsonObject();
+            row.addProperty("id", effect.getPotionID());
+            row.addProperty("amplifier", effect.getAmplifier());
+            row.addProperty("duration", effect.getDuration());
+            row.addProperty("nativeNbtBase64", binary(tag));
+            effects.add(row);
+        }
+        result.add("activePotionEffects", effects);
+        return result;
+    }
+
+    private static String nativeNbt(ItemStack stack) {
+        return stack == null ? ""
+            : binary(
+                stack.copy()
+                    .writeToNBT(new NBTTagCompound()));
+    }
+
+    private static String binary(NBTTagCompound tag) {
+        try (var bytes = new ByteArrayOutputStream(); var output = new DataOutputStream(bytes)) {
+            CompressedStreamTools.write(tag, output);
+            return Base64.getEncoder()
+                .encodeToString(bytes.toByteArray());
+        } catch (IOException failure) {
+            throw new IllegalStateException("Cannot encode native care observation", failure);
+        }
+    }
+}

@@ -9,6 +9,8 @@ import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ItemInWorldManager;
+import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -22,6 +24,7 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
@@ -267,6 +270,15 @@ public final class ModernCoreTests {
         }
 
         Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared, int nonHomeRange) {
+            this(helper, wet, maxDisplacementSquared, nonHomeRange, null);
+        }
+
+        /** 显式完整根入口；旧构造器继续保留原组件/FakePlayer采集范围。 */
+        Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared, int nonHomeRange,
+            MaidBrainProfile completeProfile) {
+            if (completeProfile != null && completeProfile != MaidBrainProfile.FAITHFUL_TLM
+                && completeProfile != MaidBrainProfile.ENHANCED)
+                throw new IllegalArgumentException("Only complete F/N roots are supported by this fixture entry");
             this.maxDisplacementSquared = maxDisplacementSquared;
             this.helper = helper;
             var origin = helper.absolute(0, 0, 0);
@@ -298,12 +310,18 @@ public final class ModernCoreTests {
             } catch (Exception failure) {
                 throw new IllegalStateException(failure);
             }
-            owner = new FakePlayer(helper.getWorld(), new GameProfile(UUID.randomUUID(), "[QA-Modern]"));
+            owner = completeProfile == null
+                ? new FakePlayer(helper.getWorld(), new GameProfile(UUID.randomUUID(), "[QA-Modern]"))
+                : new EntityPlayerMP(
+                    server,
+                    helper.getWorld(),
+                    new GameProfile(UUID.randomUUID(), "BehaviorOwner"),
+                    new ItemInWorldManager(helper.getWorld()));
             var manager = new NetworkManager(false);
             var connection = new EmbeddedChannel(manager);
             manager.setConnectionState(EnumConnectionState.PLAY);
             IsolatedPlayerChannel.verify(manager, connection);
-            new NetHandlerPlayServer(server, manager, owner);
+            var handler = new NetHandlerPlayServer(server, manager, owner);
             maid = new EntityMaid(helper.getWorld());
             helper.afterTest(() -> {
                 maid.getBrainCoordinator()
@@ -311,8 +329,13 @@ public final class ModernCoreTests {
                 maid.setDead();
                 helper.getWorld()
                     .removePlayerEntityDangerously(maid);
+                if (completeProfile != null && server.getConfigurationManager().playerEntityList.contains(owner))
+                    server.getConfigurationManager()
+                        .playerLoggedOut(owner);
                 helper.getWorld().playerEntities.remove(owner);
                 server.getConfigurationManager().playerEntityList.remove(owner);
+                if (completeProfile != null) helper.getWorld()
+                    .removePlayerEntityDangerously(owner);
                 owner.setDead();
                 connection.finish();
                 Object message;
@@ -327,14 +350,45 @@ public final class ModernCoreTests {
                 helper.setBlock(a, b, c, solid ? Blocks.glass : wet ? Blocks.water : Blocks.air);
             }
             owner.setPosition(x + 11.5, y + (wet ? 6 : 1), z + 4.5);
-            owner.capabilities.disableDamage = true;
-            helper.getWorld().playerEntities.add(owner);
-            server.getConfigurationManager().playerEntityList.add(owner);
+            if (completeProfile == null) {
+                owner.capabilities.disableDamage = true;
+                helper.getWorld().playerEntities.add(owner);
+                server.getConfigurationManager().playerEntityList.add(owner);
+            } else {
+                helper.assertTrue(
+                    server.worldServerForDimension(owner.dimension) == helper.getWorld(),
+                    "Complete behavior native owner world mismatch");
+                server.getConfigurationManager()
+                    .initializeConnectionToPlayer(manager, owner, handler);
+                IsolatedPlayerChannel.verify(manager, connection);
+                owner.setGameType(GameType.SURVIVAL);
+                owner.capabilities.disableDamage = false;
+                owner.capabilities.allowFlying = owner.capabilities.isFlying = true;
+                owner.setHealth(owner.getMaxHealth());
+                owner.setPosition(x + 11.5, y + (wet ? 6 : 1), z + 4.5);
+                owner.motionX = owner.motionY = owner.motionZ = 0;
+                helper.assertTrue(
+                    owner.getClass() == EntityPlayerMP.class && helper.getWorld()
+                        .getEntityByID(owner.getEntityId()) == owner,
+                    "Complete behavior native owner was not registered");
+            }
             helper.assertTrue(maid.bindTo(owner.getUniqueID()), "Fresh owner binding failed");
             maid.setPickup(false);
             helper.spawnEntity(maid, 1.5, 1, 4.5);
             navigation = (MaidPathNavigator) maid.getNavigator();
-            if (Boolean.getBoolean("tlmnh.qaFaithfulProfile")) {
+            if (completeProfile != null) {
+                helper.assertTrue(
+                    maid.selectBrainProfileForDevelopment(completeProfile)
+                        == MaidPolicyRuntime.SelectionResult.SELECTED,
+                    "Complete behavior factory selection failed");
+                core = maid.getBrainCoordinator()
+                    .peekFaithfulBrain();
+                helper.assertTrue(
+                    maid.getBrainCoordinator()
+                        .peekPolicyRuntime()
+                        .getProfile() == completeProfile && maid.getOwner() == owner,
+                    "Complete behavior root or native owner differs");
+            } else if (Boolean.getBoolean("tlmnh.qaFaithfulProfile")) {
                 helper.assertTrue(
                     maid.selectBrainProfileForDevelopment(
                         com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.FAITHFUL_TLM)

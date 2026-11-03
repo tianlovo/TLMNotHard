@@ -85,6 +85,7 @@ public final class MaidModelUiProbe {
                                     details.previewShieldBlocking("on".equals(model));
                                     requested = true;
                                 }
+                                case "details_equipment" -> requested = details.previewEquipment(model);
                                 case "details_shield_fault" -> {
                                     // 仅开发协议：注入同一保护边界的链接错误，再由正常预览按钮验证停用回退
                                     com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
@@ -522,7 +523,7 @@ public final class MaidModelUiProbe {
         if (!AnimationLab.isLab(minecraft.theWorld) || player == null
             || !player.capabilities.disableDamage
             || !player.capabilities.isFlying
-            || !player.noClip) throw new IllegalStateException("Safe lab observer required");
+            || !player.capabilities.allowFlying) throw new IllegalStateException("Protected lab player required");
         var actual = minecraft.currentScreen instanceof GuiContainer screen ? screen.inventorySlots
             : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
                 : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer()

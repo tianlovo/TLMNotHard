@@ -45,6 +45,7 @@ public final class MaidCoreInteractionProbe {
 
     public static void run(WorldServer world) {
         try (var fixture = new Fixture(world)) {
+            require(world.spawnEntityInWorld(fixture.maid), "registered interaction persistence source");
             carry(fixture);
             foodAndDrinks(fixture);
             experience(fixture);

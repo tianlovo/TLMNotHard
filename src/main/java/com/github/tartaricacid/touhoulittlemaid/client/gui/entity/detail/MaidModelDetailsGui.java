@@ -28,6 +28,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         "main_hand", "off_hand" };
     private final MaidPreviewSeat seat;
     private boolean walk;
+    private com.google.gson.JsonObject equipmentFixture = new com.google.gson.JsonObject();
 
     public MaidModelDetailsGui(ContainerMaidModels container, BuiltinModelCatalog.Choice info) {
         super(container, info);
@@ -84,6 +85,45 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         boolean using = active && guiEntity.getOffhandItem() != null;
         guiEntity.setPose(MaidPose.USING_ITEM, using);
         guiEntity.setPose(MaidPose.USING_OFFHAND, using);
+    }
+
+    /** 开发装备输入只进入本窗口的独立预览，沿现有原生物品工厂及保护边界 */
+    public boolean previewEquipment(String action) {
+        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (action.equals("clear_offhand")) {
+            guiEntity.setOffhandItem(null);
+            previewShieldBlocking(false);
+            return true;
+        }
+        if (action.equals("clear_main")) {
+            guiEntity.setCurrentItemOrArmor(0, null);
+            return true;
+        }
+        var construction = new com.google.gson.JsonObject();
+        var stack = IntegrationGuard.call(
+            Side.CLIENT,
+            ExternalFeature.SHIELDS,
+            () -> com.tianluoqaq.tlmnh.client.development.MaidDetailsItemFixtures.create(action, construction),
+            () -> null);
+        equipmentFixture = construction;
+        if (stack == null) return false;
+        if (action.startsWith("shield_")) guiEntity.setOffhandItem(stack);
+        else guiEntity.setCurrentItemOrArmor(0, stack);
+        return true;
+    }
+
+    @Override
+    public com.google.gson.JsonObject observation() {
+        var result = super.observation();
+        result.addProperty("previewWalk", walk);
+        result.add("equipmentFixture", new com.google.gson.JsonParser().parse(equipmentFixture.toString()));
+        result.add(
+            "sourceVisibleState",
+            com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(container.getMaid()));
+        result.add(
+            "previewVisibleState",
+            com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(guiEntity));
+        return result;
     }
 
     @Override

@@ -301,7 +301,8 @@ public final class AnimationLab {
     public void tick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && !event.player.worldObj.isRemote
             && event.player instanceof EntityPlayerMP player
-            && pendingObservers.remove(player.getUniqueID())) {
+            && pendingObservers.remove(player.getUniqueID())
+            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isActivePlayer(player)) {
             // 所有登录监听器先完成，再在正常服务端实体 tick 中切换维度
             enter(player, System.getProperty("tlmnh.labModel", DEFAULT_MODEL));
         }
@@ -310,6 +311,7 @@ public final class AnimationLab {
             && event.player instanceof EntityPlayerMP player
             && !MaidFollowRuntimeProbe.isActivePlayer(player)
             && !com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture.isActivePlayer(player)
+            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isActivePlayer(player)
             && player.theItemInWorldManager.getGameType()
                 .getID() != 3)
             player.setGameType(spectator());
@@ -320,6 +322,8 @@ public final class AnimationLab {
         if (!isLab(event.world) || event.world.isRemote) return;
         if (event.entity instanceof EntityPlayer) return;
         if (com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture.isSpawning(event.entity)) return;
+        if (com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isSpawning(event.entity))
+            return;
         if (event.entity instanceof EntityMaid maid && (maid.getEntityData()
             .getBoolean(MAID_MARKER) || MaidPoseRuntimeProbe.isRegistered(maid))) return;
         event.setCanceled(true);

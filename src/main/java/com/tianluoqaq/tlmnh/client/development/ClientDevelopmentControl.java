@@ -151,6 +151,7 @@ public final class ClientDevelopmentControl {
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
+                    response.add("carePlayer", MaidCareInteractionProbe.playerState());
                     var aquatic = new com.google.gson.JsonArray();
                     if (AnimationLab.isLab(minecraft.theWorld))
                         for (Object entity : minecraft.theWorld.loadedEntityList) {
@@ -158,6 +159,23 @@ public final class ClientDevelopmentControl {
                                 continue;
                             // 自定义NBT不由追踪器同步，范围限于实际展台中的女仆并列出UUID供服务器绑定
                             var shape = new JsonObject();
+                            shape.add("care", MaidCareInteractionProbe.maidState(maid));
+                            shape.addProperty(
+                                "headItemNativeMask",
+                                com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.drawnMask(maid));
+                            shape.addProperty(
+                                "skullRendererClass",
+                                com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.skullRendererClass(maid));
+                            shape.addProperty(
+                                "backItemNativeCalls",
+                                com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer.drawnCount(maid));
+                            var renderer = net.minecraft.client.renderer.entity.RenderManager.instance
+                                .getEntityRenderObject(maid);
+                            if (renderer instanceof com.tianluoqaq.tlmnh.client.render.MaidRenderer maidRenderer) {
+                                var diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
+                                shape.add("renderDiagnostic", diagnostic);
+                                shape.add("renderedPose", diagnostic);
+                            }
                             for (var entry : com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot
                                 .capture(maid)
                                 .entrySet()) shape.add(entry.getKey(), entry.getValue());
@@ -203,10 +221,6 @@ public final class ClientDevelopmentControl {
                                     : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(backItem)
                                         .toString());
                             shape.addProperty("rideable", maid.isRideable());
-                            var renderer = net.minecraft.client.renderer.entity.RenderManager.instance
-                                .getEntityRenderObject(maid);
-                            if (renderer instanceof com.tianluoqaq.tlmnh.client.render.MaidRenderer maidRenderer)
-                                shape.add("renderedPose", maidRenderer.inspectPreviewForDevelopment(maid));
                             shape.addProperty(
                                 "ridingEntityId",
                                 maid.ridingEntity == null ? -1 : maid.ridingEntity.getEntityId());
@@ -410,6 +424,9 @@ public final class ClientDevelopmentControl {
                     break;
                 case GECKO_LIBRARY_PROBE:
                     response.add("library", com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe.capture());
+                    break;
+                case CARE_INTERACT:
+                    response.add("care", MaidCareInteractionProbe.perform(request.action, request.model));
                     break;
                 case SHUTDOWN:
                     HeadBindingProbe.cancel("Client shutdown requested during capture");

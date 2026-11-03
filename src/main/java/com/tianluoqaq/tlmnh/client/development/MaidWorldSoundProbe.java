@@ -29,10 +29,11 @@ public final class MaidWorldSoundProbe {
     public static JsonObject perform(String action) {
         var minecraft = Minecraft.getMinecraft();
         var player = minecraft.thePlayer;
+        boolean connectionAction = "close_gui".equals(action) || "disconnect".equals(action);
         if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(minecraft.theWorld)
             || player == null
             || !player.capabilities.disableDamage
-            || !player.noClip
+            || !(connectionAction ? player.capabilities.allowFlying : player.noClip)
             || !player.capabilities.isFlying)
             throw new IllegalStateException("Protected lab observer required for world sound probe");
         var result = new JsonObject();

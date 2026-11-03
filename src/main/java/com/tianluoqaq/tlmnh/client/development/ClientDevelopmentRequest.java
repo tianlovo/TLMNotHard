@@ -127,6 +127,17 @@ public final class ClientDevelopmentRequest {
                 || !heldGpuViews().contains(view)
                 || json.has("fault")) throw new IllegalArgumentException("Unreviewed held GPU fixture");
         }
+        if (command == Command.CARE_INTERACT) {
+            action = text(json, "action");
+            if (!Arrays.asList("interact", "open", "sneak_on", "sneak_off", "status")
+                .contains(action)) throw new IllegalArgumentException("Unknown native care action");
+            if (action.equals("interact") || action.equals("open") || action.equals("status")) {
+                model = text(json, "model");
+                if (!java.util.UUID.fromString(model)
+                    .toString()
+                    .equals(model)) throw new IllegalArgumentException("Canonical maid UUID required");
+            }
+        }
         if (command == Command.MODELS_UI) {
             action = text(json, "action");
             if (!Arrays
@@ -188,6 +199,7 @@ public final class ClientDevelopmentRequest {
                     "details_toggle",
                     "details_shield_fault",
                     "details_shield_blocking",
+                    "details_equipment",
                     "details_view",
                     "pack",
                     "search",
@@ -205,6 +217,7 @@ public final class ClientDevelopmentRequest {
                 || action.equals("details")
                 || action.equals("details_toggle")
                 || action.equals("details_shield_blocking")
+                || action.equals("details_equipment")
                 || action.equals("details_view")
                 || action.equals("sound_play")
                 || action.equals("naming_text")
@@ -217,6 +230,10 @@ public final class ClientDevelopmentRequest {
                     .anyMatch(Character::isISOControl))
                     throw new IllegalArgumentException("Naming text must fit the native 32-character field");
             }
+            if (action.equals("details_equipment") && !heldGpuActions().contains(model)
+                && !Arrays.asList("clear_main", "clear_offhand")
+                    .contains(model))
+                throw new IllegalArgumentException("Reviewed native preview equipment required");
         }
         return new ClientDevelopmentRequest(command, name, yaw, pitch, port, model, fault, action, view, warmupTicks);
     }
@@ -265,6 +282,7 @@ public final class ClientDevelopmentRequest {
 
     public enum Command {
         STATUS,
+        CARE_INTERACT,
         WORLD_SOUND_PROBE,
         PROTECTION_PROBE,
         CONNECT_LOCAL,

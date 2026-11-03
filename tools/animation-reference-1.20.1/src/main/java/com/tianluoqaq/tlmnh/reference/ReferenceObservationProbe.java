@@ -181,6 +181,10 @@ public final class ReferenceObservationProbe {
                 case "shrine_view" -> response = ShrineReferenceProbe.view(request);
                 case "shrine_status" -> response = ShrineReferenceProbe.snapshot();
                 case "shrine_capture" -> response = ShrineReferenceProbe.capture(request, root, name);
+                case "accessory_fixture" -> response = AccessoryReferenceProbe.fixture(request);
+                case "accessory_view" -> response = AccessoryReferenceProbe.view(request);
+                case "accessory_status" -> response = AccessoryReferenceProbe.snapshot();
+                case "accessory_capture" -> response = AccessoryReferenceProbe.capture(request, root, name);
                 case "create_lab" -> response = ReferenceScene.createLab();
                 case "open_lab" -> response = ReferenceScene.openLab();
                 case "spawn_case" -> response = ReferenceScene.spawn(request);

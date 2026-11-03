@@ -27,6 +27,7 @@ import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
@@ -340,6 +341,22 @@ public final class LifecycleConservationTests {
         helper.spawnEntity(maid, 6.5, 1, 4.5);
         maid.getBrainCoordinator()
             .setSuspended(true);
+        maid.setFavorability(73);
+        maid.getFavorabilityManager()
+            .apply(Type.WORK_MEAL);
+        maid.getFavorabilityManager()
+            .refreshAttributes();
+        var beforeModel = new NBTTagCompound();
+        maid.writeToNBT(beforeModel);
+        maid.setModelId("geckolib:winefox_hanfu");
+        var afterModel = new NBTTagCompound();
+        maid.writeToNBT(afterModel);
+        helper.assertTrue(
+            maid.getFavorability() == 74 && beforeModel.getCompoundTag("FavorabilityManagerCounter")
+                .equals(afterModel.getCompoundTag("FavorabilityManagerCounter"))
+                && afterModel.getCompoundTag("FavorabilityManagerCounter")
+                    .getInteger(Type.WORK_MEAL.getTypeName()) == 3600,
+            "Actual model switch reset nonzero favorability or its native cooldown counter");
         helper.assertTrue(
             maid.getHomeArea()
                 .setEnabled(true)
@@ -355,6 +372,17 @@ public final class LifecycleConservationTests {
         var token = f.ledger()
             .deathToken(maid.getUniqueID());
         f.cleanupXp.add(token);
+        var filmIdentity = f.ledger()
+            .reserve(token, MaidLifecycleData.Kind.FILM);
+        helper.assertTrue(
+            filmIdentity != null && maid.getFavorability() == 72
+                && filmIdentity.getCompoundTag("FavorabilityManagerCounter")
+                    .getInteger(Type.DEATH.getTypeName()) == 12000
+                && filmIdentity.getCompoundTag("FavorabilityManagerCounter")
+                    .getInteger(Type.WORK_MEAL.getTypeName()) == 3600,
+            "Death film lost nonzero favorability/counter or applied the death penalty twice");
+        f.ledger()
+            .rollback(token);
         helper.assertTrue(
             token != null && maid.getExperience() == 0
                 && f.ledger()
@@ -424,6 +452,8 @@ public final class LifecycleConservationTests {
             f.owner.setHealth(f.owner.getMaxHealth());
             var result = MaidLifecycleService.resurrect(f.owner, shrine);
             var revived = f.revived;
+            var revivedData = new NBTTagCompound();
+            if (revived != null) revived.writeToNBT(revivedData);
             helper.assertTrue(
                 result == MaidLifecycleService.Result.SUCCESS && revived != null
                     && revived != maid
@@ -438,6 +468,9 @@ public final class LifecycleConservationTests {
                         .settings().work.toString()
                             .equals(home.work.toString())
                     && revived.getExperience() == 0
+                    && revived.getFavorability() == 72
+                    && revivedData.getCompoundTag("FavorabilityManagerCounter")
+                        .equals(filmIdentity.getCompoundTag("FavorabilityManagerCounter"))
                     && f.owner.getHealth() == .25F,
                 "Resurrection changed owner/points, enabled old home or copied paid death XP: " + result);
             var items = new NBTTagList();
@@ -468,7 +501,7 @@ public final class LifecycleConservationTests {
                 "Large XP publication was not bounded or changed the full int total");
             complete[0] = true;
             System.out.println(
-                "TLMNH_DEATH_LOOP_PASS canceledXp=retained throwingXp=retained nativePickedUp=53 home=disabled points=retained largeInt=bounded");
+                "TLMNH_DEATH_LOOP_PASS canceledXp=retained throwingXp=retained nativePickedUp=53 home=disabled favorability=74_to_72 modelCounters=retained filmCounters=retained largeInt=bounded");
         });
         helper.succeedWhen(() -> complete[0]);
     }

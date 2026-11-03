@@ -419,6 +419,9 @@ public final class MaidLifecycleProbe {
                     && changedOwner.maidCalls == 1
                     && MaidSpawnChecks.present(successor, f.world),
                 "held successor cannot admit a second spawn");
+            // 所有保全断言完成后，只清本夹具确切同对象；账本pending保留给后续读取
+            require(f.world.getEntityByID(successor.getEntityId()) == successor, "fixture successor cleanup identity");
+            f.world.removeEntity(successor);
         } finally {
             MinecraftForge.EVENT_BUS.unregister(changedOwner);
         }
@@ -593,30 +596,62 @@ public final class MaidLifecycleProbe {
             var ledger = MaidLifecycleData.get(f.world);
             var token = ledger.newFilm(f.owner.getUniqueID(), UUID.randomUUID(), data);
             var film = MaidLifecycleItems.credential(MaidResurrectionContent.FILM, token, f.owner.getUniqueID());
+            film.getTagCompound()
+                .setString(
+                    "TLMNHProbeReturnPayload",
+                    UUID.randomUUID()
+                        .toString());
             require(shrine.insert(film), "recovery fixture inserted film");
-            int before = ledger.pendingReturnedFilms(f.world.provider.dimensionId)
-                .size();
+            var before = new HashSet<>(ledger.pendingReturnedFilms(f.world.provider.dimensionId));
+            f.world.setBlockToAir(f.x, f.y, f.z);
+            var added = new HashSet<>(ledger.pendingReturnedFilms(f.world.provider.dimensionId));
+            added.removeAll(before);
+            require(added.size() == 1, "broken shrine queues one exact return identity " + mutation);
+            var returnedId = added.iterator()
+                .next();
+            java.util.function.Supplier<NBTTagCompound> queuedStack = () -> {
+                var saved = new NBTTagCompound();
+                ledger.writeToNBT(saved);
+                var returned = saved.getTagList("ReturnedFilms", 10);
+                for (int i = 0; i < returned.tagCount(); i++) {
+                    var entry = returned.getCompoundTagAt(i);
+                    if (returnedId.toString()
+                        .equals(entry.getString("Id")))
+                        return (NBTTagCompound) entry.getCompoundTag("Stack")
+                            .copy();
+                }
+                return null;
+            };
+            var expected = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(film);
+            require(expected.equals(queuedStack.get()), "broken shrine queues complete original film " + mutation);
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
             try {
-                f.world.setBlockToAir(f.x, f.y, f.z);
+                // 拆除只入队；取消/改写必须注入实际世界tick使用的交付入口
+                MaidFilmRecovery.retryPending(f.world);
             } finally {
                 MinecraftForge.EVENT_BUS.unregister(mutate);
             }
             require(
-                ledger.pendingReturnedFilms(f.world.provider.dimensionId)
-                    .size() == before + 1,
+                !mutate.items.isEmpty() && expected.equals(queuedStack.get())
+                    && (mutation == Mutation.ITEM_STACK || mutate.itemStacks.stream()
+                        .anyMatch(stack -> ItemStack.areItemStacksEqual(stack, film))),
                 "broken shrine keeps failed film delivery " + mutation);
             MaidFilmRecovery.retryPending(f.world);
             MaidFilmRecovery.retryPending(f.world);
             require(
-                ledger.pendingReturnedFilms(f.world.provider.dimensionId)
-                    .size() == before,
+                !ledger.pendingReturnedFilms(f.world.provider.dimensionId)
+                    .contains(returnedId) && queuedStack.get() == null,
                 "broken shrine escrow delivered on retry " + mutation);
             int count = 0;
             for (var entity : f.world.loadedEntityList)
                 if (entity instanceof EntityItem item && MaidSpawnChecks.present(item)
-                    && token.equals(MaidLifecycleItems.token(item.getEntityItem()))) count++;
+                    && token.equals(MaidLifecycleItems.token(item.getEntityItem()))) {
+                        require(
+                            ItemStack.areItemStacksEqual(item.getEntityItem(), film),
+                            "broken shrine output retains complete original film " + mutation);
+                        count++;
+                    }
             require(count == 1, "broken shrine produces exactly one original film " + mutation);
         }
         f.world.setBlock(f.x, f.y, f.z, Blocks.stone);

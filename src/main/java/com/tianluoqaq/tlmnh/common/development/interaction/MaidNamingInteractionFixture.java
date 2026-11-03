@@ -53,6 +53,8 @@ public final class MaidNamingInteractionFixture {
                     "verify-save",
                     "verify-hidden",
                     "verify-easter-egg",
+                    "pose-standing",
+                    "pose-sitting",
                     "revoke",
                     "verify-revoked",
                     "status",
@@ -104,6 +106,8 @@ public final class MaidNamingInteractionFixture {
                     .copy());
             data.setString("OriginalName", maid.getCustomNameTag());
             data.setString("OriginalModel", maid.getModelId());
+            data.setBoolean("OriginalSitting", maid.isSitting());
+            data.setBoolean("ExpectedSitting", maid.isSitting());
             data.setBoolean("OriginalAlways", maid.getAlwaysRenderNameTag());
             data.setString("ExpectedName", maid.getCustomNameTag());
             data.setBoolean("ExpectedAlways", maid.getAlwaysRenderNameTag());
@@ -164,6 +168,18 @@ public final class MaidNamingInteractionFixture {
             return;
         }
         session.requireUnchangedName();
+        if (action.equals("pose-standing") || action.equals("pose-sitting")) {
+            require(
+                player.openContainer == player.inventoryContainer
+                    && session.count() == session.data.getInteger("ExpectedCount")
+                    && session.data.hasKey("OriginalSitting", 1),
+                "Closed owned naming fixture with saved pose required");
+            boolean sitting = action.equals("pose-sitting");
+            session.maid.setSitting(sitting);
+            session.data.setBoolean("ExpectedSitting", sitting);
+            session.record(action);
+            return;
+        }
         if (action.equals("open")) {
             require(player.openContainer == player.inventoryContainer, "Close the current window first");
             session.select(session.slot());
@@ -265,6 +281,11 @@ public final class MaidNamingInteractionFixture {
         }
 
         void validate() {
+            require(
+                !data.hasKey("OriginalSitting")
+                    || data.hasKey("OriginalSitting", 1) && data.hasKey("ExpectedSitting", 1)
+                        && maid.isSitting() == data.getBoolean("ExpectedSitting"),
+                "Naming pose changed outside the owned sequence; original fixture retained");
             require(
                 !data.hasKey("OriginalModel") || data.hasKey("OriginalModel", 8) && data.getString("OriginalModel")
                     .equals(maid.getModelId()),
@@ -381,6 +402,7 @@ public final class MaidNamingInteractionFixture {
                 select(slot());
                 maid.setCustomNameTag(data.getString("OriginalName"));
                 maid.setAlwaysRenderNameTag(data.getBoolean("OriginalAlways"));
+                if (data.hasKey("OriginalSitting", 1)) maid.setSitting(data.getBoolean("OriginalSitting"));
                 require(
                     inventory(player, -1).equals(data.getTagList("OriginalInventory", 10)),
                     "Complete original inventory restore differs");
@@ -448,6 +470,7 @@ public final class MaidNamingInteractionFixture {
                     .toString());
             result.addProperty("name", maid.getCustomNameTag());
             result.addProperty("storedModel", maid.getModelId());
+            result.addProperty("sitting", maid.isSitting());
             result.addProperty("alwaysShow", maid.getAlwaysRenderNameTag());
             result.addProperty("selected", player.inventory.currentItem);
             result.addProperty(

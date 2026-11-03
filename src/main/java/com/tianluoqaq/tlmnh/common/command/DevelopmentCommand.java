@@ -211,6 +211,11 @@ public final class DevelopmentCommand extends CommandBase {
                 .run(getPlayer(sender, args[1]), args[2]);
             return;
         }
+        if (args.length == 3 && "lab-care-fixture".equals(args[0])) {
+            com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture
+                .run(getPlayer(sender, args[1]), args[2]);
+            return;
+        }
         if (args.length == 3 && "lab-visual-hunger".equals(args[0])) {
             var player = getPlayer(sender, args[1]);
             if ("restore".equals(args[2])) MaidCoreInteractionProbe.setVisualFixture(player, "restore");

@@ -12,6 +12,41 @@ import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentRequest.Command;
 public class ClientDevelopmentRequestTest {
 
     @Test
+    public void nativeCareUsesCanonicalTrackedIdentityAndOnlyNativeActions() {
+        var request = new JsonObject();
+        request.addProperty("command", "care_interact");
+        request.addProperty("action", "interact");
+        request.addProperty("model", "12345678-1234-5678-9abc-0123456789ab");
+        assertEquals(Command.CARE_INTERACT, ClientDevelopmentRequest.parse(request).command);
+        for (String invalid : new String[] { "", "0-0-0-0-0", "12345678-1234-5678-9ABC-0123456789AB",
+            "minecraft:cow" }) {
+            request.addProperty("model", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
+        request.addProperty("action", "give_effect");
+        assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        request.addProperty("action", "sneak_off");
+        request.remove("model");
+        assertEquals("sneak_off", ClientDevelopmentRequest.parse(request).action);
+    }
+
+    @Test
+    public void detailsEquipmentOnlyAcceptsReviewedNativeProfilesAndExplicitClear() {
+        var request = new JsonObject();
+        request.addProperty("command", "models_ui");
+        request.addProperty("action", "details_equipment");
+        for (String profile : new String[] { "shield_gold", "shield_round", "shield_heater", "main_bow",
+            "clear_offhand" }) {
+            request.addProperty("model", profile);
+            assertEquals(profile, ClientDevelopmentRequest.parse(request).model);
+        }
+        for (String invalid : new String[] { "battlegear2:shield.gold", "shield_unknown", "{id:1}", "" }) {
+            request.addProperty("model", invalid);
+            assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+        }
+    }
+
+    @Test
     public void heldGpuPilotAcceptsBothModelsAndAllReviewedProfiles() {
         for (String model : new String[] { "touhou_little_maid:hakurei_reimu", "geckolib:winefox" }) {
             for (String action : new String[] { "shield_wood", "shield_hide", "shield_iron", "shield_diamond",

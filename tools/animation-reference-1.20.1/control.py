@@ -27,7 +27,7 @@ def git(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "shrine_fixture", "shrine_view", "shrine_status", "shrine_capture", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_sounds", "gui_sound_action", "gui_settings", "gui_config_action", "font_pack", "gui_details", "gui_details_action", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("command", choices=("status", "shrine_fixture", "shrine_view", "shrine_status", "shrine_capture", "accessory_fixture", "accessory_view", "accessory_status", "accessory_capture", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_sounds", "gui_sound_action", "gui_settings", "gui_config_action", "font_pack", "gui_details", "gui_details_action", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
     parser.add_argument("--action")
     parser.add_argument("--pack", type=int)
     parser.add_argument("--query")
@@ -50,7 +50,7 @@ def main():
     if args.command == "gui_details":
         if not args.model:parser.error("gui_details requires --model")
         request["model"]=args.model
-    if args.command in ("gui_sound_action", "gui_config_action", "font_pack", "shrine_fixture", "shrine_view"):
+    if args.command in ("gui_sound_action", "gui_config_action", "font_pack", "shrine_fixture", "shrine_view", "accessory_fixture", "accessory_view"):
         if not args.action: parser.error("gui_sound_action requires --action")
         request["action"] = args.action
     if args.command == "gui_details_action":
@@ -64,7 +64,7 @@ def main():
         if args.query is None or len(args.query) > 48:
             parser.error("gui_models_search requires --query up to 48 characters")
         request["query"] = args.query
-    if args.command in ("gui_capture", "shrine_capture"):
+    if args.command in ("gui_capture", "shrine_capture", "accessory_capture"):
         if not args.name:
             parser.error("gui_capture requires --name")
         request["name"] = args.name
@@ -106,7 +106,7 @@ def main():
                 "upstream_probe_patch_sha256": hashlib.sha256((PROBE / "upstream-probe.patch").read_bytes()).hexdigest()}
     if response.get("image"):
         relative = Path(response["image"])
-        if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != ("world" if args.command == "shrine_capture" else "gui"):
+        if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != ("world" if args.command in ("shrine_capture", "accessory_capture") else "gui"):
             raise ValueError("Unexpected original GUI screenshot path")
         picture = controls.parent / relative
         safe(picture)
