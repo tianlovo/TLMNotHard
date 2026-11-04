@@ -58,7 +58,7 @@ def archive_bytes(contents):
     return stream.getvalue()
 
 
-def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(), channel="local-validation"):
+def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(), channel="local-validation", release_approval=None):
     data = artifact.read_bytes()
     update.require(update.digest(data) == expected_sha, "Candidate SHA-256 differs from the explicitly selected artifact")
     binding = source_binding(snapshot_path, source_root, expected_sha)
@@ -66,7 +66,13 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
     update.require(report["integrity_passed"], "Candidate integrity failed: " + ", ".join(
         name for name, result in report["checks"].items() if not result["passed"]))
     update.require(channel in ("local-validation", "release"), "Unknown package channel")
+    sidecar_names = ("SOURCE_PROVENANCE.md", "docs/USER_GUIDE.md", "docs/USER_GUIDE.en.md",
+                     "scripts/distribution/update.py", "scripts/distribution/README.md")
+    sidecars = {name: (PROJECT / name).read_bytes() for name in sidecar_names}
+    document_hashes = {name: update.digest(raw) for name, raw in sidecars.items()}
+    document_hashes["requirements.txt"] = update.digest(b"rich\n")
     if channel == "release":
+        report = candidate_audit.approve_release(report, data, release_approval, binding, document_hashes)
         update.require(report.get("distributable") is True and report.get("release_acceptance_evaluated") is True
                        and report.get("release_blockers") == [], "Release is not admitted: " + ", ".join(
                            blocker["code"] for blocker in report.get("release_blockers", [])))
@@ -85,16 +91,21 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
         for name in ("assets/tlmnh/builtin-models.json", "assets/tlmnh/builtin-sounds.json"):
             docs["provenance/" + name] = archive.read(name)
         audio_cleared = json.loads(archive.read("assets/tlmnh/builtin-sounds-provenance.json"))["audio_distribution_cleared"]
-    docs["source-reference/SOURCE_PROVENANCE.md"] = (PROJECT / "SOURCE_PROVENANCE.md").read_bytes()
+    if channel == "release":
+        decision = report["release_approval"]
+        docs["release-decision.json"] = update.encoded(decision)
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            docs["licenses/TLMNH-LICENSE.txt"] = archive.read(candidate_audit.ORIGINAL_LICENSE_MEMBER)
+    docs["source-reference/SOURCE_PROVENANCE.md"] = sidecars["SOURCE_PROVENANCE.md"]
     for guide in ("USER_GUIDE.md", "USER_GUIDE.en.md"):
-        docs["guides/" + guide] = (PROJECT / "docs" / guide).read_bytes()
+        docs["guides/" + guide] = sidecars["docs/" + guide]
     docs["source-inputs.json"] = update.encoded(binding)
     docs["audit-report.json"] = update.encoded(report)
     docs["STATUS.txt"] = ("INDEV LOCAL VALIDATION ONLY\nNot a formal release or distribution clearance.\n"
                           "All candidate resources, including audio, are retained.\n" if channel == "local-validation"
                           else "Release package; refer to the attached acceptance and source records.\n").encode("utf-8")
-    updater = (PROJECT / "scripts/distribution/update.py").read_bytes()
-    readme = (PROJECT / "scripts/distribution/README.md").read_bytes()
+    updater = sidecars["scripts/distribution/update.py"]
+    readme = sidecars["scripts/distribution/README.md"]
     result = {}
     for kind in ("client", "server"):
         jar_path = update.mod_prefix(kind) + jar_name
@@ -203,11 +214,12 @@ def main():
     parser.add_argument("--source-root", required=True, type=Path)
     parser.add_argument("--previous-jar", type=Path, action="append", default=[])
     parser.add_argument("--channel", choices=("local-validation", "release"), default="local-validation")
+    parser.add_argument("--release-approval", type=Path, help="Explicit artifact-bound approval; required only for formal release")
     parser.add_argument("--output", type=Path, default=PROJECT / "dist")
     args = parser.parse_args()
     try:
         update.require(re.fullmatch(r"[0-9a-f]{64}", args.sha256), "Expected SHA-256 must be lowercase hex")
-        results, report, binding = packages(args.artifact, args.sha256, args.input_snapshot, args.source_root, args.previous_jar, args.channel)
+        results, report, binding = packages(args.artifact, args.sha256, args.input_snapshot, args.source_root, args.previous_jar, args.channel, args.release_approval)
         archives = publish_archives(args.output, results)
         # Deliberately no local artifact/source/runtime paths in the portable report or ZIP.
         print(json.dumps(dict(schema="tlmnh-overlay-package-result-v1", channel=args.channel,

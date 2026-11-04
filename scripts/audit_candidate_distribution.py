@@ -1,6 +1,9 @@
 """Audit a candidate JAR; exit 0 means package integrity only, never release approval."""
 
 import argparse
+import copy
+from datetime import date
+import math
 import hashlib
 import io
 import json
@@ -163,6 +166,135 @@ def audit(artifact, data):
         report["release_blockers"].append({"code": "candidate_integrity_failed", "checks": [name for name, check in report["checks"].items() if not check["passed"]]})
     report["release_acceptance_evaluated"] = False
     return report
+
+
+RELEASE_ACCEPTANCE = ("core_gameplay", "benchmark", "models_equipment", "multiplayer_persistence", "user_play")
+AUDIO_PACKS = {"littlemaid_peco", "touhou_little_maid"}
+ORIGINAL_LICENSE_MEMBER = "META-INF/TLMNH-LICENSE.txt"
+
+
+def approve_release(report, data, approval_path, binding, package_documents):
+    """Evaluate an explicit project decision; never infer permission or gameplay acceptance from integrity."""
+    require(approval_path is not None, "Formal release requires an explicit approval input")
+    require(report["integrity_passed"] is True, "Release cannot waive failed candidate integrity")
+    path = Path(approval_path).resolve(strict=True)
+    require(path.is_file() and 0 < path.stat().st_size <= 1024 * 1024, "Bounded regular release approval required")
+
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            require(key not in value, "Duplicate release approval key: " + key)
+            value[key] = item
+        return value
+
+    raw = path.read_bytes()
+    approval = json.loads(raw, object_pairs_hook=unique)
+    require(approval.get("schema") == "tlmnh-release-approval-v1" and approval.get("decision") == "approved",
+            "Release approval is absent, pending or unrecognized")
+    reviewer = approval.get("approved_by")
+    require(isinstance(reviewer, str) and 0 < len(reviewer.strip()) <= 200, "Explicit approval reviewer required")
+    require(isinstance(approval.get("approved_on"), str), "Explicit approval date required")
+    date.fromisoformat(approval["approved_on"])
+    require(isinstance(package_documents, dict) and bool(package_documents)
+            and approval["package_documents_sha256"] == package_documents, "Approved package documents/updater differ")
+    candidate = approval["candidate"]
+    version = report["checks"]["metadata"]["observed"]["version"]
+    require(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.-]+)?", version),
+            "Only an explicitly selected stable version can be formally released")
+    require(candidate == {"version": version, "sha256": digest(data),
+                          "source_snapshot_sha256": binding["snapshot_sha256"]}
+            and report["sha256"] == binding["candidate_sha256"] == digest(data),
+            "Approval candidate/version/source snapshot differs")
+
+    def text(value, label):
+        require(isinstance(value, str) and 0 < len(value.strip()) <= 10000, label + " must be explicit")
+        return value
+
+    def evidence(value):
+        require(isinstance(value, dict) and set(value) == {"path", "sha256"}, "Exact evidence file/hash required")
+        named = Path(text(value["path"], "Evidence path"))
+        target = (path.parent / named).resolve(strict=True)
+        require(target != path and target.is_file() and 0 < target.stat().st_size <= 32 * 1024 * 1024,
+                "Nonempty independent acceptance evidence required")
+        expected = value["sha256"]
+        require(isinstance(expected, str) and re.fullmatch(r"[0-9a-f]{64}", expected)
+                and digest(target.read_bytes()) == expected, "Acceptance evidence missing or changed")
+        return expected
+
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        names = archive.namelist()
+        require(len(names) == len(set(names)), "Duplicate candidate member cannot be approved")
+        attribution = approval["attribution"]
+        notice = archive.read("META-INF/THIRD_PARTY_NOTICES.md")
+        require(attribution["notice_sha256"] == digest(notice), "Approved attribution notice differs")
+        provenance = report["checks"]["licenses_and_source_anchors"]["observed"]["provenance_manifests"]
+        expected_sources = {name: digest(archive.read(name)) for name in provenance}
+        require(attribution["provenance_sha256"] == expected_sources, "Approved resource source inventory differs")
+        original = attribution["original_code_license"]
+        require(isinstance(original, dict) and set(original) == {"spdx", "member", "sha256"},
+                "Exact packaged original-code license identity required")
+        spdx = text(original["spdx"], "Selected original-code license")
+        require(len(spdx) <= 128 and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+() -]*", spdx), "Invalid explicit license identifier")
+        require(original["member"] == ORIGINAL_LICENSE_MEMBER
+                and original["sha256"] == digest(archive.read(ORIGINAL_LICENSE_MEMBER)),
+                "Selected original-code license text is missing or changed")
+        text(archive.read(ORIGINAL_LICENSE_MEMBER).decode("utf-8"), "Original-code license text")
+        require(("TLMNH original code license: " + spdx) in notice.decode("utf-8").splitlines()
+                and "原创代码的最终分发许可在正式版发布前单独确定" not in notice.decode("utf-8"),
+                "Packaged original-code license is still undetermined or does not match the decision")
+        source = json.loads(archive.read("assets/tlmnh/builtin-sounds-provenance.json"))
+        require(source["audio_distribution_cleared"] is True, "Packaged audio publication status is not cleared")
+        packs = approval["audio_packs"]
+        require(isinstance(packs, dict) and set(packs) == AUDIO_PACKS, "Both complete retained audio packs require explicit decisions")
+        audio_evidence = {}
+        for name, decision in packs.items():
+            require(decision["decision"] == "approved", "Audio publication decision is pending: " + name)
+            text(decision["basis"], "Audio permission basis")
+            steps = decision["publication_steps"]
+            require(isinstance(steps, list) and bool(steps), "Concrete audio attribution/report steps required")
+            for step in steps:
+                text(step, "Audio publication step")
+            audio_evidence[name] = evidence(decision["evidence"])
+
+    accepted = approval["acceptance"]
+    require(isinstance(accepted, dict) and set(accepted) == set(RELEASE_ACCEPTANCE), "All existing release scopes need explicit acceptance")
+    accepted_hashes = {}
+    for name in RELEASE_ACCEPTANCE:
+        decision = accepted[name]
+        require(decision["decision"] == "accepted", "Release acceptance pending: " + name)
+        text(decision["assessment"], "Actual acceptance assessment")
+        limitations = decision["known_limitations"]
+        require(isinstance(limitations, list) and all(isinstance(item, str) and item.strip() for item in limitations),
+                "Actual known limitations must be an explicit list")
+        records = decision["evidence"]
+        require(isinstance(records, list) and bool(records), "Nonempty bound acceptance evidence required: " + name)
+        accepted_hashes[name] = [evidence(item) for item in records]
+    benchmark = accepted["benchmark"]
+    require(benchmark["covered_classes"] == ["B%02d" % n for n in range(1, 15)], "Benchmark review must address the existing14 classes")
+    require("noninferiority_delta" in benchmark, "Benchmark uncertainty/margin must be explicit")
+    delta = benchmark["noninferiority_delta"]
+    require(delta is None or type(delta) in (float, int) and math.isfinite(delta) and delta >= 0,
+            "Unknown noninferiority margin cannot be invented")
+    if delta is not None:
+        evidence(benchmark["delta_approval_evidence"])
+    # A null margin is allowed. The explicit benchmark assessment remains a project decision,
+    # never an automatic claim of equivalence or a request to accept positive regression.
+    ordinary_blockers = {"audio_distribution_not_cleared", "original_source_license_undetermined",
+                         "original_source_license_not_certified_by_this_audit"}
+    require(all(item["code"] in ordinary_blockers for item in report["release_blockers"]),
+            "An unrelated release blocker cannot be waived by this approval")
+    portable = {"schema": "tlmnh-approved-release-decision-v1", "approval_sha256": digest(raw),
+                "candidate": candidate, "package_documents_sha256": package_documents,
+                "notice_sha256": attribution["notice_sha256"],
+                "provenance_sha256": attribution["provenance_sha256"], "original_code_license": original,
+                "audio_evidence_sha256": audio_evidence, "acceptance_evidence_sha256": accepted_hashes,
+                "benchmark_classes_reviewed": benchmark["covered_classes"], "noninferiority_delta": delta,
+                "statistical_equivalence_inferred": False,
+                "scope": "Explicit artifact-bound project approval; not a machine legal opinion or a new statistical verdict"}
+    result = copy.deepcopy(report)
+    result.update(scope="approved-release", distributable=True, release_acceptance_evaluated=True,
+                  release_blockers=[], original_source_license=spdx, release_approval=portable)
+    return result
 
 
 def local_zip(artifact_data, report):
