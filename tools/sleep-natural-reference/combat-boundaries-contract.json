@@ -1,0 +1,212 @@
+{
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "ownerProfile": "controlled_exact_native_server_player_with_isolated_memory_connection_world_registered_not_network_logged_in",
+  "schedule": "ALL",
+  "restrictionRadius": 8,
+  "initialOrientation": {
+    "yaw": 0,
+    "pitch": 0,
+    "headYaw": 0,
+    "bodyYaw": 0
+  },
+  "initialSoundPackId": "touhou_little_maid",
+  "model": "touhou_little_maid:hakurei_reimu",
+  "attributeInputs": {
+    "schema": "sleep-attribute-inputs-v1",
+    "samplePhase": "registered_spawn_before_first_natural_tick",
+    "absoluteTolerance": 0.0,
+    "rawNbtBinding": {
+      "schema": "same-side-initial-nbt-binding-v1",
+      "encoding": "named-uncompressed-nbt-v1",
+      "scope": "Compare two complete snapshots of the same actor on the same engine; preserve tag types, list element types/order, exact float bits, arrays and Modified UTF-8 bytes; compound key order alone is unordered. Retain both original SNBT strings. No cross-engine full NBT semantic equivalence."
+    },
+    "comparison": "Exact binary64 initial values; any nonzero representation tolerance is reported separately and never makes exact equality true",
+    "mappings": [
+      {
+        "key": "max_health",
+        "original": "minecraft:generic.max_health",
+        "port": "generic.maxHealth"
+      },
+      {
+        "key": "movement_speed",
+        "original": "minecraft:generic.movement_speed",
+        "port": "generic.movementSpeed"
+      },
+      {
+        "key": "follow_range",
+        "original": "minecraft:generic.follow_range",
+        "port": "generic.followRange"
+      },
+      {
+        "key": "knockback_resistance",
+        "original": "minecraft:generic.knockback_resistance",
+        "port": "generic.knockbackResistance"
+      },
+      {
+        "key": "attack_damage",
+        "original": "minecraft:generic.attack_damage",
+        "port": "generic.attackDamage"
+      }
+    ],
+    "sourceBasis": {
+      "original": "Fixed EntityMaid.createAttributes, LivingEntity.createLivingAttributes and Attributes; AttributeMap instance/supplier lookup and AttributeInstance modifier/value methods",
+      "port": "EntityMaid.applyEntityAttributes, EntityLivingBase.applyEntityAttributes, EntityLiving.applyEntityAttributes and SharedMonsterAttributes; BaseAttributeMap and ModifiableAttributeInstance getters",
+      "modifierOperations": "0 addition; 1 multiply the base after additions; 2 multiply the running total",
+      "bounds": "Only the captured initial base/value/modifiers are compared; range/clamp behavior over other values is not claimed equivalent"
+    },
+    "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
+    "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
+  },
+  "schema": "combat-boundaries-contract-v1",
+  "contract": "COMBAT_BOUNDARIES_V1",
+  "repetitions": 1,
+  "framesPerActor": 360,
+  "warmupTicks": 20,
+  "dayTime": 6000,
+  "difficulty": "HARD",
+  "layoutVolume": [
+    21,
+    11,
+    9
+  ],
+  "maidSpawn": [
+    8.5,
+    1,
+    4.5
+  ],
+  "ownerStart": [
+    8.5,
+    1,
+    7
+  ],
+  "ownerMode": "SURVIVAL",
+  "hunger": 0,
+  "homeEnabled": true,
+  "homeRadius": 12,
+  "floor": "native_glass_enclosure",
+  "noninferiorityDelta": null,
+  "statisticalAdmission": false,
+  "complete14ClassBenchmarkAccepted": false,
+  "randomSourcesReset": false,
+  "target": {
+    "semantic": "controlled_native_pig_not_hostile_mob_ai",
+    "position": [
+      17.5,
+      1,
+      4.5
+    ],
+    "health": 1000,
+    "movementBase": 0,
+    "knockbackBase": 1,
+    "persistent": true
+  },
+  "ammunition": {
+    "registry": "minecraft:arrow",
+    "count": 24,
+    "backpackSlot": 0
+  },
+  "weapon": {
+    "registry": "minecraft:bow",
+    "count": 1,
+    "damage": 0
+  },
+  "physicsGroups": {
+    "source": [
+      "O",
+      "F"
+    ],
+    "native": [
+      "F-R",
+      "N-static",
+      "N-last",
+      "N"
+    ]
+  },
+  "timing": "Registered-spawn input provides the initial current target position; subsequent START applies only declared current world/inventory inputs; native world/entity updates; END strictly reads observations and queues future START input decisions; no direct bow/root ticks or RNG/AI-clock resets",
+  "mechanisms": [
+    {
+      "id": "stationary",
+      "family": "B06",
+      "frames": 220,
+      "foodPresent": false,
+      "initialSitting": true,
+      "arms": [
+        "O",
+        "F",
+        "F-R",
+        "N-static",
+        "N-last",
+        "N"
+      ],
+      "events": [],
+      "input": "Native persistent pig remains at [17.5,1,4.5] throughout every complete flight; START controlled current position and zero motion, no future target input"
+    },
+    {
+      "id": "peek",
+      "family": "B07",
+      "frames": 260,
+      "foodPresent": false,
+      "initialSitting": true,
+      "arms": [
+        "O",
+        "F",
+        "F-R",
+        "N-static",
+        "N-last",
+        "N"
+      ],
+      "events": [
+        {
+          "frame": 40,
+          "kind": "pillar"
+        },
+        {
+          "frame": 140,
+          "kind": "doorway"
+        }
+      ],
+      "input": "Clear initially; START40 stone pillar at x13,y1..9,z4; START140 stone wall x13,y1..9,z1..7 except native-air doorway z4,y1..3; target x17.5,y1,z4.5+1.7*sin((frame-40)*0.12) from40, fixed before40; native LOS and complete-arrow collision outcomes observed"
+    },
+    {
+      "id": "finite",
+      "family": "B08",
+      "frames": 360,
+      "foodPresent": false,
+      "initialSitting": true,
+      "arms": [
+        "O",
+        "F",
+        "N"
+      ],
+      "events": [],
+      "initialInventoryArrows": 3,
+      "externalReserveArrows": 1,
+      "reactiveSequence": [
+        "three_naturally_joined_arrows_and_zero_inventory",
+        "forty_complete_END_observations_without_extra_join_or_wear",
+        "next_START_insert_exact_owned_one_arrow_reserve",
+        "fourth_natural_arrow_join_and_zero_inventory",
+        "forty_complete_END_observations_without_extra_join_or_wear"
+      ],
+      "input": "Fixed visible native target; no arrows removed by fixture, no bow damage rewrite; one pre-owned full-NBT reserve is inserted normally into empty backpack slot0 only after first dry window; already launched arrows may continue to hit during zero ammo"
+    }
+  ],
+  "remaining": [
+    "B05 hostile variants/HARD reinforcement groups/real multiple clients remain explicit beyond prior native Zombie episode",
+    "Actual prior motion, withdrawal, broken bow and in-flight friend crossings reused separately; this package does not rewrite those samples",
+    "Repeated independent JVM blocks and user noninferiority delta remain separate; this calibration is one sample per arm",
+    "Native/source physics groups are distinct; full raw typed input retained without demanding cross-engine full NBT byte equality"
+  ],
+  "crossEngineInputScope": "Sourced relevant task/owner/weapon/ammo/target current physical inputs. Retain raw typed NBT; unknown mod attributes/effects are explicit differences, not whole-NBT equality requirements.",
+  "inputRevision": 1,
+  "inputRevisionReason": "Independent boundary episodes; V2 four-mechanism samples and failures remain unchanged",
+  "finiteAmmoInput": {
+    "normalCount": 24,
+    "finiteInitialCount": 3,
+    "finiteExternalReserveCount": 1,
+    "restockSlot": 0,
+    "dryWaitCompletedFrames": 40,
+    "fullStackSnapshotRequired": true
+  },
+  "independentSamples": 1
+}

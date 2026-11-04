@@ -87,9 +87,11 @@ def layout(rows):
     require(actual == expected, "actual initial enclosure differs")
 
 
-def inspect(data, scene, contract_hash, original):
+def inspect(data, scene, contract_hash, original, expected_schema=None):
     mechanism = scene["id"]
-    require(data["schema"] == ("combat-mechanism-original-v1" if original else "combat-mechanism-port-v1")
+    if expected_schema is None:
+        expected_schema = "combat-mechanism-original-v1" if original else "combat-mechanism-port-v1"
+    require(data["schema"] == expected_schema
             and data["contractSha256"] == contract_hash and data["arm"] in scene["arms"], "contract/arm changed")
     require(data["requestedFlightProfile"] == FLIGHTS[data["arm"]], "post-factory or wrong ablation specification")
     require(data["observationComplete"] is data["collectedFramesComplete"] is True

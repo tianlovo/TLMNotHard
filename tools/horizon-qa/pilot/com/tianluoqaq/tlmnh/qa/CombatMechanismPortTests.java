@@ -167,15 +167,14 @@ public final class CombatMechanismPortTests {
             friend.func_110163_bv();
             report.add("targetInitial", entity(target, true));
             report.add("friendInitial", entity(friend, true));
-            try (var stream = CombatMechanismPortTests.class
-                .getResourceAsStream("/tlmnh-combat-mechanisms/contract.json")) {
+            try (var stream = CombatMechanismPortTests.class.getResourceAsStream(contractResource())) {
                 if (stream == null) throw new IllegalStateException("Missing combat contract");
                 byte[] bytes = com.google.common.io.ByteStreams.toByteArray(stream);
                 contract = new Gson().fromJson(new String(bytes, StandardCharsets.UTF_8), JsonObject.class);
                 h.assertTrue(
                     contract.get("contract")
                         .getAsString()
-                        .equals("COMBAT_MECHANISMS_V2")
+                        .equals(expectedContract())
                         && contract.getAsJsonObject("target")
                             .get("health")
                             .getAsFloat() == targetHealthInput(),
@@ -186,7 +185,7 @@ public final class CombatMechanismPortTests {
                     .digest(bytes)) hex.append(String.format("%02x", b & 255));
                 report.addProperty("contractSha256", hex.toString());
             }
-            report.addProperty("schema", "combat-mechanism-port-v1");
+            report.addProperty("schema", captureSchema());
             report.addProperty("requestedFlightProfile", requestedFlight.name());
             report.addProperty(
                 "shooterInput",
@@ -211,6 +210,18 @@ public final class CombatMechanismPortTests {
                 "UNKNOWN; original observer cannot expose unobserved release gates");
             report.add("actualInputs", maidInputs());
             report.add("initialLayout", layout());
+        }
+
+        String contractResource() {
+            return "/tlmnh-combat-mechanisms/contract.json";
+        }
+
+        String expectedContract() {
+            return "COMBAT_MECHANISMS_V2";
+        }
+
+        String captureSchema() {
+            return "combat-mechanism-port-v1";
         }
 
         com.google.gson.JsonArray layout() {

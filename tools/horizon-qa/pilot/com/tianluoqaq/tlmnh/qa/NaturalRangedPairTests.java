@@ -585,6 +585,7 @@ public final class NaturalRangedPairTests {
                 if (!flight.arrow.isDead) airborne.add(flight.state());
             }
             row.add("arrows", airborne);
+            afterObservedFrame(row);
             frames.add(row);
             validateResources();
             if (wall) h.assertTrue(
@@ -596,6 +597,9 @@ public final class NaturalRangedPairTests {
             drain();
             if (++frame == frameLimit()) finish();
         }
+
+        /** Read-only END observer extension; input changes belong to the following START. */
+        void afterObservedFrame(JsonObject row) {}
 
         float targetHealthInput() {
             return 2000;

@@ -41,6 +41,10 @@ gradle.projectsEvaluated {
             into 'tlmnh-combat-mechanisms'
             rename { 'contract.json' }
         }
+        from(project.file('tools/sleep-natural-reference/combat-boundaries-contract.json')) {
+            into 'tlmnh-combat-boundaries'
+            rename { 'contract.json' }
+        }
         from(project.file('tools/sleep-natural-reference/terrain-life-mechanisms-contract.json')) {
             into 'tlmnh-terrain-life-mechanisms'
             rename { 'contract.json' }

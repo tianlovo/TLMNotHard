@@ -58,7 +58,7 @@ public final class CombatMechanismGameTests {
         FollowMechanismGameTests.collect(h, new Session(h, scene), "tlmnh.combatMechanismsProbe");
     }
 
-    static final class Session extends FollowMechanismGameTests.Session {
+    static class Session extends FollowMechanismGameTests.Session {
         static final java.lang.reflect.Field OWNER_SPAWN_PROTECTION = ownerSpawnField();
         final JsonArray shots = new JsonArray(), damage = new JsonArray();
         final List<AbstractArrow> arrows = new ArrayList<>();
@@ -81,8 +81,12 @@ public final class CombatMechanismGameTests {
         String queued = "";
 
         Session(GameTestHelper h, String scene) {
-            super(h, scene, "/tlmnh-combat-mechanisms/contract.json", "COMBAT_MECHANISMS_V2",
+            this(h, scene, "/tlmnh-combat-mechanisms/contract.json", "COMBAT_MECHANISMS_V2",
                 "combat-mechanism-original-v1", "combat-mechanism-original-");
+        }
+
+        Session(GameTestHelper h, String scene, String resource, String expectedContract, String schema, String prefix) {
+            super(h, scene, resource, expectedContract, schema, prefix);
             mechanism = scene;
             output.add("shots", shots);
             output.add("damageEvents", damage);
@@ -125,7 +129,7 @@ public final class CombatMechanismGameTests {
             if (mechanism.equals("melee")) weapon = new ItemStack(Items.IRON_SWORD);
             if (mechanism.equals("safety")) weapon.enchant(Enchantments.FLAMING_ARROWS, 1);
             maid.setItemInHand(InteractionHand.MAIN_HAND, weapon);
-            if (!mechanism.equals("melee")) maid.getMaidInv().setStackInSlot(0, new ItemStack(Items.ARROW, 24));
+            if (!mechanism.equals("melee")) maid.getMaidInv().setStackInSlot(0, new ItemStack(Items.ARROW, initialAmmoCount()));
             target = pig(mechanism.equals("melee") ? 12.5 : 17.5, 4.5);
             friend = new Wolf(EntityType.WOLF, level);
             friend.setTame(true);
@@ -280,7 +284,7 @@ public final class CombatMechanismGameTests {
             row.addProperty("usedTicks", maid.getTicksUsingItem());
             row.addProperty("confirmedJoins", shots.size());
             row.addProperty("inventoryArrows", arrowCount());
-            row.addProperty("externallyHeldArrows", heldAmmo.getCount());
+            row.addProperty("externallyHeldArrows", heldAmmo.getCount() + additionalExternalAmmo());
             row.addProperty("weaponWear", weapon.getDamageValue());
             var arrowFrames = new JsonArray();
             for (var arrow : arrows) {
@@ -303,7 +307,7 @@ public final class CombatMechanismGameTests {
             targetDamageEvents = 0;
             if (mechanism.equals("melee")) melee(index, row);
             else {
-                helper.assertTrue(arrowCount() + heldAmmo.getCount() + shots.size() == 24, "Original finite ammo changed without an actual arrow join");
+                helper.assertTrue(arrowCount() + heldAmmo.getCount() + additionalExternalAmmo() + shots.size() == ammoBudget(), "Original finite ammo changed without an actual arrow join");
                 boolean wear = beforeBreak < 0 ? weapon.getDamageValue() == shots.size()
                     : replacementShots >= 0 ? weapon.getDamageValue() == shots.size() - replacementShots
                     : shots.size() == beforeBreak ? weapon.getDamageValue() == weapon.getMaxDamage()
@@ -476,6 +480,12 @@ public final class CombatMechanismGameTests {
             if (e.getEntity() == target && direct instanceof AbstractArrow a && records.containsKey(a) && !e.isCanceled())
                 pendingHits.put(a, target.getHealth());
         }
+
+        int initialAmmoCount() { return 24; }
+
+        int additionalExternalAmmo() { return 0; }
+
+        int ammoBudget() { return 24; }
 
         int arrowCount() {
             int count = 0;
