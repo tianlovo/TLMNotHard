@@ -19,6 +19,6 @@
     "MixinArrowSource",
     "MixinEntityArrowShieldCapture"
   ],
-  "client": [],
+  "client": ["client.MixinModelBipedCarry"],
   "server": []
 }

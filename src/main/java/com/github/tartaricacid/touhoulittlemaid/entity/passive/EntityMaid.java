@@ -217,12 +217,40 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         }
     }
 
+    /** 1.7本地玩家posY含yOffset，原生乘客挂载点统一以玩家脚底为原点 */
+    @Override
+    public double getYOffset() {
+        double offset = super.getYOffset();
+        return ridingEntity instanceof EntityPlayer player ? offset - player.yOffset : offset;
+    }
+
+    /** 固定上游EntityMixin.positionRider公式；1.7本地玩家眼高原点先转为脚底 */
+    public static net.minecraft.util.Vec3 playerCarryPosition(double x, double y, double z, float playerYOffset,
+        float bodyYaw, boolean descending) {
+        float radians = (float) -Math.toRadians(bodyYaw);
+        double offsetX = .75 * net.minecraft.util.MathHelper.sin(radians);
+        double offsetZ = .75 * net.minecraft.util.MathHelper.cos(radians);
+        return net.minecraft.util.Vec3
+            .createVectorHelper(x + offsetX, y - playerYOffset + .15 - (descending ? .3 : 0), z + offsetZ);
+    }
+
     /** 原rideTick在原生骑乘更新之后对齐头部/身体，保留上游两个可选Create类型排除 */
     @Override
     public void updateRidden() {
         super.updateRidden();
         var vehicle = ridingEntity;
         if (vehicle == null) return;
+        if (vehicle instanceof EntityPlayer player) {
+            // 固定上游EntityMixin.positionRider替代原生1.35高的座位，原点为玩家脚底
+            var position = playerCarryPosition(
+                player.posX,
+                player.posY,
+                player.posZ,
+                player.yOffset,
+                player.renderYawOffset,
+                player.isSneaking());
+            setPosition(position.xCoord, position.yCoord, position.zCoord);
+        }
         var id = com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities.id(vehicle);
         String type = id == null ? null : id.toString();
         if (!"create:carriage_contraption".equals(type) && !"create:seat".equals(type)) {
@@ -649,6 +677,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (!isOwner(player)) return nameTag;
         // 上游主人交互仅使用主手；Backhand 仍可从实际副手槽进行野生驯服
         if (!MaidInteractions.isMainHand(player)) return nameTag;
+        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService.interact(this, player, held)) return true;
         if (MaidInteractions.interactOwned(this, player, held)) return true;
         if (!worldObj.isRemote) {
             if (player.isSneaking() && held == null) {

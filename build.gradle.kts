@@ -102,7 +102,7 @@ fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<Str
     val counts = names.groupingBy { it }.eachCount()
     val manifestPath = "assets/tlmnh/builtin-retention-provenance.json"
     val raw = read(manifestPath)
-    requireRetention(sha256(raw) == "928fc5489c4cd05178a604aa690dec4f73d3f818100647799bca27c5edd059f9",
+    requireRetention(sha256(raw) == "9829ef13de6c8134c947df3e3e2568805a075a2075f3737a27eac22674cafe90",
         "authority manifest differs from the complete fixed Git-tree inventory")
     val manifest = JsonSlurper().parseText(raw.toString(Charsets.UTF_8)) as Map<*, *>
     requireRetention(manifest["schema"] == 1 && manifest["commit"] == "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
@@ -212,6 +212,7 @@ tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds, verifyBuilt
 tasks.named("check") { dependsOn(verifyBuiltinSounds, verifyBuiltinRetention) }
 
 tasks.withType<Jar>().configureEach {
+    manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
     from("licenses") { into("META-INF/licenses") }
     from("THIRD_PARTY_NOTICES.md") { into("META-INF") }
 }

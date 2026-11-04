@@ -27,6 +27,7 @@ import cpw.mods.fml.relauncher.Side;
 public final class MaidResurrectionContent {
 
     public static final Item INITIAL_SLAB = new MaidLifecycleItems.InitialSlab().setCreativeTab(CreativeTabs.tabMisc);
+    public static final Item FILLED_SLAB = new MaidLifecycleItems.FilledSlab().setCreativeTab(CreativeTabs.tabMisc);
     public static final Item MAID_CORE = new MaidCoreItem().setCreativeTab(CreativeTabs.tabMisc);
     public static final Item EMPTY_SLAB = new MaidLifecycleItems.StoredMaidItem().setMaxStackSize(1)
         .setUnlocalizedName("tlmnh.smart_slab_empty")
@@ -45,6 +46,7 @@ public final class MaidResurrectionContent {
         if (registered) throw new IllegalStateException("Maid resurrection content already registered");
         registered = true;
         GameRegistry.registerItem(INITIAL_SLAB, "smart_slab_init");
+        GameRegistry.registerItem(FILLED_SLAB, "smart_slab_has_maid");
         GameRegistry.registerItem(MAID_CORE, "maid_core");
         GameRegistry.registerItem(EMPTY_SLAB, "smart_slab_empty");
         GameRegistry.registerItem(FILM, "film");

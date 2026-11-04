@@ -44,6 +44,7 @@ public final class MaidLifecycleEvents {
 
     @SubscribeEvent
     public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        MaidCaptureService.resume(event.player);
         MaidAcquisitionDelivery.resume(event.player);
         MaidRedemptionDelivery.resume(event.player);
         giveInitial(event.player);
@@ -52,6 +53,7 @@ public final class MaidLifecycleEvents {
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.player.ticksExisted % 100 == 0) {
+            MaidCaptureService.resume(event.player);
             MaidAcquisitionDelivery.resume(event.player);
             MaidRedemptionDelivery.resume(event.player);
             giveInitial(event.player);

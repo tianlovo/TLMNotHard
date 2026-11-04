@@ -78,6 +78,31 @@ public final class MaidLifecycleItems {
         }
     }
 
+    public static final class FilledSlab extends StoredMaidItem {
+
+        public FilledSlab() {
+            setMaxStackSize(1);
+            setUnlocalizedName("tlmnh.smart_slab_has_maid");
+            setTextureName("touhou_little_maid:smart_slab_has_maid");
+        }
+
+        @Override
+        @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+        public void addInformation(ItemStack stack, EntityPlayer player, java.util.List<String> lines,
+            boolean advanced) {
+            lines.add(net.minecraft.util.StatCollector.translateToLocal("tooltips.tlmnh.smart_slab_has_maid.release"));
+        }
+
+        @Override
+        public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
+            float hitX, float hitY, float hitZ) {
+            if (side != 1) return false;
+            if (world.isRemote) return true;
+            MaidLifecycleService.tell(player, MaidLifecycleService.releaseCaptured(player, stack, x, y, z));
+            return true;
+        }
+    }
+
     public static boolean isFilm(ItemStack stack) {
         return stack != null && stack.stackSize == 1 && stack.getItem() == MaidResurrectionContent.FILM;
     }

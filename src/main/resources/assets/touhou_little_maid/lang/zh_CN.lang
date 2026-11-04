@@ -127,3 +127,10 @@ gui.touhou_little_maid.activity.rest=睡觉
 gui.touhou_little_maid.activity.idle=休息
 tooltips.touhou_little_maid.schedule.desc=§7点击切换日程表
 gui.tlmnh.original.backpack_excluded=首版不包含扩容背包，当前使用原版无背包状态
+
+overlay.touhou_little_maid.golden_apple.tips=手持金苹果可以使用Shift右击喂给女仆
+overlay.touhou_little_maid.potion.tips=手持药水可以使用Shift右击喂给女仆
+overlay.touhou_little_maid.milk_bucket.tips=手持奶桶可以使用Shift右击清除女仆的药水效果
+overlay.touhou_little_maid.glass_bottle.tips=右击取出经验，Shift右击全部取出
+overlay.touhou_little_maid.name_tag.tips=右击命名女仆
+overlay.touhou_little_maid.saddle.tips=右击将女仆抱在怀里

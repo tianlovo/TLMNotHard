@@ -30,6 +30,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".MixinMaidPassengerAlias")) return supportsYsmMaidPassenger(targetClassName);
         if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) return supportsNaturalWorldGen(targetClassName);
         if (mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return supportsShieldCapture(targetClassName);
         if (!mixinClassName.endsWith(".MixinArrowImpact")) return true;
@@ -69,6 +70,54 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                 .warn("Cannot inspect native arrow impact hook; using pre-damage protection", failure);
         }
         return false;
+    }
+
+    /** 可选YSM只在已读取的提供方class原字节及实际注入shape一致时加载 */
+    private static boolean supportsYsmMaidPassenger(String targetClassName) {
+        if (!"com.fox.ysmu.client.animation.condition.ConditionalEntityIdMatch".equals(targetClassName)) return false;
+        try {
+            var resource = net.minecraft.launchwrapper.Launch.classLoader
+                .getResource("com/fox/ysmu/client/animation/condition/ConditionalEntityIdMatch.class");
+            if (resource == null) return false;
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            try (var stream = resource.openStream()) {
+                byte[] bytes = new byte[8192];
+                int count;
+                while ((count = stream.read(bytes)) >= 0) if (count > 0) digest.update(bytes, 0, count);
+            }
+            var hex = new StringBuilder();
+            for (byte value : digest.digest()) hex.append(String.format("%02x", value & 255));
+            // 同一已审计Multi-Release JAR：Java8原entry和Java21+实际选中的entry分别保留精确摘要
+            if (!"6736b016732daa5cb32676fc3f88f1989bda8797663e4f806295d8d43109c994".equals(hex.toString())
+                && !"a6cef19780740b05e7babb590e32dba7c9a088d5fcb59bfe3edac1e25bcb9a3d".equals(hex.toString())) {
+                LogManager.getLogger("tlmnh")
+                    .warn(
+                        "YSM passenger matcher differs; resource={} observedSha256={}; original matching remains active",
+                        resource,
+                        hex);
+                return false;
+            }
+            var node = MixinService.getService()
+                .getBytecodeProvider()
+                .getClassNode(targetClassName);
+            int matching = 0;
+            boolean field = false;
+            for (Object raw : node.fields) {
+                var entry = (org.spongepowered.asm.lib.tree.FieldNode) raw;
+                if (entry.name.equals("ids") && entry.desc.equals("Ljava/util/Set;")
+                    && (entry.access & Opcodes.ACC_FINAL) != 0) field = true;
+            }
+            for (Object raw : node.methods) {
+                var entry = (MethodNode) raw;
+                if (entry.name.equals("doTest")
+                    && entry.desc.equals("(Lnet/minecraft/entity/EntityLivingBase;)Ljava/lang/String;")) matching++;
+            }
+            return field && matching == 1;
+        } catch (Exception | LinkageError failure) {
+            LogManager.getLogger("tlmnh")
+                .warn("Cannot inspect optional YSM passenger matcher; original matching remains active", failure);
+            return false;
+        }
     }
 
     private static boolean isWorldGenSpawning(MethodNode method) {

@@ -28,13 +28,15 @@ public final class MaidLifecycleService {
         INVALID_CREDENTIAL,
         BLOCKED,
         SPAWN_REJECTED,
-        HEALTH_LOW
+        HEALTH_LOW,
+        COOLDOWN
     }
 
     private MaidLifecycleService() {}
 
     public static boolean isPendingRedemption(EntityMaid maid) {
-        return MaidRedemptionDelivery.blocks(maid) || MaidDeathService.blocksSource(maid);
+        return MaidRedemptionDelivery.blocks(maid) || MaidDeathService.blocksSource(maid)
+            || MaidCaptureService.blocks(maid);
     }
 
     public static boolean canUse(EntityPlayer player) {
@@ -85,6 +87,68 @@ public final class MaidLifecycleService {
                 MaidSpawnChecks.discard(maid);
                 ledger.rollback(token);
             }
+        }
+    }
+
+    /** 收纳魂符读取完整原生活体NBT，保留原UUID；正常出生仍由同一个持久发布入口确认 */
+    public static Result releaseCaptured(EntityPlayer player, ItemStack stack, int x, int y, int z) {
+        if (!canUse(player) || stack == null
+            || stack.getItem() != MaidResurrectionContent.FILLED_SLAB
+            || player.getCurrentEquippedItem() != stack) return Result.DENIED;
+        if (MaidCaptureService.coolingDown(player)) return Result.COOLDOWN;
+        var world = player.worldObj;
+        int slot = player.inventory.currentItem;
+        var expected = stack.copy();
+        var token = MaidLifecycleItems.token(stack);
+        MaidLifecycleData ledger = null;
+        boolean reserved = false, handedOff = false;
+        try {
+            if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
+            ledger = MaidLifecycleData.get(world);
+            var owner = ledger.owner(token, MaidLifecycleData.Kind.CAPTURED);
+            if (owner == null) return Result.INVALID_CREDENTIAL;
+            if (!owner.equals(player.getUniqueID())) return Result.WRONG_OWNER;
+            var capture = ledger.capture(token);
+            if (!capture.getCompoundTag("Credential")
+                .equals(stack.writeToNBT(new net.minecraft.nbt.NBTTagCompound()))) return Result.INVALID_CREDENTIAL;
+            if (!ledger.redemption(token)
+                .hasNoTags())
+                return MaidRedemptionDelivery.resume(player, ledger, token) ? Result.SUCCESS
+                    : Result.INVALID_CREDENTIAL;
+            var identity = ledger.reserve(token, MaidLifecycleData.Kind.CAPTURED);
+            if (identity == null) return Result.INVALID_CREDENTIAL;
+            reserved = true;
+            var maid = new EntityMaid(world);
+            maid.readFromNBT(identity);
+            if (!owner.toString()
+                .equals(maid.func_152113_b()) || !maid.isTamed()
+                || !maid.isEntityAlive()
+                || !maid.getUniqueID()
+                    .toString()
+                    .equals(capture.getString("Subject")))
+                return Result.INVALID_CREDENTIAL;
+            for (var loaded : net.minecraft.server.MinecraftServer.getServer().worldServers)
+                if (loaded != null) for (Object entity : loaded.loadedEntityList.toArray())
+                    if (entity instanceof EntityMaid other && !other.isDead
+                        && other.getUniqueID()
+                            .equals(maid.getUniqueID()))
+                        return Result.BLOCKED;
+            maid.dimension = world.provider.dimensionId;
+            MaidCaptureService.markReleased(maid, token);
+            maid.setLocationAndAngles(x + .5D, y + 1D, z + .5D, 0, 0);
+            if (!safeSpawn(maid)) return Result.BLOCKED;
+            if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
+            handedOff = true;
+            var result = MaidRedemptionDelivery.publish(player, ledger, token, maid, stack, null, x, y, z);
+            if (result == Result.SUCCESS) MaidCaptureService.cooldown(player);
+            return result;
+        } catch (Exception | LinkageError | AssertionError failure) {
+            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(failure);
+            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
+                .report(cpw.mods.fml.relauncher.Side.SERVER, "capture/release/" + token, failure, player.getUniqueID());
+            return Result.DENIED;
+        } finally {
+            if (reserved && !handedOff) ledger.rollback(token);
         }
     }
 

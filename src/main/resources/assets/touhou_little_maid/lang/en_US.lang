@@ -127,3 +127,10 @@ gui.touhou_little_maid.activity.rest=Rest
 gui.touhou_little_maid.activity.idle=Idle
 tooltips.touhou_little_maid.schedule.desc=§7Click to switch schedule
 gui.tlmnh.original.backpack_excluded=Expanded backpacks are outside the first release; the original empty backpack is used
+
+overlay.touhou_little_maid.golden_apple.tips=crouch right-click to feed maid
+overlay.touhou_little_maid.potion.tips=crouch right-click to feed maid
+overlay.touhou_little_maid.milk_bucket.tips=crouch right-click to clear maid's potion effects
+overlay.touhou_little_maid.glass_bottle.tips=Right click to take out some experience, crouch click to take it all out
+overlay.touhou_little_maid.name_tag.tips=Right click to name the maid
+overlay.touhou_little_maid.saddle.tips=Right click to carry maid in yours arms

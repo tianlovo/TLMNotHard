@@ -35,6 +35,7 @@ public final class ClientProxy extends CommonProxy {
         super.init();
         com.tianluoqaq.tlmnh.client.protection.ClientProtectionEvents.register();
         com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.register();
+        com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms.register();
         var worldSounds = com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE;
         FMLCommonHandler.instance()
             .bus()
@@ -53,6 +54,7 @@ public final class ClientProxy extends CommonProxy {
         net.minecraftforge.common.MinecraftForge.EVENT_BUS
             .register(new com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent());
         com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
+        com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsOverlay.register();
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
         var models = new BuiltinMaidModels(

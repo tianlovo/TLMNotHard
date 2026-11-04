@@ -16,6 +16,7 @@ public final class MaidClientPreferences {
     private static boolean modelIconCache;
     private static int globalMaidSoundFrequency = 100;
     private static boolean showChatBubbles = true;
+    private static final java.util.Map<String, Boolean> interactionTips = new java.util.HashMap<>();
 
     private MaidClientPreferences() {}
 
@@ -27,7 +28,16 @@ public final class MaidClientPreferences {
             .getInt("GlobalMaidSoundFrequency", "sound", 100, 0, 100, "Global maid sound frequency percent");
         showChatBubbles = configuration
             .getBoolean("GlobalMaidShowChatBubble", "render", true, "显示普通聊天气泡 / Show ordinary maid chat bubbles");
+        interactionTips.clear();
+        for (var tip : com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsRules.Tip.values())
+            interactionTips.put(
+                tip.configKey,
+                configuration.getBoolean(tip.configKey, "render", true, "Show the maid interaction hint / 显示女仆交互提示"));
         if (configuration.hasChanged()) configuration.save();
+    }
+
+    public static boolean interactionTipEnabled(String key) {
+        return interactionTips.getOrDefault(key, true);
     }
 
     public static boolean showChatBubbles() {

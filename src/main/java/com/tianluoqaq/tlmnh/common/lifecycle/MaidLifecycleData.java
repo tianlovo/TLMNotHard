@@ -21,7 +21,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     public enum Kind {
         INITIAL,
         FILM,
-        ACQUIRED
+        ACQUIRED,
+        CAPTURED
     }
 
     public enum AcquisitionPhase {
@@ -63,7 +64,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         "AcquisitionCredential",
         "Redemption",
         "DeathIngress",
-        "TombstonePublication");
+        "TombstonePublication",
+        "Capture");
     private static final Set<String> RETURNED_FIELDS = fields(
         "Id",
         "Stack",
@@ -86,6 +88,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     private final Set<UUID> deathAttempts = new HashSet<>(), tombstonePublications = new HashSet<>();
     private final Map<UUID, UUID> redemptionCandidates = new HashMap<>();
     private final Map<Integer, Integer> experienceCursors = new HashMap<>();
+    private final Set<UUID> captureAttempts = new HashSet<>();
+    private final Map<UUID, UUID> captureHeads = new HashMap<>();
     private boolean healthy = true;
 
     public MaidLifecycleData(String name) {
@@ -107,6 +111,133 @@ public final class MaidLifecycleData extends WorldSavedData {
         }
         if (!data.healthy) throw new IllegalStateException("Invalid maid lifecycle data; recovery required");
         return data;
+    }
+
+    public NBTTagCompound capture(UUID token) {
+        var entry = entries.get(token);
+        return entry == null ? new NBTTagCompound() : (NBTTagCompound) entry.capture.copy();
+    }
+
+    public UUID captureHead(UUID subject) {
+        return captureHeads.get(subject);
+    }
+
+    boolean captureConsumed(UUID token) {
+        var entry = entries.get(token);
+        return entry != null && entry.kind == Kind.CAPTURED && entry.consumed;
+    }
+
+    int nextCaptureSequence(UUID subject) {
+        var head = captureHeads.get(subject);
+        if (head == null) return 1;
+        var previous = entries.get(head);
+        if (!previous.consumed || previous.capture.getInteger("Sequence") == Integer.MAX_VALUE)
+            throw new IllegalStateException("Previous maid capture is still unsettled");
+        return previous.capture.getInteger("Sequence") + 1;
+    }
+
+    void prepareCapture(World world, UUID token, UUID owner, UUID subject, NBTTagCompound source,
+        NBTTagCompound record) {
+        MaidCaptureRecord.validate(record, token, owner, subject);
+        if (entries.containsKey(token) || returnedFilms.containsKey(token)
+            || !"PREPARED".equals(record.getString("Stage"))
+            || !source.equals(record.getCompoundTag("Source"))
+            || record.getInteger("Sequence") != nextCaptureSequence(subject))
+            throw new IllegalStateException("Capture identity or generation changed");
+        var entry = new Entry(Kind.CAPTURED, owner, subject, (NBTTagCompound) source.copy(), false, false);
+        entry.capture = (NBTTagCompound) record.copy();
+        entries.put(token, entry);
+        captureHeads.put(subject, token);
+        captureAttempts.add(token);
+        reservations.add(token);
+        markDirty();
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    boolean beginCapture(UUID token) {
+        var entry = entries.get(token);
+        if (entry == null || entry.kind != Kind.CAPTURED
+            || entry.consumed
+            || entry.delivered
+            || !entry.redemption.hasNoTags()
+            || !token.equals(captureHeads.get(entry.subject))
+            || "HELD".equals(entry.capture.getString("Stage"))
+            || !reservations.add(token)) return false;
+        captureAttempts.add(token);
+        return true;
+    }
+
+    void captureStage(World world, UUID token, String stage) {
+        var entry = activeCapture(token);
+        String previous = entry.capture.getString("Stage");
+        if (!("PREPARED".equals(previous) && "REMOVED".equals(stage)
+            || "REMOVED".equals(previous) && "DELIVERED".equals(stage)))
+            throw new IllegalStateException("Invalid capture transition");
+        entry.capture.setString("Stage", stage);
+        entry.delivered = "DELIVERED".equals(stage);
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+        } catch (RuntimeException | Error failure) {
+            entry.capture.setString("Stage", previous);
+            entry.delivered = false;
+            markDirty();
+            throw failure;
+        }
+    }
+
+    void holdCapture(World world, UUID token, NBTTagCompound observed) {
+        var entry = entries.get(token);
+        if (entry == null || entry.kind != Kind.CAPTURED || entry.consumed)
+            throw new IllegalStateException("Missing capture escrow");
+        if (!"HELD".equals(entry.capture.getString("Stage"))) {
+            entry.capture.setString("Stage", "HELD");
+            entry.capture.setTag("Observed", observed.copy());
+            entry.delivered = false;
+            markDirty();
+        }
+        MaidLifecycleDurability.ledger(world, this);
+    }
+
+    void cancelCapture(World world, UUID token) {
+        var entry = activeCapture(token);
+        if (!"PREPARED".equals(entry.capture.getString("Stage")))
+            throw new IllegalStateException("Only an untouched capture can be canceled");
+        entries.remove(token);
+        rebuildCaptureHead(entry.subject);
+        try {
+            markDirty();
+            MaidLifecycleDurability.ledger(world, this);
+        } catch (RuntimeException | Error failure) {
+            entries.put(token, entry);
+            captureHeads.put(entry.subject, token);
+            markDirty();
+            throw failure;
+        }
+    }
+
+    void endCapture(UUID token) {
+        captureAttempts.remove(token);
+        reservations.remove(token);
+    }
+
+    private Entry activeCapture(UUID token) {
+        var entry = entries.get(token);
+        if (entry == null || entry.kind != Kind.CAPTURED
+            || !captureAttempts.contains(token)
+            || !reservations.contains(token)) throw new IllegalStateException("Capture reservation changed");
+        return entry;
+    }
+
+    private void rebuildCaptureHead(UUID subject) {
+        captureHeads.remove(subject);
+        int sequence = 0;
+        for (var item : entries.entrySet())
+            if (item.getValue().kind == Kind.CAPTURED && item.getValue().subject.equals(subject)
+                && item.getValue().capture.getInteger("Sequence") > sequence) {
+                    sequence = item.getValue().capture.getInteger("Sequence");
+                    captureHeads.put(subject, item.getKey());
+                }
     }
 
     public UUID initialToken(UUID owner) {
@@ -203,7 +334,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     private Entry acquisitionEntry(UUID token) {
         var entry = entries.get(token);
-        if (entry == null || entry.kind == Kind.FILM) throw new IllegalStateException("No acquisition credential");
+        if (entry == null || entry.kind != Kind.INITIAL && entry.kind != Kind.ACQUIRED)
+            throw new IllegalStateException("No acquisition credential");
         return entry;
     }
 
@@ -792,9 +924,12 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.kind != kind
             || entry.consumed
             || !deathReady(entry)
+            || kind == Kind.CAPTURED && (!entry.delivered || !"DELIVERED".equals(entry.capture.getString("Stage"))
+                || !token.equals(captureHeads.get(entry.subject)))
             || entry.acquisitionPhase != AcquisitionPhase.NONE
             || !entry.redemption.hasNoTags()
             || !reservations.add(token)) return null;
+        if (kind == Kind.CAPTURED) redemptionAttempts.add(token);
         return (NBTTagCompound) entry.identity.copy();
     }
 
@@ -804,12 +939,14 @@ public final class MaidLifecycleData extends WorldSavedData {
             || acquisitionAttempts.contains(token)
             || !entry.redemption.hasNoTags()
             || !reservations.remove(token)) throw new IllegalStateException("No lifecycle reservation");
+        redemptionAttempts.remove(token);
         entry.consumed = true;
         markDirty();
     }
 
     public void rollback(UUID token) {
         reservations.remove(token);
+        redemptionAttempts.remove(token);
     }
 
     public UUID queueReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z) {
@@ -963,11 +1100,12 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !redemptionAttempts.isEmpty()
             || !returnedAttempts.isEmpty()
             || !deathAttempts.isEmpty()
-            || !tombstonePublications.isEmpty())
+            || !tombstonePublications.isEmpty()
+            || !captureAttempts.isEmpty())
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 8)
+        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 9)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
@@ -976,6 +1114,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var deadMaids = new HashSet<UUID>();
         var acquisitions = new HashSet<UUID>();
         var candidates = new HashMap<UUID, UUID>();
+        var captureGenerations = new HashSet<String>();
+        var restoredCaptureHeads = new HashMap<UUID, UUID>();
         for (int i = 0; i < list.tagCount(); i++) {
             var item = list.getCompoundTagAt(i);
             knownFields(item, ENTRY_FIELDS);
@@ -991,6 +1131,7 @@ public final class MaidLifecycleData extends WorldSavedData {
                 case INITIAL -> initialOwners.add(owner);
                 case FILM -> deadMaids.add(subject);
                 case ACQUIRED -> acquisitions.add(subject);
+                case CAPTURED -> schema >= 9;
             };
             if (restored.containsKey(token) || !unique)
                 throw new IllegalStateException("Duplicate maid lifecycle identity");
@@ -1059,6 +1200,23 @@ public final class MaidLifecycleData extends WorldSavedData {
             } else if (item.hasKey("DeathIngress") || item.hasKey("TombstonePublication")) {
                 throw new IllegalStateException("Death transfer records require lifecycle schema 8");
             }
+            if (schema >= 9) {
+                if (!item.hasKey("Capture", 10)) throw new IllegalStateException("Missing capture record");
+                entry.capture = (NBTTagCompound) item.getCompoundTag("Capture")
+                    .copy();
+                if (kind == Kind.CAPTURED) {
+                    MaidCaptureRecord.validate(entry.capture, token, owner, subject);
+                    if (!entry.identity.equals(entry.capture.getCompoundTag("Source"))
+                        || entry.delivered != "DELIVERED".equals(entry.capture.getString("Stage"))
+                        || entry.consumed && !entry.delivered
+                        || !captureGenerations.add(subject + "/" + entry.capture.getInteger("Sequence")))
+                        throw new IllegalStateException("Invalid stored maid identity or generation");
+                    var previous = restoredCaptureHeads.get(subject);
+                    if (previous == null
+                        || restored.get(previous).capture.getInteger("Sequence") < entry.capture.getInteger("Sequence"))
+                        restoredCaptureHeads.put(subject, token);
+                } else if (!entry.capture.hasNoTags()) throw new IllegalStateException("Unexpected capture record");
+            } else if (item.hasKey("Capture")) throw new IllegalStateException("Capture requires lifecycle schema 9");
             if ((entry.tombstoneHeld || entry.experienceHeld) && (kind != Kind.FILM || !entry.delivered))
                 throw new IllegalStateException("Invalid held death escrow");
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
@@ -1115,6 +1273,12 @@ public final class MaidLifecycleData extends WorldSavedData {
         tombstonePublications.clear();
         redemptionCandidates.clear();
         redemptionCandidates.putAll(candidates);
+        captureAttempts.clear();
+        captureHeads.clear();
+        captureHeads.putAll(restoredCaptureHeads);
+        for (var item : restored.entrySet()) if (item.getValue().kind == Kind.CAPTURED && !item.getKey()
+            .equals(captureHeads.get(item.getValue().subject)) && !item.getValue().consumed)
+            throw new IllegalStateException("Unsettled older maid capture generation");
         experienceCursors.clear();
         healthy = true;
     }
@@ -1122,7 +1286,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 8);
+        tag.setInteger("Schema", 9);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
@@ -1155,6 +1319,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             data.setTag("Redemption", entry.redemption.copy());
             data.setTag("DeathIngress", entry.deathIngress.copy());
             data.setTag("TombstonePublication", entry.tombstonePublication.copy());
+            data.setTag("Capture", entry.capture.copy());
             list.appendTag(data);
         }
         tag.setTag("Entries", list);
@@ -1221,7 +1386,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             .copy();
         boolean source = !entry.acquisitionSource.hasNoTags(), receipt = !entry.acquisitionReceipt.hasNoTags();
         boolean credential = !entry.acquisitionCredential.hasNoTags();
-        if (entry.kind == Kind.FILM
+        if ((entry.kind == Kind.FILM || entry.kind == Kind.CAPTURED)
             && (entry.acquisitionPhase != AcquisitionPhase.NONE || source || receipt || credential)
             || entry.kind == Kind.INITIAL && (source || receipt || entry.acquisitionPhase == AcquisitionPhase.PREPARED)
             || source != receipt
@@ -1276,6 +1441,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         private NBTTagCompound acquisitionSource = new NBTTagCompound(), acquisitionReceipt = new NBTTagCompound(),
             acquisitionCredential = new NBTTagCompound();
         private NBTTagCompound redemption = new NBTTagCompound();
+        private NBTTagCompound capture = new NBTTagCompound();
         private NBTTagCompound deathIngress = new NBTTagCompound(), tombstonePublication = new NBTTagCompound();
 
         private Entry(Kind kind, UUID owner, UUID subject, NBTTagCompound identity, boolean consumed,

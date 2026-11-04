@@ -33,13 +33,13 @@
       "path": "assets/touhou_little_maid/lang/zh_CN.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/zh_cn.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "6ef20752e16a90206454300fdfd46743db4acdb36625d82e3db60483f03b67f3"
+      "sha256": "6ec0fd09ae69bf0ee561f8d0a93d9ee900335f85d4cc49e8113f51c764325ada"
     },
     {
       "path": "assets/touhou_little_maid/lang/en_US.lang",
       "source": "src/main/resources/assets/touhou_little_maid/lang/en_us.json",
       "conversion": "Selected keys, values unchanged; newline escaped for legacy lang",
-      "sha256": "3820edf9de04a45487dd2f3dff01396ffe02b2c17b21393c17136e7ea19f0e64"
+      "sha256": "b8d32e641b006e7952372b98dc7a6996b5c3a03b0579094884a89cb0fe73f5fe"
     },
     {
       "path": "assets/touhou_little_maid/textures/gui/bauble_button.png",
@@ -210,6 +210,12 @@
       "path": "assets/touhou_little_maid/textures/gui/default_task_config.png",
       "source": "src/main/resources/assets/touhou_little_maid/textures/gui/default_task_config.png",
       "sha256": "21d301963e2a37a8fa4f53249ff3aa19eaacd1c00fb11018adf85ced1eb49e4c"
+    },
+    {
+      "path": "assets/touhou_little_maid/textures/gui/maid_tips_icon.png",
+      "source": "src/main/resources/assets/touhou_little_maid/textures/gui/maid_tips_icon.png",
+      "sha256": "4aed56ab64f3742e0d82c666e045ca818095724617c2122a22bac8508d5c0b3a",
+      "bytes": 142
     }
   ]
 }

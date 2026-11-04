@@ -24,6 +24,10 @@ public final class MaidCombatAttributes {
         Integer.MIN_VALUE,
         Integer.MAX_VALUE).setShouldWatch(true);
 
+    /** fixed8a3 InitAttribute.MAID_HUNGER及YSMBinding.food_level，独立于旧MaidHunger存档字段 */
+    public static final IAttribute MAID_HUNGER = new RangedAttribute("tlmnh.maidHunger", 20, 0, Integer.MAX_VALUE)
+        .setShouldWatch(true);
+
     private MaidCombatAttributes() {}
 
     public static void register(BaseAttributeMap attributes) {
@@ -31,6 +35,7 @@ public final class MaidCombatAttributes {
         registerIfAbsent(attributes, ENTITY_REACH);
         registerIfAbsent(attributes, SHOOT_COOLDOWN);
         registerIfAbsent(attributes, USE_ITEM_SPEED);
+        registerIfAbsent(attributes, MAID_HUNGER);
     }
 
     private static void registerIfAbsent(BaseAttributeMap attributes, IAttribute attribute) {

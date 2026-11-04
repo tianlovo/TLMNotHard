@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.client.render.molang;
 
 import java.util.Locale;
 
+import net.minecraft.entity.ai.attributes.BaseAttributeMap;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemAxe;
 import net.minecraft.item.ItemHoe;
@@ -14,6 +15,7 @@ import net.minecraft.item.ItemSword;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.MathHelper;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame.Slot;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;
@@ -46,7 +48,7 @@ public final class MaidMolangFrames {
         frame.sneaking = maid.onGround && maid.isSneaking();
         frame.begging = maid.hasPose(MaidPose.BEGGING);
         frame.sitting = maid.isSitting();
-        frame.foodLevel = maid.getHunger();
+        frame.foodLevel = foodLevel(maid.getAttributeMap());
         double blink = (seekTicks + Math.abs(
             maid.getUniqueID()
                 .getLeastSignificantBits() % 10))
@@ -70,6 +72,12 @@ public final class MaidMolangFrames {
         frame.hasElytra = chest != null
             && com.tianluoqaq.tlmnh.compat.etfuturum.common.item.EtFuturumItems.isElytra(chest.itemId);
         return frame;
+    }
+
+    /** 原YSMBinding读取MAID_HUNGER属性，默认20；持久字段MaidHunger不是该动画查询 */
+    public static int foodLevel(BaseAttributeMap attributes) {
+        var attribute = attributes.getAttributeInstance(MaidCombatAttributes.MAID_HUNGER);
+        return attribute == null ? 20 : (int) attribute.getAttributeValue();
     }
 
     private static void equipment(MolangQueryFrame frame, Slot slot, ItemStack stack) {

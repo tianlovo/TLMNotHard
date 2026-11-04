@@ -164,3 +164,8 @@ feature.tlmnh.protection.shrine_sounds=神龛交互音效
 tooltips.touhou_little_maid.film.no_data.desc=这张胶片没有女仆数据
 gui.touhou_little_maid.name_tag.edit_box=命名牌文本框
 gui.touhou_little_maid.tag.always_show=是否总是显示名称
+
+overlay.tlmnh.empty_slab.tips=右键收回女仆
+item.tlmnh.smart_slab_has_maid.name=女仆魂符
+tooltips.tlmnh.smart_slab_has_maid.release=对方块顶面右键放出女仆，仅原主人可用
+message.tlmnh.lifecycle.cooldown=请稍候再使用魂符

@@ -165,3 +165,8 @@ feature.tlmnh.protection.shrine_sounds=Shrine interaction sounds
 tooltips.touhou_little_maid.film.no_data.desc=This Film Is Missing Maid Data
 gui.touhou_little_maid.name_tag.edit_box=Name Tag Edit Box
 gui.touhou_little_maid.tag.always_show=Whether to always show the name
+
+overlay.tlmnh.empty_slab.tips=Right-click to recall the maid
+item.tlmnh.smart_slab_has_maid.name=Occupied Maid Slab
+tooltips.tlmnh.smart_slab_has_maid.release=Right-click the top of a block to release your maid
+message.tlmnh.lifecycle.cooldown=Please wait before using the slab again
