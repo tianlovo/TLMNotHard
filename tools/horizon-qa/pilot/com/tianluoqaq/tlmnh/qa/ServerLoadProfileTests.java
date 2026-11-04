@@ -41,6 +41,7 @@ import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidWorldSensingBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -229,6 +230,13 @@ public final class ServerLoadProfileTests {
                 "scope",
                 "One isolated JVM, five internally serial activity families, complete F/N roots; memory owner is not real multiplayer or a formal independent replication");
             report.addProperty("cpuIsolationRequired", "No other game JVM, build, reference sampling or benchmark");
+            report.addProperty("activityReadOnlyObservationSchema", "finite-cake-read-only-v1");
+            report.addProperty(
+                "finiteCakeScope",
+                "One originally admitted cake per actor, no replenishment or forced behavior. A bite is event coverage, not sustained eating. All original actors and 400 measured ticks remain the denominator; observer work is included in CPU/allocation measurements");
+            report.addProperty(
+                "cakeWorkMemoryScope",
+                "Shared actor WORK_TARGET peeks describe F work memory. Enhanced SNACK selection is recorded separately; an empty shared target is not proof of no Enhanced life intent");
             report.addProperty("warmupTicksPerStage", WARMUP);
             report.addProperty("sampleTicksPerStage", SAMPLES);
             report.addProperty("capacityStages", 40);
@@ -394,6 +402,7 @@ public final class ServerLoadProfileTests {
                 var admitted = new JsonObject();
                 admitted.addProperty("label", label());
                 admitted.addProperty("worldTick", world.getTotalWorldTime());
+                addClocks(admitted);
                 admitted.addProperty(
                     "uuid",
                     maid.getUniqueID()
@@ -409,6 +418,10 @@ public final class ServerLoadProfileTests {
                         "finiteNativeThreatNbt",
                         SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) threatRaw.copy()));
                 }
+                if (activity() == Activity.CAKE) admitted.add(
+                    "cakeReadOnlyState",
+                    duties.get(maid)
+                        .cakeState());
                 admissions.add(admitted);
             }
             targetHealthBefore = targetHealth();
@@ -499,8 +512,32 @@ public final class ServerLoadProfileTests {
             var frame = new JsonObject();
             frame.addProperty("label", label());
             frame.addProperty("worldTick", world.getTotalWorldTime());
+            addClocks(frame);
             frame.add("actors", dutyRows());
             activityFrames.add(frame);
+        }
+
+        void addClocks(JsonObject row) {
+            row.addProperty("worldTime", world.getWorldTime());
+            row.addProperty("worldTotalTime", world.getTotalWorldTime());
+            row.addProperty(
+                "doDaylightCycle",
+                world.getGameRules()
+                    .getGameRuleStringValue("doDaylightCycle"));
+        }
+
+        JsonObject point(Point point) {
+            if (point == null) return null;
+            var row = new JsonObject();
+            row.addProperty("x", point.x);
+            row.addProperty("y", point.y);
+            row.addProperty("z", point.z);
+            return row;
+        }
+
+        boolean samePoint(Point left, Point right) {
+            return left == right
+                || left != null && right != null && left.x == right.x && left.y == right.y && left.z == right.z;
         }
 
         @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -664,12 +701,19 @@ public final class ServerLoadProfileTests {
 
             final EntityMaid maid;
             final JsonObject selections = new JsonObject();
+            final int rosterIndex;
+            final JsonArray cakeWorkTransitions = new JsonArray();
+            Point previousWorkTarget;
+            Object previousEdibleAction;
+            boolean cakeWorkObserved, previousWalkPresent;
+            int cakeTransitionOverflow, cakeWorkTargetTicks, cakeWorkWithinUseRadiusTicks;
             long searchBefore, deferBefore;
             int bitesBefore, nativeAgeBefore, ticks, working, moving, sleeping, provisionalHits;
             double px, py, pz;
 
             Duty(EntityMaid maid) {
                 this.maid = maid;
+                rosterIndex = actors.indexOf(maid);
                 reset();
             }
 
@@ -685,6 +729,7 @@ public final class ServerLoadProfileTests {
 
             void observe() {
                 ticks++;
+                if (activity() == Activity.CAKE) observeCakeWork();
                 double delta = Math.pow(maid.posX - px, 2) + Math.pow(maid.posY - py, 2) + Math.pow(maid.posZ - pz, 2);
                 boolean moved = delta > 1e-8, sleep = maid.hasPose(MaidPose.SLEEPING);
                 if (moved) moving++;
@@ -714,10 +759,100 @@ public final class ServerLoadProfileTests {
                     case FOLLOW -> moved && !maid.getHomeArea()
                         .enabled();
                     case COMBAT -> targets.contains(maid.getAttackTarget());
-                    case CAKE -> core == null ? actor(maid).workTarget() != null : "SNACK".equals(selected);
+                    case CAKE -> core == null ? actor(maid).peekWorkTarget() != null : "SNACK".equals(selected);
                     case SLEEP -> sleep;
                 };
                 if (active) working++;
+            }
+
+            void observeCakeWork() {
+                var view = actor(maid);
+                var work = view.peekWorkTarget();
+                var edible = view.peekEdibleAction();
+                boolean walkPresent = view.peekWalkTarget() != null;
+                if (work != null) {
+                    cakeWorkTargetTicks++;
+                    if (maid.getDistanceSq(work.x + .5, work.y + .5, work.z + .5) <= 4) cakeWorkWithinUseRadiusTicks++;
+                }
+                if (!cakeWorkObserved || !samePoint(previousWorkTarget, work)
+                    || previousEdibleAction != edible
+                    || previousWalkPresent != walkPresent) {
+                    // Peek only: guarded actor/WalkTarget methods are behavior-frame APIs, not observer APIs.
+                    if (cakeWorkTransitions.size() < 8) cakeWorkTransitions.add(cakeState());
+                    else cakeTransitionOverflow++;
+                    previousWorkTarget = work;
+                    previousEdibleAction = edible;
+                    previousWalkPresent = walkPresent;
+                    cakeWorkObserved = true;
+                }
+            }
+
+            JsonObject cakeState() {
+                var row = new JsonObject();
+                addClocks(row);
+                row.addProperty("nativeAge", maid.ticksExisted);
+                row.addProperty("measuredActorTicks", ticks);
+                row.addProperty("hunger", maid.getHunger());
+                row.addProperty(
+                    "schedule",
+                    maid.getSchedule()
+                        .name());
+                row.addProperty(
+                    "scheduledActivity",
+                    MaidLifeRules.activity(maid.getSchedule(), world.getWorldTime())
+                        .name());
+                row.addProperty("sitting", maid.isSitting());
+                row.addProperty("riding", maid.ridingEntity != null);
+                row.addProperty("ridden", maid.riddenByEntity != null);
+                row.addProperty("leashed", maid.getLeashed());
+                row.addProperty("hurtTime", maid.hurtTime);
+                row.addProperty("health", maid.getHealth());
+                row.addProperty(
+                    "homeEnabled",
+                    maid.getHomeArea()
+                        .enabled());
+                var cake = new Point(cellX(rosterIndex), y + 2, cellZ(rosterIndex));
+                row.add("originalCakePosition", point(cake));
+                row.addProperty("originalCakeStillPresent", world.getBlock(cake.x, cake.y, cake.z) == Blocks.cake);
+                row.addProperty("originalCakeAir", world.isAirBlock(cake.x, cake.y, cake.z));
+                row.addProperty("originalCakeMetadata", world.getBlockMetadata(cake.x, cake.y, cake.z));
+                row.addProperty("originalCakeHasTile", world.getTileEntity(cake.x, cake.y, cake.z) != null);
+                row.addProperty(
+                    "originalCabinetStillPresent",
+                    world.getBlock(cake.x, cake.y - 1, cake.z) == MaidLifeContent.snackCabinet);
+                row.addProperty("originalCabinetMetadata", world.getBlockMetadata(cake.x, cake.y - 1, cake.z));
+                row.addProperty(
+                    "homeRestrictionContainsOriginalCake",
+                    maid.getHomeArea()
+                        .withinRestriction(cake.x, cake.y, cake.z));
+                row.addProperty(
+                    "distanceSqToOriginalCakeCenter",
+                    maid.getDistanceSq(cake.x + .5, cake.y + .5, cake.z + .5));
+                var view = actor(maid);
+                var work = view.peekWorkTarget();
+                row.add("workTarget", point(work));
+                row.addProperty("workTargetIsOriginalCake", samePoint(work, cake));
+                row.addProperty("walkTargetPresent", view.peekWalkTarget() != null);
+                var edible = view.peekEdibleAction();
+                row.addProperty("edibleAction", edible == null ? null : edible.name());
+                if (work != null) {
+                    double distance = maid.getDistanceSq(work.x + .5, work.y + .5, work.z + .5);
+                    row.addProperty("distanceSqToWorkTargetCenter", distance);
+                    row.addProperty("withinUseRadius", distance <= 4);
+                    row.addProperty("workTargetCakePresent", world.getBlock(work.x, work.y, work.z) == Blocks.cake);
+                    row.addProperty("workTargetCakeMetadata", world.getBlockMetadata(work.x, work.y, work.z));
+                    row.addProperty(
+                        "workTargetCabinetPresent",
+                        world.getBlock(work.x, work.y - 1, work.z) == MaidLifeContent.snackCabinet);
+                }
+                row.addProperty(
+                    "nativeNoPath",
+                    maid.getNavigator()
+                        .noPath());
+                var stopped = navigator(maid).lastStop();
+                row.addProperty("lastNativeStopCause", stopped == null ? null : stopped.cause.name());
+                if (stopped != null) row.addProperty("lastNativeStopTotalTime", stopped.worldTick);
+                return row;
             }
 
             boolean triggered() {
@@ -749,6 +884,15 @@ public final class ServerLoadProfileTests {
                 row.addProperty("y", maid.posY);
                 row.addProperty("z", maid.posZ);
                 row.add("selectionTicks", new com.google.gson.JsonParser().parse(selections.toString()));
+                if (activity() == Activity.CAKE) {
+                    row.add("cakeReadOnlyState", cakeState());
+                    row.add(
+                        "cakeWorkTransitions",
+                        new com.google.gson.JsonParser().parse(cakeWorkTransitions.toString()));
+                    row.addProperty("cakeTransitionOverflow", cakeTransitionOverflow);
+                    row.addProperty("cakeWorkTargetTicks", cakeWorkTargetTicks);
+                    row.addProperty("cakeWorkWithinUseRadiusTicks", cakeWorkWithinUseRadiusTicks);
+                }
                 return row;
             }
         }

@@ -1,5 +1,10 @@
 package com.tianluoqaq.tlmnh.common.development.interaction;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -7,8 +12,13 @@ import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
@@ -20,15 +30,20 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 /** Real death/claim/shrine inputs for one owned temporary actor; never creates a replacement maid. */
@@ -69,6 +84,7 @@ final class MaidModelLifecycleActions {
     private static Session longOwner;
     private static MaidServerLoadProbe longProbe;
     private static JsonObject lastLongLoad;
+    private static LongActivities longActivities;
 
     private MaidModelLifecycleActions() {}
 
@@ -112,7 +128,22 @@ final class MaidModelLifecycleActions {
             require(state.hasKey("Long", 10), "Unknown long-session data retained");
             var record = state.getCompoundTag("Long");
             for (Object key : record.func_150296_c()) require(
-                Arrays.asList("Profile", "StartedAt", "Ticks", "Stage")
+                Arrays
+                    .asList(
+                        "Profile",
+                        "StartedAt",
+                        "Ticks",
+                        "Stage",
+                        "Configured",
+                        "Activity",
+                        "SleepCount",
+                        "MealCount",
+                        "MeleeCount",
+                        "TailSampling",
+                        "Resources",
+                        "ResourcesCleared",
+                        "FinalNative",
+                        "CleanupRecovery")
                     .contains(key),
                 "Unknown long-session field retained");
             require(
@@ -120,11 +151,64 @@ final class MaidModelLifecycleActions {
                     .contains(record.getString("Profile"))
                     && record.hasKey("StartedAt", 4)
                     && record.hasKey("Ticks", 3)
-                    && record.getInteger("Ticks") == 9000
+                    && (record.getInteger("Ticks") == 9000 || record.getInteger("Ticks") == 24000)
                     && record.hasKey("Stage", 8)
                     && Arrays.asList("running", "finished")
                         .contains(record.getString("Stage")),
                 "Invalid long-session plan retained");
+            if (record.getInteger("Ticks") == 24000) {
+                require(
+                    record.hasKey("Configured", 1) && record.getByte("Configured") == 1
+                        && record.getString("Profile")
+                            .equals("enhanced")
+                        && record.hasKey("Activity", 8)
+                        && Arrays.asList("idle", "sleep", "wake", "meal", "melee")
+                            .contains(record.getString("Activity")),
+                    "Unknown configured long-session plan retained");
+                for (String counter : new String[] { "SleepCount", "MealCount", "MeleeCount" }) require(
+                    record.hasKey(counter, 3) && record.getInteger(counter) >= 0,
+                    "Invalid activity counter retained");
+                for (String flag : new String[] { "TailSampling", "ResourcesCleared" }) require(
+                    record.hasKey(flag, 1) && (record.getByte(flag) == 0 || record.getByte(flag) == 1),
+                    "Unknown long-session flag retained");
+                require(record.hasKey("Resources", 10), "Missing finite long-session resources retained");
+                var resources = record.getCompoundTag("Resources");
+                for (Object key : resources.func_150296_c()) require(
+                    Arrays.asList("BedFoot", "BedHead", "Soup", "Sword", "TargetNative")
+                        .contains(key),
+                    "Unknown resource field retained");
+                for (String field : new String[] { "BedFoot", "BedHead", "Soup", "Sword" })
+                    require(resources.hasKey(field, 10), "Missing finite resource snapshot retained");
+                if (resources.hasKey("TargetNative"))
+                    require(resources.hasKey("TargetNative", 10), "Unknown target snapshot retained");
+                if (record.hasKey("FinalNative"))
+                    require(record.hasKey("FinalNative", 10), "Unknown final native snapshot retained");
+                if (record.hasKey("CleanupRecovery")) {
+                    require(record.hasKey("CleanupRecovery", 10), "Unknown cleanup recovery retained");
+                    var proof = record.getCompoundTag("CleanupRecovery");
+                    require(
+                        proof.func_150296_c()
+                            .size() == 6,
+                        "Unknown cleanup recovery fields retained");
+                    for (String field : new String[] { "OriginalCandidate", "OriginalRun", "CheckpointSha256",
+                        "RecoveredByCandidate" })
+                        require(proof.hasKey(field, 8), "Invalid cleanup recovery identity retained");
+                    require(
+                        proof.hasKey("NativeTick", 4) && proof.hasKey("RawCpuAvailable", 1)
+                            && proof.getByte("RawCpuAvailable") == 0,
+                        "Unknown recovery observation retained");
+                    require(
+                        proof.getString("OriginalRun")
+                            .equals(data.getString("Run"))
+                            && proof.getString("OriginalCandidate")
+                                .matches("[0-9a-f]{64}")
+                            && proof.getString("RecoveredByCandidate")
+                                .matches("[0-9a-f]{64}")
+                            && proof.getString("CheckpointSha256")
+                                .matches("[0-9a-f]{64}"),
+                        "Invalid recovery source binding retained");
+                }
+            } else require(!record.hasKey("Configured"), "Unknown old long-session extension retained");
         }
         if (state.hasKey("FilmInventory")) require(
             state.hasKey("FilmInventory", 9)
@@ -234,6 +318,8 @@ final class MaidModelLifecycleActions {
             || !session.data.hasKey(KEY, 10)
             || entity.worldObj != session.player.worldObj) return false;
         var state = state(session);
+        if (longActivities != null && longActivities.session == session && longActivities.ownsTarget(entity))
+            return true;
         var ledger = MaidLifecycleData.get(entity.worldObj);
         var token = ledger.deathToken(UUID.fromString(state.getString("Source")));
         if (token == null || !session.player.getUniqueID()
@@ -332,6 +418,14 @@ final class MaidModelLifecycleActions {
             return;
         }
         var state = state(session);
+        if (action.startsWith("world-life-activity-")) {
+            requireLong(session);
+            require(
+                longActivities != null && longActivities.session == session,
+                "Original current-process finite activity resources required");
+            longActivities.action(action.substring("world-life-activity-".length()));
+            return;
+        }
         switch (action) {
             case "world-life-die" -> {
                 require(
@@ -501,7 +595,7 @@ final class MaidModelLifecycleActions {
                     .writeToNBT(ledger);
                 state.setInteger("LedgerSchema", ledger.getInteger("Schema"));
             }
-            case "world-life-long-f", "world-life-long-n" -> {
+            case "world-life-long-f", "world-life-long-n", "world-life-long-configured" -> {
                 require(
                     state.getString("Stage")
                         .equals("revived") && longProbe == null
@@ -509,24 +603,49 @@ final class MaidModelLifecycleActions {
                             .getString("Stage")
                             .equals("finished")),
                     "Settled original revived actor and a separate timed segment required");
+                boolean configured = action.equals("world-life-long-configured");
+                require(
+                    !configured || MaidBehaviorConfig.profile() == MaidBrainProfile.ENHANCED,
+                    "Normal startup behavior.profile=enhanced required; no development selection is made");
                 var profile = action.endsWith("-f") ? MaidBrainProfile.FAITHFUL_TLM : MaidBrainProfile.ENHANCED;
                 session.maid.setTask(MaidTask.IDLE);
                 session.maid.setSchedule(MaidSchedule.DAY);
                 session.maid.setSitting(false);
-                var selected = session.maid.getBrainCoordinator()
-                    .selectProfileForDevelopment(profile);
-                require(
-                    selected == MaidPolicyRuntime.SelectionResult.SELECTED
-                        || selected == MaidPolicyRuntime.SelectionResult.UNCHANGED,
-                    "Actual complete long-session factory required");
+                if (configured) {
+                    var runtime = session.maid.getBrainCoordinator()
+                        .getPolicyRuntime();
+                    require(
+                        runtime != null && runtime.isReady()
+                            && runtime.getProfile() == MaidBrainProfile.ENHANCED
+                            && runtime.legacyDispatchCount() == 0,
+                        "Normal complete Enhanced factory must already resolve from server configuration");
+                } else {
+                    var selected = session.maid.getBrainCoordinator()
+                        .selectProfileForDevelopment(profile);
+                    require(
+                        selected == MaidPolicyRuntime.SelectionResult.SELECTED
+                            || selected == MaidPolicyRuntime.SelectionResult.UNCHANGED,
+                        "Actual complete long-session factory required");
+                }
                 session.maid.getBrainCoordinator()
                     .setSuspended(false);
                 var record = new NBTTagCompound();
                 record.setString("Profile", profile.getId());
                 record.setLong("StartedAt", session.maid.worldObj.getTotalWorldTime());
-                record.setInteger("Ticks", 9000);
+                record.setInteger("Ticks", configured ? 24000 : 9000);
                 record.setString("Stage", "running");
                 state.setTag("Long", record);
+                if (configured) {
+                    record.setBoolean("Configured", true);
+                    record.setString("Activity", "idle");
+                    record.setInteger("SleepCount", 0);
+                    record.setInteger("MealCount", 0);
+                    record.setInteger("MeleeCount", 0);
+                    record.setBoolean("TailSampling", false);
+                    record.setBoolean("ResourcesCleared", false);
+                    // This constructor only supplies finite inputs; all actions run in native server updates.
+                    longActivities = new LongActivities(session, record);
+                }
                 try {
                     longProbe = MaidServerLoadProbe.start(
                         session.data.getString("Run"),
@@ -562,9 +681,21 @@ final class MaidModelLifecycleActions {
                 require(
                     session.maid.worldObj.getTotalWorldTime() - record.getLong("StartedAt")
                         >= record.getInteger("Ticks"),
-                    "Nine thousand actual server ticks required");
+                    "The planned number of actual server ticks is required");
+                if (record.getBoolean("Configured")) {
+                    require(
+                        record.getInteger("SleepCount") >= 2 && record.getInteger("MealCount") >= 2
+                            && record.getInteger("MeleeCount") >= 2
+                            && record.getString("Activity")
+                                .equals("idle"),
+                        "Two complete natural sleep/meal/melee sequences required; untriggered work is not coverage");
+                    longActivities.clear();
+                    longActivities = null;
+                    record.setBoolean("ResourcesCleared", true);
+                }
                 closeLong(session);
                 record.setString("Stage", "finished");
+                record.setTag("FinalNative", snapshot(session.maid));
                 session.maid.getBrainCoordinator()
                     .setSuspended(true);
                 session.maid.setSitting(true);
@@ -615,6 +746,190 @@ final class MaidModelLifecycleActions {
             && longProbe != null;
     }
 
+    /** One explicit cold finish of a previously completed long run; does not recreate input or CPU samples. */
+    static void recoverCompletedLong(Session session) {
+        require(
+            longProbe == null && longOwner == null && longActivities == null,
+            "Cold recovery requires a fresh JVM; live recorder ownership is never replaced");
+        var state = state(session);
+        var record = state.getCompoundTag("Long");
+        require(
+            state.getString("Stage")
+                .equals("revived") && record.getBoolean("Configured")
+                && record.getString("Stage")
+                    .equals("running")
+                && record.getInteger("Ticks") == 24000
+                && record.getString("Activity")
+                    .equals("idle")
+                && record.getBoolean("TailSampling")
+                && !record.getBoolean("ResourcesCleared")
+                && !record.hasKey("CleanupRecovery")
+                && record.getInteger("SleepCount") == 2
+                && record.getInteger("MealCount") == 2
+                && record.getInteger("MeleeCount") == 2
+                && session.maid.worldObj.getTotalWorldTime() - record.getLong("StartedAt") >= 24000,
+            "Only the original completed24000-tick plan with six actual activities is recoverable");
+        require(
+            MaidBehaviorConfig.profile() == MaidBrainProfile.ENHANCED && session.validNonce(session.maid)
+                && session.maid.isEntityAlive()
+                && session.maid.worldObj == session.player.worldObj
+                && session.maid.worldObj.getEntityByID(session.maid.getEntityId()) == session.maid
+                && session.maid.getModelId()
+                    .equals(state.getString("Model"))
+                && entry(session).getBoolean("Consumed")
+                && shrine(session).getFilm() == null,
+            "Original current-world settled actor/model/consumed film and empty shrine required");
+        for (int slot = 0; slot < session.maid.getMaidInventory()
+            .getSizeInventory(); slot++)
+            require(
+                session.maid.getMaidInventory()
+                    .getStackInSlot(slot) == null,
+                "Unknown retained actor material");
+        require(
+            session.maid.getMaidInventory()
+                .recovery()
+                .write()
+                .tagCount() == 0,
+            "Unknown recovery material retained");
+        session.inventoryOwned();
+        require(
+            session.player.isEntityAlive() && session.player.getHealth() == session.data.getFloat("OriginalHealth")
+                && session.player.inventory.currentItem == session.slot()
+                && session.player.inventory.getItemStack() == null
+                && session.player.openContainer == session.player.inventoryContainer
+                && session.player.getDistanceSq(
+                    session.data.getDouble("ExpectedX"),
+                    session.data.getDouble("ExpectedY"),
+                    session.data.getDouble("ExpectedZ")) < .01,
+            "Original protected player position/health/selection/container required; no inventory or camera overwrite");
+        var checkpointSha = System.getProperty("tlmnh.careLongRecoveryCheckpointSha256", "");
+        var checkpointPath = System.getProperty("tlmnh.careLongRecoveryCheckpoint", "");
+        require(
+            checkpointSha.matches("[0-9a-f]{64}") && !checkpointPath.isEmpty(),
+            "Exact stopped native checkpoint required");
+        NBTTagCompound checkpoint;
+        String currentCandidate;
+        try {
+            var path = Paths.get(checkpointPath);
+            require(
+                Files.isRegularFile(path) && !Files.isSymbolicLink(path) && Files.size(path) <= 8 * 1024 * 1024,
+                "Ordinary bounded read-only checkpoint file required");
+            var raw = Files.readAllBytes(path);
+            var hash = new StringBuilder();
+            for (byte value : MessageDigest.getInstance("SHA-256")
+                .digest(raw))
+                hash.append(Character.forDigit((value & 255) >>> 4, 16))
+                    .append(Character.forDigit(value & 15, 16));
+            require(checkpointSha.equals(hash.toString()), "Stopped checkpoint bytes changed");
+            try (var input = new DataInputStream(new ByteArrayInputStream(raw))) {
+                checkpoint = CompressedStreamTools.read(input);
+                require(input.available() == 0, "Checkpoint trailing bytes retained");
+            }
+            currentCandidate = com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity
+                .capture(MaidCareInteractionFixture.class, MaidModelLifecycleActions.class)
+                .get("artifactSha256")
+                .getAsString();
+        } catch (Exception failure) {
+            throw new IllegalStateException(
+                "Cannot bind original stopped cleanup checkpoint; all source retained",
+                failure);
+        }
+        require(
+            checkpoint.func_150296_c()
+                .size() == 9 && checkpoint.hasKey("Schema", 3)
+                && checkpoint.getInteger("Schema") == 1,
+            "Unknown one-run checkpoint format retained");
+        for (String key : new String[] { "OriginalCandidate", "OriginalRun", "Owner", "Actor", "SourceReportSha256" })
+            require(checkpoint.hasKey(key, 8), "Invalid original checkpoint identity type");
+        for (String key : new String[] { "Care", "ActorNative", "BedHead" })
+            require(checkpoint.hasKey(key, 10), "Complete original stopped native payload required");
+        String originalCandidate = checkpoint.getString("OriginalCandidate");
+        require(
+            originalCandidate.matches("[0-9a-f]{64}") && !originalCandidate.equals(currentCandidate)
+                && checkpoint.getString("SourceReportSha256")
+                    .matches("[0-9a-f]{64}")
+                && checkpoint.getString("OriginalRun")
+                    .equals(session.data.getString("Run"))
+                && checkpoint.getString("Owner")
+                    .equals(session.data.getString("Owner"))
+                && checkpoint.getString("Actor")
+                    .equals(session.data.getString("Actor"))
+                && checkpoint.getCompoundTag("Care")
+                    .equals(session.data),
+            "Exact old candidate/run/actor/full Care snapshot required; candidates are not merged into one pass");
+        var expected = checkpoint.getCompoundTag("ActorNative");
+        var actual = snapshot(session.maid);
+        var fields = new HashSet<Object>(expected.func_150296_c());
+        fields.addAll(actual.func_150296_c());
+        for (Object rawKey : fields) {
+            String key = (String) rawKey;
+            if (Arrays
+                .asList(
+                    "Pos",
+                    "Motion",
+                    "Rotation",
+                    "Air",
+                    "OnGround",
+                    "Fire",
+                    "Age",
+                    "InLove",
+                    "HurtTime",
+                    "AttackTime",
+                    "DeathTime",
+                    "FallDistance",
+                    "PortalCooldown",
+                    "FavorabilityManagerCounter")
+                .contains(key)) continue;
+            require(
+                java.util.Objects.equals(expected.getTag(key), actual.getTag(key)),
+                "Stopped actor protected/unknown native field changed: " + key);
+        }
+        var beforeCounters = expected.getCompoundTag("FavorabilityManagerCounter");
+        var afterCounters = actual.getCompoundTag("FavorabilityManagerCounter");
+        require(
+            expected.hasKey("FavorabilityManagerCounter", 10) && actual.hasKey("FavorabilityManagerCounter", 10)
+                && beforeCounters.func_150296_c()
+                    .equals(afterCounters.func_150296_c()),
+            "Unknown native counter structure retained");
+        for (Object rawKey : beforeCounters.func_150296_c()) {
+            String key = (String) rawKey;
+            require(
+                beforeCounters.hasKey(key, 3) && afterCounters.hasKey(key, 3)
+                    && afterCounters.getInteger(key) >= 0
+                    && afterCounters.getInteger(key) <= beforeCounters.getInteger(key),
+                "Native counter changed beyond legal decay: " + key);
+        }
+        require(
+            checkpoint.getCompoundTag("BedHead")
+                .equals(
+                    record.getCompoundTag("Resources")
+                        .getCompoundTag("BedHead")
+                        .getCompoundTag("Tile")),
+            "Actual stopped bed did not retain the original full empty tile payload");
+        // All source guards precede mode/fixture mutations; no player inventory is rewritten.
+        session.player.setGameType(GameType.SURVIVAL);
+        session.protect();
+        session.maid.getBrainCoordinator()
+            .getPolicyRuntime();
+        longActivities = new LongActivities(session, record, true);
+        longActivities.verify();
+        longActivities.clear();
+        longActivities = null;
+        record.setBoolean("ResourcesCleared", true);
+        record.setString("Stage", "finished");
+        record.setTag("FinalNative", snapshot(session.maid));
+        var proof = new NBTTagCompound();
+        proof.setString("OriginalCandidate", originalCandidate);
+        proof.setString("OriginalRun", checkpoint.getString("OriginalRun"));
+        proof.setString("CheckpointSha256", checkpointSha);
+        proof.setString("RecoveredByCandidate", currentCandidate);
+        proof.setLong("NativeTick", session.maid.worldObj.getTotalWorldTime());
+        proof.setBoolean("RawCpuAvailable", false);
+        record.setTag("CleanupRecovery", proof);
+        session.maid.setSitting(true);
+        owner = session;
+    }
+
     static void resumed(Session session) {
         require(
             restart(session) && session.validNonce(session.maid)
@@ -626,8 +941,50 @@ final class MaidModelLifecycleActions {
         owner = session;
         session.data.setBoolean("AwaitLogin", false);
         state(session).setString("Stage", "revived");
+        boolean configured = state(session).hasKey("Long", 10) && state(session).getCompoundTag("Long")
+            .getBoolean("Configured");
+        if (configured) {
+            require(
+                MaidBehaviorConfig.profile() == MaidBrainProfile.ENHANCED,
+                "Restart must retain the normal Enhanced startup configuration");
+            var saved = state(session).getCompoundTag("Long")
+                .getCompoundTag("FinalNative");
+            var loaded = snapshot(session.maid);
+            for (String key : new String[] { "OwnerUUID", "ModelId", "SoundPackId", "MaidInventory", "Equipment",
+                "TLMNHOffhand", "TLMNHRecovery", "MaidExperience", "MaidFavorability", "TLMNH", "ForgeData" })
+                require(
+                    java.util.Objects.equals(saved.getTag(key), loaded.getTag(key)),
+                    "Restart changed protected complete native field: " + key);
+            // Native favorability counters continue to decay even while the actor is sitting/suspended.
+            // The final live snapshot precedes root's normal save/stop, so it is not the disk-time counter.
+            require(
+                saved.hasKey("FavorabilityManagerCounter", 10) && loaded.hasKey("FavorabilityManagerCounter", 10),
+                "Typed native favorability counters required");
+            var beforeCounters = saved.getCompoundTag("FavorabilityManagerCounter");
+            var afterCounters = loaded.getCompoundTag("FavorabilityManagerCounter");
+            require(
+                beforeCounters.func_150296_c()
+                    .equals(afterCounters.func_150296_c()),
+                "Counter keys changed across restart");
+            for (Object rawKey : beforeCounters.func_150296_c()) {
+                String key = (String) rawKey;
+                require(
+                    beforeCounters.hasKey(key, 3) && afterCounters.hasKey(key, 3)
+                        && afterCounters.getInteger(key) >= 0
+                        && afterCounters.getInteger(key) <= beforeCounters.getInteger(key),
+                    "Counter changed beyond its normal monotone decay: " + key);
+            }
+            var runtime = session.maid.getBrainCoordinator()
+                .getPolicyRuntime();
+            require(
+                runtime != null && runtime.isReady()
+                    && runtime.getProfile() == MaidBrainProfile.ENHANCED
+                    && runtime.legacyDispatchCount() == 0,
+                "Restart must resolve the normal complete Enhanced factory without development selection");
+            session.maid.setSitting(false);
+        }
         session.maid.getBrainCoordinator()
-            .setSuspended(true);
+            .setSuspended(!configured);
         session.player.setGameType(GameType.SURVIVAL);
         session.protect();
     }
@@ -638,6 +995,12 @@ final class MaidModelLifecycleActions {
         require(
             stage.equals("ready") || stage.equals("revived"),
             "Finish the original native lifecycle before cleanup; snapshot retained");
+        if (longActivities != null && longActivities.session == session) {
+            longActivities.clear();
+            state(session).getCompoundTag("Long")
+                .setBoolean("ResourcesCleared", true);
+            longActivities = null;
+        }
         closeLong(session);
         session.maid.getBrainCoordinator()
             .setSuspended(true);
@@ -682,6 +1045,15 @@ final class MaidModelLifecycleActions {
         result.addProperty("restartOwner", session.data.getString("Owner"));
         result.addProperty("restartActor", session.data.getString("Actor"));
         result.addProperty("restartRun", session.data.getString("Run"));
+        var currentRuntime = session.maid.getBrainCoordinator()
+            .peekPolicyRuntime();
+        result.addProperty(
+            "runtimeProfile",
+            currentRuntime == null ? "none"
+                : currentRuntime.getProfile()
+                    .getId());
+        result.addProperty("legacyDispatches", currentRuntime == null ? -1 : currentRuntime.legacyDispatchCount());
+        result.addProperty("modernDispatches", currentRuntime == null ? -1 : currentRuntime.modernDispatchCount());
         if (state.hasKey("Long", 10)) {
             var record = state.getCompoundTag("Long");
             var timed = new JsonObject();
@@ -698,6 +1070,22 @@ final class MaidModelLifecycleActions {
                         .getId());
             timed.addProperty("controlledFullProfiledActors", 1);
             timed.addProperty("crossRestartContinuousPolicy", false);
+            timed.addProperty("configuredEntry", record.getBoolean("Configured"));
+            if (record.hasKey("CleanupRecovery", 10)) {
+                var proof = record.getCompoundTag("CleanupRecovery");
+                var binding = new JsonObject();
+                for (String key : new String[] { "OriginalCandidate", "OriginalRun", "CheckpointSha256",
+                    "RecoveredByCandidate" }) binding.addProperty(key, proof.getString(key));
+                binding.addProperty("NativeTick", proof.getLong("NativeTick"));
+                binding.addProperty("RawCpuAvailable", false);
+                timed.add("cleanupRecovery", binding);
+            }
+            timed.addProperty("activity", record.getString("Activity"));
+            timed.addProperty("sampleTailOnly", record.getBoolean("TailSampling"));
+            for (String counter : new String[] { "SleepCount", "MealCount", "MeleeCount" })
+                timed.addProperty(counter, record.getInteger(counter));
+            if (longActivities != null && longActivities.session == session)
+                timed.add("activityNative", longActivities.observation());
             if (longOwner == session && longProbe != null) timed.addProperty("nativeLoadRecording", true);
             else if (lastLongLoad != null) timed.add("nativeLoad", lastLongLoad);
             result.add("longSession", timed);
@@ -727,6 +1115,451 @@ final class MaidModelLifecycleActions {
                         state.getCompoundTag("Long")
                             .getString("Profile")),
             "Long-session factory changed; no automatic policy fallback accepted");
+    }
+
+    /** The normal Care limit remains unchanged; only this exact bounded current plan extends it. */
+    static int sessionTickLimit(Session session) {
+        if (!session.data.hasKey(KEY, 10)) return 12000;
+        var state = state(session);
+        if (!state.hasKey("Long", 10) || !state.getCompoundTag("Long")
+            .getBoolean("Configured")) return 12000;
+        var record = state.getCompoundTag("Long");
+        require(
+            record.getInteger("Ticks") == 24000 && MaidCareInteractionFixture.owns(session)
+                && session.validNonce(session.maid),
+            "Unknown extended session retained");
+        return 30000;
+    }
+
+    static boolean verifyLongInventory(Session session) {
+        if (!session.data.hasKey(KEY, 10)) return false;
+        var state = state(session);
+        if (!state.hasKey("Long", 10)) return false;
+        var record = state.getCompoundTag("Long");
+        if (!record.getBoolean("Configured") || record.getBoolean("ResourcesCleared")) return false;
+        require(
+            longActivities != null && longActivities.session == session,
+            "Interrupted finite activity resources retained; no replacement or inferred cleanup");
+        longActivities.verify();
+        return true;
+    }
+
+    static void tickLong(Session session) {
+        if (longOwner != session || longProbe == null || longActivities == null) return;
+        requireLong(session);
+        longActivities.observe();
+        var record = state(session).getCompoundTag("Long");
+        if (!record.getBoolean("TailSampling")
+            && session.maid.worldObj.getTotalWorldTime() - record.getLong("StartedAt") >= 23000) {
+            int listed = 0;
+            for (Object entity : session.maid.worldObj.loadedEntityList)
+                if (entity instanceof EntityMaid living && !living.isDead) listed++;
+            // Keep the existing bounded raw recorder; the final live ticks are explicitly an unsampled phase.
+            longProbe.phase("configured-enhanced-live-tail", listed, false);
+            record.setBoolean("TailSampling", true);
+        }
+    }
+
+    /** Finite inputs within the existing Long plan, not a second session or an action executor. */
+    private static final class LongActivities {
+
+        final Session session;
+        NBTTagCompound record;
+        final MaidPolicyRuntime runtime;
+        final ItemStack soup, sword;
+        final TileEntityMaidBed bed;
+        final NBTTagCompound bedRaw;
+        NBTTagCompound expectedResources, targetData;
+        EntityCow target;
+        long meleeBefore;
+        boolean sleepSeen, mealSeen;
+        float firstMealHealth = Float.NaN;
+
+        LongActivities(Session session, NBTTagCompound record) {
+            this(session, record, false);
+        }
+
+        LongActivities(Session session, NBTTagCompound record, boolean retained) {
+            this.session = session;
+            this.record = record;
+            runtime = session.maid.getBrainCoordinator()
+                .peekPolicyRuntime();
+            soup = marked(Items.mushroom_stew);
+            sword = marked(Items.iron_sword);
+            var food = MaidFoodProfile.inspect(soup);
+            require(
+                food != null && food.total > 0 && food.duration > 0,
+                "Actual target nutrition and native use duration required; no guaranteed heal is assumed");
+            var world = session.maid.worldObj;
+            if (retained) {
+                require(
+                    world.getChunkProvider()
+                        .chunkExists(0, -1) && world.getBlock(6, 65, -1) == MaidLifeContent.maidBed
+                        && world.getBlockMetadata(6, 65, -1) == 1
+                        && world.getChunkFromChunkCoords(0, -1)
+                            .getTileEntityUnsafe(6, 65, 15) == null
+                        && world.getBlock(5, 65, -1) == MaidLifeContent.maidBed
+                        && world.getBlockMetadata(5, 65, -1) == 9,
+                    "Only the existing recorded complete empty bed may be recovered");
+            } else {
+                for (int x : new int[] { 5, 6 }) require(
+                    world.blockExists(x, 65, -1) && world.isAirBlock(x, 65, -1)
+                        && world.getBlockMetadata(x, 65, -1) == 0
+                        && world.getTileEntity(x, 65, -1) == null
+                        && world.getBlock(x, 64, -1)
+                            .getMaterial()
+                            .isSolid(),
+                    "Original loaded air pair on the existing native lab floor required");
+                // This exact layout has direction 1: foot(6,-1), head(5,-1). No sleepAt or pose writes.
+                require(world.setBlock(6, 65, -1, MaidLifeContent.maidBed, 1, 2), "Finite bed foot placement failed");
+                require(world.setBlock(5, 65, -1, MaidLifeContent.maidBed, 9, 2), "Finite bed head placement failed");
+            }
+            var existingHead = world.getChunkFromChunkCoords(0, -1)
+                .getTileEntityUnsafe(5, 65, 15);
+            require(existingHead instanceof TileEntityMaidBed, "Actual existing native maid-bed tile required");
+            bed = (TileEntityMaidBed) existingHead;
+            require(bed.complete(), "Complete original finite bed required");
+            bedRaw = new NBTTagCompound();
+            bed.writeToNBT(bedRaw);
+            var resources = new NBTTagCompound();
+            resources.setTag("Soup", ProtectedItemCodec.encode(soup));
+            resources.setTag("Sword", ProtectedItemCodec.encode(sword));
+            var foot = new NBTTagCompound();
+            foot.setInteger("X", 6);
+            foot.setInteger("Y", 65);
+            foot.setInteger("Z", -1);
+            foot.setInteger("Block", net.minecraft.block.Block.getIdFromBlock(MaidLifeContent.maidBed));
+            foot.setInteger("Metadata", 1);
+            var head = (NBTTagCompound) foot.copy();
+            head.setInteger("X", 5);
+            head.setInteger("Metadata", 9);
+            head.setTag("Tile", bedRaw.copy());
+            resources.setTag("BedFoot", foot);
+            resources.setTag("BedHead", head);
+            if (retained) {
+                var existing = record.getCompoundTag("Resources");
+                for (String key : new String[] { "Soup", "Sword", "BedFoot", "BedHead" }) require(
+                    resources.getTag(key)
+                        .equals(existing.getTag(key)),
+                    "Unknown retained full resource payload: " + key);
+                expectedResources = (NBTTagCompound) existing.copy();
+            } else {
+                record.setTag("Resources", resources);
+                expectedResources = (NBTTagCompound) resources.copy();
+                session.maid.setPickup(false);
+                session.maid.setHealth(session.maid.getMaxHealth());
+            }
+        }
+
+        ItemStack marked(net.minecraft.item.Item item) {
+            var stack = new ItemStack(item);
+            stack.setTagCompound(new NBTTagCompound());
+            stack.getTagCompound()
+                .setString(KEY, session.data.getString("Run"));
+            return stack;
+        }
+
+        com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor actor() {
+            var core = session.maid.getBrainCoordinator()
+                .peekEnhancedCore();
+            require(
+                core != null && runtime == session.maid.getBrainCoordinator()
+                    .peekPolicyRuntime()
+                    && runtime.isReady()
+                    && runtime.getProfile() == MaidBrainProfile.ENHANCED
+                    && runtime.legacyDispatchCount() == 0,
+                "Original normal Enhanced root required; no development profile fallback");
+            return core.actor();
+        }
+
+        String activity() {
+            return record.getString("Activity");
+        }
+
+        boolean ownsTarget(Entity entity) {
+            return target != null && entity == target
+                && entity.worldObj == session.maid.worldObj
+                && entity.getEntityData()
+                    .getString(KEY)
+                    .equals(session.data.getString("Run"))
+                && MaidCareInteractionFixture.owns(session)
+                && session.validNonce(session.maid);
+        }
+
+        void verify() {
+            var currentRecord = state(session).getCompoundTag("Long");
+            if (currentRecord != record) {
+                // Native login installs the saved player-tag copy. It must be the complete exact prior plan.
+                require(record.equals(currentRecord), "Unknown long-plan login successor retained");
+                record = currentRecord;
+            }
+            require(
+                MaidCareInteractionFixture.owns(session) && session.validNonce(session.maid)
+                    && expectedResources.equals(record.getCompoundTag("Resources")),
+                "Unknown finite resource plan retained");
+            actor();
+            var world = session.maid.worldObj;
+            var current = new NBTTagCompound();
+            bed.writeToNBT(current);
+            int headMeta = world.getBlockMetadata(5, 65, -1);
+            require(
+                world.getBlock(6, 65, -1) == MaidLifeContent.maidBed && world.getBlockMetadata(6, 65, -1) == 1
+                    && world.getTileEntity(6, 65, -1) == null
+                    && world.getBlock(5, 65, -1) == MaidLifeContent.maidBed
+                    && world.getTileEntity(5, 65, -1) == bed
+                    && (headMeta == 9 || headMeta == 13 && bed.isOwnedBy(session.maid))
+                    && current.equals(bedRaw),
+                "Unknown complete bed successor retained");
+            if (target != null) require(
+                ownsTarget(target) && !target.isDead
+                    && target.isEntityAlive()
+                    && world.getEntityByID(target.getEntityId()) == target
+                    && world.loadedEntityList.contains(target)
+                    && targetData.equals(target.getEntityData())
+                    && target.getCustomNameTag()
+                        .isEmpty()
+                    && target.getMaxHealth() == 200
+                    && target.getHealth() > 0
+                    && target.getHealth() <= 200
+                    && target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                        .getBaseValue() == 0
+                    && target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
+                        .getBaseValue() == 1,
+                "Unknown owned target successor retained");
+            int soupCopies = 0, bowls = 0;
+            for (int slot = 0; slot < session.maid.getMaidInventory()
+                .getSizeInventory(); slot++) {
+                var actual = session.maid.getMaidInventory()
+                    .getStackInSlot(slot);
+                if (actual == null) continue;
+                if (activity().equals("meal") && (slot == 0 || slot == 6)
+                    && ItemStack.areItemStacksEqual(actual, soup)) {
+                    soupCopies++;
+                    continue;
+                }
+                if (activity().equals("meal") && slot == 0
+                    && ItemStack.areItemStacksEqual(actual, new ItemStack(Items.bowl))) {
+                    bowls++;
+                    continue;
+                }
+                if (activity().equals("melee") && slot == 6) {
+                    var expected = sword.copy();
+                    require(
+                        actual.getItemDamage() >= 0
+                            && actual.getItemDamage() <= (actor().meleeNativeAccepted() - meleeBefore) * 2,
+                        "Unexpected weapon wear retained");
+                    expected.setItemDamage(actual.getItemDamage());
+                    require(ItemStack.areItemStacksEqual(expected, actual), "Unknown full weapon successor retained");
+                    continue;
+                }
+                throw new IllegalStateException("Unknown finite actor inventory successor retained");
+            }
+            if (activity().equals("meal"))
+                require(soupCopies + bowls == 1, "Exactly one original soup or its native bowl must remain");
+            if (activity().equals("melee")) require(
+                session.maid.getMaidInventory()
+                    .getStackInSlot(6) != null,
+                "Original finite weapon cannot disappear");
+        }
+
+        void observe() {
+            verify();
+            sleepSeen |= activity().equals("sleep") && session.maid.hasPose(MaidPose.SLEEPING)
+                && bed.isOwnedBy(session.maid);
+            if (activity().equals("meal") && session.maid.getMealController()
+                .isEating()) {
+                if (!mealSeen) {
+                    var profile = MaidFoodProfile.inspect(soup);
+                    firstMealHealth = session.maid.getHealth();
+                    require(
+                        profile != null && (firstMealHealth == 2 || firstMealHealth
+                            == Math.min(session.maid.getMaxHealth(), 2 + Math.max(profile.total / 5, 1))),
+                        "Start-heal must match the actual nutrition probability, not guaranteed healing");
+                }
+                mealSeen = true;
+            }
+        }
+
+        void action(String action) {
+            verify();
+            var maid = session.maid;
+            switch (action) {
+                case "sleep" -> {
+                    require(
+                        activity().equals("idle") && !maid.getMealController()
+                            .isEating(),
+                        "Complete prior activity first");
+                    maid.setLocationAndAngles(4.5, 65, -1.5, 180, 0);
+                    maid.setTask(MaidTask.IDLE);
+                    maid.setSchedule(MaidSchedule.NIGHT);
+                    sleepSeen = false;
+                    record.setString("Activity", "sleep");
+                }
+                case "wake" -> {
+                    require(activity().equals("sleep") && sleepSeen, "Actual natural sleep and owned lease required");
+                    maid.setSchedule(MaidSchedule.DAY);
+                    record.setString("Activity", "wake");
+                }
+                case "meal" -> {
+                    require(
+                        activity().equals("idle") && !maid.hasPose(MaidPose.SLEEPING),
+                        "Complete prior activity first");
+                    maid.setTask(MaidTask.IDLE);
+                    maid.setSchedule(MaidSchedule.DAY);
+                    maid.setHealth(2);
+                    record.setString("Activity", "meal");
+                    mealSeen = false;
+                    firstMealHealth = Float.NaN;
+                    maid.getMaidInventory()
+                        .setInventorySlotContents(0, soup.copy());
+                }
+                case "melee" -> {
+                    require(
+                        activity().equals("idle") && target == null && !maid.hasPose(MaidPose.SLEEPING),
+                        "Original empty target scope required");
+                    meleeBefore = actor().meleeNativeAccepted();
+                    maid.setTask(MaidTask.IDLE);
+                    maid.setSchedule(MaidSchedule.DAY);
+                    maid.setLocationAndAngles(4.5, 65, .5, 180, 0);
+                    maid.setHealth(maid.getMaxHealth());
+                    record.setString("Activity", "melee");
+                    maid.getMaidInventory()
+                        .setInventorySlotContents(6, sword.copy());
+                    target = new EntityCow(maid.worldObj);
+                    target.getEntityData()
+                        .setString(KEY, session.data.getString("Run"));
+                    target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+                        .setBaseValue(200);
+                    target.setHealth(200);
+                    target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                        .setBaseValue(0);
+                    target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
+                        .setBaseValue(1);
+                    target.setLocationAndAngles(6.5, 65, .5, 180, 0);
+                    require(
+                        session.player.getDistanceSqToEntity(target) < 64,
+                        "Normal visible threat must remain within the owner's native eight-block range");
+                    require(
+                        maid.worldObj.spawnEntityInWorld(target)
+                            && maid.worldObj.getEntityByID(target.getEntityId()) == target,
+                        "Actual exact target registration required");
+                    targetData = (NBTTagCompound) target.getEntityData()
+                        .copy();
+                    record.getCompoundTag("Resources")
+                        .setTag("TargetNative", snapshot(target));
+                    expectedResources = (NBTTagCompound) record.getCompoundTag("Resources")
+                        .copy();
+                    maid.setTask(MaidTask.ATTACK);
+                    require(
+                        maid.attackEntityFrom(DamageSource.causeMobDamage(target), 1),
+                        "Actual source threat registration required; no direct combat task start");
+                }
+                case "complete" -> {
+                    if (activity().equals("wake")) {
+                        require(
+                            sleepSeen && !maid.hasPose(MaidPose.SLEEPING)
+                                && !bed.isOwnedBy(maid)
+                                && maid.getSleepingBedDirection() == -1,
+                            "Normal wake must release the original bed lease");
+                        record.setInteger("SleepCount", record.getInteger("SleepCount") + 1);
+                    } else if (activity().equals("meal")) {
+                        require(
+                            mealSeen && !maid.getMealController()
+                                .isEating()
+                                && ItemStack.areItemStacksEqual(
+                                    maid.getMaidInventory()
+                                        .getStackInSlot(0),
+                                    new ItemStack(Items.bowl)),
+                            "Actual soup consumption and the single native bowl required");
+                        maid.getMaidInventory()
+                            .setInventorySlotContents(0, null);
+                        record.setInteger("MealCount", record.getInteger("MealCount") + 1);
+                        maid.setHealth(maid.getMaxHealth());
+                    } else if (activity().equals("melee")) {
+                        require(
+                            target != null && target.getHealth() < 200 && actor().meleeNativeAccepted() > meleeBefore,
+                            "Actual native melee hit and finite weapon use required");
+                        maid.setTask(MaidTask.IDLE);
+                        maid.worldObj.removePlayerEntityDangerously(target);
+                        target = null;
+                        targetData = null;
+                        maid.getMaidInventory()
+                            .setInventorySlotContents(6, null);
+                        record.setInteger("MeleeCount", record.getInteger("MeleeCount") + 1);
+                    } else throw new IllegalStateException("No complete activity to acknowledge");
+                    record.setString("Activity", "idle");
+                }
+                default -> throw new IllegalArgumentException("Unknown finite long-session input");
+            }
+        }
+
+        JsonObject observation() {
+            var out = new JsonObject();
+            out.addProperty("activity", activity());
+            out.addProperty("sleepObserved", sleepSeen);
+            out.addProperty("sleeping", session.maid.hasPose(MaidPose.SLEEPING));
+            out.addProperty("bedLeaseOwned", bed.isOwnedBy(session.maid));
+            out.addProperty("mealObserved", mealSeen);
+            out.addProperty(
+                "eating",
+                session.maid.getMealController()
+                    .isEating());
+            out.addProperty("firstMealHealth", Float.isNaN(firstMealHealth) ? -1 : firstMealHealth);
+            out.addProperty("health", session.maid.getHealth());
+            out.addProperty("nativeMeleeAccepted", actor().meleeNativeAccepted());
+            out.addProperty("nativeMeleeAcceptedSinceInput", actor().meleeNativeAccepted() - meleeBefore);
+            out.addProperty("targetHealth", target == null ? -1 : target.getHealth());
+            out.addProperty(
+                "finiteResourcesNative",
+                record.getCompoundTag("Resources")
+                    .toString());
+            return out;
+        }
+
+        void clear() {
+            verify(); // Verify the complete plan and known materials before any cleanup mutates state.
+            session.maid.setTask(MaidTask.IDLE);
+            session.maid.setSchedule(MaidSchedule.DAY);
+            session.maid.getBrainCoordinator()
+                .setSuspended(true);
+            verify();
+            require(
+                !session.maid.hasPose(MaidPose.SLEEPING) && !bed.isOwnedBy(session.maid)
+                    && session.maid.getItemUseState()
+                        .peek() == null,
+                "Normal cancellation must release item and bed leases");
+            if (target != null) {
+                require(ownsTarget(target) && targetData.equals(target.getEntityData()), "Unknown target retained");
+                target.worldObj.removePlayerEntityDangerously(target);
+                target = null;
+            }
+            for (int slot = 0; slot < session.maid.getMaidInventory()
+                .getSizeInventory(); slot++)
+                if (session.maid.getMaidInventory()
+                    .getStackInSlot(slot) != null)
+                    session.maid.getMaidInventory()
+                        .setInventorySlotContents(slot, null);
+            // Exact empty fixture bed, originally air. Suppress no material: no item was paid for these cells.
+            var world = session.maid.worldObj;
+            world.removeTileEntity(5, 65, -1);
+            require(
+                world.getBlock(5, 65, -1) == MaidLifeContent.maidBed && world.getBlockMetadata(5, 65, -1) == 9
+                    && world.getChunkFromChunkCoords(0, -1)
+                        .getTileEntityUnsafe(5, 65, 15) == null,
+                "Unknown bed-head cleanup successor retained");
+            require(
+                world.setBlock(5, 65, -1, Blocks.air, 0, 2) && world.isAirBlock(5, 65, -1)
+                    && world.getTileEntity(5, 65, -1) == null,
+                "Exact finite bed-head cleanup failed");
+            require(
+                world.getBlock(6, 65, -1) == MaidLifeContent.maidBed && world.getBlockMetadata(6, 65, -1) == 1
+                    && world.getTileEntity(6, 65, -1) == null,
+                "Unknown bed-foot cleanup successor retained");
+            require(
+                world.setBlock(6, 65, -1, Blocks.air, 0, 2) && world.isAirBlock(6, 65, -1)
+                    && world.getTileEntity(6, 65, -1) == null,
+                "Exact finite bed-foot cleanup failed");
+        }
     }
 
     private static void closeLong(Session session) {

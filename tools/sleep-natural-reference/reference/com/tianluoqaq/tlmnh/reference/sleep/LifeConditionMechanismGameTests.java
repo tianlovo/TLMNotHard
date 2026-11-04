@@ -28,11 +28,21 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class LifeConditionMechanismGameTests {
     static final String RESOURCE = "/tlmnh-life-condition-mechanisms/contract.json";
-    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V2";
+    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V3";
 
     private LifeConditionMechanismGameTests() {}
 
-    @GameTest(template = "cell", timeoutTicks = 3140, batch = "life_condition_pantry")
+    @GameTest(template = "cell", timeoutTicks = 500, batch = "life_air_open")
+    public static void lowAirOpenSurface(GameTestHelper h) {
+        FollowMechanismGameTests.collect(h, new AirSession(h, "low_air_open_surface"), "tlmnh.lifeConditionMechanismsProbe");
+    }
+
+    @GameTest(template = "cell", timeoutTicks = 500, batch = "life_air_roof")
+    public static void lowAirRoofRelease(GameTestHelper h) {
+        FollowMechanismGameTests.collect(h, new AirSession(h, "low_air_roof_release"), "tlmnh.lifeConditionMechanismsProbe");
+    }
+
+
     public static void cabinetConditions(GameTestHelper h) { collect(h, "cabinet_conditions"); }
 
     public static void sharedBedHandoff(GameTestHelper h) { collect(h, "shared_bed_handoff"); }
@@ -389,6 +399,191 @@ public final class LifeConditionMechanismGameTests {
                 }
             }
             return result;
+        }
+    }
+
+    /** Two natural air-safety episodes on the existing native player/root/tick collection protocol. */
+    public static final class AirSession extends FollowMechanismGameTests.Session {
+        final String mechanism;
+        final JsonArray damageCallbacks = new JsonArray();
+        boolean outletOpened, registeredObserver, deathCallback;
+        int firstHeadOutside = -1, firstAirRecovered = -1, firstBreathPlan = -1, breathPlanCleared = -1;
+        int ownerArrivalAfterRecovery = -1, minimumAir = 60;
+        float previousHealth = 20, netHealthLoss;
+
+        AirSession(GameTestHelper helper, String mechanism) {
+            super(helper, mechanism, RESOURCE, CONTRACT, "life-recovery-original-v1", "life-recovery-original-");
+            this.mechanism = mechanism;
+            output.add("damageCallbacks", damageCallbacks);
+            output.addProperty("inputSchedule", "Fixed world inputs only at START; END observes actual native updates");
+            output.addProperty("crossEngineFullNbtEqualityRequired", false);
+        }
+
+        @Override String identityProperty() { return "tlmnh.lifeConditionMechanisms.buildIdentity"; }
+        @Override int frameLimit() { return scene.get("frames").getAsInt(); }
+
+        @Override void setup() {
+            super.setup();
+            for (int x = 0; x < 25; x++) for (int y = 0; y < 8; y++) for (int z = 0; z < 25; z++)
+                helper.setBlock(x, y, z, y == 0 ? Blocks.STONE : Blocks.AIR);
+            TerrainLifeMechanismGameTests.enclose(helper, 25, 8);
+            for (int x = 4; x <= 22; x++) for (int y = 1; y <= 3; y++) for (int z = 8; z <= 16; z++)
+                helper.setBlock(x, y, z, Blocks.STONE);
+            for (int x = 8; x <= 16; x++) for (int y = 1; y <= 3; y++) for (int z = 10; z <= 14; z++)
+                helper.setBlock(x, y, z, Blocks.WATER);
+            if (mechanism.equals("low_air_roof_release"))
+                for (int x = 8; x <= 16; x++) for (int z = 10; z <= 14; z++) helper.setBlock(x, 4, z, Blocks.GLASS);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(this);
+            registeredObserver = true;
+        }
+
+        @Override void beforeSpawn() {
+            super.beforeSpawn();
+            maid.setAirSupply(contract.get("initialAirSupply").getAsInt());
+            output.addProperty("airInputAppliedBeforeJoin", maid.getAirSupply());
+            output.addProperty("initialEyeFluidAvailability", "UNAVAILABLE_BEFORE_FIRST_NATIVE_FLUID_UPDATE");
+        }
+
+        @Override void spawn() {
+            super.spawn();
+            output.addProperty("actualInitialAirSupply", maid.getAirSupply());
+            helper.assertTrue(maid.getAirSupply() == 60 && !maid.isInvulnerable(), "Native initial low-air/damage input differs");
+        }
+
+        @Override void beforeWorld() {
+            super.beforeWorld();
+            if (maid == null || outletOpened || !mechanism.equals("low_air_roof_release") || frames.size() != 40) return;
+            var event = new JsonObject();
+            event.addProperty("frame", frames.size());
+            event.addProperty("kind", "open_fixed_native_air_outlet");
+            event.addProperty("phase", "START_before_native_world_update");
+            for (int x = 12; x <= 13; x++) for (int z = 12; z <= 13; z++) helper.setBlock(x, 4, z, Blocks.AIR);
+            outletOpened = true;
+            event.add("layoutAfter", layout());
+            events.add(event);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public void nativeHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+            if (closed || event.getEntity() != maid) return;
+            var row = new JsonObject();
+            row.addProperty("frame", frames.size());
+            row.addProperty("nativeAge", maid.tickCount);
+            row.addProperty("type", event.getSource().getMsgId());
+            row.addProperty("amountAtObserver", event.getAmount());
+            row.addProperty("healthBefore", maid.getHealth());
+            row.addProperty("cancelledAtObserver", event.isCanceled());
+            row.addProperty("scope", "Native LOWEST callback; later listeners/health commit are not guessed");
+            damageCallbacks.add(row);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public void nativeDeath(net.minecraftforge.event.entity.living.LivingDeathEvent event) {
+            if (!closed && event.getEntity() == maid) {
+                deathCallback = true;
+                output.addProperty("nativeDeathCallbackObserved", true);
+                output.addProperty("deathCancelledAtObserver", event.isCanceled());
+            }
+        }
+
+        JsonObject airState() {
+            var row = new JsonObject();
+            row.addProperty("nativeAge", maid.tickCount);
+            row.addProperty("worldTime", level.getGameTime());
+            row.addProperty("health", maid.getHealth());
+            row.addProperty("air", maid.getAirSupply());
+            row.addProperty("headInWater", maid.isEyeInFluid(net.minecraft.tags.FluidTags.WATER));
+            row.addProperty("bodyInWater", maid.isInWater());
+            row.addProperty("goingToBreath", maid.getSwimManager().isGoingToBreath());
+            row.addProperty("alive", maid.isAlive());
+            row.addProperty("registered", level.getEntity(maid.getUUID()) == maid);
+            row.addProperty("ownerDistanceSquared", maid.distanceToSqr(owner));
+            row.add("position", relative(maid.position()));
+            row.add("eyePosition", relative(maid.getEyePosition()));
+            row.addProperty("activeEffects", maid.getActiveEffects().toString());
+            return row;
+        }
+
+        @Override void observe() throws Exception {
+            if (maid != null && !complete && !closed && deathCallback && !maid.isAlive()) {
+                netHealthLoss += Math.max(0, previousHealth - maid.getHealth());
+                previousHealth = maid.getHealth();
+                finishFacts("maid_death");
+                finishObservation("maid_death");
+                return;
+            }
+            super.observe();
+        }
+
+        @Override void afterFrame(int index) {
+            var row = frames.get(index).getAsJsonObject();
+            var state = airState();
+            row.add("airState", state);
+            minimumAir = Math.min(minimumAir, maid.getAirSupply());
+            netHealthLoss += Math.max(0, previousHealth - maid.getHealth());
+            previousHealth = maid.getHealth();
+            if (!state.get("headInWater").getAsBoolean() && firstHeadOutside < 0) firstHeadOutside = index;
+            if (maid.getAirSupply() >= 290 && firstAirRecovered < 0) firstAirRecovered = index;
+            if (maid.getSwimManager().isGoingToBreath() && firstBreathPlan < 0) firstBreathPlan = index;
+            if (firstBreathPlan >= 0 && !maid.getSwimManager().isGoingToBreath() && maid.getAirSupply() >= 290 && breathPlanCleared < 0)
+                breathPlanCleared = index;
+            if (firstAirRecovered >= 0 && !maid.getSwimManager().isGoingToBreath() && maid.distanceToSqr(owner) <= 4 && ownerArrivalAfterRecovery < 0)
+                ownerArrivalAfterRecovery = index;
+            if (index + 1 == frameLimit()) finishFacts("window_end");
+        }
+
+        void finishFacts(String reason) {
+            minimumAir = Math.min(minimumAir, maid.getAirSupply());
+            output.addProperty("terminalReason", reason);
+            output.addProperty("firstHeadOutsideWaterFrame", firstHeadOutside);
+            output.addProperty("firstAirAtLeast290Frame", firstAirRecovered);
+            output.addProperty("firstBreathingPlanFrame", firstBreathPlan);
+            output.addProperty("breathingPlanClearedFrame", breathPlanCleared);
+            output.addProperty("ownerArrivalAfterRecoveryFrame", ownerArrivalAfterRecovery);
+            output.addProperty("minimumAirSupply", minimumAir);
+            output.addProperty("observedNetHealthLoss", netHealthLoss);
+            output.addProperty("nativeDeathCallbackObserved", deathCallback);
+            output.add("terminalActorState", airState());
+            var tag = new CompoundTag();
+            maid.saveWithoutId(tag);
+            output.add("terminalActorBinaryNBT", SleepAttributeSnapshot.binaryNbt(tag));
+            boolean safe = reason.equals("window_end") && maid.isAlive() && firstHeadOutside >= 0 && firstAirRecovered >= 0;
+            output.addProperty("airSafetySucceeded", safe);
+            output.addProperty("normalActivityResumeObserved", ownerArrivalAfterRecovery >= 0);
+            output.addProperty("followTaskCauseDirectlyObserved", false);
+            output.addProperty("behaviorSuccess", safe && ownerArrivalAfterRecovery >= 0);
+            output.addProperty("resourceAssertionScope", "No material use input; complete native initial/terminal entity NBT retained");
+            if (reason.equals("maid_death")) {
+                output.addProperty("deathOutputsNotExplicitlyDeleted", true);
+                output.addProperty("deathOutputOwnershipVerified", false);
+            }
+        }
+
+        @Override JsonArray layout() {
+            var rows = new JsonArray();
+            for (int x = 0; x < 25; x++) for (int y = 0; y < 8; y++) for (int z = 0; z < 25; z++) {
+                var state = level.getBlockState(origin.offset(x, y, z));
+                if (state.isAir()) continue;
+                var row = new JsonObject();
+                row.addProperty("x", x); row.addProperty("y", y); row.addProperty("z", z);
+                row.addProperty("registry", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+                row.addProperty("rawBlockState", state.toString());
+                row.addProperty("metadata", state.is(Blocks.WATER) ? state.getValue(net.minecraft.world.level.block.LiquidBlock.LEVEL) : 0);
+                rows.add(row);
+            }
+            return rows;
+        }
+
+        @Override void close() {
+            if (closed) return;
+            try {
+                if (registeredObserver) {
+                    registeredObserver = false;
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(this);
+                }
+                for (int x = 0; x < 25; x++) for (int y = 0; y < 8; y++) for (int z = 0; z < 25; z++) helper.setBlock(x, y, z, Blocks.AIR);
+                output.addProperty("extraCleanupComplete", true);
+            } finally { super.close(); }
         }
     }
 

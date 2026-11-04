@@ -27,16 +27,42 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 public final class LifeConditionMechanismPortTests {
 
     static final String RESOURCE = "/tlmnh-life-condition-mechanisms/contract.json";
-    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V2";
+    static final String CONTRACT = "LIFE_CONDITION_MECHANISMS_V3";
 
     private LifeConditionMechanismPortTests() {}
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 3140, batch = "life_condition_pantry_f")
+    @GameTest(template = "modern_core_cell", timeoutTicks = 500, batch = "life_air_open_f")
+    public static void faithfulLowAirOpenSurface(GameTestHelper h) {
+        collectAir(h, false, "low_air_open_surface");
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 500, batch = "life_air_open_n")
+    public static void enhancedLowAirOpenSurface(GameTestHelper h) {
+        collectAir(h, true, "low_air_open_surface");
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 500, batch = "life_air_roof_f")
+    public static void faithfulLowAirRoofRelease(GameTestHelper h) {
+        collectAir(h, false, "low_air_roof_release");
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 500, batch = "life_air_roof_n")
+    public static void enhancedLowAirRoofRelease(GameTestHelper h) {
+        collectAir(h, true, "low_air_roof_release");
+    }
+
+    static void collectAir(GameTestHelper h, boolean enhanced, String mechanism) {
+        var c = new AirCollector(h, enhanced ? MaidBrainProfile.ENHANCED : MaidBrainProfile.FAITHFUL_TLM, mechanism);
+        h.afterTest(c::close);
+        h.onEachTick("natural low-air safety observation", () -> { if (c.failure != null) throw c.failure; });
+        h.succeedWhen(() -> c.complete);
+        c.setup();
+    }
+
     public static void faithfulCabinetConditions(GameTestHelper h) {
         collect(h, false, "cabinet_conditions");
     }
 
-    @GameTest(template = "modern_core_cell", timeoutTicks = 3140, batch = "life_condition_pantry_n")
     public static void enhancedCabinetConditions(GameTestHelper h) {
         collect(h, true, "cabinet_conditions");
     }
@@ -462,6 +488,249 @@ public final class LifeConditionMechanismPortTests {
                 result.addProperty("nextSnack", (Number) read(life, type, "nextSnack"));
             }
             return result;
+        }
+    }
+
+    public static final class AirCollector extends FollowMechanismPortTests.Collector {
+
+        final String mechanism;
+        final JsonArray damageCallbacks = new JsonArray();
+        boolean outletOpened, deathCallback;
+        int firstHeadOutside = -1, firstAirRecovered = -1, firstBreathPlan = -1, breathPlanCleared = -1;
+        int ownerArrivalAfterRecovery = -1, minimumAir = 60;
+        float previousHealth = 20, netHealthLoss;
+
+        AirCollector(GameTestHelper h, MaidBrainProfile profile, String mechanism) {
+            super(h, profile, mechanism, RESOURCE, CONTRACT, "life-recovery-port-v1", "life-recovery-");
+            this.mechanism = mechanism;
+            output.add("damageCallbacks", damageCallbacks);
+            output.addProperty("inputSchedule", "Fixed world inputs only at START; END observes actual native updates");
+            output.addProperty("crossEngineFullNbtEqualityRequired", false);
+        }
+
+        @Override
+        int frameLimit() {
+            return scene.get("frames")
+                .getAsInt();
+        }
+
+        @Override
+        void setup() {
+            super.setup();
+            try {
+                output.add(
+                    "airObserverArtifact",
+                    DevelopmentArtifactIdentity.capture(LifeConditionMechanismPortTests.class, AirCollector.class));
+                output.add(
+                    "airProductionArtifact",
+                    DevelopmentArtifactIdentity.capture(
+                        com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask.class,
+                        com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask.class,
+                        com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedBreathingController.class,
+                        com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator.class));
+            } catch (Exception failure) {
+                throw new IllegalStateException("Air collection identity unavailable", failure);
+            }
+            for (int a = 0; a < 25; a++) for (int b = 0; b < 8; b++)
+                for (int c = 0; c < 25; c++) helper.setBlock(a, b, c, b == 0 ? Blocks.stone : Blocks.air);
+            for (int a = 0; a < 25; a++) for (int b = 1; b < 8; b++) for (int c = 0; c < 25; c++)
+                if (a == 0 || a == 24 || c == 0 || c == 24 || b == 7) helper.setBlock(a, b, c, Blocks.glass);
+            for (int a = 4; a <= 22; a++)
+                for (int b = 1; b <= 3; b++) for (int c = 8; c <= 16; c++) helper.setBlock(a, b, c, Blocks.stone);
+            for (int a = 8; a <= 16; a++)
+                for (int b = 1; b <= 3; b++) for (int c = 10; c <= 14; c++) helper.setBlock(a, b, c, Blocks.water, 0);
+            if (mechanism.equals("low_air_roof_release"))
+                for (int a = 8; a <= 16; a++) for (int c = 10; c <= 14; c++) helper.setBlock(a, 4, c, Blocks.glass);
+        }
+
+        @Override
+        void beforeSpawn() {
+            super.beforeSpawn();
+            maid.setAir(
+                contract.get("initialAirSupply")
+                    .getAsInt());
+            output.addProperty("airInputAppliedBeforeJoin", maid.getAir());
+            output.addProperty("initialEyeFluidAvailability", "UNAVAILABLE_BEFORE_FIRST_NATIVE_FLUID_UPDATE");
+        }
+
+        @Override
+        void spawn() {
+            super.spawn();
+            output.addProperty("actualInitialAirSupply", maid.getAir());
+            helper.assertTrue(
+                maid.getAir() == 60 && !maid.isEntityInvulnerable(),
+                "Native initial low-air/damage input differs");
+        }
+
+        @Override
+        void applyOwner() {
+            super.applyOwner();
+            if (maid == null || outletOpened || !mechanism.equals("low_air_roof_release") || frames.size() != 40)
+                return;
+            var event = new JsonObject();
+            event.addProperty("frame", frames.size());
+            event.addProperty("kind", "open_fixed_native_air_outlet");
+            event.addProperty("phase", "START_before_native_world_update");
+            for (int a = 12; a <= 13; a++) for (int c = 12; c <= 13; c++) helper.setBlock(a, 4, c, Blocks.air);
+            outletOpened = true;
+            event.add("layoutAfter", layout());
+            events.add(event);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public void nativeHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+            if (closed || event.entityLiving != maid) return;
+            var row = new JsonObject();
+            row.addProperty("frame", frames.size());
+            row.addProperty("nativeAge", maid.ticksExisted);
+            row.addProperty("type", event.source.damageType);
+            row.addProperty("amountAtObserver", event.ammount);
+            row.addProperty("healthBefore", maid.getHealth());
+            row.addProperty("cancelledAtObserver", event.isCanceled());
+            row.addProperty("scope", "Native LOWEST callback; later listeners/health commit are not guessed");
+            damageCallbacks.add(row);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public void nativeDeath(net.minecraftforge.event.entity.living.LivingDeathEvent event) {
+            if (!closed && event.entityLiving == maid) {
+                deathCallback = true;
+                output.addProperty("nativeDeathCallbackObserved", true);
+                output.addProperty("deathCancelledAtObserver", event.isCanceled());
+            }
+        }
+
+        JsonObject airState() {
+            var row = new JsonObject();
+            row.addProperty("nativeAge", maid.ticksExisted);
+            row.addProperty(
+                "worldTime",
+                helper.getWorld()
+                    .getTotalWorldTime());
+            row.addProperty("health", maid.getHealth());
+            row.addProperty("air", maid.getAir());
+            row.addProperty("headInWater", maid.isInsideOfMaterial(net.minecraft.block.material.Material.water));
+            row.addProperty("bodyInWater", maid.isInWater());
+            row.addProperty(
+                "goingToBreath",
+                maid.getAquaticController()
+                    .getManager()
+                    .isGoingToBreath());
+            row.addProperty("alive", maid.isEntityAlive());
+            row.addProperty(
+                "registered",
+                helper.getWorld()
+                    .getEntityByID(maid.getEntityId()) == maid);
+            row.addProperty("ownerDistanceSquared", maid.getDistanceSqToEntity(owner));
+            row.add("position", vector(maid.posX - x, maid.posY - y, maid.posZ - z));
+            row.add("eyePosition", vector(maid.posX - x, maid.posY + maid.getEyeHeight() - y, maid.posZ - z));
+            row.addProperty(
+                "activeEffects",
+                maid.getActivePotionEffects()
+                    .toString());
+            return row;
+        }
+
+        @Override
+        void observe() {
+            if (maid != null && !complete && !closed && deathCallback && !maid.isEntityAlive()) {
+                netHealthLoss += Math.max(0, previousHealth - maid.getHealth());
+                previousHealth = maid.getHealth();
+                finishFacts("maid_death");
+                complete = true;
+                close();
+                return;
+            }
+            super.observe();
+        }
+
+        @Override
+        void afterFrame(int index) {
+            var row = frames.get(index)
+                .getAsJsonObject();
+            var state = airState();
+            row.add("airState", state);
+            minimumAir = Math.min(minimumAir, maid.getAir());
+            netHealthLoss += Math.max(0, previousHealth - maid.getHealth());
+            previousHealth = maid.getHealth();
+            if (!state.get("headInWater")
+                .getAsBoolean() && firstHeadOutside < 0) firstHeadOutside = index;
+            if (maid.getAir() >= 290 && firstAirRecovered < 0) firstAirRecovered = index;
+            if (maid.getAquaticController()
+                .getManager()
+                .isGoingToBreath() && firstBreathPlan < 0) firstBreathPlan = index;
+            if (firstBreathPlan >= 0 && !maid.getAquaticController()
+                .getManager()
+                .isGoingToBreath() && maid.getAir() >= 290 && breathPlanCleared < 0) breathPlanCleared = index;
+            if (firstAirRecovered >= 0 && !maid.getAquaticController()
+                .getManager()
+                .isGoingToBreath() && maid.getDistanceSqToEntity(owner) <= 4 && ownerArrivalAfterRecovery < 0)
+                ownerArrivalAfterRecovery = index;
+            if (index + 1 == frameLimit()) finishFacts("window_end");
+        }
+
+        void finishFacts(String reason) {
+            minimumAir = Math.min(minimumAir, maid.getAir());
+            output.addProperty("terminalReason", reason);
+            output.addProperty("firstHeadOutsideWaterFrame", firstHeadOutside);
+            output.addProperty("firstAirAtLeast290Frame", firstAirRecovered);
+            output.addProperty("firstBreathingPlanFrame", firstBreathPlan);
+            output.addProperty("breathingPlanClearedFrame", breathPlanCleared);
+            output.addProperty("ownerArrivalAfterRecoveryFrame", ownerArrivalAfterRecovery);
+            output.addProperty("minimumAirSupply", minimumAir);
+            output.addProperty("observedNetHealthLoss", netHealthLoss);
+            output.addProperty("nativeDeathCallbackObserved", deathCallback);
+            output.add("terminalActorState", airState());
+            var tag = new NBTTagCompound();
+            maid.writeToNBT(tag);
+            output.add("terminalActorBinaryNBT", SleepAttributePortSnapshot.binaryNbt(tag));
+            boolean safe = reason.equals("window_end") && maid.isEntityAlive()
+                && firstHeadOutside >= 0
+                && firstAirRecovered >= 0;
+            output.addProperty("airSafetySucceeded", safe);
+            output.addProperty("normalActivityResumeObserved", ownerArrivalAfterRecovery >= 0);
+            output.addProperty("followTaskCauseDirectlyObserved", false);
+            output.addProperty("behaviorSuccess", safe && ownerArrivalAfterRecovery >= 0);
+            output.addProperty(
+                "resourceAssertionScope",
+                "No material use input; complete native initial/terminal entity NBT retained");
+            if (reason.equals("maid_death")) {
+                output.addProperty("deathOutputsNotExplicitlyDeleted", true);
+                output.addProperty("deathOutputOwnershipVerified", false);
+            }
+        }
+
+        @Override
+        JsonArray layout() {
+            var rows = new JsonArray();
+            for (int a = 0; a < 25; a++) for (int b = 0; b < 8; b++) for (int c = 0; c < 25; c++) {
+                var block = helper.getWorld()
+                    .getBlock(x + a, y + b, z + c);
+                if (block == Blocks.air) continue;
+                var row = new JsonObject();
+                row.addProperty("x", a);
+                row.addProperty("y", b);
+                row.addProperty("z", c);
+                row.addProperty("registry", net.minecraft.block.Block.blockRegistry.getNameForObject(block));
+                row.addProperty(
+                    "metadata",
+                    helper.getWorld()
+                        .getBlockMetadata(x + a, y + b, z + c));
+                rows.add(row);
+            }
+            return rows;
+        }
+
+        @Override
+        void close() {
+            if (closed) return;
+            try {
+                for (int a = 0; a < 25; a++)
+                    for (int b = 0; b < 8; b++) for (int c = 0; c < 25; c++) helper.setBlock(a, b, c, Blocks.air);
+                output.addProperty("extraCleanupComplete", true);
+            } finally {
+                super.close();
+            }
         }
     }
 

@@ -1,193 +1,121 @@
-"""Strict cabinet collection and bounded readonly task-opportunity observations."""
+"""Strict low-air episode inputs/identity and bounded native escape/recovery outcomes."""
 
 import argparse
 import json
+import math
+import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from attribute_inputs import compare_attribute_inputs
 from check import require, sha
-from compare_follow_mechanisms import PRODUCTION, SPAWN, input_differences, original_identity, verify_port_results
-from compare_port import artifact
-from compare_terrain_life_mechanisms import (
-    ORIGINAL as TERRAIN_ORIGINAL, PANTRY_OBSERVER, TERRAIN_OBSERVER, TERRAIN_PRODUCTION,
-    binding, enclosure_cells, native_binary, owner_inputs,
+from compare_follow_mechanisms import (
+    PRODUCTION, SPAWN, OBSERVER as FOLLOW_OBSERVER,
+    input_differences, original_identity, verify_port_results,
 )
+from compare_port import artifact
+from compare_terrain_life_mechanisms import ORIGINAL as TERRAIN_ORIGINAL, binding, enclosure_cells, native_binary, owner_inputs
 
 PREFIX = "com.tianluoqaq.tlmnh."
-MECHANISMS = ("cabinet_conditions",)
-EXPECTED = {arm + case for arm in ("faithful", "enhanced") for case in ("CabinetConditions",)}
-ORIGINAL = TERRAIN_ORIGINAL | {PREFIX + "reference.sleep.LifeConditionMechanismGameTests" + suffix for suffix in ("", "$Session", "$OpportunityReader")}
+MECHANISMS = ("low_air_open_surface", "low_air_roof_release")
+EXPECTED = {arm + case for arm in ("faithful", "enhanced") for case in ("LowAirOpenSurface", "LowAirRoofRelease")}
+ORIGINAL = TERRAIN_ORIGINAL | {
+    PREFIX + "reference.sleep.LifeConditionMechanismGameTests" + suffix
+    for suffix in ("", "$Session", "$OpportunityReader", "$AirSession")
+}
 ORIGINAL |= {"com.github.tartaricacid.touhoulittlemaid." + name for name in (
     "entity.ai.brain.task.MaidBedTask", "block.BlockMaidBed", "entity.ai.edible.CakeEdible",
-    "entity.favorability.FavorabilityManager", "entity.favorability.Type")}
-OBSERVER = [PREFIX + "qa.LifeConditionMechanismPortTests" + suffix for suffix in ("", "$Collector", "$OpportunityReader")]
-LIFE_PRODUCTION = [PREFIX + name for name in (
-    "common.life.TileEntityMaidBed", "common.ai.faithful.MaidCakeAction", "common.ai.faithful.MaidModernLife",
-    "common.ai.faithful.MaidBedExitOffsets")]
+    "entity.favorability.FavorabilityManager", "entity.favorability.Type",
+    "entity.ai.brain.task.MaidBreathAirTask", "entity.ai.brain.task.MaidBreathAirStopTask",
+)}
+AIR_OBSERVER = [PREFIX + "qa.LifeConditionMechanismPortTests" + suffix for suffix in ("", "$AirCollector")]
+AIR_PRODUCTION = [
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask",
+    "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask",
+    PREFIX + "common.ai.enhanced.EnhancedBreathingController",
+    PREFIX + "common.ai.navigation.MaidPathNavigator",
+]
 
 
-def add_shell(cells, low_x, high_x, low_z, high_z, top):
-    cells.update({(x, y, z): "glass" for x in range(low_x, high_x + 1) for y in range(1, top + 1)
-                  for z in range(low_z, high_z + 1)
-                  if x in (low_x, high_x) or z in (low_z, high_z) or y == top})
-
-
-def expected_layout(mechanism, phase="initial"):
+def expected_layout(mechanism, opened=False):
     cells = {(x, 0, z): "stone" for x in range(25) for z in range(25)}
     cells.update(enclosure_cells(25, 8))
-    if mechanism == "cabinet_conditions":
-        add_shell(cells, 8, 16, 8, 16, 5)
-        add_shell(cells, 10, 14, 10, 14, 4)
-        if phase != "initial":
-            cells[12, 1, 12] = "snack_cabinet"
-        if phase == "opened":
-            del cells[10, 1, 12]
-            del cells[10, 2, 12]
-    else:
-        cells[12, 1, 12] = "bed_head"
-        cells[12, 1, 13] = "bed_foot"
+    cells.update({(x, y, z): "stone" for x in range(4, 23) for y in range(1, 4) for z in range(8, 17)})
+    cells.update({(x, y, z): "water" for x in range(8, 17) for y in range(1, 4) for z in range(10, 15)})
+    if mechanism == "low_air_roof_release":
+        cells.update({(x, 4, z): "glass" for x in range(8, 17) for z in range(10, 15)})
+        if opened:
+            for x in (12, 13):
+                for z in (12, 13):
+                    del cells[x, 4, z]
     return cells
 
 
-def layout(rows, mechanism, original, phase="initial"):
-    result = {}
-    domain = "touhou_little_maid" if original else "tlmnh"
+def layout(rows, mechanism, original, opened=False):
+    cells = {}
     for row in rows:
         point = tuple(row[key] for key in ("x", "y", "z"))
-        require(all(type(value) is int for value in point) and point not in result, "duplicate/noninteger layout cell")
+        require(all(type(value) is int for value in point) and point not in cells, "duplicate/noninteger air-arena cell")
         registry = row["registry"]
-        require(registry in {"minecraft:stone", "minecraft:glass", domain + ":maid_bed", domain + ":snack_cabinet"},
-                "unexpected native initial/dynamic block")
+        if registry == "minecraft:flowing_water":
+            require(not original and opened and mechanism == "low_air_roof_release"
+                    and point in {(x, 3, z) for x in (12, 13) for z in (12, 13)},
+                    "flowing-water transition outside the four opened source cells")
+            registry = "minecraft:water"
+        require(registry in {"minecraft:stone", "minecraft:glass", "minecraft:water"}, "unknown native air-arena block")
         name = registry.split(":", 1)[1]
-        if name == "maid_bed":
-            require(point in ((12, 1, 12), (12, 1, 13)), "extra native bed input")
-            name = "bed_head" if point[2] == 12 else "bed_foot"
+        require(row["metadata"] == 0, "native source-water or solid metadata differs")
         if original:
-            expected = ("Block{minecraft:" + name + "}" if name in ("stone", "glass")
-                        else "Block{touhou_little_maid:snack_cabinet}[facing=north,type=0]" if name == "snack_cabinet"
-                        else "Block{touhou_little_maid:maid_bed}[facing=north,occupied=false,part="
-                        + ("head" if name == "bed_head" else "foot") + "]")
-            require(row["rawBlockState"] == expected, "actual original block state differs")
-        else:
-            require(row["metadata"] == (10 if name == "bed_head" else 2 if name == "bed_foot" else 0),
-                    "actual native block metadata differs")
-        result[point] = name
-    require(result == expected_layout(mechanism, phase), "complete life arena blueprint differs")
+            expected = "Block{minecraft:" + name + "}" + ("[level=0]" if name == "water" else "")
+            require(row["rawBlockState"] == expected, "actual original water/solid state differs")
+        cells[point] = name
+    require(cells == expected_layout(mechanism, opened), "complete air-arena input differs")
 
 
-def tile_input(row, present):
-    require(row["present"] is present, "native tile presence differs")
-    if present:
-        native_binary(row["binaryNBT"])
+def java_float(value):
+    require(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value), "invalid native float")
+    return struct.unpack(">f", struct.pack(">f", value))[0]
 
 
 def metrics(data):
     frames = data["frames"]
-    common = {"frames": len(frames), "collector_behavior_success": data.get("behaviorSuccess"),
-              "collection_complete_is_not_behavior_success": True, "resource_assertions_passed": data.get("resourceAssertionsPassed")}
-    if data["mechanism"] == "cabinet_conditions":
-        placed = data.get("naturalPlacementFrame", -1)
-        common.update(natural_placement_frame=placed, open_to_placement_ticks=placed - 800 if placed >= 800 else None,
-                      final_primary_native_consumes=frames[-1]["primaryConsumes"],
-                      final_secondary_native_consumes=frames[-1]["secondaryConsumes"],
-                      ambiguous_shared_consumes=frames[-1].get("ambiguousSharedConsumes", 0),
-                      final_backpack_cakes=frames[-1]["backpackCake"], final_world_mouths=frames[-1]["worldCakeRemainingMouths"],
-                      final_consumed_mouths=frames[-1]["cakeBitesConsumed"], negative_window_frames=800,
-                      exact_native_consume_events=data["consumeEvents"], source_attribution_limits_retained=True)
-    else:
-        release, successor = data.get("releaseCommandFrame", -1), data.get("successorSleepFrame", -1)
-        common.update(first_sleep_frame=data.get("firstSleepFrame"), release_command_frame=release,
-                      first_awake_frame=data.get("firstAwakeFrame"), successor_sleep_frame=successor,
-                      release_to_successor_sleep_ticks=successor - release if release >= 0 and successor >= release else None,
-                      first_occupant_uuid=data.get("firstOccupantUuid"),
-                      maximum_simultaneous_sleepers=max(int(row["primarySleeping"]) + int(row["secondarySleeping"]) for row in frames),
-                      source_has_per_actor_bed_lease_api=False)
-    return common
-
-
-def opportunity_metrics(data, original):
-    """Count observed field changes, retaining the distinction from uninstrumented search/BFS calls."""
-    summaries = {}
-    for actor in ("primary", "secondary"):
-        summaries[actor] = {
-            "available_start_samples": 0, "unavailable_start_samples": 0,
-            "counter_decrements_observed": 0, "positive_counter_assignments_observed": [],
-            "counter_other_transitions": [], "raw_start_gate_candidate_frames": 0,
-            "raw_work_target_became_present": 0, "enhanced_native_scan_count_delta": 0,
-            "direct_search_start_count": None, "direct_bfs_call_count": None,
-            "direct_bfs_success_count": None,
-        }
-    for index, frame in enumerate(data["frames"]):
-        observation = frame["lifeSearchOpportunity"]
-        require(observation["schema"] == "life-search-opportunity-v1", "unknown opportunity snapshot")
-        for actor, summary in summaries.items():
-            after = observation[actor + "End"]
-            require(after["availability"] == "AVAILABLE_RAW_VIEW" and after["nativeAge"] == index + 1
-                    and after["phase"] == "END_after_native_world_update", "missing actual END task observation")
-            require(after["bfsCallObservation"] == "NOT_INSTRUMENTED"
-                    and after["searchStartObservation"] == "NOT_DIRECTLY_OBSERVED", "unobserved search was promoted")
-            check_rate = original or data["profile"] == "faithful_tlm"
-            require(after["checkRateApplicable"] is check_rate, "different cadence was substituted")
-            if not observation["startFrameMatches"]:
-                require(observation["startAvailability"] == "UNAVAILABLE_START_PHASE", "synthetic START inserted")
-                summary["unavailable_start_samples"] += 1
-                continue
-            before = observation[actor + "Start"]
-            require(before["phase"] == "START_before_native_world_update" and before["nativeAge"] == index,
-                    "START task snapshot was taken after the native actor update")
-            if before["availability"] != "AVAILABLE_RAW_VIEW":
-                require(before["availability"] == "UNAVAILABLE_ROOT_PHASE", "unknown missing task phase")
-                summary["unavailable_start_samples"] += 1
-                continue
-            require(before["checkRateApplicable"] is check_rate, "START cadence type differs from END")
-            summary["available_start_samples"] += 1
-            if before["rootIdentity"] != after["rootIdentity"]:
-                summary["counter_other_transitions"].append({"frame": index, "reason": "actual_root_identity_changed"})
-                continue
-            if not before["workTargetRawStored"] and after["workTargetRawStored"]:
-                summary["raw_work_target_became_present"] += 1
-            if not check_rate:
-                require(not before["tasks"] and not after["tasks"], "enhanced controller was relabelled as MaidCheckRateTask")
-                require(before["controllerIdentity"] == after["controllerIdentity"], "life controller changed mid-frame")
-                scans = after["scanCount"] - before["scanCount"]
-                require(scans in (0, 1), "unexpected actual enhanced scan-count change")
-                summary["enhanced_native_scan_count_delta"] += scans
-                continue
-            require(len(before["tasks"]) == len(after["tasks"]) == 2, "original idle/work task pair changed")
-            before_tasks = {row["taskIdentity"]: row for row in before["tasks"]}
-            require(len(before_tasks) == 2, "duplicate native task identity")
-            for current in after["tasks"]:
-                prior = before_tasks.get(current["taskIdentity"])
-                if prior is None:
-                    summary["counter_other_transitions"].append({"frame": index, "reason": "actual_task_identity_changed"})
-                    continue
-                require(prior["taskClass"] == current["taskClass"]
-                        == "com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask"
-                        and prior["maxCheckRate"] == current["maxCheckRate"] == 900,
-                        "actual task class or original check rate differs")
-                a, b = prior["nextCheckTickCount"], current["nextCheckTickCount"]
-                require(type(a) is int and type(b) is int and 0 <= a < 1800 and 0 <= b < 1800,
-                        "invalid actual cadence counter")
-                initialized = original or before.get("activityInitialized") is True
-                lifecycle_allows = prior["behaviorStatus"] == "STOPPED" if original else initialized
-                if prior["activityActive"] and prior["requiredRawMemoryAbsent"] and lifecycle_allows:
-                    summary["raw_start_gate_candidate_frames"] += 1
-                change = {"frame": index, "task_identity": current["taskIdentity"], "activity": current["activity"],
-                          "before": a, "after": b, "status_before": prior["behaviorStatus"],
-                          "status_after": current["behaviorStatus"]}
-                if a > 0 and b == a - 1:
-                    summary["counter_decrements_observed"] += 1
-                elif b > a:
-                    summary["positive_counter_assignments_observed"].append(change)
-                elif b != a:
-                    summary["counter_other_transitions"].append(change)
+    states = [row["airState"] for row in frames]
+    first = lambda predicate: next((index for index, state in enumerate(states) if predicate(state)), -1)
+    head = first(lambda state: not state["headInWater"])
+    air = first(lambda state: state["air"] >= 290)
+    plan = first(lambda state: state["goingToBreath"])
+    cleared = next((i for i, state in enumerate(states) if plan >= 0 and i >= plan
+                    and not state["goingToBreath"] and state["air"] >= 290), -1)
+    arrival = next((i for i, state in enumerate(states) if air >= 0 and i >= air
+                    and not state["goingToBreath"] and state["ownerDistanceSquared"] <= 4), -1)
+    terminal = data["terminalActorState"]
+    previous, net_loss = java_float(20), java_float(0)
+    for state in states + [terminal]:
+        health = java_float(state["health"])
+        loss = max(java_float(0), java_float(previous - health))
+        net_loss = java_float(net_loss + loss)
+        previous = health
+    derived = {
+        "firstHeadOutsideWaterFrame": head, "firstAirAtLeast290Frame": air,
+        "firstBreathingPlanFrame": plan, "breathingPlanClearedFrame": cleared,
+        "ownerArrivalAfterRecoveryFrame": arrival,
+        "minimumAirSupply": min([60, terminal["air"]] + [state["air"] for state in states]),
+    }
+    require(all(data[key] == value for key, value in derived.items()), "recorded air/recovery summary differs from actual frames")
+    require(java_float(data["observedNetHealthLoss"]) == net_loss, "native float health-loss aggregate differs")
+    safe = data["terminalReason"] == "window_end" and terminal["alive"] and head >= 0 and air >= 0
+    require(data["airSafetySucceeded"] is safe and data["normalActivityResumeObserved"] is (arrival >= 0)
+            and data["behaviorSuccess"] is (safe and arrival >= 0)
+            and data["followTaskCauseDirectlyObserved"] is False, "behavior summary or causal scope differs")
     return {
-        "actors": summaries,
-        "scope": "Actual same-instance START/END private field transitions and raw memory storage; no task, RNG, clock or expiry method invoked",
-        "raw_start_gate_is_not_actual_tryStart_or_search_call": True,
-        "positive_counter_assignment_is_not_direct_bfs_observation": True,
-        "world_frame_count_is_not_search_count": True,
+        "natural_frames": len(frames), "declared_horizon": data["scene"]["frames"],
+        "terminal_reason": data["terminalReason"], "native_death_callback_observed": data["nativeDeathCallbackObserved"],
+        **derived, "native_float_health_loss": net_loss, "raw_recorded_health_loss": data["observedNetHealthLoss"],
+        "air_safety_succeeded": safe, "physical_owner_arrival_after_recovery": arrival >= 0,
+        "complete_recovery_business_success": data["behaviorSuccess"],
+        "actual_native_damage_callbacks": data["damageCallbacks"],
+        "callback_amount_or_cancel_is_not_final_health_commit": True,
+        "air_refill_time_not_ai_benefit": True, "follow_task_cause_directly_observed": False,
     }
 
 
@@ -196,84 +124,80 @@ def inspect(data, scene, contract, digest, original):
     captured.setdefault("noninferiorityDelta", None)
     captured["campaign"] = dict(captured["campaign"])
     captured["campaign"].setdefault("noninferiorityDelta", None)
-    require(captured == contract and data["contractSha256"] == digest and data["scene"] == scene, "actual contract/scene differs")
-    require(data["schema"] == ("life-condition-original-v2" if original else "life-condition-port-v2")
-            and data["observationComplete"] is data["ownCleanupComplete"] is True
-            and not data.get("error") and not data.get("cleanupError"), "collection or cleanup incomplete")
+    require(captured == contract and data["contractSha256"] == digest and data["scene"] == scene, "actual air contract/scene differs")
+    require(data["schema"] == ("life-recovery-original-v1" if original else "life-recovery-port-v1")
+            and data["observationComplete"] is data["ownCleanupComplete"] is data["extraCleanupComplete"] is True
+            and not data.get("error") and not data.get("cleanupError"), "air observation or owned-input cleanup incomplete")
     require(data["randomSourcesReset"] is data["statisticalAdmission"] is data["complete14ClassBenchmarkAccepted"] is False,
             "unapproved RNG/statistical scope")
     inputs = data["actualInputs"]
     require(inputs["position"] == scene["primarySpawn"] and inputs["task"] == "touhou_little_maid:idle"
-            and inputs["schedule"] == scene["initialSchedule"] and inputs["health"] == 20
-            and inputs["hunger"] == scene["initialHunger"] and inputs["restrictionRadius"] == scene["initialHomeRadius"]
-            and inputs["homeEnabled"] is True and inputs["sitting"] is inputs["pickup"] is False, "actual primary inputs differ")
+            and inputs["schedule"] == "ALL" and inputs["health"] == 20 and inputs["hunger"] == 20
+            and inputs["restrictionRadius"] == 8 and inputs["homeEnabled"] is inputs["sitting"] is inputs["pickup"] is False,
+            "actual primary air inputs differ")
     require(inputs["model"] == contract["model"] and inputs["difficulty"] == "NORMAL" and inputs["dayTime"] == 18000
-            and inputs["raining"] is inputs["thundering"] is False, "actual native environment differs")
+            and inputs["raining"] is inputs["thundering"] is False
+            and data["airInputAppliedBeforeJoin"] == data["actualInitialAirSupply"] == 60
+            and data["initialNonEmptyItemStackCount"] == data["initialActiveEffectCount"] == 0,
+            "actual native air/environment/material input differs")
     owner_inputs(inputs["owner"], original, False)
-    require(inputs["owner"]["position"] == scene["ownerPosition"], "owner input differs")
+    require(inputs["owner"]["position"] == scene["ownerPosition"], "controlled owner input differs")
     layout(inputs["layout"], scene["id"], original)
-    primary = binding(data["attributeInputs"], inputs["rawInitialNbtBinary"], inputs["rawInitialNBT"])
-    second = data["secondInitial"]
-    require(second["position"] == scene["secondarySpawn"], "secondary position differs")
-    second_snbt = second["rawNBT"] if original else second["binaryNBT"]["rawSNBT"]
-    secondary = binding(data["secondAttributeInputs"], second["binaryNBT"], second_snbt)
-    pantry = scene["id"] == "cabinet_conditions"
-    tile_input(data["initialLifeTileInput"], not pantry)
-    item = None
-    if pantry:
-        raw, decoded = native_binary(data["initialCakeInput"])
-        fields = decoded[1][1]
-        tag = fields[b"tag"]
-        require(data["initialCakeItemRegistry"] == "minecraft:cake" and data["initialCakeCount"] == 1
-                and data["initialCakeDamage"] == 0 and tag[0] == 10
-                and tag[1][b"LifeConditionInput"] == (3, 201)
-                and tag[1][b"UnknownCakePayload"] == (11, (7, -17, 65537)), "protected full item input differs")
-        item = {"binary_sha256": sha(raw), "opaque_extra_fields_preserved": True, "mapped_payload_exact": True}
+    initial = binding(data["attributeInputs"], inputs["rawInitialNbtBinary"], inputs["rawInitialNBT"])
+    native_binary(data["terminalActorBinaryNBT"])
     frames = data["frames"]
-    require(len(frames) == scene["frames"], "missing or padded natural frame stream")
+    terminal = data["terminalActorState"]
+    if data["terminalReason"] == "window_end":
+        require(len(frames) == scene["frames"] and terminal["alive"] is True, "missing/padded air frame stream")
+    else:
+        require(data["terminalReason"] == "maid_death" and data["nativeDeathCallbackObserved"] is True
+                and terminal["alive"] is False and terminal["health"] <= 0 and len(frames) < scene["frames"]
+                and data["deathOutputsNotExplicitlyDeleted"] is True and data["deathOutputOwnershipVerified"] is False,
+                "unverified early terminal was relabelled as native death")
     for index, row in enumerate(frames):
-        require(row["frame"] == index and row["age"] == row["maid"]["age"] == row["second"]["age"] == index + 1
-                and row["livingTicks"] == 1 and (index == 0 or row["gameTime"] == frames[index - 1]["gameTime"] + 1),
-                "natural actor/world update stream differs")
+        state = row["airState"]
+        require(row["frame"] == index and row["age"] == state["nativeAge"] == index + 1 and row["livingTicks"] == 1
+                and state["alive"] is state["registered"] is True and state["worldTime"] == row["gameTime"]
+                and (index == 0 or row["gameTime"] == frames[index - 1]["gameTime"] + 1),
+                "natural air actor/world stream differs")
         if not original:
             require(row["fullRootAuthorized"] is True and row["legacyTicks"] == 0 and row["actualProfile"] == data["profile"],
-                    "component or Legacy substituted for full root")
-        if pantry:
-            require(row["phase"] == ("no_cabinet" if index < 200 else "closed_cabinet" if index < 800 else "opened_cabinet")
-                    and row["cabinetPresent"] is (index >= 200) and row["gateClosed"] is (index < 800), "native input phase differs")
-            require(row["finiteMouthBalance"] == row["cakeBitesConsumed"] + row["worldCakeRemainingMouths"] + row["backpackCake"] * 7 == 7
-                    and 0 <= row["nativeConsumeDelta"] <= 2, "finite actual-callback mouth balance differs")
-            if index < 800:
-                require(row["protectedCakeInputUnchanged"] is True and row["backpackCake"] == 1
-                        and row["worldCakePresent"] is False and row["cakeBitesConsumed"] == 0, "negative-window protected input changed")
-        else:
-            require(row["bedComplete"] is True and not (row["primarySleeping"] and row["secondarySleeping"]), "native bed or unique sleeper invariant failed")
-            if not original:
-                require(not (row["primaryBedOwned"] and row["secondaryBedOwned"])
-                        and (not row["primarySleeping"] or row["primaryBedOwned"])
-                        and (not row["secondarySleeping"] or row["secondaryBedOwned"]), "native bed lease ownership differs")
-    if pantry:
-        require([(event["frame"], event["kind"]) for event in data["events"]] == [
-            (200, "place_native_empty_cabinet_inside_existing_closed_shell"), (800, "open_two_high_native_gate")], "native cabinet event boundaries differ")
-        for event in data["events"]:
-            require(event["phase"] == "START_before_native_world_update", "input changed completed END observation")
-            layout(event["layoutAfter"], scene["id"], original, "closed" if event["frame"] == 200 else "opened")
-            tile_input(event["tileAfter"], True)
-        counts = {index: 0 for index in range(scene["frames"])}
-        for event in data["consumeEvents"]:
-            require(event["phase"] == "native_consume_sound_callback" and 800 <= event["frame"] < scene["frames"], "consume event outside permitted native phase")
-            counts[event["frame"]] += 1
-        require(all(row["nativeConsumeDelta"] == counts[row["frame"]] for row in frames), "mouths were inferred without native consume callbacks")
-    elif data.get("releaseCommandFrame", -1) >= 0:
-        require(len(data["events"]) == 1, "unexpected bed input command")
+                    "component or Legacy substituted for natural full root")
+        require(type(state["air"]) is int and isinstance(state["headInWater"], bool)
+                and isinstance(state["goingToBreath"], bool), "native air observation type differs")
+    initial_water = {"basis": "first_native_end_observation", "head_in_water": frames[0]["airState"]["headInWater"]}
+    if original:
+        require(initial_water["head_in_water"] is True, "original first native actor update was not underwater")
+    else:
+        # The normal emergency-follow branch can leave water during the first native update.
+        # Bind the initial geometry instead of requiring the successful exit to happen later.
+        _, initial_node = native_binary(inputs["rawInitialNbtBinary"])
+        tags = initial_node[1][1]
+        require(tags[b"Air"] == (2, 60) and tags[b"Pos"][0] == 9
+                and tags[b"Pos"][1][0] == 6 and inputs["height"] == 1.5,
+                "native initial air/position/standing dimensions differ")
+        absolute_position = [struct.unpack(">d", value[1])[0] for value in tags[b"Pos"][1][1] if value[0] == 6]
+        require(len(absolute_position) == 3 and all(math.isfinite(value) for value in absolute_position)
+                and all((value - relative).is_integer() for value, relative in zip(absolute_position, inputs["position"])),
+                "typed native position is not an integer translation of the captured arena input")
+        eye_height = java_float(inputs["height"] * java_float(.85))
+        eye_y = inputs["position"][1] + eye_height
+        cell = (math.floor(inputs["position"][0]), math.floor(eye_y), math.floor(inputs["position"][2]))
+        water = next(row for row in inputs["layout"] if (row["x"], row["y"], row["z"]) == cell)
+        require(water["registry"] == "minecraft:water" and water["metadata"] == 0 and eye_y < cell[1] + 1,
+                "source-backed initial native eye geometry is not inside full water")
+        initial_water = {"basis": "typed_initial_position_and_layout_with_source_backed_standing_eye_geometry",
+                         "native_getter_before_first_update_observed": False, "relative_eye_y": eye_y,
+                         "head_in_water": True, "first_native_end_head_in_water": frames[0]["airState"]["headInWater"]}
+    should_open = scene["id"] == "low_air_roof_release" and terminal["nativeAge"] > 40
+    require(len(data["events"]) == int(should_open), "missing or additional native air input")
+    if should_open:
         event = data["events"][0]
-        require(event["kind"] == "first_occupant_normal_all_and_wait" and event["phase"] == "START_before_native_world_update"
-                and event["frame"] == data["firstSleepFrame"] + 40 == data["releaseCommandFrame"]
-                and event["triggerCompletedFrame"] == event["frame"] - 1, "bed released before a real first-sleep window")
-    return {"same_side_complete_primary_binding": primary, "same_side_complete_secondary_binding": secondary,
-            "initial_item_mapping": item, "metrics": metrics(data),
-            "readonly_search_opportunity": opportunity_metrics(data, original),
-            "business_success_kept_separate": data["behaviorSuccess"]}
+        require(event["frame"] == 40 and event["kind"] == "open_fixed_native_air_outlet"
+                and event["phase"] == "START_before_native_world_update", "air outlet input phase differs")
+        layout(event["layoutAfter"], scene["id"], original, True)
+    return {"same_side_complete_initial_binding": initial, "initial_head_water_evidence": initial_water, "metrics": metrics(data),
+            "collection_integrity_is_not_behavior_success": True}
 
 
 def main():
@@ -282,11 +206,13 @@ def main():
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--allow-additional-port-tests", action="store_true")
     parser.add_argument("--allow-failed-additional-port-tests", action="store_true")
+    parser.add_argument("--duplicated-port-name", action="store_true",
+                        help="Read the first V3 collector's explicitly duplicated filename suffix")
     args = parser.parse_args()
-    raw_contract = (args.original_tool / "life-condition-mechanisms-contract.json").read_bytes()
-    contract, digest = json.loads(raw_contract), sha(raw_contract)
-    require(contract["contract"] == "LIFE_CONDITION_MECHANISMS_V2" and contract["noninferiorityDelta"] is None
-            and tuple(scene["id"] for scene in contract["mechanisms"]) == MECHANISMS, "unapproved life-condition contract")
+    raw = (args.original_tool / "life-condition-mechanisms-contract.json").read_bytes()
+    contract, digest = json.loads(raw), sha(raw)
+    require(contract["contract"] == "LIFE_CONDITION_MECHANISMS_V3" and contract["noninferiorityDelta"] is None
+            and tuple(scene["id"] for scene in contract["mechanisms"]) == MECHANISMS, "unapproved air recovery contract")
     hqa = json.loads((args.port_run / "horizonqa-result.json").read_bytes())
     observed = json.loads((args.port_run / "observed.json").read_bytes())
     xml = list(ET.parse(args.port_run / "TEST-horizonqa.xml").getroot().iter("testcase"))
@@ -295,48 +221,43 @@ def main():
     pilot = args.port_run / "tested-pilot.jar"
     require(hqa["configuration"]["turbo"] == observed["horizonqa_turbo"] == 1
             and observed["candidate_sha256"] == sha(args.candidate_jar.read_bytes())
-            and observed["pilot_sha256"] == sha(pilot.read_bytes()), "actual execution artifact/tick contract differs")
-    originals = [json.loads(path.read_bytes()) for path in args.original_captures.glob("life-condition-original-*.json")]
-    require(len(originals) == 1 and {row["mechanism"] for row in originals} == set(MECHANISMS), "missing/duplicate original cases")
+            and observed["pilot_sha256"] == sha(pilot.read_bytes()), "actual native execution artifact/tick contract differs")
+    originals = [json.loads(path.read_bytes()) for path in args.original_captures.glob("life-recovery-original-*.json")]
+    require(len(originals) == 2 and {row["mechanism"] for row in originals} == set(MECHANISMS), "missing/duplicate original air cases")
     rows = []
     for scene in contract["mechanisms"]:
         original = next(row for row in originals if row["mechanism"] == scene["id"])
         differences = original_identity(original, args.original_build.read_bytes(), args.original_tool, args.original_agent,
-                                        ORIGINAL, "life-condition-mechanisms-build-v2")
+                                        ORIGINAL, "life-condition-mechanisms-build-v3")
         row = {"mechanism": scene["id"], "original": inspect(original, scene, contract, digest, True),
                "selected_resource_definition_differences": differences, "ports": {}}
         for arm in ("faithful_tlm", "enhanced"):
-            path = args.port_run / f"life-condition-{arm}-{scene['id']}.json"
+            path = args.port_run / f"life-recovery-{arm}-{scene['id']}.json"
+            if args.duplicated_port_name:
+                path = path.with_name(path.name + f"{arm}-{scene['id']}.json")
             port = json.loads(path.read_bytes())
-            for field, classes, jar in (("productionArtifact", PRODUCTION, args.candidate_jar), ("spawnInputArtifact", SPAWN, args.candidate_jar),
-                    ("observerArtifact", PANTRY_OBSERVER, pilot), ("terrainObserverArtifact", TERRAIN_OBSERVER, pilot),
-                    ("terrainProductionArtifact", TERRAIN_PRODUCTION, args.candidate_jar),
-                    ("lifeConditionObserverArtifact", OBSERVER, pilot), ("lifeConditionProductionArtifact", LIFE_PRODUCTION, args.candidate_jar)):
+            for field, classes, jar in (("productionArtifact", PRODUCTION, args.candidate_jar),
+                    ("spawnInputArtifact", SPAWN, args.candidate_jar), ("observerArtifact", FOLLOW_OBSERVER, pilot),
+                    ("airObserverArtifact", AIR_OBSERVER, pilot), ("airProductionArtifact", AIR_PRODUCTION, args.candidate_jar)):
                 artifact(port[field], jar, classes)
             checked = inspect(port, scene, contract, digest, False)
             checked["capture_sha256"] = sha(path.read_bytes())
-            checked["five_initial_attributes_primary"] = compare_attribute_inputs(original["attributeInputs"], port["attributeInputs"], contract["attributeInputs"])
-            checked["five_initial_attributes_secondary"] = compare_attribute_inputs(original["secondAttributeInputs"], port["secondAttributeInputs"], contract["attributeInputs"])
+            checked["capture_file"] = path.name
+            checked["five_initial_attributes"] = compare_attribute_inputs(original["attributeInputs"], port["attributeInputs"], contract["attributeInputs"])
             checked["actual_relevant_input_differences"] = input_differences(original, port)
             row["ports"][arm] = checked
         rows.append(row)
-    result = {"schema": "life-condition-mechanisms-evidence-v2", "collection_checks_passed": True, "hqa_batch": batch,
-              "mechanisms": rows, "contract_sha256": digest, "candidate_sha256": sha(args.candidate_jar.read_bytes()),
-              "pilot_sha256": sha(pilot.read_bytes()), "original_build_sha256": sha(args.original_build.read_bytes()),
-              "analysis_sha256": sha(Path(__file__).read_bytes()), "calibration_used_as_formal": False,
-              "noninferiority_delta": None, "statistical_verdict": "NOT_EVALUATED", "complete14_accepted": False,
-              "limits": ["Collection integrity does not make an untriggered placement/handoff a passed behavior.",
-                         "Native sound callbacks plus actual block/inventory state bind finite mouths; ambiguous original positions are not credited to both actors.",
-                         "Original/native task check-rate state and enhanced scan cadence are different mechanisms; neither is renamed as direct BFS telemetry.",
-                         "This cabinet opportunity contract does not close the retained200 F pantry sleep-resume failure or rewrite its different input geometry.",
-                         "No cross-engine full-NBT equality, independent statistical result or release acceptance is claimed."]}
-    outcomes = [{"mechanism": row["mechanism"], "profile": "original", "success": row["original"]["business_success_kept_separate"]}
-                for row in rows]
-    outcomes.extend({"mechanism": row["mechanism"], "profile": arm, "success": checked["business_success_kept_separate"]}
-                    for row in rows for arm, checked in row["ports"].items())
-    result["actual_business_outcomes"] = outcomes
-    result["all_observed_business_mechanisms_succeeded"] = all(row["success"] for row in outcomes)
-    result["untriggered_or_unsuccessful_cases"] = [row for row in outcomes if not row["success"]]
+    result = {"schema": "life-recovery-mechanisms-evidence-v1", "collection_checks_passed": True,
+              "hqa_batch": batch, "mechanisms": rows, "contract_sha256": digest,
+              "candidate_sha256": sha(args.candidate_jar.read_bytes()), "pilot_sha256": sha(pilot.read_bytes()),
+              "original_build_sha256": sha(args.original_build.read_bytes()), "analysis_sha256": sha(Path(__file__).read_bytes()),
+              "statistical_verdict": "NOT_EVALUATED", "noninferiority_delta": None, "complete14_accepted": False,
+              "limits": ["Native air refill timing and eye-fluid/medium rules are retained as platform inputs, not AI gains.",
+                         "Survival/escape, native breathing-plan clearing and physical owner arrival remain separate outcomes.",
+                         "Native LOWEST damage callbacks are observations; health commits and later cancellations are not fabricated.",
+                         "Censored deaths retain their denominator/raw terminal entity. Unknown native death outputs are not explicitly collected/deleted; ownership and later persistence remain NOT_PROVEN.",
+                         "200 partial endpoint and earlier cabinet failures remain; no radius/cooldown/RNG or forced-rescue change.",
+                         "Controlled native memory owners are not real network/multiplayer admission; no cross-engine full NBT or statistical/release verdict."]}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({key: value for key, value in result.items() if key != "mechanisms"}))

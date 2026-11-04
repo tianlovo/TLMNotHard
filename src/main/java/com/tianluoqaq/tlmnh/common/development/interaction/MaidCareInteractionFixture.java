@@ -313,7 +313,9 @@ public final class MaidCareInteractionFixture {
             return;
         }
         var session = active;
-        if (session == null && (action.equals("restore") || action.equals("world-life-resume"))
+        if (session == null
+            && (action.equals("restore") || action.equals("world-life-resume")
+                || action.equals("world-life-recover-long-finish"))
             && player.getEntityData()
                 .hasKey(TAG, 10)) {
             var saved = player.getEntityData()
@@ -351,6 +353,25 @@ public final class MaidCareInteractionFixture {
             }
         }
         require(session != null, "No live care fixture; restore its retained snapshot first");
+        if (action.equals("world-life-recover-long-finish")) {
+            require(
+                session.player == player && recoveryObserver(player),
+                "Exact startup recovery tuple and original protected connected player required");
+            session.validateSnapshot();
+            try {
+                MaidModelLifecycleActions.recoverCompletedLong(session);
+                session.validate();
+                session.inventoryOwned();
+                FMLCommonHandler.instance()
+                    .bus()
+                    .register(session);
+                session.record(action);
+            } catch (RuntimeException | LinkageError failure) {
+                protectObserver(player);
+                throw failure;
+            }
+            return;
+        }
         if (session.player != player) session.attach(player);
         if (action.equals("restore")) {
             require(!session.pendingActor, "Original care actor is still loading; session retained");
@@ -727,16 +748,18 @@ public final class MaidCareInteractionFixture {
         }
 
         void emptyActor() {
-            if (data.hasKey("WorldPresentation")) MaidWorldPresentationActions.verifyInventory(this);
-            else if (data.hasKey("PlayerInputs")) MaidPlayerInputActions.verifyInventory(this);
-            else if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
-            else if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
-            else for (int i = 0; i < maid.getMaidInventory()
-                .getSizeInventory(); i++)
-                require(
-                    maid.getMaidInventory()
-                        .getStackInSlot(i) == null,
-                    "Actor acquired foreign equipment; retained");
+            if (MaidModelLifecycleActions
+                .verifyLongInventory(this)) { /* finite current-session materials verified */ } else
+                if (data.hasKey("WorldPresentation")) MaidWorldPresentationActions.verifyInventory(this);
+                else if (data.hasKey("PlayerInputs")) MaidPlayerInputActions.verifyInventory(this);
+                else if (data.hasKey("NaturalShield")) MaidNaturalShieldActions.verifyInventory(this);
+                else if (data.hasKey("WorldActions")) MaidNaturalWorldActions.verifyInventory(this);
+                else for (int i = 0; i < maid.getMaidInventory()
+                    .getSizeInventory(); i++)
+                    require(
+                        maid.getMaidInventory()
+                            .getStackInSlot(i) == null,
+                        "Actor acquired foreign equipment; retained");
             require(
                 maid.getMaidInventory()
                     .recovery()
@@ -1141,9 +1164,10 @@ public final class MaidCareInteractionFixture {
                 return;
             }
             try {
-                require(++ticks < 12000, "Care fixture timed out");
+                require(++ticks < MaidModelLifecycleActions.sessionTickLimit(this), "Care fixture timed out");
                 validate();
                 inventoryOwned();
+                MaidModelLifecycleActions.tickLong(this);
                 if (MaidModelLifecycleActions.restart(this)) protectObserver(player);
                 else if (!MaidPlayerInputActions.protect(this)) protect();
             } catch (RuntimeException | LinkageError failure) {
