@@ -163,6 +163,11 @@ public final class ReferenceObservationProbe {
                     active = new Capture(name, UUID.fromString(request.get("entityUuid").getAsString()), count, false, 0);
                     response.addProperty("status", "waiting-render");
                 }
+                case "carry_fixture" -> response = CarryReferenceProbe.fixture();
+                case "carry_view" -> response = CarryReferenceProbe.view();
+                case "carry_capture" -> response = CarryReferenceProbe.capture(request, root, name);
+                case "carry_restore" -> response = CarryReferenceProbe.restore();
+                case "audio_reference" -> response = ReferenceAudioProbe.command(request, root);
                 case "gui_open" -> response = GuiReferenceProbe.open();
                 case "gui_settings" -> response = GuiReferenceProbe.settings();
                 case "gui_config_action" -> response = GuiReferenceProbe.configAction(request);
@@ -440,7 +445,7 @@ public final class ReferenceObservationProbe {
         }
     }
 
-    private static void geckoBones(AnimatedGeoModel model, JsonObject bones) {
+    static void geckoBones(AnimatedGeoModel model, JsonObject bones) {
         new TreeMap<>(model.bones()).forEach((key, bone) -> {
             var pose = new JsonObject();
             pose.add("translation", vector(bone.getPositionX(), bone.getPositionY(), bone.getPositionZ()));

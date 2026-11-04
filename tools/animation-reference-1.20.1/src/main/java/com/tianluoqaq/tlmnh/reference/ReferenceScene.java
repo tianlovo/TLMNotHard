@@ -145,6 +145,7 @@ final class ReferenceScene {
                 level.setWeatherParameters(6000, 0, false, false);
                 for (var previous : level.getEntities(EntityTypeTest.forClass(EntityMaid.class), maid -> maid.getTags().contains(MARKER))) previous.discard();
                 var maid = new EntityMaid(level);
+                ReferenceAudioProbe.constructed(maid);
                 maid.setUUID(entity);
                 maid.addTag(MARKER);
                 maid.setOwnerUUID(owner);

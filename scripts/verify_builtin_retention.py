@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 
 PROJECT = Path(__file__).resolve().parents[1]
 MANIFEST = "assets/tlmnh/builtin-retention-provenance.json"
-MANIFEST_SHA256 = "928fc5489c4cd05178a604aa690dec4f73d3f818100647799bca27c5edd059f9"
+MANIFEST_SHA256 = "9829ef13de6c8134c947df3e3e2568805a075a2075f3737a27eac22674cafe90"
 UPSTREAM_COMMIT = "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
 
 

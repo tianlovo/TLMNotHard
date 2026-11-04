@@ -50,6 +50,22 @@
     "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBipedHead",
     "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer.LayerMaidBackItem",
     "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.geckolayer.GeckoLayerMaidBipedHead",
-    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.geckolayer.GeckoLayerMaidBackItem"
+    "com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.geckolayer.GeckoLayerMaidBackItem",
+    "com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe",
+    "com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe$Session",
+    "com.github.tartaricacid.touhoulittlemaid.client.event.PlayMaidSoundEvent",
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInstance",
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.data.SoundCache",
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.data.SoundData",
+    "com.github.tartaricacid.touhoulittlemaid.entity.passive.DefaultMaidSoundPack",
+    "com.github.tartaricacid.touhoulittlemaid.client.resource.pojo.MaidModelInfo",
+    "com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe$Loaded",
+    "com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader",
+    "com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent",
+    "com.github.tartaricacid.touhoulittlemaid.network.message.SetMaidSoundIdMessage",
+    "com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage",
+    "com.tianluoqaq.tlmnh.reference.CarryReferenceProbe",
+    "com.tianluoqaq.tlmnh.reference.CarryReferenceProbe$Saved",
+    "com.tianluoqaq.tlmnh.reference.CarryReferenceProbe$Pending"
   ]
 }

@@ -25,9 +25,35 @@ def git(*args):
                                    text=True, encoding="utf-8").strip()
 
 
+def capture_summary(capture, data):
+    """Read a supported saved capture; no game command, playback or source mutation."""
+    snapshot = json.loads(data)
+    summary = {"path": str(capture), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
+               "schema": snapshot["schema"]}
+    if snapshot["schema"] == "original-audio-route-observation-v1":
+        summary.update(run=snapshot["run"], audio_samples=len(snapshot["playbackSamples"]),
+                       runtime_model_mappings=len(snapshot["allRuntimeModelSoundMappings"]),
+                       decoded_pool_before_after_exact=(snapshot["completePoolsBeforeModelSelection"]
+                                                        == snapshot["completePoolsAfterModelSelection"]),
+                       observer_failures=snapshot["observerFailures"],
+                       load_observer_failures=snapshot["loadObserverFailures"],
+                       restoration=snapshot.get("restoration"),
+                       natural_trigger_frequency_accepted=snapshot["naturalTriggerFrequencyAccepted"],
+                       actual_cross_engine_audio_match_accepted=snapshot["actualCrossEngineAudioMatchAccepted"])
+    elif snapshot["schema"] == "observation-v0":
+        summary.update(frames=len(snapshot["frames"]), all_inputs_captured=snapshot["allInputsCaptured"],
+                       bone_counts=sorted(set(len(frame["bones"]) for frame in snapshot["frames"])),
+                       model_choices=sorted(set(frame["modelChoice"] for frame in snapshot["frames"])),
+                       fallback_frames=sum(bool(frame["fallback"]) for frame in snapshot["frames"]))
+    else:
+        raise ValueError("Unsupported reference capture schema: " + str(snapshot["schema"]))
+    return summary
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "shrine_fixture", "shrine_view", "shrine_status", "shrine_capture", "accessory_fixture", "accessory_view", "accessory_status", "accessory_capture", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_sounds", "gui_sound_action", "gui_settings", "gui_config_action", "font_pack", "gui_details", "gui_details_action", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
+    parser.add_argument("command", choices=("carry_fixture", "carry_view", "carry_capture", "carry_restore", "audio_reference", "status", "shrine_fixture", "shrine_view", "shrine_status", "shrine_capture", "accessory_fixture", "accessory_view", "accessory_status", "accessory_capture", "create_lab", "open_lab", "clear_scene", "reload", "spawn_case", "sample_case", "observe", "gui_open", "gui_models", "gui_sounds", "gui_sound_action", "gui_settings", "gui_config_action", "font_pack", "gui_details", "gui_details_action", "gui_cache_toggle", "gui_cached_models", "gui_models_pack", "gui_models_search", "gui_status", "gui_capture", "shutdown"))
     parser.add_argument("--action")
     parser.add_argument("--pack", type=int)
     parser.add_argument("--query")
@@ -47,6 +73,10 @@ def main():
     if not controls.is_dir():
         raise ValueError("Reference probe is not ready")
     request = {"command": args.command}
+    if args.command == "audio_reference":
+        if args.action not in ("prepare", "status", "open", "models", "select_magic", "play", "restore"):
+            parser.error("audio_reference requires a bounded --action")
+        request["action"] = args.action
     if args.command == "gui_details":
         if not args.model:parser.error("gui_details requires --model")
         request["model"]=args.model
@@ -64,7 +94,7 @@ def main():
         if args.query is None or len(args.query) > 48:
             parser.error("gui_models_search requires --query up to 48 characters")
         request["query"] = args.query
-    if args.command in ("gui_capture", "shrine_capture", "accessory_capture"):
+    if args.command in ("carry_capture", "gui_capture", "shrine_capture", "accessory_capture"):
         if not args.name:
             parser.error("gui_capture requires --name")
         request["name"] = args.name
@@ -106,7 +136,7 @@ def main():
                 "upstream_probe_patch_sha256": hashlib.sha256((PROBE / "upstream-probe.patch").read_bytes()).hexdigest()}
     if response.get("image"):
         relative = Path(response["image"])
-        if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != ("world" if args.command in ("shrine_capture", "accessory_capture") else "gui"):
+        if relative.is_absolute() or len(relative.parts) != 2 or relative.parts[0] != ("world" if args.command in ("carry_capture", "shrine_capture", "accessory_capture") else "gui"):
             raise ValueError("Unexpected original GUI screenshot path")
         picture = controls.parent / relative
         safe(picture)
@@ -118,13 +148,7 @@ def main():
         capture = controls.parent / relative
         safe(capture)
         data = capture.read_bytes()
-        snapshot = json.loads(data)
-        evidence["capture"] = {"path": str(capture), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
-                               "schema": snapshot["schema"], "frames": len(snapshot["frames"]),
-                               "all_inputs_captured": snapshot["allInputsCaptured"],
-                               "bone_counts": sorted(set(len(frame["bones"]) for frame in snapshot["frames"])),
-                               "model_choices": sorted(set(frame["modelChoice"] for frame in snapshot["frames"])),
-                               "fallback_frames": sum(bool(frame["fallback"]) for frame in snapshot["frames"])}
+        evidence["capture"] = capture_summary(capture, data)
     reports = EVIDENCE / "requests"
     reports.mkdir(parents=True, exist_ok=True)
     (reports / name).write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

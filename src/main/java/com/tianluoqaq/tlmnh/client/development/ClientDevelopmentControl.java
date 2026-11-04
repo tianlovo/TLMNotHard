@@ -151,6 +151,14 @@ public final class ClientDevelopmentControl {
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
+                    response.add(
+                        "ysmuMaidPassenger",
+                        com.tianluoqaq.tlmnh.compat.ysmu.client.animation.MaidPassengerAlias.observation());
+                    response
+                        .add("playerCarryArms", com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms.observation());
+                    response.add(
+                        "loadedMaidRenderObservations",
+                        com.tianluoqaq.tlmnh.client.render.MaidRenderer.inspectLoadedForDevelopment());
                     response.add("carePlayer", MaidCareInteractionProbe.playerState());
                     var heldCounters = com.tianluoqaq.tlmnh.client.render.MaidHeldItemLayer.getNativeCounters();
                     response.addProperty("heldItemNativeAttempts", heldCounters.attempts);
@@ -453,6 +461,9 @@ public final class ClientDevelopmentControl {
                 case WORLD_SOUND_PROBE:
                     var soundState = MaidWorldSoundProbe.perform(request.action);
                     for (var entry : soundState.entrySet()) response.add(entry.getKey(), entry.getValue());
+                    break;
+                case FEEDBACK_WORLD:
+                    response.add("feedbackWorld", MaidFeedbackWorldProbe.perform(request.action, request.model));
                     break;
                 case WORLD_SHADER_PROBE:
                     if (submissionPending || !captures.isEmpty())

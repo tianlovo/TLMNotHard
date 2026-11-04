@@ -32,6 +32,18 @@ index a9323e3..50e11c8 100644
                  HardcodedAnimationManger.playGeckoMaidAnimation(maid, currentModel, event.getLimbSwing(), event.getLimbSwingAmount(),
                          maid.asEntity().tickCount + event.getPartialTick(), data.netHeadYaw, data.headPitch);
  
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/event/PlayMaidSoundEvent.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/event/PlayMaidSoundEvent.java
+index 70f63b4..e54e810 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/event/PlayMaidSoundEvent.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/event/PlayMaidSoundEvent.java
+@@ -13,6 +13,7 @@ public class PlayMaidSoundEvent {
+     public static void onPlaySoundSource(PlaySoundSourceEvent event) {
+         if (event.getSound() instanceof MaidSoundInstance instance) {
+             SoundBuffer soundBuffer = instance.getSoundBuffer();
++            com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe.selected(instance, soundBuffer);
+             if (soundBuffer != null) {
+                 event.getChannel().attachStaticBuffer(soundBuffer);
+                 event.getChannel().play();
 diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java
 index 8d037a8..5dd186a 100644
 --- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/model/bedrock/BedrockModel.java
@@ -63,6 +75,42 @@ index 26724b1..65540cd 100644
          IMaid maid = IMaid.convert(entity);
          if (maid == null) {
              return;
+diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/sound/OggReader.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/sound/OggReader.java
+index 817e2c6..6073c19 100644
+--- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/sound/OggReader.java
++++ b/src/main/java/com/github/tartaricacid/touhoulittlemaid/client/sound/OggReader.java
+@@ -36,6 +36,7 @@ public final class OggReader {
+                 try (InputStream stream = Files.newInputStream(path); OggAudioStream audioStream = new OggAudioStream(stream)) {
+                     ByteBuffer bytebuffer = audioStream.readAll();
+                     sounds.add(new SoundData(bytebuffer, audioStream.getFormat()));
++                    com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe.loaded(sounds.get(sounds.size() - 1), path.toString());
+                 }
+             } else if (type == Type.OPUS) {
+                 byte[] input = FileUtils.readFileToByteArray(file);
+@@ -46,6 +47,7 @@ public final class OggReader {
+                     bytebuffer.put(pcm);
+                     bytebuffer.flip();
+                     sounds.add(new SoundData(bytebuffer, output.getLeft()));
++                    com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe.loaded(sounds.get(sounds.size() - 1), path.toString());
+                 } catch (OpusException e) {
+                     LOGGER.error("Error decoding opus file: {}", file.getName(), e);
+                 }
+@@ -63,6 +65,7 @@ public final class OggReader {
+                 try (InputStream stream = zipFile.getInputStream(zipEntry); OggAudioStream audioStream = new OggAudioStream(stream)) {
+                     ByteBuffer bytebuffer = audioStream.readAll();
+                     sounds.add(new SoundData(bytebuffer, audioStream.getFormat()));
++                    com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe.loaded(sounds.get(sounds.size() - 1), zipFile.getName() + "!/" + zipEntry.getName());
+                 }
+             } else if (type == Type.OPUS) {
+                 try (InputStream stream = zipFile.getInputStream(zipEntry)) {
+@@ -73,6 +76,7 @@ public final class OggReader {
+                     bytebuffer.put(pcm);
+                     bytebuffer.flip();
+                     sounds.add(new SoundData(bytebuffer, output.getLeft()));
++                    com.tianluoqaq.tlmnh.reference.ReferenceAudioProbe.loaded(sounds.get(sounds.size() - 1), zipFile.getName() + "!/" + zipEntry.getName());
+                 } catch (OpusException e) {
+                     LOGGER.error("Error decoding opus file: {}", fileName, e);
+                 }
 diff --git a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java b/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java
 index 3e906d4..bc3058a 100644
 --- a/src/main/java/com/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity.java

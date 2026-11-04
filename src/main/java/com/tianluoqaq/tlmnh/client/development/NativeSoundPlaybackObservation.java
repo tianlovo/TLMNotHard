@@ -4,10 +4,13 @@ import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
+import net.minecraft.client.audio.SoundEventAccessor;
+import net.minecraft.client.audio.SoundEventAccessorComposite;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.audio.SoundManager;
 import net.minecraft.client.audio.SoundPoolEntry;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
 
@@ -59,6 +62,7 @@ final class NativeSoundPlaybackObservation {
                 result.addProperty("x", sound.getXPosF());
                 result.addProperty("y", sound.getYPosF());
                 result.addProperty("z", sound.getZPosF());
+                result.add("loadedEventPool", eventPool(handler, sound));
                 Object entry = entries.get(sound);
                 result.addProperty(
                     "resolvedResource",
@@ -72,6 +76,40 @@ final class NativeSoundPlaybackObservation {
                 failure.getClass()
                     .getName());
         }
+        return result;
+    }
+
+    /** 直接读取已加载候选列表，不调用会推进声音随机数的复合访问器 */
+    private static JsonObject eventPool(SoundHandler handler, ISound sound) {
+        var result = new JsonObject();
+        var entries = new JsonArray();
+        var event = handler.getSound(sound.getPositionedSoundLocation());
+        result.addProperty("available", event != null);
+        if (event == null) return result;
+        java.util.List<?> pool = ReflectionHelper
+            .getPrivateValue(SoundEventAccessorComposite.class, event, "soundPool", "field_148736_a");
+        boolean complete = true;
+        for (Object accessor : pool) {
+            var entry = new JsonObject();
+            if (accessor instanceof SoundEventAccessor leaf) {
+                SoundPoolEntry value = ReflectionHelper
+                    .getPrivateValue(SoundEventAccessor.class, leaf, "field_148739_a");
+                entry.addProperty(
+                    "resource",
+                    value.getSoundPoolEntryLocation()
+                        .toString());
+                entry.addProperty("weight", leaf.func_148721_a());
+            } else {
+                complete = false;
+                entry.addProperty(
+                    "unresolvedAccessor",
+                    accessor.getClass()
+                        .getName());
+            }
+            entries.add(entry);
+        }
+        result.addProperty("complete", complete);
+        result.add("entries", entries);
         return result;
     }
 }

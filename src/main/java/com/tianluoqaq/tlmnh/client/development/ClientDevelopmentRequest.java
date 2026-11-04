@@ -69,6 +69,23 @@ public final class ClientDevelopmentRequest {
             if (!Arrays.asList("global_0", "global_100", "vanilla", "close_gui", "disconnect")
                 .contains(action)) throw new IllegalArgumentException("Unknown world sound probe action");
         }
+        if (command == Command.FEEDBACK_WORLD) {
+            action = text(json, "action");
+            if (!Arrays
+                .asList(
+                    "open",
+                    "status",
+                    "select_hand",
+                    "look_maid",
+                    "interact",
+                    "view",
+                    "restore_view",
+                    "close_gui",
+                    "disconnect")
+                .contains(action)) throw new IllegalArgumentException("Unknown feedback-copy action");
+            if (Arrays.asList("open", "select_hand", "view")
+                .contains(action)) model = text(json, "model");
+        }
         if (command == Command.WORLD_SHADER_PROBE) {
             action = text(json, "action");
             if (!Arrays.asList("status", "off", "selected", "restore")
@@ -321,6 +338,7 @@ public final class ClientDevelopmentRequest {
         CARE_INTERACT,
         WORLD_SOUND_PROBE,
         WORLD_SHADER_PROBE,
+        FEEDBACK_WORLD,
         PROTECTION_PROBE,
         CONNECT_LOCAL,
         LAB_VIEW,

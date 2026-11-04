@@ -87,7 +87,7 @@ public class MaidLifecycleDataTest {
     public void unknownSchemaCannotBeOverwrittenWithAnEmptyLedger() {
         var data = new MaidLifecycleData("fixture");
         var invalid = new NBTTagCompound();
-        invalid.setInteger("Schema", 9);
+        invalid.setInteger("Schema", 10);
         assertThrows(IllegalStateException.class, () -> data.readFromNBT(invalid));
         assertThrows(IllegalStateException.class, () -> data.writeToNBT(new NBTTagCompound()));
     }
@@ -147,7 +147,7 @@ public class MaidLifecycleDataTest {
             restored.abandonReturnedFilm(id);
             var upgraded = new NBTTagCompound();
             roundtrip(restored).writeToNBT(upgraded);
-            assertEquals(8, upgraded.getInteger("Schema"));
+            assertEquals(9, upgraded.getInteger("Schema"));
             assertEquals(
                 raw,
                 upgraded.getTagList("ReturnedFilms", 10)
@@ -267,7 +267,7 @@ public class MaidLifecycleDataTest {
         var acquired = restored.acquiredToken(owner);
         var current = new NBTTagCompound();
         restored.writeToNBT(current);
-        assertEquals(8, current.getInteger("Schema"));
+        assertEquals(9, current.getInteger("Schema"));
         assertEquals(MaidLifecycleData.Kind.ACQUIRED, roundtrip(restored).initialKind(acquired));
     }
 
@@ -499,6 +499,79 @@ public class MaidLifecycleDataTest {
         }
     }
 
+    @Test
+    public void capturedFullIdentityIsSingleUseAndPendingOrUnknownCaptureCannotBeReleased() {
+        for (String stage : new String[] { "PREPARED", "REMOVED", "HELD", "DELIVERED" }) {
+            var owner = UUID.randomUUID();
+            var subject = UUID.randomUUID();
+            var source = new MaidLifecycleData("fixture");
+            var token = source.initialToken(owner);
+            var tag = new NBTTagCompound();
+            source.writeToNBT(tag);
+            var row = tag.getTagList("Entries", 10)
+                .getCompoundTagAt(0);
+            var full = new NBTTagCompound();
+            full.setLong("UUIDMost", subject.getMostSignificantBits());
+            full.setLong("UUIDLeast", subject.getLeastSignificantBits());
+            full.setString("OwnerUUID", owner.toString());
+            full.setInteger("MaidExperience", 37);
+            var unknown = new NBTTagCompound();
+            unknown.setIntArray("Foreign", new int[] { 9, 3, 7 });
+            full.setTag("ForgeData", unknown);
+            var record = new NBTTagCompound();
+            record.setString("Token", token.toString());
+            record.setString("Owner", owner.toString());
+            record.setString("Subject", subject.toString());
+            record.setString("Stage", stage);
+            record.setInteger("Sequence", 1);
+            record.setInteger("Selected", 0);
+            record.setInteger("Dimension", 0);
+            record.setTag("Source", full.copy());
+            record.setTag("OriginalMaid", full.copy());
+            record.setTag("Cursor", new NBTTagCompound());
+            record.setTag("Observed", new NBTTagCompound());
+            var receipt = new NBTTagCompound();
+            var receiptTag = new NBTTagCompound();
+            receiptTag.setString(MaidCaptureService.RECEIPT, token.toString());
+            receipt.setTag("tag", receiptTag);
+            record.setTag("Receipt", receipt);
+            var credential = new NBTTagCompound();
+            var credentialTag = new NBTTagCompound();
+            credentialTag.setString("TLMNHToken", token.toString());
+            credentialTag.setString("InitMaidOwner", owner.toString());
+            credential.setTag("tag", credentialTag);
+            record.setTag("Credential", credential);
+            for (String key : new String[] { "InventoryBefore", "InventoryReceipt", "InventoryFilled" })
+                record.setTag(key, new NBTTagList());
+            row.setString("Kind", "CAPTURED");
+            row.setString("Subject", subject.toString());
+            row.setTag("Identity", full.copy());
+            row.setTag("Capture", record);
+            row.setBoolean("Delivered", stage.equals("DELIVERED"));
+            var restored = new MaidLifecycleData("fixture");
+            restored.readFromNBT(tag);
+            restored = roundtrip(restored);
+            assertEquals(token, restored.captureHead(subject));
+            assertEquals(
+                full,
+                restored.capture(token)
+                    .getCompoundTag("Source"));
+            if (stage.equals("DELIVERED")) {
+                assertEquals(full, restored.reserve(token, MaidLifecycleData.Kind.CAPTURED));
+                restored.commit(token);
+                assertNull(roundtrip(restored).reserve(token, MaidLifecycleData.Kind.CAPTURED));
+            } else assertNull(restored.reserve(token, MaidLifecycleData.Kind.CAPTURED));
+            var invalid = (NBTTagCompound) tag.copy();
+            invalid.getTagList("Entries", 10)
+                .getCompoundTagAt(0)
+                .getCompoundTag("Capture")
+                .setString("UnknownCaptureBalance", "must remain raw");
+            var rejected = new MaidLifecycleData("fixture");
+            assertThrows(IllegalStateException.class, () -> rejected.readFromNBT(invalid));
+            assertThrows(IllegalStateException.class, () -> rejected.writeToNBT(new NBTTagCompound()));
+        }
+    }
+
     private static NBTTagCompound legacy(MaidLifecycleData data, int schema) {
         var tag = new NBTTagCompound();
         data.writeToNBT(tag);
@@ -506,6 +579,7 @@ public class MaidLifecycleDataTest {
         var entries = tag.getTagList("Entries", 10);
         for (int index = 0; index < entries.tagCount(); index++) {
             var entry = entries.getCompoundTagAt(index);
+            if (schema < 9) entry.removeTag("Capture");
             if (schema < 8) {
                 entry.removeTag("DeathIngress");
                 entry.removeTag("TombstonePublication");
@@ -557,7 +631,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var saved = new NBTTagCompound();
         restored.writeToNBT(saved);
-        assertEquals(8, saved.getInteger("Schema"));
+        assertEquals(9, saved.getInteger("Schema"));
         assertEquals(
             items,
             saved.getTagList("Entries", 10)
@@ -639,6 +713,8 @@ public class MaidLifecycleDataTest {
         var oldRows = saved.getTagList("Entries", 10);
         for (int i = 0; i < oldRows.tagCount(); i++) {
             oldRows.getCompoundTagAt(i)
+                .removeTag("Capture");
+            oldRows.getCompoundTagAt(i)
                 .removeTag("DeathIngress");
             oldRows.getCompoundTagAt(i)
                 .removeTag("TombstonePublication");
@@ -655,7 +731,7 @@ public class MaidLifecycleDataTest {
         restored.rollback(token);
         var upgraded = new NBTTagCompound();
         restored.writeToNBT(upgraded);
-        assertEquals(8, upgraded.getInteger("Schema"));
+        assertEquals(9, upgraded.getInteger("Schema"));
     }
 
     @Test
@@ -678,7 +754,7 @@ public class MaidLifecycleDataTest {
     }
 
     @Test
-    public void schemaOneThroughSevenKeepExistingDeathRightsWhenAddingEmptyIngressRecords() {
+    public void schemaOneThroughEightKeepExistingDeathRightsWhenAddingCaptureRecords() {
         var owner = UUID.randomUUID();
         var source = new MaidLifecycleData("fixture");
         var initial = source.initialToken(owner);
@@ -689,7 +765,7 @@ public class MaidLifecycleDataTest {
         var items = new NBTTagList();
         items.appendTag(raw);
         var film = source.depositDeath(owner, UUID.randomUUID(), raw, items, 0, 1, 5, 3, "legacy", 31, 20);
-        for (int schema = 1; schema <= 7; schema++) {
+        for (int schema = 1; schema <= 8; schema++) {
             var restored = new MaidLifecycleData("fixture");
             restored.readFromNBT(legacy(source, schema));
             assertNull(restored.reserve(initial, MaidLifecycleData.Kind.INITIAL));

@@ -60,7 +60,7 @@ def verify(read):
         if len(data) != expected["bytes"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
             raise ValueError(f"Resource differs from fixed upstream: {path}")
     gui = json.loads(read("assets/tlmnh/gui-assets-provenance.json"))
-    if gui["commit"] != provenance["commit"]:
+    if gui["commit"] != provenance["commit"] or len(gui["files"]) != 42:
         raise ValueError("GUI asset provenance commit differs")
     for expected in gui["files"]:
         if hashlib.sha256(read(expected["path"])).hexdigest() != expected["sha256"]:

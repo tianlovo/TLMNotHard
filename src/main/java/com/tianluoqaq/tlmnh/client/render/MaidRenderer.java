@@ -201,6 +201,17 @@ public final class MaidRenderer extends RenderLiving {
     public com.google.gson.JsonObject inspectPreviewForDevelopment(EntityMaid maid) {
         if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Preview diagnostic disabled");
         var result = new com.google.gson.JsonObject();
+        result.addProperty(
+            "uuid",
+            maid.getUniqueID()
+                .toString());
+        result.addProperty("entityId", maid.getEntityId());
+        result.addProperty("nativeModelId", maid.getModelId());
+        result.addProperty("hungerCounter", maid.getHunger());
+        result.addProperty(
+            "animationFoodLevel",
+            com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames.foodLevel(maid.getAttributeMap()));
+        result.add("carryPosition", carryPositionForDevelopment(maid));
         var cached = entities.get(maid);
         if (cached == null) return result;
         result.addProperty("completedPose", cached.model.hasCompletedPoseFor(maid));
@@ -211,6 +222,48 @@ public final class MaidRenderer extends RenderLiving {
         result.addProperty("lastTextureTick", cached.textureTick);
         result.addProperty("lastRenderTick", cached.lastRenderTick);
         result.addProperty("poseSerial", cached.poseSerial);
+        if (cached.model.getGecko() != null) {
+            var roots = new com.google.gson.JsonArray();
+            var gecko = cached.model.getGecko();
+            for (String name : new String[] { "MRoot", "Root", "AllBody" }) {
+                var bone = gecko.bones()
+                    .get(name);
+                if (bone == null) continue;
+                var row = new com.google.gson.JsonObject();
+                row.addProperty("name", name);
+                row.addProperty("pivot", bone.getPivotX() + "," + bone.getPivotY() + "," + bone.getPivotZ());
+                row.addProperty(
+                    "translation",
+                    bone.getPositionX() + "," + bone.getPositionY() + "," + bone.getPositionZ());
+                row.addProperty(
+                    "rotationRadians",
+                    bone.getRotationX() + "," + bone.getRotationY() + "," + bone.getRotationZ());
+                var chain = new java.util.ArrayList<com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoBone>();
+                for (var current = bone; current != null;) {
+                    chain.add(current);
+                    current = current.geoBone()
+                        .parent() == null ? null
+                            : gecko.bones()
+                                .get(
+                                    current.geoBone()
+                                        .parent()
+                                        .name());
+                }
+                java.util.Collections.reverse(chain);
+                var poses = new LegacyPoseStack();
+                for (var current : chain) com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils
+                    .prepMatrixForBone(poses, current);
+                var values = new float[16];
+                poses.last()
+                    .pose()
+                    .get(values);
+                var matrix = new com.google.gson.JsonArray();
+                for (float entry : values) matrix.add(new com.google.gson.JsonPrimitive(entry));
+                row.add("geckoBoneMatrixColumnMajor", matrix);
+                roots.add(row);
+            }
+            result.add("geckoRootObservation", roots);
+        }
         result.addProperty(
             "model",
             cached.model.getChoice()
@@ -219,6 +272,76 @@ public final class MaidRenderer extends RenderLiving {
             var attachment = MaidHandAttachment.capture(cached.model, side);
             result.addProperty(side.name(), attachment.status.name());
             result.addProperty(side.name() + "Chain", attachment.boneChain.toString());
+        }
+        return result;
+    }
+
+    /** 只读原生挂载点；local玩家的眼高原点和remote/server脚底原点分别留实值 */
+    private static com.google.gson.JsonObject carryPositionForDevelopment(EntityMaid maid) {
+        var result = new com.google.gson.JsonObject();
+        result.addProperty("maidY", maid.posY);
+        result.addProperty("maidBoundingBoxMinY", maid.boundingBox.minY);
+        result.addProperty("maidBaseYOffset", maid.yOffset);
+        result.addProperty("maidNativeRiderYOffset", maid.getYOffset());
+        if (!(maid.ridingEntity instanceof EntityPlayer carrier)) {
+            result.addProperty("carriedByPlayer", false);
+            return result;
+        }
+        result.addProperty("carriedByPlayer", true);
+        result.addProperty(
+            "carrierUuid",
+            carrier.getUniqueID()
+                .toString());
+        result.addProperty(
+            "carrierClass",
+            carrier.getClass()
+                .getName());
+        result.addProperty("carrierIsLocalPlayer", carrier == net.minecraft.client.Minecraft.getMinecraft().thePlayer);
+        result.addProperty("carrierY", carrier.posY);
+        result.addProperty("carrierYOffset", carrier.yOffset);
+        result.addProperty("carrierYSize", carrier.ySize);
+        result.addProperty("carrierVisualFeetY", carrier.posY - carrier.yOffset);
+        result.addProperty("carrierNativeFeetDifference", carrier.boundingBox.minY - (carrier.posY - carrier.yOffset));
+        result.addProperty("carrierBoundingBoxMinY", carrier.boundingBox.minY);
+        result.addProperty("carrierMountedYOffset", carrier.getMountedYOffset());
+        double nativeY = carrier.posY + carrier.getMountedYOffset() + maid.getYOffset();
+        double feetAnchoredY = carrier.posY - carrier.yOffset + carrier.getMountedYOffset() + maid.yOffset;
+        result.addProperty("nativeRiderY", nativeY);
+        result.addProperty("feetAnchoredRiderY", feetAnchoredY);
+        result.addProperty("actualMinusNativeY", maid.posY - nativeY);
+        result.addProperty("actualMinusFeetAnchoredY", maid.posY - feetAnchoredY);
+        var original = EntityMaid.playerCarryPosition(
+            carrier.posX,
+            carrier.posY,
+            carrier.posZ,
+            carrier.yOffset,
+            carrier.renderYawOffset,
+            carrier.isSneaking());
+        result.addProperty("carrierBodyYaw", carrier.renderYawOffset);
+        result.addProperty("carrierDescending", carrier.isSneaking());
+        result.addProperty("sourceTlmX", original.xCoord);
+        result.addProperty("sourceTlmY", original.yCoord);
+        result.addProperty("sourceTlmZ", original.zCoord);
+        result.addProperty("actualMinusSourceTlmX", maid.posX - original.xCoord);
+        result.addProperty("actualMinusSourceTlmY", maid.posY - original.yCoord);
+        result.addProperty("actualMinusSourceTlmZ", maid.posZ - original.zCoord);
+        return result;
+    }
+
+    /** 复用STATUS观察普通世界中的实际女仆，不改变玩家、模型或实体状态 */
+    public static com.google.gson.JsonArray inspectLoadedForDevelopment() {
+        var result = new com.google.gson.JsonArray();
+        if (!Boolean.getBoolean("tlmnh.devCommands")) return result;
+        var minecraft = net.minecraft.client.Minecraft.getMinecraft();
+        if (minecraft.theWorld == null || minecraft.thePlayer == null) return result;
+        for (Object entity : minecraft.theWorld.loadedEntityList) {
+            if (!(entity instanceof EntityMaid maid) || !maid.isEntityAlive()
+                || maid.worldObj != minecraft.theWorld
+                || maid.getDistanceSqToEntity(minecraft.thePlayer) > 256) continue;
+            var renderer = net.minecraft.client.renderer.entity.RenderManager.instance.getEntityRenderObject(maid);
+            if (renderer instanceof MaidRenderer maidRenderer)
+                result.add(maidRenderer.inspectPreviewForDevelopment(maid));
+            if (result.size() >= 32) break;
         }
         return result;
     }
