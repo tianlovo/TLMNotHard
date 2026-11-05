@@ -355,17 +355,23 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 + "§r "
                 + (maidContainer.isDisplayedInvulnerable() ? "§9✟" : ""));
         var owner = maid.getOwner();
-        if (owner != null) lines.add(infoLine("owner", owner.getCommandSenderName()));
+        if (owner != null) lines.add(infoLine("tooltips.touhou_little_maid.info.owner", owner.getCommandSenderName()));
+        lines.add(infoLine("tooltips.tlmnh.info.name", maid.getCommandSenderName()));
+        var foodLevel = maid.getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.MAID_HUNGER);
+        if (foodLevel != null)
+            lines.add(infoLine("tooltips.tlmnh.info.food_level", Double.toString(foodLevel.getAttributeValue())));
         var model = com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.get(maid.getModelId());
-        if (model != null)
-            lines.add(infoLine("model_name", com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames.INSTANCE.name(model)));
-        lines.add(infoLine("experience", Integer.toString(maid.getExperience())));
-        lines.add(infoLine("favorability", Integer.toString(maid.getFavorability())));
+        if (model != null) lines.add(
+            infoLine(
+                "tooltips.touhou_little_maid.info.model_name",
+                com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames.INSTANCE.name(model)));
+        lines.add(infoLine("tooltips.touhou_little_maid.info.experience", Integer.toString(maid.getExperience())));
+        lines.add(infoLine("tooltips.touhou_little_maid.info.favorability", Integer.toString(maid.getFavorability())));
         return lines;
     }
 
     private static String infoLine(String key, String value) {
-        return "§a█ §b" + text("tooltips.touhou_little_maid.info." + key) + ": §f" + value;
+        return "§a█ §b" + text(key) + ": §f" + value;
     }
 
     public List<String> scheduleTooltips() {

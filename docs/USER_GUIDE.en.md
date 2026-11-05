@@ -46,12 +46,16 @@ Optional first-player gifts and wild spawning are independent acquisition routes
 When wild spawning is enabled, an unbound maid can be tamed with cake. Ownership transfer is outside the first release.
 
 - Owner main-hand right-click opens the maid page for tasks, schedules, home areas, equipment, models and voices.
-- Sneak-right-click with an empty hand toggles sitting; right-click with a saddle carries or puts down the maid.
+- Sneak-right-click with an empty hand toggles sitting. If the maid is riding or has a passenger, it dismounts first;
+  the next interaction toggles sitting. Right-click with a saddle carries or puts down the maid.
 - An unnamed name tag opens the naming page; an already named tag uses native naming interaction.
 - Sneak-use a golden apple, drinkable potion or milk for care, using the actual item's consumption and container rules.
 - Empty glass bottles extract maid experience at 12 XP per bottle; sneaking allows a batch exchange.
 - The voice page selects this maid's pack or previews it locally;
   global settings edit local sound, bubbles and icon cache.
+
+The information icon shows the actual name and food-level attribute. The attribute defaults to 20 and,
+following the original base mod, does not decrease on its own.
 
 Writes require the owner, range, current window and actual permission checks. Spectators cannot modify the maid.
 Armor, both hands, the back item and normal inventory have separate slots; built-in attachments differ between models.

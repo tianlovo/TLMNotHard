@@ -1,7 +1,8 @@
 /*
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: entity/passive/EntityMaid.java, MIT, see licenses/TouhouLittleMaid-MIT.txt
- * Adaptation: Forge 1.7.10 entity, six-slot inventory, equipment and versioned persistence
+ * Additional original: event/maid/{DismountMaidEvent,SwitchSittingEvent}.java
+ * Adaptation: Forge 1.7.10 entity, six-slot inventory, equipment, persistence and empty-hand dismount priority
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
@@ -681,11 +682,13 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (MaidInteractions.interactOwned(this, player, held)) return true;
         if (!worldObj.isRemote) {
             if (player.isSneaking() && held == null) {
-                if (ridingEntity == null) {
-                    setSitting(!isSitting());
-                    getNavigator().clearPathEntity();
-                    setAttackTarget(null);
-                }
+                // 固定上游DismountMaidEvent先于SwitchSittingEvent，空手放下不能同时切坐姿
+                boolean mounted = ridingEntity != null || riddenByEntity != null;
+                if (ridingEntity != null) mountEntity(null);
+                if (riddenByEntity != null) riddenByEntity.mountEntity(null);
+                if (!mounted) setSitting(!isSitting());
+                getNavigator().clearPathEntity();
+                setAttackTarget(null);
             } else {
                 player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, worldObj, getEntityId(), 0, 0);
             }

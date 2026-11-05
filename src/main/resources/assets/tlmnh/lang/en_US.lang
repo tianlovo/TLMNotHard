@@ -170,3 +170,5 @@ overlay.tlmnh.empty_slab.tips=Right-click to recall the maid
 item.tlmnh.smart_slab_has_maid.name=Occupied Maid Slab
 tooltips.tlmnh.smart_slab_has_maid.release=Right-click the top of a block to release your maid
 message.tlmnh.lifecycle.cooldown=Please wait before using the slab again
+tooltips.tlmnh.info.name=Name
+tooltips.tlmnh.info.food_level=Food level

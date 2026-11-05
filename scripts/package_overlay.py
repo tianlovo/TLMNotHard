@@ -76,6 +76,10 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
     sidecar_names = ("SOURCE_PROVENANCE.md", "docs/USER_GUIDE.md", "docs/USER_GUIDE.en.md",
                      "scripts/distribution/update.py", "scripts/distribution/README.md")
     sidecars = {name: (PROJECT / name).read_bytes() for name in sidecar_names}
+    # Source guides link to the root LICENSE; packaged guides sit beside the licenses directory.
+    for guide in ("docs/USER_GUIDE.md", "docs/USER_GUIDE.en.md"):
+        sidecars[guide] = sidecars[guide].replace(
+            b"[LICENSE](../LICENSE)", b"[LICENSE](../licenses/TLMNH-LICENSE.txt)")
     document_hashes = {name: update.digest(raw) for name, raw in sidecars.items()}
     document_hashes["requirements.txt"] = update.digest(b"rich\n")
     if channel == "release":

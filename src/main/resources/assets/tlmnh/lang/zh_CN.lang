@@ -169,3 +169,5 @@ overlay.tlmnh.empty_slab.tips=右键收回女仆
 item.tlmnh.smart_slab_has_maid.name=女仆魂符
 tooltips.tlmnh.smart_slab_has_maid.release=对方块顶面右键放出女仆，仅原主人可用
 message.tlmnh.lifecycle.cooldown=请稍候再使用魂符
+tooltips.tlmnh.info.name=名称
+tooltips.tlmnh.info.food_level=饱食度
