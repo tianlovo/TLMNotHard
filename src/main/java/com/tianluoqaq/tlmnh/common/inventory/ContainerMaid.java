@@ -135,8 +135,14 @@ public class ContainerMaid extends Container {
         lastActionTick = maid.ticksExisted;
         switch (action) {
             case ACTION_IDLE -> maid.setTask(MaidTask.IDLE);
-            case ACTION_ATTACK -> maid.setTask(MaidTask.ATTACK);
-            case ACTION_RANGED -> maid.setTask(MaidTask.RANGED_ATTACK);
+            case ACTION_ATTACK -> {
+                maid.setTask(MaidTask.ATTACK);
+                MaidTaskEquipment.equip(player, maid, MaidTask.ATTACK);
+            }
+            case ACTION_RANGED -> {
+                maid.setTask(MaidTask.RANGED_ATTACK);
+                MaidTaskEquipment.equip(player, maid, MaidTask.RANGED_ATTACK);
+            }
             case ACTION_DAY -> maid.setSchedule(MaidSchedule.DAY);
             case ACTION_NIGHT -> maid.setSchedule(MaidSchedule.NIGHT);
             case ACTION_ALL_DAY -> maid.setSchedule(MaidSchedule.ALL);

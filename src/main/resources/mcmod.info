@@ -11,6 +11,7 @@
       "updateUrl": "",
       "authorList": ["tianlovo"],
       "credits": "Touhou Little Maid upstream contributors; GTNH ExampleMod contributors",
+      "license": "GPL-3.0-only",
       "logoFile": "",
       "screenshots": [],
       "parent": "",

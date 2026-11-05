@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.combat;
 import java.util.Objects;
 import java.util.UUID;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
@@ -17,6 +18,7 @@ public final class MaidProjectileSource {
 
     public static final String TAG = "TLMNHProjectileSource";
     public static final String STOPPED_TAG = "TLMNHProjectileStopped";
+    public static final String HANDOFF_TAG = "TLMNHProjectileHandoff";
 
     private MaidProjectileSource() {}
 
@@ -87,11 +89,20 @@ public final class MaidProjectileSource {
 
     public static boolean beforeUpdate(EntityArrow arrow) {
         if (arrow.worldObj.isRemote || !(arrow instanceof MaidArrowSourceState state)) return true;
-        if (state.tlmnh$source() == null && !state.tlmnh$sourceStopped()) return true;
+        if (state.tlmnh$source() == null && !state.tlmnh$sourceStopped() && state.tlmnh$sourceHandoff() == null)
+            return true;
         Source source = null;
         boolean sourceRevoked = false;
         try {
             source = read(state.tlmnh$source());
+            if (!state.tlmnh$sourceStopped() && state.tlmnh$sourceHandoff() != null) {
+                sourceRevoked = true;
+                validateHandoff(state.tlmnh$sourceHandoff(), source);
+                // This is historical provenance only. Native reload may lose its new transient shooter;
+                // never bind it back to the old maid or invent restoration authority for the new player.
+                return true;
+            }
+            if (recordPlayerHandoff(arrow, state, source)) return true;
             if (!(arrow instanceof MaidArrowImpactState) || !IntegrationGuard.available(Side.SERVER, key(source)))
                 throw new IllegalStateException("Projectile impact capability unavailable; original entity retained");
             if (state.tlmnh$sourceStopped()) {
@@ -105,7 +116,12 @@ public final class MaidProjectileSource {
             EntityMaid shooter;
             if (arrow.shootingEntity == null) shooter = loadedShooter(arrow, source.shooter);
             else if (arrow.shootingEntity instanceof EntityMaid maid) shooter = maid;
-            else throw new IllegalStateException("Projectile source replaced by another shooter");
+            else {
+                sourceRevoked = true;
+                throw new IllegalStateException(
+                    "Projectile source replaced by an unverified shooter: " + arrow.shootingEntity.getClass()
+                        .getName());
+            }
             if (shooter == null || shooter.isDead
                 || shooter.worldObj != arrow.worldObj
                 || !source.shooter.equals(shooter.getUniqueID())
@@ -126,6 +142,60 @@ public final class MaidProjectileSource {
                 source == null ? null : source.owner);
             return false;
         }
+    }
+
+    /** Capture a transfer in the current native update before a same-tick save loses its transient shooter. */
+    public static void beforeSave(EntityArrow arrow) {
+        if (arrow.worldObj == null || arrow.worldObj.isRemote
+            || !(arrow instanceof MaidArrowSourceState state)
+            || state.tlmnh$source() == null
+            || state.tlmnh$sourceStopped()
+            || state.tlmnh$sourceHandoff() != null
+            || !(arrow.shootingEntity instanceof EntityPlayer)) return;
+        Source source = null;
+        try {
+            source = read(state.tlmnh$source());
+            if (!recordPlayerHandoff(arrow, state, source)) throw new IllegalStateException(
+                "Unverified player projectile takeover cannot lose its transient identity on save");
+        } catch (Exception | LinkageError | AssertionError failure) {
+            state.tlmnh$stopSource();
+            IntegrationGuard.report(
+                Side.SERVER,
+                "projectile_source/" + arrow.getUniqueID(),
+                failure,
+                source == null ? null : source.owner);
+        }
+    }
+
+    private static boolean recordPlayerHandoff(EntityArrow arrow, MaidArrowSourceState state, Source source) {
+        if (state.tlmnh$sourceStopped() || state.tlmnh$sourceHandoff() != null
+            || source.dimension != arrow.worldObj.provider.dimensionId
+            || !(arrow.shootingEntity instanceof EntityPlayer player)
+            || player.isDead
+            || player.worldObj != arrow.worldObj
+            || arrow.worldObj.getEntityByID(player.getEntityId()) != player
+            || !arrow.worldObj.playerEntities.contains(player)
+            || source.shooter.equals(player.getUniqueID())) return false;
+        var handoff = new NBTTagCompound();
+        handoff.setInteger("Schema", 1);
+        handoff.setString(
+            "Player",
+            player.getUniqueID()
+                .toString());
+        handoff.setInteger("Dimension", source.dimension);
+        state.tlmnh$handoffSource(handoff);
+        // The registered player owns this native arrow; preserve its shooter, physics and complete old source.
+        return true;
+    }
+
+    private static void validateHandoff(NBTBase raw, Source source) {
+        if (!(raw instanceof NBTTagCompound tag) || !tag.hasKey("Schema", 3)
+            || tag.getInteger("Schema") != 1
+            || !tag.hasKey("Player", 8)
+            || !tag.hasKey("Dimension", 3)
+            || tag.getInteger("Dimension") != source.dimension
+            || source.shooter.equals(uuid(tag.getString("Player"))))
+            throw new IllegalArgumentException("Unsupported projectile handoff retained unchanged");
     }
 
     /** 原生1.7无任意实体UUID索引；只在丢失引用时检查当前世界已加载表一次，失败即停止 */

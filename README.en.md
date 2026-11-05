@@ -46,6 +46,7 @@ GTNH machine maintenance and CropsNH breeding are future extensions. Simplified 
 
 Build from source for now; no stable package for survival play has been released.
 See the [Indev user guide](docs/USER_GUIDE.en.md) for controls, configuration and paired world rollback.
+New configurations default to Enhanced. Existing explicit Legacy settings are retained; restart the server after changes.
 The [overlay packaging and update guide](scripts/distribution/README.md)
 covers the current local-validation-only packages.
 Run these commands in Windows PowerShell:
@@ -121,8 +122,15 @@ IDE settings, modpack files, saves, logs, caches and build artifacts stay outsid
 
 ## License
 
-The distribution licence for new original code by tianlovo has not yet been selected (`UNLICENSED`).
-Ported upstream code retains its respective licences, including MIT.
-Models, textures, animations and related assets use CC BY-NC-SA 4.0 with original attribution retained.
-See [Third-party notices](THIRD_PARTY_NOTICES.md) and the [licence directory](licenses/) for scope, holders and full texts.
-The template or code licence does not describe the licence of the entire mod and its assets.
+Original adaptation code for which tianlovo and contributors hold licensing rights is licensed under
+GNU GPL version 3 only (`GPL-3.0-only`).
+Copyright (c) 2026 tianlovo and contributors
+
+See [LICENSE](LICENSE) for the full text.
+Existing source, author and separate file-level licence notices remain applicable.
+Ported upstream code retains its original notices, including MIT. Models, textures, animations and related assets
+retain CC BY-NC-SA 4.0 and original attribution.
+`BuiltinBedrockAnimations.java`, adapted from original asset scripts, remains under CC BY-NC-SA 4.0.
+Voice and base sound effects retain their respective authors' terms.
+See [Third-party notices](THIRD_PARTY_NOTICES.md) and the [licence directory](licenses/)
+for scope, holders and full texts.

@@ -40,6 +40,7 @@ GTNH 维护仓和 CropsNH 育种留作后续扩展，简体中文优先，英文
 
 目前提供源码构建，尚未发布供生存游玩使用的正式安装包
 开发候选的玩家操作、配置和成对回滚见 [Indev 使用说明](docs/USER_GUIDE.md)
+新配置默认使用 Enhanced；已有配置中显式选择的 Legacy 会继续保留，修改策略后重启服务端
 双端增量工具见 [打包与更新说明](scripts/distribution/README.md)，当前只生成本地验证包
 以下命令在 Windows PowerShell 中执行：
 
@@ -107,7 +108,10 @@ IDE 设置、整合包、存档、日志、缓存与构建产物不进入仓库
 
 ## 许可证
 
-新增原创代码的最终分发许可尚未确定（`UNLICENSED`），作者为 tianlovo
-已移植的上游代码分别保留其 MIT 等许可；模型、贴图、动画及相关资产使用 CC BY-NC-SA 4.0，保留原作者署名
-具体适用范围、权利人与许可原文见 [第三方来源与许可](THIRD_PARTY_NOTICES.md) 和 [许可目录](licenses/)
-不能以模板或代码的 MIT 许可概括整个模组及其资产
+本项目中由 tianlovo 与 contributors 原创且有权许可的适配代码采用 GNU GPL 第 3 版，仅限该版本（`GPL-3.0-only`）
+Copyright (c) 2026 tianlovo and contributors
+
+许可全文见 [LICENSE](LICENSE)，各文件已有的来源、作者和单独许可声明继续适用
+移植的上游代码保留其 MIT 等原许可声明，模型、贴图、动画及相关资产保留 CC BY-NC-SA 4.0 和原作者署名
+由原资产脚本改写的 `BuiltinBedrockAnimations.java` 继续按 CC BY-NC-SA 4.0 提供
+配音与基础音效继续遵循各自的原作者条款，具体范围、权利人与原文见 [第三方来源与许可](THIRD_PARTY_NOTICES.md) 和 [许可目录](licenses/)

@@ -55,6 +55,9 @@ When wild spawning is enabled, an unbound maid can be tamed with cake. Ownership
 
 Writes require the owner, range, current window and actual permission checks. Spectators cannot modify the maid.
 Armor, both hands, the back item and normal inventory have separate slots; built-in attachments differ between models.
+Switching between melee and ranged tasks keeps a suitable held weapon; otherwise it selects the first suitable weapon
+from the six backpack slots in slot order and swaps the whole stack with the current main-hand stack.
+Durability and full NBT are retained. If none is suitable, the task still changes and the held item stays in place.
 With the current GTNH settings, closing a window first returns a cursor stack to player inventory when space exists.
 A full inventory may leave an actual dropped item.
 Check player inventory and ground items after closing to confirm where the stack went.
@@ -76,7 +79,7 @@ Existing explicit values remain in place; updating the JAR does not replace the 
 | `acquisition.I:naturalWeight` | `1` | Spawn weight, 1–100, one maid per group |
 | `acquisition.I:naturalBiomes` | `1, 4` | Allowed numeric biome IDs |
 | `acquisition.I:naturalDimensions` | `0` | Allowed numeric dimension IDs |
-| `behavior.S:profile` | `legacy_prototype` | Server startup policy: `legacy_prototype` or `enhanced` |
+| `behavior.S:profile` | `enhanced` | Server startup policy: `legacy_prototype` or `enhanced` |
 
 Forge stores a category and typed key. The following example selects the enhanced policy.
 
@@ -90,7 +93,8 @@ The policy applies to existing and new maids loaded under that server configurat
 It is not a per-maid policy migration field.
 Unknown or development-only values are preserved and logged, with the current legacy policy used as fallback.
 Research components are not production configuration options.
-These are current code defaults; the first stable release's default AI is still undecided.
+New configurations and a missing profile key default to Enhanced. Existing explicit `legacy_prototype` values
+continue to use Legacy. Enhanced is the chosen default for the first release.
 Use the generated comments for other home, sound, food, perception, navigation and combat settings.
 
 Local `config/tlmnh-client.cfg` stores these global-page preferences without changing the server maid's task.
@@ -136,7 +140,8 @@ Keeping resource files does not enable every original feature, and byte integrit
 The first release excludes external model imports, YSM integration, LLMs,
 ownership transfer and jobs beyond idle/combat.
 Machine maintenance and CropsNH breeding remain future work.
-Packages are currently local validation only. The original-code license, voice publication steps, final default AI
-and stable version are undecided.
-See [third-party notices](../THIRD_PARTY_NOTICES.md) for original attribution and licenses.
-Code's MIT licenses do not cover model or voice assets.
+Packages are currently local validation only. Voice publication steps, the stable version
+and final acceptance remain pending.
+Original adaptation code uses `GPL-3.0-only`; see [LICENSE](../LICENSE) for the full text.
+Upstream code, models and sounds retain their own terms and attribution,
+as detailed in [third-party notices](../THIRD_PARTY_NOTICES.md).

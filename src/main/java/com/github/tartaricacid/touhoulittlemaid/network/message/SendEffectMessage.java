@@ -68,10 +68,8 @@ public final class SendEffectMessage implements IMessage {
             if (effect == null || effect.descriptionId == null
                 || effect.descriptionId.isEmpty()
                 || effect.descriptionId.getBytes(StandardCharsets.UTF_8).length > MAX_KEY_BYTES
-                || effect.amplifier < 0
                 || effect.potionId < -1
                 || effect.potionId > 65535
-                || effect.duration < -1
                 || effect.category < 0
                 || effect.category > 2) throw new IllegalArgumentException("Invalid maid effect data");
         }

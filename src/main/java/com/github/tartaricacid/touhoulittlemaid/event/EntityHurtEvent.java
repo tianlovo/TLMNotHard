@@ -27,7 +27,8 @@ public final class EntityHurtEvent {
             || !(arrow.shootingEntity instanceof EntityMaid maid)
             || !(arrow instanceof MaidArrowSourceState state)
             || state.tlmnh$source() != null
-            || state.tlmnh$sourceStopped()) return;
+            || state.tlmnh$sourceStopped()
+            || state.tlmnh$sourceHandoff() != null) return;
         if (!MaidProjectileSource.record(arrow, maid)) state.tlmnh$stopSource();
     }
 

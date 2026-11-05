@@ -1,6 +1,6 @@
 # 第三方来源与许可
 
-当前接入构建模板、TLM 实体核心状态、Bedrock 几何类和内置女仆模型资源，渲染与动画运行仍在开发
+当前包含构建模板、TLM 实体核心状态、Bedrock/Gecko 内置模型渲染与动画运行，以及内置女仆资源
 
 | 内容 | 固定来源 | 许可与保留内容 |
 | --- | --- | --- |
@@ -12,8 +12,8 @@
 | TLM 内置 Bedrock 动画、骨骼包装与注册表 | 同一 TLM 提交的 api/animation、client/animation/inner 与 client/animation/script | MIT，保留原文件包名，改动与保留范围见 SOURCE_PROVENANCE.md |
 | TLM 内嵌 Molang 的词法、解析与表达式求值核心 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/molang | 原 Molang 引擎为 MIT，Copyright (c) 2021-2023 Unnamed Team，原文见 licenses/UnnamedTeam-Molang-MIT.txt；保留各文件原许可头及 TLM 包名 |
 | Molang 数学、变量绑定、存储、值包装和插值辅助 | 同一 TLM 提交的 geckolib3/core/molang 与 util/ 下48个原文件 | MIT，保留 TLM 原包名及逐文件来源头，Java8 与纯数据上下文适配见 SOURCE_PROVENANCE.md；不将它们与 Unnamed Team 原引擎的来源混淆 |
-| Molang 主绑定、解析包装和帧查询 | 同一 TLM 提交的 geckolib3/core/molang 下8个原文件与 core/controller/AnimationControllerContext.java | MIT，保留原包名；游戏对象查询改接 RC2 的纯数据帧，实际控制器与时间轴继续实现，详见 SOURCE_PROVENANCE.md |
-| TLM 内嵌 GeckoLib 3 的模型解析、网格与骨骼实例 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/geckolib3；GeckoLib 原许可核对提交 4533673f89c2f1301ba0676ab7240ed20fb7f784 | MIT，同时保留 licenses/GeckoLib-MIT.txt 的 Copyright (c) 2021 GeckoThePecko、上游文件中的 Bernie G. 作者头与 TLM 许可；当前只接几何和骨骼，不包含动画控制器运行 |
+| Molang 主绑定、解析包装和帧查询 | 同一 TLM 提交的 geckolib3/core/molang 下8个原文件与 core/controller/AnimationControllerContext.java | MIT，保留原包名；游戏对象查询改接 1.7.10 实体的纯数据帧，并接入内置模型的逐帧查询、动画控制器与时间轴，详见 SOURCE_PROVENANCE.md |
+| TLM 内嵌 GeckoLib 3 的模型解析、网格与骨骼实例 | 同一 TLM 提交的 com/github/tartaricacid/touhoulittlemaid/geckolib3；GeckoLib 原许可核对提交 4533673f89c2f1301ba0676ab7240ed20fb7f784 | MIT，同时保留 licenses/GeckoLib-MIT.txt 的 Copyright (c) 2021 GeckoThePecko、上游文件中的 Bernie G. 作者头与 TLM 许可；内置模型的几何、骨骼、关键帧与动画控制器运行已接入，改动见 SOURCE_PROVENANCE.md |
 | Gecko 关键帧、插值、动画文件和时间轴指令 | 同一 TLM 提交的 geckolib3 下18个原文件 | MIT，保留 Gecko 作者头、原包名和两份许可，集合、严格表达式解析及默认长度修正见 SOURCE_PROVENANCE.md |
 | TLM 内置动画的 tlm/ysm 查询、骨骼结构体与二阶物理 | 同一 TLM 提交的 client/animation/gecko/molang 下10个原文件 | MIT，保留原包名及 SecondOrder 的 MicroCraft 作者信息；只接内置资源所需查询，不集成外部 YSM 模组，边界适配见 SOURCE_PROVENANCE.md |
 | JOML Java 数学类 | JOML-CI/JOML，1.10.8，Maven org.joml:joml:1.10.8 | MIT，Copyright (c) 2015-2024 JOML，原文见 licenses/JOML-MIT.txt；打包时重定位，不包含未使用的 Kotlin 扩展与运行库 |
@@ -38,7 +38,13 @@ TLM 原有代码和资产在导入时分别登记提交、原路径、修改原�
 
 Ancient Warfare 2、Zombie Awareness 与 SmartBrainLib 当前仅作为研究参考，没有复制其实现或引入运行依赖
 
-原创代码的最终分发许可在正式版发布前单独确定，不从本表推断整个项目采用第三方模板的许可
+本项目中由 tianlovo 与 contributors 原创且有权许可的适配代码采用 GNU GPL 第 3 版，仅限该版本
+
+TLMNH original code license: GPL-3.0-only
+Copyright (c) 2026 tianlovo and contributors
+
+许可全文见 [LICENSE](LICENSE)，本表所列上游作者、原许可及各文件单独声明继续适用
+`BuiltinBedrockAnimations.java` 的资产脚本改写部分仍按上述 CC BY-NC-SA 4.0 提供，声音继续遵循各原作者条款
 
 盾牌 API 来源见 [Battlegear2-for-Backhand](https://github.com/GTNewHorizons/Battlegear2-for-Backhand)，原许可见其 [LICENCE](https://github.com/GTNewHorizons/Battlegear2-for-Backhand/blob/1.6.8-backhand/LICENCE)
 TConstruct 与 TinkersDefense 的开发夹具调用目标环境现有工厂和物品，不将这些模组或其实现类纳入分发 JAR

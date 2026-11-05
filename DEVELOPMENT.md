@@ -72,7 +72,8 @@ npx --yes markdownlint-cli2@0.24.0
 python scripts/check_repository_paths.py
 ```
 
-更新进度时同时校对双语版本、目录锚点和相对链接；新增中文按 humanizer-zh 校订，保留未完成与未验证的范围；原创代码许可尚未确定，不能把上游 MIT 与资产 CC BY-NC-SA 4.0 合并成整个项目的 MIT
+更新进度时同时校对双语版本、目录锚点和相对链接；新增中文按 humanizer-zh 校订，保留未完成与未验证的范围
+原创适配代码采用 `GPL-3.0-only`，上游代码与资产继续保留各自条款，具体范围见 `THIRD_PARTY_NOTICES.md`
 
 正式版发布前，另行改写对应玩法、获取方式、依赖、安装更新、已知限制和验收结果；本轮不把 Indev 标记移除
 
@@ -98,7 +99,8 @@ Minecraft 存档
 
 ### 普通服务器行为配置
 
-`config/tlmnh.cfg` 的 `behavior.profile` 接受 `legacy_prototype` 和 `enhanced`，默认使用 `legacy_prototype`
+`config/tlmnh.cfg` 的 `behavior.profile` 接受 `legacy_prototype` 和 `enhanced`，新配置或缺少该键时默认使用 `enhanced`
+已有显式 `legacy_prototype` 配置继续使用 Legacy
 修改后重启服务器，新生成和从存档加载的女仆均按该服务器配置绑定策略
 
 ```text
@@ -109,10 +111,10 @@ behavior {
 
 `enhanced` 使用完整增强行为工厂及目标平台的原生箭运动补偿，普通游戏无需开发开关
 策略绑定等待原生NBT读取和世界登记完成，实体库存、封存物品及未知扩展字段继续沿原存档路径保存
-配置不增加每只女仆的策略字段，未知值保留在配置文件中并输出告警，运行时采用默认策略
+配置不增加每只女仆的策略字段，未知值保留在配置文件中并输出告警，运行时回退到 Legacy
 
 忠实参照和窄组件继续限定开发用途，显式开发选择优先于服务器配置
-当前构建与局部入口验证范围以 `PROGRESS.md` 为准，正式版默认选择仍在发布验收中确认
+首发默认已选 Enhanced，当前构建、局部入口验证和最终验收范围以 `PROGRESS.md` 为准
 
 ### 开发状态与持久化检查
 

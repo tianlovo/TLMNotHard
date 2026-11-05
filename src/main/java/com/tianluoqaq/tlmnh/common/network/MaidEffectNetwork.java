@@ -5,6 +5,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -27,8 +28,17 @@ public final class MaidEffectNetwork {
     }
 
     public static void send(AbstractMaidContainer menu, EntityPlayerMP viewer) {
-        if (channel != null && viewer.openContainer == menu && menu.canInteractWith(viewer))
-            channel.sendTo(new SendEffectMessage(menu.getMaid(), menu.windowId), viewer);
+        if (channel == null || viewer.openContainer != menu) return;
+        String key = "network/maid_effects/" + menu.getMaid()
+            .getUniqueID();
+        if (!IntegrationGuard.available(Side.SERVER, key)) return;
+        try {
+            if (menu.canInteractWith(viewer))
+                channel.sendTo(new SendEffectMessage(menu.getMaid(), menu.windowId), viewer);
+        } catch (Exception | LinkageError | AssertionError failure) {
+            // Native/addon effect values are read-only GUI input; a failed snapshot must not terminate the server.
+            IntegrationGuard.report(Side.SERVER, key, failure, viewer.getUniqueID());
+        }
     }
 
     public static final class Handler implements IMessageHandler<SendEffectMessage, IMessage> {

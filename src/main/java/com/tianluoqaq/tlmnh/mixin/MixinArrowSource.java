@@ -22,9 +22,15 @@ public abstract class MixinArrowSource implements MaidArrowSourceState {
     private NBTBase tlmnh$source;
     @Unique
     private NBTBase tlmnh$sourceStopped;
+    @Unique
+    private NBTBase tlmnh$sourceHandoff;
 
     @Inject(method = "readEntityFromNBT", at = @At("TAIL"))
     private void tlmnh$readSource(NBTTagCompound tag, CallbackInfo ci) {
+        tlmnh$sourceHandoff = tag.hasKey(MaidProjectileSource.HANDOFF_TAG)
+            ? tag.getTag(MaidProjectileSource.HANDOFF_TAG)
+                .copy()
+            : null;
         tlmnh$source = tag.hasKey(MaidProjectileSource.TAG) ? tag.getTag(MaidProjectileSource.TAG)
             .copy() : null;
         tlmnh$sourceStopped = tag.hasKey(MaidProjectileSource.STOPPED_TAG)
@@ -35,8 +41,10 @@ public abstract class MixinArrowSource implements MaidArrowSourceState {
 
     @Inject(method = "writeEntityToNBT", at = @At("TAIL"))
     private void tlmnh$writeSource(NBTTagCompound tag, CallbackInfo ci) {
+        MaidProjectileSource.beforeSave((EntityArrow) (Object) this);
         if (tlmnh$source != null) tag.setTag(MaidProjectileSource.TAG, tlmnh$source.copy());
         if (tlmnh$sourceStopped != null) tag.setTag(MaidProjectileSource.STOPPED_TAG, tlmnh$sourceStopped.copy());
+        if (tlmnh$sourceHandoff != null) tag.setTag(MaidProjectileSource.HANDOFF_TAG, tlmnh$sourceHandoff.copy());
     }
 
     @Inject(method = "onUpdate", at = @At("HEAD"), cancellable = true)
@@ -51,9 +59,21 @@ public abstract class MixinArrowSource implements MaidArrowSourceState {
 
     @Override
     public void tlmnh$recordSource(NBTBase source) {
-        if (tlmnh$source != null || tlmnh$sourceStopped != null)
+        if (tlmnh$source != null || tlmnh$sourceStopped != null || tlmnh$sourceHandoff != null)
             throw new IllegalStateException("Existing projectile source must not be overwritten");
         tlmnh$source = source.copy();
+    }
+
+    @Override
+    public NBTBase tlmnh$sourceHandoff() {
+        return tlmnh$sourceHandoff;
+    }
+
+    @Override
+    public void tlmnh$handoffSource(NBTBase handoff) {
+        if (tlmnh$source == null || tlmnh$sourceStopped != null || tlmnh$sourceHandoff != null || handoff == null)
+            throw new IllegalStateException("Existing projectile source state must not be overwritten during handoff");
+        tlmnh$sourceHandoff = handoff.copy();
     }
 
     @Override

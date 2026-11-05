@@ -9,6 +9,7 @@
 *.py text eol=lf
 *.patch text eol=lf whitespace=-blank-at-eol
 gradlew text eol=lf
+LICENSE text eol=lf
 *.bat text eol=crlf
 
 # 固定上游资产保留 Git blob 原字节，避免换行转换使来源摘要失效

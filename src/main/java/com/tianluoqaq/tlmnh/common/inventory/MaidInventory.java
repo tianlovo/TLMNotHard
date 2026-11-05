@@ -80,6 +80,34 @@ public final class MaidInventory implements IInventory {
         markDirty();
     }
 
+    /** 已接纳物品的内部移位，不重新序列化/接纳而触发外部物品回调 */
+    boolean exchangeBackpackWithMainHand(int slot, ItemStack expectedBackpack, ItemStack expectedHand) {
+        if (maid.worldObj == null || maid.worldObj.isRemote
+            || slot < 0
+            || slot >= BACKPACK_SIZE
+            || expectedBackpack == null
+            || expectedBackpack == expectedHand
+            || backpack[slot] != expectedBackpack
+            || maid.getHeldItem() != expectedHand) return false;
+        var equipment = maid.getLastActiveItems();
+        if (equipment == null || equipment.length != 5 || equipment[0] != expectedHand) return false;
+        for (int other = 0; other < TOTAL_SIZE; other++) {
+            if (other == slot || other == MAIN_HAND) continue;
+            var actual = getStackInSlot(other);
+            if (actual == expectedBackpack || expectedHand != null && actual == expectedHand) return false;
+        }
+        // 原生EntityLiving.setCurrentItemOrArmor只写同一equipment数组；两份原物品不复制、不扣数量
+        equipment[0] = expectedBackpack;
+        if (maid.getHeldItem() != expectedBackpack) {
+            // 未知提供方若返回装备副本，不撤走原背包物品
+            if (equipment[0] == expectedBackpack) equipment[0] = expectedHand;
+            return false;
+        }
+        backpack[slot] = expectedHand;
+        markDirty();
+        return true;
+    }
+
     @Override
     public String getInventoryName() {
         return "container.tlmnh.maid";

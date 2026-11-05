@@ -46,6 +46,7 @@ python scripts/package_overlay.py build/libs/tlmnh-VERSION.jar `
 客户端选择含 `mmc-pack.json` 的实例目录，也可选择它下面的 `.minecraft`
 服务端选择含 `lwjgl3ify-forgePatches.jar` 的目录
 工具不启动游戏，也不写入整包配置
+新生成的 `config/tlmnh.cfg` 默认使用 Enhanced；已有显式 Legacy 配置保持原值，修改策略后重启服务端
 
 TLM 使用 `.tlmnh-managed-client.json` / `.tlmnh-managed-server.json` 记录自己管理的 JAR 和资料
 保留原整包 `.gtnh-managed-*.json` 的字节及其余托管内容

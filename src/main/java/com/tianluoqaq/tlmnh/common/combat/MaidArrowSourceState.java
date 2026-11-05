@@ -12,4 +12,8 @@ public interface MaidArrowSourceState {
     boolean tlmnh$sourceStopped();
 
     void tlmnh$stopSource();
+
+    NBTBase tlmnh$sourceHandoff();
+
+    void tlmnh$handoffSource(NBTBase handoff);
 }
