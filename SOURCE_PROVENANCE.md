@@ -1653,3 +1653,12 @@ YSM验证覆盖现有玩家模型片段的实际命中与画面，原生Biped双
 新增标签位于自有 `assets/tlmnh/lang`，原GUI图集、原语言文件与原资源SHA清单均保持
 包装指南仅按实际ZIP目录重写GPL相对链接，源码指南继续指向仓库根LICENSE
 本节记录来源与实现，构建和实机结果另见 `PROGRESS.md`
+
+## 死亡事务中的装备属性同步
+
+208组合测试从原生致死伤害入口发现同步清空装备后仍残留铁剑攻击加成
+目标平台 `EntityLivingBase.writeEntityToNBT` 临时排除当前五件装备的属性再写原生NBT，装备缓存则在后续tick更新
+本工程 `MaidDeathIngress` 现通过原生物品及属性API移除已清除的主手与四件护甲的确切修饰符
+属性名、UUID、名称、操作、数值位和保存标志必须一致，完整源数据与Cleared快照仍参与比较，未知后继仍保管
+不直接编辑外部模组NBT，不改原生previousEquipment缓存，不泛略Attributes字段
+组合测试保留首次放置夹具失败及随后真实死亡保护失败，修版结果另见 `PROGRESS.md`

@@ -11,12 +11,14 @@ import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
+import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
@@ -379,6 +381,7 @@ final class MaidDeathIngress {
                 throw new IllegalStateException("Unknown recovery successor was not cleared");
             inventory.recovery()
                 .clear();
+            clearEquipmentModifiers(values);
             var beforeXp = (NBTTagCompound) receipt.getCompoundTag("Cleared")
                 .copy();
             beforeXp.setInteger(
@@ -388,6 +391,35 @@ final class MaidDeathIngress {
             if (!identity(true) || !base().equals(beforeXp))
                 throw new IllegalStateException("Unknown death balance or identity was not cleared");
             maid.setExperience(0);
+        }
+
+        void clearEquipmentModifiers(ItemStack[] original) {
+            // Native NBT temporarily excludes current equipment modifiers. After clearing the slots, remove those
+            // exact old modifiers now instead of waiting for the next native equipment-cache update.
+            for (int slot : new int[] { MaidInventory.MAIN_HAND, MaidInventory.ARMOR_START,
+                MaidInventory.ARMOR_START + 1, MaidInventory.ARMOR_START + 2, MaidInventory.ARMOR_START + 3 }) {
+                var stack = original[slot];
+                if (stack == null) continue;
+                for (Object raw : stack.getAttributeModifiers()
+                    .entries()) {
+                    var entry = (Map.Entry<?, ?>) raw;
+                    if (!(entry.getKey() instanceof String name)
+                        || !(entry.getValue() instanceof AttributeModifier expected))
+                        throw new IllegalStateException("Unknown original equipment attribute retained");
+                    if (!identity(true)) throw new IllegalStateException("Unknown death source during attribute debit");
+                    var attribute = maid.getAttributeMap()
+                        .getAttributeInstanceByName(name);
+                    if (attribute == null) continue;
+                    var current = attribute.getModifier(expected.getID());
+                    if (current == null) continue;
+                    if (!current.getName()
+                        .equals(expected.getName()) || current.getOperation() != expected.getOperation()
+                        || Double.doubleToLongBits(current.getAmount()) != Double.doubleToLongBits(expected.getAmount())
+                        || current.isSaved() != expected.isSaved())
+                        throw new IllegalStateException("Unknown equipment attribute successor retained");
+                    attribute.removeModifier(current);
+                }
+            }
         }
 
         void hold(Throwable failure) {
