@@ -62,6 +62,56 @@ public class SendEffectMessageTest {
     }
 
     @Test
+    public void nativeSignedAmplifierAndDurationRoundtripWithoutClampingOrDroppingEffects() {
+        var uuid = UUID.fromString("57788131-014c-46b4-8f18-cab5ca9bf42c");
+        var input = new SendEffectMessage(
+            0,
+            3,
+            uuid,
+            9,
+            false,
+            Arrays.asList(
+                new EffectData(11, "potion.resistance", -3, 619, 2),
+                new EffectData(12, "potion.fireResistance", 0, -17, 2),
+                new EffectData(1, "potion.moveSpeed", Integer.MIN_VALUE, Integer.MIN_VALUE, 2)));
+        var bytes = Unpooled.buffer();
+        try {
+            input.toBytes(bytes);
+            var output = new SendEffectMessage();
+            output.fromBytes(bytes);
+            assertEquals(
+                3,
+                output.effects()
+                    .size());
+            assertEquals(uuid, output.entityUuid());
+            assertEquals(9, output.windowId());
+            assertEquals(
+                -3,
+                output.effects()
+                    .get(0).amplifier);
+            assertEquals(
+                619,
+                output.effects()
+                    .get(0).duration);
+            assertEquals(
+                -17,
+                output.effects()
+                    .get(1).duration);
+            assertEquals(
+                Integer.MIN_VALUE,
+                output.effects()
+                    .get(2).amplifier);
+            assertEquals(
+                Integer.MIN_VALUE,
+                output.effects()
+                    .get(2).duration);
+            assertEquals(0, bytes.readableBytes());
+        } finally {
+            bytes.release();
+        }
+    }
+
+    @Test
     public void invalidCountsAndTruncatedRecordsAreRejected() {
         var buffer = Unpooled.buffer();
         try {

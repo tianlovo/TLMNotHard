@@ -66,6 +66,13 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
     update.require(report["integrity_passed"], "Candidate integrity failed: " + ", ".join(
         name for name, result in report["checks"].items() if not result["passed"]))
     update.require(channel in ("local-validation", "release"), "Unknown package channel")
+    original = report["checks"]["original_code_license"]["observed"]
+    if original["status"] == "legacy_undetermined":
+        update.require(original.get("legacy_overlay_allowed") is True,
+                       "This historical artifact is audit-only; a new package requires the declared project GPL license")
+        update.require(channel == "local-validation"
+                       and binding["snapshot_sha256"] == original["legacy_source_snapshot_sha256"],
+                       "Historical license reading requires its exact original source snapshot and local-validation channel")
     sidecar_names = ("SOURCE_PROVENANCE.md", "docs/USER_GUIDE.md", "docs/USER_GUIDE.en.md",
                      "scripts/distribution/update.py", "scripts/distribution/README.md")
     sidecars = {name: (PROJECT / name).read_bytes() for name in sidecar_names}
@@ -84,6 +91,8 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
         old.setdefault(name, set()).add(value)
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         docs = {"THIRD_PARTY_NOTICES.md": archive.read("META-INF/THIRD_PARTY_NOTICES.md")}
+        if candidate_audit.ORIGINAL_LICENSE_MEMBER in archive.namelist():
+            docs["licenses/TLMNH-LICENSE.txt"] = archive.read(candidate_audit.ORIGINAL_LICENSE_MEMBER)
         for name in candidate_audit.LICENSES:
             docs["licenses/" + name] = archive.read("META-INF/licenses/" + name)
         for name in report["checks"]["licenses_and_source_anchors"]["observed"]["provenance_manifests"]:
@@ -94,8 +103,6 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
     if channel == "release":
         decision = report["release_approval"]
         docs["release-decision.json"] = update.encoded(decision)
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            docs["licenses/TLMNH-LICENSE.txt"] = archive.read(candidate_audit.ORIGINAL_LICENSE_MEMBER)
     docs["source-reference/SOURCE_PROVENANCE.md"] = sidecars["SOURCE_PROVENANCE.md"]
     for guide in ("USER_GUIDE.md", "USER_GUIDE.en.md"):
         docs["guides/" + guide] = sidecars["docs/" + guide]

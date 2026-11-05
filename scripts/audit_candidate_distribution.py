@@ -22,6 +22,28 @@ from verify_bytecode import JAVA_8_MAJOR, inspect_archive
 PROJECT = Path(__file__).resolve().parents[1]
 RESOURCES = PROJECT / "src/main/resources"
 UPSTREAM_COMMIT = "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
+PROJECT_LICENSE = "GPL-3.0-only"
+ORIGINAL_LICENSE_MEMBER = "META-INF/TLMNH-LICENSE.txt"
+# Exact full text selected for original adaptations; third-party licenses stay separate.
+PROJECT_LICENSE_SHA256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+# Only these exact source-bound archives predate the packaged project-license declaration.
+# A matching version string alone never enables historical reading or packaging.
+LEGACY_UNLICENSED = {
+    "24f1a0e9efbf8a0036fe1f48d404cf63ef1f82c770cdf3917d3dd289361d7c96": {
+        "version": "0.1.0-indev.203",
+        "notice_sha256": "4127b1c0c34e2efa0e1950a927b2a7d7220bfc8c65cea2ab67abb68315f422bd",
+        "source_snapshot_sha256": "069ce9aa96c0d5a940b208fc0de1ff17fd9dfaf75d2ccfdf20de56cff163be44",
+        "mixin_configs": ["mixins.tlmnh.json"],
+        "overlay_allowed": True,
+    },
+    "ac9d818e28c8ef9c2720a5d5a8b5602f9aa3bd8aa80606995bf0e33aa3753dd1": {
+        "version": "0.1.0-indev.206",
+        "notice_sha256": "4127b1c0c34e2efa0e1950a927b2a7d7220bfc8c65cea2ab67abb68315f422bd",
+        "source_snapshot_sha256": "1f05b3506abb0468a5c8e2b37b17e69ea935252bdf02285cf0399be7bc9cacb2",
+        "mixin_configs": ["mixins.tlmnh.json", "mixins.tlmnh.ysmu.json"],
+        "overlay_allowed": False,
+    },
+}
 LICENSES = (
     "ExampleMod1.7.10-MIT.txt", "GeckoLib-MIT.txt", "JOML-MIT.txt",
     "TouhouLittleMaid-CC-BY-NC-SA-4.0.txt", "TouhouLittleMaid-MIT.txt", "UnnamedTeam-Molang-MIT.txt",
@@ -49,7 +71,7 @@ def safe_member(name):
             f"Unsafe archive member: {name}")
 
 
-def metadata(archive):
+def metadata(archive, artifact_sha256=None):
     raw = archive.read("mcmod.info")
     require(b"${" not in raw, "Unexpanded mod metadata")
     document = json.loads(raw)
@@ -70,13 +92,30 @@ def metadata(archive):
             "Missing runtime manifest entries")
     require(fields.get("FMLCorePluginContainsFMLMod") == "true", "Missing FML mod manifest marker")
     configs = fields.get("MixinConfigs", "").split(",")
-    require(configs == ["mixins.tlmnh.json"], "Unexpected mixin configuration")
+    legacy = LEGACY_UNLICENSED.get(artifact_sha256)
+    expected_configs = legacy["mixin_configs"] if legacy is not None else ["mixins.tlmnh.json", "mixins.tlmnh.ysmu.json"]
+    require(configs == expected_configs, "Unexpected mixin configuration")
     mixins = json.loads(archive.read(configs[0]))
     require(mixins.get("package") == "com.tianluoqaq.tlmnh.mixin", "Unexpected mixin package")
     require(mixins.get("required") is True and mixins.get("compatibilityLevel") == "JAVA_8", "Unexpected mixin compatibility contract")
     require(mixins.get("refmap") in archive.namelist(), "Missing mixin refmap")
+    if "mixins.tlmnh.ysmu.json" in configs:
+        optional = json.loads(archive.read("mixins.tlmnh.ysmu.json"))
+        plugin = "com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin"
+        require(optional.get("package") == "com.tianluoqaq.tlmnh.compat.ysmu.client.mixin"
+                and optional.get("required") is False and optional.get("compatibilityLevel") == "JAVA_8"
+                and optional.get("target") == "@env(DEFAULT)" and optional.get("plugin") == plugin
+                and optional.get("refmap") == mixins.get("refmap")
+                and optional.get("mixins") == [] and optional.get("server") == []
+                and optional.get("client") == ["MixinMaidPassengerAlias"], "Unexpected optional YSM client mixin contract")
+        require(plugin.replace(".", "/") + ".class" in archive.namelist()
+                and "com/tianluoqaq/tlmnh/compat/ysmu/client/mixin/MixinMaidPassengerAlias.class" in archive.namelist(),
+                "Missing optional YSM client mixin or compatibility plugin implementation")
     require("com/tianluoqaq/tlmnh/TLMNotHard.class" in archive.namelist(), "Missing mod implementation")
-    return {"modid": mod["modid"], "version": version, "minecraft": mod["mcversion"], "required_mods": mod["requiredMods"]}
+    result = {"modid": mod["modid"], "version": version, "minecraft": mod["mcversion"], "required_mods": mod["requiredMods"], "mixin_configs": configs}
+    if "license" in mod:
+        result["license"] = mod["license"]
+    return result
 
 
 def class_boundary(names):
@@ -93,7 +132,7 @@ def class_boundary(names):
             "scope": "package boundaries; not a proof of source ancestry or runtime compatibility"}
 
 
-def provenance_and_licenses(archive, names):
+def provenance_and_licenses(archive, names, artifact_sha256=None):
     expected = {"META-INF/licenses/" + name for name in LICENSES}
     actual = {name for name in names if name.startswith("META-INF/licenses/") and not name.endswith("/")}
     require(actual == expected, "Candidate must contain the six recorded license files")
@@ -101,7 +140,11 @@ def provenance_and_licenses(archive, names):
         require(archive.read("META-INF/licenses/" + name) == (PROJECT / "licenses" / name).read_bytes(),
                 "License differs from recorded text: " + name)
     notices = archive.read("META-INF/THIRD_PARTY_NOTICES.md")
-    require(notices == (PROJECT / "THIRD_PARTY_NOTICES.md").read_bytes(), "Third-party notices differ from the audit checkout")
+    legacy = LEGACY_UNLICENSED.get(artifact_sha256)
+    if legacy is None:
+        require(notices == (PROJECT / "THIRD_PARTY_NOTICES.md").read_bytes(), "Third-party notices differ from the audit checkout")
+    else:
+        require(digest(notices) == legacy["notice_sha256"], "Historical attribution notice differs from its frozen record")
     source_manifests = {path.relative_to(RESOURCES).as_posix() for path in (RESOURCES / "assets/tlmnh").glob("*-provenance.json")}
     packed_manifests = {name for name in names if name.startswith("assets/tlmnh/") and name.endswith("-provenance.json")}
     require(source_manifests == packed_manifests, "Provenance manifest inventory differs from the audit checkout")
@@ -112,7 +155,42 @@ def provenance_and_licenses(archive, names):
         require(summary.get("commit", summary.get("upstream_commit")) == UPSTREAM_COMMIT,
                 "Source summary is not anchored to the fixed upstream: " + name)
     return {"licenses": list(LICENSES), "provenance_manifests": sorted(source_manifests),
-            "third_party_notices_sha256": digest(notices), "anchor": "current audit checkout; no source/JAR identity assertion"}
+            "third_party_notices_sha256": digest(notices),
+            "anchor": "frozen historical notice; other source manifests match the audit checkout" if legacy is not None
+                      else "current audit checkout; no source/JAR identity assertion"}
+
+
+def original_code_license(archive, names, artifact_sha256):
+    document = json.loads(archive.read("mcmod.info"))
+    require(document.get("modListVersion") == 2 and len(document.get("modList", [])) == 1,
+            "Expected one mod for original-code license declaration")
+    mod = document["modList"][0]
+    require(mod.get("modid") == "tlmnh", "Project license belongs to another mod")
+    notice = archive.read("META-INF/THIRD_PARTY_NOTICES.md")
+    legacy = LEGACY_UNLICENSED.get(artifact_sha256)
+    if legacy is not None:
+        require(mod.get("version") == legacy["version"] and "license" not in mod
+                and ORIGINAL_LICENSE_MEMBER not in names and digest(notice) == legacy["notice_sha256"],
+                "Historical unlicensed archive differs from its frozen identity")
+        return {"spdx": None, "status": "legacy_undetermined", "member": None,
+                "legacy_artifact_sha256": artifact_sha256,
+                "legacy_source_snapshot_sha256": legacy["source_snapshot_sha256"],
+                "legacy_overlay_allowed": legacy.get("overlay_allowed") is True,
+                "scope": "Exact recorded historical artifact only; no project license was packaged and formal release remains blocked"}
+    require(mod.get("license") == PROJECT_LICENSE, "Original-code metadata must declare GPL-3.0-only")
+    require(ORIGINAL_LICENSE_MEMBER in names, "Missing packaged project GPL full text")
+    raw = archive.read(ORIGINAL_LICENSE_MEMBER)
+    root_license = (PROJECT / "LICENSE").read_bytes()
+    require(digest(root_license) == PROJECT_LICENSE_SHA256, "Root LICENSE differs from the selected full GPL text")
+    require(raw == root_license, "Packaged project GPL full text differs from root LICENSE")
+    lines = notice.decode("utf-8").splitlines()
+    markers = [line for line in lines if line.startswith("TLMNH original code license:")]
+    require(markers == ["TLMNH original code license: " + PROJECT_LICENSE]
+            and "原创代码的最终分发许可在正式版发布前单独确定" not in notice.decode("utf-8"),
+            "Project notice must declare exactly GPL-3.0-only without an undetermined marker")
+    return {"spdx": PROJECT_LICENSE, "status": "declared", "member": ORIGINAL_LICENSE_MEMBER,
+            "sha256": digest(raw), "root_license_sha256": digest(root_license),
+            "scope": "Declared original adaptation-code license only; retained upstream code/assets/audio keep their own terms"}
 
 
 def sounds(archive, names):
@@ -147,17 +225,21 @@ def audit(artifact, data):
                     "maximum_allowed_major": JAVA_8_MAJOR, "scope": "class headers only; no VM loading or runtime acceptance"}
 
         check("archive_layout", layout)
-        check("metadata", lambda: metadata(archive))
+        check("metadata", lambda: metadata(archive, report["sha256"]))
         check("java8_bytecode", bytecode)
         check("third_party_class_boundary", lambda: class_boundary(names))
-        check("licenses_and_source_anchors", lambda: provenance_and_licenses(archive, names))
+        check("licenses_and_source_anchors", lambda: provenance_and_licenses(archive, names, report["sha256"]))
+        check("original_code_license", lambda: original_code_license(archive, names, report["sha256"]))
         check("builtin_assets", lambda: verify_assets(archive.read))
         check("retained_builtin_resources", lambda: verify_retention(archive.read, names))
         check("sound_sources_and_events", lambda: sounds(archive, names))
-        notice = archive.read("META-INF/THIRD_PARTY_NOTICES.md").decode("utf-8") if "META-INF/THIRD_PARTY_NOTICES.md" in names else ""
-        report["original_source_license"] = "undetermined" if "原创代码的最终分发许可在正式版发布前单独确定" in notice else "not_certified_by_this_audit"
-        report["release_blockers"].append({"code": "original_source_license_" + report["original_source_license"],
-                                           "evidence": "META-INF/THIRD_PARTY_NOTICES.md"})
+        original = report["checks"]["original_code_license"]
+        if original["passed"] and original["observed"]["status"] == "declared":
+            report["original_source_license"] = original["observed"]["spdx"]
+        else:
+            report["original_source_license"] = "undetermined" if original["passed"] else "not_certified_by_this_audit"
+            report["release_blockers"].append({"code": "original_source_license_" + report["original_source_license"],
+                                               "evidence": "META-INF/THIRD_PARTY_NOTICES.md"})
     meta = report["checks"]["metadata"]
     if meta["passed"] and "indev" in meta["observed"]["version"].lower():
         report["release_blockers"].append({"code": "indev_candidate", "evidence": "mcmod.info"})
@@ -170,7 +252,6 @@ def audit(artifact, data):
 
 RELEASE_ACCEPTANCE = ("core_gameplay", "benchmark", "models_equipment", "multiplayer_persistence", "user_play")
 AUDIO_PACKS = {"littlemaid_peco", "touhou_little_maid"}
-ORIGINAL_LICENSE_MEMBER = "META-INF/TLMNH-LICENSE.txt"
 
 
 def approve_release(report, data, approval_path, binding, package_documents):
@@ -224,6 +305,9 @@ def approve_release(report, data, approval_path, binding, package_documents):
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         names = archive.namelist()
         require(len(names) == len(set(names)), "Duplicate candidate member cannot be approved")
+        declared = original_code_license(archive, names, digest(data))
+        require(declared["status"] == "declared" and declared["spdx"] == PROJECT_LICENSE,
+                "Historical undetermined license cannot be approved as a new release")
         attribution = approval["attribution"]
         notice = archive.read("META-INF/THIRD_PARTY_NOTICES.md")
         require(attribution["notice_sha256"] == digest(notice), "Approved attribution notice differs")
@@ -234,11 +318,12 @@ def approve_release(report, data, approval_path, binding, package_documents):
         require(isinstance(original, dict) and set(original) == {"spdx", "member", "sha256"},
                 "Exact packaged original-code license identity required")
         spdx = text(original["spdx"], "Selected original-code license")
-        require(len(spdx) <= 128 and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+() -]*", spdx), "Invalid explicit license identifier")
+        require(spdx == PROJECT_LICENSE == declared["spdx"], "Approved original-code license differs from the declared GPL-3.0-only")
         require(original["member"] == ORIGINAL_LICENSE_MEMBER
                 and original["sha256"] == digest(archive.read(ORIGINAL_LICENSE_MEMBER)),
                 "Selected original-code license text is missing or changed")
-        text(archive.read(ORIGINAL_LICENSE_MEMBER).decode("utf-8"), "Original-code license text")
+        require(bool(archive.read(ORIGINAL_LICENSE_MEMBER).decode("utf-8").strip()),
+                "Original-code license text is empty")
         require(("TLMNH original code license: " + spdx) in notice.decode("utf-8").splitlines()
                 and "原创代码的最终分发许可在正式版发布前单独确定" not in notice.decode("utf-8"),
                 "Packaged original-code license is still undetermined or does not match the decision")
@@ -299,6 +384,9 @@ def approve_release(report, data, approval_path, binding, package_documents):
 
 def local_zip(artifact_data, report):
     require(report["integrity_passed"], "A local validation ZIP requires passing package integrity checks")
+    original = report["checks"]["original_code_license"]["observed"]
+    require(original["status"] != "legacy_undetermined" or original.get("legacy_overlay_allowed") is True,
+            "This historical artifact is audit-only; a new package requires the declared project GPL license")
     dist = PROJECT / "dist"
     require(not dist.exists() or dist.resolve() == dist, "dist must be the checkout's own directory, not a redirected path")
     version = report["checks"]["metadata"]["observed"]["version"]
@@ -308,6 +396,8 @@ def local_zip(artifact_data, report):
         for name in LICENSES:
             contents["licenses/" + name] = archive.read("META-INF/licenses/" + name)
         contents["THIRD_PARTY_NOTICES.md"] = archive.read("META-INF/THIRD_PARTY_NOTICES.md")
+        if ORIGINAL_LICENSE_MEMBER in archive.namelist():
+            contents["licenses/TLMNH-LICENSE.txt"] = archive.read(ORIGINAL_LICENSE_MEMBER)
         for name in report["checks"]["licenses_and_source_anchors"]["observed"]["provenance_manifests"]:
             contents["provenance/" + name] = archive.read(name)
         for name in ("assets/tlmnh/builtin-models.json", "assets/tlmnh/builtin-sounds.json"):

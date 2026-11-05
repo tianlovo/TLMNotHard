@@ -7,7 +7,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
@@ -25,10 +27,11 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidFeedbackWorldProbe {
 
-    private static final Pattern COPY_NAME = Pattern.compile("TLMNH-Feedback-206-[A-Za-z0-9_-]{1,64}");
-    private static final UUID SUBJECT = UUID.fromString("f61d6050-feec-4310-8481-e4f4adaca0da");
+    private static final Pattern COPY_NAME = Pattern.compile("TLMNH-Feedback-(?:206|207)-[A-Za-z0-9_-]{1,64}");
+    private static final UUID LEGACY_SUBJECT = UUID.fromString("f61d6050-feec-4310-8481-e4f4adaca0da");
     private static Path admittedDirectory;
     private static String admittedName;
+    private static UUID admittedSubject;
     private static Integer originalView, expectedView;
 
     private MaidFeedbackWorldProbe() {}
@@ -47,14 +50,24 @@ public final class MaidFeedbackWorldProbe {
                     && mc.getIntegratedServer() == null,
                 "Disconnect before opening an existing feedback copy");
             require(originalView == null, "Restore the previous owned view before another opening");
-            Path directory = copyDirectory(mc, value);
+            require(value != null, "Existing feedback copy binding required");
+            String[] binding = value.split("\\|", -1);
+            require(binding.length == 1 || binding.length == 2, "Use folder or folder|canonical-maid-UUID");
+            String folder = binding[0];
+            UUID identity = binding.length == 1 ? LEGACY_SUBJECT : UUID.fromString(binding[1]);
+            require(
+                binding.length == 1 || identity.toString()
+                    .equals(binding[1]),
+                "Canonical maid UUID required");
+            Path directory = copyDirectory(mc, folder);
             require(
                 mc.getSaveLoader()
-                    .getWorldInfo(value) != null,
+                    .getWorldInfo(folder) != null,
                 "Existing native WorldInfo required");
-            admittedName = value;
+            admittedName = folder;
             admittedDirectory = directory;
-            mc.launchIntegratedServer(value, value, null);
+            admittedSubject = identity;
+            mc.launchIntegratedServer(folder, folder, null);
             result.addProperty("nativeLaunchReturned", true);
         } else if ("status".equals(action) && mc.theWorld == null) {
             result.addProperty("worldLoaded", false);
@@ -99,9 +112,8 @@ public final class MaidFeedbackWorldProbe {
                         mc.currentScreen == null && !mc.thePlayer.isSneaking()
                             && mc.thePlayer.inventory.currentItem >= 0
                             && mc.thePlayer.inventory.currentItem < InventoryPlayer.getHotbarSize()
-                            && held != null
-                            && held.getItem() == Items.saddle,
-                        "Normal native main-hand saddle without a screen or sneak required");
+                            && (held == null || held.getItem() == Items.saddle),
+                        "Normal native main-hand empty or saddle without a screen or sneak required");
                     require(
                         hit != null && hit.typeOfHit == MovingObjectType.ENTITY
                             && hit.entityHit == maid
@@ -124,6 +136,7 @@ public final class MaidFeedbackWorldProbe {
                     result.addProperty("nativeRightClickCalls", 1);
                     result.addProperty("serverAcknowledged", false);
                 }
+                case "gui_tasks", "gui_attack", "gui_ranged" -> guiClick(mc, action, result);
                 case "view" -> {
                     require(value != null && value.matches("[0-2]"), "Native thirdPersonView 0, 1 or 2 required");
                     if (originalView == null) originalView = mc.gameSettings.thirdPersonView;
@@ -143,7 +156,7 @@ public final class MaidFeedbackWorldProbe {
         }
         result.addProperty("worldLoaded", mc.theWorld != null);
         result.addProperty("folder", admittedName);
-        result.addProperty("subject", SUBJECT.toString());
+        result.addProperty("subject", admittedSubject == null ? null : admittedSubject.toString());
         result.addProperty("thirdPersonView", mc.gameSettings.thirdPersonView);
         result.addProperty("viewRestorePending", originalView != null);
         if (mc.thePlayer != null) {
@@ -159,6 +172,8 @@ public final class MaidFeedbackWorldProbe {
                 slots.add(row);
             }
             result.add("hotbar", slots);
+            result.add("subjectObservation", subjectObservation(mc));
+            result.add("originalGui", guiObservation(mc));
             if (mc.objectMouseOver != null && mc.objectMouseOver.entityHit != null) result.addProperty(
                 "mouseOverUUID",
                 mc.objectMouseOver.entityHit.getUniqueID()
@@ -197,7 +212,8 @@ public final class MaidFeedbackWorldProbe {
 
     private static void requireWorld(Minecraft mc) throws java.io.IOException {
         require(
-            admittedDirectory != null && mc.isIntegratedServerRunning()
+            admittedDirectory != null && admittedSubject != null
+                && mc.isIntegratedServerRunning()
                 && mc.isSingleplayer()
                 && mc.theWorld != null
                 && mc.thePlayer != null
@@ -218,14 +234,20 @@ public final class MaidFeedbackWorldProbe {
             "Native loaded world is outside the authorized feedback copy");
     }
 
-    private static EntityMaid subject(Minecraft mc) {
+    private static EntityMaid trackedSubject(Minecraft mc) {
+        if (mc.theWorld == null || admittedSubject == null) return null;
         EntityMaid found = null;
         for (Object entity : mc.theWorld.loadedEntityList) {
-            if (entity instanceof EntityMaid maid && SUBJECT.equals(maid.getUniqueID())) {
+            if (entity instanceof EntityMaid maid && admittedSubject.equals(maid.getUniqueID())) {
                 require(found == null, "Duplicate original maid identity");
                 found = maid;
             }
         }
+        return found;
+    }
+
+    private static EntityMaid subject(Minecraft mc) {
+        var found = trackedSubject(mc);
         require(
             found != null && found.isEntityAlive()
                 && found.worldObj == mc.theWorld
@@ -233,6 +255,155 @@ public final class MaidFeedbackWorldProbe {
                 && found.isOwner(mc.thePlayer),
             "The original owned maid must be naturally tracked");
         return found;
+    }
+
+    private static JsonObject subjectObservation(Minecraft mc) {
+        var result = new JsonObject();
+        var maid = trackedSubject(mc);
+        result.addProperty("tracked", maid != null);
+        if (maid == null) return result;
+        result.addProperty("registered", mc.theWorld.getEntityByID(maid.getEntityId()) == maid);
+        result.addProperty("owner", maid.isOwner(mc.thePlayer));
+        result.addProperty("entityId", maid.getEntityId());
+        result.addProperty("dimension", maid.dimension);
+        result.addProperty(
+            "task",
+            maid.getTask()
+                .getId());
+        result.add("clientNativeState", MaidCareInteractionProbe.maidState(maid));
+        var slots = new JsonArray();
+        for (int i = 0; i < maid.getMaidInventory()
+            .getSizeInventory(); i++) {
+            var row = new JsonObject();
+            row.addProperty("slot", i);
+            row.addProperty(
+                "nativeNbtBase64",
+                MaidCareInteractionProbe.nativeNbt(
+                    maid.getMaidInventory()
+                        .getStackInSlot(i)));
+            slots.add(row);
+        }
+        result.add("maidInventory", slots);
+        result.addProperty("clientReplicaOnly", true);
+        return result;
+    }
+
+    /** Applied network cache lives on the actual open AbstractMaidContainer; observing never drains its queue. */
+    private static JsonObject guiObservation(Minecraft mc) {
+        var result = new JsonObject();
+        result.addProperty(
+            "screen",
+            mc.currentScreen == null ? "none"
+                : mc.currentScreen.getClass()
+                    .getName());
+        result.addProperty(
+            "openContainer",
+            mc.thePlayer.openContainer.getClass()
+                .getName());
+        result.addProperty("windowId", mc.thePlayer.openContainer.windowId);
+        if (!(mc.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>gui)
+            || !(gui.inventorySlots instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer menu))
+            return result;
+        var maid = menu.getMaid();
+        result.addProperty("screenContainerIsOpenContainer", mc.thePlayer.openContainer == menu);
+        result.addProperty("subjectMatches", admittedSubject.equals(maid.getUniqueID()));
+        result.addProperty(
+            "entityUUID",
+            maid.getUniqueID()
+                .toString());
+        result.addProperty("entityId", maid.getEntityId());
+        result.addProperty("dimension", maid.dimension);
+        result.addProperty(
+            "task",
+            maid.getTask()
+                .getId());
+        result.addProperty("taskListOpen", gui.isTaskListOpen());
+        result.addProperty("displayedInvulnerable", menu.isDisplayedInvulnerable());
+        result.addProperty("effectCacheSource", "MaidEffectDisplay.tick -> AbstractMaidContainer.getDisplayedEffects");
+        var effects = new JsonArray();
+        for (var effect : menu.getDisplayedEffects()) {
+            var row = new JsonObject();
+            row.addProperty("potionId", effect.potionId);
+            row.addProperty("descriptionId", effect.descriptionId);
+            row.addProperty("amplifier", effect.amplifier);
+            row.addProperty("duration", effect.duration);
+            row.addProperty("category", effect.category);
+            effects.add(row);
+        }
+        result.add("receivedEffectCache", effects);
+        var drawn = new JsonArray();
+        for (String line : gui.getDrawnEffectLines()) drawn.add(new com.google.gson.JsonPrimitive(line));
+        result.add("lastDrawnEffectLines", drawn);
+        result.addProperty("clientReplicaOnly", true);
+        return result;
+    }
+
+    private static void guiClick(Minecraft mc, String action, JsonObject result) throws ReflectiveOperationException {
+        var maid = subject(mc);
+        require(
+            mc.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>,
+            "Actual original maid GUI required");
+        var gui = (com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>) mc.currentScreen;
+        require(
+            gui.inventorySlots == mc.thePlayer.openContainer
+                && gui.inventorySlots instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
+                && ((com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer) gui.inventorySlots)
+                    .getMaid() == maid
+                && gui.inventorySlots.canInteractWith(mc.thePlayer)
+                && mc.thePlayer.inventory.getItemStack() == null,
+            "Same native window, actual owned subject and empty cursor required");
+        result.add("guiBefore", guiObservation(mc));
+        int clicks = 0;
+        if ("gui_tasks".equals(action) || !gui.isTaskListOpen()) {
+            clickButton(mc, gui, 100);
+            clicks++;
+        }
+        if (!"gui_tasks".equals(action)) {
+            require(gui.isTaskListOpen(), "Actual task list did not open");
+            int button = "gui_attack".equals(action) ? com.tianluoqaq.tlmnh.common.inventory.ContainerMaid.ACTION_ATTACK
+                : com.tianluoqaq.tlmnh.common.inventory.ContainerMaid.ACTION_RANGED;
+            clickButton(mc, gui, button);
+            clicks++;
+        }
+        result.addProperty("nativeGuiMouseClicks", clicks);
+        result.addProperty("serverAcknowledged", false);
+    }
+
+    private static void clickButton(Minecraft mc, GuiScreen gui, int id) throws ReflectiveOperationException {
+        var field = ReflectionHelper.findField(GuiScreen.class, "buttonList", "field_146292_n");
+        field.setAccessible(true);
+        var buttons = (java.util.List<?>) field.get(gui);
+        GuiButton selected = null;
+        for (Object value : buttons) if (value instanceof GuiButton button && button.id == id) {
+            require(selected == null, "Duplicate actual GUI button identity");
+            selected = button;
+        }
+        require(
+            selected != null && selected.visible && selected.enabled && selected.width > 0 && selected.height > 0,
+            "Visible enabled native GUI button required");
+        int x = selected.xPosition + selected.width / 2, y = selected.yPosition + selected.height / 2;
+        require(
+            mc.currentScreen == gui && x >= 0 && x < gui.width && y >= 0 && y < gui.height,
+            "Native button center must be inside the actual current screen");
+        var down = ReflectionHelper.findMethod(
+            GuiScreen.class,
+            gui,
+            new String[] { "mouseClicked", "func_73864_a" },
+            int.class,
+            int.class,
+            int.class);
+        var up = ReflectionHelper.findMethod(
+            GuiScreen.class,
+            gui,
+            new String[] { "mouseMovedOrUp", "func_146286_b" },
+            int.class,
+            int.class,
+            int.class);
+        down.setAccessible(true);
+        up.setAccessible(true);
+        down.invoke(gui, x, y, 0);
+        require(mc.currentScreen == gui, "Native GUI changed while clicking; no alternate action issued");
+        up.invoke(gui, x, y, 0);
     }
 
     private static JsonObject hand(Minecraft mc) {

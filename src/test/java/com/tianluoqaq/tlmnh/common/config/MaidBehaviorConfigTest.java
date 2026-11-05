@@ -47,9 +47,30 @@ public class MaidBehaviorConfigTest {
     }
 
     @Test
-    public void absentPropertyPreservesLegacyAndOnlyCompleteNativeEnhancedIsProductionEligible() {
-        MaidBehaviorConfig.load(new Configuration());
+    public void absentPropertyUsesEnhancedWhileExistingExplicitLegacyRemainsEligible() throws Exception {
+        var fresh = new Configuration();
+        MaidBehaviorConfig.load(fresh);
+        assertEquals(MaidBrainProfile.ENHANCED, MaidBehaviorConfig.profile());
+        assertEquals("enhanced", MaidBehaviorConfig.configuredValue());
+        assertEquals(
+            "enhanced",
+            fresh.get("behavior", "profile", "must-not-replace")
+                .getString());
+        assertFalse(MaidBehaviorConfig.usedFallback());
+        var file = files.newFile();
+        var existing = new Configuration(file);
+        existing.get("behavior", "profile", "legacy_prototype")
+            .set("legacy_prototype");
+        existing.save();
+        var reloaded = new Configuration(file);
+        reloaded.load();
+        MaidBehaviorConfig.load(reloaded);
         assertEquals(MaidBrainProfile.LEGACY_PROTOTYPE, MaidBehaviorConfig.profile());
+        assertEquals("legacy_prototype", MaidBehaviorConfig.configuredValue());
+        assertEquals(
+            "legacy_prototype",
+            reloaded.get("behavior", "profile", "must-not-replace")
+                .getString());
         assertFalse(MaidBehaviorConfig.usedFallback());
         assertEquals(MaidBrainProfile.ENHANCED, MaidBrainProfile.fromProductionId(" Enhanced "));
         for (var profile : MaidBrainProfile.values()) {

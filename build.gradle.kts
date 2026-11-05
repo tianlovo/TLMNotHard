@@ -17,6 +17,41 @@ extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
     }
 }
 
+fun validateProjectLicense(license: ByteArray, metadata: ByteArray, notice: ByteArray, label: String) {
+    val digest = MessageDigest.getInstance("SHA-256").digest(license)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    if (license.size != 35149 || digest != "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986")
+        throw GradleException("Project license [$label] differs from the selected complete GNU GPL version 3 text")
+    val root = JsonSlurper().parseText(metadata.toString(Charsets.UTF_8)) as Map<*, *>
+    val mods = root["modList"] as List<*>
+    if (mods.size != 1 || (mods.single() as Map<*, *>)["license"] != "GPL-3.0-only")
+        throw GradleException("Project license [$label] requires the GPL-3.0-only metadata declaration")
+    val marker = "TLMNH original code license: GPL-3.0-only"
+    if (notice.toString(Charsets.UTF_8).lineSequence().count { it.trim() == marker } != 1)
+        throw GradleException("Project license [$label] requires one original-code license notice")
+}
+
+fun verifyProjectLicenseJar(file: File) {
+    ZipFile(file).use { archive ->
+        val paths = listOf("META-INF/TLMNH-LICENSE.txt", "mcmod.info", "META-INF/THIRD_PARTY_NOTICES.md")
+        val names = archive.entries().asSequence().filter { !it.isDirectory }.map { it.name }.toList()
+        if (paths.any { path -> names.count { it == path } != 1 })
+            throw GradleException("Project license [${file.name}] contains a missing or duplicate license declaration")
+        val bytes = paths.map { archive.getInputStream(archive.getEntry(it)).use { stream -> stream.readBytes() } }
+        validateProjectLicense(bytes[0], bytes[1], bytes[2], file.path)
+    }
+}
+
+val verifyProjectLicense = tasks.register("verifyProjectLicense") {
+    group = "verification"
+    description = "Verifies the complete project license and matching original-code metadata"
+    inputs.files("LICENSE", "src/main/resources/mcmod.info", "THIRD_PARTY_NOTICES.md")
+    doLast {
+        validateProjectLicense(file("LICENSE").readBytes(), file("src/main/resources/mcmod.info").readBytes(),
+            file("THIRD_PARTY_NOTICES.md").readBytes(), "source")
+    }
+}
+
 // 固定上游的435配音与10基础音效均为源码输入，构建不依赖Python、研究checkout或网络导入
 fun verifyBuiltinSoundResources(read: (String) -> ByteArray, names: List<String>, label: String) {
     fun requireSound(condition: Boolean, message: String) {
@@ -180,7 +215,7 @@ val verifyBuiltinRetention = tasks.register("verifyBuiltinRetention") {
 }
 
 tasks.named<ProcessResources>("processResources") {
-    dependsOn(verifyBuiltinSounds, verifyBuiltinRetention)
+    dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
     doLast {
         verifyBuiltinSoundDirectory(destinationDir)
         verifyBuiltinRetentionDirectory(destinationDir)
@@ -189,10 +224,11 @@ tasks.named<ProcessResources>("processResources") {
 
 listOf("jar", "shadowJar").forEach { taskName ->
     tasks.named<Jar>(taskName) {
-        dependsOn(verifyBuiltinSounds, verifyBuiltinRetention)
+        dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
         doLast {
             verifyBuiltinSoundJar(archiveFile.get().asFile)
             verifyBuiltinRetentionJar(archiveFile.get().asFile)
+            verifyProjectLicenseJar(archiveFile.get().asFile)
         }
     }
 }
@@ -204,17 +240,19 @@ tasks.named("reobfJar") {
         artifacts.forEach {
             verifyBuiltinSoundJar(it)
             verifyBuiltinRetentionJar(it)
+            verifyProjectLicenseJar(it)
         }
     }
 }
 
-tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds, verifyBuiltinRetention) }
-tasks.named("check") { dependsOn(verifyBuiltinSounds, verifyBuiltinRetention) }
+tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense) }
+tasks.named("check") { dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense) }
 
 tasks.withType<Jar>().configureEach {
     manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
     from("licenses") { into("META-INF/licenses") }
     from("THIRD_PARTY_NOTICES.md") { into("META-INF") }
+    from("LICENSE") { into("META-INF"); rename { "TLMNH-LICENSE.txt" } }
 }
 
 tasks.named<Jar>("shadowJar") {
