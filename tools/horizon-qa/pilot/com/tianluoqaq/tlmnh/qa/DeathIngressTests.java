@@ -131,7 +131,7 @@ public final class DeathIngressTests {
         helper.getWorld().mapStorage.saveAllData();
         helper.assertTrue(
             ReturnedMaterialTests.diskLedger(f)
-                .getInteger("Schema") == 8,
+                .getInteger("Schema") == 9,
             "Native preflight ledger not saved");
         blockLedgerOnce(f, () -> {
             maid.setHealth(0);

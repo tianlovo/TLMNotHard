@@ -1696,7 +1696,35 @@ public final class MaidCoreInteractionProbe {
         require(!f.maid.isSitting() && !f.maid.hasPose(MaidPose.SLEEPING), "carry interrupts resting");
         require(f.held().stackSize == 1, "saddle conserved");
         require(f.click() && f.maid.ridingEntity == null && f.owner.riddenByEntity == null, "saddle dismount");
+        require(f.click() && f.maid.ridingEntity == f.owner, "carry before empty-hand dismount");
+        f.hand(null);
+        f.owner.setSneaking(true);
+        f.stranger.setSneaking(true);
+        require(
+            !f.maid.interact(f.stranger) && f.maid.ridingEntity == f.owner && f.owner.riddenByEntity == f.maid,
+            "non-owner empty-hand dismount denied");
+        require(
+            f.click() && f.maid.ridingEntity == null && f.owner.riddenByEntity == null && !f.maid.isSitting(),
+            "empty-hand sneak dismounts before sitting");
+        require(f.click() && f.maid.isSitting(), "next empty-hand sneak sits");
+        require(f.click() && !f.maid.isSitting(), "subsequent empty-hand sneak stands");
+        f.owner.mountEntity(f.maid);
+        require(
+            f.click() && f.owner.ridingEntity == null && f.maid.riddenByEntity == null && !f.maid.isSitting(),
+            "empty-hand sneak ejects passenger before sitting");
         var other = f.newMaid();
+        f.maid.mountEntity(f.owner);
+        other.mountEntity(f.maid);
+        require(
+            f.click() && f.maid.ridingEntity == null
+                && f.owner.riddenByEntity == null
+                && f.maid.riddenByEntity == null
+                && other.ridingEntity == null
+                && !f.maid.isSitting(),
+            "empty-hand sneak clears both riding relations without sitting");
+        f.owner.setSneaking(false);
+        f.stranger.setSneaking(false);
+        f.hand(new ItemStack(Items.saddle));
         other.mountEntity(f.owner);
         require(f.click() && f.maid.ridingEntity == null && f.owner.riddenByEntity == other, "existing passenger kept");
         other.mountEntity(null);
