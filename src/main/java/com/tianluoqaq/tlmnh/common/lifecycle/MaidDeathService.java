@@ -27,6 +27,8 @@ import cpw.mods.fml.relauncher.Side;
 public final class MaidDeathService {
 
     private static final String WILD_TAG = "TLMNHWildDeathHold";
+    private static final String COMBAT_DEFERRED = "TLMNHCombatDeferredDeath";
+    private static final Set<EntityMaid> COMBAT_PENDING = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<EntityMaid> WILD_CONFIRMED = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<EntityMaid> WILD_PENDING = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<String> PUBLICATION_FIELDS = new HashSet<>(
@@ -45,6 +47,9 @@ public final class MaidDeathService {
         } catch (Exception | LinkageError | AssertionError failure) {
             report("death_ingress/" + maid.getUniqueID(), failure);
         }
+        maid.getCombatCadence()
+            .freezeForDeath();
+        if (deferCombatDeath(maid)) return true;
         boolean owned = MaidDeathIngress.preserve(maid, owner);
         try {
             var ledger = MaidLifecycleData.get(maid.worldObj);
@@ -67,14 +72,21 @@ public final class MaidDeathService {
     }
 
     public static boolean blocksSource(EntityMaid maid) {
-        return MaidDeathIngress.blocks(maid) || maid != null && maid.worldObj != null
-            && !maid.worldObj.isRemote
-            && maid.getEntityData()
-                .hasKey(WILD_TAG)
-            && !WILD_CONFIRMED.contains(maid);
+        return maid != null && maid.getEntityData()
+            .hasKey(COMBAT_DEFERRED)
+            || MaidDeathIngress.blocks(maid)
+            || maid != null && maid.worldObj != null
+                && !maid.worldObj.isRemote
+                && maid.getEntityData()
+                    .hasKey(WILD_TAG)
+                && !WILD_CONFIRMED.contains(maid);
     }
 
     public static boolean canFinishDeath(EntityMaid maid, boolean nativeDead) {
+        if ((nativeDead || maid.getHealth() <= 0) && deferCombatDeath(maid)) return false;
+        completeDeferred(maid);
+        if (maid.getEntityData()
+            .hasKey(COMBAT_DEFERRED)) return false;
         if (maid.getEntityData()
             .hasKey(WILD_TAG)) return confirmWildHold(maid);
         boolean pending = MaidDeathIngress.blocks(maid);
@@ -95,6 +107,11 @@ public final class MaidDeathService {
     }
 
     public static int nativeDeathExperience(EntityMaid maid) {
+        if (maid.getCombatHitReceipt()
+            .blocksTransfer()
+            || maid.getEntityData()
+                .hasKey(COMBAT_DEFERRED))
+            return 0;
         if (maid.getEntityData()
             .hasKey(WILD_TAG) || MaidDeathIngress.blocks(maid)) return 0;
         try {
@@ -111,6 +128,9 @@ public final class MaidDeathService {
     /** 只在原生dropEquipment调用；entityDropItem保留captureDrops与后续LivingDropsEvent的决定权 */
     public static void dropUnowned(EntityMaid maid) {
         if (owner(maid) != null) return;
+        maid.getCombatCadence()
+            .freezeForDeath();
+        if (deferCombatDeath(maid)) return;
         NBTTagCompound source = null;
         try {
             boolean opaqueHold = false;
@@ -248,8 +268,62 @@ public final class MaidDeathService {
         }
     }
 
+    /** 同一攻击栈内只登记，不等待自己返回，也不编码尚未结算的装备 */
+    private static boolean deferCombatDeath(EntityMaid maid) {
+        if (!maid.getCombatHitReceipt()
+            .blocksTransfer()) return false;
+        maid.getCombatCadence()
+            .freezeForDeath();
+        if (!maid.getEntityData()
+            .hasKey(COMBAT_DEFERRED)) {
+            var marker = new NBTTagCompound();
+            marker.setInteger("Version", 1);
+            maid.getEntityData()
+                .setTag(COMBAT_DEFERRED, marker);
+        }
+        COMBAT_PENDING.add(maid);
+        return true;
+    }
+
+    /** 仅在窄调用关闭且无HELD时继续既有死亡出口，快照取结算后的真实库存 */
+    public static void completeDeferred(EntityMaid maid) {
+        if (maid == null || maid.worldObj == null
+            || maid.worldObj.isRemote
+            || !maid.getEntityData()
+                .hasKey(COMBAT_DEFERRED))
+            return;
+        COMBAT_PENDING.add(maid);
+        if (maid.getCombatHitReceipt()
+            .blocksTransfer()) return;
+        var raw = maid.getEntityData()
+            .getTag(COMBAT_DEFERRED);
+        if (!(raw instanceof NBTTagCompound marker) || !marker.hasKey("Version", 3)
+            || marker.getInteger("Version") != 1
+            || marker.func_150296_c()
+                .size() != 1
+            || maid.getHealth() > 0) {
+            report(
+                "combat_death/" + maid.getUniqueID(),
+                new IllegalStateException("Unknown delayed combat death retained"));
+            return;
+        }
+        maid.getEntityData()
+            .removeTag(COMBAT_DEFERRED);
+        COMBAT_PENDING.remove(maid);
+        try {
+            if (owner(maid) != null) preserve(maid);
+            else dropUnowned(maid);
+        } catch (Exception | LinkageError | AssertionError failure) {
+            maid.getEntityData()
+                .setTag(COMBAT_DEFERRED, raw.copy());
+            COMBAT_PENDING.add(maid);
+            report("combat_death/" + maid.getUniqueID(), failure);
+        }
+    }
+
     public static void retryPending(World world) {
         if (world.isRemote) return;
+        for (var maid : new ArrayList<>(COMBAT_PENDING)) if (maid.worldObj == world) completeDeferred(maid);
         MaidDeathIngress.retry(world);
         WILD_CONFIRMED.removeIf(maid -> maid.isDead);
         for (var maid : new ArrayList<>(WILD_PENDING)) if (maid.worldObj == world) confirmWildHold(maid);
@@ -260,11 +334,23 @@ public final class MaidDeathService {
 
     static void unload(World world) {
         MaidDeathIngress.unload(world);
+        COMBAT_PENDING.removeIf(maid -> maid.worldObj == world);
         WILD_CONFIRMED.removeIf(maid -> maid.worldObj == world);
         WILD_PENDING.removeIf(maid -> maid.worldObj == world);
     }
 
     static boolean onJoin(EntityMaid maid) {
+        if (maid.getEntityData()
+            .hasKey(COMBAT_DEFERRED)) {
+            COMBAT_PENDING.add(maid);
+            return true;
+        }
+        // 重载的未闭合命中不允许构造普通死亡快照或发布墓碑
+        if (maid.getCombatHitReceipt()
+            .blocksTransfer() && maid.getHealth() <= 0) {
+            deferCombatDeath(maid);
+            return true;
+        }
         try {
             if (maid.getEntityData()
                 .hasKey(WILD_TAG)) confirmWildHold(maid);

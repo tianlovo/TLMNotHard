@@ -169,8 +169,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             lastCareTick = now;
             combat.offer(frame);
             // 新受击仍立即还手；伤害窗口结束后，持续战斗不能永久阻止自疗
-            boolean reactingToHit = maid.hurtTime > 0
-                && (frame.kindMask() & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()))) != 0;
+            boolean reactingToHit = maid.hurtTime > 0 && (frame.kindMask()
+                & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()) | (1 << Kind.COMBAT.ordinal()))) != 0;
             if (maid.isTamed() && !actor.isSleeping()
                 && !reactingToHit
                 && (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true)))
@@ -195,7 +195,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             Kind nextKind = selected == null ? null : selected.kind;
             String nextTarget = selected == null ? null : selected.target;
             if (nextKind != selectedKind || !java.util.Objects.equals(nextTarget, selectedTarget)) {
-                stopSelected();
+                stopSelected(true);
                 actor.beginEntityFrame(runtime, token);
                 selectedKind = nextKind;
                 selectedTarget = nextTarget;
@@ -217,6 +217,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                     runtime.getContext());
                 case MELEE, RANGED -> combat
                     .execute((net.minecraft.entity.EntityLivingBase) selected.payload, selected.kind == Kind.RANGED);
+                case COMBAT -> combat.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
                 case PANIC -> panic.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
                 case VEHICLE -> ride.executeVehicle(
                     (com.tianluoqaq.tlmnh.common.ai.faithful.MaidVehicleActor.Vehicle) selected.payload);
@@ -264,6 +265,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
     }
 
     private void stopSelected() {
+        stopSelected(false);
+    }
+
+    private void stopSelected(boolean preserveObservation) {
         selectedKind = null;
         selectedTarget = null;
         panic.cancel();
@@ -279,10 +284,12 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             try {
                 life.cancel();
             } finally {
-                combat.cancel();
+                combat.cancel(
+                    preserveObservation && maid.isUnifiedCombat()
+                        && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK);
             }
         } finally {
-            actor.cancelOwnedResources();
+            actor.cancelOwnedResources(!preserveObservation);
         }
     }
 

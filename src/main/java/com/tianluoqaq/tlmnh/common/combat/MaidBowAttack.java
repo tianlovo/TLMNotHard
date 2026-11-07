@@ -187,6 +187,10 @@ public final class MaidBowAttack {
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
     public boolean fireForModern(EntityLivingBase target, float charge, BooleanSupplier admitted) {
         if (firing) return false;
+        if (maid.isUnifiedCombat() && (!maid.getCombatCadence()
+            .ready() || maid.getCombatHitReceipt()
+                .blocksTransfer()))
+            return false;
         lastRefusal = null;
         if (!NativeArrowGravity.available() || !MaidProjectileImpactProtection.available(maid)) {
             status = Status.PHYSICS_UNAVAILABLE;
@@ -217,6 +221,25 @@ public final class MaidBowAttack {
     private boolean release(EntityLivingBase target, ItemStack bow, int slot, BooleanSupplier admitted,
         boolean prototype, float charge) {
         if (bow == null || slot < 0 || !admitted.getAsBoolean()) return false;
+        if (maid.isUnifiedCombat()) {
+            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
+                .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
+            var work = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.FINAL_CHECK;
+            if (!quota.spend(work, 3)
+                || !quota.spend(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.RAY, 6)
+                || !quota.spend(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.BALLISTIC))
+                return reject(Status.SPAWN_REJECTED);
+            var profile = maid.getCombatWeaponProfile();
+            if (!profile.bow() || maid.getCombatHitReceipt()
+                .blocksTransfer()
+                || !maid.getEquipmentEpoch()
+                    .bindAttackModifiers(bow, profile, quota)
+                || !maid.getEquipmentEpoch()
+                    .acknowledged(bow)
+                || !maid.getCombatCadence()
+                    .ready())
+                return reject(Status.SPAWN_REJECTED);
+        }
         var world = maid.worldObj;
         var provider = world.provider;
         int dimension = maid.dimension;
@@ -321,6 +344,18 @@ public final class MaidBowAttack {
         boolean criticalBefore = arrow.getIsCritical();
         var boundsBefore = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
             arrow.boundingBox.maxX, arrow.boundingBox.maxY, arrow.boundingBox.maxZ };
+        if (maid.isUnifiedCombat() && (!maid.getEquipmentEpoch()
+            .acknowledged(bow) || maid.getCombatHitReceipt()
+                .blocksTransfer()
+            || !maid.getCombatCadence()
+                .commit(
+                    Math.max(
+                        1,
+                        (long) maid.getEntityAttribute(MaidCombatAttributes.SHOOT_COOLDOWN)
+                            .getAttributeValue())))) {
+            arrow.setDead();
+            return reject(Status.SPAWN_REJECTED);
+        }
         if (!world.spawnEntityInWorld(arrow)) {
             arrow.setDead();
             return reject(Status.SPAWN_REJECTED);
@@ -641,7 +676,7 @@ public final class MaidBowAttack {
 
     private boolean canFire(EntityLivingBase target) {
         return !maid.worldObj.isRemote && MaidProjectileImpactProtection.available(maid)
-            && maid.getTask() == MaidTask.RANGED_ATTACK
+            && maid.getCombatModeTask() == MaidTask.RANGED_ATTACK
             && !maid.getBrainCoordinator()
                 .isSuspended()
             && !maid.isSitting()
@@ -657,7 +692,9 @@ public final class MaidBowAttack {
     private boolean canHoldBowUse() {
         return maid.worldObj != null && !maid.worldObj.isRemote
             && maid.isEntityAlive()
-            && maid.getTask() == MaidTask.RANGED_ATTACK
+            && (!maid.isUnifiedCombat() || !maid.getCombatHitReceipt()
+                .blocksTransfer())
+            && maid.getCombatModeTask() == MaidTask.RANGED_ATTACK
             && maid.getBrainCoordinator()
                 .allowsReactiveItemUse()
             && !maid.getBrainCoordinator()

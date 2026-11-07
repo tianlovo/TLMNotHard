@@ -33,6 +33,8 @@ public final class MaidCombatTargeting {
 
     public static boolean hasMeleeWeapon(EntityMaid maid) {
         var weapon = maid.getHeldItem();
+        if (maid.isUnifiedCombat()) return maid.getCombatWeaponProfile()
+            .melee();
         return weapon != null && weapon.stackSize > 0
             && !(weapon.getItem() instanceof ItemBow)
             && weapon.getAttributeModifiers()

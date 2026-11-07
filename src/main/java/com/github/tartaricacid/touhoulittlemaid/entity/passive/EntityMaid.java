@@ -69,6 +69,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final int FLAG_PICKUP_EXPERIENCE = 2;
     private static final int FLAG_SILENT = 4;
     private static final int FLAG_STRUCK_LIGHTNING = 8;
+    private static final int FLAG_UNIFIED_COMBAT = 16;
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidConfigManager configManager = new MaidConfigManager(dataWatcher);
@@ -87,6 +88,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private final com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation snowballAnimation = new com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation();
     private final com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory modernCombatMemory = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory();
     private final com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings attackSettings = new com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings();
+    private final com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState combatTaskState = new com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState();
+    private final com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView combatWeaponView = new com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView(
+        this);
+    private final com.tianluoqaq.tlmnh.common.combat.CombatCadence combatCadence = new com.tianluoqaq.tlmnh.common.combat.CombatCadence(
+        this);
+    private final com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt combatHitReceipt = new com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt(
+        this);
+    private final com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch equipmentEpoch = new com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch(
+        this);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
     private final com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection behaviorProtection = new com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection(
         this);
@@ -107,6 +117,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private boolean canClimb;
     private int climbFallDelayTicks;
     private NBTTagCompound extraSaveData = new NBTTagCompound();
+    private boolean hadCombatCadenceData, hadCombatReceiptData;
 
     public EntityMaid(World world) {
         super(world);
@@ -132,7 +143,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.addObject(DATA_EXPERIENCE, 0);
         dataWatcher.addObject(DATA_HUNGER, 0);
         dataWatcher.addObject(DATA_FAVORABILITY, 0);
-        dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE));
+        dataWatcher.addObject(DATA_FLAGS, (byte) (FLAG_PICKUP_ITEMS | FLAG_PICKUP_EXPERIENCE | FLAG_UNIFIED_COMBAT));
         dataWatcher.addObjectByDataType(DATA_OFFHAND, 5);
         // 原有动作位与独立实体姿态共享整数，不再占用额外元数据槽
         dataWatcher.addObject(DATA_POSE, 0);
@@ -178,6 +189,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
             com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
         behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
+        syncCombatProfileFlag();
         return result[0];
     }
 
@@ -187,6 +199,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
             com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
         behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
+        syncCombatProfileFlag();
         return result[0];
     }
 
@@ -198,7 +211,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     @Override
+    public void onUpdate() {
+        if (!worldObj.isRemote && equipmentEpoch != null) equipmentEpoch.beforeNativeUpdate();
+        super.onUpdate();
+    }
+
+    @Override
     public void onLivingUpdate() {
+        if (!worldObj.isRemote && equipmentEpoch != null) equipmentEpoch.afterNativeEquipmentUpdate();
+        syncCombatProfileFlag();
         if (!worldObj.isRemote && itemUses != null) itemUses.advanceUse(
             (int) getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.USE_ITEM_SPEED)
                 .getAttributeValue());
@@ -736,18 +757,66 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     public MaidTask getTask() {
-        return MaidTask.fromId(dataWatcher.getWatchableObjectString(DATA_TASK));
+        String id = dataWatcher.getWatchableObjectString(DATA_TASK);
+        return combatTaskState == null ? MaidTask.fromId(id) : combatTaskState.task(id, isUnifiedCombat());
     }
 
     public void setTask(MaidTask task) {
-        if (getTask() == task) return;
+        if (!combatTaskState.canSelect()) return;
+        if (dataWatcher.getWatchableObjectString(DATA_TASK)
+            .equals(task.getId()) && combatTaskState.available()) return;
         boolean modernRefresh = brain != null && brain.refreshModernBrain();
+        combatTaskState.selected(task);
         dataWatcher.updateObject(DATA_TASK, task.getId());
         if (modernRefresh) return;
         setAttackTarget(null);
         getNavigator().clearPathEntity();
         if (shield != null) shield.cancelUse("task_changed");
         if (itemUses != null) itemUses.reconcile();
+    }
+
+    public boolean isUnifiedCombat() {
+        return worldObj.isRemote ? (dataWatcher.getWatchableObjectByte(DATA_FLAGS) & FLAG_UNIFIED_COMBAT) != 0
+            : brain == null || brain.usesUnifiedCombat();
+    }
+
+    private void syncCombatProfileFlag() {
+        if (worldObj == null || worldObj.isRemote || brain == null) return;
+        byte flags = dataWatcher.getWatchableObjectByte(DATA_FLAGS);
+        byte next = (byte) (brain.usesUnifiedCombat() ? flags | FLAG_UNIFIED_COMBAT : flags & ~FLAG_UNIFIED_COMBAT);
+        if (next != flags) dataWatcher.updateObject(DATA_FLAGS, next);
+        String watched = dataWatcher.getWatchableObjectString(DATA_TASK);
+        String projected = combatTaskState.task(watched, brain.usesUnifiedCombat())
+            .getId();
+        if (!watched.equals(projected)) dataWatcher.updateObject(DATA_TASK, projected);
+    }
+
+    /** 行为任务保持统一身份，旧机械入口只取得当前已准入的武器模式 */
+    public MaidTask getCombatModeTask() {
+        if (!isUnifiedCombat()) return getTask();
+        if (getTask() != MaidTask.ATTACK || !combatTaskState.available()) return MaidTask.IDLE;
+        var profile = getCombatWeaponProfile();
+        return profile.bow() ? MaidTask.RANGED_ATTACK : profile.melee() ? MaidTask.ATTACK : MaidTask.IDLE;
+    }
+
+    public com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState getCombatTaskState() {
+        return combatTaskState;
+    }
+
+    public com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile getCombatWeaponProfile() {
+        return combatWeaponView.current();
+    }
+
+    public com.tianluoqaq.tlmnh.common.combat.CombatCadence getCombatCadence() {
+        return combatCadence;
+    }
+
+    public com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt getCombatHitReceipt() {
+        return combatHitReceipt;
+    }
+
+    public com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch getEquipmentEpoch() {
+        return equipmentEpoch;
     }
 
     public MaidSchedule getSchedule() {
@@ -899,11 +968,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void setCurrentItemOrArmor(int slot, ItemStack stack) {
         if (worldObj != null && !worldObj.isRemote) stack = ProtectedItemCodec.admit(stack, 64);
         super.setCurrentItemOrArmor(slot, stack);
+        if (combatWeaponView != null) combatWeaponView.invalidate();
+        if (equipmentEpoch != null) equipmentEpoch.invalidate();
     }
 
     public void setOffhandItem(ItemStack stack) {
         if (!worldObj.isRemote) stack = ProtectedItemCodec.admit(stack, 64);
         offhand = stack;
+        if (equipmentEpoch != null) equipmentEpoch.invalidate();
         dataWatcher.updateObject(DATA_OFFHAND, stack == null ? null : stack.copy());
         if (!worldObj.isRemote && shield != null) shield.equipmentChanged();
     }
@@ -926,7 +998,10 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         tag.setString(SOUND_PACK_ID_TAG, getSoundPackId());
         tag.setBoolean("Silent", isSilent());
         configManager.addAdditionalSaveData(tag);
-        tag.setString("MaidTask", getTask().getId());
+        combatTaskState.save(tag, dataWatcher.getWatchableObjectString(DATA_TASK), isUnifiedCombat());
+        if (isUnifiedCombat() || hadCombatCadenceData || combatCadence.hasPersistentState()) combatCadence.save(tag);
+        if (isUnifiedCombat() || hadCombatReceiptData || combatHitReceipt.hasPersistentState())
+            combatHitReceipt.save(tag);
         tag.setString("MaidScheduleMode", getSchedule().name());
         tag.setInteger(EXPERIENCE_TAG, getExperience());
         tag.setInteger("MaidHunger", getHunger());
@@ -958,6 +1033,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {
+        rejectCombatPersistentRead();
         boolean managed = hasServerBrain(), entered = false, successful = false;
         try {
             if (managed) {
@@ -973,6 +1049,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void readEntityFromNBT(NBTTagCompound tag) {
+        rejectCombatPersistentRead();
         if (damageHistory != null) damageHistory.clear();
         if (modernCombatMemory != null) modernCombatMemory.clear();
         boolean managed = hasServerBrain(), entered = false, successful = false;
@@ -1011,7 +1088,13 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             if (tag.hasKey(SOUND_PACK_ID_TAG, 8)) setSoundPackId(tag.getString(SOUND_PACK_ID_TAG));
             setSilent(tag.getBoolean("Silent"));
             configManager.readAdditionalSaveData(tag);
-            setTask(MaidTask.fromId(tag.getString("MaidTask")));
+            dataWatcher.updateObject(DATA_TASK, combatTaskState.load(tag));
+            hadCombatCadenceData = tag.hasKey(com.tianluoqaq.tlmnh.common.combat.CombatCadence.TAG);
+            hadCombatReceiptData = tag.hasKey(com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt.TAG);
+            combatCadence.load(tag);
+            combatHitReceipt.load(tag);
+            equipmentEpoch.invalidate();
+            combatWeaponView.invalidate();
             try {
                 setSchedule(MaidSchedule.valueOf(tag.getString("MaidScheduleMode")));
             } catch (IllegalArgumentException exception) {
@@ -1041,6 +1124,11 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     private boolean hasServerBrain() {
         return brain != null && worldObj != null && !worldObj.isRemote;
+    }
+
+    private void rejectCombatPersistentRead() {
+        if (combatHitReceipt != null && combatHitReceipt.blocksTransfer())
+            throw new IllegalStateException("Cannot reload maid during an unsettled combat submission");
     }
 
     /** 目标世界确认登记后才移除源女仆；取消或异常不能丢失原实体持有的完整物品 */

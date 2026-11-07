@@ -27,7 +27,12 @@ public final class MaidDimensionTravel {
     }
 
     public boolean travel(int requestedDimension) {
-        if (maid.worldObj == null || maid.worldObj.isRemote || !maid.isEntityAlive() || transferring) return false;
+        if (maid.worldObj == null || maid.worldObj.isRemote
+            || !maid.isEntityAlive()
+            || transferring
+            || maid.getCombatHitReceipt()
+                .blocksTransfer())
+            return false;
         String key = "dimension_travel/" + maid.getUniqueID() + "/" + requestedDimension;
         if (!IntegrationGuard.available(Side.SERVER, key)) return false;
         EntityMaid candidate = null;
@@ -162,7 +167,9 @@ public final class MaidDimensionTravel {
 
     private boolean sourceCurrent(WorldServer source, WorldProvider provider, int dimension, UUID identity,
         NBTTagCompound original) {
-        return present(maid, source) && maid.dimension == dimension
+        return !maid.getCombatHitReceipt()
+            .blocksTransfer() && present(maid, source)
+            && maid.dimension == dimension
             && identity.equals(maid.getUniqueID())
             && destinationCurrent(source, provider, dimension)
             && original.equals(snapshot(maid));

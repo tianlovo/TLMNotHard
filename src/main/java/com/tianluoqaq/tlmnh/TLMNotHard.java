@@ -67,6 +67,7 @@ public final class TLMNotHard {
         MaidResurrectionContent.register();
         AnimationLab.register();
         MaidBrainLifecycle.register();
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents.register();
         MaidShieldEvents.register();
         com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.register();
         net.minecraftforge.common.MinecraftForge.EVENT_BUS
@@ -91,6 +92,8 @@ public final class TLMNotHard {
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
+        // 依赖摘要在启动阶段预热，避免第一次战斗在实体tick读取整个GT JAR
+        com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint.mod("gregtech");
         event.registerServerCommand(new com.tianluoqaq.tlmnh.common.protection.ProtectionCommand());
         if (Boolean.getBoolean("tlmnh.devCommands")) {
             AnimationLab.validateAutoEntry();

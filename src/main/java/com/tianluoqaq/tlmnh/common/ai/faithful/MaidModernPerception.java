@@ -32,6 +32,7 @@ public final class MaidModernPerception {
     // Sensor使用独立的线程安全随机源，不消耗世界/女仆Behavior的随机流
     private static final Random RANDOM = new Random();
     private final EntityMaid maid;
+    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation combatObservation;
     private final BooleanSupplier current;
     private final Predicate<Kind> admission;
     private final MaidNearestLivingEntitySensor living = new MaidNearestLivingEntitySensor();
@@ -60,6 +61,21 @@ public final class MaidModernPerception {
         this.admission = admission;
     }
 
+    public void bindCombatObservation(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation observation) {
+        if (combatObservation != null && combatObservation != observation)
+            throw new IllegalStateException("Combat observation already bound");
+        combatObservation = Objects.requireNonNull(observation, "observation");
+    }
+
+    private boolean unifiedCombatObservation() {
+        return maid.isUnifiedCombat() && maid.getTask() == MaidTask.ATTACK && combatObservation != null;
+    }
+
+    /** 返回已缓存的诊断值，不补查询或续期 */
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.Readiness combatReadiness() {
+        return combatObservation == null ? null : combatObservation.readiness();
+    }
+
     public void tick() {
         if (!current.getAsBoolean()) throw new IllegalStateException("Expired perception frame");
         active = true;
@@ -75,7 +91,14 @@ public final class MaidModernPerception {
         attackTarget = maid.getModernCombatMemory()
             .target();
         if (livingDelay > 0) livingDelay--;
-        if (livingDelay <= 0 && (admission == null || admission.test(Kind.LIVING))) {
+        if (unifiedCombatObservation()) {
+            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
+                .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
+            combatObservation.observe(maid, quota);
+            setNearby(combatObservation.boundedLiving());
+            livingDelay = SCAN_RATE;
+            scans++;
+        } else if (livingDelay <= 0 && (admission == null || admission.test(Kind.LIVING))) {
             livingDelay = SCAN_RATE;
             living.doTick(maid, this);
             scans++;
@@ -101,10 +124,17 @@ public final class MaidModernPerception {
     public AxisAlignedBB searchDimension() {
         guard();
         var area = maid.getHomeArea();
-        boolean bowTask = area.activity() == Activity.WORK && maid.getTask() == MaidTask.RANGED_ATTACK;
-        double radius = bowTask ? MaidPerceptionConfig.bowRange : area.restrictionRadius();
+        boolean bowTask = area.activity() == Activity.WORK
+            && (unifiedCombatObservation() ? combatObservation.supportedBow()
+                : maid.getTask() == MaidTask.RANGED_ATTACK);
+        double radius = bowTask
+            ? unifiedCombatObservation() ? Math.max(MaidPerceptionConfig.bowRange, area.restrictionRadius())
+                : MaidPerceptionConfig.bowRange
+            : area.restrictionRadius();
         var held = maid.getHeldItem();
-        double vertical = bowTask && held != null && held.getItem() instanceof ItemBow ? radius : 4;
+        double vertical = bowTask && (unifiedCombatObservation() || held != null && held.getItem() instanceof ItemBow)
+            ? radius
+            : 4;
         if (area.enabled()) {
             var p = area.restrictionCenter();
             return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
@@ -168,9 +198,15 @@ public final class MaidModernPerception {
 
     public float taskSearchRadius() {
         guard();
-        return maid.getTask() == MaidTask.RANGED_ATTACK ? MaidPerceptionConfig.bowRange
-            : maid.getHomeArea()
-                .restrictionRadius();
+        return (unifiedCombatObservation() ? combatObservation.supportedBow()
+            : maid.getTask() == MaidTask.RANGED_ATTACK)
+                ? unifiedCombatObservation() ? Math.max(
+                    MaidPerceptionConfig.bowRange,
+                    maid.getHomeArea()
+                        .restrictionRadius())
+                    : MaidPerceptionConfig.bowRange
+                : maid.getHomeArea()
+                    .restrictionRadius();
     }
 
     public List<EntityLivingBase> nearby() {
@@ -202,6 +238,7 @@ public final class MaidModernPerception {
     }
 
     private boolean targetable(EntityLivingBase entity) {
+        if (unifiedCombatObservation()) return combatObservation.visibleLiving(entity.getUniqueID());
         if (entity == maid || !entity.isEntityAlive()
             || entity instanceof EntityPlayerMP player && player.theItemInWorldManager.getGameType()
                 .getID() == 3)

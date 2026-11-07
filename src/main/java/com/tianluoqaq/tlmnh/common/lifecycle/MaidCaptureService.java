@@ -262,6 +262,8 @@ public final class MaidCaptureService {
 
     private static boolean admitted(EntityMaid maid, EntityPlayer player, ItemStack empty) {
         return maid != null && player != null
+            && !maid.getCombatHitReceipt()
+                .blocksTransfer()
             && MaidLifecycleService.canUse(player)
             && isEmpty(empty)
             && player.getCurrentEquippedItem() == empty

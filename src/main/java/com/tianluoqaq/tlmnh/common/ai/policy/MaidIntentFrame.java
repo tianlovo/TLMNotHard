@@ -36,7 +36,8 @@ public final class MaidIntentFrame {
         BEG,
         OBSERVE,
         WANDER,
-        SNOWBALL
+        SNOWBALL,
+        COMBAT
     }
 
     private final MaidPolicyContext context;

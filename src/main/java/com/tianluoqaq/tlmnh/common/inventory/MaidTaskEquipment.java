@@ -28,6 +28,8 @@ public final class MaidTaskEquipment {
     public static boolean equip(EntityPlayer player, EntityMaid maid, MaidTask task) {
         if (maid == null || maid.worldObj == null
             || maid.worldObj.isRemote
+            || maid.getCombatHitReceipt()
+                .blocksTransfer()
             || task != MaidTask.ATTACK && task != MaidTask.RANGED_ATTACK
             || !IntegrationGuard.available(Side.SERVER, GUARD)
             || !authorized(player, maid, task)
@@ -43,11 +45,11 @@ public final class MaidTaskEquipment {
             if (!authorized(player, maid, task)) return false;
             var inventory = maid.getMaidInventory();
             var before = new Snapshot(inventory);
-            if (accepts(task, before.references[MaidInventory.MAIN_HAND]))
+            if (acceptsFor(maid, task, before.references[MaidInventory.MAIN_HAND]))
                 return before.owned(inventory) && authorized(player, maid, task);
             if (!before.owned(inventory) || !authorized(player, maid, task)) return false;
             for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
-                boolean accepted = accepts(task, before.references[slot]);
+                boolean accepted = acceptsFor(maid, task, before.references[slot]);
                 // 外部物品属性查询可以同步回调；只移动仍属本次完整快照的真实物品
                 if (!before.owned(inventory) || !authorized(player, maid, task)
                     || maid.getItemUseState()
@@ -69,7 +71,17 @@ public final class MaidTaskEquipment {
     }
 
     private static boolean authorized(EntityPlayer player, EntityMaid maid, MaidTask task) {
-        return maid.getTask() == task && MaidContainerAccess.canModify(player, player, maid);
+        return (maid.getTask() == task
+            || maid.isUnifiedCombat() && maid.getTask() == MaidTask.ATTACK && task == MaidTask.RANGED_ATTACK)
+            && !maid.getCombatHitReceipt()
+                .blocksTransfer()
+            && MaidContainerAccess.canModify(player, player, maid);
+    }
+
+    private static boolean acceptsFor(EntityMaid maid, MaidTask task, ItemStack stack) {
+        if (!maid.isUnifiedCombat()) return accepts(task, stack);
+        var profile = com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog.inspect(stack);
+        return task == MaidTask.RANGED_ATTACK ? profile.bow() : profile.melee();
     }
 
     static boolean accepts(MaidTask task, ItemStack stack) {

@@ -29,6 +29,7 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
     private final Map<ResourceLocation, MonsterType> baseline;
     private final Map<ResourceLocation, MonsterType> edited = new HashMap<>();
     private MaidTask openedTask;
+    private final long openedTaskRevision;
     private long closedUntil = Long.MIN_VALUE;
     private int snapshotTicks;
     private boolean submitted, ready, editable, dirty;
@@ -39,6 +40,8 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
         this.attackPage = attackPage;
         viewer = inventory.player;
         openedTask = maid.getTask();
+        openedTaskRevision = maid.getCombatTaskState()
+            .revision();
         baseline = new HashMap<>(
             maid.getAttackListData()
                 .attackGroups());
@@ -72,6 +75,8 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
         return attackPage && !submitted
             && canModifyWith(viewer)
             && maid.getTask() == openedTask
+            && maid.getCombatTaskState()
+                .revision() == openedTaskRevision
             && maid.getAttackListData()
                 .attackGroups()
                 .equals(baseline)
@@ -141,6 +146,8 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
             || !payload.matchesIdentity(this)
             || payload.task() != openedTask
             || maid.getTask() != openedTask
+            || maid.getCombatTaskState()
+                .revision() != openedTaskRevision
             || !canModifyWith(player)
             || player.inventory.getItemStack() != null
             || player.openContainer != this && expired()

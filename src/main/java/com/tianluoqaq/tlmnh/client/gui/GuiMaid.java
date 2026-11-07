@@ -70,6 +70,7 @@ public final class GuiMaid extends GuiContainer {
         for (var button : buttonList) {
             button.visible = button.id == HOME_PANEL || button.id == ContainerMaid.ACTION_MODELS
                 || (button.id >= ContainerMaid.ACTION_HOME ? homePage : !homePage);
+            if (maid.isUnifiedCombat() && button.id == ContainerMaid.ACTION_RANGED) button.visible = false;
             boolean selected = false;
             switch (button.id) {
                 case ContainerMaid.ACTION_IDLE, ContainerMaid.ACTION_ATTACK, ContainerMaid.ACTION_RANGED -> {

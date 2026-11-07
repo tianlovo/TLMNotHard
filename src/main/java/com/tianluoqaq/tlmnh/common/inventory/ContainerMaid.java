@@ -108,7 +108,8 @@ public class ContainerMaid extends Container {
 
     /** 保留原版子类的睡眠等会话限制，再核真正写操作权限 */
     public final boolean canModifyWith(EntityPlayer player) {
-        return canInteractWith(player) && MaidContainerAccess.canModify(viewer, player, maid);
+        return canInteractWith(player) && !maid.getCombatHitReceipt()
+            .blocksTransfer() && MaidContainerAccess.canModify(viewer, player, maid);
     }
 
     @Override
@@ -123,6 +124,11 @@ public class ContainerMaid extends Container {
             || action > ACTION_TASK_CONFIG
             || lastActionTick == maid.ticksExisted) return false;
         if (!isReadOnlyNavigation(action) && !canModifyWith(player)) return false;
+        if (action <= ACTION_RANGED && !maid.getCombatTaskState()
+            .canSelect()) {
+            player.addChatMessage(new ChatComponentTranslation("message.tlmnh.combat.future_task"));
+            return false;
+        }
         if (action == ACTION_SIT && maid.ridingEntity != null) return false;
         if (action == ACTION_RIDEABLE && player.inventory.getItemStack() != null) return false;
         if ((action == ACTION_MODELS || action == ACTION_SOUNDS
@@ -137,11 +143,11 @@ public class ContainerMaid extends Container {
             case ACTION_IDLE -> maid.setTask(MaidTask.IDLE);
             case ACTION_ATTACK -> {
                 maid.setTask(MaidTask.ATTACK);
-                MaidTaskEquipment.equip(player, maid, MaidTask.ATTACK);
+                if (!maid.isUnifiedCombat()) MaidTaskEquipment.equip(player, maid, MaidTask.ATTACK);
             }
             case ACTION_RANGED -> {
                 maid.setTask(MaidTask.RANGED_ATTACK);
-                MaidTaskEquipment.equip(player, maid, MaidTask.RANGED_ATTACK);
+                if (!maid.isUnifiedCombat()) MaidTaskEquipment.equip(player, maid, MaidTask.RANGED_ATTACK);
             }
             case ACTION_DAY -> maid.setSchedule(MaidSchedule.DAY);
             case ACTION_NIGHT -> maid.setSchedule(MaidSchedule.NIGHT);

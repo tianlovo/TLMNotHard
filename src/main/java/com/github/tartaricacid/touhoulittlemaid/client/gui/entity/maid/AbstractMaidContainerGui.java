@@ -118,6 +118,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             button.visible = button.id <= ContainerMaid.ACTION_RANGED || button.id == TASK_CLOSE
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
+            if (maid.isUnifiedCombat() && button.id == ContainerMaid.ACTION_RANGED) button.visible = false;
             if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
                 case DOWNLOAD, BOOK, BAUBLE, 113, 114 -> false;
@@ -298,7 +299,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             guiLeft + 28,
             guiTop + 165,
             true);
-        if (taskListOpen) for (int task = 0; task < 3; task++)
+        if (taskListOpen) for (int task = 0; task < (maid.isUnifiedCombat() ? 2 : 3); task++)
             drawTask(task, guiLeft - 87, guiTop + 25 + 19 * task, guiLeft - 66, guiTop + 29 + 19 * task, false);
         drawEffectInfo();
         renderAddition(partialTick, mouseX, mouseY);
@@ -434,7 +435,9 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         itemRender
             .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), new ItemStack(TASK_ICONS[task]), x, y);
         RenderHelper.disableStandardItemLighting();
-        String title = text("task.touhou_little_maid." + TASK_KEYS[task]);
+        String title = text(
+            maid.isUnifiedCombat() && task == ContainerMaid.ACTION_ATTACK ? "gui.tlmnh.task.touhou_little_maid:attack"
+                : "task.touhou_little_maid." + TASK_KEYS[task]);
         if (wrap) fontRendererObj.drawSplitString(title, textX, textY, 42, 0x333333);
         else fontRendererObj.drawString(title, textX, textY, 0x333333);
     }

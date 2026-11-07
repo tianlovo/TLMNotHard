@@ -65,6 +65,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private Object shieldOwner;
     private final com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack ranged = new com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack();
     private final com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow;
+    private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation unifiedCombatObservation = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation();
+    private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner unifiedCombat;
+    private long unifiedCombatEpoch = 1;
     private MaidItemUseState.Lease rangedUseLease;
     private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
     private com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing;
@@ -111,6 +114,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         life = new MaidModernLife(maid, this::isCurrent);
         cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
         rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid, flightProfile);
+        unifiedCombat = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner(maid, this);
     }
 
     public void beginEntityFrame(MaidPolicyRuntime runtime, Token token) {
@@ -138,11 +142,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void invalidateBehaviorViews() {
         guard();
         behaviorIdentity = new Object();
+        unifiedCombatEpoch++;
     }
 
     public void bindPerception(MaidModernPerception memory) {
         if (perception != null) throw new IllegalStateException("Perception already bound");
         perception = Objects.requireNonNull(memory, "memory");
+        memory.bindCombatObservation(unifiedCombatObservation);
     }
 
     public void bindSensing(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession session) {
@@ -638,6 +644,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     /** 生命周期先使token失效，清理仍只撤销自身路线/目标，不覆盖后来接管者 */
     public void cancelOwnedResources() {
+        cancelOwnedResources(true);
+    }
+
+    public void cancelOwnedResources(boolean clearCombatObservation) {
+        unifiedCombat.cancel();
+        if (clearCombatObservation) unifiedCombatObservation.clear();
+        unifiedCombatEpoch++;
         boolean ownsTarget = navigation.isBrainTargetOwner(this);
         try {
             stopOwnedShield();
@@ -1647,7 +1660,81 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean hasAssaultWeapon() {
         guard();
-        return maid.getTask() == MaidTask.ATTACK && attack.hasAssaultWeapon(maid);
+        return maid.getCombatModeTask() == MaidTask.ATTACK && (maid.isUnifiedCombat() ? maid.getCombatWeaponProfile()
+            .melee() : attack.hasAssaultWeapon(maid));
+    }
+
+    public long unifiedCombatEpoch() {
+        guard();
+        return unifiedCombatEpoch;
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation combatObservation() {
+        guard();
+        return unifiedCombatObservation;
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot readonlyCombatSnapshot(
+        EntityLivingBase selected, com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota quota) {
+        guard();
+        if (!maid.isUnifiedCombat()) return null;
+        var preferences = maid.getCombatTaskState();
+        var observed = selected == null ? null : unifiedCombatObservation.lastSeen(selected.getUniqueID());
+        boolean mayShield = canUseShield() && observed != null
+            && unifiedCombatObservation.visible(selected.getUniqueID())
+            && maid.getDistanceSq(observed.x, observed.y, observed.z) < 64;
+        return unifiedCombatObservation.capture(
+            maid,
+            selected,
+            quota,
+            unifiedCombatEpoch,
+            maid.getEquipmentEpoch()
+                .generation(),
+            maid.getEquipmentEpoch()
+                .acknowledged(maid.getHeldItem()),
+            maid.getCombatCadence()
+                .ready(),
+            mayShield,
+            ownsRangedUse(),
+            ownsRangedUse() ? rangedUsedTicks() : 0,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRideController.stationary(maid),
+            preferences.preferredTask() == MaidTask.RANGED_ATTACK,
+            preferences.preferencePending());
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Result tryApplyCombatPlan(
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan plan) {
+        guard();
+        return unifiedCombat.apply(plan);
+    }
+
+    public void cancelUnifiedCombat(String reason) {
+        unifiedCombat.cancel();
+    }
+
+    /** 只返回执行器最近已有的分类结果，不再次查询世界 */
+    public String unifiedJumpDiagnostic() {
+        return unifiedCombat.lastJumpDiagnostic();
+    }
+
+    /** 有限速的真实身体朝向与LOOK输入，防御不能瞬间旋转越过角度规则 */
+    public void lookAtCombatPoint(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec point) {
+        guard();
+        look = new Vec3(point.x, point.y + maid.getEyeHeight(), point.z);
+        double yaw = Math.atan2(point.z - maid.posZ, point.x - maid.posX) * 180 / Math.PI - 90;
+        maid.rotationYaw += MathHelper
+            .clamp_float(MathHelper.wrapAngleTo180_float((float) yaw - maid.rotationYaw), -10, 10);
+    }
+
+    public void brakeForCombatJump() {
+        guard();
+        walk = null;
+        if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
+        ownedPath = null;
+        maid.getMoveHelper()
+            .setMoveTo(maid.posX, maid.posY, maid.posZ, 0);
+        maid.moveForward = maid.moveStrafing = 0;
+        maid.setAIMoveSpeed(0);
     }
 
     public boolean targetTooFar(MaidCombatActor.Target value) {
@@ -1689,6 +1776,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean attackCoolingDown() {
         guard();
+        if (maid.isUnifiedCombat()) return !maid.getCombatCadence()
+            .ready();
         return maid.getModernCombatMemory()
             .coolingDown();
     }
@@ -1700,6 +1789,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void setAttackCooldown(long ticks) {
         guard();
+        if (maid.isUnifiedCombat()) return;
         maid.getModernCombatMemory()
             .coolDown(ticks);
     }
@@ -1722,7 +1812,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && ItemStack.areItemStacksEqual(weapon, before);
         java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && permitted.getAsBoolean()
             && view.entity.isEntityAlive()
-            && attack.hasAssaultWeapon(maid)
+            && (maid.isUnifiedCombat() || hasAssaultWeapon())
             && liveCombatTarget(view.entity)
             && (targetVisible(view) || runtime.getProfile()
                 .isEnhanced() && maid.canEntityBeSeen(view.entity))
@@ -2081,7 +2171,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             view.entity,
             charge,
             () -> view.current() && permitted.getAsBoolean()
-                && maid.getTask() == MaidTask.RANGED_ATTACK
+                && maid.getCombatModeTask() == MaidTask.RANGED_ATTACK
                 && maid.getModernCombatMemory()
                     .target() == view.entity
                 && ranged.hasBow(maid)

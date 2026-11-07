@@ -37,6 +37,9 @@ final class MaidDeathIngress {
     private MaidDeathIngress() {}
 
     static boolean preserve(EntityMaid maid, UUID owner) {
+        // 接受伤害后的原栈尚未结算，禁止提前编码源物品
+        if (maid.getCombatHitReceipt()
+            .blocksTransfer()) return true;
         try {
             var ledger = MaidLifecycleData.get(maid.worldObj);
             var token = ledger.deathToken(maid.getUniqueID());
@@ -293,7 +296,8 @@ final class MaidDeathIngress {
         }
 
         void run() {
-            if (active) return;
+            if (active || maid.getCombatHitReceipt()
+                .blocksTransfer()) return;
             active = true;
             boolean begun = false;
             try {

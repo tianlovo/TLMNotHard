@@ -360,6 +360,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
                     @Override
                     public boolean tickCombat() {
+                        MaidLegacyCombatEquipment.select(maid);
                         boolean fighting = combat.tick();
                         if (fighting) {
                             ordinaryArbiter.clear();
@@ -547,6 +548,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     /** 元数据观察不创建或恢复策略，尚未创建时返回 null */
     public MaidPolicyRuntime peekPolicyRuntime() {
         return policy;
+    }
+
+    /** 不创建策略，开发参照保留分离任务及旧物理合同 */
+    public boolean usesUnifiedCombat() {
+        var profile = requestedBrainProfile != null ? requestedBrainProfile
+            : policy != null ? policy.getProfile()
+                : configuredBrainProfile != null ? configuredBrainProfile : MaidBehaviorConfig.profile();
+        return profile == MaidBrainProfile.LEGACY_PROTOTYPE || profile.isEnhanced();
     }
 
     /** 仅已真正登记回世界的对象可以结束卸载阻断，清理失败不会自动恢复 */
@@ -996,7 +1005,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public void positionInRange() {
-            if (maid.getTask() != MaidTask.RANGED_ATTACK || !controlValid()) return;
+            if (maid.getCombatModeTask() != MaidTask.RANGED_ATTACK || !controlValid()) return;
             var area = maid.getHomeArea();
             boolean boundary = !area.enabled() && owner != null
                 && maid.getDistanceSqToEntity(owner) >= area.radius() * area.radius();
@@ -1017,7 +1026,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public boolean prepareWhileChasing() {
-            return maid.getTask() == MaidTask.RANGED_ATTACK;
+            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK;
         }
 
         private boolean applyMovement() {
@@ -1081,12 +1090,12 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 || maid.ridingEntity != null
                 || maid.getLeashed()) return MaidCombatController.Status.HARD_STOP;
             if (selectedTask != null && selectedTask != maid.getTask()) return MaidCombatController.Status.DISABLED;
-            if (maid.getTask() != MaidTask.ATTACK && maid.getTask() != MaidTask.RANGED_ATTACK)
+            if (maid.getTask() != MaidTask.ATTACK && maid.getCombatModeTask() != MaidTask.RANGED_ATTACK)
                 return MaidCombatController.Status.DISABLED;
             var area = maid.getHomeArea();
             if (area.enabled() && (!area.sameDimension() || !area.containsMaid() || area.activity() != Activity.WORK))
                 return MaidCombatController.Status.HARD_STOP;
-            if (maid.getTask() == MaidTask.RANGED_ATTACK ? !MaidBowAttack.hasBow(maid) || !bow.hasAmmunition()
+            if (maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? !MaidBowAttack.hasBow(maid) || !bow.hasAmmunition()
                 : !MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
             if (decisionTick >= nextOwnerScan) {
                 nextOwnerScan = decisionTick + MaidCombatController.SCAN_INTERVAL;
@@ -1186,7 +1195,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             boolean visible = maid.getEntitySenses()
                 .canSee(target);
             if (visible) visible = rememberVisible(target);
-            if (maid.getTask() == MaidTask.RANGED_ATTACK) bow.observe(target, visible, decisionTick);
+            if (maid.getCombatModeTask() == MaidTask.RANGED_ATTACK) bow.observe(target, visible, decisionTick);
             return visible;
         }
 
@@ -1199,7 +1208,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public double reachSq() {
-            return maid.getTask() == MaidTask.RANGED_ATTACK ? MaidBowAttack.RANGE_SQ
+            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? MaidBowAttack.RANGE_SQ
                 : MaidCombatTargeting.meleeReachSq(maid, target);
         }
 
@@ -1283,14 +1292,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         @Override
         public boolean attack() {
             if (!controlValid() || !targetValid()) return false;
-            if (maid.getTask() == MaidTask.RANGED_ATTACK) return bow.fire(target);
+            if (maid.getCombatModeTask() == MaidTask.RANGED_ATTACK) return bow.fire(target);
             maid.swingItem();
             return maid.attackEntityAsMob(target);
         }
 
         @Override
         public boolean prepareAttack() {
-            return maid.getTask() != MaidTask.RANGED_ATTACK || bow.prepare();
+            return maid.getCombatModeTask() != MaidTask.RANGED_ATTACK || bow.prepare();
         }
 
         @Override
@@ -1300,7 +1309,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
         @Override
         public int attackInterval() {
-            return maid.getTask() == MaidTask.RANGED_ATTACK ? 2 : MaidCombatController.ATTACK_INTERVAL;
+            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? 2 : MaidCombatController.ATTACK_INTERVAL;
         }
 
         @Override

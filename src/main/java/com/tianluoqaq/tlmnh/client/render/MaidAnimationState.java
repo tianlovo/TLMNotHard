@@ -74,8 +74,13 @@ public final class MaidAnimationState {
         state.maxHealth = maid.getMaxHealth();
         state.dimension = maid.dimension;
         state.dayTime = Math.floorMod(maid.worldObj.getWorldTime(), 24000L);
-        var id = maid.getTask()
-            .getId();
+        var animationTask = maid.getTask();
+        if (maid.isUnifiedCombat() && animationTask == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK
+            && maid.getHeldItem() != null
+            && maid.getHeldItem()
+                .getItem() == net.minecraft.init.Items.bow)
+            animationTask = com.tianluoqaq.tlmnh.common.entity.MaidTask.RANGED_ATTACK;
+        var id = animationTask.getId();
         state.task = id.substring(id.indexOf(':') + 1);
         return state;
     }

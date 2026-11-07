@@ -1,5 +1,14 @@
 # 上游移植记录
 
+## 统一战斗实现中的任务与执行边界
+
+来源继续绑定TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`，209尚在实现与集成，局部运行证据与未收口项见PROGRESS，不代表整体通过
+`entity/passive/EntityMaid.java` 增加生产任务投影、未知原始任务保留及实体级装备确认、攻击节拍和命中凭证接线，原包名与原许可保留
+`inventory/container/task/TaskConfigContainer.java` 增加任务变更代次检查，防止规范化后的同名任务接受旧窗口修改
+`client/gui/entity/maid/AbstractMaidContainerGui.java` 仅在生产统一模式显示空闲与战斗，保留旧任务序号及开发参照入口，使用自有语言键显示新任务名
+自有 `MaidAnimationState` 将统一战斗中的实际原版弓投影为旧远程动画输入，避免任务合并丢失模型任务动作
+新增独立实现放在 `com.tianluoqaq.tlmnh`，GT核心刀具适配按提供方与职责放在 `compat/gregtech/common/combat`
+
 本页按移植阶段记录来源与改动，早期段落中的待办保留当时范围；当前实现和实际验收状态统一见 [Indev 进度](PROGRESS.md)
 
 固定上游为 TartaricAcid/TouhouLittleMaid 的 1.20 分支，提交 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6，

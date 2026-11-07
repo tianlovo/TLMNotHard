@@ -83,6 +83,8 @@ public final class MaidInventory implements IInventory {
     /** 已接纳物品的内部移位，不重新序列化/接纳而触发外部物品回调 */
     boolean exchangeBackpackWithMainHand(int slot, ItemStack expectedBackpack, ItemStack expectedHand) {
         if (maid.worldObj == null || maid.worldObj.isRemote
+            || maid.getCombatHitReceipt()
+                .blocksTransfer()
             || slot < 0
             || slot >= BACKPACK_SIZE
             || expectedBackpack == null
@@ -104,6 +106,8 @@ public final class MaidInventory implements IInventory {
             return false;
         }
         backpack[slot] = expectedHand;
+        maid.getEquipmentEpoch()
+            .invalidate();
         markDirty();
         return true;
     }
