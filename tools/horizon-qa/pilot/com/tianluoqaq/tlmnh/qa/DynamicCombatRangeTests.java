@@ -67,25 +67,33 @@ public final class DynamicCombatRangeTests {
             fixture.owner.setPosition(ownerX, fixture.y + 1, laneZ);
             fixture.maid.setPosition(fixture.x + 8.5, fixture.y + 1, laneZ);
             // Open only our fixture wall, then add an owned extension in the fresh void world.
-            for (int y = 1; y < 10; y++) for (int z = 1; z < 8; z++)
-                helper.setBlock(20, y, z, Blocks.air);
+            for (int y = 1; y < 10; y++) for (int z = 1; z < 8; z++) helper.setBlock(20, y, z, Blocks.air);
             for (int x = 21; x <= 34; x++) for (int z = 1; z < 8; z++) {
                 int absoluteX = fixture.x + x, absoluteZ = fixture.z + z;
-                helper.assertTrue(helper.getWorld().isAirBlock(absoluteX, fixture.y, absoluteZ),
+                helper.assertTrue(
+                    helper.getWorld()
+                        .isAirBlock(absoluteX, fixture.y, absoluteZ),
                     "Fresh extension floor contains an unowned block");
                 extraFloor.add(new int[] { absoluteX, fixture.y, absoluteZ });
-                helper.getWorld().setBlock(absoluteX, fixture.y, absoluteZ, Blocks.stone, 0, 2);
+                helper.getWorld()
+                    .setBlock(absoluteX, fixture.y, absoluteZ, Blocks.stone, 0, 2);
             }
             target = new EntityPig(helper.getWorld());
             target.func_110163_bv();
-            target.getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(1000);
-            target.getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(0);
+            target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+                .setBaseValue(1000);
+            target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                .setBaseValue(0);
             target.setHealth(1000);
             positionTarget(19.68);
-            helper.assertTrue(helper.getWorld().spawnEntityInWorld(target)
-                && helper.getWorld().getEntityByID(target.getEntityId()) == target,
+            helper.assertTrue(
+                helper.getWorld()
+                    .spawnEntityInWorld(target)
+                    && helper.getWorld()
+                        .getEntityByID(target.getEntityId()) == target,
                 "Native persistent range target did not register");
-            fixture.maid.getAttackListData().attackGroups()
+            fixture.maid.getAttackListData()
+                .attackGroups()
                 .put(MaidCombatEntities.id(target), MonsterType.HOSTILE);
             log("SETUP");
         }
@@ -94,20 +102,30 @@ public final class DynamicCombatRangeTests {
             age++;
             var brain = fixture.maid.getBrainCoordinator();
             var core = brain.peekEnhancedCore();
-            helper.assertTrue(core != null && !brain.isSuspended()
-                && brain.peekPolicyRuntime().isReady()
-                && brain.peekPolicyRuntime().getProfile() == MaidBrainProfile.ENHANCED
-                && brain.peekFaithfulBrain() == null && fixture.maid.getTask() == MaidTask.ATTACK
-                && fixture.maid.getOwner() == fixture.owner && fixture.maid.isEntityAlive()
-                && fixture.owner.isEntityAlive() && target.isEntityAlive()
-                && helper.getWorld().getEntityByID(target.getEntityId()) == target,
+            helper.assertTrue(
+                core != null && !brain.isSuspended()
+                    && brain.peekPolicyRuntime()
+                        .isReady()
+                    && brain.peekPolicyRuntime()
+                        .getProfile() == MaidBrainProfile.ENHANCED
+                    && brain.peekFaithfulBrain() == null
+                    && fixture.maid.getTask() == MaidTask.ATTACK
+                    && fixture.maid.getOwner() == fixture.owner
+                    && fixture.maid.isEntityAlive()
+                    && fixture.owner.isEntityAlive()
+                    && target.isEntityAlive()
+                    && helper.getWorld()
+                        .getEntityByID(target.getEntityId()) == target,
                 "Dynamic range test left its native complete-root identities");
-            boolean selected = core.combat().target() == target
-                && fixture.maid.getModernCombatMemory().target() == target;
-            CombatSnapshot snapshot = core.combat().lastSnapshot();
+            boolean selected = core.combat()
+                .target() == target
+                && fixture.maid.getModernCombatMemory()
+                    .target() == target;
+            CombatSnapshot snapshot = core.combat()
+                .lastSnapshot();
             CombatSnapshot.Target observed = snapshot == null ? null : snapshot.target(target.getUniqueID());
-            boolean current = snapshot != null && snapshot.tick == helper.getWorld().getTotalWorldTime()
-                && observed != null && observed.visible && observed.observedAt == snapshot.tick;
+            boolean current = snapshot != null && snapshot.tick == helper.getWorld()
+                .getTotalWorldTime() && observed != null && observed.visible && observed.observedAt == snapshot.tick;
             int phaseAge = age - phaseStarted;
             switch (phase) {
                 case ACQUIRE -> {
@@ -126,15 +144,20 @@ public final class DynamicCombatRangeTests {
                 }
                 case RELEASE -> {
                     helper.assertTrue(phaseAge <= 16, "Target beyond retention range was not released");
-                    if (!selected && core.combat().target() != target
-                        && fixture.maid.getModernCombatMemory().target() != target) {
+                    if (!selected && core.combat()
+                        .target() != target
+                        && fixture.maid.getModernCombatMemory()
+                            .target() != target) {
                         advance(Phase.REJECT_REACQUIRE);
                         positionTarget(22.5);
                     }
                 }
                 case REJECT_REACQUIRE -> {
-                    helper.assertTrue(core.combat().target() != target
-                        && fixture.maid.getModernCombatMemory().target() != target,
+                    helper.assertTrue(
+                        core.combat()
+                            .target() != target
+                            && fixture.maid.getModernCombatMemory()
+                                .target() != target,
                         "Cancelled target reused retention privilege for reacquisition");
                     if (phaseAge >= 20) {
                         advance(Phase.REACQUIRE);
@@ -145,7 +168,7 @@ public final class DynamicCombatRangeTests {
                     helper.assertTrue(phaseAge <= 80, "Target did not reacquire after returning to acquisition range");
                     if (selected && current && observed.position.x == ownerX + 19.68) advance(Phase.DONE);
                 }
-                case DONE -> { }
+                case DONE -> {}
             }
             if (age % 20 == 0) log("FRAME");
             if (fixture.owner.isEntityAlive()) fixture.owner.onUpdateEntity();
@@ -163,22 +186,40 @@ public final class DynamicCombatRangeTests {
         }
 
         private void log(String event) {
-            System.out.println("TLMNH_DYNAMIC_RANGE event=" + event + " phase=" + phase + " actorTick=" + age
-                + " worldTick=" + helper.getWorld().getTotalWorldTime() + " ownerX=" + ownerX
-                + " maidX=" + fixture.maid.posX + " targetX=" + target.posX
-                + " targetUuid=" + target.getUniqueID());
+            System.out.println(
+                "TLMNH_DYNAMIC_RANGE event=" + event
+                    + " phase="
+                    + phase
+                    + " actorTick="
+                    + age
+                    + " worldTick="
+                    + helper.getWorld()
+                        .getTotalWorldTime()
+                    + " ownerX="
+                    + ownerX
+                    + " maidX="
+                    + fixture.maid.posX
+                    + " targetX="
+                    + target.posX
+                    + " targetUuid="
+                    + target.getUniqueID());
         }
 
         private void close() {
             if (target != null) {
                 target.setDead();
-                if (helper.getWorld().getEntityByID(target.getEntityId()) == target)
-                    helper.getWorld().removePlayerEntityDangerously(target);
+                if (helper.getWorld()
+                    .getEntityByID(target.getEntityId()) == target)
+                    helper.getWorld()
+                        .removePlayerEntityDangerously(target);
             }
             for (int[] point : extraFloor) {
-                helper.assertTrue(helper.getWorld().getBlock(point[0], point[1], point[2]) == Blocks.stone,
+                helper.assertTrue(
+                    helper.getWorld()
+                        .getBlock(point[0], point[1], point[2]) == Blocks.stone,
                     "Owned extension block identity changed during the range test");
-                helper.getWorld().setBlockToAir(point[0], point[1], point[2]);
+                helper.getWorld()
+                    .setBlockToAir(point[0], point[1], point[2]);
             }
             System.out.println("TLMNH_DYNAMIC_RANGE cleanup=true phase=" + phase + " ticks=" + age);
         }
