@@ -1,26 +1,25 @@
 # 原版移动 sink 组件采集器
 
-在固定 TLM 1.20.1 参考环境中直接执行原 `MoveToTargetSink` 与 `Behavior` 方法
-该工具不进入 GTNH JAR，不运行自然 Brain，不证明原生导航或整个 fallback 算法已经移植
+本工具在固定的上游 TLM 1.20.1 参考环境中直接调用原生 `MoveToTargetSink` 与 `Behavior` 方法。
+工具代码不打包进 GTNH 模组 JAR，不运行自然 Brain 循环，也不用于证明原生寻路或整套 fallback 搜索算法已完成移植。
 
 ## 背景
 
-环境固定为上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`、Minecraft 1.20.1、Forge 47.2.0、Java 17
-真实 Brain 和 Path 对象配合受控导航、时钟、世界整数 RNG、稳定性、malus 和评分依赖，调用原 `tryStart`、`tickOrStop`、`doStop`
-23 个输入场景、47 个方法步骤，每例三份新实体和新任务，记录真实状态而不手算期望
-场景覆盖 duration 的 150/250 与等号、仅合法开始检查递减的冷却、三维 Manhattan2/3、严格>4 重规划、完整/部分/空路径、fallback、普通停路与卡住的区别、路径替换和回调中已到达
+运行环境固定为上游提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`、Minecraft 1.20.1、Forge 47.2.0 与 Java 17。
+工具使用真实的 `Brain` 与 `Path` 对象，配合受控导航、时钟、世界整数 RNG、落点稳定性、malus 代价及评分依赖，依次调用原版 `tryStart`、`tickOrStop` 和 `doStop`。
+全量合同包含 23 个输入场景、47 个方法推进步，每个场景新建三组独立实体与任务实例，直接记录真实运行状态而不手算期望值。
+覆盖范围包括持续时间 `150/250` 及其等号边界、仅在合法启动检查时递减的冷却计数、三维曼哈顿距离 `2/3`、严格 `>4` 重规划条件、完整/部分/空路径、fallback 分支、普通停路与卡住判定的区分、路径替换以及启动回调内即已到达等边界。
 
 ## 安装
 
-复用已有独立上游 checkout、原动画参考 init 和已审批工具链锁，旧 follow baseline 工具保持原样
-新环境变量 `TLMNH_MOVE_PROBE` 指向本目录，保留 `TLMNH_REFERENCE_PROBE`、外部 `TLMNH_REFERENCE_HOME`、原 Git/锁/JDK 配置
-只向参考构建传入本目录 `reference.init.gradle`，它会应用原 base init，不要重复应用 base
-任务为 `prepareMoveReferenceIdentity`、`moveDefinitionAgentJar`，runClient 自动依赖独立清单
-清单位于外部 HOME 的 `identity/move-build.json`，公开工具用环境变量提供本机位置
-清单和原始报告保留在外部运行目录，公开分发前单独核对内容
+复用既有的独立上游源码 checkout、动画参考初始化脚本与已审批工具链锁，原有 `follow` 基线工具保持不变。
+配置新增环境变量 `TLMNH_MOVE_PROBE` 指向本目录，同时保留 `TLMNH_REFERENCE_PROBE`、外部 `TLMNH_REFERENCE_HOME` 及原有 Git/工具链锁/JDK 配置。
+参考构建仅需传入本目录的 `reference.init.gradle`；该脚本内部会自动引入基础参考初始化脚本，切勿重复叠加基础脚本。
+构建任务为 `prepareMoveReferenceIdentity` 与 `moveDefinitionAgentJar`，`runClient` 会自动依赖独立的身份清单。
+身份清单写入外部 `HOME` 下的 `identity/move-build.json`；公开脚本统一通过环境变量读取本机目录，清单与原始采样报告均保留在仓库外的运行目录中，公开分发前需单独核查内容。
 
-原版 vanilla 类资源从实际解析的 compileClasspath JAR 读取并记录其 JAR/资源摘要，不从缓存候选推断历史身份
-运行时用复用的只读 premain agent 记录选定类首次定义，资源摘要与定义摘要分列；这不是全部 classpath 身份保证
+原版 Minecraft 类资源从实际解析的 `compileClasspath` JAR 中读取并记录 JAR 与资源摘要，不根据本地缓存目录猜测历史构建身份。
+运行时通过复用的只读 `premain` agent 记录选定类的首次定义字节，资源摘要与首次定义摘要分列保存，不代表整个 classpath 的等价性保证。
 
 ## 使用
 
@@ -32,23 +31,21 @@ python tools/move-reference/compare.py <capture.json> --build-identity <move-bui
 python tools/move-reference/compare.py <capture.json> --build-identity <move-build.json> --replay <port-replay.json>
 ```
 
-已有专用虚空世界使用 `lab_open`，不得覆盖
-请求/响应/原始记录保留在外部 HOME 的 `client/tlmnh-move-reference`，只允许受保护的集成服旁观环境
-采集运行在真实 server.execute 线程，组件实体不登记到世界且不自然 tick；方法时钟与实际临时设置的 world gameTime 分开记录
-finally 恢复原 gameTime 与 RNG 引用，清理失败不得准入
+若专用虚空实验世界已存在，请改用 `lab_open` 打开，工具拒绝覆盖已有存档。
+请求、响应与原始采样均保存在外部 `HOME` 的 `client/tlmnh-move-reference` 目录下，且仅允许在受保护的集成服务端旁观环境中采集。
+采样逻辑在真实的 `server.execute` 线程中运行，组件实体不注册进世界，也不触发自然 tick；方法逻辑时钟与临时设置的世界 `gameTime` 分开记录，`finally` 块负责恢复原 `gameTime` 与 RNG 引用，任何清理失败均不予准入。
 
-每份 row 只保存一次实际 `initialState`，每 step 的 `input.externalPatch` 只代表显式外部输入
-原版内部 sink 和 Brain 状态在各步骤之间真实连续，不在下一步从参考答案重建
-移植重放同样必须持续维护自己的状态，不能用 `before` 或 `after` 回灌算法
+每组样本仅记录一次真实的 `initialState`，后续每一步的 `input.externalPatch` 只表示显式施加的外部输入。
+原版 `MoveToTargetSink` 与 `Brain` 的内部状态在各步之间自然延续，不会在下一步开始前用参考答案重置；移植端重放同样必须连续维护自身状态，不得读取 `before` 或 `after` 快照反向回灌算法。
 
-`callTrace` 只比较实际导航 create/move/stop 和世界整数 RNG 请求，`moveObservations`、`callbackObservations` 保留受控依赖的实际副作用
-fallback 由原 `DefaultRandomPos` 真正执行，女仆随机流、稳定性、malus 与得分单独记录
-原 coordinate createPath 入口为 final，工具直接观察的是其内部取整后的 BlockPos 查询；`directVec3Observed=false`，不能把归一化重放称作完整浮点采样实现证明
-传给纯移植核心的 fallback 适配只能消费实际观察到的结果，不能用移植算法生成自己的 expected
+`callTrace` 仅比对实际的导航 `create/move/stop` 调用与世界整数 RNG 消费，`moveObservations` 和 `callbackObservations` 则完整保留受控依赖产生的真实副作用。
+fallback 分支由原版 `DefaultRandomPos` 实际执行，女仆随机流、稳定性、malus 代价与候选评分均独立记录。
+由于原版坐标级 `createPath` 入口为 `final` 方法，本工具直接观测到的是其内部取整后的 `BlockPos` 查询，因此标记 `directVec3Observed=false`，不能把归一化重放称为完整浮点采样实现的等价证明。
+提供给纯移植核心的 fallback 适配层只能消费实际观测记录，严禁调用移植侧算法自行伪造期望值。
 
-`compare.py` 先严格核对三份新状态的原版 A/A，再可比较实际移植输出的状态、方法返回和调用
-负例必须作用于真正执行的方法或输入，例如截止等号的调用实际多推进一 tick，比较器应从状态/效果检出，不能只依赖故障标签
-源码交付时尚未构建、运行采集或通过 A/A；这些由独立参考运行验证
+`compare.py` 先严格校验三组新建实例的原版 A/A 重复性，通过后才比对移植端输出的状态、方法返回值与调用序列。
+故障负例必须作用于真实执行路径或输入参数（例如让截止时间等号判断多推进 1 tick），比较器须从运行状态或副作用差异检出故障，不能依赖外层故障标签判分。
+工具源码首次入库时尚未附带构建产物、原始采样或 A/A 通过结论，相关证据均由独立的参考环境运行产出。
 
 ## 维护者
 
@@ -56,9 +53,9 @@ fallback 由原 `DefaultRandomPos` 真正执行，女仆随机流、稳定性、
 
 ## 参与贡献
 
-保留失败原始记录，修改工具/合同/依赖后重新取得严格身份及三份新状态 A/A
-不得更改旧 baseline、修补输出 JSON 或将组件结果升级成自然行为结论
+请完整保留失败运行的原始记录；修改工具代码、合同定义或构建依赖后，须重新生成严格身份清单并重跑三组新建实例的原版 A/A。
+严禁篡改历史基线、手工修补输出 JSON，或将组件级重放结果夸大为自然行为验收结论。
 
 ## 许可证
 
-原创工具代码沿用项目许可证，原版类和复用参考 agent 保留各自来源声明
+本工具原创代码沿用项目许可证，所调用的原版类及复用的只读参考 agent 各自保留原有来源与许可声明。
