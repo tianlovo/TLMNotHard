@@ -54,7 +54,7 @@ def metrics(row):
 
 
 def stable_sleep(data):
-    """固定无干扰基础场景的入睡/后续位置检查，不评价寻路速度或完整B10。"""
+    """基础无干扰场景下的入睡与位置保持检查。"""
     for row in data["runs"]:
         frames = row["frames"]
         first = next((i for i, s in enumerate(frames) if s["sleeping"]), None)

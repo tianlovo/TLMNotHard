@@ -36,7 +36,7 @@ def inspect_archive(data, location, depth=0):
 
 
 def verify(path):
-    """以实际产物计算哈希和检查结果，空归档不能作为检查通过。"""
+    """基于实际构建产物计算哈希并执行字节码检查。"""
     artifact = Path(path).resolve(strict=True)
     data = artifact.read_bytes()
     classes = inspect_archive(data, artifact.name)

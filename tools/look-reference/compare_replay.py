@@ -1,4 +1,4 @@
-"""独立LOOK移植策略重放对照，不比较原生helper旋转，不授自然AI或组合V2准入。"""
+"""独立 LOOK 移植策略的重放对照。"""
 
 import argparse
 import hashlib
@@ -83,7 +83,7 @@ def compare(reference_path, replay_path, tool, build_identity):
         port_steps = actual[key]["steps"]
         gate.equal(len(port_steps), len(row["steps"]), "port method step count")
         for index, (original, port) in enumerate(zip(row["steps"], port_steps)):
-            # 不按 fault/inputMutations 标签决定相等，独立从原版 raw 取策略效果投影
+            # 独立从原版 raw 获取策略效果投影
             for name, expected_value in (("index", index), ("operation", original["operation"]),
                                          ("actualMethodTime", original["actualMethodTime"])):
                 gate.equal(port[name], expected_value, "replay actual input metadata")

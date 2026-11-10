@@ -1,4 +1,4 @@
-"""核原版LOOK与三行为组件的身份、实际输入和三份新状态A/A，不计算AI评分。"""
+"""比对原版 LOOK 与三行为组件的身份、输入与状态重复性。"""
 
 import argparse
 import copy

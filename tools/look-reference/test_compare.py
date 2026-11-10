@@ -1,4 +1,4 @@
-"""纯协议边界测试，不生成原版游戏结果或AI成绩。"""
+"""协议边界测试。"""
 
 import copy
 import tempfile

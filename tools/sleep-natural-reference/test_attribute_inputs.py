@@ -1,4 +1,4 @@
-"""属性输入检查器的独立反例；不启动Minecraft，也不模拟或认定实体属性系统等价。"""
+"""属性输入检查器的离线反例单元测试。"""
 
 import copy
 import json
@@ -9,7 +9,7 @@ from attribute_inputs import compare_attribute_inputs
 
 
 def inputs(side):
-    # 手工固定实际场景关注值；不调用被测实现生成预期值
+    # 显式构造测试关注的场景预期值
     names_and_values = [
         ("max_health", "minecraft:generic.max_health", "generic.maxHealth", 20),
         ("movement_speed", "minecraft:generic.movement_speed", "generic.movementSpeed", 0.699999988079071),

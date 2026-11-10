@@ -1,4 +1,4 @@
-"""核对五种自然睡眠机制的实际输入与原始观察，不授予完整B10或统计结论。"""
+"""核对五种自然睡眠机制的实际输入与原始观测。"""
 
 import argparse
 import json
@@ -95,7 +95,7 @@ def inspect(data, contract, contract_hash, profile):
     summary = metrics(row)
     summary.update({"profile": profile, "mechanism": mechanism, "events": events,
                     "event_not_triggered": mechanism in ("bed_removed", "hurt_sleeping") and not events})
-    # 只报告已记录结果；无入睡/无事件的样本保留，不能变成一条通过的故障测试
+    # 如实记录观测结果，保留未触发样本
     if mechanism == "unreachable":
         summary["slept_despite_unreachable_layout"] = first is not None
     if mechanism == "occupied_release":

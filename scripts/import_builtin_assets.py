@@ -222,7 +222,7 @@ def collect_files(upstream, read_blob):
 
 
 def write(upstream, catalog, provenance):
-    # 只写已核对资源或本脚本先前拥有的目标，不覆盖无关源码
+    # 仅写入已核对的目标资源
     manifest = PROJECT / "src/main/resources/assets/tlmnh/builtin-assets-provenance.json"
     previous = json.loads(manifest.read_text(encoding="utf-8"))["files"] if manifest.is_file() else {}
     for target, entry in provenance["files"].items():

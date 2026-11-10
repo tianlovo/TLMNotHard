@@ -28,7 +28,7 @@ def measurement(original, port, tolerance):
     number(port)
     original_hex, port_hex = float(original).hex(), float(port).hex()
     with localcontext() as context:
-        # binary64 最大数量级到最小次正规值的精确十进制差，不依赖默认 28 位上下文舍入
+        # 计算 binary64 最大数量级到最小次正规值的精确十进制差
         context.prec = 2200
         a = Decimal(original) if type(original) is int else Decimal.from_float(original)
         b = Decimal(port) if type(port) is int else Decimal.from_float(port)
@@ -146,7 +146,7 @@ def compare_attribute_inputs(original, port, contract):
             all_within = all_within and values["within_tolerance"]
             if not values["exact_equal"]:
                 result["differences"].append({"key": key, "field": field, **values})
-        # UUID/名称不做猜测重映射；相同最终 value 不能抵消修饰符身份、操作或保存状态的差异
+        # 严格按修饰符身份、操作与保存状态执行校验，避免近似映射
         am, bm = modifiers(a["modifiers"]), modifiers(b["modifiers"])
         observed["modifiers"] = {"original": list(am.values()), "port": list(bm.values()), "exact_equal": am == bm}
         result["measurements"].append(observed)

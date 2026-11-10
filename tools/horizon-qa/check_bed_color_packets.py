@@ -1,4 +1,4 @@
-"""检查实装Hodgepodge格式的实际女仆床S35线包，不替代客户端收包或绘制验收。"""
+"""检查实装 Hodgepodge 格式的女仆床 S35 协议包。"""
 
 import argparse
 import gzip

@@ -1,4 +1,4 @@
-"""同端两次原生完整NBT序列化的只读绑定；不解析有损旧SNBT，不判断跨引擎NBT语义。"""
+"""同端两次原生完整 NBT 序列化的只读绑定。"""
 
 import base64
 import hashlib
@@ -39,7 +39,7 @@ def decode_named_nbt(raw):
         if kind <= 4:
             value = number({1: 'b', 2: 'h', 3: 'i', 4: 'q'}[kind])
         elif kind in (5, 6):
-            # 不转 Python float，保留-0、全部 IEEE 位和原生 writer 实际写出的 NaN 位
+            # 保留原始 IEEE 二进制位、-0 及特殊 NaN 位
             value = read(4 if kind == 5 else 8)
         elif kind == 7:
             value = read(count())

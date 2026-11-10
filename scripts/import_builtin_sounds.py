@@ -42,7 +42,7 @@ def collect(upstream):
         for event, definition in base_definitions.items():
             references = [value if isinstance(value, str) else value["name"] for value in definition["sounds"]]
             if event not in {value[0] for value in events} and references and all(value in base_ids for value in references):
-                # 旧版没有 voice 类别；不引入 fairy/rabbit 外部资源或新的 Java 触发
+                # 旧版无 voice 类别，直接映射至基础分类
                 base_events[event] = {"category": "neutral" if definition.get("category") == "voice"
                                       else definition.get("category", "master"), "sounds": definition["sounds"]}
         for relative in BASE_AUDIO:

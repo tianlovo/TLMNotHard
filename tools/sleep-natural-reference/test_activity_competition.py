@@ -1,4 +1,4 @@
-"""仅核来源/相位准入的必要负例；合成数据不作为游戏证据。"""
+"""来源与相位准入的必要负例测试。"""
 
 import unittest
 import xml.etree.ElementTree as ET
