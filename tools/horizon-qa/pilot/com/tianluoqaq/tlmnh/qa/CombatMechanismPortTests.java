@@ -20,7 +20,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
-/** 完整根四机制采集；复用自然远程输入、原生玩家登记和逐箭观察器。 */
+/** 完整根四机制采集；复用自然远程输入、原生玩家登记和逐箭观察器 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class CombatMechanismPortTests {
 

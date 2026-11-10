@@ -22,7 +22,7 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitBlocks;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-/** 同合同三机制；原完整Brain自然更新，使用现有原生PlayerList登记和START/END观察器。 */
+/** 同合同三机制；原完整Brain自然更新，使用现有原生PlayerList登记和START/END观察器 */
 @GameTestHolder("tlmnh_activity_competition")
 @PrefixGameTestTemplate(false)
 public final class ActivityCompetitionGameTests {

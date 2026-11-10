@@ -273,7 +273,7 @@ public final class ModernCoreTests {
             this(helper, wet, maxDisplacementSquared, nonHomeRange, null);
         }
 
-        /** 显式完整根入口；旧构造器继续保留原组件/FakePlayer采集范围。 */
+        /** 显式完整根入口；旧构造器继续保留原组件/FakePlayer采集范围 */
         Fixture(GameTestHelper helper, boolean wet, double maxDisplacementSquared, int nonHomeRange,
             MaidBrainProfile completeProfile) {
             if (completeProfile != null && completeProfile != MaidBrainProfile.FAITHFUL_TLM

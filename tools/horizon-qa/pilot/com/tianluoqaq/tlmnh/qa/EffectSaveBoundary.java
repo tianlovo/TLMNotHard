@@ -15,7 +15,7 @@ import com.gtnewhorizons.horizonqa.internal.GameTestRunner;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 
-/** 仅原真空边界的固定自然保存窗口；不拥有保存、实体、时钟或区块状态。 */
+/** 仅原真空边界的固定自然保存窗口；不拥有保存、实体、时钟或区块状态 */
 final class EffectSaveBoundary implements AutoCloseable {
 
     static final String REVISION = "v6-native-save-empty-boundary-v1";
@@ -324,7 +324,7 @@ final class EffectSaveBoundary implements AutoCloseable {
         methodCost.close();
     }
 
-    /** 从原GameTest方法入口至最终真空边界；包括preflight、readiness、保存和所有等待。 */
+    /** 从原GameTest方法入口至最终真空边界；包括preflight、readiness、保存和所有等待 */
     static final class MethodCost implements AutoCloseable {
 
         final ThreadMXBean clock = ManagementFactory.getThreadMXBean();
@@ -375,7 +375,7 @@ final class EffectSaveBoundary implements AutoCloseable {
         }
     }
 
-    /** 纯算术/状态接缝；原生counter/保存栈/真空证据必须由外层实际取得。 */
+    /** 纯算术/状态接缝；原生counter/保存栈/真空证据必须由外层实际取得 */
     static final class Window {
 
         long firstTick = -1, lastTick = -1, callbacks, waitTicks, waitEntered = -1, expectedSave = -1,

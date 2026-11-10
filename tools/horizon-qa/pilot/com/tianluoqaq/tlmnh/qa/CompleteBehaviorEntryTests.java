@@ -37,7 +37,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
-/** 完整工厂根的代表入口；不替换决策回调、不手动tick、不重置随机源。 */
+/** 完整工厂根的代表入口；不替换决策回调、不手动tick、不重置随机源 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class CompleteBehaviorEntryTests {
 
@@ -234,7 +234,7 @@ public final class CompleteBehaviorEntryTests {
                 h.assertTrue(
                     count(f, Items.mushroom_stew) == 1 && count(f, Items.bowl) == 0,
                     "First natural start consumed food before its duration");
-                // 菜单可交换的真实库存输入；不暂停根、不调用cancel或重置检查计数器。
+                // 菜单可交换的真实库存输入；不暂停根、不调用cancel或重置检查计数器
                 inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
                 inv.setInventorySlotContents(0, food);
                 s.event("controlled inventory swap returns borrowed food to backpack and restores original off hand");

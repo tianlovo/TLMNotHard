@@ -79,8 +79,8 @@ public final class ActualArrowPhysicsTests {
     private static void mediumFlight(GameTestHelper helper, boolean boundary) {
         var trial = new Trial(helper, false, boundary ? "air-water-air" : "water");
         trial.mediumCase = true;
-        // 静态原生水块作为受控当前输入；水中例保留真实meta坡度与非零水流。
-        // flags=2不邻居更新；不手动tick水、箭或任何演员，也不声称自然水体生成。
+        // 静态原生水块作为受控当前输入；水中例保留真实meta坡度与非零水流
+        // flags=2不邻居更新；不手动tick水、箭或任何演员，也不声称自然水体生成
         int left = boundary ? 4 : 1, right = boundary ? 5 : 19;
         for (int x = left; x <= right; x++) for (int y = 1; y <= 5; y++) for (int z = 1; z <= 7; z++) helper.getWorld()
             .setBlock(trial.f.x + x, trial.f.y + y, trial.f.z + z, Blocks.water, boundary ? 0 : z - 1, 2);
@@ -380,7 +380,7 @@ public final class ActualArrowPhysicsTests {
                 return;
             }
             if (hurtEvents > 0) {
-                // 终局事实先落盘；近水靶第三tick即撞膨胀身体盒，只有两个完整未碰撞步进。
+                // 终局事实先落盘；近水靶第三tick即撞膨胀身体盒，只有两个完整未碰撞步进
                 report.addProperty("nativeDamageEvents", hurtEvents);
                 report.addProperty("targetHealth", target.getHealth());
                 report.addProperty("confirmedShots", bow.getShots());
@@ -424,7 +424,7 @@ public final class ActualArrowPhysicsTests {
             if (arrow.ticksExisted == previousAge) return;
             var next = state(arrow);
             if (mediumCase) {
-                // 先保存失败的真实帧，避免assert抛出后只剩上一个起点而丢失首差。
+                // 先保存失败的真实帧，避免assert抛出后只剩上一个起点而丢失首差
                 recordFrame();
                 var row = frames.get(frames.size() - 1)
                     .getAsJsonObject();
@@ -488,7 +488,7 @@ public final class ActualArrowPhysicsTests {
 
         private void predictNext() {
             if (!mediumCase) return;
-            // 发射事务快照的许可已结束；观察器独立读取此真实箭的当前盒，不复用已失效的发射租约。
+            // 发射事务快照的许可已结束；观察器独立读取此真实箭的当前盒，不复用已失效的发射租约
             var medium = new NativeArrowMedium(
                 arrow,
                 () -> !arrow.isDead && arrow.worldObj == helper.getWorld() && helper.getWorld().provider == provider);

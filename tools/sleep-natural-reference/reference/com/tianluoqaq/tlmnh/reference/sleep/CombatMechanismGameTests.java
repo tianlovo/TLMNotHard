@@ -39,7 +39,7 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitTaskData;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-/** 原完整Brain四机制；复用实际PlayerList登记、同端typed初值及自然START/END采集。 */
+/** 原完整Brain四机制；复用实际PlayerList登记、同端typed初值及自然START/END采集 */
 @GameTestHolder("tlmnh_combat_mechanisms")
 @PrefixGameTestTemplate(false)
 public final class CombatMechanismGameTests {

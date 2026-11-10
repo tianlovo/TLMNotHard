@@ -22,7 +22,7 @@ import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
-/** 三机制O/F/N合同的完整工厂入口；复用已有正常native登录、逐世界时序与保类型输入采集。 */
+/** 三机制O/F/N合同的完整工厂入口；复用已有正常native登录、逐世界时序与保类型输入采集 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ActivityCompetitionPortTests {
 
@@ -309,7 +309,7 @@ public final class ActivityCompetitionPortTests {
         }
 
         void water(boolean present) {
-            // 固定当前身体输入，清除时使用同一合同区域；不移动演员、不手动刷新空气或Brain。
+            // 固定当前身体输入，清除时使用同一合同区域；不移动演员、不手动刷新空气或Brain
             for (int a = 11; a <= 13; a++) for (int b = 1; b <= 3; b++) for (int c = 11; c <= 13; c++) helper.getWorld()
                 .setBlock(x + a, y + b, z + c, present ? Blocks.water : Blocks.air, 0, 2);
         }

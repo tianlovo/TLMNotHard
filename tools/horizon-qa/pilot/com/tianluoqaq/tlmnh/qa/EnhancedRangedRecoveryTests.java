@@ -41,7 +41,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/** 完整N工厂自然tick；当前友方实体是阻挡输入，不直接调用预瞄、发射或导航。 */
+/** 完整N工厂自然tick；当前友方实体是阻挡输入，不直接调用预瞄、发射或导航 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class EnhancedRangedRecoveryTests {
 
@@ -78,7 +78,7 @@ public final class EnhancedRangedRecoveryTests {
                         && s.combat()
                             .rangedRecoveryMoves() == 0,
                     "Stationary refused target starved the clear alternate or movement bypassed sitting");
-                // 玩家换弓、目标退出及友方让开都是实际输入，不替换目标内存或控制器。
+                // 玩家换弓、目标退出及友方让开都是实际输入，不替换目标内存或控制器
                 alternate.setDead();
                 replacement[0] = new ItemStack(Items.bow);
                 s.f.maid.setCurrentItemOrArmor(0, replacement[0]);
@@ -185,7 +185,7 @@ public final class EnhancedRangedRecoveryTests {
             MinecraftForge.EVENT_BUS.register(this);
             h.afterTest(() -> {
                 MinecraftForge.EVENT_BUS.unregister(this);
-                // 只回收本例射手拥有的箭，不删其它case的实体。
+                // 只回收本例射手拥有的箭，不删其它case的实体
                 for (Object value : new java.util.ArrayList<>(h.getWorld().loadedEntityList))
                     if (value instanceof EntityArrow arrow && arrow.shootingEntity == f.maid) arrow.setDead();
                 report.addProperty("assertionsComplete", complete);

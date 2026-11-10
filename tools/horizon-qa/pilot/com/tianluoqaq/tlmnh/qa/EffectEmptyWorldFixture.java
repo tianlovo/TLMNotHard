@@ -2032,7 +2032,7 @@ public final class EffectEmptyWorldFixture {
         transition("SEALED");
     }
 
-    /** 只为原RUN保存窗口绑定既存Class和固定物理条目；不加载Mixin保留包。 */
+    /** 只为原RUN保存窗口绑定既存Class和固定物理条目；不加载Mixin保留包 */
     JsonObject saveWindowSources() {
         JsonObject result = new JsonObject();
         meteredClosure(() -> {
@@ -2105,7 +2105,7 @@ public final class EffectEmptyWorldFixture {
         return result;
     }
 
-    /** 仅已认证世界的公开只读生命周期诊断，不作为新的准入条件。 */
+    /** 仅已认证世界的公开只读生命周期诊断，不作为新的准入条件 */
     JsonArray saveWindowMetadata() {
         thread();
         JsonArray rows = new JsonArray();
