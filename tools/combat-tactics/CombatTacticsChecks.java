@@ -62,8 +62,9 @@ public final class CombatTacticsChecks {
         boundedReobservationMechanisms();
         readyExpiryKeepsFirstPreparationRotation();
         closeMeleeJumpSelectionAndZeroRiskServiceWait();
+        multiMaidLightContinuationAndServiceResume();
         System.out.println(
-            "CombatReobservationChecks: seven mechanism groups passed; reconstructed controls, not native replay");
+            "CombatReobservationChecks: eight mechanism groups passed; reconstructed controls, not native replay");
     }
 
     private static void sweptBodyCannotCrossWall() {
@@ -4220,6 +4221,240 @@ public final class CombatTacticsChecks {
             tick,
             null,
             true);
+    }
+
+    private static void multiMaidLightContinuationAndServiceResume() {
+        boolean before = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            var meleeBase = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Collections.emptyList());
+            var full100 = multiMaidProgressFrame(
+                meleeBase,
+                meleeBase.self.position,
+                100,
+                40,
+                null,
+                true,
+                true,
+                100,
+                true,
+                100,
+                100);
+            var planner = new CombatPlanner();
+            CombatPlan initial = planner.decide(full100, CombatWorkQuota.isolated(100, true));
+            check(
+                initial.normalProgressAdmitted && initial.stageId > 0
+                    && initial.stageState == CombatPlan.StageState.PROPOSED
+                    && initial.movementNode != null
+                    && initial.route.nodes.size() >= 4,
+                "Multi-maid FULL frame did not commit an admitted melee stage: " + initial.macro);
+            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+                initial.movementNode,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                100,
+                1,
+                0,
+                meleeBase.self.position,
+                true,
+                true,
+                true);
+            var light101 = multiMaidProgressFrame(
+                meleeBase,
+                meleeBase.self.position,
+                101,
+                40,
+                installed,
+                true,
+                false,
+                100,
+                true,
+                100,
+                100);
+            check(
+                !light101.friendsComplete && !light101.complete
+                    && !light101.bodyComplete
+                    && light101.continuationComplete
+                    && light101.bodyContinuationComplete,
+                "Unrefreshed fellow maid within TTL either upgraded FULL completeness or broke continuation");
+            CombatPlan step101 = planner.decide(light101, CombatWorkQuota.isolated(101, false));
+            check(
+                step101.stageId == initial.stageId && step101.stageState == CombatPlan.StageState.ACTIVE
+                    && step101.movementNode != null
+                    && step101.movementNode.index == 1
+                    && step101.macro != CombatPlan.Macro.WAIT,
+                "Admitted melee stage dropped to WAIT_SERVICE on ordinary multi-maid LIGHT: " + step101.stageState
+                    + "/"
+                    + step101.macro);
+            var arrivedSameTick = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+                step101.movementNode,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                102,
+                1,
+                0,
+                step101.movementNode.foot,
+                true,
+                true,
+                true);
+            var light102 = multiMaidProgressFrame(
+                meleeBase,
+                step101.movementNode.foot,
+                102,
+                40,
+                arrivedSameTick,
+                true,
+                false,
+                100,
+                true,
+                100,
+                100);
+            CombatPlan step102 = planner.decide(light102, CombatWorkQuota.isolated(102, false));
+            check(
+                step102.stageId == initial.stageId && step102.stageState == CombatPlan.StageState.ACTIVE
+                    && step102.movementNode != null
+                    && step102.movementNode.index == 2,
+                "Same-tick settled arrival did not advance the multi-maid melee stage on LIGHT");
+            var overflow103 = multiMaidProgressFrame(
+                meleeBase,
+                step101.movementNode.foot,
+                103,
+                40,
+                null,
+                true,
+                false,
+                100,
+                false,
+                100,
+                100);
+            check(
+                !overflow103.continuationComplete && !overflow103.bodyContinuationComplete,
+                "Friend overflow or identity gap remained eligible for LIGHT continuation");
+            CombatPlan wait103 = planner.decide(overflow103, CombatWorkQuota.isolated(103, false));
+            check(
+                wait103.stageId == initial.stageId && wait103.stageState == CombatPlan.StageState.WAIT_SERVICE
+                    && wait103.movementNode == null,
+                "Unbounded friend gap did not suspend the melee stage into WAIT_SERVICE");
+            var full104 = multiMaidProgressFrame(
+                meleeBase,
+                step101.movementNode.foot,
+                104,
+                40,
+                null,
+                true,
+                true,
+                104,
+                true,
+                104,
+                104);
+            CombatPlan resumed104 = planner.decide(full104, CombatWorkQuota.isolated(104, true));
+            check(
+                resumed104.stageId == initial.stageId && resumed104.normalProgressAdmitted
+                    && resumed104.stageState == CombatPlan.StageState.PROPOSED
+                    && "FULL_SERVICE_RESUMED".equals(resumed104.stageReason)
+                    && resumed104.movementNode != null
+                    && resumed104.movementNode.index == 2,
+                "FULL re-admission left stageState stuck in WAIT_SERVICE or lost completed node progress: "
+                    + resumed104.stageState
+                    + "/"
+                    + resumed104.stageReason);
+            var staleFriend105 = multiMaidProgressFrame(
+                meleeBase,
+                step101.movementNode.foot,
+                105,
+                40,
+                null,
+                true,
+                false,
+                96,
+                true,
+                104,
+                104);
+            check(!staleFriend105.continuationComplete, "Expired friend beyond OBSERVATION_TTL stayed eligible");
+            CombatPlan wait105 = planner.decide(staleFriend105, CombatWorkQuota.isolated(105, false));
+            check(
+                wait105.stageState == CombatPlan.StageState.WAIT_SERVICE && wait105.movementNode == null,
+                "Expired friend observation did not suspend LIGHT stage continuation");
+            var bowBase = returnScene();
+            var bowPlanner = new CombatPlanner();
+            CombatPlan bowCommitted = bowPlanner.decide(
+                multiMaidProgressFrame(bowBase, bowBase.self.position, 200, 40, null, true, true, 200, true, 200, 200),
+                CombatWorkQuota.isolated(200, true));
+            check(
+                bowCommitted.normalProgressAdmitted && bowCommitted.stageId > 0,
+                "Bow defensive-return fixture failed to commit on refreshed FULL frame");
+            var bowInstalled = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+                bowCommitted.movementNode,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                200,
+                1,
+                0,
+                bowBase.self.position,
+                true,
+                true,
+                true);
+            CombatPlan bowLight = bowPlanner.decide(
+                multiMaidProgressFrame(
+                    bowBase,
+                    bowBase.self.position,
+                    201,
+                    40,
+                    bowInstalled,
+                    true,
+                    false,
+                    200,
+                    true,
+                    200,
+                    200),
+                CombatWorkQuota.isolated(201, false));
+            check(
+                bowLight.stageId == bowCommitted.stageId && bowLight.stageState == CombatPlan.StageState.WAIT_SERVICE
+                    && bowLight.movementNode == null,
+                "Bow stage continued across unrefreshed fellow-maid positions on LIGHT: " + bowLight.stageState);
+        } finally {
+            CombatPlanner.setTraceEnabled(before);
+        }
+    }
+
+    private static CombatSnapshot multiMaidProgressFrame(CombatSnapshot base, Vec position, long tick, float health,
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact fact, boolean complete, boolean friendCurrent,
+        long friendAt, boolean friendsBounded, long geometryAt, long coverageAt) {
+        var current = progressFrame(base, position, tick, health, fact, true);
+        Geometry g = base.geometry;
+        byte[] cells = new byte[g.sizeX * g.sizeY * g.sizeZ];
+        double[] bounds = new double[cells.length * 6];
+        for (int y = 0; y < g.sizeY; y++) for (int z = 0; z < g.sizeZ; z++) for (int x = 0; x < g.sizeX; x++) {
+            int i = (y * g.sizeZ + z) * g.sizeX + x;
+            cells[i] = (byte) g.at(g.x + x, g.y + y, g.z + z);
+            for (int b = 0; b < 6; b++) bounds[i * 6 + b] = g.bound(g.x + x, g.y + y, g.z + z, b);
+        }
+        var fellow = new CombatSnapshot.Friend(
+            new UUID(6, 7),
+            7,
+            0,
+            friendAt,
+            1,
+            friendCurrent,
+            new Vec(-2.5, 0, -2.5),
+            .3,
+            1.5);
+        return new CombatSnapshot(
+            tick,
+            base.entityEpoch,
+            base.observationEpoch,
+            base.equipmentEpoch,
+            base.selfId,
+            current.self,
+            current.targets,
+            Collections.emptyList(),
+            Arrays.asList(fellow),
+            base.weapons,
+            new Geometry(g.x, g.y, g.z, g.sizeX, g.sizeY, g.sizeZ, geometryAt, g.complete, cells, bounds),
+            base.selectedTarget,
+            complete,
+            friendCurrent && friendAt == tick,
+            coverageAt,
+            fact,
+            complete,
+            friendsBounded);
     }
 
     private static void check(boolean value, String message) {
