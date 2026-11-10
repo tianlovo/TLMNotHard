@@ -504,8 +504,9 @@ public final class CombatObservation {
             MaidPerceptionConfig.bowRange)
             : maid.getHomeArea()
                 .restrictionRadius();
+        // 可见友方仍按原感知范围采样，目标范围不能缩小友方覆盖或伪造完整性
         if (!maid.getHomeArea()
-            .enabled())
+            .enabled() && !friendly(maid, entity))
             range = rangePolicy.detection(
                 tick,
                 maid.getUniqueID(),
