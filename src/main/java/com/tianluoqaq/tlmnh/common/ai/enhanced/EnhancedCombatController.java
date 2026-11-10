@@ -102,6 +102,9 @@ public final class EnhancedCombatController {
         }
         CombatRangePolicy rangePolicy = observation.rangePolicy();
         var owner = maid.getOwner();
+        // 友方贴身偏置只服务纯近战争抢，不干扰已具备可用弓箭与弹药时的远程目标仲裁
+        boolean meleeContention = observation.supportedMelee()
+            && !(observation.supportedBow() && observation.observedAmmunition(now));
         List<OfferCandidate> candidates = new ArrayList<>();
         for (EntityLivingBase target : observation.targets()) {
             UUID id = target.getUniqueID();
@@ -119,7 +122,8 @@ public final class EnhancedCombatController {
                     ownerHurt,
                     maidHurt,
                     rangePolicy.isMeleeUnproductive(id, now),
-                    observation.hasObservedFriendNear(maid, seen, CombatRangePolicy.FRIEND_MELEE_RADIUS_SQ),
+                    meleeContention
+                        && observation.hasObservedFriendNear(maid, seen, CombatRangePolicy.FRIEND_MELEE_RADIUS_SQ),
                     canProgressAgainst(observation, target, seen, now)));
         }
         for (OfferCandidate current : candidates) {
@@ -140,8 +144,7 @@ public final class EnhancedCombatController {
                 current.ownerHurt,
                 current.maidHurt,
                 current.target == ownedTarget,
-                current.friendEngaged && uncontestedAlternative,
-                false);
+                current.friendEngaged && uncontestedAlternative);
             frame.offer(Group.COMBAT, Kind.COMBAT, current.id.toString(), utility, current.target);
         }
     }
@@ -154,6 +157,7 @@ public final class EnhancedCombatController {
         boolean bowInRange = observation.supportedBow() && observation.observedAmmunition(now)
             && distanceSq <= MaidBowAttack.RANGE_SQ;
         if (bowInRange) return true;
+        if (!observation.supportedMelee()) return false;
         double reach = MaidCombatAttributes.entityReach(maid) + maid.getFavorabilityManager()
             .getAttackDistancePlusByPoint(maid.getFavorability());
         return distanceSq <= reach * reach;
@@ -290,9 +294,12 @@ public final class EnhancedCombatController {
                 && !maid.getCombatCadence()
                     .ready();
             if (accepted > 0 || rejectedMelee) {
+                long committedCooldown = accepted > 0 ? 0
+                    : maid.getCombatCadence()
+                        .remainingTicks();
                 actor.combatObservation()
                     .rangePolicy()
-                    .recordMeleeOutcome(attemptedTarget, now, accepted > 0);
+                    .recordMeleeOutcome(attemptedTarget, now, accepted > 0, committedCooldown);
             }
         }
         releases += Math.max(

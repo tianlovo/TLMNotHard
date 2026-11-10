@@ -798,6 +798,11 @@ public final class CombatObservation {
         return false;
     }
 
+    public boolean supportedMelee() {
+        for (Weapon weapon : weapons) if (weapon.profile.melee()) return true;
+        return false;
+    }
+
     public long epoch() {
         return epoch;
     }
@@ -1210,13 +1215,13 @@ public final class CombatObservation {
         return rangePolicy;
     }
 
-    /** 仅读取已建立观测的非主人友方历史坐标判断近战拥挤，不查询实体实时位置或消耗配额 */
+    /** 仅读取OBSERVATION_TTL新鲜窗内的非主人友方已观测坐标判断近战拥挤，不查询实体实时位置或消耗配额 */
     public boolean hasObservedFriendNear(EntityMaid maid, Vec targetSeen, double radiusSq) {
         if (tick == Long.MIN_VALUE || targetSeen == null || !(radiusSq > 0)) return false;
         EntityLivingBase owner = maid.getOwner();
         for (FriendTrack friend : friendTracks.values()) {
             if (friend.entity == maid || friend.entity == owner || friend.position == null) continue;
-            if (tick < friend.at || tick - friend.at > CombatSnapshot.HIDDEN_TTL) continue;
+            if (tick < friend.at || tick - friend.at > CombatSnapshot.OBSERVATION_TTL) continue;
             double dx = friend.position.x - targetSeen.x, dy = friend.position.y - targetSeen.y,
                 dz = friend.position.z - targetSeen.z;
             if (dx * dx + dy * dy + dz * dz <= radiusSq) return true;
