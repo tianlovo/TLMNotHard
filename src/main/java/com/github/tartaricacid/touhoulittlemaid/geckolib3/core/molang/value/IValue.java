@@ -13,7 +13,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 public interface IValue {
 
     /**
-     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，并转换为 double 类型。
+     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，并转换为 double 类型
      */
     default double evalAsDouble(ExpressionEvaluator<?> evaluator) {
         try {
@@ -29,7 +29,7 @@ public interface IValue {
     }
 
     /**
-     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，并转换为 boolean 类型。
+     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，并转换为 boolean 类型
      */
     default boolean evalAsBoolean(ExpressionEvaluator<?> evaluator) {
         try {
@@ -42,7 +42,7 @@ public interface IValue {
     }
 
     /**
-     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，返回值的类型不确定，并且可能抛出异常。
+     * 依次执行表达式，返回最后一个表达式的值，或第一个 return 语句的值，返回值的类型不确定，并且可能抛出异常
      */
     Object evalUnsafe(ExpressionEvaluator<?> evaluator) throws Exception;
 }

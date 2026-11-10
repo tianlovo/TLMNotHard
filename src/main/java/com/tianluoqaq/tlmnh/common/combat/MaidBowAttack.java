@@ -462,7 +462,7 @@ public final class MaidBowAttack {
         return false;
     }
 
-    /** 无出生/扣料/改拉弓计数的当前世界预检；候选位置不被写回射手或目标。 */
+    /** 无出生/扣料/改拉弓计数的当前世界预检；候选位置不被写回射手或目标 */
     public Status preview(EntityLivingBase target, BallisticVector origin, BooleanSupplier admitted) {
         if (firing || !admitted.getAsBoolean()
             || target == null
@@ -593,7 +593,7 @@ public final class MaidBowAttack {
         Entity blocker;
     }
 
-    /** 仅本次确认的拒发事实；不会把失效、卸载、预算耗尽或出生取消变成目标失败。 */
+    /** 仅本次确认的拒发事实；不会把失效、卸载、预算耗尽或出生取消变成目标失败 */
     public static final class Refusal {
 
         public final Status reason;
@@ -742,7 +742,7 @@ public final class MaidBowAttack {
         return lastSolution;
     }
 
-    /** drag/gravity保留最近输入；空间查询持有发射许可，提交/撤销后不能用作活世界观察器。 */
+    /** drag/gravity保留最近输入；空间查询持有发射许可，提交/撤销后不能用作活世界观察器 */
     public ArrowPhysics getLastPhysics() {
         return lastPhysics;
     }

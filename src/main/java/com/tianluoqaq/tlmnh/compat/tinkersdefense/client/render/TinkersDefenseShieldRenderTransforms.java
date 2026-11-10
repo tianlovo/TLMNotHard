@@ -17,7 +17,7 @@ import com.tianluoqaq.tlmnh.compat.tinkersdefense.common.shield.TinkersDefenseSh
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-/** TD的FlexibleToolRenderer仍绘制原物品，只转换其实际XY盾板到女仆手部盾姿态。 */
+/** TD的FlexibleToolRenderer仍绘制原物品，只转换其实际XY盾板到女仆手部盾姿态 */
 @SideOnly(Side.CLIENT)
 public final class TinkersDefenseShieldRenderTransforms {
 
@@ -37,10 +37,10 @@ public final class TinkersDefenseShieldRenderTransforms {
     }
 
     public static Matrix4f nativeIconBridge(boolean blocking) {
-        // 两者实际板面均为XY[0,1]；TD背面Z=0，正面Z=renderer.depth（实装默认1/32）。
-        // BG已验桥以背面Z=1/256对齐现代盾背板，TD只需修正这个原生几何锚点。
-        // B_TD = B_BG * H * Tz(1/256) * inverse(H)，H仍由Forge正常执行。
-        // 厚度保留在背面外侧，不把盾板中心/正面错误地放到握柄与袖口内。
+        // 两者实际板面均为XY[0,1]；TD背面Z=0，正面Z=renderer.depth（实装默认1/32）
+        // BG已验桥以背面Z=1/256对齐现代盾背板，TD只需修正这个原生几何锚点
+        // B_TD = B_BG * H * Tz(1/256) * inverse(H)，H仍由Forge正常执行
+        // 厚度保留在背面外侧，不把盾板中心/正面错误地放到握柄与袖口内
         var helper = equippedIconHelper();
         return BattlegearShieldRenderTransforms.nativeIconBridge(blocking)
             .mul(helper)

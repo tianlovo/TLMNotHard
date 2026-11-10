@@ -702,7 +702,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigationView = null;
     }
 
-    /** 撤销本执行器的目标保持资格，不需要活帧，也不修改世界或其他观测。 */
+    /** 撤销本执行器的目标保持资格，不需要活帧，也不修改世界或其他观测 */
     public void cancelCombatTargetRetention() {
         unifiedCombatObservation.rangePolicy()
             .cancel();

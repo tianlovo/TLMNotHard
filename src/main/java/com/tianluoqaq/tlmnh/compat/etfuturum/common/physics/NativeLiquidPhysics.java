@@ -9,7 +9,7 @@ import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 
 import cpw.mods.fml.common.Loader;
 
-/** 实装EFR adjustedLiquidPhysics对非物品实体的水流步骤；不改世界或调用实体更新。 */
+/** 实装EFR adjustedLiquidPhysics对非物品实体的水流步骤；不改世界或调用实体更新 */
 public final class NativeLiquidPhysics {
 
     private static final String SOURCE_SHA256 = "dc1e1b813cdf783f9fc94216bb46fe007877c0270d52ea71f29ce0e0c86067b5";
@@ -36,14 +36,14 @@ public final class NativeLiquidPhysics {
             return adjusted;
         }
 
-        /** 对应liquidphysics.MixinBlockLiquid：在求和前按此格metadata缩放水平分量。 */
+        /** 对应liquidphysics.MixinBlockLiquid：在求和前按此格metadata缩放水平分量 */
         public Vec3 cellFlow(Vec3 original, int metadata) {
             if (!adjusted) return original;
             double power = metadata == 8 ? 1 : 1 - (metadata / 7D) * (1 - .4D);
             return Vec3.createVectorHelper(original.xCoord * power, original.yCoord, original.zCoord * power);
         }
 
-        /** 对应liquidphysics.MixinWorld：非EntityItem保留合流长度，上限1.15，Y仍为归一分量。 */
+        /** 对应liquidphysics.MixinWorld：非EntityItem保留合流长度，上限1.15，Y仍为归一分量 */
         public Vec3 normalizeTotal(Vec3 sum) {
             var normalized = sum.normalize();
             if (!adjusted) return normalized;

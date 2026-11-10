@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
-/** 原生离散更新：当前身体盒水流先推力，随后移动、介质阻力及实际provider重力。 */
+/** 原生离散更新：当前身体盒水流先推力，随后移动、介质阻力及实际provider重力 */
 public final class ArrowPhysics {
 
     // 固定1.7.10 EntityArrow.onUpdate中的float常量，保留实际提升到double的值
@@ -43,7 +43,7 @@ public final class ArrowPhysics {
     }
 
     public State step(State state, Medium sample) {
-        // Entity.onEntityUpdate先在当前身体盒采水流并加速度，再由EntityArrow移动及衰减。
+        // Entity.onEntityUpdate先在当前身体盒采水流并加速度，再由EntityArrow移动及衰减
         var moving = state.velocity.add(sample.push);
         return new State(
             state.position.add(moving),

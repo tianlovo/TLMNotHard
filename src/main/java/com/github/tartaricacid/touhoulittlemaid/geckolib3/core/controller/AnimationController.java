@@ -131,7 +131,7 @@ public class AnimationController<T extends GeckoAnimationTarget> {
 
     /**
      * 此方法使用 AnimationBuilder 设置当前动画
-     * 你可以每帧运行此方法，如果每次都传入相同的 AnimationBuilder，它将不会重新启动。
+     * 你可以每帧运行此方法，如果每次都传入相同的 AnimationBuilder，它将不会重新启动
      * 此外，它还可以在动画状态之间平滑过渡
      */
     public void setAnimation(AnimationBuilder builder) {
@@ -220,7 +220,7 @@ public class AnimationController<T extends GeckoAnimationTarget> {
     }
 
     /**
-     * 此方法每帧调用一次，以便填充动画点队列并处理动画状态逻辑。
+     * 此方法每帧调用一次，以便填充动画点队列并处理动画状态逻辑
      *
      * @param tick              当前 tick + 插值 tick
      * @param event             动画测试事件

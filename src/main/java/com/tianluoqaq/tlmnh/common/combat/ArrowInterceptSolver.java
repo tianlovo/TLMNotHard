@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
-/** 在每段真实tick内解截击二次式，支持当前介质快照，不读取目标未来状态。 */
+/** 在每段真实tick内解截击二次式，支持当前介质快照，不读取目标未来状态 */
 public final class ArrowInterceptSolver {
 
     public static final int MAX_FLIGHT_TICKS = 160;
@@ -67,7 +67,7 @@ public final class ArrowInterceptSolver {
         return Solution.rejected(Status.NO_INTERCEPT_WITHIN_BUDGET, maxTicks);
     }
 
-    /** 对当前水域快照求分段系数，再用实际路径验证；不收敛的介质边界拒发而不猜弹道。 */
+    /** 对当前水域快照求分段系数，再用实际路径验证；不收敛的介质边界拒发而不猜弹道 */
     private static Solution solveSpatial(BallisticVector origin, BallisticVector target, BallisticVector targetVelocity,
         double speed, int maxTicks, ArrowPhysics physics) {
         Solution first = solveConstant(

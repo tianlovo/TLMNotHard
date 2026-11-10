@@ -13,7 +13,7 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.BallisticVector;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 
-/** 已确认拒发后的短期让位与局部换位；导航仍由完整N原有预算入口执行。 */
+/** 已确认拒发后的短期让位与局部换位；导航仍由完整N原有预算入口执行 */
 final class EnhancedRangedRecovery {
 
     private static final int RETRY_TICKS = 100, PROBE_TICKS = 10, POINT_TICKS = 20, ROUTE_TICKS = 40;
@@ -69,7 +69,7 @@ final class EnhancedRangedRecovery {
         nextProbe = actor.worldGameTime() + PROBE_TICKS;
     }
 
-    /** true表示本tick只恢复/等待，不能继续拉弓；false表示回到正常攻击入口。 */
+    /** true表示本tick只恢复/等待，不能继续拉弓；false表示回到正常攻击入口 */
     boolean execute(EntityLivingBase target, boolean stationary, BooleanSupplier permitted) {
         if (!held(target)) {
             cancel();
@@ -122,7 +122,7 @@ final class EnhancedRangedRecovery {
         }
         if (now < nextPoint) return true;
         nextPoint = now + POINT_TICKS;
-        // 每次最多两个当前落点，不扫描整个区域；实际A*仍由原navigation.tick统一预算。
+        // 每次最多两个当前落点，不扫描整个区域；实际A*仍由原navigation.tick统一预算
         for (int checked = 0; checked < 2 && candidate < OFFSETS.length * 3; checked++, candidate++) {
             int[] offset = OFFSETS[candidate % OFFSETS.length];
             int dy = candidate / OFFSETS.length == 0 ? 0 : candidate / OFFSETS.length == 1 ? 1 : -1;

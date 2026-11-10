@@ -22,7 +22,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.physics.NativeLiquidPhysics;
 
-/** 一次预瞄的有界、只读水域快照；不移动箭、不推进世界、不加载区块。 */
+/** 一次预瞄的有界、只读水域快照；不移动箭、不推进世界、不加载区块 */
 public final class NativeArrowMedium implements IBlockAccess {
 
     public static final String GUARD = "arrow_medium";
@@ -65,8 +65,8 @@ public final class NativeArrowMedium implements IBlockAccess {
 
     public ArrowPhysics.Medium at(BallisticVector position) {
         requireCurrent();
-        // 精确保留Entity.handleWaterMovement的expand(0,-float(.4),0).contract(.001)。
-        // 箭高.5时Y盒可能反向，不能擅自排序成另一种水判定。
+        // 精确保留Entity.handleWaterMovement的expand(0,-float(.4),0).contract(.001)
+        // 箭高.5时Y盒可能反向，不能擅自排序成另一种水判定
         int x0 = MathHelper.floor_double(position.x + minX + .001);
         int x1 = MathHelper.floor_double(position.x + maxX - .001 + 1);
         int y0 = MathHelper.floor_double(position.y + minY + (double) .4F + .001);
@@ -149,8 +149,8 @@ public final class NativeArrowMedium implements IBlockAccess {
     }
 
     private Cell cell(int x, int y, int z) {
-        // native flow在同一只读调用中只读block/meta；不在每个邻居上重复昂贵的目标LOS与库存许可。
-        // 完整许可仍由at前后及发射提交逐次复核。
+        // native flow在同一只读调用中只读block/meta；不在每个邻居上重复昂贵的目标LOS与库存许可
+        // 完整许可仍由at前后及发射提交逐次复核
         if (!geometryCurrent()) throw new Unavailable(MaidBowAttack.Status.PHYSICS_UNAVAILABLE);
         if (!loaded(x, z)) throw new Unavailable(MaidBowAttack.Status.UNLOADED);
         var p = new Point(x, y, z);
