@@ -20,6 +20,21 @@
 
 本用例为专项单项测试，仅验证所选已知箭在特定场景下的局部避险能力；该局部证据不代表全面无伤（如 7fdb 候选实测中另一箭造成 4 点伤害），正式统计与发布验收仍待验证，历史测试集与失败记录分别保留。
 
+## 持续 32 实体受界负载观测
+
+精确单项为 `tlmnhqapilot:UnifiedCombatCapacityTests.nativeThirtyTwoCombatantsSustainBoundedWorkAndReactWithoutForecast`。
+
+该用例需在开发模式（`-Dtlmnh.devCommands=true`）且开启加速（`-Dhorizonqa.turbo=1`）下运行。
+阶段划分为 200 tick 基准、200 tick 预热、1200 tick 采样与 200 tick 排空（超时 2100 tick）。
+场景布置 32 名原装女仆配铁剑，分别对阵 32 只 1000 生命值的受控靶实体，测试期间不替换实体也不恢复生命。
+
+在六个 200 tick 负载窗口中，每名原实体均须产生真实接受的攻击并完成 FULL 决策。
+调度硬门保持不变：公平请求等待不超过 32 tick，世界级 FULL 决策不超过 2 次/tick，世界步进耗时上限为 1440 纳秒。
+低氧状态在下一 tick 直接执行呼吸且无需 FULL 准入；排空阶段请求数清零。
+长场观测关闭详细诊断输出，保留紧凑的逐 tick 配额记录。
+
+当前该用例处于编译通过状态，单场结果不作为正式负载、统计或发布验收依据；旧短场校准与历史失败证据分别保留。
+
 ## 构建和运行
 
 下载同版本开发 JAR，将 `TLMNH_HQA_DEV_JAR` 指向该文件，再执行：
