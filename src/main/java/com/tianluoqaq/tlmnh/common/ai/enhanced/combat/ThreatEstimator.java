@@ -16,6 +16,9 @@ public final class ThreatEstimator {
 
         public double selfSingle, ownerSingle, ownerReceived, hiddenSingle;
         public final boolean observedOnly;
+        private CombatSnapshot projectileSnapshot;
+        private int projectileHypothesis;
+        private boolean[] selfProjectileHits, ownerProjectileHits;
 
         public Risk() {
             this(false);
@@ -23,6 +26,19 @@ public final class ThreatEstimator {
 
         public Risk(boolean observedOnly) {
             this.observedOnly = observedOnly;
+        }
+
+        // 一个风险对象属于同一不可变快照的一条预测假设，各受保护对象分别保留保守风险
+        private boolean bindProjectiles(CombatSnapshot snapshot, int hypothesis) {
+            if (projectileSnapshot == null) {
+                projectileSnapshot = snapshot;
+                projectileHypothesis = hypothesis;
+                selfProjectileHits = new boolean[snapshot.projectiles.size()];
+                ownerProjectileHits = new boolean[snapshot.projectiles.size()];
+            }
+            if (projectileSnapshot == snapshot && projectileHypothesis == hypothesis) return true;
+            known = false;
+            return false;
         }
 
         void hidden(Target target) {
@@ -97,6 +113,7 @@ public final class ThreatEstimator {
     /** A short reaction may span adjacent sweeps; the same arrow contributes at most one hit. */
     static double damage(CombatSnapshot snapshot, Vec from, Vec to, int elapsed, int hypothesis, boolean shield,
         CombatWorkQuota quota, ProjectileOcclusion occlusion, Risk risk, boolean[] projectileHits) {
+        if (risk != null && !risk.bindProjectiles(snapshot, hypothesis)) return Double.POSITIVE_INFINITY;
         double damage = 0;
         for (Target target : snapshot.targets) {
             if (!quota.spend(Work.COLLISION)) return Double.POSITIVE_INFINITY;
@@ -127,7 +144,10 @@ public final class ThreatEstimator {
             }
         }
         for (int index = 0; index < snapshot.projectiles.size(); index++) {
-            if (projectileHits != null && projectileHits[index]) continue;
+            boolean selfCounted = projectileHits != null && projectileHits[index]
+                || risk != null && risk.selfProjectileHits[index];
+            if (selfCounted && (risk == null || snapshot.self.ownerPosition == null || risk.ownerProjectileHits[index]))
+                continue;
             Projectile projectile = snapshot.projectiles.get(index);
             if (snapshot.tick < projectile.observedAt || snapshot.tick - projectile.observedAt > 2) continue;
             if (risk != null) risk.source(projectile.damageSource, projectile.estimatedDamage);
@@ -143,19 +163,20 @@ public final class ThreatEstimator {
                 Vec selfB = from.add(
                     to.subtract(from)
                         .scale((part + 1) / (double) CombatWorkQuota.STEP));
-                double body = CombatTerrain.entry(
-                    a.subtract(selfA),
-                    b.subtract(selfB),
-                    -snapshot.self.halfWidth - projectile.radius,
-                    -projectile.radius,
-                    -snapshot.self.halfWidth - projectile.radius,
-                    snapshot.self.halfWidth + projectile.radius,
-                    snapshot.self.height + projectile.radius,
-                    snapshot.self.halfWidth + projectile.radius);
+                double body = selfCounted ? Double.POSITIVE_INFINITY
+                    : CombatTerrain.entry(
+                        a.subtract(selfA),
+                        b.subtract(selfB),
+                        -snapshot.self.halfWidth - projectile.radius,
+                        -projectile.radius,
+                        -snapshot.self.halfWidth - projectile.radius,
+                        snapshot.self.halfWidth + projectile.radius,
+                        snapshot.self.height + projectile.radius,
+                        snapshot.self.halfWidth + projectile.radius);
                 double startTick = age + elapsed - CombatWorkQuota.STEP + part;
                 double wall = occlusion == null ? CombatTerrain.blockingFraction(snapshot, a, b, quota)
                     : occlusion.blockedAt[index] - startTick;
-                if (risk != null && snapshot.self.ownerPosition != null) {
+                if (risk != null && snapshot.self.ownerPosition != null && !risk.ownerProjectileHits[index]) {
                     if (!quota.spend(Work.COLLISION)) {
                         risk.known = false;
                         return Double.POSITIVE_INFINITY;
@@ -170,6 +191,7 @@ public final class ThreatEstimator {
                         snapshot.self.ownerHeight + projectile.radius,
                         snapshot.self.ownerHalfWidth + projectile.radius);
                     if (Double.isFinite(ownerBody) && (!Double.isFinite(wall) || wall >= ownerBody)) {
+                        risk.ownerProjectileHits[index] = true;
                         risk.source(projectile.damageSource, projectile.estimatedDamage);
                         risk.ownerSingle = Math.max(risk.ownerSingle, projectile.estimatedDamage);
                         risk.ownerReceived += projectile.estimatedDamage;
@@ -181,10 +203,13 @@ public final class ThreatEstimator {
                     if (projectileHits != null) projectileHits[index] = true;
                     damage += projectile.estimatedDamage;
                     if (risk != null) {
+                        risk.selfProjectileHits[index] = true;
                         risk.self(projectile.damageSource, projectile.estimatedDamage);
                         if (elapsed <= 2) risk.acute = true;
                     }
-                    break;
+                    selfCounted = true;
+                    // 女仆命中后仍检查本区间余下的主人风险
+                    if (risk == null || snapshot.self.ownerPosition == null || risk.ownerProjectileHits[index]) break;
                 }
             }
         }
