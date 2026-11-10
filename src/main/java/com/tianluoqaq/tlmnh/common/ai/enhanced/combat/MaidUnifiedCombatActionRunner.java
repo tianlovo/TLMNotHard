@@ -177,7 +177,7 @@ public final class MaidUnifiedCombatActionRunner {
             || jumpEpoch != maid.getEquipmentEpoch()
                 .generation()))
             jumpRequested = jumpPreparing = false;
-        // LIGHT 阶段维持地面机动；HOLD 在上升期等待既有跳劈的下降命中窗口
+        // LIGHT 不发起新跳但可延续既有起跳；HOLD 在上升期保留既有跳劈的下降命中窗口
         if (plan.macro == Macro.JUMP_STRIKE || (jumpRequested || jumpPreparing) && plan.macro == Macro.HOLD_ATTACK)
             return jump(target, view, plan, quota);
         if (actor.withinMeleeRange(view)) {

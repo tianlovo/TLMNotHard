@@ -366,7 +366,7 @@ public final class CombatObservation {
         if (arrowEventCursor < latestArrow) projectileComplete = false;
     }
 
-    /** 当前动作仅消耗单目标刷新名额，为背景扫描留存充足射线预算 */
+    /** 当前动作仅占一个目标刷新名额，避免单次动作耗尽背景扫描射线预算 */
     private void refreshPrimary(EntityMaid maid, CombatWorkQuota quota) {
         EntityLivingBase selected = maid.getModernCombatMemory()
             .target();

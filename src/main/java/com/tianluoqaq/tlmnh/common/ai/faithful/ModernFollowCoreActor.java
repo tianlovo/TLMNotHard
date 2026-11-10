@@ -1047,7 +1047,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean hasBreathingEffect() {
         guard();
-        // 目标已校验水下呼吸效果；记录当前环境支持的水下状态映射
+        // 目标已核验 Potion.waterBreathing；当前未实现现代 CONDUIT_POWER 映射
         return maid.isPotionActive(Potion.waterBreathing);
     }
 
