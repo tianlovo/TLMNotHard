@@ -49,7 +49,7 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/** 真实增强根的短容量可行性检查，不代替正式负载或跨AI比较 */
+/** 真实增强根的短容量校准和独立持续负载观测 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class UnifiedCombatCapacityTests {
 
@@ -58,16 +58,27 @@ public final class UnifiedCombatCapacityTests {
     @GameTest(template = "modern_core_cell", timeoutTicks = 420, batch = "unified_combat_5_capacity")
     public static void nativeThirtyTwoCombatantsShareBoundedWorldWorkAndReactWithoutForecast(GameTestHelper h)
         throws Exception {
+        capacity(h, false);
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 2100, batch = "unified_combat_7_sustained_capacity")
+    public static void nativeThirtyTwoCombatantsSustainBoundedWorkAndReactWithoutForecast(GameTestHelper h)
+        throws Exception {
+        capacity(h, true);
+    }
+
+    private static void capacity(GameTestHelper h, boolean sustained) throws Exception {
         h.assertTrue(Boolean.getBoolean("tlmnh.devCommands"), "Explicit development mode required");
         h.assertTrue("1".equals(System.getProperty("horizonqa.turbo", "1")), "Native capacity requires turbo=1");
-        var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
-        h.afterTest(diagnosticScope::close);
-        var run = new Attempt(h);
+        var diagnosticScope = sustained ? null
+            : com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
+        if (diagnosticScope != null) h.afterTest(diagnosticScope::close);
+        var run = new Attempt(h, sustained);
         h.afterTest(() -> {
             try {
                 run.close();
             } finally {
-                diagnosticScope.close();
+                if (diagnosticScope != null) diagnosticScope.close();
             }
         });
         try {
@@ -341,8 +352,11 @@ public final class UnifiedCombatCapacityTests {
 
     public static final class Attempt {
 
-        static final int COUNT = 32, BASELINE = 40, WARMUP = 40, SAMPLES = 160, DRAIN = 40, FAIR_BOUND = 32;
+        static final int COUNT = 32, FAIR_BOUND = 32, WORK_WINDOW = 200, SUSTAINED_SAMPLES = 1200;
         static final long SEED = 2093200L;
+        final boolean sustained;
+        final int baseline, warmup, samples, drain;
+        final float targetHealth;
         final GameTestHelper h;
         final WorldServer world;
         final ModernCoreTests.Fixture f;
@@ -354,6 +368,7 @@ public final class UnifiedCombatCapacityTests {
         final JsonObject report = new JsonObject(), emergency = new JsonObject();
         JsonObject latestCachedDiagnostic;
         final JsonArray tickRows = new JsonArray();
+        final JsonArray workWindows = new JsonArray();
         final long started;
         final String oldSpawning, oldDaylight;
         final String run = UUID.randomUUID()
@@ -364,8 +379,12 @@ public final class UnifiedCombatCapacityTests {
         int victimAge, age;
         boolean complete, closed, emergencyObserved, capturedFinal;
 
-        Attempt(GameTestHelper h) {
+        Attempt(GameTestHelper h, boolean sustained) {
             this.h = h;
+            this.sustained = sustained;
+            baseline = warmup = drain = sustained ? WORK_WINDOW : 40;
+            samples = sustained ? SUSTAINED_SAMPLES : 160;
+            targetHealth = sustained ? 10000 : 1000;
             world = h.getWorld();
             h.assertTrue(
                 MinecraftServer.getServer()
@@ -400,17 +419,46 @@ public final class UnifiedCombatCapacityTests {
                 h.assertTrue(world.setBlock(x, f.y, z, Blocks.iron_block, 0, 2), "Native iron floor rejected");
                 floor.add(new int[] { x, f.y, z });
             }
-            report.addProperty("schema", "unified-combat-capacity-feasibility-v1");
+            report.addProperty(
+                "schema",
+                sustained ? "unified-combat-sustained-capacity-v1" : "unified-combat-capacity-feasibility-v1");
             report.addProperty("run", run);
             report.addProperty(
                 "scope",
-                "One short native ENHANCED 0-32-0 run; no formal load admission or AI superiority");
+                sustained
+                    ? "One sustained native ENHANCED 0-32-0 load block; final admission requires the frozen multi-block contract"
+                    : "One short native ENHANCED 0-32-0 run; no formal load admission or AI superiority");
             report.addProperty("seed", SEED);
             report.addProperty(
                 "nativeEntityInputs",
-                "32 exact EntityMaid/EntityPig; iron sword; per-maid WORK homes; pigs 1000hp, zero speed, knockback resistance1; native gravity remains active");
-            report
-                .addProperty("phaseTicks", "40 zero baseline / 40 combat warmup / 160 combat samples / 40 zero drain");
+                "32 exact EntityMaid/EntityPig; iron sword; per-maid WORK homes; pigs " + targetHealth
+                    + "hp, zero speed, knockback resistance1; native gravity remains active");
+            report.addProperty(
+                "phaseTicks",
+                baseline + " zero baseline / "
+                    + warmup
+                    + " combat warmup / "
+                    + samples
+                    + " combat samples / "
+                    + drain
+                    + " zero drain");
+            report.addProperty("baselineTicks", baseline);
+            report.addProperty("warmupTicks", warmup);
+            report.addProperty("sampleTicks", samples);
+            report.addProperty("nativeTargetInitialHealth", targetHealth);
+            report.addProperty("drainTicks", drain);
+            report.addProperty("compactTelemetry", sustained);
+            report.addProperty("productionDiagnosticScopeEnabled", !sustained);
+            report.add("worldQuotaLimits", integers(CombatWorkQuota.worldLimits()));
+            if (sustained) {
+                report.addProperty("workWindowTicks", WORK_WINDOW);
+                report.addProperty(
+                    "workloadScope",
+                    "Every original actor must have actual native accepted attacks and completed FULL decisions in each of six200-tick sampling windows; no healing or replacement");
+                report.addProperty(
+                    "observerScope",
+                    "Every-tick quota and fairness checks, compact budget rows and six bounded actor work windows; production diagnostic logging is disabled; observer and isolated owner costs remain included");
+            }
             report.addProperty("fairnessBoundTicks", FAIR_BOUND);
             report.addProperty(
                 "fairnessScope",
@@ -418,7 +466,7 @@ public final class UnifiedCombatCapacityTests {
             report.addProperty(
                 "rawActorContinuityScope",
                 "maxContinuousRequestWait/maxGrantGap retain actor-level requested/granted history across real request recreation; actor wait<=32 remains a hard gate");
-            report.addProperty(
+            if (!sustained) report.addProperty(
                 "observerScope",
                 "Bounded per-tick budget copies and32 aggregate actor rows included in CPU/allocation; native isolated owner/network fixture and32 bounded actor references retained through zero drain; heap growth is not an AI leak verdict");
             report.addProperty("formalLoadAccepted", false);
@@ -428,7 +476,8 @@ public final class UnifiedCombatCapacityTests {
                 DevelopmentArtifactIdentity.capture(EntityMaid.class, CombatWorldBudget.class));
             report.add("observerArtifact", DevelopmentArtifactIdentity.capture(UnifiedCombatCapacityTests.class));
             MinecraftForge.EVENT_BUS.register(this);
-            probe = MaidServerLoadProbe.start(run, "unified-combat-short-capacity", world);
+            probe = MaidServerLoadProbe
+                .start(run, sustained ? "unified-combat-sustained-capacity" : "unified-combat-short-capacity", world);
             probe.phase("zero-before", 0, true);
         }
 
@@ -440,14 +489,14 @@ public final class UnifiedCombatCapacityTests {
                 target.getRNG()
                     .setSeed(SEED + 1000 + i);
                 target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
-                    .setBaseValue(1000);
+                    .setBaseValue(targetHealth);
                 target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
                     .setBaseValue(0);
                 target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
                     .setBaseValue(1);
-                target.setHealth(1000);
+                target.setHealth(targetHealth);
                 h.assertTrue(
-                    target.getMaxHealth() == 1000 && target.getHealth() == 1000,
+                    target.getMaxHealth() == targetHealth && target.getHealth() == targetHealth,
                     "Native pig high-health input was clamped or changed");
                 target.setPosition(x + 2, f.y + 1, z);
                 targets.add(target);
@@ -502,13 +551,14 @@ public final class UnifiedCombatCapacityTests {
             if (complete) return;
             long now = world.getTotalWorldTime();
             h.assertTrue(MaidSpawnChecks.present(f.owner), "Native registered owner disappeared");
-            if (age == BASELINE) {
+            if (age == baseline) {
                 spawn();
                 probe.phase("32-warmup", COUNT, false);
             }
-            if (age == BASELINE + WARMUP) probe.phase("32-sampling", COUNT, true);
+            if (age == baseline + warmup) probe.phase("32-sampling", COUNT, true);
             observeBudget(now);
-            if (age >= BASELINE && age < BASELINE + WARMUP + SAMPLES) {
+            if (sustained) observeSustainedWork(now);
+            if (age >= baseline && age < baseline + warmup + samples) {
                 for (EntityMaid maid : maids) h.assertTrue(
                     MaidSpawnChecks.present(maid) && maid.isEntityAlive()
                         && maid.getBrainCoordinator()
@@ -520,14 +570,17 @@ public final class UnifiedCombatCapacityTests {
                     "Finite native threat disappeared; test never heals/replaces targets");
                 emergency(now);
             }
-            if (age == BASELINE + WARMUP + SAMPLES) {
+            if (age == baseline + warmup + samples) {
                 captureActors();
                 restoreWater();
                 retire();
                 probe.phase("zero-after-drain", 0, true);
             }
-            if (age == BASELINE + WARMUP + SAMPLES + DRAIN) {
+            if (age == baseline + warmup + samples + drain) {
                 h.assertTrue(emergencyObserved, "Native low-air interruption never became ready");
+                if (sustained) h.assertTrue(
+                    workWindows.size() == samples / WORK_WINDOW,
+                    "Sustained capacity did not retain all original work windows");
                 for (Row row : rows.values()) h.assertTrue(
                     row.requestTicks > 0 && row.grants > 0 && row.accepted > 0 && row.samplingFullDecisions > 0,
                     "Native request/grant/accepted attack/actual sampling forecast not ready for actor " + row.index);
@@ -561,7 +614,7 @@ public final class UnifiedCombatCapacityTests {
 
         void observeBudget(long now) {
             var diagnostic = CombatWorldBudget.diagnostics(world, now);
-            latestCachedDiagnostic = CombatCachedDiagnostics.budget(world, maids, now, diagnostic);
+            if (!sustained) latestCachedDiagnostic = CombatCachedDiagnostics.budget(world, maids, now, diagnostic);
             int[] limits = CombatWorkQuota.worldLimits();
             h.assertTrue(diagnostic.preparations.length <= 8, "More than8 distinct preparation identities in one tick");
             h.assertTrue(
@@ -603,7 +656,7 @@ public final class UnifiedCombatCapacityTests {
                             + entry.preparationRound);
                     long wait = now - Math.max(row.pendingContinuousSince, row.waitSince);
                     row.maxPendingRequestWait = Math.max(row.maxPendingRequestWait, wait);
-                    if (age >= BASELINE + WARMUP) h.assertTrue(
+                    if (age >= baseline + warmup) h.assertTrue(
                         wait <= FAIR_BOUND,
                         "Continuously pending actual request starved beyond32 ticks: " + row.index
                             + " serial="
@@ -627,22 +680,24 @@ public final class UnifiedCombatCapacityTests {
                 row.lastPreparationRound = entry.preparationRound;
                 if (entry.phase == CombatWorldBudget.Phase.PREPARING) row.preparationTicks++;
                 if (entry.phase == CombatWorldBudget.Phase.READY) row.readyTicks++;
-                var out = new JsonObject();
-                out.addProperty("index", row.index);
-                out.addProperty("phase", entry.phase.name());
-                out.addProperty("actualRequested", requested.contains(entry.id));
-                out.addProperty("requestSerial", entry.requestSerial);
-                out.addProperty("pending", entry.pending);
-                out.addProperty("completedAt", entry.completedAt);
-                out.addProperty("requestRecreated", recreated);
-                out.addProperty("completionObserved", completedNow);
-                out.addProperty("since", entry.since);
-                out.addProperty("round", entry.preparationRound);
-                out.addProperty("startedAt", entry.startedAt);
-                out.addProperty("expiresAt", entry.expiresAt);
-                out.addProperty("sampledTicks", entry.sampledTicks);
-                out.addProperty("oldestCoverage", entry.oldestCoverage);
-                preparationRows.add(out);
+                if (!sustained) {
+                    var out = new JsonObject();
+                    out.addProperty("index", row.index);
+                    out.addProperty("phase", entry.phase.name());
+                    out.addProperty("actualRequested", requested.contains(entry.id));
+                    out.addProperty("requestSerial", entry.requestSerial);
+                    out.addProperty("pending", entry.pending);
+                    out.addProperty("completedAt", entry.completedAt);
+                    out.addProperty("requestRecreated", recreated);
+                    out.addProperty("completionObserved", completedNow);
+                    out.addProperty("since", entry.since);
+                    out.addProperty("round", entry.preparationRound);
+                    out.addProperty("startedAt", entry.startedAt);
+                    out.addProperty("expiresAt", entry.expiresAt);
+                    out.addProperty("sampledTicks", entry.sampledTicks);
+                    out.addProperty("oldestCoverage", entry.oldestCoverage);
+                    preparationRows.add(out);
+                }
             }
             h.assertTrue(
                 diagnostic.fullGrants <= 2 && diagnostic.granted.length <= 2,
@@ -658,7 +713,7 @@ public final class UnifiedCombatCapacityTests {
                 long actualFull = actualCore == null ? row.lastFull
                     : actualCore.combat()
                         .fullDecisions();
-                if (age >= BASELINE + WARMUP && age < BASELINE + WARMUP + SAMPLES)
+                if (age >= baseline + warmup && age < baseline + warmup + samples)
                     row.samplingFullDecisions += Math.max(0, actualFull - row.lastFull);
                 row.lastFull = actualFull;
                 if (renewed.contains(id)) row.renewedTicks++;
@@ -696,11 +751,13 @@ public final class UnifiedCombatCapacityTests {
                         : core.combat()
                             .lastPlan();
                     var observed = new JsonObject();
-                    observed.addProperty("index", row.index);
+                    if (!sustained) observed.addProperty("index", row.index);
                     if (ready == null || ready.tick != now) {
                         row.grantedWithoutCurrentCapture++;
-                        observed.addProperty("currentCapture", false);
-                        observed.addProperty("blockedMask", CombatObservation.Readiness.NO_CAPTURE);
+                        if (!sustained) {
+                            observed.addProperty("currentCapture", false);
+                            observed.addProperty("blockedMask", CombatObservation.Readiness.NO_CAPTURE);
+                        }
                     } else {
                         boolean currentCapture = ready.captured && snapshot != null && snapshot.tick == now;
                         if (currentCapture) row.fullCaptures++;
@@ -715,62 +772,65 @@ public final class UnifiedCombatCapacityTests {
                             : 0;
                         row.forecastAdvances += advances;
                         if (advances > 0) row.forecastStarted++;
-                        observed.addProperty("currentCapture", currentCapture);
-                        observed.addProperty("blockedMask", ready.blockedMask);
-                        observed.addProperty("snapshotComplete", currentCapture && snapshot.complete);
-                        observed.addProperty("fullAtStart", ready.fullAtStart);
-                        observed.addProperty("fullAtCapture", ready.fullAtCapture);
-                        observed.addProperty("fullContinuation", ready.fullContinuation);
-                        observed.addProperty("scanCycleTicks", ready.scanCycleTicks);
-                        observed.addProperty("completedScanAge", ready.completedScanAge);
-                        observed.addProperty("completedScanTicks", ready.completedScanTicks);
-                        observed.addProperty("scopeReset", ready.scopeReset);
-                        observed.addProperty("chunkCursor", ready.chunkCursor);
-                        observed.addProperty("sectionCursor", ready.sectionCursor);
-                        observed.addProperty("entityCursor", ready.entityCursor);
-                        observed.addProperty("chunksVisited", ready.chunksVisited);
-                        observed.addProperty("deferredEntities", ready.deferredEntities);
-                        observed.addProperty("permanentObservationGap", ready.permanentObservationGap);
-                        observed.addProperty("permanentProjectileGap", ready.permanentProjectileGap);
-                        observed.addProperty("urgentPending", ready.urgentPending);
-                        observed.addProperty("scanPending", ready.scanPending);
-                        observed.addProperty("targets", ready.targetCount);
-                        observed.addProperty("visibleTargets", ready.visibleTargets);
-                        observed.addProperty("primaryRays", ready.primaryRays);
-                        observed.addProperty("backgroundRays", ready.backgroundRays);
-                        observed.addProperty("secondaryRays", ready.secondaryRays);
-                        observed.addProperty("weapons", ready.weaponCount);
-                        observed.addProperty("preparing", ready.preparing);
-                        observed.addProperty("preparationReady", ready.preparationReady);
-                        observed.addProperty("preparationRound", ready.preparationRound);
-                        observed.addProperty("coverageRound", ready.coverageRound);
-                        observed.addProperty("oldestCoverage", ready.oldestCoverage);
-                        observed.addProperty("friendsComplete", ready.friendsComplete);
-                        observed.addProperty("friendCount", ready.friendCount);
-                        observed.addProperty("friendRays", ready.friendRays);
-                        observed.addProperty("friendOverflow", ready.friendOverflow);
-                        observed.addProperty("geometryAge", ready.geometryAge);
-                        observed.addProperty("geometryUnknownCells", ready.unknownGeometryCells);
-                        observed.addProperty("geometryBudgetCells", ready.budgetGeometryCells);
-                        observed.addProperty("forecastAdvances", advances);
-                        observed.add("observationDenials", integers(ready.observationDenials));
-                        observed.add("denialsAtCapture", integers(ready.denials));
-                        if (plan != null && plan.observedAt == now)
-                            observed.add("denialsAfterDecision", integers(plan.quota.denials()));
+                        if (!sustained) {
+                            observed.addProperty("currentCapture", currentCapture);
+                            observed.addProperty("blockedMask", ready.blockedMask);
+                            observed.addProperty("snapshotComplete", currentCapture && snapshot.complete);
+                            observed.addProperty("fullAtStart", ready.fullAtStart);
+                            observed.addProperty("fullAtCapture", ready.fullAtCapture);
+                            observed.addProperty("fullContinuation", ready.fullContinuation);
+                            observed.addProperty("scanCycleTicks", ready.scanCycleTicks);
+                            observed.addProperty("completedScanAge", ready.completedScanAge);
+                            observed.addProperty("completedScanTicks", ready.completedScanTicks);
+                            observed.addProperty("scopeReset", ready.scopeReset);
+                            observed.addProperty("chunkCursor", ready.chunkCursor);
+                            observed.addProperty("sectionCursor", ready.sectionCursor);
+                            observed.addProperty("entityCursor", ready.entityCursor);
+                            observed.addProperty("chunksVisited", ready.chunksVisited);
+                            observed.addProperty("deferredEntities", ready.deferredEntities);
+                            observed.addProperty("permanentObservationGap", ready.permanentObservationGap);
+                            observed.addProperty("permanentProjectileGap", ready.permanentProjectileGap);
+                            observed.addProperty("urgentPending", ready.urgentPending);
+                            observed.addProperty("scanPending", ready.scanPending);
+                            observed.addProperty("targets", ready.targetCount);
+                            observed.addProperty("visibleTargets", ready.visibleTargets);
+                            observed.addProperty("primaryRays", ready.primaryRays);
+                            observed.addProperty("backgroundRays", ready.backgroundRays);
+                            observed.addProperty("secondaryRays", ready.secondaryRays);
+                            observed.addProperty("weapons", ready.weaponCount);
+                            observed.addProperty("preparing", ready.preparing);
+                            observed.addProperty("preparationReady", ready.preparationReady);
+                            observed.addProperty("preparationRound", ready.preparationRound);
+                            observed.addProperty("coverageRound", ready.coverageRound);
+                            observed.addProperty("oldestCoverage", ready.oldestCoverage);
+                            observed.addProperty("friendsComplete", ready.friendsComplete);
+                            observed.addProperty("friendCount", ready.friendCount);
+                            observed.addProperty("friendRays", ready.friendRays);
+                            observed.addProperty("friendOverflow", ready.friendOverflow);
+                            observed.addProperty("geometryAge", ready.geometryAge);
+                            observed.addProperty("geometryUnknownCells", ready.unknownGeometryCells);
+                            observed.addProperty("geometryBudgetCells", ready.budgetGeometryCells);
+                            observed.addProperty("forecastAdvances", advances);
+                            observed.add("observationDenials", integers(ready.observationDenials));
+                            observed.add("denialsAtCapture", integers(ready.denials));
+                            if (plan != null && plan.observedAt == now)
+                                observed.add("denialsAfterDecision", integers(plan.quota.denials()));
+                        }
                     }
-                    readinessRows.add(observed);
+                    if (!sustained) readinessRows.add(observed);
                 }
                 if (row.continuousSince >= 0) {
                     long wait = now - Math.max(row.continuousSince, row.lastGrant);
                     row.maxWait = Math.max(row.maxWait, wait);
-                    if (age >= BASELINE + WARMUP) h.assertTrue(
+                    if (age >= baseline + warmup) h.assertTrue(
                         wait <= FAIR_BOUND,
                         "Continuously actual FULL-requesting actor starved beyond32 ticks: " + row.index
                             + " wait="
                             + wait);
                 }
             }
-            if (tickRows.size() >= 300) throw new IllegalStateException("Bounded capacity report overflow");
+            int reportLimit = sustained ? baseline + warmup + samples + drain + 1 : 300;
+            if (tickRows.size() >= reportLimit) throw new IllegalStateException("Bounded capacity report overflow");
             var tick = new JsonObject();
             tick.addProperty("age", age);
             tick.addProperty("worldTick", now);
@@ -781,13 +841,15 @@ public final class UnifiedCombatCapacityTests {
             var used = new JsonArray();
             for (int value : diagnostic.used) used.add(new com.google.gson.JsonPrimitive(value));
             tick.add("used", used);
-            tick.add("grantedReadiness", readinessRows);
+            if (!sustained) tick.add("grantedReadiness", readinessRows);
             tick.addProperty("preparationIdentities", diagnostic.preparations.length);
             tick.addProperty("readyRequests", diagnostic.ready.length);
-            tick.add("preparationStates", preparationRows);
-            tick.add("cachedDiagnostics", latestCachedDiagnostic);
+            if (!sustained) {
+                tick.add("preparationStates", preparationRows);
+                tick.add("cachedDiagnostics", latestCachedDiagnostic);
+            }
             tickRows.add(tick);
-            if (age >= BASELINE + WARMUP + 40 && age < BASELINE + WARMUP + 80 && victim == null)
+            if (age >= baseline + warmup + 40 && age < baseline + warmup + 80 && victim == null)
                 for (UUID id : diagnostic.granted) {
                     Row row = rows.get(id);
                     if (row != null && row.maid.onGround && row.maid.getAir() >= 100) {
@@ -795,6 +857,44 @@ public final class UnifiedCombatCapacityTests {
                         break;
                     }
                 }
+        }
+
+        void observeSustainedWork(long now) {
+            int elapsed = age - baseline - warmup;
+            if (elapsed < 0 || elapsed > samples || elapsed % WORK_WINDOW != 0) return;
+            var actors = new JsonArray();
+            JsonObject window = null;
+            if (elapsed > 0) {
+                window = new JsonObject();
+                window.addProperty("endSamplingTick", elapsed);
+                window.addProperty("worldTick", now);
+                window.addProperty("complete", false);
+                window.add("actors", actors);
+                workWindows.add(window);
+            }
+            for (Row row : rows.values()) {
+                var core = row.maid.getBrainCoordinator()
+                    .peekEnhancedCore();
+                h.assertTrue(core != null, "Sustained actor lost its enhanced root");
+                long accepted = core.actor()
+                    .meleeNativeAccepted(),
+                    full = core.combat()
+                        .fullDecisions();
+                if (elapsed > 0) {
+                    long attacks = accepted - row.windowAcceptedBefore, decisions = full - row.windowFullBefore;
+                    var actor = new JsonObject();
+                    actor.addProperty("index", row.index);
+                    actor.addProperty("nativeAcceptedAttacks", attacks);
+                    actor.addProperty("fullDecisions", decisions);
+                    actors.add(actor);
+                    h.assertTrue(
+                        attacks > 0 && decisions > 0,
+                        "Sustained work missing for original actor " + row.index + " at sampling tick " + elapsed);
+                }
+                row.windowAcceptedBefore = accepted;
+                row.windowFullBefore = full;
+            }
+            if (window != null) window.addProperty("complete", true);
         }
 
         static JsonArray integers(int[] values) {
@@ -906,7 +1006,7 @@ public final class UnifiedCombatCapacityTests {
                 actors.add(out);
             }
             double loss = 0;
-            for (EntityPig target : targets) loss += 1000 - target.getHealth();
+            for (EntityPig target : targets) loss += targetHealth - target.getHealth();
             report.add("actors", actors);
             report.addProperty("nativeTargetHealthLoss", loss);
             report.addProperty("actualFullDecisions", full);
@@ -956,6 +1056,12 @@ public final class UnifiedCombatCapacityTests {
         }
 
         void write(boolean passed, String fault) {
+            if (sustained) {
+                long now = world.getTotalWorldTime();
+                latestCachedDiagnostic = CombatCachedDiagnostics
+                    .budget(world, maids, now, CombatWorldBudget.diagnostics(world, now));
+                report.add("workWindows", workWindows);
+            }
             report.add("latestCachedDiagnostic", latestCachedDiagnostic);
             captureActors();
             report.addProperty("passed", passed);
@@ -1009,6 +1115,7 @@ public final class UnifiedCombatCapacityTests {
         long lastFull, samplingFullDecisions, preparationTicks, readyTicks, waitSince = -1, lastPreparationRound;
         long trackedRequestSerial = -1, lastRequestSerial = -1, lastRequestCompletedAt = Long.MIN_VALUE;
         long pendingContinuousSince = -1, maxPendingRequestWait, requestRecreations, requestCompletions;
+        long windowAcceptedBefore, windowFullBefore;
         final int[] readinessBlockers = new int[12], nonFullReadinessBlockers = new int[12];
         double provisionalDamage;
 
