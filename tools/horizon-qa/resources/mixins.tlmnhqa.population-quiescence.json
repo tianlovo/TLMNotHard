@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.tianluoqaq.tlmnh.compat.hodgepodge.development.population.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "plugin": "com.tianluoqaq.tlmnh.compat.hodgepodge.development.population.HodgePopulationProbeMixinPlugin",
+  "mixins": [
+    "HodgePopulationSchedulerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,40 @@
+// Optional client-only QA artifact, independent of the dedicated Horizon-QA pilot source set
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def sources = project.sourceSets.create('combatNetworkClient') {
+        java.srcDir(project.file('tools/horizon-qa/network-client'))
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath
+    }
+    project.extensions.getByName('spotless').java {
+        target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
+    }
+    project.tasks.named(sources.compileJavaTaskName).configure {
+        options.annotationProcessorPath = project.tasks.named('compileJava').get().options.annotationProcessorPath
+    }
+    def dev = project.tasks.register('combatNetworkClientJar', Jar) {
+        dependsOn sources.classesTaskName
+        from sources.output
+        archiveFileName.set('tlmnh-combat-network-client-dev.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('combat-network-client'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        doFirst {
+            manifest.attributes.remove('MixinConfigs')
+            def source = project.file('tools/horizon-qa/network-client/com/tianluoqaq/tlmnh/qa/client/CombatNetworkClientObservation.java')
+            def hash = java.security.MessageDigest.getInstance('SHA-256').digest(source.bytes).encodeHex().toString()
+            manifest.attributes('TLMNH-QA-Source-SHA256': hash, 'TLMNH-QA-Classfile-Target': '52')
+        }
+    }
+    def base = project.tasks.named('reobfJar').get()
+    def type = Class.forName('com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar', true, base.class.classLoader)
+    project.tasks.register('reobfCombatNetworkClient', type) {
+        dependsOn dev
+        inputJar.set(dev.flatMap { it.archiveFile })
+        for (name in ['mcVersion','srg','fieldCsv','methodCsv','exceptorCfg','recompMcJar','extraSrgEntries'])
+            delegate.getProperty(name).set(base.getProperty(name))
+        extraSrgFiles.from(base.extraSrgFiles)
+        referenceClasspath.from(base.referenceClasspath, sources.compileClasspath)
+        archiveFileName.set('tlmnh-combat-network-client.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('combat-network-client'))
+    }
+}

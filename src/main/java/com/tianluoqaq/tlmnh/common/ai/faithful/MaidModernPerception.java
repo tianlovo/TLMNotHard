@@ -76,6 +76,17 @@ public final class MaidModernPerception {
         return combatObservation == null ? null : combatObservation.readiness();
     }
 
+    /** 只返回显式QA作用域已有的纯缓存；不要求或取得actor活帧许可 */
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.ObservationDiagnostic combatDiagnostic(
+        Object world) {
+        return combatObservation == null ? null : combatObservation.diagnostic(world);
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.SampleDiagnostic combatSampleDiagnostic(
+        java.util.UUID id) {
+        return combatObservation == null ? null : combatObservation.sampleDiagnostic(id);
+    }
+
     public void tick() {
         if (!current.getAsBoolean()) throw new IllegalStateException("Expired perception frame");
         active = true;
@@ -94,8 +105,15 @@ public final class MaidModernPerception {
         if (unifiedCombatObservation()) {
             var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
                 .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
-            combatObservation.observe(maid, quota);
-            setNearby(combatObservation.boundedLiving());
+            var trial = com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.current(maid);
+            try (var measurement = com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.measure(
+                maid,
+                com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.Phase.OBSERVATION)) {
+                combatObservation.observe(maid, quota);
+                setNearby(combatObservation.boundedLiving());
+            } finally {
+                if (trial != null) trial.accountObservation(quota);
+            }
             livingDelay = SCAN_RATE;
             scans++;
         } else if (livingDelay <= 0 && (admission == null || admission.test(Kind.LIVING))) {

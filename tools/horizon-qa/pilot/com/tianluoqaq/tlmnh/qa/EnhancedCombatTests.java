@@ -5,11 +5,13 @@ import java.util.List;
 
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityPig;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -21,6 +23,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.api.event.MaidAttackTargetEvent;
+import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -30,6 +33,8 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldRules;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -47,50 +52,23 @@ public final class EnhancedCombatTests {
         var shield = shield(helper);
         f.maid.setOffhandItem(shield);
         f.maid.setHealth(10);
+        var sword = f.maid.getHeldItem();
         var food = new ItemStack(Items.golden_apple, 2, 1);
+        var foodNbt = food.writeToNBT(new NBTTagCompound());
+        var shieldNbt = shield.writeToNBT(new NBTTagCompound());
         f.maid.getMaidInventory()
-            .setInventorySlotContents(0, food.copy());
+            .setInventorySlotContents(0, food);
         EntityPig[] enemy = { null };
         EntityArrow[] arrow = { null };
-        int[] phase = { 0 }, hurtAt = { -1 };
+        int[] phase = { 0 }, hurtAt = { -1 }, defenseAt = { -1 }, mealRestoredAt = { -1 }, launchedAt = { -1 };
+        long[] lastBlockSequence = { 0 };
+        var trace = new CombatTrace();
+        boolean[] ownedDefenseAfterThreat = { false };
         float[] beforeArrow = { -1 };
         helper.succeedWhen(() -> {
             ready(helper, f, core);
             int age = f.maid.ticksExisted;
-            if (age <= 5 || age % 20 == 0) System.out.println(
-                "TLMNH_N_MELEE_TRACE age=" + age
-                    + " phase="
-                    + phase[0]
-                    + " kind="
-                    + core.selectedKind()
-                    + " meal="
-                    + f.maid.getMealController()
-                        .isEating()
-                    + " hp="
-                    + f.maid.getHealth()
-                    + " attempts="
-                    + core.actor()
-                        .meleeAttempts()
-                    + " accepted="
-                    + core.actor()
-                        .meleeNativeAccepted()
-                    + " target="
-                    + (core.combat()
-                        .target() == null ? "null"
-                            : core.combat()
-                                .target()
-                                .getEntityId())
-                    + " enemyHp="
-                    + (enemy[0] == null ? -1 : enemy[0].getHealth())
-                    + " shield="
-                    + core.actor()
-                        .shieldBehaviorRunning()
-                    + " use="
-                    + f.maid.getItemUseState()
-                        .peek()
-                    + " wear="
-                    + f.maid.getHeldItem()
-                        .getItemDamage());
+            trace.capture("meal-shield", f, core, enemy[0], phase[0], "mealRestoredAt=" + mealRestoredAt[0]);
             if (phase[0] == 0) {
                 if (age < 4 || !f.maid.getMealController()
                     .isEating()) return false;
@@ -103,37 +81,97 @@ public final class EnhancedCombatTests {
                 return false;
             }
             if (phase[0] == 1) {
+                if (mealRestoredAt[0] < 0 && core.selectedKind() == Kind.COMBAT) {
+                    // 归位属于首次受击抢占帧，不能等后续合法自疗完成后再拿原食物作比较
+                    helper.assertTrue(
+                        age > hurtAt[0] && f.maid.hurtTime > 0,
+                        "Meal was not preempted during the actual hurt window");
+                    helper.assertTrue(
+                        !f.maid.getMealController()
+                            .isEating(),
+                        "Actual combat preemption retained the owned meal lease");
+                    helper.assertTrue(f.maid.getHeldItem() == sword, "Meal preemption replaced the original sword ref");
+                    var restored = f.maid.getMaidInventory()
+                        .getStackInSlot(0);
+                    helper.assertTrue(restored == food, "Meal preemption failed to restore the original food ref");
+                    helper.assertTrue(
+                        foodNbt.equals(restored.writeToNBT(new NBTTagCompound())),
+                        "Meal preemption changed full food NBT before completion");
+                    helper
+                        .assertTrue(f.maid.getOffhandItem() == shield, "Meal preemption lost the original shield ref");
+                    helper.assertTrue(
+                        shieldNbt.equals(shield.writeToNBT(new NBTTagCompound())),
+                        "Meal preemption changed full displaced shield NBT");
+                    mealRestoredAt[0] = age;
+                }
                 if (core.actor()
                     .meleeNativeAccepted() == 0) return false;
+                helper.assertTrue(mealRestoredAt[0] >= 0, "Native melee accepted without observed meal preemption");
                 helper.assertTrue(
-                    core.selectedKind() == Kind.MELEE && !f.maid.getMealController()
-                        .isEating()
-                        && ItemStack.areItemStacksEqual(
-                            food,
-                            f.maid.getMaidInventory()
-                                .getStackInSlot(0))
-                        && f.maid.getOffhandItem() == shield
-                        && enemy[0].getHealth() < 200
-                        && f.maid.getHeldItem()
-                            .getItemDamage() > 0,
-                    "Melee failed to preempt/restore meal, hurt actual target or pay finite wear");
+                    core.selectedKind() == Kind.COMBAT && f.maid.isUnifiedCombat()
+                        && f.maid.getTask() == MaidTask.ATTACK,
+                    "Native melee accepted outside the unified ATTACK combat intent");
+                helper.assertTrue(
+                    !f.maid.getMealController()
+                        .isEating(),
+                    "Native melee accepted with an active meal lease");
+                helper.assertTrue(f.maid.getOffhandItem() == shield, "Native melee lost the original shield ref");
+                helper.assertTrue(enemy[0].getHealth() < 200, "Accepted native melee did not hurt the actual target");
+                helper.assertTrue(
+                    f.maid.getHeldItem() == sword && sword.getItemDamage() > 0,
+                    "Accepted native melee replaced the original sword or skipped finite wear");
                 phase[0] = 2;
             }
-            if (phase[0] == 2 && age >= hurtAt[0] + 22
-                && core.actor()
-                    .shieldBehaviorRunning()) {
-                beforeArrow[0] = f.maid.getHealth();
+            if (phase[0] == 2 && age >= hurtAt[0] + 22) {
+                if (defenseAt[0] < 0) {
+                    // 用真实坐姿命令隔离防御，避免把旧的常驻举盾策略当成新战术前提
+                    f.maid.setSitting(true);
+                    defenseAt[0] = age;
+                    return false;
+                }
+                if (age <= defenseAt[0]) return false;
+                // 只准备正面来箭输入：等待原生限速转身达到实际盾牌角度，不等待举盾或改写yaw
                 // 从当前实际敌人方向射入，避免固定+Z射点越出狭小测试格或偏离已移动的女仆
                 double dx = enemy[0].posX - f.maid.posX, dz = enemy[0].posZ - f.maid.posZ;
                 double distance = Math.sqrt(dx * dx + dz * dz);
                 helper.assertTrue(distance > .01, "Incoming projectile direction is degenerate");
+                float blockAngle = MaidShieldItems.blockAngle(shield);
+                helper.assertTrue(
+                    Float.isFinite(blockAngle) && blockAngle > 0 && blockAngle <= 180,
+                    "Actual shield provider did not expose a valid frontal block angle");
+                float relativeYaw = MaidShieldRules.relativeYaw(
+                    enemy[0].posX,
+                    enemy[0].posZ,
+                    f.maid.posX,
+                    f.maid.posZ,
+                    f.maid.rotationYaw,
+                    () -> {
+                        throw new IllegalStateException("Nondegenerate source direction unexpectedly randomized");
+                    });
+                if (!MaidShieldRules.withinAngle(relativeYaw, blockAngle)) return false;
+                double sourceBearing = Math.atan2(dz, dx) * 180 / Math.PI - 90;
+                System.out.println(
+                    "TLMNH_N_SHIELD_LAUNCH age=" + age
+                        + " bodyYaw="
+                        + f.maid.rotationYaw
+                        + " sourceBearing="
+                        + sourceBearing
+                        + " relativeYaw="
+                        + relativeYaw
+                        + " providerAngle="
+                        + blockAngle);
+                beforeArrow[0] = f.maid.getHealth();
+                launchedAt[0] = age;
+                var previousBlock = f.maid.getShieldController()
+                    .getLastBlock();
+                lastBlockSequence[0] = previousBlock == null ? 0 : previousBlock.sequence;
                 dx /= distance;
                 dz /= distance;
                 arrow[0] = new EntityArrow(
                     helper.getWorld(),
-                    f.maid.posX + dx * 1.4,
+                    f.maid.posX + dx * 2.0,
                     f.maid.posY + .9,
-                    f.maid.posZ + dz * 1.4);
+                    f.maid.posZ + dz * 2.0);
                 arrow[0].shootingEntity = enemy[0];
                 arrow[0].motionX = -dx * .6;
                 arrow[0].motionZ = -dz * .6;
@@ -147,8 +185,35 @@ public final class EnhancedCombatTests {
                 return false;
             }
             if (phase[0] != 3) return false;
+            if (core.actor()
+                .shieldBehaviorRunning()) ownedDefenseAfterThreat[0] = true;
             var block = f.maid.getShieldController()
                 .getLastBlock();
+            if (block != null && block.sequence != lastBlockSequence[0]) {
+                lastBlockSequence[0] = block.sequence;
+                double sourceBearing = Math.atan2(enemy[0].posZ - f.maid.posZ, enemy[0].posX - f.maid.posX) * 180
+                    / Math.PI - 90;
+                System.out.println(
+                    "TLMNH_N_SHIELD_IMPACT observedAge=" + age
+                        + " launchAge="
+                        + launchedAt[0]
+                        + " outcome="
+                        + block.outcome
+                        + " bodyYaw="
+                        + f.maid.rotationYaw
+                        + " sourceBearing="
+                        + sourceBearing
+                        + " impactRelativeYaw="
+                        + block.relativeYaw
+                        + " providerAngle="
+                        + block.blockAngle
+                        + " amount="
+                        + block.amount
+                        + " requestedWear="
+                        + block.requestedWear
+                        + " blocked="
+                        + block.blocked);
+            }
             if (age % 20 == 0) System.out.println(
                 "TLMNH_N_SHIELD_TRACE age=" + age
                     + " outcome="
@@ -175,7 +240,9 @@ public final class EnhancedCombatTests {
                     + f.maid.rotationYaw);
             if (block == null || block.outcome != MaidShieldController.Outcome.BLOCKED) return false;
             helper.assertTrue(
-                arrow[0].isDead && shield.getItemDamage() > 0 && f.maid.getHealth() == beforeArrow[0],
+                arrow[0].isDead && shield.getItemDamage() > 0
+                    && f.maid.getHealth() == beforeArrow[0]
+                    && ownedDefenseAfterThreat[0],
                 "Real shield block skipped projectile, health or durability evidence");
             var old = core.actor()
                 .attackTarget();
@@ -217,9 +284,23 @@ public final class EnhancedCombatTests {
             MinecraftForge.EVENT_BUS.unregister(hook);
         });
         int[] phase = { 0 }, changed = { -1 }, hiddenAt = { -1 };
+        var trace = new CombatTrace();
         helper.succeedWhen(() -> {
             ready(helper, f, core);
             int age = f.maid.ticksExisted;
+            trace.capture(
+                "permissions-memory",
+                f,
+                core,
+                target,
+                phase[0],
+                "redirects=" + hook.redirects
+                    + " invalidations="
+                    + hook.invalidations
+                    + " dimensionPending="
+                    + hook.invalidateDimension
+                    + " hiddenAt="
+                    + hiddenAt[0]);
             helper.assertTrue(
                 f.owner.getHealth() == 20 && friendly.getHealth() == 200,
                 "Player or excluded named target was damaged");
@@ -275,13 +356,21 @@ public final class EnhancedCombatTests {
                         .lastSeenPosition() != null
                         && core.combat()
                             .lastSeenPosition().x == f.x + 8
-                        && core.actor()
-                            .peekWalkTarget() != null
-                        && core.actor()
-                            .peekWalkTarget()
-                            .currentBlockPosition().x == f.x + 8
                         && target.getHealth() == 200,
-                    "Hidden target used live position instead of last-seen snapshot");
+                    "Hidden target changed its last-seen memory or received hidden damage");
+                var plan = core.combat()
+                    .lastPlan();
+                if (plan != null && target.getUniqueID()
+                    .equals(plan.targetId))
+                    helper.assertTrue(
+                        plan.face != null && plan.face.x == f.x + 8.5,
+                        "Hidden tactical plan used current target coordinates instead of observed coordinates");
+                var walk = core.actor()
+                    .peekWalkTarget();
+                if (walk != null) helper.assertTrue(
+                    walk.currentBlockPosition().x <= f.x + 8,
+                    "Hidden pursuit navigated beyond the last visible target to its hidden live position");
+                // 新战斗只执行已知安全首段；障碍前WAIT或侧移合法，不要求直达墙后的旧目标点
                 return false;
             }
             if (age <= hiddenAt[0] + 102) return false;
@@ -305,6 +394,8 @@ public final class EnhancedCombatTests {
             .setInventorySlotContents(0, new ItemStack(Items.arrow, 8));
         var core = select(helper, f);
         var target = pig(helper, f, 9.5, 4.5);
+        // 新增量观测可在首tick看到目标；先排除它，待初始reset结束后建立真实外来租约
+        target.setCustomNameTag("MaidNoAttack QA");
         MaidItemUseState.Lease[] foreign = { null };
         var hook = new ArrowBoundary(f, core, target);
         MinecraftForge.EVENT_BUS.register(hook);
@@ -330,6 +421,10 @@ public final class EnhancedCombatTests {
                         MaidItemUseState.Kind.SHIELD,
                         () -> true);
                 helper.assertTrue(foreign[0] != null, "Foreign use owner did not acquire shared service");
+                target.setCustomNameTag("");
+                helper.assertTrue(
+                    f.maid.isUnifiedCombat() && f.maid.getTask() == MaidTask.ATTACK,
+                    "Old ranged input did not enter the unified production task");
             }
             if (age <= 5 || age % 20 == 0 || age == 25) System.out.println(
                 "TLMNH_N_RANGED_TRACE age=" + age
@@ -428,7 +523,7 @@ public final class EnhancedCombatTests {
     }
 
     private static ModernCoreTests.Fixture fixture(GameTestHelper helper, MaidTask task) {
-        var f = new ModernCoreTests.Fixture(helper, false, 1, 16);
+        var f = new ModernCoreTests.Fixture(helper, false, 1, 16, MaidBrainProfile.ENHANCED);
         f.maid.setTask(task);
         f.maid.setSchedule(MaidSchedule.ALL);
         f.maid.setCurrentItemOrArmor(0, new ItemStack(Items.iron_sword));
@@ -438,10 +533,18 @@ public final class EnhancedCombatTests {
     }
 
     private static EnhancedCoreBrain select(GameTestHelper helper, ModernCoreTests.Fixture f) {
+        helper.assertTrue(
+            f.owner.getClass() == EntityPlayerMP.class && MaidCombatTargeting.validOwner(f.maid, f.owner),
+            "Actual registered native MP owner required for production combat admission");
+        // 完整夹具已选择N；先走真实策略边界，保留旧执行目标不能继承进新N的原断言
+        helper.assertTrue(
+            f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.LEGACY_PROTOTYPE)
+                == MaidPolicyRuntime.SelectionResult.SELECTED,
+            "Fresh production strategy boundary failed");
         f.maid.getModernCombatMemory()
             .target(f.owner);
         helper.assertTrue(
-            f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED_CORE_COMPONENT)
+            f.maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED)
                 == MaidPolicyRuntime.SelectionResult.SELECTED,
             "Actual enhanced combat selection failed");
         helper.assertTrue(
@@ -481,12 +584,152 @@ public final class EnhancedCombatTests {
             f.maid.isEntityAlive() && brain.peekEnhancedCore() == core
                 && brain.peekPolicyRuntime()
                     .isReady()
+                && brain.peekPolicyRuntime()
+                    .getProfile() == MaidBrainProfile.ENHANCED
+                && f.owner.getClass() == EntityPlayerMP.class
+                && MaidCombatTargeting.validOwner(f.maid, f.owner)
                 && brain.peekFaithfulBrain() == null
                 && brain.getFollowController()
                     .getTicks() == 0
                 && brain.getCombatController()
                     .getTicks() == 0,
             "Enhanced combat faulted or dispatched another root");
+    }
+
+    /** 仅打印既有状态；宏/提交/阶段变化或每20tick一帧，每个用例最多120帧 */
+    private static final class CombatTrace {
+
+        private String previous;
+        private int lastAt = -20, frames;
+
+        void capture(String label, ModernCoreTests.Fixture f, EnhancedCoreBrain core, EntityPig enemy, int phase,
+            String boundary) {
+            var plan = core.combat()
+                .lastPlan();
+            var snapshot = core.combat()
+                .lastSnapshot();
+            var result = core.combat()
+                .lastResult();
+            String key = phase + ":"
+                + core.selectedKind()
+                + ":"
+                + (plan == null ? "NONE" : plan.macro)
+                + ":"
+                + result
+                + ":"
+                + boundary;
+            int age = f.maid.ticksExisted;
+            if (frames >= 120 || key.equals(previous) && age - lastAt < 20) return;
+            previous = key;
+            lastAt = age;
+            frames++;
+            var selected = snapshot == null ? null : snapshot.target(snapshot.selectedTarget);
+            var seen = core.combat()
+                .lastSeenPosition();
+            var held = f.maid.getHeldItem();
+            var stored = f.maid.getMaidInventory()
+                .getStackInSlot(0);
+            var use = f.maid.getItemUseState()
+                .peek();
+            System.out.println(
+                "TLMNH_N_BOUNDARY_TRACE case=" + label
+                    + " age="
+                    + age
+                    + " phase="
+                    + phase
+                    + " boundary={"
+                    + boundary
+                    + "} kind="
+                    + core.selectedKind()
+                    + " meal="
+                    + f.maid.getMealController()
+                        .isEating()
+                    + " hurtTime="
+                    + f.maid.hurtTime
+                    + " hp="
+                    + f.maid.getHealth()
+                    + " attempts="
+                    + core.actor()
+                        .meleeAttempts()
+                    + " accepted="
+                    + core.actor()
+                        .meleeNativeAccepted()
+                    + " target="
+                    + (core.combat()
+                        .target() == null ? "null"
+                            : core.combat()
+                                .target()
+                                .getEntityId())
+                    + " enemy="
+                    + (enemy == null ? "null"
+                        : enemy.getEntityId() + "/dim="
+                            + enemy.dimension
+                            + "/hp="
+                            + enemy.getHealth()
+                            + "/pos="
+                            + enemy.posX
+                            + ","
+                            + enemy.posY
+                            + ","
+                            + enemy.posZ)
+                    + " maidPos="
+                    + f.maid.posX
+                    + ","
+                    + f.maid.posY
+                    + ","
+                    + f.maid.posZ
+                    + " seen="
+                    + (seen == null ? "null" : seen.x + "," + seen.y + "," + seen.z)
+                    + " shield="
+                    + core.actor()
+                        .shieldBehaviorRunning()
+                    + " use="
+                    + (use == null ? "NONE" : use.getKind())
+                    + " foodCount="
+                    + (stored == null ? 0 : stored.stackSize)
+                    + " held="
+                    + (held == null ? "null" : held.getItem() + "/wear=" + held.getItemDamage())
+                    + " cadence="
+                    + f.maid.getCombatCadence()
+                        .remainingTicks()
+                    + " receipt="
+                    + f.maid.getCombatHitReceipt()
+                        .stage()
+                    + " macro="
+                    + (plan == null ? "NONE" : plan.macro)
+                    + " result="
+                    + result
+                    + " simulated="
+                    + (plan != null && plan.simulated)
+                    + " expected="
+                    + (plan == null ? "NONE"
+                        : plan.expectedDamage + "/risk=" + plan.diagnosticTotalRisk() + "/scope=" + plan.riskScope)
+                    + " snapshot="
+                    + (snapshot == null ? "NONE"
+                        : "complete=" + snapshot.complete
+                            + "/tick="
+                            + snapshot.tick
+                            + "/selfHP="
+                            + snapshot.self.health
+                            + "/reach="
+                            + snapshot.self.reach
+                            + "/remaining="
+                            + snapshot.self.cadenceRemainingTicks)
+                    + " observedTarget="
+                    + (selected == null ? "NONE"
+                        : selected.entityId + "/visible="
+                            + selected.visible
+                            + "/hp="
+                            + selected.health
+                            + "/lastOwnHit="
+                            + selected.lastOwnHitAt
+                            + "/pos="
+                            + selected.position.x
+                            + ","
+                            + selected.position.y
+                            + ","
+                            + selected.position.z));
+        }
     }
 
     public static final class TargetBoundary {

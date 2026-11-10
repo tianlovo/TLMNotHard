@@ -166,6 +166,7 @@ public final class CombatObservation {
             if (!coverageFresh() && scanStartedAt != Long.MIN_VALUE
                 && tick >= scanStartedAt
                 && tick - scanStartedAt > CombatSnapshot.OBSERVATION_TTL - (CombatWorldBudget.PREPARATION_TICKS - 1)) {
+                traceCoverage(maid, "PREPARATION_WINDOW_SCAN");
                 startCoverage();
                 preparationRestarted = true;
             }
@@ -174,6 +175,7 @@ public final class CombatObservation {
             && scanStartedAt != Long.MIN_VALUE
             && tick >= scanStartedAt
             && tick - scanStartedAt > CombatSnapshot.OBSERVATION_TTL) {
+            traceCoverage(maid, "PREPARATION_EXPIRED_SCAN");
             startCoverage();
             preparationRestarted = true;
         }
@@ -396,11 +398,13 @@ public final class CombatObservation {
             scopeResetThisTick = true;
             centerX = cx;
             centerZ = cz;
+            traceCoverage(maid, "CHUNK_SCOPE_CHANGED");
             startCoverage();
         }
         // 覆盖等待/消费FULL时不启动新轮，也不事后清除既有必要采集缺口
         if (scanComplete && coverageFresh()) return;
         if (!coverageScanning) {
+            traceCoverage(maid, "NEXT_COVERAGE_SCAN");
             startCoverage();
         }
         scanPending = false;
@@ -860,12 +864,132 @@ public final class CombatObservation {
         projectileComplete = !permanentProjectileGap && !missingArrow && arrowEventCursor >= latestArrowSequence;
     }
 
+    /** 完全被动的最后一次capture诊断，不续期、不扫描、不申请配额 */
+    private static final class DiagnosticHistory {
+
+        final CombatDiagnosticScope.Log stages = new CombatDiagnosticScope.Log(4);
+        String startReason = "NOT_RECORDED";
+        long[] start;
+    }
+
+    private DiagnosticHistory history(CombatDiagnosticScope scope) {
+        var value = (DiagnosticHistory) scope.get(this);
+        if (value == null) {
+            value = new DiagnosticHistory();
+            scope.put(this, value);
+        }
+        return value;
+    }
+
+    private void traceCoverage(EntityMaid maid, String reason) {
+        var scope = CombatDiagnosticScope.current(maid.worldObj);
+        if (scope == null) return;
+        var h = history(scope);
+        h.startReason = reason;
+        h.start = new long[] { tick, coverageRound, scanStartedAt, scanCompletedAt, chunkCursor, sectionCursor,
+            entityCursor, chunksVisitedThisTick, preparationRound, preparationRestarted ? 1 : 0 };
+    }
+
     private void recordReadiness(EntityMaid maid, CombatWorkQuota quota, boolean captured) {
         lastReadiness = new Readiness(this, quota, captured);
+        var scope = CombatDiagnosticScope.current(maid.worldObj);
+        if (scope == null) return;
+        var h = history(scope);
+        String kind = captured ? "CAPTURE" : quota.full ? "FULL" : quota.preparing ? "PREPARING" : "LIGHT";
+        if (!h.stages.shouldCapture(tick, kind)) return;
+        var r = lastReadiness;
+        long[] v = new long[30 + r.used.length * 3];
+        long[] head = { scanStartedAt, scanCompletedAt, bodyPreparationReady() ? 1 : 0, preparationRestarted ? 1 : 0,
+            r.preparationRound, r.coverageRound, r.oldestCoverage, r.blockedMask, r.chunkCursor, r.sectionCursor,
+            r.entityCursor, r.chunksVisited, r.deferredEntities, r.scanCycleTicks, r.completedScanTicks,
+            r.completedScanAge, r.primaryRays, r.backgroundRays, r.secondaryRays, r.friendCount, r.friendRays,
+            r.scanPending ? 1 : 0, r.urgentPending ? 1 : 0, r.permanentObservationGap ? 1 : 0,
+            r.permanentProjectileGap ? 1 : 0, r.scopeReset ? 1 : 0, r.preparing ? 1 : 0, r.fullAtCapture ? 1 : 0,
+            r.preparationReady ? 1 : 0, captured ? 1 : 0 };
+        System.arraycopy(head, 0, v, 0, head.length);
+        for (int i = 0; i < r.used.length; i++) {
+            v[30 + i] = r.used[i];
+            v[30 + r.used.length + i] = r.observationDenials[i];
+            v[30 + r.used.length * 2 + i] = r.denials[i];
+        }
+        h.stages.addCaptured(tick, kind, "head30/localUsed15/observationDenied15/localDenied15", v);
+    }
+
+    public ObservationDiagnostic diagnostic(Object world) {
+        var scope = CombatDiagnosticScope.current(world);
+        if (scope == null) return null;
+        var cached = (DiagnosticHistory) scope.get(this);
+        return cached == null ? null
+            : new ObservationDiagnostic(
+                cached.stages.snapshot(),
+                cached.startReason,
+                cached.start == null ? null : cached.start.clone());
+    }
+
+    public static final class ObservationDiagnostic {
+
+        public final CombatDiagnosticScope.Frame stages;
+        public final String lastStartReason;
+        public final long[] lastStartValues;
+
+        ObservationDiagnostic(CombatDiagnosticScope.Frame stages, String reason, long[] values) {
+            this.stages = stages;
+            lastStartReason = reason;
+            lastStartValues = values;
+        }
     }
 
     public Readiness readiness() {
         return lastReadiness;
+    }
+
+    /** 仅按身份复制本tick已有缓存，诊断不补采、不读实体或世界、不续期 */
+    public SampleDiagnostic sampleDiagnostic(UUID id) {
+        SampleResult result = sampled.get(id);
+        FriendTrack friend = friendTracks.get(id);
+        Tracked target = targets.get(id);
+        LivingTrack seen = living.get(id);
+        return new SampleDiagnostic(
+            tick,
+            id,
+            result == null ? "NOT_SAMPLED" : result.name(),
+            deferred.containsKey(id),
+            friend != null,
+            friend == null ? Long.MIN_VALUE : friend.at,
+            friend != null && friend.current && friend.at == tick,
+            target != null,
+            target == null ? Long.MIN_VALUE : target.observedAt,
+            target != null && target.visible && target.observedAt == tick,
+            seen != null,
+            seen == null ? Long.MIN_VALUE : seen.at,
+            friendOverflow);
+    }
+
+    public static final class SampleDiagnostic {
+
+        public final long tick, friendObservedAt, targetObservedAt, livingObservedAt;
+        public final UUID id;
+        public final String result;
+        public final boolean deferred, friendTracked, friendCurrent, targetTracked, targetCurrent, livingTracked,
+            friendOverflow;
+
+        private SampleDiagnostic(long tick, UUID id, String result, boolean deferred, boolean friendTracked,
+            long friendObservedAt, boolean friendCurrent, boolean targetTracked, long targetObservedAt,
+            boolean targetCurrent, boolean livingTracked, long livingObservedAt, boolean friendOverflow) {
+            this.tick = tick;
+            this.id = id;
+            this.result = result;
+            this.deferred = deferred;
+            this.friendTracked = friendTracked;
+            this.friendObservedAt = friendObservedAt;
+            this.friendCurrent = friendCurrent;
+            this.targetTracked = targetTracked;
+            this.targetObservedAt = targetObservedAt;
+            this.targetCurrent = targetCurrent;
+            this.livingTracked = livingTracked;
+            this.livingObservedAt = livingObservedAt;
+            this.friendOverflow = friendOverflow;
+        }
     }
 
     public static final class Readiness {

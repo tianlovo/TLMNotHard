@@ -1,0 +1,113 @@
+// Optional non-published test mod; main/release source sets and dependencies remain independent
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def tool = project.file('tools/horizon-qa')
+    project.extensions.getByName('spotless').java {
+        target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
+    }
+    def devPath = System.getenv('TLMNH_HQA_DEV_JAR')
+    if (!devPath) throw new GradleException('TLMNH_HQA_DEV_JAR must point to the pinned Horizon-QA 0.15.0 dev JAR')
+    def devJar = new File(devPath)
+    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(devJar.bytes).encodeHex().toString()
+    if (digest != '08b92af1425183da42439024811f5377b66b902f3cf185e1831c18b843980f4b')
+        throw new GradleException('Horizon-QA dev artifact differs from the reviewed 0.15.0 release')
+    def sources = project.sourceSets.create('horizonQaPilot') {
+        java.srcDir(new File(tool, 'pilot'))
+        resources.srcDir(new File(tool, 'resources'))
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath + project.files(devJar)
+    }
+    // Concrete GT machine fixtures need their actual target-platform API hierarchy at QA compile time.
+    for (coordinate in [
+        'com.github.GTNewHorizons:GTNHLib:0.11.54:dev',
+        'com.github.GTNewHorizons:StructureLib:1.4.47:dev',
+        'com.github.GTNewHorizons:ModularUI:1.3.4:dev',
+        'com.github.GTNewHorizons:ModularUI2:2.3.94-1.7.10:dev',
+        'com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1095-GTNH:dev'
+    ]) {
+        project.dependencies.add(sources.compileOnlyConfigurationName, coordinate) { transitive = false }
+    }
+    project.tasks.named(sources.processResourcesTaskName).configure {
+        from(project.file('tools/sleep-natural-reference/contract.json')) { into 'tlmnh-sleep' }
+        from(project.file('tools/sleep-natural-reference/paired-contract.json')) { into 'tlmnh-sleep' }
+        from(project.file('tools/sleep-natural-reference/follow-mechanisms-contract.json')) {
+            into 'tlmnh-follow-mechanisms'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/activity-competition-contract.json')) {
+            into 'tlmnh-activity-competition'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/combat-mechanisms-contract.json')) {
+            into 'tlmnh-combat-mechanisms'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/combat-boundaries-contract.json')) {
+            into 'tlmnh-combat-boundaries'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/terrain-life-mechanisms-contract.json')) {
+            into 'tlmnh-terrain-life-mechanisms'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/remaining-behavior-mechanisms-contract.json')) {
+            into 'tlmnh-remaining-behavior-mechanisms'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/behavior-convergence-contract.json')) {
+            into 'tlmnh-behavior-convergence'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/sleep-natural-reference/life-condition-mechanisms-contract.json')) {
+            into 'tlmnh-life-condition-mechanisms'
+            rename { 'contract.json' }
+        }
+        from(project.file('tools/follow-natural-reference')) {
+            include 'contract.json', 'flat-contract-v1.json'
+            into 'tlmnh-follow-contracts'
+        }
+    }
+    project.tasks.named(sources.compileJavaTaskName).configure {
+        options.annotationProcessorPath = project.tasks.named('compileJava').get().options.annotationProcessorPath
+    }
+    def developmentJar = project.tasks.register('horizonQaPilotJar', Jar) {
+        dependsOn sources.classesTaskName
+        from sources.output
+        archiveFileName.set('tlmnh-horizonqa-pilot-dev.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        doFirst {
+            manifest.attributes.remove('MixinConfigs')
+            manifest.attributes('TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+                'ForceLoadAsMod': 'true', 'FMLCorePluginContainsFMLMod': 'true',
+                'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json')
+        }
+    }
+    def base = project.tasks.named('reobfJar').get()
+    def reobfType = Class.forName('com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar', true, base.class.classLoader)
+    project.tasks.register('reobfHorizonQaPilot', reobfType) {
+        dependsOn developmentJar
+        inputJar.set(developmentJar.flatMap { it.archiveFile })
+        for (name in ['mcVersion','srg','fieldCsv','methodCsv','exceptorCfg','recompMcJar','extraSrgEntries'])
+            delegate.getProperty(name).set(base.getProperty(name))
+        extraSrgFiles.from(base.extraSrgFiles)
+        referenceClasspath.from(base.referenceClasspath, sources.compileClasspath)
+        archiveFileName.set('tlmnh-horizonqa-pilot.jar')
+        destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
+        doLast {
+            new java.util.jar.JarFile(archiveFile.get().asFile).withCloseable { archive ->
+                def expected = ['TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+                    'ForceLoadAsMod': 'true', 'FMLCorePluginContainsFMLMod': 'true',
+                    'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json']
+                expected.each { key, value ->
+                    if (archive.manifest?.mainAttributes?.getValue(key) != value)
+                        throw new GradleException('QA quiescence exact manifest differs: ' + key)
+                }
+                if (archive.manifest?.mainAttributes?.getValue('FMLCorePlugin') != null)
+                    throw new GradleException('Unexpected QA core plugin')
+                if (archive.getJarEntry('mixins.tlmnhqa.population-quiescence.json') == null)
+                    throw new GradleException('QA quiescence config absent')
+            }
+        }
+    }
+}

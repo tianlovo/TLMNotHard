@@ -1,0 +1,1059 @@
+package com.tianluoqaq.tlmnh.qa;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.passive.EntityPig;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
+import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.gtnewhorizons.horizonqa.api.GameTestHelper;
+import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
+import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
+import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+
+import cpw.mods.fml.common.eventhandler.EventPriority;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+
+/** 真实增强根的短容量可行性检查，不代替正式负载或跨AI比较 */
+@GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
+public final class UnifiedCombatCapacityTests {
+
+    private UnifiedCombatCapacityTests() {}
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 420, batch = "unified_combat_5_capacity")
+    public static void nativeThirtyTwoCombatantsShareBoundedWorldWorkAndReactWithoutForecast(GameTestHelper h)
+        throws Exception {
+        h.assertTrue(Boolean.getBoolean("tlmnh.devCommands"), "Explicit development mode required");
+        h.assertTrue("1".equals(System.getProperty("horizonqa.turbo", "1")), "Native capacity requires turbo=1");
+        var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
+        h.afterTest(diagnosticScope::close);
+        var run = new Attempt(h);
+        h.afterTest(() -> {
+            try {
+                run.close();
+            } finally {
+                diagnosticScope.close();
+            }
+        });
+        try {
+            run.prepare();
+        } catch (Exception | Error failure) {
+            run.failed("prepare", failure);
+            throw failure;
+        }
+        h.onEachTick("native 0-32-0 combat capacity and actual-request fairness", () -> {
+            try {
+                run.tick();
+            } catch (RuntimeException | Error failure) {
+                run.failed("tick", failure);
+                throw failure;
+            }
+        });
+        h.succeedWhen(() -> run.complete);
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 180, batch = "unified_combat_6_friend_coverage")
+    public static void nativeKnownFriendOcclusionAndOverflowRemainUnknown(GameTestHelper h) {
+        var f = new ModernCoreTests.Fixture(h, false, 100, 24, MaidBrainProfile.ENHANCED);
+        var world = h.getWorld();
+        f.maid.setSchedule(MaidSchedule.ALL);
+        f.maid.setTask(MaidTask.ATTACK);
+        f.maid.setPickup(false);
+        f.maid.setHunger(100);
+        f.maid.setCurrentItemOrArmor(0, new ItemStack(Items.iron_sword));
+        var target = new EntityPig(world);
+        target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+            .setBaseValue(1000);
+        target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+            .setBaseValue(0);
+        target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
+            .setBaseValue(1);
+        target.setHealth(1000);
+        target.setPosition(f.x + 3.7, f.y + 1, f.z + 4.5);
+        f.maid.getAttackListData()
+            .attackGroups()
+            .put(MaidCombatEntities.id(target), MonsterType.HOSTILE);
+        h.assertTrue(world.spawnEntityInWorld(target), "Native friend scenario target join failed");
+        List<EntityMaid> friends = new ArrayList<>();
+        var known = friend(h, f, f.x + 1.5, f.z + 6.8);
+        friends.add(known);
+        h.afterTest(() -> {
+            target.setDead();
+            world.removePlayerEntityDangerously(target);
+            for (EntityMaid maid : friends) {
+                maid.setDead();
+                world.removePlayerEntityDangerously(maid);
+            }
+        });
+        int[] phase = { 0 }, diagnosticFrames = { 0 }, diagnosticPhase = { -1 };
+        boolean[] diagnosticSeen = { false };
+        long[] hiddenAt = { -1 };
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend[] original = { null };
+        h.onEachTick("native visible friend then occlusion/movement and bounded identity overflow", () -> {
+            var core = f.maid.getBrainCoordinator()
+                .peekEnhancedCore();
+            h.assertTrue(
+                core != null && f.maid.getOwner() == f.owner && MaidSpawnChecks.present(f.owner),
+                "Full native enhanced owner/root unavailable");
+            var ready = core.perception()
+                .combatReadiness();
+            long now = world.getTotalWorldTime();
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend sample = null;
+            if (ready != null) for (var value : ready.friendSamples) if (known.getUniqueID()
+                .equals(value.id)) sample = value;
+            boolean firstSample = sample != null && !diagnosticSeen[0];
+            int age = f.maid.ticksExisted;
+            if (diagnosticFrames[0] < 20 && (diagnosticPhase[0] != phase[0] || firstSample || age % 20 == 0)) {
+                diagnosticFrames[0]++;
+                diagnosticPhase[0] = phase[0];
+                diagnosticSeen[0] |= sample != null;
+                var combat = core.combat();
+                var plan = combat.lastPlan();
+                var selected = combat.target();
+                var spawned = new StringBuilder();
+                for (int index = 1; index < friends.size(); index++) {
+                    EntityMaid actor = friends.get(index);
+                    UUID id = actor.getUniqueID();
+                    boolean cachedFriend = false;
+                    if (ready != null)
+                        for (var value : ready.friendSamples) if (id.equals(value.id)) cachedFriend = true;
+                    var diagnostic = core.perception()
+                        .combatSampleDiagnostic(id);
+                    if (spawned.length() > 0) spawned.append(';');
+                    spawned.append(index - 1)
+                        .append("/id=")
+                        .append(id)
+                        .append("/entity=")
+                        .append(actor.getEntityId())
+                        .append("/alive=")
+                        .append(actor.isEntityAlive())
+                        .append("/dead=")
+                        .append(actor.isDead)
+                        .append("/pos=")
+                        .append(actor.posX)
+                        .append(',')
+                        .append(actor.posY)
+                        .append(',')
+                        .append(actor.posZ)
+                        .append("/tamed=")
+                        .append(actor.isTamed())
+                        .append("/owner=")
+                        .append(actor.func_152113_b())
+                        .append("/cachedFriend=")
+                        .append(cachedFriend)
+                        .append("/sample=")
+                        .append(diagnostic == null ? "none" : diagnostic.result)
+                        .append("/sampleTick=")
+                        .append(diagnostic == null ? "none" : diagnostic.tick)
+                        .append("/deferred=")
+                        .append(diagnostic != null && diagnostic.deferred)
+                        .append("/friendTracked=")
+                        .append(diagnostic != null && diagnostic.friendTracked)
+                        .append("/friendCurrent=")
+                        .append(diagnostic != null && diagnostic.friendCurrent)
+                        .append("/friendAt=")
+                        .append(diagnostic == null ? "none" : diagnostic.friendObservedAt)
+                        .append("/targetTracked=")
+                        .append(diagnostic != null && diagnostic.targetTracked)
+                        .append("/targetCurrent=")
+                        .append(diagnostic != null && diagnostic.targetCurrent)
+                        .append("/targetAt=")
+                        .append(diagnostic == null ? "none" : diagnostic.targetObservedAt)
+                        .append("/livingTracked=")
+                        .append(diagnostic != null && diagnostic.livingTracked)
+                        .append("/livingAt=")
+                        .append(diagnostic == null ? "none" : diagnostic.livingObservedAt);
+                }
+                // 夹具仅测量自有actor字段与cached诊断，不把实际坐标传回AI或补生产查询
+                System.out.println(
+                    "TLMNH_COMBAT_FRIEND_TRACE phase=" + phase[0]
+                        + " frame="
+                        + diagnosticFrames[0]
+                        + " age="
+                        + age
+                        + " worldTick="
+                        + now
+                        + " firstSample="
+                        + firstSample
+                        + " maid="
+                        + f.maid.getUniqueID()
+                        + " maidPos="
+                        + f.maid.posX
+                        + ","
+                        + f.maid.posY
+                        + ","
+                        + f.maid.posZ
+                        + " known="
+                        + known.getUniqueID()
+                        + " knownPos="
+                        + known.posX
+                        + ","
+                        + known.posY
+                        + ","
+                        + known.posZ
+                        + " cachedTick="
+                        + (ready == null ? "none" : ready.tick)
+                        + " sample="
+                        + (sample == null ? "none"
+                            : sample.id + "/entity="
+                                + sample.entityId
+                                + "/dim="
+                                + sample.dimension
+                                + "/at="
+                                + sample.observedAt
+                                + "/current="
+                                + sample.current
+                                + "/round="
+                                + sample.coverageRound
+                                + "/pos="
+                                + sample.position.x
+                                + ","
+                                + sample.position.y
+                                + ","
+                                + sample.position.z)
+                        + " friendCount="
+                        + (ready == null ? "none" : ready.friendCount)
+                        + " overflow="
+                        + (ready != null && ready.friendOverflow)
+                        + " oldestCoverage="
+                        + (ready == null ? "none" : ready.oldestCoverage)
+                        + " coverageRound="
+                        + (ready == null ? "none" : ready.coverageRound)
+                        + " preparationRound="
+                        + (ready == null ? "none" : ready.preparationRound)
+                        + " blockedMask="
+                        + (ready == null ? "none" : ready.blockedMask)
+                        + " selectedKind="
+                        + core.selectedKind()
+                        + " target="
+                        + (selected == null ? "none" : selected.getEntityId())
+                        + " macro="
+                        + (plan == null ? "none" : plan.macro)
+                        + " result="
+                        + combat.lastResult()
+                        + " spawnedFriends=["
+                        + spawned
+                        + "]");
+            }
+            if (ready == null) return;
+            if (phase[0] == 0) {
+                if (sample == null || !sample.current || sample.observedAt != now) return;
+                original[0] = sample;
+                hiddenAt[0] = now;
+                for (int x = 1; x < 20; x++) for (int y = 1; y <= 4; y++) h.setBlock(x, y, 6, Blocks.stone);
+                known.setPosition(f.x + 2.7, f.y + 1, f.z + 7.2);
+                phase[0] = 1;
+            } else if (phase[0] == 1 && now > hiddenAt[0] + 1) {
+                h.assertTrue(
+                    sample != null && sample.id.equals(original[0].id)
+                        && sample.entityId == original[0].entityId
+                        && sample.dimension == original[0].dimension,
+                    "Occlusion silently discarded or replaced a known friend identity");
+                h.assertTrue(
+                    sample.observedAt == original[0].observedAt && sample.position.x == original[0].position.x
+                        && sample.position.z == original[0].position.z,
+                    "Hidden friend movement refreshed its historical position or timestamp");
+                h.assertTrue(
+                    !sample.current && !ready.friendsComplete
+                        && (ready.blockedMask & CombatObservation.Readiness.FRIENDS_INCOMPLETE) != 0,
+                    "Unresolved known friend was treated as safe");
+                var snapshot = core.combat()
+                    .lastSnapshot();
+                if (snapshot != null && snapshot.tick == now)
+                    h.assertFalse(snapshot.complete, "Full forecast accepted an unresolved friend");
+                // 留足西侧玻璃墙余量，防止原生碰撞后首列进入墙体而变成隐藏演员
+                for (int i = 0; i < 13; i++)
+                    friends.add(friend(h, f, f.x + 2.3 + i % 5 * .95, f.z + 1.5 + i / 5 * 1.1));
+                phase[0] = 2;
+            } else if (phase[0] == 2 && ready.friendOverflow) {
+                h.assertTrue(
+                    ready.friendSamples.size() <= 12 && !ready.friendsComplete,
+                    "Friend overflow exceeded output capacity or became safe");
+                h.assertTrue(
+                    (ready.blockedMask & CombatObservation.Readiness.FRIENDS_INCOMPLETE) != 0,
+                    "Overflow omitted its UNKNOWN completeness reason");
+                var snapshot = core.combat()
+                    .lastSnapshot();
+                if (snapshot != null && snapshot.tick == now)
+                    h.assertFalse(snapshot.complete, "Overflow granted a complete forecast");
+                System.out.println(
+                    "TLMNH_UNIFIED209_FRIEND_UNKNOWN id=" + known.getUniqueID()
+                        + " originalAt="
+                        + original[0].observedAt
+                        + " retainedAt="
+                        + sample.observedAt
+                        + " boundedFriends="
+                        + ready.friendSamples.size()
+                        + " overflow=true");
+                phase[0] = 3;
+            }
+        });
+        h.succeedWhen(() -> phase[0] == 3);
+    }
+
+    private static EntityMaid friend(GameTestHelper h, ModernCoreTests.Fixture f, double x, double z) {
+        var maid = new EntityMaid(h.getWorld());
+        h.assertTrue(maid.bindTo(f.owner.getUniqueID()), "Native friend owner bind rejected");
+        maid.getBrainCoordinator()
+            .setSuspended(true);
+        maid.setPosition(x, f.y + 1, z);
+        h.assertTrue(
+            h.getWorld()
+                .spawnEntityInWorld(maid),
+            "Native friend join failed");
+        return maid;
+    }
+
+    public static final class Attempt {
+
+        static final int COUNT = 32, BASELINE = 40, WARMUP = 40, SAMPLES = 160, DRAIN = 40, FAIR_BOUND = 32;
+        static final long SEED = 2093200L;
+        final GameTestHelper h;
+        final WorldServer world;
+        final ModernCoreTests.Fixture f;
+        final List<EntityMaid> maids = new ArrayList<>();
+        final List<EntityPig> targets = new ArrayList<>();
+        final List<int[]> floor = new ArrayList<>(), water = new ArrayList<>();
+        final Map<UUID, Row> rows = new HashMap<>();
+        final Set<Entity> targetIdentity = new HashSet<>();
+        final JsonObject report = new JsonObject(), emergency = new JsonObject();
+        JsonObject latestCachedDiagnostic;
+        final JsonArray tickRows = new JsonArray();
+        final long started;
+        final String oldSpawning, oldDaylight;
+        final String run = UUID.randomUUID()
+            .toString();
+        MaidServerLoadProbe probe;
+        EntityMaid victim;
+        long emergencyInput = Long.MIN_VALUE, emergencyReleases;
+        int victimAge, age;
+        boolean complete, closed, emergencyObserved, capturedFinal;
+
+        Attempt(GameTestHelper h) {
+            this.h = h;
+            world = h.getWorld();
+            h.assertTrue(
+                MinecraftServer.getServer()
+                    .getConfigurationManager().playerEntityList.isEmpty(),
+                "Unrelated native player retained; isolated capacity run refused");
+            h.assertTrue(
+                world.loadedEntityList.stream()
+                    .noneMatch(value -> value instanceof EntityMaid),
+                "Existing unrelated maid retained; native zero baseline refused");
+            f = new ModernCoreTests.Fixture(h, false, 16, 20, MaidBrainProfile.ENHANCED);
+            f.maid.getBrainCoordinator()
+                .setSuspended(true);
+            f.maid.setDead();
+            world.removePlayerEntityDangerously(f.maid);
+            started = world.getTotalWorldTime();
+            oldSpawning = world.getGameRules()
+                .getGameRuleStringValue("doMobSpawning");
+            oldDaylight = world.getGameRules()
+                .getGameRuleStringValue("doDaylightCycle");
+        }
+
+        void prepare() throws Exception {
+            world.getGameRules()
+                .setOrCreateGameRule("doMobSpawning", "false");
+            world.getGameRules()
+                .setOrCreateGameRule("doDaylightCycle", "false");
+            world.setWorldTime(6000);
+            for (int x = f.x + 28; x <= f.x + 93; x++) for (int z = f.z + 16; z <= f.z + 49; z++) {
+                for (int y = f.y; y <= f.y + 5; y++) h.assertTrue(
+                    world.isAirBlock(x, y, z) && world.getTileEntity(x, y, z) == null,
+                    "Unknown capacity course input retained");
+                h.assertTrue(world.setBlock(x, f.y, z, Blocks.iron_block, 0, 2), "Native iron floor rejected");
+                floor.add(new int[] { x, f.y, z });
+            }
+            report.addProperty("schema", "unified-combat-capacity-feasibility-v1");
+            report.addProperty("run", run);
+            report.addProperty(
+                "scope",
+                "One short native ENHANCED 0-32-0 run; no formal load admission or AI superiority");
+            report.addProperty("seed", SEED);
+            report.addProperty(
+                "nativeEntityInputs",
+                "32 exact EntityMaid/EntityPig; iron sword; per-maid WORK homes; pigs 1000hp, zero speed, knockback resistance1; native gravity remains active");
+            report
+                .addProperty("phaseTicks", "40 zero baseline / 40 combat warmup / 160 combat samples / 40 zero drain");
+            report.addProperty("fairnessBoundTicks", FAIR_BOUND);
+            report.addProperty(
+                "fairnessScope",
+                "Both actor-level continuously actualRequested wait<=32 and same requestSerial+pending wait<=32 until actual completed(); no preparation-expiry reset");
+            report.addProperty(
+                "rawActorContinuityScope",
+                "maxContinuousRequestWait/maxGrantGap retain actor-level requested/granted history across real request recreation; actor wait<=32 remains a hard gate");
+            report.addProperty(
+                "observerScope",
+                "Bounded per-tick budget copies and32 aggregate actor rows included in CPU/allocation; native isolated owner/network fixture and32 bounded actor references retained through zero drain; heap growth is not an AI leak verdict");
+            report.addProperty("formalLoadAccepted", false);
+            report.addProperty("crossAiNonInferiorityClaimed", false);
+            report.add(
+                "productionArtifact",
+                DevelopmentArtifactIdentity.capture(EntityMaid.class, CombatWorldBudget.class));
+            report.add("observerArtifact", DevelopmentArtifactIdentity.capture(UnifiedCombatCapacityTests.class));
+            MinecraftForge.EVENT_BUS.register(this);
+            probe = MaidServerLoadProbe.start(run, "unified-combat-short-capacity", world);
+            probe.phase("zero-before", 0, true);
+        }
+
+        void spawn() {
+            for (int i = 0; i < COUNT; i++) {
+                double x = f.x + 32.5 + i % 8 * 8, z = f.z + 20.5 + i / 8 * 8;
+                var target = new EntityPig(world);
+                target.func_110163_bv();
+                target.getRNG()
+                    .setSeed(SEED + 1000 + i);
+                target.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+                    .setBaseValue(1000);
+                target.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                    .setBaseValue(0);
+                target.getEntityAttribute(SharedMonsterAttributes.knockbackResistance)
+                    .setBaseValue(1);
+                target.setHealth(1000);
+                h.assertTrue(
+                    target.getMaxHealth() == 1000 && target.getHealth() == 1000,
+                    "Native pig high-health input was clamped or changed");
+                target.setPosition(x + 2, f.y + 1, z);
+                targets.add(target);
+                targetIdentity.add(target);
+                h.assertTrue(
+                    world.spawnEntityInWorld(target) && MaidSpawnChecks.present(target),
+                    "Native pig join failed");
+                var maid = new EntityMaid(world);
+                maid.getRNG()
+                    .setSeed(SEED + i);
+                h.assertTrue(maid.bindTo(f.owner.getUniqueID()), "Native owner binding failed");
+                maid.setPosition(x, f.y + 1, z);
+                maid.setTask(MaidTask.ATTACK);
+                maid.setSchedule(MaidSchedule.ALL);
+                maid.setHunger(100);
+                maid.setPickup(false);
+                maid.setSitting(false);
+                maid.setCurrentItemOrArmor(0, new ItemStack(Items.iron_sword));
+                maid.getAttackListData()
+                    .attackGroups()
+                    .put(MaidCombatEntities.id(target), MonsterType.HOSTILE);
+                h.assertTrue(
+                    maid.getHomeArea()
+                        .setEnabled(true),
+                    "Native home enable rejected");
+                for (MaidLifeRules.Activity activity : MaidLifeRules.Activity.values()) h.assertTrue(
+                    maid.getHomeArea()
+                        .capture(activity),
+                    "Per-maid home center rejected");
+                maids.add(maid);
+                rows.put(maid.getUniqueID(), new Row(i, maid));
+                h.assertTrue(
+                    world.spawnEntityInWorld(maid) && MaidSpawnChecks.present(maid),
+                    "Native maid join failed");
+                h.assertTrue(
+                    maid.selectBrainProfileForDevelopment(MaidBrainProfile.ENHANCED)
+                        == MaidPolicyRuntime.SelectionResult.SELECTED,
+                    "Actual ENHANCED selection rejected");
+                h.assertTrue(
+                    maid.getBrainCoordinator()
+                        .peekEnhancedCore() != null,
+                    "Native enhanced root was substituted");
+                h.assertFalse(
+                    maid.getBrainCoordinator()
+                        .getTelemetry()
+                        .isEnabled(),
+                    "Event ledger must remain disabled");
+            }
+        }
+
+        void tick() {
+            if (complete) return;
+            long now = world.getTotalWorldTime();
+            h.assertTrue(MaidSpawnChecks.present(f.owner), "Native registered owner disappeared");
+            if (age == BASELINE) {
+                spawn();
+                probe.phase("32-warmup", COUNT, false);
+            }
+            if (age == BASELINE + WARMUP) probe.phase("32-sampling", COUNT, true);
+            observeBudget(now);
+            if (age >= BASELINE && age < BASELINE + WARMUP + SAMPLES) {
+                for (EntityMaid maid : maids) h.assertTrue(
+                    MaidSpawnChecks.present(maid) && maid.isEntityAlive()
+                        && maid.getBrainCoordinator()
+                            .peekPolicyRuntime()
+                            .isReady(),
+                    "Native actor/root disappeared or faulted");
+                for (EntityPig target : targets) h.assertTrue(
+                    MaidSpawnChecks.present(target) && target.isEntityAlive(),
+                    "Finite native threat disappeared; test never heals/replaces targets");
+                emergency(now);
+            }
+            if (age == BASELINE + WARMUP + SAMPLES) {
+                captureActors();
+                restoreWater();
+                retire();
+                probe.phase("zero-after-drain", 0, true);
+            }
+            if (age == BASELINE + WARMUP + SAMPLES + DRAIN) {
+                h.assertTrue(emergencyObserved, "Native low-air interruption never became ready");
+                for (Row row : rows.values()) h.assertTrue(
+                    row.requestTicks > 0 && row.grants > 0 && row.accepted > 0 && row.samplingFullDecisions > 0,
+                    "Native request/grant/accepted attack/actual sampling forecast not ready for actor " + row.index);
+                h.assertTrue(
+                    report.get("nativeTargetHealthLoss")
+                        .getAsDouble() > 0,
+                    "No independently observed native damage");
+                h.assertTrue(
+                    report.get("forecastReady")
+                        .getAsBoolean(),
+                    "Full grants never yielded a complete native forecast; inspect observation/geometry readiness diagnostics");
+                h.assertTrue(
+                    world.loadedEntityList.stream()
+                        .noneMatch(value -> value instanceof EntityMaid),
+                    "Zero drain still retained a native maid");
+                var drained = CombatWorldBudget.diagnostics(world, now);
+                h.assertTrue(
+                    drained.requests == 0 && drained.preparations.length == 0 && drained.ready.length == 0,
+                    "Zero drain retained combat request/preparation/ready state");
+                probe.close();
+                h.assertTrue(
+                    probe.snapshot()
+                        .get("valid")
+                        .getAsBoolean(),
+                    "Native load recorder became invalid");
+                complete = true;
+                write(true, null);
+            }
+            age++;
+        }
+
+        void observeBudget(long now) {
+            var diagnostic = CombatWorldBudget.diagnostics(world, now);
+            latestCachedDiagnostic = CombatCachedDiagnostics.budget(world, maids, now, diagnostic);
+            int[] limits = CombatWorkQuota.worldLimits();
+            h.assertTrue(diagnostic.preparations.length <= 8, "More than8 distinct preparation identities in one tick");
+            h.assertTrue(
+                diagnostic.used[CombatWorkQuota.Work.ADVANCE.ordinal()] <= 1440,
+                "World forecast advance cap exceeded");
+            Set<UUID> requested = new HashSet<>(), granted = new HashSet<>(), renewed = new HashSet<>();
+            java.util.Collections.addAll(requested, diagnostic.requested);
+            java.util.Collections.addAll(granted, diagnostic.granted);
+            java.util.Collections.addAll(renewed, diagnostic.renewed);
+            // 同UUID的真实取消重建、已完成和false心跳占位不能拼成一个未完成请求
+            for (Row row : rows.values()) if (!requested.contains(row.maid.getUniqueID())) {
+                row.waitSince = -1;
+                row.trackedRequestSerial = -1;
+                row.pendingContinuousSince = -1;
+            }
+            var preparationRows = new JsonArray();
+            for (var entry : diagnostic.entries) {
+                Row row = rows.get(entry.id);
+                if (row == null) continue;
+                h.assertTrue(entry.sampledTicks <= 6, "Preparation lease exceeded6 actual sample ticks");
+                boolean recreated = row.lastRequestSerial >= 0 && row.lastRequestSerial != entry.requestSerial;
+                boolean completedNow = entry.completedAt != Long.MIN_VALUE
+                    && (row.lastRequestSerial != entry.requestSerial
+                        || row.lastRequestCompletedAt != entry.completedAt);
+                if (recreated) row.requestRecreations++;
+                if (completedNow) row.requestCompletions++;
+                boolean sameTracked = row.trackedRequestSerial == entry.requestSerial && row.waitSince >= 0;
+                if (requested.contains(entry.id) && sameTracked && (entry.pending || completedNow)) {
+                    if (!completedNow) h.assertTrue(
+                        entry.since == row.waitSince,
+                        "Pending request changed first age for actor " + row.index
+                            + " serial="
+                            + entry.requestSerial
+                            + " previous="
+                            + row.waitSince
+                            + " actual="
+                            + entry.since
+                            + " round="
+                            + entry.preparationRound);
+                    long wait = now - Math.max(row.pendingContinuousSince, row.waitSince);
+                    row.maxPendingRequestWait = Math.max(row.maxPendingRequestWait, wait);
+                    if (age >= BASELINE + WARMUP) h.assertTrue(
+                        wait <= FAIR_BOUND,
+                        "Continuously pending actual request starved beyond32 ticks: " + row.index
+                            + " serial="
+                            + entry.requestSerial
+                            + " wait="
+                            + wait);
+                }
+                if (requested.contains(entry.id) && entry.pending) {
+                    if (!sameTracked || completedNow) {
+                        row.trackedRequestSerial = entry.requestSerial;
+                        row.waitSince = entry.since;
+                        row.pendingContinuousSince = now;
+                    }
+                } else {
+                    row.trackedRequestSerial = -1;
+                    row.waitSince = -1;
+                    row.pendingContinuousSince = -1;
+                }
+                row.lastRequestSerial = entry.requestSerial;
+                row.lastRequestCompletedAt = entry.completedAt;
+                row.lastPreparationRound = entry.preparationRound;
+                if (entry.phase == CombatWorldBudget.Phase.PREPARING) row.preparationTicks++;
+                if (entry.phase == CombatWorldBudget.Phase.READY) row.readyTicks++;
+                var out = new JsonObject();
+                out.addProperty("index", row.index);
+                out.addProperty("phase", entry.phase.name());
+                out.addProperty("actualRequested", requested.contains(entry.id));
+                out.addProperty("requestSerial", entry.requestSerial);
+                out.addProperty("pending", entry.pending);
+                out.addProperty("completedAt", entry.completedAt);
+                out.addProperty("requestRecreated", recreated);
+                out.addProperty("completionObserved", completedNow);
+                out.addProperty("since", entry.since);
+                out.addProperty("round", entry.preparationRound);
+                out.addProperty("startedAt", entry.startedAt);
+                out.addProperty("expiresAt", entry.expiresAt);
+                out.addProperty("sampledTicks", entry.sampledTicks);
+                out.addProperty("oldestCoverage", entry.oldestCoverage);
+                preparationRows.add(out);
+            }
+            h.assertTrue(
+                diagnostic.fullGrants <= 2 && diagnostic.granted.length <= 2,
+                "World granted more than2 forecasts");
+            for (int i = 0; i < limits.length; i++) h.assertTrue(
+                diagnostic.used[i] >= 0 && diagnostic.used[i] <= limits[i],
+                "World combat work exceeded " + CombatWorkQuota.Work.values()[i]);
+            var readinessRows = new JsonArray();
+            for (Row row : rows.values()) {
+                UUID id = row.maid.getUniqueID();
+                var actualCore = row.maid.getBrainCoordinator()
+                    .peekEnhancedCore();
+                long actualFull = actualCore == null ? row.lastFull
+                    : actualCore.combat()
+                        .fullDecisions();
+                if (age >= BASELINE + WARMUP && age < BASELINE + WARMUP + SAMPLES)
+                    row.samplingFullDecisions += Math.max(0, actualFull - row.lastFull);
+                row.lastFull = actualFull;
+                if (renewed.contains(id)) row.renewedTicks++;
+                if (requested.contains(id)) {
+                    row.requestTicks++;
+                    if (row.continuousSince < 0) row.continuousSince = now;
+                    if (row.firstRequest < 0) row.firstRequest = now;
+                } else row.continuousSince = -1;
+                if (!granted.contains(id)) {
+                    var passiveCore = row.maid.getBrainCoordinator()
+                        .peekEnhancedCore();
+                    var passive = passiveCore == null ? null
+                        : passiveCore.perception()
+                            .combatReadiness();
+                    if (passive != null && passive.tick == now) {
+                        row.nonFullObservations++;
+                        for (int bit = 0; bit < 12; bit++)
+                            if ((passive.blockedMask & (1 << bit)) != 0) row.nonFullReadinessBlockers[bit]++;
+                    }
+                }
+                if (granted.contains(id)) {
+                    row.grants++;
+                    if (row.firstGrant < 0) row.firstGrant = now;
+                    if (row.lastGrant >= 0) row.maxGrantGap = Math.max(row.maxGrantGap, now - row.lastGrant);
+                    row.lastGrant = now;
+                    var core = row.maid.getBrainCoordinator()
+                        .peekEnhancedCore();
+                    var ready = core == null ? null
+                        : core.perception()
+                            .combatReadiness();
+                    var snapshot = core == null ? null
+                        : core.combat()
+                            .lastSnapshot();
+                    var plan = core == null ? null
+                        : core.combat()
+                            .lastPlan();
+                    var observed = new JsonObject();
+                    observed.addProperty("index", row.index);
+                    if (ready == null || ready.tick != now) {
+                        row.grantedWithoutCurrentCapture++;
+                        observed.addProperty("currentCapture", false);
+                        observed.addProperty("blockedMask", CombatObservation.Readiness.NO_CAPTURE);
+                    } else {
+                        boolean currentCapture = ready.captured && snapshot != null && snapshot.tick == now;
+                        if (currentCapture) row.fullCaptures++;
+                        else row.grantedWithoutCurrentCapture++;
+                        if (currentCapture && ready.blockedMask == 0) row.readyCaptures++;
+                        if (ready.fullContinuation) row.fullContinuations++;
+                        row.lastReadinessMask = ready.blockedMask;
+                        for (int bit = 0; bit < 12; bit++)
+                            if ((ready.blockedMask & (1 << bit)) != 0) row.readinessBlockers[bit]++;
+                        int advances = plan != null && plan.observedAt == now
+                            ? plan.quota.used(CombatWorkQuota.Work.ADVANCE)
+                            : 0;
+                        row.forecastAdvances += advances;
+                        if (advances > 0) row.forecastStarted++;
+                        observed.addProperty("currentCapture", currentCapture);
+                        observed.addProperty("blockedMask", ready.blockedMask);
+                        observed.addProperty("snapshotComplete", currentCapture && snapshot.complete);
+                        observed.addProperty("fullAtStart", ready.fullAtStart);
+                        observed.addProperty("fullAtCapture", ready.fullAtCapture);
+                        observed.addProperty("fullContinuation", ready.fullContinuation);
+                        observed.addProperty("scanCycleTicks", ready.scanCycleTicks);
+                        observed.addProperty("completedScanAge", ready.completedScanAge);
+                        observed.addProperty("completedScanTicks", ready.completedScanTicks);
+                        observed.addProperty("scopeReset", ready.scopeReset);
+                        observed.addProperty("chunkCursor", ready.chunkCursor);
+                        observed.addProperty("sectionCursor", ready.sectionCursor);
+                        observed.addProperty("entityCursor", ready.entityCursor);
+                        observed.addProperty("chunksVisited", ready.chunksVisited);
+                        observed.addProperty("deferredEntities", ready.deferredEntities);
+                        observed.addProperty("permanentObservationGap", ready.permanentObservationGap);
+                        observed.addProperty("permanentProjectileGap", ready.permanentProjectileGap);
+                        observed.addProperty("urgentPending", ready.urgentPending);
+                        observed.addProperty("scanPending", ready.scanPending);
+                        observed.addProperty("targets", ready.targetCount);
+                        observed.addProperty("visibleTargets", ready.visibleTargets);
+                        observed.addProperty("primaryRays", ready.primaryRays);
+                        observed.addProperty("backgroundRays", ready.backgroundRays);
+                        observed.addProperty("secondaryRays", ready.secondaryRays);
+                        observed.addProperty("weapons", ready.weaponCount);
+                        observed.addProperty("preparing", ready.preparing);
+                        observed.addProperty("preparationReady", ready.preparationReady);
+                        observed.addProperty("preparationRound", ready.preparationRound);
+                        observed.addProperty("coverageRound", ready.coverageRound);
+                        observed.addProperty("oldestCoverage", ready.oldestCoverage);
+                        observed.addProperty("friendsComplete", ready.friendsComplete);
+                        observed.addProperty("friendCount", ready.friendCount);
+                        observed.addProperty("friendRays", ready.friendRays);
+                        observed.addProperty("friendOverflow", ready.friendOverflow);
+                        observed.addProperty("geometryAge", ready.geometryAge);
+                        observed.addProperty("geometryUnknownCells", ready.unknownGeometryCells);
+                        observed.addProperty("geometryBudgetCells", ready.budgetGeometryCells);
+                        observed.addProperty("forecastAdvances", advances);
+                        observed.add("observationDenials", integers(ready.observationDenials));
+                        observed.add("denialsAtCapture", integers(ready.denials));
+                        if (plan != null && plan.observedAt == now)
+                            observed.add("denialsAfterDecision", integers(plan.quota.denials()));
+                    }
+                    readinessRows.add(observed);
+                }
+                if (row.continuousSince >= 0) {
+                    long wait = now - Math.max(row.continuousSince, row.lastGrant);
+                    row.maxWait = Math.max(row.maxWait, wait);
+                    if (age >= BASELINE + WARMUP) h.assertTrue(
+                        wait <= FAIR_BOUND,
+                        "Continuously actual FULL-requesting actor starved beyond32 ticks: " + row.index
+                            + " wait="
+                            + wait);
+                }
+            }
+            if (tickRows.size() >= 300) throw new IllegalStateException("Bounded capacity report overflow");
+            var tick = new JsonObject();
+            tick.addProperty("age", age);
+            tick.addProperty("worldTick", now);
+            tick.addProperty("registeredRequests", diagnostic.requests);
+            tick.addProperty("actualFullRequests", requested.size());
+            tick.addProperty("renewals", renewed.size());
+            tick.addProperty("fullGrants", diagnostic.fullGrants);
+            var used = new JsonArray();
+            for (int value : diagnostic.used) used.add(new com.google.gson.JsonPrimitive(value));
+            tick.add("used", used);
+            tick.add("grantedReadiness", readinessRows);
+            tick.addProperty("preparationIdentities", diagnostic.preparations.length);
+            tick.addProperty("readyRequests", diagnostic.ready.length);
+            tick.add("preparationStates", preparationRows);
+            tick.add("cachedDiagnostics", latestCachedDiagnostic);
+            tickRows.add(tick);
+            if (age >= BASELINE + WARMUP + 40 && age < BASELINE + WARMUP + 80 && victim == null)
+                for (UUID id : diagnostic.granted) {
+                    Row row = rows.get(id);
+                    if (row != null && row.maid.onGround && row.maid.getAir() >= 100) {
+                        victim = row.maid;
+                        break;
+                    }
+                }
+        }
+
+        static JsonArray integers(int[] values) {
+            var result = new JsonArray();
+            for (int value : values) result.add(new com.google.gson.JsonPrimitive(value));
+            return result;
+        }
+
+        void emergency(long now) {
+            if (victim == null) return;
+            if (emergencyInput == Long.MIN_VALUE) {
+                emergencyInput = now;
+                victimAge = victim.ticksExisted;
+                emergencyReleases = victim.getBrainCoordinator()
+                    .peekEnhancedCore()
+                    .breathing()
+                    .emergencyReleases();
+                int x = MathHelper.floor_double(victim.posX), y = MathHelper.floor_double(victim.boundingBox.minY),
+                    z = MathHelper.floor_double(victim.posZ);
+                for (int py = y; py <= y + 1; py++) {
+                    h.assertTrue(world.isAirBlock(x, py, z), "Unknown low-air source cell retained");
+                    h.assertTrue(world.setBlock(x, py, z, Blocks.water, 0, 2), "Native water input rejected");
+                    water.add(new int[] { x, py, z });
+                }
+                victim.setSitting(true);
+                victim.setAir(20);
+                emergency.addProperty(
+                    "maid",
+                    victim.getUniqueID()
+                        .toString());
+                emergency.addProperty("inputWorldTick", now);
+                emergency.addProperty(
+                    "source",
+                    "Native source water at body/eyes, air20 and player sitting command; no controller call");
+            } else if (!emergencyObserved && victim.ticksExisted > victimAge) {
+                var core = victim.getBrainCoordinator()
+                    .peekEnhancedCore();
+                boolean granted = false;
+                for (UUID id : CombatWorldBudget.diagnostics(world, now).granted)
+                    granted |= id.equals(victim.getUniqueID());
+                h.assertTrue(
+                    core.selectedKind() == Kind.BREATHE && !victim.isSitting()
+                        && core.breathing()
+                            .emergencyReleases() > emergencyReleases,
+                    "Native low-air priority did not cancel combat and release sitting on its next frame");
+                h.assertFalse(
+                    granted,
+                    "Low-air sample coincided with FULL; no-budget emergency evidence not established");
+                emergencyObserved = true;
+                emergency.addProperty("reactionWorldTick", now);
+                emergency.addProperty("reactionHadFullGrant", false);
+                emergency.addProperty(
+                    "selected",
+                    core.selectedKind()
+                        .name());
+                restoreWater();
+                victim.setAir(300);
+            }
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public void hurt(LivingHurtEvent event) {
+            if (!targetIdentity.contains(event.entityLiving) || !(event.source.getEntity() instanceof EntityMaid maid))
+                return;
+            Row row = rows.get(maid.getUniqueID());
+            if (row != null) {
+                row.hurtEvents++;
+                row.provisionalDamage += event.ammount;
+            }
+        }
+
+        void captureActors() {
+            if (capturedFinal) return;
+            capturedFinal = true;
+            var actors = new JsonArray();
+            long full = 0;
+            for (Row row : rows.values()) {
+                var core = row.maid.getBrainCoordinator()
+                    .peekEnhancedCore();
+                if (core == null) {
+                    var missing = row.json();
+                    missing.addProperty("rootReady", false);
+                    actors.add(missing);
+                    continue;
+                }
+                row.accepted = core.actor()
+                    .meleeNativeAccepted();
+                full += core.combat()
+                    .fullDecisions();
+                var out = row.json();
+                out.addProperty("rootReady", true);
+                out.addProperty(
+                    "fullDecisions",
+                    core.combat()
+                        .fullDecisions());
+                out.addProperty(
+                    "lightDecisions",
+                    core.combat()
+                        .lightDecisions());
+                CombatPlan plan = core.combat()
+                    .lastPlan();
+                out.addProperty("lastPlan", plan == null ? "none" : plan.macro.name());
+                out.addProperty("lastPlanReason", plan == null ? "none" : plan.reason);
+                out.addProperty(
+                    "lastSelected",
+                    core.selectedKind() == null ? "none"
+                        : core.selectedKind()
+                            .name());
+                actors.add(out);
+            }
+            double loss = 0;
+            for (EntityPig target : targets) loss += 1000 - target.getHealth();
+            report.add("actors", actors);
+            report.addProperty("nativeTargetHealthLoss", loss);
+            report.addProperty("actualFullDecisions", full);
+            report.addProperty("forecastReady", full > 0);
+            report.addProperty(
+                "readinessMaskSchema",
+                "1=geometry_missing,2=geometry_unknown,4=geometry_stale,8=weapons_partial,16=scan_incomplete,32=scan_stale,64=projectile_incomplete,128=observation_incomplete,256=no_snapshot_capture,512=unresolved_observation_budget_denial,1024=friends_incomplete,2048=current_selected_target_incomplete");
+            report.addProperty(
+                "readinessObserverScope",
+                "Only cached capture fields and quota counters; no actor admission, world query, queue renewal or decision mutation");
+            report.addProperty(
+                "forecastReadinessDiagnostic",
+                full > 0 ? "actual complete forecasts observed"
+                    : "no complete forecast observed; grants do not establish usable geometry/observations");
+        }
+
+        void retire() {
+            for (EntityMaid maid : maids) {
+                maid.getBrainCoordinator()
+                    .setSuspended(true);
+                maid.setDead();
+                world.removePlayerEntityDangerously(maid);
+            }
+            for (EntityPig target : targets) {
+                target.setDead();
+                world.removePlayerEntityDangerously(target);
+            }
+            maids.clear();
+            targets.clear();
+            targetIdentity.clear();
+        }
+
+        void restoreWater() {
+            for (int[] p : water)
+                if (world.getBlock(p[0], p[1], p[2]) == Blocks.water && world.getBlockMetadata(p[0], p[1], p[2]) == 0)
+                    world.setBlock(p[0], p[1], p[2], Blocks.air, 0, 2);
+            water.clear();
+        }
+
+        void failed(String phase, Throwable failure) {
+            report.addProperty("failurePhase", phase);
+            write(
+                false,
+                failure.getClass()
+                    .getName() + ": "
+                    + failure.getMessage());
+        }
+
+        void write(boolean passed, String fault) {
+            report.add("latestCachedDiagnostic", latestCachedDiagnostic);
+            captureActors();
+            report.addProperty("passed", passed);
+            report.addProperty("worldTicksElapsed", world.getTotalWorldTime() - started);
+            if (fault != null) report.addProperty("failure", fault);
+            report.add("ticks", tickRows);
+            report.add("emergency", emergency);
+            if (probe != null) report.add("metrics", probe.snapshot());
+            try {
+                Files.write(
+                    Paths.get(System.getProperty("horizonqa.reportDir"), "unified-combat-capacity.json"),
+                    new GsonBuilder().setPrettyPrinting()
+                        .create()
+                        .toJson(report)
+                        .getBytes(StandardCharsets.UTF_8));
+            } catch (Exception failure) {
+                throw new IllegalStateException("Cannot retain bounded capacity evidence", failure);
+            }
+        }
+
+        void close() {
+            if (closed) return;
+            closed = true;
+            if (!complete) write(
+                false,
+                report.has("failure") ? report.get("failure")
+                    .getAsString() : "Test ended before successful native drain");
+            if (probe != null) probe.close();
+            MinecraftForge.EVENT_BUS.unregister(this);
+            restoreWater();
+            retire();
+            for (int[] p : floor) if (world.getBlock(p[0], p[1], p[2]) == Blocks.iron_block
+                && world.getBlockMetadata(p[0], p[1], p[2]) == 0
+                && world.getTileEntity(p[0], p[1], p[2]) == null) world.setBlock(p[0], p[1], p[2], Blocks.air, 0, 2);
+            world.getGameRules()
+                .setOrCreateGameRule("doMobSpawning", oldSpawning);
+            world.getGameRules()
+                .setOrCreateGameRule("doDaylightCycle", oldDaylight);
+        }
+    }
+
+    static final class Row {
+
+        final int index;
+        final EntityMaid maid;
+        long requestTicks, renewedTicks, grants, accepted, hurtEvents, firstRequest = -1, firstGrant = -1,
+            lastGrant = -1, continuousSince = -1, maxWait, maxGrantGap;
+        long grantedWithoutCurrentCapture, fullCaptures, readyCaptures, fullContinuations, forecastStarted,
+            forecastAdvances, nonFullObservations;
+        int lastReadinessMask;
+        long lastFull, samplingFullDecisions, preparationTicks, readyTicks, waitSince = -1, lastPreparationRound;
+        long trackedRequestSerial = -1, lastRequestSerial = -1, lastRequestCompletedAt = Long.MIN_VALUE;
+        long pendingContinuousSince = -1, maxPendingRequestWait, requestRecreations, requestCompletions;
+        final int[] readinessBlockers = new int[12], nonFullReadinessBlockers = new int[12];
+        double provisionalDamage;
+
+        Row(int index, EntityMaid maid) {
+            this.index = index;
+            this.maid = maid;
+        }
+
+        JsonObject json() {
+            var out = new JsonObject();
+            out.addProperty("index", index);
+            out.addProperty(
+                "uuid",
+                maid.getUniqueID()
+                    .toString());
+            out.addProperty("actualRequestTicks", requestTicks);
+            out.addProperty("renewalTicks", renewedTicks);
+            out.addProperty("grants", grants);
+            out.addProperty("firstRequest", firstRequest);
+            out.addProperty("firstGrant", firstGrant);
+            out.addProperty("maxContinuousRequestWait", maxWait);
+            out.addProperty("maxPendingRequestWait", maxPendingRequestWait);
+            out.addProperty("lastRequestSerial", lastRequestSerial);
+            out.addProperty("lastRequestCompletedAt", lastRequestCompletedAt);
+            out.addProperty("requestRecreations", requestRecreations);
+            out.addProperty("requestCompletions", requestCompletions);
+            out.addProperty("maxGrantGap", maxGrantGap);
+            out.addProperty("nativeAcceptedAttacks", accepted);
+            out.addProperty("provisionalHurtEvents", hurtEvents);
+            out.addProperty("provisionalDamage", provisionalDamage);
+            out.addProperty("grantedWithoutCurrentCapture", grantedWithoutCurrentCapture);
+            out.addProperty("fullCaptures", fullCaptures);
+            out.addProperty("readyCaptures", readyCaptures);
+            out.addProperty("fullContinuations", fullContinuations);
+            out.addProperty("forecastStarted", forecastStarted);
+            out.addProperty("forecastAdvances", forecastAdvances);
+            out.addProperty("lastReadinessMask", lastReadinessMask);
+            out.addProperty("samplingFullDecisions", samplingFullDecisions);
+            out.addProperty("preparationTicks", preparationTicks);
+            out.addProperty("readyTicks", readyTicks);
+            out.addProperty("preparationRound", lastPreparationRound);
+            out.add("readinessBlockers", Attempt.integers(readinessBlockers));
+            out.addProperty("nonFullObservations", nonFullObservations);
+            out.add("nonFullReadinessBlockers", Attempt.integers(nonFullReadinessBlockers));
+            return out;
+        }
+    }
+}

@@ -22,6 +22,8 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
+import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.Phase;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
@@ -50,7 +52,9 @@ public final class EnhancedCombatController {
     }
 
     public void offer(MaidIntentFrame frame) {
-        offerCurrent(frame);
+        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.OFFER)) {
+            offerCurrent(frame);
+        }
     }
 
     private void offerCurrent(MaidIntentFrame frame) {
@@ -188,7 +192,10 @@ public final class EnhancedCombatController {
         if (!actor.isCurrent() || ownedTarget == null) return;
         actor.combatObservation()
             .fullGranted(quota);
-        CombatSnapshot snapshot = actor.readonlyCombatSnapshot(ownedTarget, quota);
+        CombatSnapshot snapshot;
+        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.SNAPSHOT)) {
+            snapshot = actor.readonlyCombatSnapshot(ownedTarget, quota);
+        }
         if (snapshot == null || !knownTarget(ownedTarget)) return;
         lastSnapshot = snapshot;
         if (before != ownedTarget) actor.eraseCantReachSince();
@@ -198,7 +205,8 @@ public final class EnhancedCombatController {
             MathHelper.floor_double(seen.x),
             MathHelper.floor_double(seen.y),
             MathHelper.floor_double(seen.z));
-        lastPlan = planner.decide(snapshot, quota);
+        var trial = CombatEffectPilotSession.current(maid);
+        lastPlan = trial == null ? planner.decide(snapshot, quota) : trial.decide(snapshot, quota, planner);
         actor.combatObservation()
             .completeForecast(now, lastPlan.simulated);
         lastServiceResult = actor.combatObservation()
@@ -214,7 +222,11 @@ public final class EnhancedCombatController {
         }
         long hits = actor.meleeNativeAccepted(), shots = actor.rangedBow()
             .getShots();
-        CombatPlan.Result result = actor.tryApplyCombatPlan(lastPlan);
+        CombatPlan.Result result;
+        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.SUBMIT)) {
+            result = actor.tryApplyCombatPlan(lastPlan);
+        }
+        if (trial != null) trial.applied(result, quota);
         lastResult = result;
         attacks += Math.max(0, actor.meleeNativeAccepted() - hits);
         releases += Math.max(

@@ -3,7 +3,7 @@ gradle.projectsEvaluated {
     def project = gradle.rootProject
     def tool = project.file('tools/horizon-qa')
     project.extensions.getByName('spotless').java {
-        target('tools/horizon-qa/pilot/**/*.java')
+        target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
     }
     def devPath = System.getenv('TLMNH_HQA_DEV_JAR')
     if (!devPath) throw new GradleException('TLMNH_HQA_DEV_JAR must point to the pinned Horizon-QA 0.15.0 dev JAR')
@@ -76,6 +76,9 @@ gradle.projectsEvaluated {
         destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
         preserveFileTimestamps = false
         reproducibleFileOrder = true
+        doFirst {
+            manifest.attributes.remove('MixinConfigs')
+        }
     }
     def base = project.tasks.named('reobfJar').get()
     def reobfType = Class.forName('com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar', true, base.class.classLoader)
@@ -88,5 +91,11 @@ gradle.projectsEvaluated {
         referenceClasspath.from(base.referenceClasspath, sources.compileClasspath)
         archiveFileName.set('tlmnh-horizonqa-pilot.jar')
         destinationDirectory.set(project.layout.buildDirectory.dir('horizon-qa'))
+        doLast {
+            new java.util.jar.JarFile(archiveFile.get().asFile).withCloseable { archive ->
+                if (archive.manifest?.mainAttributes?.getValue('MixinConfigs') != null)
+                    throw new GradleException('QA pilot must not inherit production MixinConfigs')
+            }
+        }
     }
 }
