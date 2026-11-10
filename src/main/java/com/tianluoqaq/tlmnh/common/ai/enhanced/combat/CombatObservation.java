@@ -37,6 +37,8 @@ import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGr
 /** 唯一世界观测边界；区块实体列表增量游标，不先执行全量AABB查询 */
 public final class CombatObservation {
 
+    private final CombatRangePolicy rangePolicy = new CombatRangePolicy();
+
     private static final TaskAttack ATTACK = new TaskAttack();
     private static final int TARGETS = 8, PROJECTILES = 12, FRIENDS = 12, CHUNK_COUNT = 25;
     private static final int SCAN_CHUNKS_PER_TICK = 4, PREPARATION_CHUNKS_PER_TICK = 8;
@@ -108,6 +110,13 @@ public final class CombatObservation {
         }
         if (now < tick) clear();
         tick = now;
+        var maidThreat = maid.getAITarget();
+        var threatOwner = maid.getOwner();
+        var ownerThreat = threatOwner == null ? null : threatOwner.getAITarget();
+        rangePolicy.tick(
+            now,
+            maidThreat == null ? null : maidThreat.getUniqueID(),
+            ownerThreat == null ? null : ownerThreat.getUniqueID());
         observationGravity = null;
         gravityQueries = gravityReuses = 0;
         observedFull = startedFull = quota.full;
@@ -495,6 +504,15 @@ public final class CombatObservation {
             MaidPerceptionConfig.bowRange)
             : maid.getHomeArea()
                 .restrictionRadius();
+        if (!maid.getHomeArea()
+            .enabled())
+            range = rangePolicy.detection(
+                tick,
+                maid.getUniqueID(),
+                entity.getUniqueID(),
+                range,
+                com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatAcquireRange,
+                com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatRetainRange);
         double detection = entity.isSneaking() ? .8 : 1;
         if (entity.isInvisible()) {
             if (!quota.spendObservation(Work.ENTITY, 4)) return rejectObservation();
@@ -520,6 +538,7 @@ public final class CombatObservation {
             targets.remove(entity.getUniqueID());
             return SampleResult.OBSERVED;
         }
+        rangePolicy.seen(tick);
         UUID id = entity.getUniqueID();
         friendTracks.remove(id);
         Tracked tracked = targets.get(id);
@@ -1127,6 +1146,7 @@ public final class CombatObservation {
     }
 
     public void clear() {
+        rangePolicy.clear();
         fullService.clear();
         observationGravity = null;
         gravityQueries = gravityReuses = 0;
@@ -1184,7 +1204,24 @@ public final class CombatObservation {
             && maid.worldObj.getEntityByID(entity.getEntityId()) == entity;
     }
 
-    private static boolean legalVisible(EntityMaid maid, EntityLivingBase target, Vec observed) {
+    public CombatRangePolicy rangePolicy() {
+        return rangePolicy;
+    }
+
+    public boolean targetInDomain(EntityMaid maid, UUID id, Vec observed) {
+        if (observed == null) return false;
+        var home = maid.getHomeArea();
+        if (home.enabled()) return home.sameDimension() && home.contains(observed.x, observed.y, observed.z);
+        var owner = maid.getOwner();
+        return owner != null && rangePolicy.targetAllowed(
+            id,
+            owner.getDistanceSq(observed.x, observed.y, observed.z),
+            maid.getDistanceSq(observed.x, observed.y, observed.z),
+            com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatAcquireRange,
+            com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatRetainRange);
+    }
+
+    private boolean legalVisible(EntityMaid maid, EntityLivingBase target, Vec observed) {
         EntityLivingBase owner = maid.getOwner();
         if (!target.isEntityAlive() || target == owner
             || target.isEntityInvulnerable()
@@ -1195,7 +1232,7 @@ public final class CombatObservation {
         if (home.enabled()) return home.sameDimension() && home.containsMaid()
             && home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
             && home.contains(observed.x, observed.y, observed.z);
-        return owner != null && owner.getDistanceSq(observed.x, observed.y, observed.z) <= 256;
+        return targetInDomain(maid, target.getUniqueID(), observed);
     }
 
     private static boolean friendly(EntityMaid maid, EntityLivingBase entity) {

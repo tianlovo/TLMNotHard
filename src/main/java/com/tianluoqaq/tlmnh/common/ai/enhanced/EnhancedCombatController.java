@@ -101,9 +101,12 @@ public final class EnhancedCombatController {
             Vec seen = observation.lastSeen(target.getUniqueID());
             if (seen == null) continue;
             double distance = Math.sqrt(maid.getDistanceSq(seen.x, seen.y, seen.z));
-            double utility = 1 / (1 + distance);
-            if (target == maid.getAITarget()) utility += .10;
-            if (target == ownedTarget) utility += .015;
+            var owner = maid.getOwner();
+            double utility = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatRangePolicy.score(
+                distance,
+                owner != null && target == owner.getAITarget(),
+                target == maid.getAITarget(),
+                target == ownedTarget);
             frame.offer(
                 Group.COMBAT,
                 Kind.COMBAT,
@@ -170,10 +173,8 @@ public final class EnhancedCombatController {
         Vec seen = actor.combatObservation()
             .lastSeen(target.getUniqueID());
         if (seen == null) return false;
-        var home = maid.getHomeArea();
-        if (home.enabled()) return home.contains(seen.x, seen.y, seen.z);
-        var owner = maid.getOwner();
-        return owner != null && owner.getDistanceSq(seen.x, seen.y, seen.z) <= 256;
+        return actor.combatObservation()
+            .targetInDomain(maid, target.getUniqueID(), seen);
     }
 
     public void execute(EntityLivingBase selected) {
@@ -190,6 +191,13 @@ public final class EnhancedCombatController {
         ownedTarget = maid.getModernCombatMemory()
             .target();
         if (!actor.isCurrent() || ownedTarget == null) return;
+        if (!knownTarget(ownedTarget)) {
+            ownedTarget = null;
+            return;
+        }
+        actor.combatObservation()
+            .rangePolicy()
+            .select(ownedTarget.getUniqueID());
         actor.combatObservation()
             .fullGranted(quota);
         CombatSnapshot snapshot;
@@ -249,6 +257,7 @@ public final class EnhancedCombatController {
 
     public void cancel(boolean preserveRequest) {
         EntityLivingBase previous = ownedTarget;
+        actor.cancelCombatTargetRetention();
         ownedTarget = null;
         lastSeen = null;
         lastPlan = null;

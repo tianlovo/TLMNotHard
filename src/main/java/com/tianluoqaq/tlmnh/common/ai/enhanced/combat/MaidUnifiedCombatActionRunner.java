@@ -167,8 +167,7 @@ public final class MaidUnifiedCombatActionRunner {
             actor.stopOwnedRangedUse();
             return Result.WAIT_BUDGET;
         }
-        if (!targets.canAttack(maid, target) || !targetArea(target.posX, target.posY, target.posZ))
-            return Result.REJECTED;
+        if (!targets.canAttack(maid, target) || !targetAllowed(target)) return Result.REJECTED;
         var view = actor.combatTargetView(target);
         actor.lookAtAttackTarget(view);
         if (profile.bow()) return bow(target, view, plan, quota, profile);
@@ -209,8 +208,7 @@ public final class MaidUnifiedCombatActionRunner {
             .visible(target.getUniqueID())) return Result.REJECTED;
         if (!quota.spend(Work.RAY) || !maid.getEntitySenses()
             .canSee(target)) return Result.WAIT_BUDGET;
-        if (!targets.canAttack(maid, target) || !targetArea(target.posX, target.posY, target.posZ))
-            return Result.REJECTED;
+        if (!targets.canAttack(maid, target) || !targetAllowed(target)) return Result.REJECTED;
         var view = actor.combatTargetView(target);
         actor.lookAtAttackTarget(view);
         actor.stopOwnedRangedUse();
@@ -491,6 +489,11 @@ public final class MaidUnifiedCombatActionRunner {
             && !target.isDead
             && !maid.isOnSameTeam(target)
             && maid.worldObj.getEntityByID(target.getEntityId()) == target;
+    }
+
+    private boolean targetAllowed(EntityLivingBase target) {
+        return actor.combatObservation()
+            .targetInDomain(maid, target.getUniqueID(), new Vec(target.posX, target.boundingBox.minY, target.posZ));
     }
 
     private boolean targetArea(double x, double y, double z) {

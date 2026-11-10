@@ -41,6 +41,7 @@ GTNH 维护仓和 CropsNH 育种留作后续扩展，简体中文优先，英文
 目前提供源码构建，尚未发布供生存游玩使用的正式安装包
 开发候选的玩家操作、配置和成对回滚见 [Indev 使用说明](docs/USER_GUIDE.md)
 新配置默认使用 Enhanced；已有配置中显式选择的 Legacy 会继续保留，修改策略后重启服务端
+当前 Enhanced 候选采用动态索敌，非家园目标获取和保持半径默认分别为20格与24格，可在服务端配置中调整
 双端增量工具见 [打包与更新说明](scripts/distribution/README.md)，当前只生成本地验证包
 以下命令在 Windows PowerShell 中执行：
 

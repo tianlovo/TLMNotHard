@@ -74,6 +74,13 @@
 | `acquisition.I:naturalBiomes` | `1, 4` | 允许生成的群系数字 ID 列表 |
 | `acquisition.I:naturalDimensions` | `0` | 允许生成的维度数字 ID 列表 |
 | `behavior.S:profile` | `enhanced` | 服务端启动策略，可选 `legacy_prototype` 或 `enhanced` |
+| `combat.I:ownerCombatAcquireRange` | `20` | Enhanced 非家园目标获取半径，以主人为中心，范围8～24格 |
+| `combat.I:ownerCombatRetainRange` | `24` | 当前有效战斗会话的同一目标保持半径，以主人为中心，范围8～24格 |
+
+获取半径大于保持半径时，服务端会把获取值降至保持值，写回配置并记录警告
+取消战斗后，原目标需要重新满足获取条件
+女仆自身及战斗移动目的地受主人16格活动域约束，目标距女仆最多24格，家园采用其WORK活动域
+装备、受击线索、周期侦察和当前目标共同决定有效检测范围，实际发现仍取决于视线、已加载区块扫描和预算
 
 Forge 文件按分类和类型前缀保存键，下例选择增强策略
 

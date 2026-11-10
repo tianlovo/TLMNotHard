@@ -702,6 +702,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigationView = null;
     }
 
+    /** 撤销本执行器的目标保持资格，不需要活帧，也不修改世界或其他观测。 */
+    public void cancelCombatTargetRetention() {
+        unifiedCombatObservation.rangePolicy()
+            .cancel();
+    }
+
     /** 生命周期先使token失效，清理仍只撤销自身路线/目标，不覆盖后来接管者 */
     public void cancelOwnedResources() {
         cancelOwnedResources(true);

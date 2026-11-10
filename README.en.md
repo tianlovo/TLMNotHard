@@ -47,6 +47,8 @@ GTNH machine maintenance and CropsNH breeding are future extensions. Simplified 
 Build from source for now; no stable package for survival play has been released.
 See the [Indev user guide](docs/USER_GUIDE.en.md) for controls, configuration and paired world rollback.
 New configurations default to Enhanced. Existing explicit Legacy settings are retained; restart the server after changes.
+The current Enhanced candidate uses dynamic target detection, with configurable non-home acquisition and retention radii
+of 20 and 24 blocks by default.
 The [overlay packaging and update guide](scripts/distribution/README.md)
 covers the current local-validation-only packages.
 Run these commands in Windows PowerShell:

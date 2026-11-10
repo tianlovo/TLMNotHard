@@ -84,6 +84,15 @@ Existing explicit values remain in place; updating the JAR does not replace the 
 | `acquisition.I:naturalBiomes` | `1, 4` | Allowed numeric biome IDs |
 | `acquisition.I:naturalDimensions` | `0` | Allowed numeric dimension IDs |
 | `behavior.S:profile` | `enhanced` | Server startup policy: `legacy_prototype` or `enhanced` |
+| `combat.I:ownerCombatAcquireRange` | `20` | Enhanced non-home target acquisition radius around the owner, 8–24 blocks |
+| `combat.I:ownerCombatRetainRange` | `24` | Radius around the owner for the same target in an active combat session, 8–24 blocks |
+
+If acquisition exceeds retention, the server reduces acquisition to retention, saves the normalized value and logs a warning.
+After combat cancellation, a target must qualify for acquisition again.
+The maid and combat movement destinations use the owner's 16-block activity domain.
+Targets must be within 24 blocks of the maid. Home mode uses its WORK area.
+Equipment, damage clues, periodic scouting and the current target determine detection range.
+Actual discovery depends on sight, loaded-chunk scanning and the available budget.
 
 Forge stores a category and typed key. The following example selects the enhanced policy.
 
