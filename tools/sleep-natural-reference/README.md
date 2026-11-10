@@ -90,3 +90,12 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 检查器追加 `--require-deterministic-spawn` 可核这些字段及移植初始化工具的实际 JAR 资源绑定
 原三只女仆合同不启用该钩子，历史冻结产物继续使用各自旧工具；没有重置或假定两端共享随机流
 此项通过后继续实际功能开发，完整属性、平台附加字段和物理的语义审查仍单独保留未准入状态
+
+## 统一战斗任务的输入比较
+
+`compare_combat_mechanisms.py` 和 `compare_combat_boundaries.py` 支持显式的 `--unified-tasks`
+增强组远程输入须同时具备统一任务ID、版本1的typed任务状态、待消费远程指令偏好及真实未磨损原生弓的保护快照
+原版、Faithful及近战输入按各自原始任务ID检查，完整输入、逐帧身份、物理分组、资源、安全及清理检查共同参与比较
+
+默认模式检查旧任务合同，选择新选项时输出独立的统一任务比较版本，并记录原始ID和映射依据
+原始capture和旧比较器失败记录分别保存，运行所需路径参数见对应脚本的`--help`

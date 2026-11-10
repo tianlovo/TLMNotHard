@@ -11,6 +11,7 @@ from check import require, sha
 from compare_follow_mechanisms import ORIGINAL_CLASSES, original_identity, verify_port_results
 from compare_port import artifact
 from nbt_binding import binary_snapshot, compare_same_side_nbt
+from unified_task_inputs import expected_task_input, task_mapping_receipt
 
 PREFIX = "com.tianluoqaq.tlmnh."
 ROOT = "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid"
@@ -87,7 +88,7 @@ def layout(rows):
     require(actual == expected, "actual initial enclosure differs")
 
 
-def inspect(data, scene, contract_hash, original, expected_schema=None):
+def inspect(data, scene, contract_hash, original, expected_schema=None, unified_tasks=False):
     mechanism = scene["id"]
     if expected_schema is None:
         expected_schema = "combat-mechanism-original-v1" if original else "combat-mechanism-port-v1"
@@ -99,7 +100,10 @@ def inspect(data, scene, contract_hash, original, expected_schema=None):
     require(data["statisticalAdmission"] is data["complete14ClassBenchmarkAccepted"] is data["randomSourcesReset"] is False,
             "unapproved scope upgrade")
     initial = data["actualInputs"]
-    require(initial["task"] == "touhou_little_maid:" + ("attack" if mechanism == "melee" else "ranged_attack")
+    expected_task = "touhou_little_maid:" + ("attack" if mechanism == "melee" else "ranged_attack")
+    if unified_tasks:
+        expected_task = expected_task_input(data, mechanism, original)
+    require(initial["task"] == expected_task
             and initial["sitting"] is (mechanism != "melee") and initial["schedule"] == "ALL"
             and initial["position"] == [8.5, 1, 4.5] and initial["homeEnabled"] is True
             and initial["restrictionRadius"] == 12 and initial["health"] == 20 and initial["hunger"] == 0,
@@ -198,6 +202,8 @@ def inspect(data, scene, contract_hash, original, expected_schema=None):
             if event["victim"] == enemy["uuid"] and event.get("source", event.get("directSource"))
             == (data["maidUuid"] if original else data["maidInitial"]["uuid"])]
         result["native_enemy_final"] = data["nativeEnemyFinal"]
+    if unified_tasks:
+        result["initial_task_mapping"] = task_mapping_receipt(data, mechanism, original)
     return result, attrs, physical
 
 
@@ -213,6 +219,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("original-captures", "original-build", "original-tool", "original-agent", "port-run", "candidate-jar", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--unified-tasks", action="store_true",
+                        help="Verify Enhanced unified-task state and its retained ranged-command input")
     parser.add_argument("--allow-additional-port-tests", action="store_true")
     parser.add_argument("--allow-failed-additional-port-tests", action="store_true")
     args = parser.parse_args()
@@ -240,7 +248,7 @@ def main():
                                  ORIGINAL, "combat-mechanisms-build-v1")
         require(json.loads(args.original_build.read_bytes())["contractSha256"] == sha(raw), "original build contract changed")
         require(original["contract"] == contract, "captured original contract changed")
-        o, original_attrs, _ = inspect(original, scene, sha(raw), True)
+        o, original_attrs, _ = inspect(original, scene, sha(raw), True, unified_tasks=args.unified_tasks)
         rows, pairs, physical = [o], {}, {}
         captures = [original]
         for arm in scene["arms"][1:]:
@@ -252,7 +260,7 @@ def main():
                                       ("combatObserverArtifact", COMBAT_OBSERVER, pilot), ("spawnInputArtifact", SPAWN, args.candidate_jar),
                                       ("sourceArrowArtifact", SOURCE, args.candidate_jar), ("combatRootArtifact", ROOT_CONTRACT, args.candidate_jar)):
                 artifact(port[key], jar, classes)
-            row, attributes, conditions = inspect(port, scene, sha(raw), False)
+            row, attributes, conditions = inspect(port, scene, sha(raw), False, unified_tasks=args.unified_tasks)
             rows.append(row)
             physical[arm] = conditions
             pairs[arm] = {"five_sourced_attributes": compare_attribute_inputs(original_attrs, attributes, contract["attributeInputs"]),
@@ -275,7 +283,7 @@ def main():
         mechanisms.append({"mechanism": scene["id"], "observations": rows, "input_pairs_to_original": pairs,
                            "native_actual_input_pairs_to_F_R": native, "original_resource_definition_differences": defs})
     analysis_files = ("compare_combat_mechanisms.py", "compare_follow_mechanisms.py", "compare_port.py",
-                      "attribute_inputs.py", "nbt_binding.py", "check.py")
+                      "attribute_inputs.py", "nbt_binding.py", "check.py", "unified_task_inputs.py")
     result = {"schema": "combat-mechanisms-comparison-v1", "observation_integrity_passed": True, "hqa_batch": batch,
               "candidate_sha256": sha(args.candidate_jar.read_bytes()), "pilot_sha256": sha(pilot.read_bytes()),
               "analysis_inputs_sha256": {name: sha(Path(__file__).with_name(name).read_bytes()) for name in analysis_files},
@@ -285,6 +293,9 @@ def main():
               "complete_14_class_benchmark_accepted": False, "real_multiclient_owner_accepted": False,
               "remaining_contract_items": contract["remaining"],
               "scope": "one sample per arm; actual normal roots and current-input physics groups; collection is not behavior success or an unmeasured advantage"}
+    if args.unified_tasks:
+        result["schema"] = "combat-mechanisms-comparison-unified-v1"
+        result["analysis_revision"] = "unified-task-input-v1"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k != "mechanisms"}, ensure_ascii=False))

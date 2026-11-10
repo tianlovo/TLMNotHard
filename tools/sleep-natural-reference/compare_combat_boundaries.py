@@ -125,9 +125,10 @@ def wear(row, original):
     return row["weaponWear" if original else "bowWear"]
 
 
-def episode(data, scene, contract_hash, original):
+def episode(data, scene, contract_hash, original, unified_tasks=False):
     schema = "combat-boundary-original-v1" if original else "combat-boundary-port-v1"
-    result, attributes, conditions = inspect(data, scene, contract_hash, original, expected_schema=schema)
+    result, attributes, conditions = inspect(data, scene, contract_hash, original, expected_schema=schema,
+                                             unified_tasks=unified_tasks)
     require(data["oldCombatSamplesReplaced"] is False and data["resourceAssertionsPassed"] is True,
             "old evidence replaced or resource assertions incomplete")
     require(data["mechanism" if original else "scene"] == scene["id"], "wrong supplementary episode")
@@ -321,6 +322,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("original-captures", "original-build", "original-tool", "original-agent", "port-run", "candidate-jar", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--unified-tasks", action="store_true",
+                        help="Verify Enhanced unified-task state and its retained ranged-command input")
     parser.add_argument("--allow-additional-port-tests", action="store_true")
     parser.add_argument("--allow-failed-additional-port-tests", action="store_true")
     args = parser.parse_args()
@@ -351,7 +354,7 @@ def main():
         definitions = original_identity(original, build_bytes, args.original_tool, args.original_agent,
                                         ORIGINAL, "combat-boundaries-build-v1")
         require(original["contract"] == contract and original["scene"] == scene, "original captured boundary input changed")
-        row, original_attrs, _ = episode(original, scene, sha(raw), True)
+        row, original_attrs, _ = episode(original, scene, sha(raw), True, unified_tasks=args.unified_tasks)
         rows, pairs, conditions, captures = [row], {}, {}, [original]
         paths = [{"arm": "O", "path": str(path.resolve()), "sha256": sha(path.read_bytes())}]
         for arm in scene["arms"][1:]:
@@ -367,7 +370,7 @@ def main():
                 ("combatRootArtifact", ROOT_CONTRACT, args.candidate_jar),
             ):
                 artifact(port[key], jar, classes)
-            row, attrs, physical = episode(port, scene, sha(raw), False)
+            row, attrs, physical = episode(port, scene, sha(raw), False, unified_tasks=args.unified_tasks)
             rows.append(row)
             conditions[arm] = physical
             captures.append(port)
@@ -399,7 +402,7 @@ def main():
                            "input_pairs_to_original": pairs, "native_pairs_to_F_R": native,
                            "original_resource_definition_differences": definitions})
     names = ("compare_combat_boundaries.py", "compare_combat_mechanisms.py", "compare_follow_mechanisms.py",
-             "compare_port.py", "attribute_inputs.py", "nbt_binding.py", "check.py")
+             "compare_port.py", "attribute_inputs.py", "nbt_binding.py", "check.py", "unified_task_inputs.py")
     result = {"schema": "combat-boundaries-comparison-v2", "analysis_revision": "peek-phase-recovery-v2",
               "observation_integrity_passed": True,
               "hqa_batch": batch, "candidate_sha256": sha(args.candidate_jar.read_bytes()), "pilot_sha256": sha(pilot.read_bytes()),
@@ -409,6 +412,9 @@ def main():
               "statistical_verdict": "NOT_EVALUATED", "noninferiority_delta": None, "full_release_passed": False,
               "complete_14_class_benchmark_accepted": False, "real_multiclient_owner_accepted": False,
               "remaining_contract_items": contract["remaining"], "old_four_mechanism_combat_evidence_replaced": False}
+    if args.unified_tasks:
+        result["schema"] = "combat-boundaries-comparison-unified-v1"
+        result["analysis_revision"] = "unified-task-input-v1"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({key: value for key, value in result.items() if key != "mechanisms"}, ensure_ascii=False))
