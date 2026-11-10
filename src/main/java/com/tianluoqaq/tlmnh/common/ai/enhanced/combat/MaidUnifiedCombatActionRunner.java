@@ -26,7 +26,7 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 public final class MaidUnifiedCombatActionRunner {
 
     private static final float APPROACH_SPEED = .6F;
-    private static final double BOW_STAND_DISTANCE = 8, HEAD_SWEEP = 1.3;
+    private static final double BOW_STAND_DISTANCE = Math.sqrt(MaidBowAttack.RANGE_SQ), HEAD_SWEEP = 1.3;
     // 无跳跃药水的原生飞行约12tick；16tick无阻位移比0.91空气阻力的整段尾和还保守
     private static final int JUMP_DRIFT_TICKS = 16;
     private static final double JUMP_SWEEP_EPSILON = .0001;

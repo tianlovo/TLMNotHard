@@ -91,6 +91,12 @@ public final class ThreatEstimator {
 
     public static double damage(CombatSnapshot snapshot, Vec from, Vec to, int elapsed, int hypothesis, boolean shield,
         CombatWorkQuota quota, ProjectileOcclusion occlusion, Risk risk) {
+        return damage(snapshot, from, to, elapsed, hypothesis, shield, quota, occlusion, risk, null);
+    }
+
+    /** A short reaction may span adjacent sweeps; the same arrow contributes at most one hit. */
+    static double damage(CombatSnapshot snapshot, Vec from, Vec to, int elapsed, int hypothesis, boolean shield,
+        CombatWorkQuota quota, ProjectileOcclusion occlusion, Risk risk, boolean[] projectileHits) {
         double damage = 0;
         for (Target target : snapshot.targets) {
             if (!quota.spend(Work.COLLISION)) return Double.POSITIVE_INFINITY;
@@ -121,6 +127,7 @@ public final class ThreatEstimator {
             }
         }
         for (int index = 0; index < snapshot.projectiles.size(); index++) {
+            if (projectileHits != null && projectileHits[index]) continue;
             Projectile projectile = snapshot.projectiles.get(index);
             if (snapshot.tick < projectile.observedAt || snapshot.tick - projectile.observedAt > 2) continue;
             if (risk != null) risk.source(projectile.damageSource, projectile.estimatedDamage);
@@ -171,6 +178,7 @@ public final class ThreatEstimator {
                 }
                 if (Double.isFinite(wall) && wall < body) break;
                 if (Double.isFinite(body)) {
+                    if (projectileHits != null) projectileHits[index] = true;
                     damage += projectile.estimatedDamage;
                     if (risk != null) {
                         risk.self(projectile.damageSource, projectile.estimatedDamage);

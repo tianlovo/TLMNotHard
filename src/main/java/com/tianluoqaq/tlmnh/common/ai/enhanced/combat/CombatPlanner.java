@@ -21,6 +21,7 @@ public final class CombatPlanner {
     private static final int JUMP_PREPARATION_TICKS = 8;
     private static final double ROUTE_ARRIVAL_DISTANCE = .35;
     private long nextDecision, heldSince = Long.MIN_VALUE;
+    private long arrowDefenseStarted = Long.MIN_VALUE;
     private CombatPlan previous;
     private CombatPlan routeProposal;
     private java.util.UUID proposalSelfId;
@@ -166,9 +167,11 @@ public final class CombatPlanner {
                 best = candidate;
         }
         var immediate = new ThreatEstimator.Risk();
-        double immediateRisk = ThreatEstimator
-            .damage(snapshot, snapshot.self.position, snapshot.self.position, 2, 0, false, quota, occlusion, immediate);
-        boolean acute = snapshot.self.recentlyHurt || immediate.acute;
+        double immediateRisk = full ? ThreatEstimator
+            .damage(snapshot, snapshot.self.position, snapshot.self.position, 2, 0, false, quota, occlusion, immediate)
+            : fallbackRisk(snapshot, snapshot.self.position, false, quota, occlusion, immediate);
+        boolean acute = snapshot.self.recentlyHurt || immediate.acute
+            || !full && hasFreshProjectile(snapshot) && immediateRisk >= snapshot.self.health * .15;
         boolean immediateComplete = Double.isFinite(immediateRisk) && immediate.known;
         if (!immediateComplete || full && (!completeForecast || !comparisonReady)) intentEligible = false;
         if (acute && stage != null) stage = null;
@@ -220,12 +223,32 @@ public final class CombatPlanner {
                 if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
             }
         }
+        // A newly installed arrow defense must not lose its safe startup interval merely because
+        // FULL service becomes available. Every retained candidate still pays for current geometry/risk.
+        if (best != null && previous != null
+            && arrowDefenseStarted != Long.MIN_VALUE
+            && snapshot.tick >= arrowDefenseStarted
+            && snapshot.tick - arrowDefenseStarted < 2 * CombatWorkQuota.STEP) {
+            for (Candidate candidate : candidates) {
+                if (candidate.strategy == Strategy.PURE_DEFENSE && same(candidate, previous)
+                    && candidate.utility > -100
+                    && candidate.risk <= best.risk) {
+                    best = current = candidate;
+                    normalProgressAdmitted = false;
+                    break;
+                }
+            }
+        }
         if (current != null && best != null
             && current.utility > -100
-            && immediateRisk < snapshot.self.health * .15
             && snapshot.tick >= heldSince
             && snapshot.tick - heldSince < 8
-            && best.utility < current.utility + SWITCH_MARGIN) best = current;
+            && (immediateRisk < snapshot.self.health * .15 && best.utility < current.utility + SWITCH_MARGIN
+                || !full && acute
+                    && hasFreshProjectile(snapshot)
+                    && current.strategy == Strategy.PURE_DEFENSE
+                    && current.risk <= best.risk))
+            best = current;
         return plan(
             snapshot,
             best,
@@ -247,6 +270,7 @@ public final class CombatPlanner {
 
     public void finishDecision() {
         previous = null;
+        arrowDefenseStarted = Long.MIN_VALUE;
         stage = null;
         reobservation = null;
         reobservationRetryAt = 0;
@@ -329,6 +353,33 @@ public final class CombatPlanner {
         if (defenses < 2 && strongest != null && pureCover != null) {
             comparisonReady &= addTerrain(result, Macro.COVER_EDGE, strongest, pureCover, quota);
             defenses++;
+        }
+        // LIGHT has no full terrain route service; add only bounded, geometry-checked lateral reactions.
+        if (!quota.full && hasFreshProjectile(snapshot)
+            && strongest != null
+            && target != null
+            && target.visible
+            && !snapshot.self.stationary) {
+            if (terrain.left == null) add(
+                result,
+                new Candidate(
+                    Macro.STRAFE_LEFT,
+                    target,
+                    current,
+                    destination(snapshot, target, Macro.STRAFE_LEFT),
+                    .06,
+                    Strategy.PURE_DEFENSE),
+                quota);
+            if (terrain.right == null) add(
+                result,
+                new Candidate(
+                    Macro.STRAFE_RIGHT,
+                    target,
+                    current,
+                    destination(snapshot, target, Macro.STRAFE_RIGHT),
+                    .06,
+                    Strategy.PURE_DEFENSE),
+                quota);
         }
         CombatTerrain.Route taskRoute = terrain.approach;
         CombatTerrain.Route defenseRoute = terrain.cover != null ? terrain.cover : terrain.retreat;
@@ -924,17 +975,7 @@ public final class CombatPlanner {
             candidate.utility = -1000;
             return;
         }
-        Vec riskEnd = next;
-        if (candidate.continuing) {
-            Vec delta = next.subtract(snapshot.self.position);
-            riskEnd = snapshot.self.position.add(
-                delta.scale(
-                    Math.min(
-                        1,
-                        snapshot.self.movementPerTick * CombatWorkQuota.STEP / Math.max(.001, delta.length()))));
-        }
-        candidate.risk = ThreatEstimator
-            .damage(snapshot, snapshot.self.position, riskEnd, 2, 0, candidate.macro == Macro.SHIELD, quota, occlusion);
+        candidate.risk = fallbackRisk(snapshot, next, candidate.macro == Macro.SHIELD, quota, occlusion, null);
         if (!Double.isFinite(candidate.risk)) {
             candidate.utility = -1000;
             candidate.riskKnown = false;
@@ -952,6 +993,33 @@ public final class CombatPlanner {
         candidate.utility = progress - SELF_WEIGHT * candidate.risk / snapshot.self.health;
         if (candidate.macro == Macro.SHIELD) candidate.utility += .05;
         if (candidate.weapon != null && candidate.weapon.slot >= 0) candidate.utility -= .1;
+    }
+
+    /** Short reaction horizon, limited by the same per-tick movement model as the full forecast. */
+    private static double fallbackRisk(CombatSnapshot snapshot, Vec destination, boolean shield, CombatWorkQuota quota,
+        ThreatEstimator.ProjectileOcclusion occlusion, ThreatEstimator.Risk risk) {
+        Vec position = snapshot.self.position;
+        double total = 0;
+        int horizon = hasFreshProjectile(snapshot) ? 2 * CombatWorkQuota.STEP : CombatWorkQuota.STEP;
+        boolean[] projectileHits = new boolean[snapshot.projectiles.size()];
+        for (int elapsed = CombatWorkQuota.STEP; elapsed <= horizon; elapsed += CombatWorkQuota.STEP) {
+            Vec delta = destination.subtract(position);
+            double step = snapshot.self.stationary ? 0
+                : Math.max(0, snapshot.self.movementPerTick) * CombatWorkQuota.STEP;
+            Vec next = position.add(delta.scale(Math.min(1, step / Math.max(.001, delta.length()))));
+            double value = ThreatEstimator
+                .damage(snapshot, position, next, elapsed, 0, shield, quota, occlusion, risk, projectileHits);
+            if (!Double.isFinite(value)) return Double.POSITIVE_INFINITY;
+            total += value;
+            position = next;
+        }
+        return total;
+    }
+
+    private static boolean hasFreshProjectile(CombatSnapshot snapshot) {
+        for (var projectile : snapshot.projectiles)
+            if (projectile.observedAt <= snapshot.tick && snapshot.tick - projectile.observedAt <= 2) return true;
+        return false;
     }
 
     private static void forecast(CombatSnapshot snapshot, Candidate candidate, CombatWorkQuota quota,
@@ -1143,6 +1211,8 @@ public final class CombatPlanner {
                 0);
         boolean same = same(candidate, previous);
         if (!same) heldSince = snapshot.tick;
+        if (candidate.strategy != Strategy.PURE_DEFENSE) arrowDefenseStarted = Long.MIN_VALUE;
+        else if (!same) arrowDefenseStarted = hasFreshProjectile(snapshot) ? snapshot.tick : Long.MIN_VALUE;
         long id = same ? previous.decisionId : ++nextDecision;
         Macro macro = candidate.weapon != null && candidate.weapon.slot >= 0
             && candidate.macro != Macro.SHIELD
