@@ -1,4 +1,4 @@
-"""合同和差分器的合成输入单元测试，不作为原版采集或端到端证据"""
+"""合同和差分器的合成输入单元测试，不作为原版采集或端到端证据。"""
 
 import copy
 import unittest
@@ -40,7 +40,7 @@ def fixtures():
 
 
 def compare_unit(reference, replay, aa):
-    # 这里只测阶段投影和差分，不访问Git资产，也不将合成数据写进实测报告
+    # 这里只测阶段投影和差分，不访问 Git 资产，也不将合成数据写进实测报告
     with patch.object(compare_ab, "pinned_assets", return_value=({}, [])), patch.object(compare_ab, "dependencies", return_value={}):
         return compare_ab.compare(reference, replay, replay["referenceSha256"], aa)
 

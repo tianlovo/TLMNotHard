@@ -34,12 +34,12 @@ def semantic_layout(rows):
         require(item not in result, "duplicate layout point")
         if row["semantic"] == "snack_cabinet":
             if row["registry"] == "touhou_little_maid:snack_cabinet":
-                # 原采集器的metadata=0是占位；实际现代状态必须明确为北向全罩
+                # 原采集器的 metadata=0 是占位；实际现代状态必须明确为北向全罩
                 require(row["metadata"] == 0 and row["rawBlockState"] ==
                         "Block{touhou_little_maid:snack_cabinet}[facing=north,type=1]",
                         "unmapped original cabinet direction/type")
             else:
-                # BlockSnackCabinet低两位0沿默认北向，TYPE_FULL=1存于高两位
+                # BlockSnackCabinet 低两位 0 沿默认北向，TYPE_FULL=1 存于高两位
                 require(row["registry"] == "tlmnh:snack_cabinet" and row["metadata"] == 4,
                         "unmapped port cabinet direction/type")
         else:
@@ -115,7 +115,7 @@ def inspect(data, contract, contract_hash, profile):
             and actual["sitting"] is scene["initialSitting"] and actual["pickup"] is scene["foodPresent"]
             and actual["restrictionRadius"] == contract["restrictionRadius"] and actual["homeEnabled"] is False,
             "actual relevant maid initial inputs differ from contract")
-    # 原TaskIdle.getUid与移植MaidTask.IDLE.getId均输出同一完整命名空间ID
+    # 原 TaskIdle.getUid 与移植 MaidTask.IDLE.getId 均输出同一完整命名空间 ID
     require(contract["task"] == "idle" and actual["task"] == "touhou_little_maid:idle", "idle task semantic mapping changed")
     require(actual["difficulty"] == contract["difficulty"] and actual["dayTime"] == contract["dayTime"]
             and actual["raining"] is actual["thundering"] is False, "actual relevant world input differs")

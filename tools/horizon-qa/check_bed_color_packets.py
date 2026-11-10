@@ -1,4 +1,4 @@
-"""检查实装Hodgepodge格式的实际女仆床S35线包，不替代客户端收包或绘制验收"""
+"""检查实装Hodgepodge格式的实际女仆床S35线包，不替代客户端收包或绘制验收。"""
 
 import argparse
 import gzip
@@ -27,7 +27,7 @@ def check_packet(raw, color_id, origin):
     require(len(raw) >= 14, "truncated S35 packet")
     x, y, z, action = struct.unpack(">ihib", raw[:11])
     require((x, y, z, action) == (origin[0] + 8, origin[1] + 1, origin[2] + 4, 0), "S35 header changed")
-    # 已审Mixin在NBT前另写mode；此负载的BedColor键为八字符整数，必走mode0普通NBT分支
+    # 已审 Mixin 在 NBT 前另写 mode；此负载的 BedColor 键为八字符整数，必走 mode0 普通 NBT 分支
     require(raw[11] == 0, "unexpected Hodgepodge NBT mode")
     size = struct.unpack(">h", raw[12:14])[0]
     require(0 < size < 32767 and len(raw) == 14 + size, "S35 compressed payload length mismatch")

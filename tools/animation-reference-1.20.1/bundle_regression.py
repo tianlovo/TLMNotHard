@@ -1,4 +1,4 @@
-"""从已批准的冻结包运行独立Java CPU回归，无需原版checkout或游戏进程"""
+"""从已批准的冻结包运行独立Java CPU回归，无需原版checkout或游戏进程。"""
 
 import argparse
 import json

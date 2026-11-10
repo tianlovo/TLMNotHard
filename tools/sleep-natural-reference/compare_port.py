@@ -1,4 +1,4 @@
-"""核对原版与完整F/N自然睡眠观察，报告描述性差异，不准入完整B10或统计收益"""
+"""核对原版与完整F/N自然睡眠观察，报告描述性差异，不准入完整B10或统计收益。"""
 
 import argparse
 import hashlib
@@ -54,7 +54,7 @@ def metrics(row):
 
 
 def stable_sleep(data):
-    """固定无干扰基础场景的入睡/后续位置检查，不评价寻路速度或完整B10"""
+    """固定无干扰基础场景的入睡/后续位置检查，不评价寻路速度或完整B10。"""
     for row in data["runs"]:
         frames = row["frames"]
         first = next((i for i, s in enumerate(frames) if s["sleeping"]), None)

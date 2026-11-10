@@ -1,4 +1,4 @@
-"""控制真实原版世界tick跟随采集，超时保留同一进程和原始请求"""
+"""控制真实原版世界tick跟随采集，超时保留同一进程和原始请求。"""
 import argparse
 import hashlib
 import json

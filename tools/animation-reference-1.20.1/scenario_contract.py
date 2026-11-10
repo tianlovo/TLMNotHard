@@ -1,4 +1,4 @@
-"""有界动画夹具的输入合同，不作为通用游戏轨迹协议"""
+"""有界动画夹具的输入合同，不作为通用游戏轨迹协议。"""
 
 IDLE_MODE = "controlled-idle-v0"
 WALK_MODE = "controlled-idle-walk-idle-v1"

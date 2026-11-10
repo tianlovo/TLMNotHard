@@ -1,4 +1,4 @@
-"""同端两次原生完整NBT序列化的只读绑定；不解析有损旧SNBT，不判断跨引擎NBT语义"""
+"""同端两次原生完整NBT序列化的只读绑定；不解析有损旧SNBT，不判断跨引擎NBT语义。"""
 
 import base64
 import hashlib
@@ -13,7 +13,7 @@ MAX_BYTES = 8 * 1024 * 1024
 
 
 def decode_named_nbt(raw):
-    """保留tag id、列表元素类型/顺序、浮点位和Modified UTF-8原字节；仅compound键无序"""
+    """保留tag id、列表元素类型/顺序、浮点位和Modified UTF-8原字节；仅compound键无序。"""
     require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_BYTES, "invalid complete NBT byte size")
     stream = io.BytesIO(raw)
 
@@ -39,7 +39,7 @@ def decode_named_nbt(raw):
         if kind <= 4:
             value = number({1: 'b', 2: 'h', 3: 'i', 4: 'q'}[kind])
         elif kind in (5, 6):
-            # 不转Python float，保留-0、全部IEEE位和原生writer实际写出的NaN位
+            # 不转 Python float，保留-0、全部 IEEE 位和原生 writer 实际写出的 NaN 位
             value = read(4 if kind == 5 else 8)
         elif kind == 7:
             value = read(count())

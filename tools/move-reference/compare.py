@@ -1,4 +1,4 @@
-"""原移动sink三次新状态A/A，以及真实移植组件的状态与调用对照"""
+"""原移动sink三次新状态A/A，以及真实移植组件的状态与调用对照。"""
 
 import argparse
 import copy

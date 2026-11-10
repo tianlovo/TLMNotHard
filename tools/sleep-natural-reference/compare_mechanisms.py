@@ -1,4 +1,4 @@
-"""核对五种自然睡眠机制的实际输入与原始观察，不授予完整B10或统计结论"""
+"""核对五种自然睡眠机制的实际输入与原始观察，不授予完整B10或统计结论。"""
 
 import argparse
 import json
@@ -134,7 +134,7 @@ def pair_inputs(original, port):
                 isinstance(x[key], (int, float)) and not isinstance(x[key], bool) else x[key] == y[key])
         if not same:
             differences.append({"key": key, "original": x[key], "port": y[key]})
-    # 任务ID在版本间有独立注册名，保留原值供审查，不用删前缀猜测等价
+    # 任务 ID 在版本间有独立注册名，保留原值供审查，不用删前缀猜测等价
     tasks = {"original": x["task"], "port": y["task"]}
     def layout(value):
         return sorted((v["x"], v["y"], v["z"], v["semantic"]) for v in value["nonAirBlocks"])
@@ -165,7 +165,7 @@ def pair_inputs(original, port):
 
 
 def deterministic_spawn_inputs(data):
-    """核实际出生状态和同一份NBT的读取值，不由调用工具函数推断生效"""
+    """核实际出生状态和同一份NBT的读取值，不由调用工具函数推断生效。"""
     contract = data["contract"]
     require("initialOrientation" in contract and "initialSoundPackId" in contract,
             "deterministic spawn contract absent")

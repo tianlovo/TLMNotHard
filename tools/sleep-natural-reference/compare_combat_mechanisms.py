@@ -135,7 +135,7 @@ def inspect(data, scene, contract_hash, original, expected_schema=None, unified_
         names = [row for row in target["physicalConditions"]["attributes"] if row["name"] == "generic.maxHealth"]
         require(len(names) == 1, "missing/duplicate actual target max-health attribute")
         max_health = names[0]
-    # V2使用两端原生范围内的1000；首轮请求2000/O实1024/GTNH实2000仍是不同输入。
+    # V2 使用两端原生范围内的 1000；首轮请求 2000/O 实 1024/GTNH 实 2000 仍是不同输入
     expected_health = 1000
     require(max_health["base"] == expected_health and max_health["value"] == expected_health,
             "actual target base/value differs from V2 common native-range input")

@@ -1,4 +1,4 @@
-"""手工原生NBT字节反例；不由被测decoder生成输入或启动游戏"""
+"""手工原生NBT字节反例；不由被测decoder生成输入或启动游戏。"""
 
 import base64
 import copy
@@ -67,7 +67,7 @@ class SameSideNbtBindingCounterexamples(unittest.TestCase):
 
     def test_modified_utf8_bytes_are_never_replaced_or_lossily_decoded(self):
         self.assertFalse(compare("080001730002c080", "080001730003efbfbd")["typed_structure_equal"])
-        # 原生Modified UTF-8会写出未配对代理项；保留原字节，无errors=replace
+        # 原生 Modified UTF-8 会写出未配对代理项；保留原字节，无 errors=replace
         self.assertTrue(compare("080001730003eda080", "080001730003eda080")["typed_structure_equal"])
 
     def test_legacy_text_alone_remains_unproven_even_if_identical(self):

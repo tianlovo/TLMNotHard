@@ -1,4 +1,4 @@
-"""三个新机制的独立检查器反例，不启动Minecraft或把合成数据写成测评结果"""
+"""三个新机制的独立检查器反例，不启动Minecraft或把合成数据写成测评结果。"""
 
 import copy
 import unittest
