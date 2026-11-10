@@ -11,7 +11,7 @@ public final class ThreatEstimator {
 
     private ThreatEstimator() {}
 
-    /** 同一已付费威胁循环中的单次估值余量；generic不等同伤害上界 */
+    /** 同一已付费威胁循环中的单次估值余量。generic 不等同于伤害上界 */
     public static final class Risk {
 
         public double selfSingle, ownerSingle, ownerReceived, hiddenSingle;
@@ -28,7 +28,7 @@ public final class ThreatEstimator {
             this.observedOnly = observedOnly;
         }
 
-        // 一个风险对象属于同一不可变快照的一条预测假设，各受保护对象分别保留保守风险
+        // 单个 Risk 绑定同一不可变快照与同一预测假设，女仆和主人各自按同箭最多计险一次保留保守风险
         private boolean bindProjectiles(CombatSnapshot snapshot, int hypothesis) {
             if (projectileSnapshot == null) {
                 projectileSnapshot = snapshot;
@@ -136,7 +136,7 @@ public final class ThreatEstimator {
             }
             if (target.explosive && distance < 3.5 + uncertainty) contact = Math.max(contact, 3);
             double swing = target.swinging && elapsed <= 6 ? 1.8 : 1;
-            // 这是不确定接触伤害率，未生成敌方精确出手时刻
+            // 此处为不确定接触伤害率，不生成敌方精确出手时刻
             damage += contact * target.estimatedDamage * swing * CombatWorkQuota.STEP / 20;
             if (risk != null && contact > 0) {
                 risk.self(target.damageSource, target.estimatedDamage * swing * (target.explosive ? 3 : 1));
@@ -152,7 +152,7 @@ public final class ThreatEstimator {
             if (snapshot.tick < projectile.observedAt || snapshot.tick - projectile.observedAt > 2) continue;
             if (risk != null) risk.source(projectile.damageSource, projectile.estimatedDamage);
             int age = (int) (snapshot.tick - projectile.observedAt);
-            // 两tick推进内各检查一段扫掠，避免箭在两个采样端点之间穿过身体
+            // 在两 tick 步进内逐段扫掠检测，避免箭矢在稀疏采样端点之间穿透身体
             for (int part = 0; part < CombatWorkQuota.STEP; part++) {
                 if (!quota.spend(Work.COLLISION)) return Double.POSITIVE_INFINITY;
                 Vec a = projectilePosition(projectile, age + elapsed - CombatWorkQuota.STEP + part);
@@ -208,12 +208,12 @@ public final class ThreatEstimator {
                         if (elapsed <= 2) risk.acute = true;
                     }
                     selfCounted = true;
-                    // 女仆命中后仍检查本区间余下的主人风险
+                    // 女仆命中后仍继续检查本区间余下的主人风险
                     if (risk == null || snapshot.self.ownerPosition == null || risk.ownerProjectileHits[index]) break;
                 }
             }
         }
-        // 仅策略收益估计，实际格挡角、破盾与消耗始终由现有盾牌规则处理
+        // 仅用于策略收益估计，实际格挡角、破盾与消耗始终由现有盾牌规则处理
         return shield ? damage * .45 : damage;
     }
 
@@ -238,7 +238,7 @@ public final class ThreatEstimator {
             .add(new Vec(0, -projectile.gravity * (time - series) / (1 - drag), 0));
     }
 
-    /** 身体在整个区间的扫掠盒；方块以保守体素表示，不会跳过一格墙 */
+    /** 按整个区间的身体扫掠盒检测碰撞。方块以保守体素表示，不会跳过一格墙 */
     public static boolean safeMove(CombatSnapshot snapshot, Vec from, Vec to, boolean requireFloor,
         CombatWorkQuota quota) {
         Geometry geometry = snapshot.geometry;

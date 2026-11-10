@@ -19,7 +19,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.ThreatEstimator;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
-/** 无Minecraft类加载的实际纯规划检查；输出交给主构建批次运行 */
+/** 不加载 Minecraft 类的纯规划实测检查。输出交由主构建批次运行 */
 public final class CombatTacticsChecks {
 
     private static final UUID SELF = new UUID(0, 1), TARGET = new UUID(0, 2);
@@ -469,7 +469,7 @@ public final class CombatTacticsChecks {
         CombatWorldBudget.unload(world);
     }
 
-    /** 固定异质准备速度，保留真实请求直到completed；旧实现的第二次轮转在tick204产生wait33 */
+    /** 固定异质准备速度，保留真实请求直至 completed。旧实现的第二次轮转会在 tick 204 产生 wait 33 */
     private static void readyExpiryKeepsFirstPreparationRotation() {
         Object world = new Object();
         int[] need = { 5, 3, 4, 4, 3, 3, 4, 5, 6, 5, 3, 3, 6, 3, 6, 5, 6, 6, 6, 4, 4, 6, 4, 3, 4, 4, 5, 6, 3, 5, 6, 5 };
@@ -602,7 +602,7 @@ public final class CombatTacticsChecks {
         CombatWorldBudget.unload(world);
         check(CombatWorldBudget.diagnostics(world, 100).requests == 0, "World unload retained requests");
 
-        // 直接检查真实Request生命周期，不以UUID、phase或prep round推断对象是否相同
+        // 直接检查真实 Request 生命周期，不凭 UUID、phase 或 prep round 推断是否为同一对象
         Object diagnosticWorld = new Object();
         UUID id = new UUID(54, 1);
         CombatWorldBudget.heartbeat(diagnosticWorld, id, 100, false);
@@ -1922,7 +1922,7 @@ public final class CombatTacticsChecks {
         CombatPlanner.setTraceEnabled(true);
         var oldWindow = oldWindowPlanner.decide(oldScene, CombatWorkQuota.isolated(101, true));
         CombatPlanner.setTraceEnabled(traceBeforePolicyCheck);
-        // 旧RETREAT排名由冻结main17的原22检查单独保留；这里核新任务合同而非强保留旧限制
+        // 旧 RETREAT 排名由冻结 main17 的原 22 项检查单独保留。此处核对新任务合同，不强行保留旧限制
         check(oldWindow.expectedDamage == 0, "Old ROI fabricated an unproved ranged benefit");
         if (oldWindow.normalProgressAdmitted) check(
             oldWindow.simulated && oldWindow.route != null
@@ -2175,7 +2175,7 @@ public final class CombatTacticsChecks {
             true);
     }
 
-    /** 代表性局部图重建，不是缺失完整snapshot的main17原生精确重放 */
+    /** 代表性局部图重建，并非缺失完整 snapshot 的 main17 原生精确重放 */
     private static CombatSnapshot progressScene(float health, CombatSnapshot.DamageSource source,
         List<CombatSnapshot.Projectile> arrows) {
         return progressScene(health, source, arrows, .2, false);
@@ -2739,7 +2739,7 @@ public final class CombatTacticsChecks {
             "Native node/path identity was lost before the combat ARRIVED snapshot");
     }
 
-    /** 只验证真实增强导航类的结果顺序，不代替Minecraft物理或实际路径安装 */
+    /** 仅验证真实增强导航类的结果顺序，不替代 Minecraft 物理或实际路径安装 */
     private static final class ProgressNavigationActor
         implements com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor,
         com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver {
