@@ -234,8 +234,8 @@ public final class MaidBoundedPathPlanner {
 
     /**
      * 显式安装阶段；调用方还须在前后核对自己的动作token和导航资源归属
-     * null路径仍会调用原生setPath(null)，因此不能把此方法当只读探测
-     * create时须已有当前policy context，本方法不会为一次旧查询创建新授权
+     * null 路径仍会调用原生 setPath(null) 清空导航，具有状态变更副作用。
+     * 创建时需具备有效的 policy context，仅响应当前上下文的路径请求
      */
     public Installation install(EntityMaid maid, Creation created) {
         return install(maid, created, true);
@@ -363,7 +363,7 @@ public final class MaidBoundedPathPlanner {
         private final transient QueryContext context;
         public final transient PathEntity path;
         public final boolean queryExecuted;
-        /** null表示已执行查询；不代表非null路径、可达或已安装 */
+        /** null 表示已完成查询执行，路径可达性与安装状态由后续逻辑核验 */
         public final PathResult preflightFailure;
         public final float nativeRange, searchRange;
         public final Options options;
@@ -403,7 +403,7 @@ public final class MaidBoundedPathPlanner {
 
         public final PathResult result;
         public final transient PathEntity requestedPath, installedPath;
-        /** started仅表示原生setPath返回true，contextChanged时不得认领其资源 */
+        /** started 仅指示原生 setPath 返回成功；上下文发生变更时自动放弃资源占用 */
         public final boolean nativeSetPathCalled, started, reusedExistingPath, contextChanged;
         public final String diagnostic;
 

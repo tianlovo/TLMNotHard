@@ -157,7 +157,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 afterNavigationGate.clear();
                 afterLivingGate.clear();
             } else {
-                // 实体日程独立于Brain；窗口在导航前打开也不能丢掉本tick的实体阶段
+                // 实体日程独立于 Brain 调度；窗口在导航前打开时保留本 tick 的实体阶段
                 afterLivingGate.book(maid.worldObj, maid.worldObj.getTotalWorldTime(), maid.ticksExisted, runtime);
                 if (maid.guiOpening) afterNavigationGate.clear();
                 else afterNavigationGate
@@ -206,7 +206,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             executePolicy(runtime, true);
     }
 
-    /** 仅消费本tick成功现代Brain阶段预约；失效或换策略不能执行旧实体移动后动作 */
+    /** 仅消费本 tick 成功的现代 Brain 预约；策略失效或变更时清空移动后动作预约 */
     public void afterLivingUpdate() {
         var runtime = policy;
         if (runtime == null || maid.worldObj.isRemote
@@ -455,7 +455,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             throw new IllegalStateException("Development component selection failed");
     }
 
-    /** 显式开发选择；F/N由本协调器创建独立根，普通回调不作为替代实现 */
+    /** 显式开发选择；F/N 由本协调器统一创建并维护独立根 */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested) {
         return selectProfileForDevelopment(
             requested,
@@ -558,7 +558,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return profile == MaidBrainProfile.LEGACY_PROTOTYPE || profile.isEnhanced();
     }
 
-    /** 仅已真正登记回世界的对象可以结束卸载阻断，清理失败不会自动恢复 */
+    /** 仅完成世界登记恢复的对象可解除卸载阻断；清理异常时保持保护状态 */
     public boolean onRegistered() {
         var world = maid.worldObj;
         if (world == null || world.isRemote
@@ -582,7 +582,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private boolean listedByIdentity(World world) {
-        // 原生Entity.equals只比较entityId，不能据此确认本对象仍在列表中
+        // 原生 Entity.equals 仅比对 entityId，此处进一步核验对象引用一致性
         for (Object value : world.loadedEntityList) if (value == maid) return true;
         return false;
     }
@@ -596,7 +596,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         try {
             if (transitioningPolicy || creatingPolicy)
                 throw new IllegalStateException("Persistent read during policy cleanup or creation");
-            // 旧runtime必须先失效，之后任何新清理失败也不能保留旧授权
+            // 优先使旧 runtime 失效，清理异常时亦确保旧授权及时撤销
             Throwable failure = cancel(() -> retireCurrent(InvalidationReason.IDENTITY_CHANGED), null);
             failure = cancel(
                 () -> maid.getShieldController()
@@ -752,7 +752,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     public void recordAcceptedHurt() {
         if (maid.worldObj == null || maid.worldObj.isRemote || !maid.isEntityAlive()) return;
         hurtMemory.record(maid.worldObj, maid.worldObj.getTotalWorldTime());
-        // 1.20.1原生受伤会同步stopSleeping，不能等优先级任务下次执行才释放床位
+        // 受伤触发原生 stopSleeping 时同步释放床位，保障状态即时生效
         var faithful = peekFaithfulBrain();
         if (faithful != null) faithful.getActor()
             .wakeOwnedSleepOnHurt();
@@ -851,7 +851,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return null;
     }
 
-    /** 原refresh只停运行行为、重建Behavior/Sensor，不能用策略取消擦掉工作记忆 */
+    /** 行为刷新仅停止运行行为并重建 Behavior/Sensor，工作记忆依据生命周期保留 */
     public boolean refreshModernBrain() {
         var runtime = policy;
         if (peekEnhancedCore() != null && !suspended && !transitioningPolicy && persistentReadDepth == 0) {

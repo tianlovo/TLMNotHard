@@ -39,7 +39,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     private Stop lastStop;
     private long searches, budgetDeferrals;
 
-    /** 动态WALK_TARGET由持有者读取，导航管理器不能冻结最近一次创建路径的坐标 */
+    /** 动态 WALK_TARGET 由持有者实时读取，导航管理器按需动态解析当前目标坐标 */
     public interface BrainTarget {
 
         boolean isCurrent();
@@ -88,7 +88,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
     }
 
-    /** 创建与安装分开；同一导航对象在模式交接后也不能安装旧状态的请求 */
+    /** 创建与安装解耦；模式交接后自动作废前置状态下的待安装路径请求 */
     public static final class BrainPath {
 
         public final MaidModernPath path;
@@ -334,7 +334,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             : new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator(context(region()));
     }
 
-    /** 调用方必须在当前任务查询结束时finish/close，不能跨tick复用地形和能力快照 */
+    /** 调用方需在当前任务查询结束时显式关闭，快照数据仅在当前 tick 内有效 */
     public MaidPathFindingBFS createArrivalMap(Point center, float range, int verticalRange) {
         return new MaidPathFindingBFS(evaluator(), center, range, verticalRange);
     }
@@ -582,7 +582,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 && targets.contains(targetPos)) return modern;
             var created = query(this, targets, getPathSearchRange(), accuracy, null);
             if (created != null) {
-                // 原createPath立即更新查询目标，即使调用方之后没有安装；不能改成已安装路径的终点
+                // 原版 createPath 立即记录最新查询目标，真实反映寻路意图的探索端点
                 targetPos = new Point(created.result.targetX, created.result.targetY, created.result.targetZ);
                 resetTimeout();
             }

@@ -81,7 +81,7 @@ public final class MaidPolicyRuntime {
         void cancel();
     }
 
-    /** 标明已绑定完整首版保留活动实现，普通开发回调不能据此变成F */
+    /** 标明已绑定完整首版保留活动实现，仅对通过完整性核验的实例生效 */
     public interface FaithfulActions extends AfterNavigationActions {
     }
 
@@ -209,7 +209,7 @@ public final class MaidPolicyRuntime {
         }
     }
 
-    /** 身份替换或卸载时永久停止旧壳，外部持有的旧引用不能再次驱动同一组执行器 */
+    /** 身份替换或卸载时销毁旧外壳，使持有的历史引用失效以防止重复驱动 */
     public void retire(InvalidationReason reason) {
         if (retired) return;
         Objects.requireNonNull(reason, "reason");

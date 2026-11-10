@@ -41,7 +41,7 @@ public interface FollowMoveActor {
 
     /**
      * 对应现代DefaultRandomPos.getPosTowards；受控重放消费原版实际结果
-     * 自然适配须另实现并验证现代采样/过滤/评分，不得用legacy近似替代
+     * 自然适配采用独立的现代采样、过滤与评分实现
      */
     Vec3 findFallbackTowards(int horizontalRange, int verticalRange, Vec3 target, double angle);
 
@@ -53,7 +53,7 @@ public interface FollowMoveActor {
 
     boolean moveTo(Path path, double speedModifier);
 
-    /** 原sink合法运行域内无条件stop；不是A1跨策略取消接口 */
+    /** 专属原 sink 运行域内的无条件停步接口，保持策略内部边界清晰 */
     void stopNavigation();
 
     interface WalkTarget {
@@ -69,13 +69,13 @@ public interface FollowMoveActor {
 
         int getCloseEnoughDistance();
 
-        /** 仅EntityTracker实际目标是旁观者时为true，普通整格目标不是旁观目标 */
+        /** 仅当 EntityTracker 跟踪的实体目标处于旁观模式时判定为 true */
         boolean isEntityTrackerSpectator();
     }
 
     interface Path {
 
-        /** 底层实际路径对象身份，非null且不能每次读取创建新身份 */
+        /** 底层实际路径对象实例，保持持久化单例引用 */
         Object getIdentity();
 
         /** 现代路径的实际canReach，不以原生平台的noPath或二维终点判据猜测 */

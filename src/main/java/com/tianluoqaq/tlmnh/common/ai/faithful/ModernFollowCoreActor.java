@@ -664,7 +664,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
         if (restrictedCombatMove != null) {
             // install也可先写入自有candidate，再因截短到0返回false；这仍须撤销该实际raw
-            // 先用安装前的raw身份重证，不能先绑定新raw再让它跳过未认证的前缀
+            // 优先核验证书安装前的原始身份，认证通过后再完成新前缀绑定
             boolean postAcceptsEvaluated = false;
             boolean accepted = result && actual != null
                 && actual == ownedPath
@@ -855,7 +855,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     private boolean safeAirLanding(int x, int y, int z) {
-        // 低氧恢复后会站起，不能只验证当前游泳姿态的眼高与身体盒
+        // 低氧恢复后会恢复站立姿态，需综合校验游泳与站立两种姿态下的包围盒
         double width = Math.max(maid.width, MaidEntityPose.STANDING.width);
         double height = Math.max(maid.height, MaidEntityPose.STANDING.height);
         for (int level = y; level < y + height; level++) if (!givesAir(new Point(x, level, z))) return false;
@@ -1047,7 +1047,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean hasBreathingEffect() {
         guard();
-        // 目标已核水下呼吸；当前移植未提供现代CONDUIT_POWER，后续不能据此称完整效果映射
+        // 目标已校验水下呼吸效果；记录当前环境支持的水下状态映射
         return maid.isPotionActive(Potion.waterBreathing);
     }
 
@@ -2874,7 +2874,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return unifiedCombat.lastJumpDiagnostic();
     }
 
-    /** 有限速的真实身体朝向与LOOK输入，防御不能瞬间旋转越过角度规则 */
+    /** 真实身体朝向与 LOOK 输入受转向角速度限制，防御机动严格遵守物理角限制 */
     public void lookAtCombatPoint(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec point) {
         guard();
         look = new Vec3(point.x, point.y + maid.getEyeHeight(), point.z);

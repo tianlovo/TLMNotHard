@@ -79,7 +79,7 @@ public final class MaidUnifiedCombatActionRunner {
         long now = maid.worldObj.getTotalWorldTime();
         if (plan.entityEpoch != actor.unifiedCombatEpoch() || plan.observationEpoch != actor.combatObservation()
             .epoch() || now < plan.observedAt || now > plan.expiresAt) return Result.STALE;
-        // 计划可跨tick继续，提交成本必须扣当前世界账本，不能使用计划里的旧quota
+        // 计划跨 tick 继续执行时，提交成本扣减当前世界账本中的实时预算
         var quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, false);
         if (!quota.spend(Work.FINAL_CHECK)) return Result.WAIT_BUDGET;
         if (plan.targetId == null) {
@@ -177,7 +177,7 @@ public final class MaidUnifiedCombatActionRunner {
             || jumpEpoch != maid.getEquipmentEpoch()
                 .generation()))
             jumpRequested = jumpPreparing = false;
-        // LIGHT不发起新跳，但HOLD不能在上升期抢掉既有跳劈的下降命中窗口
+        // LIGHT 阶段维持地面机动；HOLD 在上升期等待既有跳劈的下降命中窗口
         if (plan.macro == Macro.JUMP_STRIKE || (jumpRequested || jumpPreparing) && plan.macro == Macro.HOLD_ATTACK)
             return jump(target, view, plan, quota);
         if (actor.withinMeleeRange(view)) {
@@ -191,7 +191,7 @@ public final class MaidUnifiedCombatActionRunner {
         return Result.RUNNING;
     }
 
-    /** 普通换装不能抹掉已真实离地的同一跳劈；新的防御/取消与真实身份失效仍走原分支 */
+    /** 换装事件保留已真实离地的跳劈惯性；防御、取消与身份失效按原分支处理 */
     private Result continueAirborneJumpBeforeEquipment(CombatPlan plan, EntityLivingBase target,
         CombatWorkQuota quota) {
         if (plan.weaponSlot < 0 || plan.macro != Macro.PREPARE_WEAPON
@@ -332,7 +332,7 @@ public final class MaidUnifiedCombatActionRunner {
                 jumpDiagnostic = "braking";
                 return Result.RUNNING;
             }
-            // 检查整段残余水平惯性，而不是在实际垂直身体外再虚构固定0.35宽度
+            // 基于实际垂直身体边界与残余水平惯性综合计算碰撞区间
             double driftX = maid.motionX * JUMP_DRIFT_TICKS, driftZ = maid.motionZ * JUMP_DRIFT_TICKS;
             var sweep = maid.boundingBox.addCoord(driftX, HEAD_SWEEP, driftZ)
                 .expand(JUMP_SWEEP_EPSILON, 0, JUMP_SWEEP_EPSILON);

@@ -43,7 +43,7 @@ public final class MaidShieldController {
         ERROR
     }
 
-    /** 只包含scalar和enum，开发报告不得递归序列化世界、物品或实体 */
+    /** 仅包含标量与枚举字段，开发报告避免级联深拷贝世界、物品或实体 */
     public static final class Snapshot {
 
         public final boolean using, activeTaskRunning, arrowCatchSupported;
@@ -156,7 +156,7 @@ public final class MaidShieldController {
         return lastBlock;
     }
 
-    /** 原TLM在super.hurt之前激活；原生取消仍可能举盾，但不能因此磨盾 */
+    /** 原 TLM 在 super.hurt 之前激活；原生取消时允许防御姿态并保护耐久 */
     public void beforeIncoming(DamageSource source, float amount) {
         if (source == null || !source.isProjectile() || !canUseShield()) return;
         Entity attacker = source.getEntity();
@@ -169,7 +169,7 @@ public final class MaidShieldController {
         passiveRemaining = MaidShieldRules.PASSIVE_TICKS;
     }
 
-    /** 此入口只维护原近战举盾Behavior，不能替代一次近战攻击或占用路径 */
+    /** 此入口维护近战举盾 Behavior，与近战攻击逻辑及路径规划解耦 */
     public void updateActiveTarget(EntityLivingBase target) {
         if (maid.worldObj == null || maid.worldObj.isRemote) return;
         long now = maid.worldObj.getTotalWorldTime();
@@ -196,7 +196,7 @@ public final class MaidShieldController {
             && (modernDistance ? maid.getDistanceToEntity(target) < 8 : maid.getDistanceSqToEntity(target) < 64);
     }
 
-    /** 现代Brain在全部行为的启动相位调用，不能在此提前停止旧行为 */
+    /** 现代 Brain 在全部行为的启动相位统一调度，保持既有行为的生命周期完整 */
     public boolean startActiveTask(EntityLivingBase target, Object owner) {
         Objects.requireNonNull(owner, "owner");
         if (activeTaskRunning || !activeTargetPermitted(target, true)) return false;
@@ -221,7 +221,7 @@ public final class MaidShieldController {
         return activeEndTime;
     }
 
-    /** 只撤本行为的使用权，取消旧策略时不能停止后来的行为或其他物品使用 */
+    /** 仅撤回本行为的使用授权，保持其他并发行为或后续物品操作的独立性 */
     public void stopActiveTask(Object owner, String reason) {
         if (!activeTaskOwnedBy(owner)) return;
         var stoppedLease = activeLease;
@@ -260,7 +260,7 @@ public final class MaidShieldController {
         }
     }
 
-    /** 普通取消只释放使用权，按Item的冷却不会随任务或新ItemStack重置 */
+    /** 普通取消仅释放使用权；物品固有冷却由 Item 逻辑维护，不随任务重置 */
     public void cancelUse(String reason) {
         activeTaskRunning = false;
         activeTaskOwner = null;
@@ -522,7 +522,7 @@ public final class MaidShieldController {
             boolean disable = sameUse && !source.isProjectile()
                 && source.getSourceOfDamage() instanceof EntityLivingBase attacker
                 && MaidShieldItems.canDisableShield(attacker.getHeldItem());
-            // getToolClasses也是外部物品回调，不能沿用它之前的授权快照
+            // getToolClasses 涉及外部物品回调，每次调用时重新获取最新授权
             sameUse = sameUseContext(use, shield, world, identity);
             if (disable && sameUse) {
                 cooldowns.put(originalItem, MaidShieldRules.DISABLE_TICKS);
@@ -554,7 +554,7 @@ public final class MaidShieldController {
                 .trip(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS, failure);
             event.setCanceled(false);
             release(use, "shield_callback_failed");
-            // 只封存仍由本女仆持有的同一对象，不能再补发已转移到其他所有者的物品
+            // 仅封存当前由本女仆持有的同引用对象，保持物品所有权流转一致性
             var inventory = maid.getMaidInventory();
             for (int slot = 0; slot < inventory.getSizeInventory(); slot++)
                 if (inventory.getStackInSlot(slot) == shield) {

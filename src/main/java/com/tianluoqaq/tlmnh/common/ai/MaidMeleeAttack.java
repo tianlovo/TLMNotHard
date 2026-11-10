@@ -88,7 +88,7 @@ public final class MaidMeleeAttack {
         if (maid.worldObj.isRemote || !admitted.getAsBoolean()) return new Result(false, false, false);
         if (MinecraftForge.EVENT_BUS.post(new MaidHurtTarget.Pre(maid, target))) return new Result(true, false, true);
         if (!admitted.getAsBoolean()) return new Result(false, false, false);
-        // 已接受的致死攻击仍须完成原武器损耗；完成许可不能再次要求目标活着
+        // 致死攻击结算时执行原武器损耗，允许目标在此阶段离场
         boolean accepted = hurtNative(maid, target, mayFinish);
         MinecraftForge.EVENT_BUS.post(new MaidHurtTarget.Post(maid, target, accepted));
         return new Result(accepted, accepted, false);
@@ -150,7 +150,7 @@ public final class MaidMeleeAttack {
                 receipt.rejected();
                 return new Result(false, false, false);
             }
-            // 节拍和ATTEMPTING先于Pre事件，监听器不能重入第二击
+            // 节拍与 ATTEMPTING 优先于 Pre 事件设置，严格保障单次打击的时钟原子性
             if (MinecraftForge.EVENT_BUS.post(new MaidHurtTarget.Pre(maid, target))) {
                 receipt.rejected();
                 return new Result(true, false, true);

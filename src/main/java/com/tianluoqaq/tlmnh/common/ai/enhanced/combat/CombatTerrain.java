@@ -10,7 +10,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 
-/** 局部已知站立图；不访问世界，未知格既不是空地也不是可射击走廊 */
+/** 局部已知站立图；仅基于本地缓存分析，未知格标记为未探索区域 */
 public final class CombatTerrain {
 
     private static final int RADIUS = 3, MAX_NODES = 49, MAX_WORK = 6000, MAX_RAY_CELLS = 32, CONTINUATION_WORK = 256;
@@ -806,7 +806,7 @@ public final class CombatTerrain {
         return new Route(points, nodes, nodes.get(0), null, null, stop, protection, firing, proof, defenseNode);
     }
 
-    /** FULL把当前掩体作为候选重新证明，不能因途中已有遮挡而把原落点换成别处 */
+    /** FULL 将当前掩体作为候选重新求证，严格以原计划落点为基准计算遮挡 */
     public static Route retainCover(CombatSnapshot snapshot, Target target, Route previous, int nextNode,
         CombatWorkQuota quota) {
         if (!quota.full || !snapshot.complete
@@ -874,7 +874,7 @@ public final class CombatTerrain {
             && connect(snapshot, from, to, false, meter);
     }
 
-    /** 只证明既有当前闭门请求段，闭门保持闭门；不是任意conditional路线的免检许可 */
+    /** 仅求证当前闭门请求段的连续性；闭门状态保持闭门，条件路线仍需常规核验 */
     public static boolean safeRequestStep(CombatSnapshot snapshot, Vec from, Vec to, CombatWorkQuota quota) {
         if (!snapshot.complete || snapshot.geometry == null
             || !snapshot.geometry.complete

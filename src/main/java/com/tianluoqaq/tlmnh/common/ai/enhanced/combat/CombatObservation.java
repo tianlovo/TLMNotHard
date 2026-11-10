@@ -287,7 +287,7 @@ public final class CombatObservation {
                 remember(friend.entity, rejectObservation());
                 continue;
             }
-            // 缓存键退役只依据身份变化，不能把不可见或年龄耗尽当作身份消失
+            // 缓存键退役依据实体身份变化；目标不可见或年龄耗尽时保留其身份记录
             if (!friend.id.equals(friend.entity.getUniqueID()) || friend.entityId != friend.entity.getEntityId()
                 || friend.dimension != friend.entity.dimension) {
                 UUID currentId = friend.entity.getUniqueID();
@@ -366,7 +366,7 @@ public final class CombatObservation {
         if (arrowEventCursor < latestArrow) projectileComplete = false;
     }
 
-    /** 当前动作只占一个目标刷新名额，其他已知身份不能吃尽背景扫描射线 */
+    /** 当前动作仅消耗单目标刷新名额，为背景扫描留存充足射线预算 */
     private void refreshPrimary(EntityMaid maid, CombatWorkQuota quota) {
         EntityLivingBase selected = maid.getModernCombatMemory()
             .target();
@@ -504,7 +504,7 @@ public final class CombatObservation {
             MaidPerceptionConfig.bowRange)
             : maid.getHomeArea()
                 .restrictionRadius();
-        // 可见友方仍按原感知范围采样，目标范围不能缩小友方覆盖或伪造完整性
+        // 可见友方按完整感知范围采样，保持友方覆盖度与真实可见性一致
         if (!maid.getHomeArea()
             .enabled() && !friendly(maid, entity))
             range = rangePolicy.detection(
@@ -573,7 +573,7 @@ public final class CombatObservation {
         tracked.position = position;
         tracked.observedAt = tick;
         tracked.visible = true;
-        // 外部生物血量不是公开观测；以基础范围和本女仆已发生命中形成估值
+        // 外部生物血量依据基础属性范围与既有命中记录估算
         if (tracked.health <= 0) tracked.health = entity instanceof net.minecraft.entity.monster.IMob ? 20 : 30;
         tracked.width = entity.width * .5;
         tracked.height = entity.height;
@@ -1109,7 +1109,7 @@ public final class CombatObservation {
         return Collections.unmodifiableList(result);
     }
 
-    /** 返回有界真实引用只供根仲裁，不能进入纯规划器 */
+    /** 返回有界真实引用供根仲裁使用，规划器层保持数据解耦 */
     public List<EntityLivingBase> targets() {
         List<EntityLivingBase> result = new ArrayList<>();
         for (Tracked tracked : targets.values()) if (tracked.position != null) result.add(tracked.entity);

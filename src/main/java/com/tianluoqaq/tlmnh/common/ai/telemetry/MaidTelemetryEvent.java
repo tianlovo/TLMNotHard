@@ -120,7 +120,7 @@ public final class MaidTelemetryEvent {
             new CandidateScan(returned, processed));
     }
 
-    /** 未计算score时传null，不能以编造的零分代替未观测值 */
+    /** 未计算 score 时传 null，保留真实未观测状态 */
     public static MaidTelemetryEvent candidate(long epoch, long sequence, long tick, String action, String target,
         String detail, Double score, boolean eligible) {
         if (score != null) finite(score);
@@ -151,7 +151,7 @@ public final class MaidTelemetryEvent {
             null);
     }
 
-    /** LivingHurt等可取消阶段只能产生候选，不能由此推算最终healthAfter */
+    /** LivingHurt 等阶段仅产生预伤候选，最终 healthAfter 在伤害结算后记录 */
     public static MaidTelemetryEvent provisionalDamage(long epoch, long sequence, long tick, String action,
         String sourceId, String target, String detail, double requestedAmount) {
         finite(requestedAmount);
@@ -228,7 +228,7 @@ public final class MaidTelemetryEvent {
             new Terminal(outcome, effectConfirmed));
     }
 
-    /** BRAIN可包含其他component耗时，各项不能直接相加当整服或总AI耗时 */
+    /** BRAIN 包含其他组件耗时；统计总 AI 耗时时需独立采样以避免重复累加 */
     public static MaidTelemetryEvent work(long epoch, long sequence, long tick, String action, WorkComponent component,
         long durationNanos) {
         if (durationNanos < 0) throw new IllegalArgumentException("Negative work duration");
