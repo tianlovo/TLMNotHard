@@ -10,6 +10,16 @@
 测试源码和结构位于本目录，使用独立 source set 生成 `tlmnh-horizonqa-pilot.jar`
 默认构建、玩法依赖与正式 JAR 都不包含框架或这些测试
 
+## 已知箭矢的主动规避
+
+精确单项为 `tlmnhqapilot:KnownArrowEvasionTests.nativeKnownArrowIsEvadedByAuthorizedMovement`，方法版本和边界见 [known-arrow-evasion-method.json](known-arrow-evasion-method.json)。
+
+该场景仅验证 INTERNAL_ONLY 新能力：当前已观测的原生箭会穿过原身体位置，女仆通过自有原生路径主动移开，同箭随后越过判定平面，且没有接触女仆或主人。所选箭、射手、友方、局部几何、世界身份、路径所有权和非击退位移逐项核验；全局观测缺口仍保留为未知。
+
+只有在首次提案尚无任何已计入或可见位移、同箭尚未接触双方时，才可记录旧提案并重新绑定当前防御；开始实际位移后仍保持原链条检查。原定 240 tick 时限、0.45 格位移和 0.25 格路径进度门槛保持不变。实际旧身体交会时须已有当 tick 的授权位移记录，完成累计位移后再核箭的真实过平面。
+
+本单项不是原版共有语义比较、全局完整观测、全面无伤、统计或发布验收。旧严格方法及失败分别保留，不能被本方法的通过覆盖。
+
 ## 构建和运行
 
 下载同版本开发 JAR，将 `TLMNH_HQA_DEV_JAR` 指向该文件，再执行：

@@ -27,6 +27,7 @@ public final class CombatTacticsChecks {
     public static void main(String[] args) {
         sweptBodyCannotCrossWall();
         sweptProjectileCannotSkipBody();
+        lightProjectileResponseRespectsReachableMovement();
         unknownHandCanSelectOwnedSword();
         unavailableGeometryRejectsJump();
         finiteHorizonChargesUnfinishedDraw();
@@ -113,6 +114,185 @@ public final class CombatTacticsChecks {
                 .damage(snapshot, new Vec(0, 0, 0), new Vec(0, 0, 0), 2, 0, false, CombatWorkQuota.isolated(100, true))
                 >= 6,
             "Projectile crossed body between sparse endpoints");
+    }
+
+    private static void lightProjectileResponseRespectsReachableMovement() {
+        var arrow = new CombatSnapshot.Projectile(
+            new UUID(0, 91),
+            new Vec(4.9, .7, .5),
+            new Vec(-1.56, 0, 0),
+            100,
+            0,
+            .99,
+            .3,
+            6);
+        var frame = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(arrow));
+        boolean prior = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            var quota = CombatWorkQuota.isolated(100, false);
+            var plan = new CombatPlanner().decide(frame, quota);
+            check(plan.trace != null && !plan.trace.full && !plan.simulated, "LIGHT unexpectedly became FULL");
+            CombatPlanner.CandidateTrace retreat = null, lateral = null;
+            for (var candidate : plan.trace.candidates) {
+                if (candidate.macro == CombatPlan.Macro.RETREAT) retreat = candidate;
+                if (candidate.macro == CombatPlan.Macro.STRAFE_LEFT || candidate.macro == CombatPlan.Macro.STRAFE_RIGHT)
+                    if (candidate.utility > -100) lateral = candidate;
+            }
+            check(retreat != null && retreat.risk >= 6, "Two tick destination teleport hid a chasing arrow");
+            check(lateral != null, "LIGHT omitted an available lateral evasive candidate");
+            check(quota.used(Work.COLLISION) <= 2400, "LIGHT exceeded its unchanged collision budget");
+            var earlierArrow = new CombatSnapshot.Projectile(
+                new UUID(0, 92),
+                new Vec(6.3, .7, .5),
+                new Vec(-1.6, 0, 0),
+                100,
+                0,
+                .99,
+                .3,
+                6);
+            var earlierFrame = progressScene(
+                20,
+                CombatSnapshot.DamageSource.GENERIC_PRIOR,
+                Arrays.asList(earlierArrow));
+            var earlierPlanner = new CombatPlanner();
+            var earlier = earlierPlanner.decide(earlierFrame, CombatWorkQuota.isolated(100, false));
+            check(
+                earlier.macro == CombatPlan.Macro.STRAFE_LEFT || earlier.macro == CombatPlan.Macro.STRAFE_RIGHT,
+                "Reachable sideways dodge was not selected for an imminent arrow: " + earlier.macro);
+            // The native path can need a tick to begin moving. Do not cancel it for equal-risk static output.
+            var afterPathInstall = earlierPlanner.decide(
+                proposalFrame(
+                    earlierFrame,
+                    earlierFrame.self,
+                    101,
+                    1,
+                    earlierFrame.geometry,
+                    true,
+                    earlierFrame.weapons),
+                CombatWorkQuota.isolated(101, false));
+            check(
+                afterPathInstall.macro == earlier.macro,
+                "An equally risky attack canceled the newly installed arrow defense");
+            var heldSide = candidate(afterPathInstall, earlier.macro);
+            check(
+                heldSide != null && heldSide.risk >= 6 && heldSide.risk < 7,
+                "One arrow was counted twice across adjacent reaction sweeps");
+            var fullServiceReturns = earlierPlanner.decide(
+                proposalFrame(
+                    earlierFrame,
+                    earlierFrame.self,
+                    103,
+                    1,
+                    earlierFrame.geometry,
+                    true,
+                    earlierFrame.weapons),
+                CombatWorkQuota.isolated(103, true));
+            check(
+                fullServiceReturns.macro == earlier.macro,
+                "FULL task admission interrupted the safe startup of a just-installed arrow defense");
+            var afterStartup = earlierPlanner.decide(
+                proposalFrame(
+                    earlierFrame,
+                    earlierFrame.self,
+                    104,
+                    1,
+                    earlierFrame.geometry,
+                    true,
+                    earlierFrame.weapons),
+                CombatWorkQuota.isolated(104, true));
+            check(afterStartup.macro != earlier.macro, "The short arrow startup hold became an indefinite intent");
+            var zeroSpeed = new CombatPlanner().decide(
+                progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(earlierArrow), 0, false),
+                CombatWorkQuota.isolated(100, false));
+            for (var c : zeroSpeed.trace.candidates) check(
+                c.utility <= -100 || c.risk >= 6,
+                "Zero-speed candidate escaped an arrow without reachable movement");
+            var seated = new CombatPlanner().decide(
+                progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(earlierArrow), .2, true),
+                CombatWorkQuota.isolated(100, false));
+            check(
+                candidate(seated, CombatPlan.Macro.STRAFE_LEFT) == null
+                    && candidate(seated, CombatPlan.Macro.STRAFE_RIGHT) == null,
+                "Seated maid gained a lateral candidate");
+            for (var c : seated.trace.candidates)
+                check(c.utility <= -100 || c.risk >= 6, "Seated candidate escaped an arrow without moving");
+            var staleArrow = new CombatSnapshot.Projectile(
+                new UUID(0, 93),
+                earlierArrow.position,
+                earlierArrow.velocity,
+                97,
+                0,
+                .99,
+                .3,
+                6);
+            var stale = new CombatPlanner().decide(
+                progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(staleArrow)),
+                CombatWorkQuota.isolated(100, false));
+            check(
+                candidate(stale, CombatPlan.Macro.STRAFE_LEFT) == null
+                    && candidate(stale, CombatPlan.Macro.STRAFE_RIGHT) == null,
+                "Stale projectile opened a fresh lateral reaction window");
+            var blockedTerrain = new TerrainFixture();
+            blockedTerrain.box(3, 0, 0, 1, Geometry.SOLID);
+            var protectedFrame = replaceGeometry(
+                frame,
+                new Geometry(-4, -2, -4, 9, 6, 9, 100, true, blockedTerrain.cells, blockedTerrain.bounds));
+            var blocked = new CombatPlanner().decide(protectedFrame, CombatWorkQuota.isolated(100, false));
+            var blockedRetreat = candidate(blocked, CombatPlan.Macro.RETREAT);
+            check(
+                blockedRetreat != null && blockedRetreat.risk < retreat.risk,
+                "Known intervening wall did not reduce arrow risk");
+            var unknownTerrain = new TerrainFixture();
+            unknownTerrain.box(3, 0, 0, 1, Geometry.UNKNOWN);
+            var unknownFrame = replaceGeometry(
+                frame,
+                new Geometry(-4, -2, -4, 9, 6, 9, 100, false, unknownTerrain.cells, unknownTerrain.bounds));
+            var unknown = new CombatPlanner().decide(unknownFrame, CombatWorkQuota.isolated(100, false));
+            var unknownRetreat = candidate(unknown, CombatPlan.Macro.RETREAT);
+            check(
+                unknownRetreat == null || unknownRetreat.utility <= -100 || unknownRetreat.risk >= 6,
+                "Unknown space falsely shielded the arrow");
+            var exhausted = CombatWorkQuota.isolated(100, false);
+            check(exhausted.spend(Work.COLLISION, 2400), "Collision exhaustion setup failed");
+            var denied = new CombatPlanner().decide(frame, exhausted);
+            check(
+                denied.macro != CombatPlan.Macro.STRAFE_LEFT && denied.macro != CombatPlan.Macro.STRAFE_RIGHT
+                    && denied.macro != CombatPlan.Macro.RETREAT,
+                "Exhausted collision budget allowed evasion");
+            System.out.println(
+                "LIGHT_ARROW_TEST selected=" + plan.macro
+                    + " retreatRisk="
+                    + retreat.risk
+                    + " sideRisk="
+                    + lateral.risk
+                    + " candidates="
+                    + plan.trace.candidates.size());
+        } finally {
+            CombatPlanner.setTraceEnabled(prior);
+        }
+    }
+
+    private static CombatPlanner.CandidateTrace candidate(CombatPlan plan, CombatPlan.Macro macro) {
+        for (var c : plan.trace.candidates) if (c.macro == macro) return c;
+        return null;
+    }
+
+    private static CombatSnapshot replaceGeometry(CombatSnapshot base, Geometry geometry) {
+        return new CombatSnapshot(
+            base.tick,
+            base.entityEpoch,
+            base.observationEpoch,
+            base.equipmentEpoch,
+            base.selfId,
+            base.self,
+            base.targets,
+            base.projectiles,
+            base.friends,
+            base.weapons,
+            geometry,
+            base.selectedTarget,
+            true);
     }
 
     private static void unknownHandCanSelectOwnedSword() {
@@ -1921,6 +2101,11 @@ public final class CombatTacticsChecks {
     /** 代表性局部图重建，不是缺失完整snapshot的main17原生精确重放 */
     private static CombatSnapshot progressScene(float health, CombatSnapshot.DamageSource source,
         List<CombatSnapshot.Projectile> arrows) {
+        return progressScene(health, source, arrows, .2, false);
+    }
+
+    private static CombatSnapshot progressScene(float health, CombatSnapshot.DamageSource source,
+        List<CombatSnapshot.Projectile> arrows, double speed, boolean stationary) {
         TerrainFixture fixture = new TerrainFixture();
         var self = new CombatSnapshot.Self(
             new Vec(.5, 0, .5),
@@ -1931,10 +2116,10 @@ public final class CombatTacticsChecks {
             .3,
             1.5,
             2,
-            .2,
+            speed,
             true,
             false,
-            false,
+            stationary,
             false,
             true,
             true,

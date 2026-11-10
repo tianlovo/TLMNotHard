@@ -1,0 +1,37 @@
+{
+  "schema": "known-arrow-authorized-evasion-v4",
+  "status": "FROZEN_BEFORE_NEW_RUN",
+  "claim": "A fresh actually observed native arrow that would cross the old body is avoided during real authorized evasive movement; no complete background-world claim",
+  "whyDistinct": [
+    "LIGHT is explicitly allowed to react to known threats while global coverage is incomplete",
+    "The old-body crossing may occur during owned movement before cumulative distance reaches .45; store positive authorized progress at the crossing tick, then require .45 distance/.25 progress and past-plane before success"
+  ],
+  "requiredCurrentSlice": [
+    "current snapshot world tick",
+    "current exact shooter entity, UUID, visibility and selected target",
+    "current complete friend observations",
+    "known fresh complete local geometry",
+    "actual same-shooter arrow with fresh observed sample and predicted old-body collision",
+    "all previously required native owned path, actor, dimensions and no-knockback gates"
+  ],
+  "unchangedPhysicalGuards": [
+    "240 ticks",
+    "live visible shooter and owner throughout",
+    "sticky owner-health loss",
+    "consecutive owned defensive native motion until .45 distance and .25 progress",
+    "positive authorized movement recorded at the actual old-body crossing tick",
+    "actual same-arrow old-body crossing then actual past-plane",
+    "zero same-arrow maid/owner attack requests and hurt events"
+  ],
+  "keptUnknown": [
+    "snapshot.complete and bodyComplete are logged without changing production flags",
+    "background and other projectile coverage may remain unknown; no FULL or task admission inferred"
+  ],
+  "priorMethods": [
+    "original simulated/complete method and its failures retained",
+    "v2 complete-snapshot method failed on ab20838c and 905d989d; remains failed",
+    "V3 failed when initial RETREAT proposal changed to a safer STRAFE before any movement; old V3 source/run preserved"
+  ],
+  "scope": "INTERNAL_ONLY single bounded ability proof, not v2 strict success, statistics, shared original comparison or release",
+  "proposalRebinding": "Only before ANY credited or observed displacement, with current authorized defensive path, unchanged selected actor epochs, live same arrow and zero same-arrow maid/owner attacks or hurt. Retire event logged; no observation/event records erased. Then require all full motion/crossing/threshold gates for a fresh selection within the original240ticks. After any actual displacement, the old sticky failure rule is retained."
+}
