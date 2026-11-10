@@ -1,4 +1,4 @@
-"""检查最终 JAR 的全部类及嵌套 JAR，拒绝超出 Java 8 的字节码"""
+"""检查最终 JAR 的全部类及嵌套 JAR，拒绝超出 Java 8 的字节码。"""
 
 import argparse
 import hashlib
@@ -15,7 +15,7 @@ MAX_NESTED_JAR_DEPTH = 8
 
 
 def inspect_archive(data, location, depth=0):
-    """逐条读取类头，嵌套归档使用相同规则并限制递归深度"""
+    """逐条读取类头，嵌套归档使用相同规则并限制递归深度。"""
     if depth > MAX_NESTED_JAR_DEPTH:
         raise ValueError(f"Nested JAR depth exceeded: {location}")
 
@@ -36,7 +36,7 @@ def inspect_archive(data, location, depth=0):
 
 
 def verify(path):
-    """以实际产物计算哈希和检查结果，空归档不能作为检查通过"""
+    """以实际产物计算哈希和检查结果，空归档不能作为检查通过。"""
     artifact = Path(path).resolve(strict=True)
     data = artifact.read_bytes()
     classes = inspect_archive(data, artifact.name)
@@ -54,7 +54,7 @@ def verify(path):
 
 
 def main():
-    """输出机器可读凭据，失败时返回非零退出码"""
+    """输出机器可读凭据，失败时返回非零退出码。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--report", type=Path)

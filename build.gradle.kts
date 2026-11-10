@@ -9,7 +9,7 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
-// Jabel 使用 Java17 语法；IDE 导入模型也应保留 Java8 的目标字节码
+// Jabel 使用 Java 17 语法；IDE 导入模型也应保留 Java 8 的目标字节码
 extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
     project {
         languageLevel = org.gradle.plugins.ide.idea.model.IdeaLanguageLevel(JavaVersion.VERSION_17)
@@ -52,7 +52,7 @@ val verifyProjectLicense = tasks.register("verifyProjectLicense") {
     }
 }
 
-// 固定上游的435配音与10基础音效均为源码输入，构建不依赖Python、研究checkout或网络导入
+// 固定上游的 435 个配音与 10 个基础音效均为源码输入，构建不依赖 Python、研究 checkout 或网络导入
 fun verifyBuiltinSoundResources(read: (String) -> ByteArray, names: List<String>, label: String) {
     fun requireSound(condition: Boolean, message: String) {
         if (!condition) throw GradleException("Builtin sounds [$label]: $message")
@@ -127,7 +127,7 @@ val verifyBuiltinSounds = tasks.register("verifyBuiltinSounds") {
     doLast { verifyBuiltinSoundDirectory(file("src/main/resources")) }
 }
 
-// 保留范围按固定Git树完整枚举，与可玩254目录分开；资源和产物检查不触发本地导入
+// 保留范围按固定 Git 树完整枚举，与可玩 254 目录分开；资源和产物检查不触发本地导入
 fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<String>, label: String) {
     fun requireRetention(condition: Boolean, message: String) {
         if (!condition) throw GradleException("Builtin retention [$label]: $message")
@@ -169,7 +169,7 @@ fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<Str
         val baseline = value as Map<*, *>
         val path = baseline["path"] as String
         check(path, baseline)
-        // 声音已有独立完整门槛；这里只绑定既有清单，避免重复扫描全部OGG
+        // 声音已有独立完整门槛；这里只绑定既有清单，避免重复扫描全部 OGG
         if (path.endsWith("builtin-sounds-provenance.json")) continue
         val summary = JsonSlurper().parseText(read(path).toString(Charsets.UTF_8)) as Map<*, *>
         val entries = summary["files"]
@@ -192,7 +192,7 @@ fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<Str
 
 fun verifyBuiltinRetentionDirectory(directory: File) {
     val names = directory.walkTopDown().filter { it.isFile }.map { it.relativeTo(directory).invariantSeparatorsPath }.toList()
-    // 处理后资源尚不含Jar阶段加入的许可；此阶段核源码许可，Jar阶段只读实际ZIP条目
+    // 处理后资源尚不含 Jar 阶段加入的许可；此阶段核对源码许可，Jar 阶段只读实际 ZIP 条目
     val licenses = file("licenses").listFiles()?.filter { it.isFile } ?: emptyList()
     verifyBuiltinRetentionResources({ name ->
         if (name.startsWith("META-INF/licenses/")) file(name.removePrefix("META-INF/")).readBytes()

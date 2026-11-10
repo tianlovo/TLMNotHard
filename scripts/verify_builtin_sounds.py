@@ -1,4 +1,4 @@
-"""核对源码、处理后资源或 JAR 的完整固定声音资源，不依赖上游 checkout 或网络"""
+"""核对源码、处理后资源或 JAR 的完整固定声音资源，不依赖上游 checkout 或网络。"""
 
 import argparse
 import hashlib
@@ -11,7 +11,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 MANIFEST = "assets/tlmnh/builtin-sounds-provenance.json"
 CATALOG = "assets/tlmnh/builtin-sounds.json"
 UPSTREAM_COMMIT = "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
-# 从固定GitBlobReader完整导入获得，不能同时改音频和清单后自行通过完整性门槛
+# 从固定 GitBlobReader 完整导入获得，不能同时改音频和清单后自行通过完整性门槛
 MANIFEST_SHA256 = "2c7957f377103ea90ec71b82c5969c334b52954c66e21c13036869d429aaf5b0"
 
 

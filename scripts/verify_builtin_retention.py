@@ -1,4 +1,4 @@
-"""核对完整保留清单及既有有效模型资源；源码和产物检查均无需上游checkout或导入"""
+"""核对完整保留清单及既有有效模型资源；源码和产物检查均无需上游 checkout 或导入。"""
 
 import argparse
 import collections

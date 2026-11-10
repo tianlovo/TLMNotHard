@@ -1,4 +1,4 @@
-"""从固定 TLM 提交核对并导入内置女仆模型，不导入椅子、LLM 设置或外部模型"""
+"""从固定 TLM 提交核对并导入内置女仆模型，不导入椅子、LLM 设置或外部模型。"""
 
 import argparse
 import hashlib
@@ -21,7 +21,7 @@ def digest(data):
 
 
 class GitBlobReader:
-    """读取提交中的规范字节，不将本机 checkout 的换行形式视为上游原字节"""
+    """读取提交中的规范字节，不将本机 checkout 的换行形式视为上游原字节。"""
 
     def __init__(self, upstream):
         self.process = subprocess.Popen(["git", "-C", str(upstream), "cat-file", "--batch"],

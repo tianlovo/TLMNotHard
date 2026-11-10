@@ -1,4 +1,4 @@
-"""从固定 Git blob 导入全部内置声音，原始 OGG 作为可离线构建的源码资源"""
+"""从固定 Git blob 导入全部内置声音，原始 OGG 作为可离线构建的源码资源。"""
 
 import argparse
 import hashlib
@@ -42,7 +42,7 @@ def collect(upstream):
         for event, definition in base_definitions.items():
             references = [value if isinstance(value, str) else value["name"] for value in definition["sounds"]]
             if event not in {value[0] for value in events} and references and all(value in base_ids for value in references):
-                # 旧版没有voice类别；不引入fairy/rabbit外部资源或新的Java触发
+                # 旧版没有 voice 类别；不引入 fairy/rabbit 外部资源或新的 Java 触发
                 base_events[event] = {"category": "neutral" if definition.get("category") == "voice"
                                       else definition.get("category", "master"), "sounds": definition["sounds"]}
         for relative in BASE_AUDIO:
