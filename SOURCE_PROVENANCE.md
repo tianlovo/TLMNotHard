@@ -8,6 +8,9 @@
 `client/gui/entity/maid/AbstractMaidContainerGui.java` 仅在生产统一模式显示空闲与战斗，保留旧任务序号及开发参照入口，使用自有语言键显示新任务名
 自有 `MaidAnimationState` 将统一战斗中的实际原版弓投影为旧远程动画输入，避免任务合并丢失模型任务动作
 新增独立实现放在 `com.tianluoqaq.tlmnh`，GT核心刀具适配按提供方与职责放在 `compat/gregtech/common/combat`
+自有 `CombatTerrain` 仅处理已采集的纯几何快照与有界局部路线；
+Malisis 栅栏几何适配位于 `compat/malisisdoors/common/combat`，依据实际 1.19.13-GTNH 提供方，通过已存在 TileEntity 和有界查询读取状态；
+默认稳定木门通过已核公开 descriptor/movement API 提取身体盒，移动或未准入状态返回 UNKNOWN，原生通行仍待验
 
 本页按移植阶段记录来源与改动，早期段落中的待办保留当时范围；当前实现和实际验收状态统一见 [Indev 进度](PROGRESS.md)
 
@@ -1671,3 +1674,26 @@ YSM验证覆盖现有玩家模型片段的实际命中与画面，原生Biped双
 属性名、UUID、名称、操作、数值位和保存标志必须一致，完整源数据与Cleared快照仍参与比较，未知后继仍保管
 不直接编辑外部模组NBT，不改原生previousEquipment缓存，不泛略Attributes字段
 组合测试保留首次放置夹具失败及随后真实死亡保护失败，修版结果另见 `PROGRESS.md`
+
+## 209 复视移动的门行为边界
+
+固定 TLM 8a3 的 `entity/ai/brain/task/MaidInteractWithDoor.java` 保留原包、MIT 来源头和单一门调用者
+为独立身体复视补充已有路径观察的期望上下文，在新增门记忆、请求计数及原门 API 之前检查战斗移动租约
+这项适配阻止复视间接开门，不授予新权限；已有关闭记忆和其他行为的原门配置继续由原规则处理
+原生路径安装与更新前只核已返回的有限节点和已证足点，复视不增加世界查询或另行寻路
+实现与局部检查不代表原生栅栏或木门场景已通过
+
+## 209 女仆原生挥手进度接线
+
+来源仍为 TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `entity/passive/EntityMaid.java`，保留原包与 MIT 许可
+1.7.10 的 Animal/Tameable 祖链不承担 arm swing 更新，移植入口按原生 Mob 顺序，在女仆自然 living 更新中调用一次既有 updater
+动画长度、药水影响、动画包及攻击结算仍由原生路径处理；接线和局部检查不代表完整联机场景已通过
+
+## Indev209 同格辅助移动的命令归属
+
+- 来源保持 TouhouLittleMaid 固定提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+  `entity/ai/control/MaidMoveControl.java`，保留原包名、MIT 来源与原文件头
+- 为统一战斗的同格辅助段增加可选命令身份、普通命令来源序号、严格归属撤销及消费前校验，
+  处理导航、行为决策与原生移动控制在同一 tick 交接时的旧输入
+- 普通无标签输入沿用原坐标、速度、操作与移动算法；辅助段先核真实路径和当前身体通路，
+  不直接修改位置、motion、重力、碰撞或步高，也不授予辅助段开门权限

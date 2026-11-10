@@ -218,6 +218,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     public void onLivingUpdate() {
+        updateArmSwingProgress();
         if (!worldObj.isRemote && equipmentEpoch != null) equipmentEpoch.afterNativeEquipmentUpdate();
         syncCombatProfileFlag();
         if (!worldObj.isRemote && itemUses != null) itemUses.advanceUse(

@@ -41,6 +41,8 @@ public final class EnhancedCombatController {
     private CombatPlan.Result lastResult;
     private long lastFullAt = Long.MIN_VALUE, lastOfferAt = Long.MIN_VALUE, attacks, releases, abandonedTargets;
     private long fullDecisions, lightDecisions, staleDecisions;
+    private long bodyServices;
+    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status lastServiceResult = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status.NOT_GRANTED;
 
     public EnhancedCombatController(EntityMaid maid, ModernFollowCoreActor actor, MaidModernPerception perception) {
         this.maid = maid;
@@ -65,19 +67,15 @@ public final class EnhancedCombatController {
         CombatObservation observation = actor.combatObservation();
         boolean due = lastFullAt == Long.MIN_VALUE || now - lastFullAt >= REPLAN_TICKS;
         if (observation.readiness() != null && observation.readiness().tick == now) reportPreparation(observation, now);
-        quota = CombatWorldBudget.heartbeat(
-            maid.worldObj,
-            maid.getUniqueID(),
-            now,
-            due && !observation.targets()
-                .isEmpty());
+        quota = CombatWorldBudget
+            .heartbeat(maid.worldObj, maid.getUniqueID(), now, due && hasServiceTarget(observation));
         observation.observe(maid, quota);
         reportPreparation(observation, now);
-        if (due && !observation.targets()
-            .isEmpty()) quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, true);
+        if (due && hasServiceTarget(observation))
+            quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, true);
         observation.observe(maid, quota);
         reportPreparation(observation, now);
-        if (due && observation.preparationReady())
+        if (due && bodyServicePrepared(observation))
             quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, true);
         failures.entrySet()
             .removeIf(
@@ -117,10 +115,20 @@ public final class EnhancedCombatController {
             maid.worldObj,
             maid.getUniqueID(),
             now,
-            observation.preparationReady(),
+            bodyServicePrepared(observation),
             observation.oldestCoverage(),
             observation.friendRefreshDebt(),
             observation.knownFriends());
+    }
+
+    private boolean bodyServicePrepared(CombatObservation observation) {
+        return observation.bodyPreparationReady() && hasServiceTarget(observation);
+    }
+
+    private boolean hasServiceTarget(CombatObservation observation) {
+        for (EntityLivingBase target : observation.targets())
+            if (knownTarget(target) && !failures.containsKey(target.getUniqueID())) return true;
+        return false;
     }
 
     private boolean approachFailed(long now) {
@@ -178,6 +186,8 @@ public final class EnhancedCombatController {
         ownedTarget = maid.getModernCombatMemory()
             .target();
         if (!actor.isCurrent() || ownedTarget == null) return;
+        actor.combatObservation()
+            .fullGranted(quota);
         CombatSnapshot snapshot = actor.readonlyCombatSnapshot(ownedTarget, quota);
         if (snapshot == null || !knownTarget(ownedTarget)) return;
         lastSnapshot = snapshot;
@@ -189,12 +199,18 @@ public final class EnhancedCombatController {
             MathHelper.floor_double(seen.y),
             MathHelper.floor_double(seen.z));
         lastPlan = planner.decide(snapshot, quota);
-        if (lastPlan.simulated) {
+        actor.combatObservation()
+            .completeForecast(now, lastPlan.simulated);
+        lastServiceResult = actor.combatObservation()
+            .serviceResult(now);
+        if (lastPlan.simulated) fullDecisions++;
+        else lightDecisions++;
+        // 真实capture才结算，同一tick不因身体策略未simulated而重复使用服务
+        if (quota.full && actor.combatObservation()
+            .settleService(now)) {
             lastFullAt = now;
-            fullDecisions++;
+            if (!lastPlan.simulated) bodyServices++;
             CombatWorldBudget.completed(maid.worldObj, maid.getUniqueID(), now);
-        } else {
-            lightDecisions++;
         }
         long hits = actor.meleeNativeAccepted(), shots = actor.rangedBow()
             .getShots();
@@ -206,7 +222,8 @@ public final class EnhancedCombatController {
             actor.rangedBow()
                 .getShots() - shots);
         if (result == CombatPlan.Result.STALE) staleDecisions++;
-        if (result == CombatPlan.Result.FINISHED) planner.finishDecision();
+        if (result == CombatPlan.Result.FINISHED)
+            planner.finishAttack(lastPlan, new Vec(maid.posX, maid.boundingBox.minY, maid.posZ), now);
     }
 
     /** 原Enhanced根调用形状保留，模式现在由会话选定武器决定 */
@@ -282,6 +299,14 @@ public final class EnhancedCombatController {
 
     public CombatPlan.Result lastResult() {
         return lastResult;
+    }
+
+    public long bodyServices() {
+        return bodyServices;
+    }
+
+    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status lastServiceResult() {
+        return lastServiceResult;
     }
 
     public long fullDecisions() {

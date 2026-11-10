@@ -87,6 +87,18 @@ public final class NativeArrowGravity {
                 && identity.equals(arrow.getUniqueID());
         }
 
+        /** 已核GC查询只依赖world/provider分类；仅供同帧观察复用，不扩展到自定义箭物理 */
+        public boolean sameObservationInput(EntityArrow candidate) {
+            return arrow.getClass() == EntityArrow.class && candidate != null
+                && candidate.getClass() == EntityArrow.class
+                && isCurrent(arrow)
+                && !candidate.isDead
+                && candidate.worldObj == world
+                && candidate.worldObj.provider == provider
+                && candidate.dimension == dimension
+                && provider.dimensionId == dimension;
+        }
+
         private static NBTTagCompound snapshot(EntityArrow arrow) {
             var raw = new NBTTagCompound();
             arrow.writeToNBT(raw);

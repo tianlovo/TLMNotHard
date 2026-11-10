@@ -41,6 +41,8 @@ public final class MaidUnifiedCombatActionRunner {
     private long jumpEpoch, routeApprovedAt;
     private double jumpExpectedDamage, approvedFootY;
     private Point approvedPoint;
+    private CombatTerrain.Route routePath;
+    private int routeNode;
     private final CombatSpace.Diagnostic jumpHeadCheck = new CombatSpace.Diagnostic();
     private final CombatSpace.Diagnostic jumpSupportCheck = new CombatSpace.Diagnostic();
     private String jumpDiagnostic = "not_checked";
@@ -59,7 +61,10 @@ public final class MaidUnifiedCombatActionRunner {
             || result == Result.HELD
             || result == Result.WAIT_BUDGET) {
             if (actor.isCurrent()) {
-                actor.eraseWalkTarget();
+                if (result != Result.WAIT_BUDGET || plan == null
+                    || plan.passiveDoorExitProof != null
+                    || plan.movementNode != null && plan.movementNode.role == CombatMovementFact.Role.CONDITIONAL_ENTRY
+                    || !actor.hasInstalledCombatNode(plan.movementNode)) actor.eraseWalkTarget();
                 if (result != Result.WAIT_BUDGET) stopUse();
             }
             if (result != Result.WAIT_BUDGET) jumpRequested = jumpPreparing = false;
@@ -93,6 +98,7 @@ public final class MaidUnifiedCombatActionRunner {
                     .target() != target)
                 return Result.STALE;
         }
+        actor.updateAlignmentAdmission(plan);
         if (plan.macro == Macro.WAIT) {
             actor.stopOwnedRangedUse();
             actor.eraseWalkTarget();
@@ -104,6 +110,19 @@ public final class MaidUnifiedCombatActionRunner {
             .getStackInSlot(slot);
         if (!CombatObservation.fingerprint(expected)
             .equals(plan.weaponFingerprint)) return Result.STALE;
+        if (plan.strategy == CombatPlan.Strategy.REOBSERVE) {
+            if (plan.weaponSlot != -1 || plan.noDoorSegment == null
+                || plan.movementNode == null
+                || !plan.noDoorSegment.fresh(now)
+                || plan.normalProgressAdmitted
+                || plan.simulated) return Result.STALE;
+            stopUse();
+            jumpRequested = jumpPreparing = airborne = false;
+            // 复视即使同tick重新可见也只移动，下一次真实捕获才可形成攻击计划
+            return move(plan, routeDestination(plan), quota);
+        }
+        Result airborneContinuation = continueAirborneJumpBeforeEquipment(plan, target, quota);
+        if (airborneContinuation != null) return airborneContinuation;
         if (plan.weaponSlot >= 0) {
             jumpRequested = jumpPreparing = false;
             stopUse();
@@ -128,7 +147,7 @@ public final class MaidUnifiedCombatActionRunner {
             jumpRequested = jumpPreparing = false;
         if (actor.shieldBehaviorRunning()) actor.stopUsingShield();
         if (isMovement(plan.macro)) {
-            Result movement = move(plan.destination, quota);
+            Result movement = move(plan, routeDestination(plan), quota);
             if (movement != Result.RUNNING) return movement;
         }
         if (!profile.supported() || profile.family != plan.family) {
@@ -152,7 +171,7 @@ public final class MaidUnifiedCombatActionRunner {
             return Result.REJECTED;
         var view = actor.combatTargetView(target);
         actor.lookAtAttackTarget(view);
-        if (profile.bow()) return bow(target, view, plan, quota);
+        if (profile.bow()) return bow(target, view, plan, quota, profile);
         actor.stopOwnedRangedUse();
         if ((jumpRequested || jumpPreparing) && (jumpWeapon != maid.getHeldItem() || !target.getUniqueID()
             .equals(jumpTarget)
@@ -173,8 +192,39 @@ public final class MaidUnifiedCombatActionRunner {
         return Result.RUNNING;
     }
 
+    /** 普通换装不能抹掉已真实离地的同一跳劈；新的防御/取消与真实身份失效仍走原分支 */
+    private Result continueAirborneJumpBeforeEquipment(CombatPlan plan, EntityLivingBase target,
+        CombatWorkQuota quota) {
+        if (plan.weaponSlot < 0 || plan.macro != Macro.PREPARE_WEAPON
+            || plan.strategy != CombatPlan.Strategy.REACTION
+            || !jumpRequested
+            || maid.onGround
+            || jumpWeapon != maid.getHeldItem()
+            || jumpEpoch != maid.getEquipmentEpoch()
+                .generation()
+            || !target.getUniqueID()
+                .equals(jumpTarget))
+            return null;
+        if (!actor.combatObservation()
+            .visible(target.getUniqueID())) return Result.REJECTED;
+        if (!quota.spend(Work.RAY) || !maid.getEntitySenses()
+            .canSee(target)) return Result.WAIT_BUDGET;
+        if (!targets.canAttack(maid, target) || !targetArea(target.posX, target.posY, target.posZ))
+            return Result.REJECTED;
+        var view = actor.combatTargetView(target);
+        actor.lookAtAttackTarget(view);
+        actor.stopOwnedRangedUse();
+        return jump(target, view, plan, quota);
+    }
+
     private Result bow(EntityLivingBase target, com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor.Target view,
-        CombatPlan plan, CombatWorkQuota quota) {
+        CombatPlan plan, CombatWorkQuota quota, com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile profile) {
+        if (!actor.combatObservation()
+            .observedAmmunition(maid.worldObj.getTotalWorldTime())
+            || profile.remainingDurability >= 0 && profile.remainingDurability < profile.durabilityCost) {
+            actor.stopOwnedRangedUse();
+            return isMovement(plan.macro) ? Result.RUNNING : Result.REJECTED;
+        }
         actor.rangedBow()
             .observe(target, true, maid.worldObj.getTotalWorldTime());
         if (!isMovement(plan.macro)) {
@@ -288,7 +338,7 @@ public final class MaidUnifiedCombatActionRunner {
             double driftX = maid.motionX * JUMP_DRIFT_TICKS, driftZ = maid.motionZ * JUMP_DRIFT_TICKS;
             var sweep = maid.boundingBox.addCoord(driftX, HEAD_SWEEP, driftZ)
                 .expand(JUMP_SWEEP_EPSILON, 0, JUMP_SWEEP_EPSILON);
-            var clear = CombatSpace.boundedClear(maid, sweep, quota, jumpHeadCheck);
+            var clear = CombatSpace.safeJumpStandingPoint(maid, sweep, quota, jumpHeadCheck, jumpSupportCheck);
             headChecked = true;
             sweepMinX = sweep.minX;
             sweepMinY = sweep.minY;
@@ -296,15 +346,10 @@ public final class MaidUnifiedCombatActionRunner {
             sweepMaxX = sweep.maxX;
             sweepMaxY = sweep.maxY;
             sweepMaxZ = sweep.maxZ;
-            jumpDiagnostic = "head_checked";
+            supportChecked = jumpHeadCheck.result == CombatSpace.Result.SAFE;
+            jumpDiagnostic = supportChecked ? "support_checked" : "head_checked";
             if (clear == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
             if (clear != CombatSpace.Result.SAFE) return Result.REJECTED;
-            var standing = CombatSpace
-                .safeStandingPoint(maid, maid.posX, maid.boundingBox.minY, maid.posZ, quota, jumpSupportCheck);
-            supportChecked = true;
-            jumpDiagnostic = "support_checked";
-            if (standing == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
-            if (standing != CombatSpace.Result.SAFE) return Result.REJECTED;
             maid.getJumpHelper()
                 .setJumping();
             jumpDiagnostic = "requested";
@@ -345,7 +390,24 @@ public final class MaidUnifiedCombatActionRunner {
         return actor.shieldBehaviorRunning() ? Result.RUNNING : Result.REJECTED;
     }
 
+    private Vec routeDestination(CombatPlan plan) {
+        if (plan.movementNode != null) return plan.movementNode.foot;
+        if (plan.route == null) return plan.destination;
+        if (routePath != plan.route) {
+            routePath = plan.route;
+            routeNode = 1;
+        }
+        Vec current = new Vec(maid.posX, maid.boundingBox.minY, maid.posZ);
+        while (routeNode + 1 < plan.route.nodes.size() && current.distance(plan.route.next(routeNode)) < .35)
+            routeNode++;
+        return plan.route.next(routeNode);
+    }
+
     private Result move(Vec destination, CombatWorkQuota quota) {
+        return move(null, destination, quota);
+    }
+
+    private Result move(CombatPlan plan, Vec destination, CombatWorkQuota quota) {
         if (destination == null || EnhancedRideController.stationary(maid)) return Result.REJECTED;
         if (!Double.isFinite(destination.x) || !Double.isFinite(destination.y)
             || !Double.isFinite(destination.z)
@@ -370,7 +432,38 @@ public final class MaidUnifiedCombatActionRunner {
             approvedFootY = destination.y;
             routeApprovedAt = now;
         }
-        actor.setPositionWalkAndLook(approvedPoint, APPROACH_SPEED, 0);
+        if (plan != null && plan.movementNode != null) {
+            if (plan.passiveDoorExitProof != null) {
+                if (plan.strategy != CombatPlan.Strategy.REOBSERVE || !plan.passiveDoorExitProof.fresh(now)
+                    || !maid.onGround
+                    || jumpRequested
+                    || jumpPreparing
+                    || airborne) return Result.WAIT_BUDGET;
+                if (!actor.hasInstalledCombatNode(plan.movementNode)
+                    && (!quota.full || plan.passiveDoorExitProof.admittedAt != now)) return Result.WAIT_BUDGET;
+                actor.setPassiveDoorExitWalk(plan.movementNode, plan.passiveDoorExitProof, APPROACH_SPEED);
+            } else if (plan.movementNode.role == CombatMovementFact.Role.CONDITIONAL_ENTRY) {
+                if (plan.conditionalEntryProof == null || !plan.conditionalEntryProof.fresh(now)
+                    || !maid.onGround
+                    || jumpRequested
+                    || jumpPreparing
+                    || airborne
+                    || !plan.necessaryComparisonComplete && plan.simulated
+                    || plan.simulated && !plan.normalProgressAdmitted) return Result.WAIT_BUDGET;
+                if (!plan.simulated && !actor.hasInstalledCombatNode(plan.movementNode)) return Result.WAIT_BUDGET;
+                actor.setConditionalEntryNodeWalk(plan.movementNode, plan.conditionalEntryProof, APPROACH_SPEED);
+            } else if (plan.movementNode.role == CombatMovementFact.Role.SAME_CELL_ALIGNMENT) {
+                if (plan.alignmentProof == null || !plan.alignmentProof.fresh(now)
+                    || !maid.onGround
+                    || jumpRequested
+                    || jumpPreparing
+                    || airborne) return Result.WAIT_BUDGET;
+                if (!plan.simulated && !actor.hasInstalledCombatNode(plan.movementNode)) return Result.WAIT_BUDGET;
+                actor.setAlignmentNodeWalk(plan.movementNode, plan.alignmentProof, APPROACH_SPEED);
+            } else if (plan.strategy == CombatPlan.Strategy.REOBSERVE)
+                actor.setReobservationNodeWalk(plan.movementNode, plan.noDoorSegment, APPROACH_SPEED);
+            else actor.setCombatNodeWalk(plan.movementNode, APPROACH_SPEED);
+        } else actor.setPositionWalkAndLook(approvedPoint, APPROACH_SPEED, 0);
         return Result.RUNNING;
     }
 
@@ -420,6 +513,9 @@ public final class MaidUnifiedCombatActionRunner {
     }
 
     public void cancel() {
+        actor.clearCombatMovement();
+        routePath = null;
+        routeNode = 0;
         jumpRequested = jumpPreparing = airborne = false;
         jumpTarget = null;
         jumpWeapon = null;

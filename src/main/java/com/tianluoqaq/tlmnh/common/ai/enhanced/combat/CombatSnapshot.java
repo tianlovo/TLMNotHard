@@ -10,6 +10,13 @@ import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 /** 世界边界一次提取的纯值；敌人的运动只由可见样本推导 */
 public final class CombatSnapshot {
 
+    public enum DamageSource {
+        GENERIC_PRIOR,
+        UNKNOWN
+    }
+
+    public final CombatMovementFact movementFact;
+
     public static final int OBSERVATION_TTL = 8, GEOMETRY_TTL = 8, HIDDEN_TTL = 100;
     public final long tick, entityEpoch, observationEpoch, equipmentEpoch;
     public final UUID selfId;
@@ -20,7 +27,7 @@ public final class CombatSnapshot {
     public final List<Weapon> weapons;
     public final Geometry geometry;
     public final UUID selectedTarget;
-    public final boolean complete;
+    public final boolean complete, bodyComplete;
     public final boolean friendsComplete;
     public final long oldestCoverage;
 
@@ -48,6 +55,55 @@ public final class CombatSnapshot {
     public CombatSnapshot(long tick, long entityEpoch, long observationEpoch, long equipmentEpoch, UUID selfId,
         Self self, List<Target> targets, List<Projectile> projectiles, List<Friend> friends, List<Weapon> weapons,
         Geometry geometry, UUID selectedTarget, boolean complete, boolean friendsComplete, long oldestCoverage) {
+        this(
+            tick,
+            entityEpoch,
+            observationEpoch,
+            equipmentEpoch,
+            selfId,
+            self,
+            targets,
+            projectiles,
+            friends,
+            weapons,
+            geometry,
+            selectedTarget,
+            complete,
+            friendsComplete,
+            oldestCoverage,
+            null);
+    }
+
+    public CombatSnapshot(long tick, long entityEpoch, long observationEpoch, long equipmentEpoch, UUID selfId,
+        Self self, List<Target> targets, List<Projectile> projectiles, List<Friend> friends, List<Weapon> weapons,
+        Geometry geometry, UUID selectedTarget, boolean complete, boolean friendsComplete, long oldestCoverage,
+        CombatMovementFact movementFact) {
+        this(
+            tick,
+            entityEpoch,
+            observationEpoch,
+            equipmentEpoch,
+            selfId,
+            self,
+            targets,
+            projectiles,
+            friends,
+            weapons,
+            geometry,
+            selectedTarget,
+            complete,
+            friendsComplete,
+            oldestCoverage,
+            movementFact,
+            complete);
+    }
+
+    /** 身体资格显式提供，旧构造器不把原不完整输入升级 */
+    public CombatSnapshot(long tick, long entityEpoch, long observationEpoch, long equipmentEpoch, UUID selfId,
+        Self self, List<Target> targets, List<Projectile> projectiles, List<Friend> friends, List<Weapon> weapons,
+        Geometry geometry, UUID selectedTarget, boolean complete, boolean friendsComplete, long oldestCoverage,
+        CombatMovementFact movementFact, boolean bodyComplete) {
+        this.movementFact = movementFact;
         this.tick = tick;
         this.entityEpoch = entityEpoch;
         this.observationEpoch = observationEpoch;
@@ -65,6 +121,13 @@ public final class CombatSnapshot {
             currentFriends &= friend.id != null && friend.current && friend.observedAt == tick;
         this.friendsComplete = currentFriends;
         this.oldestCoverage = oldestCoverage;
+        this.bodyComplete = bodyComplete && currentFriends
+            && geometry != null
+            && geometry.complete
+            && geometry.fresh(tick)
+            && oldestCoverage != Long.MIN_VALUE
+            && oldestCoverage <= tick
+            && tick - oldestCoverage <= OBSERVATION_TTL;
         this.complete = complete && currentFriends
             && oldestCoverage != Long.MIN_VALUE
             && oldestCoverage <= tick
@@ -131,12 +194,81 @@ public final class CombatSnapshot {
         public final int attackDelay, drawTicks, ammunition;
         public final long cadenceRemainingTicks;
         public final boolean preferBow, preferencePending;
+        public final boolean recentlyHurt;
+        public final double ownerHalfWidth, ownerHeight;
 
         public Self(Vec position, Vec velocity, Vec ownerPosition, float health, float ownerHealth, double halfWidth,
             double height, double reach, double movementPerTick, boolean grounded, boolean jumpAllowed,
             boolean stationary, boolean shieldAvailable, boolean equipped, boolean cadenceReady, boolean drawing,
             int attackDelay, long cadenceRemainingTicks, int drawTicks, int ammunition, boolean preferBow,
             boolean preferencePending) {
+            this(
+                position,
+                velocity,
+                ownerPosition,
+                health,
+                ownerHealth,
+                halfWidth,
+                height,
+                reach,
+                movementPerTick,
+                grounded,
+                jumpAllowed,
+                stationary,
+                shieldAvailable,
+                equipped,
+                cadenceReady,
+                drawing,
+                attackDelay,
+                cadenceRemainingTicks,
+                drawTicks,
+                ammunition,
+                preferBow,
+                preferencePending,
+                false);
+        }
+
+        public Self(Vec position, Vec velocity, Vec ownerPosition, float health, float ownerHealth, double halfWidth,
+            double height, double reach, double movementPerTick, boolean grounded, boolean jumpAllowed,
+            boolean stationary, boolean shieldAvailable, boolean equipped, boolean cadenceReady, boolean drawing,
+            int attackDelay, long cadenceRemainingTicks, int drawTicks, int ammunition, boolean preferBow,
+            boolean preferencePending, boolean recentlyHurt) {
+            this(
+                position,
+                velocity,
+                ownerPosition,
+                health,
+                ownerHealth,
+                halfWidth,
+                height,
+                reach,
+                movementPerTick,
+                grounded,
+                jumpAllowed,
+                stationary,
+                shieldAvailable,
+                equipped,
+                cadenceReady,
+                drawing,
+                attackDelay,
+                cadenceRemainingTicks,
+                drawTicks,
+                ammunition,
+                preferBow,
+                preferencePending,
+                recentlyHurt,
+                .3,
+                1.8);
+        }
+
+        public Self(Vec position, Vec velocity, Vec ownerPosition, float health, float ownerHealth, double halfWidth,
+            double height, double reach, double movementPerTick, boolean grounded, boolean jumpAllowed,
+            boolean stationary, boolean shieldAvailable, boolean equipped, boolean cadenceReady, boolean drawing,
+            int attackDelay, long cadenceRemainingTicks, int drawTicks, int ammunition, boolean preferBow,
+            boolean preferencePending, boolean recentlyHurt, double ownerHalfWidth, double ownerHeight) {
+            this.ownerHalfWidth = ownerHalfWidth;
+            this.ownerHeight = ownerHeight;
+            this.recentlyHurt = recentlyHurt;
             this.position = position;
             this.velocity = velocity;
             this.ownerPosition = ownerPosition;
@@ -169,12 +301,38 @@ public final class CombatSnapshot {
         public final Vec position, velocity;
         public final long observedAt, lastOwnHitAt;
         public final float health, estimatedDamage;
+        public final DamageSource damageSource;
         public final double halfWidth, height;
         public final boolean visible, swinging, ranged, explosive, attackingOwner;
 
         public Target(UUID id, int entityId, Vec position, Vec velocity, long observedAt, long lastOwnHitAt,
             float health, float estimatedDamage, double halfWidth, double height, boolean visible, boolean swinging,
             boolean ranged, boolean explosive, boolean attackingOwner) {
+            this(
+                id,
+                entityId,
+                position,
+                velocity,
+                observedAt,
+                lastOwnHitAt,
+                health,
+                estimatedDamage,
+                halfWidth,
+                height,
+                visible,
+                swinging,
+                ranged,
+                explosive,
+                attackingOwner,
+                DamageSource.GENERIC_PRIOR);
+        }
+
+        public Target(UUID id, int entityId, Vec position, Vec velocity, long observedAt, long lastOwnHitAt,
+            float health, float estimatedDamage, double halfWidth, double height, boolean visible, boolean swinging,
+            boolean ranged, boolean explosive, boolean attackingOwner, DamageSource damageSource) {
+            this.damageSource = damageSource == null || !Double.isFinite(estimatedDamage) || estimatedDamage <= 0
+                ? DamageSource.UNKNOWN
+                : damageSource;
             this.id = id;
             this.entityId = entityId;
             this.position = position;
@@ -216,9 +374,27 @@ public final class CombatSnapshot {
         public final Vec position, velocity;
         public final long observedAt;
         public final double gravity, drag, radius, estimatedDamage;
+        public final DamageSource damageSource;
 
         public Projectile(UUID id, Vec position, Vec velocity, long observedAt, double gravity, double drag,
             double radius, double estimatedDamage) {
+            this(
+                id,
+                position,
+                velocity,
+                observedAt,
+                gravity,
+                drag,
+                radius,
+                estimatedDamage,
+                DamageSource.GENERIC_PRIOR);
+        }
+
+        public Projectile(UUID id, Vec position, Vec velocity, long observedAt, double gravity, double drag,
+            double radius, double estimatedDamage, DamageSource damageSource) {
+            this.damageSource = damageSource == null || !Double.isFinite(estimatedDamage) || estimatedDamage <= 0
+                ? DamageSource.UNKNOWN
+                : damageSource;
             this.id = id;
             this.position = position;
             this.velocity = velocity;
@@ -257,14 +433,53 @@ public final class CombatSnapshot {
         }
     }
 
+    /** 本轮已付费木门样本的纯值身份；不授予门操作权限 */
+    public static final class DoorCell {
+
+        public static final String MALISIS_WOOD = "net.malisis.doors.door.block.Door@1.19.13-GTNH";
+        public final String provider;
+        public final int x, y, z, queryY, metadata, lowerMetadata, upperMetadata;
+        public final boolean centered, stableOpened;
+
+        public DoorCell(String provider, int x, int y, int z, int queryY, int metadata, int lowerMetadata,
+            int upperMetadata, boolean centered, boolean stableOpened) {
+            this.provider = provider;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.queryY = queryY;
+            this.metadata = metadata;
+            this.lowerMetadata = lowerMetadata;
+            this.upperMetadata = upperMetadata;
+            this.centered = centered;
+            this.stableOpened = stableOpened;
+        }
+
+        public boolean sameDoor(DoorCell other) {
+            return other != null && MALISIS_WOOD.equals(provider)
+                && MALISIS_WOOD.equals(other.provider)
+                && stableOpened
+                && other.stableOpened
+                && x == other.x
+                && y == other.y
+                && z == other.z
+                && metadata == other.metadata
+                && lowerMetadata == other.lowerMetadata
+                && upperMetadata == other.upperMetadata
+                && centered == other.centered;
+        }
+    }
+
     public static final class Geometry {
 
-        public static final byte SOLID = 1, WATER = 2, HAZARD = 4, UNKNOWN = 8;
+        public static final byte SOLID = 1, WATER = 2, HAZARD = 4, UNKNOWN = 8, OPENABLE = 16, RAY_BLOCKING = 32,
+            RAY_UNKNOWN = 64;
         public final int x, y, z, sizeX, sizeY, sizeZ;
         public final long observedAt;
         public final boolean complete;
         private final byte[] cells;
         private final double[] bounds;
+        private final DoorCell[] doorCells;
 
         public Geometry(int x, int y, int z, int sizeX, int sizeY, int sizeZ, long observedAt, boolean complete,
             byte[] cells) {
@@ -273,8 +488,15 @@ public final class CombatSnapshot {
 
         public Geometry(int x, int y, int z, int sizeX, int sizeY, int sizeZ, long observedAt, boolean complete,
             byte[] cells, double[] bounds) {
+            this(x, y, z, sizeX, sizeY, sizeZ, observedAt, complete, cells, bounds, null);
+        }
+
+        public Geometry(int x, int y, int z, int sizeX, int sizeY, int sizeZ, long observedAt, boolean complete,
+            byte[] cells, double[] bounds, DoorCell[] doorCells) {
             if (bounds != null && bounds.length != cells.length * 6)
                 throw new IllegalArgumentException("Invalid bounded shape dimensions");
+            if (doorCells != null && doorCells.length != cells.length)
+                throw new IllegalArgumentException("Invalid bounded door-cell dimensions");
             if (cells.length != sizeX * sizeY * sizeZ || cells.length > 512)
                 throw new IllegalArgumentException("Combat geometry outside bounded output");
             this.x = x;
@@ -287,6 +509,7 @@ public final class CombatSnapshot {
             this.complete = complete;
             this.cells = cells.clone();
             this.bounds = bounds == null ? null : bounds.clone();
+            this.doorCells = doorCells == null ? null : doorCells.clone();
         }
 
         public int at(int px, int py, int pz) {
@@ -302,6 +525,13 @@ public final class CombatSnapshot {
             if (bounds == null || lx < 0 || ly < 0 || lz < 0 || lx >= sizeX || ly >= sizeY || lz >= sizeZ)
                 return (side % 3 == 0 ? px : side % 3 == 1 ? py : pz) + (side >= 3 ? 1 : 0);
             return bounds[((ly * sizeZ + lz) * sizeX + lx) * 6 + side];
+        }
+
+        public DoorCell doorAt(int px, int py, int pz) {
+            int lx = px - x, ly = py - y, lz = pz - z;
+            if (doorCells == null || lx < 0 || ly < 0 || lz < 0 || lx >= sizeX || ly >= sizeY || lz >= sizeZ)
+                return null;
+            return doorCells[(ly * sizeZ + lz) * sizeX + lx];
         }
 
         public boolean fresh(long now) {

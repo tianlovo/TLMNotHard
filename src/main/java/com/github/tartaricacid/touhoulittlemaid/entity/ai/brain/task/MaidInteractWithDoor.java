@@ -1,7 +1,8 @@
 /*
  * Ported from TouhouLittleMaid 8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6
  * Original: entity/ai/brain/task/MaidInteractWithDoor.java, MIT
- * Adaptation: guarded native path/memory and animated-door acceptance; native permissions remain in the block API
+ * Adaptation: guarded native path/memory, combat movement context and animated-door acceptance;
+ * native permissions remain in the block API
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
@@ -29,16 +30,23 @@ public final class MaidInteractWithDoor {
         var previous = path.previous();
         var positions = maid.doorsToClose();
         var prevPos = maid.doorPosition(previous);
-        if (mayOpen(maid, prevPos)) {
+        var nextPos = maid.doorPosition(next);
+        var prevKind = maid.doorKind(prevPos);
+        var nextKind = maid.doorKind(nextPos);
+        if (!maid.observeDoorPath(path, prevPos, prevKind, nextPos, nextKind)) {
+            // 不记新门，原已记关闭清理仍按原规则执行
+            if (positions != null) closeDoors(maid, previous, next, positions);
+            return true;
+        }
+        if (mayOpen(maid, prevKind)) {
             if (!maid.doorOpen(prevPos)) {
-                maid.setDoorOpen(prevPos, true);
+                maid.setDoorOpen(prevPos, true, path);
                 if (!maid.isCurrent()) return true;
             }
             positions = remember(maid, positions, prevPos);
         }
-        var nextPos = maid.doorPosition(next);
-        if (mayOpen(maid, nextPos) && !maid.doorOpen(nextPos)) {
-            maid.setDoorOpen(nextPos, true);
+        if (mayOpen(maid, nextKind) && !maid.doorOpen(nextPos)) {
+            maid.setDoorOpen(nextPos, true, path);
             if (!maid.isCurrent()) return true;
             positions = remember(maid, positions, nextPos);
         }
@@ -46,8 +54,7 @@ public final class MaidInteractWithDoor {
         return true;
     }
 
-    private static boolean mayOpen(MaidDoorActor maid, Position pos) {
-        var kind = maid.doorKind(pos);
+    private static boolean mayOpen(MaidDoorActor maid, Kind kind) {
         return kind == Kind.WOOD_DOOR && maid.canOpenDoor() || kind == Kind.FENCE_GATE && maid.canOpenFenceGate();
     }
 

@@ -29,6 +29,8 @@ public final class MaidMoveControl extends EntityMoveHelper {
     private double x, y, z, speed;
     private float forwards, right;
     private Operation operation = Operation.WAIT;
+    private long combatSlotRevision;
+    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove combatOwnedCommand;
 
     public MaidMoveControl(EntityMaid maid) {
         super(maid);
@@ -47,6 +49,8 @@ public final class MaidMoveControl extends EntityMoveHelper {
 
     @Override
     public void setMoveTo(double x, double y, double z, double speed) {
+        combatSlotRevision++;
+        combatOwnedCommand = null;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -55,14 +59,87 @@ public final class MaidMoveControl extends EntityMoveHelper {
     }
 
     public void strafe(float forwards, float right) {
+        combatSlotRevision++;
+        combatOwnedCommand = null;
         operation = Operation.STRAFE;
         this.forwards = forwards;
         this.right = right;
         speed = .25;
     }
 
+    /** 纯来源序号，普通调用的operation/返回和物理保持 */
+    public long combatSlotRevision() {
+        return combatSlotRevision;
+    }
+
+    public boolean ownsCombatCommand(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command,
+        long revision) {
+        return command != null && combatOwnedCommand == command && combatSlotRevision == revision;
+    }
+
+    private boolean combatGroundCommandAvailable() {
+        return maid.onGround && !maid.isInWater()
+            && operation != Operation.STRAFE
+            && operation != Operation.JUMPING
+            && !maid.getBrainCoordinator()
+                .getBreathController()
+                .isSwimming()
+            && !maid.getAquaticController()
+                .getManager()
+                .wantToSwim();
+    }
+
+    public boolean setOwnedMoveTo(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command, double x,
+        double y, double z, double speed) {
+        if (command == null || !combatGroundCommandAvailable() || !command.current()) return false;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.speed = speed;
+        operation = Operation.MOVE_TO;
+        combatSlotRevision++;
+        combatOwnedCommand = command;
+        return true;
+    }
+
+    public boolean cancelOwnedCommand(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove expected) {
+        if (expected == null || combatOwnedCommand != expected) return false;
+        clearCombatInput();
+        return true;
+    }
+
+    /** 仅首次ordinary→aux交接，来源receipt由实际DEFAULT写入后的Actor持有 */
+    public boolean cancelOrdinaryCombatCommand(long expectedRevision) {
+        if (combatOwnedCommand != null || combatSlotRevision != expectedRevision || operation != Operation.MOVE_TO)
+            return false;
+        clearCombatInput();
+        return true;
+    }
+
+    private void clearCombatInput() {
+        combatOwnedCommand = null;
+        combatSlotRevision++;
+        operation = Operation.WAIT;
+        x = maid.posX;
+        y = maid.boundingBox.minY;
+        z = maid.posZ;
+        speed = 0;
+        forwards = right = 0;
+        maid.setMoveForward(0);
+        maid.moveStrafing = 0;
+        maid.setAIMoveSpeed(0);
+    }
+
     @Override
     public void onUpdateMoveHelper() {
+        // 必须先于水路与operation分支，不能让已撤销的输入被水路复用
+        var command = combatOwnedCommand;
+        if (command != null && (!combatGroundCommandAvailable() || !command.consume())) {
+            cancelOwnedCommand(command);
+            command.rejected();
+            return;
+        }
+        // 已消费标签保留至下一次setter/撤销，防止保留坐标在下tick水路被无标签复用
         // 原型低氧路线有独立 travel 执行器，不能在水面附近重新驱动旧导航目标
         if (maid.getBrainCoordinator()
             .getBreathController()

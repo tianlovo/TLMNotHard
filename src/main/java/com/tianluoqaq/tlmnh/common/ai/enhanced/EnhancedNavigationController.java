@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.WalkTarget;
@@ -73,12 +74,17 @@ public final class EnhancedNavigationController {
             retryAt = 0;
             clearObstacleRecovery();
         }
-        if (position.manhattanDistance(actor.blockPosition()) <= target.getCloseEnoughDistance()) {
+        CombatNavigationObserver combat = actor instanceof CombatNavigationObserver observer
+            && observer.isCombatNode(target) ? observer : null;
+        var combatPath = combat == null ? null : actor.navigationPath();
+        if (combat == null ? position.manhattanDistance(actor.blockPosition()) <= target.getCloseEnoughDistance()
+            : combat.combatNodeArrived(target, combatPath)) {
+            if (combat != null) combat.combatNavigationOutcome(target, combatPath, Outcome.ARRIVED, 0);
             stopRoute();
             actor.eraseCantReachSince();
             return outcome = Outcome.ARRIVED;
         }
-        var installed = actor.navigationPath();
+        var installed = combat == null ? actor.navigationPath() : combatPath;
         boolean changed = plannedTarget == null || position.distanceSquared(plannedTarget) > REPLAN_DISTANCE_SQUARED;
         var current = actor.blockPosition();
         if (supplied != null && suppliedTick == now && position.distanceSquared(suppliedTarget) == 0)
@@ -124,9 +130,11 @@ public final class EnhancedNavigationController {
         switch (created.result) {
             case WAITING_BUDGET -> {
                 waiting++;
+                combatFact(target, actor.navigationPath(), Outcome.WAITING_BUDGET, retryAt);
                 return outcome = Outcome.WAITING_BUDGET;
             }
             case NOT_NAVIGABLE -> {
+                combatFact(target, actor.navigationPath(), Outcome.NOT_NAVIGABLE, retryAt);
                 return outcome = Outcome.NOT_NAVIGABLE;
             }
             case UNREACHABLE -> {
@@ -135,6 +143,10 @@ public final class EnhancedNavigationController {
             }
             case FOUND -> {
                 if (!actor.moveTo(created.path, target.getSpeedModifier())) {
+                    if (actor instanceof CombatNavigationObserver observer && observer.combatPathReproofRequired()) {
+                        combatFact(target, actor.navigationPath(), Outcome.WAITING_BUDGET, retryAt);
+                        return outcome = Outcome.WAITING_BUDGET;
+                    }
                     failed(now, position);
                     return outcome;
                 }
@@ -148,6 +160,7 @@ public final class EnhancedNavigationController {
                 failedTarget = null;
                 retryAt = 0;
                 clearObstacleRecovery();
+                combatFact(target, actual, actual.canReach() ? Outcome.RUNNING : Outcome.PARTIAL_PATH, 0);
                 if (actual.canReach()) {
                     actor.eraseCantReachSince();
                     return outcome = Outcome.RUNNING;
@@ -162,6 +175,7 @@ public final class EnhancedNavigationController {
 
     private void failed(long now, BlockPos target) {
         clearObstacleRecovery();
+        combatFact(actor.getWalkTarget(), actor.navigationPath(), Outcome.UNREACHABLE, now + FAILURE_RETRY_TICKS);
         actor.stopNavigation();
         actor.setPathMemory(null);
         failures++;
@@ -174,6 +188,7 @@ public final class EnhancedNavigationController {
     private void recover(long now, BlockPos target) {
         clearObstacleRecovery();
         if (actor instanceof EnhancedRouteObstacleActor observer) blockedRoute = observer.observeBlockedRoute();
+        combatFact(actor.getWalkTarget(), actor.navigationPath(), Outcome.RECOVERY_WAIT, now + FAILURE_RETRY_TICKS);
         actor.stopNavigation();
         actor.setPathMemory(null);
         failedTarget = target;
@@ -183,6 +198,11 @@ public final class EnhancedNavigationController {
         if (actor.getCantReachSince() == null) actor.setCantReachSince(now);
         recoveries++;
         outcome = Outcome.RECOVERY_WAIT;
+    }
+
+    private void combatFact(WalkTarget target, FollowMoveActor.Path path, Outcome result, long retry) {
+        if (actor instanceof CombatNavigationObserver observer && observer.isCombatNode(target))
+            observer.combatNavigationOutcome(target, path, result, retry);
     }
 
     private void stopRoute() {

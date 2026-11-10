@@ -67,6 +67,16 @@ public interface MaidDoorActor {
 
     boolean setDoorOpen(Position pos, boolean value);
 
+    /** 已有门观察的只读结果，默认保留原行为；在记忆/计数/API之前调用 */
+    default boolean observeDoorPath(DoorPath expected, Position previous, Kind previousKind, Position next,
+        Kind nextKind) {
+        return true;
+    }
+
+    default boolean setDoorOpen(Position pos, boolean value, DoorPath expected) {
+        return setDoorOpen(pos, value);
+    }
+
     boolean doorTooFar(Position pos, double distance);
 
     boolean otherMaidsComingThrough(Position pos);

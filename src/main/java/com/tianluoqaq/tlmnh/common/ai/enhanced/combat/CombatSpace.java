@@ -15,6 +15,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -44,6 +45,8 @@ public final class CombatSpace {
         "BlockStoneSlab BlockWoodSlab BlockDoor BlockTrapDoor " + "BlockFenceGate BlockSnow");
     private static final Set<String> NEIGHBOR = names(
         "BlockPane BlockStainedGlassPane BlockStairs BlockFence BlockWall");
+    private static final Set<String> RAY_CUBES = names(
+        "BlockStone BlockDirt BlockGlass BlockStainedGlass BlockSandStone BlockNetherrack BlockObsidian BlockStoneBrick");
     private static final ClassValue<Class<?>> MAID_COLLISION = new ClassValue<Class<?>>() {
 
         @Override
@@ -159,6 +162,52 @@ public final class CombatSpace {
             z + half - EPSILON);
         Result clear = boundedClear(maid, body, quota, diagnostic);
         if (clear != Result.SAFE) return clear;
+        return standingSupport(maid, x, y, z, quota, diagnostic);
+    }
+
+    /** 仅本次跳跃复核复用已覆盖当前身体的头顶扫掠；不跨调用或tick保存许可 */
+    public static Result safeJumpStandingPoint(EntityMaid maid, AxisAlignedBB sweep, CombatWorkQuota quota,
+        Diagnostic head, Diagnostic support) {
+        if (head != null) head.reset(quota.tick);
+        if (support != null) support.reset(quota.tick);
+        World checkedWorld = maid.worldObj;
+        int checkedEntity = maid.getEntityId();
+        double x = maid.posX, y = maid.boundingBox.minY, z = maid.posZ;
+        float width = maid.width, height = maid.height;
+        AxisAlignedBB actual = maid.boundingBox;
+        double minX = actual.minX, minY = actual.minY, minZ = actual.minZ;
+        double maxX = actual.maxX, maxY = actual.maxY, maxZ = actual.maxZ;
+        double half = width * .5;
+        // 包含safeStandingPoint原先检查的同一body；更大的sweep仍遵守boundedClear原体积上限
+        if (!valid(sweep) || !finite(x, y, z)
+            || sweep.minX > x - half + EPSILON
+            || sweep.maxX < x + half - EPSILON
+            || sweep.minY > y + .02
+            || sweep.maxY < y + height - .02
+            || sweep.minZ > z - half + EPSILON
+            || sweep.maxZ < z + half - EPSILON) return recorded(head, Result.UNKNOWN, "jump_sweep_does_not_cover_body");
+        Result clear = boundedClear(maid, sweep, quota, head);
+        if (clear != Result.SAFE) return clear;
+        AxisAlignedBB current = maid.boundingBox;
+        if (maid.worldObj != checkedWorld || checkedWorld.getTotalWorldTime() != quota.tick
+            || maid.getEntityId() != checkedEntity
+            || maid.posX != x
+            || current.minY != y
+            || maid.posZ != z
+            || maid.width != width
+            || maid.height != height
+            || current.minX != minX
+            || current.minY != minY
+            || current.minZ != minZ
+            || current.maxX != maxX
+            || current.maxY != maxY
+            || current.maxZ != maxZ) return recorded(support, Result.UNKNOWN, "jump_body_changed_after_sweep");
+        return standingSupport(maid, x, y, z, quota, support);
+    }
+
+    private static Result standingSupport(EntityMaid maid, double x, double y, double z, CombatWorkQuota quota,
+        Diagnostic diagnostic) {
+        double half = maid.width * .5;
         int minX = floor(x - half), maxX = floor(x + half), minZ = floor(z - half), maxZ = floor(z + half);
         int top = floor(y - EPSILON);
         BlockReader reader = reader(maid, minX, top - 1, minZ, maxX, top, maxZ, quota);
@@ -297,8 +346,45 @@ public final class CombatSpace {
             Block block = world.getBlock(x, y, z);
             lastBlockType = block.getClass()
                 .getName();
+            if (com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.matches(block)) {
+                var gate = com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry
+                    .capture(world, block, x, y, z, quota);
+                if (gate.result
+                    != com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.Result.SAFE)
+                    return failed(
+                        gate.result
+                            == com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.Result.BUDGET
+                                ? Result.BUDGET
+                                : Result.UNKNOWN);
+                ShapeList shapes = new ShapeList(quota);
+                try {
+                    if (gate.body != null && gate.body.intersectsWith(mask)) shapes.add(gate.body);
+                    return shapes.finish(
+                        Geometry.RAY_UNKNOWN | ((block == Blocks.wooden_door ? maid.getConfigManager()
+                            .isOpenDoor()
+                            : maid.getConfigManager()
+                                .isOpenFenceGate()) ? Geometry.OPENABLE : 0),
+                        gate.doorCell);
+                } catch (Limit limit) {
+                    return failed(limit.result);
+                }
+            }
             int kind = kind(block), flags = flags(block);
             if (kind < 0) return failed(Result.UNKNOWN);
+            String nativeName = block.getClass()
+                .getName();
+            // 多shape外包仅可保守拒绝移动；只有已核射线单盒才能提供遮挡保护
+            if (RAY_CUBES.contains(nativeName) || nativeName.equals("net.minecraft.block.BlockStoneSlab")
+                || nativeName.equals("net.minecraft.block.BlockWoodSlab")
+                || nativeName.equals("net.minecraft.block.BlockDoor")
+                || nativeName.equals("net.minecraft.block.BlockTrapDoor")) flags |= Geometry.RAY_BLOCKING;
+            else if (block != Blocks.air) flags |= Geometry.RAY_UNKNOWN;
+            // 只标记已核shape提供方及自身配置，不新增方块/metadata/邻接查询
+            if (block == Blocks.wooden_door && maid.getConfigManager()
+                .isOpenDoor() || block == Blocks.fence_gate
+                    && maid.getConfigManager()
+                        .isOpenFenceGate())
+                flags |= Geometry.OPENABLE;
             if (kind == 0) return new BlockShapes(Result.SAFE, flags, new double[0], 0);
             ShapeList shapes = new ShapeList(quota);
             if (kind == 1 || block == Blocks.soul_sand) {
@@ -347,13 +433,19 @@ public final class CombatSpace {
         public final Result result;
         public final int flags, count;
         public final double minX, minY, minZ, maxX, maxY, maxZ;
+        public final DoorCell doorCell;
         private final double[] boxes;
 
         private BlockShapes(Result result, int flags, double[] boxes, int count) {
+            this(result, flags, boxes, count, null);
+        }
+
+        private BlockShapes(Result result, int flags, double[] boxes, int count, DoorCell doorCell) {
             this.result = result;
             this.flags = flags;
             this.count = count;
             this.boxes = boxes;
+            this.doorCell = doorCell;
             double ax = Double.POSITIVE_INFINITY, ay = ax, az = ax, bx = Double.NEGATIVE_INFINITY, by = bx, bz = bx;
             for (int i = 0; i < count; i++) {
                 int offset = i * 6;
@@ -607,7 +699,13 @@ public final class CombatSpace {
         }
 
         BlockShapes finish(int flags) {
-            return new BlockShapes(Result.SAFE, flags, Arrays.copyOf(values, count * 6), count);
+            return finish(flags, null);
+        }
+
+        BlockShapes finish(int flags, DoorCell doorCell) {
+            if (count != 1 && (flags & Geometry.RAY_BLOCKING) != 0)
+                flags = flags & ~Geometry.RAY_BLOCKING | Geometry.RAY_UNKNOWN;
+            return new BlockShapes(Result.SAFE, flags, Arrays.copyOf(values, count * 6), count, doorCell);
         }
     }
 

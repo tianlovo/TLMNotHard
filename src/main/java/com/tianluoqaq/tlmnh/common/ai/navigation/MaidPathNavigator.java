@@ -45,6 +45,27 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         boolean isCurrent();
 
         Point currentPosition();
+
+        /** 原生follow/moveHelper写入前的窄战斗租约检查，默认路径不改变 */
+        default boolean beforeNativeNavigation(PathEntity path) {
+            return true;
+        }
+
+        default boolean holdNativeWaypoint(PathEntity path) {
+            return false;
+        }
+
+        default MaidCombatMoveDispatch nativeMoveDispatch(PathEntity path, double x, double y, double z, double speed) {
+            return MaidCombatMoveDispatch.DEFAULT;
+        }
+
+        /** 仅复制本次真正写入的纯来源，不调用活帧或世界 */
+        default void ordinaryMoveDispatched(PathEntity path, long slotRevision) {}
+
+        default void ownedMoveDispatchRejected(PathEntity path) {}
+
+        default void ownedMoveDispatched(PathEntity path,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command, long slotRevision) {}
     }
 
     public enum StopCause {
@@ -186,6 +207,39 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             || created.path.result.water != active.water)
             throw new IllegalStateException("Brain path creation context changed before installation");
         return active.install(created.path, speed, false);
+    }
+
+    /** 仅显式QA作用域取得上一次安装的纯值，不读取World或重新安装 */
+    public String combatInstallDiagnostic() {
+        var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(maid.worldObj);
+        return scope == null ? null : (String) scope.get(active);
+    }
+
+    private static String diagnosticRaw(PathEntity path) {
+        if (path == null) return "null";
+        if (!(path instanceof MaidModernPath)) return "NOT_MODERN_NOT_EVALUATED";
+        int count = path.getCurrentPathLength(), index = path.getCurrentPathIndex();
+        StringBuilder out = new StringBuilder("raw#").append(System.identityHashCode(path))
+            .append('/')
+            .append(count)
+            .append('/')
+            .append(index)
+            .append("/finished=")
+            .append(path.isFinished())
+            .append("/canReach=")
+            .append(((MaidModernPath) path).canReach());
+        if (count >= 0 && count <= 2) for (int i = 0; i < count; i++) {
+            var p = path.getPathPointFromIndex(i);
+            out.append('[')
+                .append(p.xCoord)
+                .append(',')
+                .append(p.yCoord)
+                .append(',')
+                .append(p.zCoord)
+                .append(']');
+        }
+        else out.append("/POINTS_NOT_EVALUATED_TOO_LONG");
+        return out.toString();
     }
 
     public Stop lastStop() {
@@ -361,6 +415,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     public void onUpdateNavigation() {
         active.tick++;
         if (active.path == null || active.path.isFinished()) return;
+        if (brainTarget != null && !brainTarget.beforeNativeNavigation(active.path)) return;
         if (!(active.path instanceof MaidModernPath modern)) {
             super.onUpdateNavigation();
             return;
@@ -378,8 +433,23 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             double y = active.water
                 || region().air(floor(target.xCoord), floor(target.yCoord) - 1, floor(target.zCoord)) ? target.yCoord
                     : region().floor(floor(target.xCoord), floor(target.yCoord), floor(target.zCoord));
-            maid.getMoveHelper()
-                .setMoveTo(target.xCoord, y, target.zCoord, active.speed);
+            var raw = getPath();
+            var dispatch = brainTarget == null ? MaidCombatMoveDispatch.DEFAULT
+                : brainTarget.nativeMoveDispatch(raw, target.xCoord, y, target.zCoord, active.speed);
+            if (dispatch.kind == MaidCombatMoveDispatch.Kind.DEFAULT) {
+                maid.getMoveHelper()
+                    .setMoveTo(target.xCoord, y, target.zCoord, active.speed);
+                if (brainTarget != null && maid
+                    .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control)
+                    brainTarget.ordinaryMoveDispatched(raw, control.combatSlotRevision());
+            } else if (dispatch.kind == MaidCombatMoveDispatch.Kind.OWNED) {
+                if (maid
+                    .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control
+                    && control.setOwnedMoveTo(dispatch.command, target.xCoord, y, target.zCoord, active.speed)) {
+                    if (brainTarget != null)
+                        brainTarget.ownedMoveDispatched(raw, dispatch.command, control.combatSlotRevision());
+                } else if (brainTarget != null) brainTarget.ownedMoveDispatchRejected(raw);
+            }
         }
     }
 
@@ -548,19 +618,52 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
 
         boolean install(PathEntity candidate, double speed, boolean resetTimer) {
+            var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope
+                .current(maid.worldObj);
+            if (diagnosticScope != null) {
+                Object ownerLog = diagnosticScope.get(brainOwner);
+                if (!(ownerLog instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.Log log))
+                    diagnosticScope = null;
+                else if (!log.hasRemainingCurrentCapacity()) {
+                    diagnosticScope.put(this, "NOT_EVALUATED_LOG_FULL");
+                    diagnosticScope = null;
+                }
+            }
+            String diagnosticBefore = diagnosticScope == null ? null : diagnosticRaw(path);
+            String diagnosticCandidate = diagnosticScope == null ? null : diagnosticRaw(candidate);
+            int same = -1, transformations = 0;
             if (candidate == null) {
                 stop();
+                traceInstall(
+                    diagnosticScope,
+                    diagnosticCandidate,
+                    diagnosticBefore,
+                    same,
+                    transformations,
+                    "NULL",
+                    false);
                 return false;
             }
             if (candidate instanceof MaidModernPath) {
-                if (!candidate.isSamePath(path)) path = candidate;
-                if (path.isFinished()) return false;
+                if ((same = candidate.isSamePath(path) ? 1 : 0) == 0 || path.isFinished()) path = candidate;
+                if (path.isFinished()) {
+                    traceInstall(
+                        diagnosticScope,
+                        diagnosticCandidate,
+                        diagnosticBefore,
+                        same,
+                        transformations,
+                        "FINISHED",
+                        false);
+                    return false;
+                }
                 MaidPathNavigator.super.clearPathEntity();
                 legacy = null;
                 var modern = (MaidModernPath) path;
                 for (int i = 0; i < modern.getCurrentPathLength(); i++) {
                     var node = modern.getPathPointFromIndex(i);
                     if (maid.worldObj.getBlock(node.xCoord, node.yCoord, node.zCoord) == Blocks.cauldron) {
+                        transformations |= 1;
                         modern.raise(i, node.yCoord + 1);
                         if (i + 1 < modern.getCurrentPathLength()
                             && node.yCoord >= modern.getPathPointFromIndex(i + 1).yCoord)
@@ -572,23 +675,71 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     for (int i = 0; i < modern.getCurrentPathLength(); i++) {
                         var n = modern.getPathPointFromIndex(i);
                         if (maid.worldObj.canBlockSeeTheSky(n.xCoord, n.yCoord, n.zCoord)) {
+                            transformations |= 2;
                             modern.setCurrentPathLength(i);
                             break;
                         }
                     }
                 }
             } else {
-                if (!MaidPathNavigator.super.setPath(candidate, speed)) return false;
+                if (!MaidPathNavigator.super.setPath(candidate, speed)) {
+                    traceInstall(
+                        diagnosticScope,
+                        diagnosticCandidate,
+                        diagnosticBefore,
+                        same,
+                        transformations,
+                        "LEGACY_INSTALL",
+                        false);
+                    return false;
+                }
                 path = MaidPathNavigator.super.getPath();
                 legacy = new LegacyPath(path);
             }
-            if (path.getCurrentPathLength() <= 0) return false;
+            if (path.getCurrentPathLength() <= 0) {
+                traceInstall(
+                    diagnosticScope,
+                    diagnosticCandidate,
+                    diagnosticBefore,
+                    same,
+                    transformations,
+                    "ZERO_LENGTH",
+                    false);
+                return false;
+            }
             this.speed = speed;
             lastStuckCheck = tick;
             lastStuckPos = position();
             if (active == this) lastStop = null;
             if (resetTimer) resetTimeout();
+            traceInstall(
+                diagnosticScope,
+                diagnosticCandidate,
+                diagnosticBefore,
+                same,
+                transformations,
+                "ACCEPTED",
+                true);
             return true;
+        }
+
+        private void traceInstall(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope scope,
+            String candidate, String before, int same, int transformations, String reason, boolean accepted) {
+            if (scope != null) scope.put(
+                this,
+                "candidate=" + candidate
+                    + ";before="
+                    + before
+                    + ";selected="
+                    + diagnosticRaw(path)
+                    + ";same="
+                    + same
+                    + ";transform="
+                    + transformations
+                    + ";reason="
+                    + reason
+                    + ";accepted="
+                    + accepted);
         }
 
         Vec3 position() {
@@ -612,6 +763,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         void follow(MaidModernPath route) {
             var position = position();
+            if (brainTarget != null && brainTarget.holdNativeWaypoint(route)) {
+                detectStuck(position);
+                return;
+            }
             var node = route.getPathPointFromIndex(route.getCurrentPathIndex());
             float tolerance = maid.width > .75F ? maid.width / 2F : .75F - maid.width / 2F;
             double offset = (double) (maid.width + 1F) / 2;

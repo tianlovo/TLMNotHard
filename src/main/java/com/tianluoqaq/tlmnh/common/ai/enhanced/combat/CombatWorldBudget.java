@@ -340,7 +340,7 @@ public final class CombatWorldBudget {
             for (Request r : ordered) {
                 if (r.ready && (!fresh(now, r.oldestCoverage))) {
                     r.ready = false;
-                    r.order = nextOrder++;
+                    // READY离开准备档时已轮转；未服务的覆盖过期不能再次把同一请求移到队尾
                 }
                 if (r.preparing && (now >= r.expires || r.samples >= PREPARATION_TICKS)) {
                     r.preparing = false;

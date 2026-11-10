@@ -21,6 +21,7 @@ import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Projectile;
@@ -74,6 +75,9 @@ public final class CombatObservation {
         BUDGET_REJECTED
     }
 
+    private NativeArrowGravity.LaunchSample observationGravity;
+    private int gravityQueries, gravityReuses;
+
     private Geometry geometry;
     private List<Weapon> weapons = Collections.emptyList();
     private int ammunition;
@@ -85,7 +89,7 @@ public final class CombatObservation {
             if (stage > observedStage) {
                 observedStage = stage;
                 observedFull |= quota.full;
-                beginPreparation(quota);
+                beginPreparation(maid, quota);
                 collectUrgent(maid, quota);
                 refreshPrimary(maid, quota);
                 if (quota.full) refreshFriends(maid, quota);
@@ -97,13 +101,15 @@ public final class CombatObservation {
                 scanLoaded(maid, quota);
                 refreshSecondary(maid, quota);
                 finishObservation();
-                lastReadiness = new Readiness(this, quota, false);
+                recordReadiness(maid, quota, false);
                 sampledPreparation(maid, quota);
             }
             return;
         }
         if (now < tick) clear();
         tick = now;
+        observationGravity = null;
+        gravityQueries = gravityReuses = 0;
         observedFull = startedFull = quota.full;
         observedStage = stage;
         permanentObservationGap = permanentProjectileGap = urgentPending = scanPending = false;
@@ -117,7 +123,7 @@ public final class CombatObservation {
         friends.clear();
         friendIdentityGap = false;
         for (FriendTrack friend : friendTracks.values()) friend.current = false;
-        beginPreparation(quota);
+        beginPreparation(maid, quota);
         observationComplete = true;
         living.entrySet()
             .removeIf(
@@ -145,17 +151,24 @@ public final class CombatObservation {
         scanLoaded(maid, quota);
         refreshSecondary(maid, quota);
         finishObservation();
-        lastReadiness = new Readiness(this, quota, false);
+        recordReadiness(maid, quota, false);
         sampledPreparation(maid, quota);
         ownHits.entrySet()
             .removeIf(entry -> now < entry.getValue() || now - entry.getValue() > 100);
     }
 
-    private void beginPreparation(CombatWorkQuota quota) {
+    private void beginPreparation(EntityMaid maid, CombatWorkQuota quota) {
         if (!quota.preparing) return;
         if (preparationRound != quota.preparationRound) {
             preparationRound = quota.preparationRound;
             preparationRestarted = false;
+            // 原准备窗末次采样仍须在覆盖TTL内；不回收本tick已付费用或扫描计数
+            if (!coverageFresh() && scanStartedAt != Long.MIN_VALUE
+                && tick >= scanStartedAt
+                && tick - scanStartedAt > CombatSnapshot.OBSERVATION_TTL - (CombatWorldBudget.PREPARATION_TICKS - 1)) {
+                startCoverage();
+                preparationRestarted = true;
+            }
         }
         if (!preparationRestarted && !coverageFresh()
             && scanStartedAt != Long.MIN_VALUE
@@ -182,13 +195,46 @@ public final class CombatObservation {
     }
 
     /** 已有身份具备FULL重验条件，尚不授予友方安全或几何完整性 */
+    private final CombatFullServiceReceipt fullService = new CombatFullServiceReceipt();
+
+    public CombatFullServiceReceipt.Status serviceResult(long now) {
+        return fullService.status(now);
+    }
+
+    public void fullGranted(CombatWorkQuota quota) {
+        if (quota.full) fullService.granted(quota.tick);
+    }
+
+    public boolean serviceAttempted(long now) {
+        return fullService.attempted(now);
+    }
+
+    public boolean settleService(long now) {
+        return fullService.settle(now);
+    }
+
+    public void completeForecast(long now, boolean complete) {
+        if (complete && fullService.attempted(now)) fullService.captured(now, true, true);
+    }
+
+    public boolean bodyPreparationReady() {
+        if (!preparationInputsReady()) return false;
+        for (Tracked target : targets.values()) if (target.position != null && target.observedAt <= tick
+            && tick - target.observedAt <= CombatSnapshot.HIDDEN_TTL) return true;
+        return false;
+    }
+
     public boolean preparationReady() {
+        return preparationInputsReady() && hasCurrentVisibleTarget();
+    }
+
+    private boolean preparationInputsReady() {
         if (!scanComplete || !coverageFresh()
             || weapons.size() != 7
             || !projectileComplete
             || !observationComplete
             || friendOverflow) return false;
-        return hasCurrentVisibleTarget();
+        return true;
     }
 
     private boolean hasCurrentVisibleTarget() {
@@ -354,7 +400,9 @@ public final class CombatObservation {
         }
         // 覆盖等待/消费FULL时不启动新轮，也不事后清除既有必要采集缺口
         if (scanComplete && coverageFresh()) return;
-        if (!coverageScanning) startCoverage();
+        if (!coverageScanning) {
+            startCoverage();
+        }
         scanPending = false;
         // 同tick升级只续做被预算挡住的实际游标，不重开四个chunk的额外扫描
         int chunkLimit = quota.preparing ? PREPARATION_CHUNKS_PER_TICK : SCAN_CHUNKS_PER_TICK;
@@ -549,17 +597,26 @@ public final class CombatObservation {
             arrows.put(id, tracked);
         }
         double gravity = tracked.gravity;
-        // 采集阶段查询实际已在飞行的箭，预演不创建箭或调用提供方
-        if (!quota.spend(Work.BALLISTIC)) {
-            projectileComplete = false;
-            return rejectObservation();
-        }
-        var sample = NativeArrowGravity.sampleForLaunch(arrow);
-        if (sample != null && sample.isCurrent(arrow)) gravity = sample.gravity;
-        else {
-            permanentProjectileGap = permanentObservationGap = true;
-            projectileComplete = false;
-            observationComplete = false;
+        // 当前observe tick内只复用已实际查询的同源输入；换tick/provider/身份/箭类型均重新收费
+        if (observationGravity != null && observationGravity.sameObservationInput(arrow)) {
+            gravity = observationGravity.gravity;
+            gravityReuses++;
+        } else {
+            observationGravity = null;
+            if (!quota.spend(Work.BALLISTIC)) {
+                projectileComplete = false;
+                return rejectObservation();
+            }
+            gravityQueries++;
+            var sample = NativeArrowGravity.sampleForLaunch(arrow);
+            if (sample != null && sample.isCurrent(arrow)) {
+                gravity = sample.gravity;
+                observationGravity = sample;
+            } else {
+                permanentProjectileGap = permanentObservationGap = true;
+                projectileComplete = false;
+                observationComplete = false;
+            }
         }
         tracked.gravity = gravity;
         tracked.position = position;
@@ -570,14 +627,15 @@ public final class CombatObservation {
 
     public CombatSnapshot capture(EntityMaid maid, EntityLivingBase selected, CombatWorkQuota quota, long entityEpoch,
         long equipmentEpoch, boolean equipped, boolean cadenceReady, boolean shieldAvailable, boolean drawing,
-        int drawTicks, boolean stationary, boolean preferBow, boolean preferencePending) {
+        int drawTicks, boolean stationary, boolean preferBow, boolean preferencePending,
+        CombatMovementFact movementFact) {
         observe(maid, quota);
         Tracked chosen = selected == null ? null : targets.get(selected.getUniqueID());
         if (selected != null && (chosen == null || chosen.observedAt != tick)) sampleLiving(maid, selected, quota);
         chosen = selected == null ? null : targets.get(selected.getUniqueID());
         selectedCurrent = chosen != null && chosen.visible && chosen.observedAt == tick;
         if (quota.full) refreshFriends(maid, quota);
-        if (quota.full) geometry = collectGeometry(maid, quota);
+        if (quota.full && fullService.beginCapture(tick)) geometry = collectGeometry(maid, chosen, quota);
         EntityLivingBase owner = maid.getOwner();
         double attackSpeed = MaidCombatAttributes.attackSpeed(maid);
         long cadenceRemaining = maid.getCombatCadence()
@@ -610,7 +668,10 @@ public final class CombatObservation {
             drawTicks,
             ammunition,
             preferBow,
-            preferencePending);
+            preferencePending,
+            maid.hurtTime > 0,
+            owner == null ? .3 : owner.width * .5,
+            owner == null ? 1.8 : owner.height);
         List<Target> pureTargets = new ArrayList<>();
         for (Tracked target : targets.values()) {
             if (target.position == null || tick - target.observedAt > CombatSnapshot.HIDDEN_TTL) continue;
@@ -630,7 +691,8 @@ public final class CombatObservation {
                     target.swinging,
                     target.ranged,
                     target.explosive,
-                    target.attackingOwner));
+                    target.attackingOwner,
+                    CombatSnapshot.DamageSource.GENERIC_PRIOR));
         }
         List<Projectile> pureArrows = new ArrayList<>();
         for (ProjectileTrack arrow : arrows.values())
@@ -643,11 +705,12 @@ public final class CombatObservation {
                     arrow.gravity,
                     (double) .99F,
                     .3,
-                    6));
+                    6,
+                    CombatSnapshot.DamageSource.GENERIC_PRIOR));
         friends.clear();
         for (FriendTrack friend : friendTracks.values()) friends.add(friend.pure());
-        lastReadiness = new Readiness(this, quota, true);
-        return new CombatSnapshot(
+        recordReadiness(maid, quota, true);
+        CombatSnapshot result = new CombatSnapshot(
             tick,
             entityEpoch,
             epoch,
@@ -668,7 +731,16 @@ public final class CombatObservation {
                 && selectedCurrent
                 && coverageFresh(),
             friendsComplete(),
-            completedCoverageOldest);
+            completedCoverageOldest,
+            movementFact,
+            geometry != null && geometry.complete
+                && weapons.size() == 7
+                && scanComplete
+                && projectileComplete
+                && observationComplete
+                && coverageFresh());
+        if (fullService.attempted(tick)) fullService.captured(tick, result.bodyComplete, false);
+        return result;
     }
 
     private void captureWeapons(EntityMaid maid, CombatWorkQuota quota) {
@@ -691,6 +763,11 @@ public final class CombatObservation {
         weapons = Collections.unmodifiableList(captured);
     }
 
+    /** 只读取当tick已经采集的资源；实际发射仍逐项执行原库存/ACK最终复核 */
+    public boolean observedAmmunition(long now) {
+        return tick == now && ammunition > 0;
+    }
+
     public boolean supportedBow() {
         for (Weapon weapon : weapons) if (weapon.profile.bow()) return true;
         return false;
@@ -700,38 +777,67 @@ public final class CombatObservation {
         return epoch;
     }
 
-    private Geometry collectGeometry(EntityMaid maid, CombatWorkQuota quota) {
-        int ox = MathHelper.floor_double(maid.posX) - 4, oy = MathHelper.floor_double(maid.boundingBox.minY) - 2,
-            oz = MathHelper.floor_double(maid.posZ) - 4;
-        byte[] cells = new byte[9 * 6 * 9];
+    private Geometry collectGeometry(EntityMaid maid, Tracked selected, CombatWorkQuota quota) {
+        boolean currentVisible = selected != null && selected.visible
+            && selected.observedAt == tick
+            && selected.position != null;
+        int ox = CombatGeometryWindow
+            .horizontalOrigin(maid.posX, currentVisible ? selected.position.x : 0, currentVisible, maid.width * .5),
+            oy = MathHelper.floor_double(maid.boundingBox.minY) - CombatGeometryWindow.FLOOR_DEPTH,
+            oz = CombatGeometryWindow
+                .horizontalOrigin(maid.posZ, currentVisible ? selected.position.z : 0, currentVisible, maid.width * .5);
+        byte[] cells = new byte[CombatGeometryWindow.WIDTH * CombatGeometryWindow.HEIGHT * CombatGeometryWindow.WIDTH];
         double[] bounds = new double[cells.length * 6];
-        CombatSpace.BlockReader reader = CombatSpace.reader(maid, ox, oy, oz, ox + 8, oy + 5, oz + 8, quota);
+        DoorCell[] doorCells = new DoorCell[cells.length];
+        CombatSpace.BlockReader reader = CombatSpace.reader(
+            maid,
+            ox,
+            oy,
+            oz,
+            ox + CombatGeometryWindow.WIDTH - 1,
+            oy + CombatGeometryWindow.HEIGHT - 1,
+            oz + CombatGeometryWindow.WIDTH - 1,
+            quota);
         boolean complete = reader.result == CombatSpace.Result.SAFE;
         geometryUnknownCells = geometryBudgetCells = 0;
-        for (int y = 0; y < 6; y++) for (int z = 0; z < 9; z++) for (int x = 0; x < 9; x++) {
-            int index = (y * 9 + z) * 9 + x, px = ox + x, py = oy + y, pz = oz + z;
-            var mask = net.minecraft.util.AxisAlignedBB
-                .getBoundingBox(px - .01, py - .01, pz - .01, px + 1.01, py + 2.01, pz + 1.01);
-            CombatSpace.BlockShapes shapes = reader.block(px, py, pz, mask);
-            if (shapes.result != CombatSpace.Result.SAFE) {
-                cells[index] = Geometry.UNKNOWN;
-                if (shapes.result == CombatSpace.Result.BUDGET) geometryBudgetCells++;
-                else geometryUnknownCells++;
-                complete = false;
-                continue;
+        for (int y = 0; y < CombatGeometryWindow.HEIGHT; y++)
+            for (int z = 0; z < CombatGeometryWindow.WIDTH; z++) for (int x = 0; x < CombatGeometryWindow.WIDTH; x++) {
+                int index = (y * CombatGeometryWindow.WIDTH + z) * CombatGeometryWindow.WIDTH + x, px = ox + x,
+                    py = oy + y, pz = oz + z;
+                var mask = net.minecraft.util.AxisAlignedBB
+                    .getBoundingBox(px - .01, py - .01, pz - .01, px + 1.01, py + 2.01, pz + 1.01);
+                CombatSpace.BlockShapes shapes = reader.block(px, py, pz, mask);
+                if (shapes.result != CombatSpace.Result.SAFE) {
+                    cells[index] = Geometry.UNKNOWN;
+                    if (shapes.result == CombatSpace.Result.BUDGET) geometryBudgetCells++;
+                    else geometryUnknownCells++;
+                    complete = false;
+                    continue;
+                }
+                cells[index] = (byte) shapes.flags;
+                doorCells[index] = shapes.doorCell;
+                if (shapes.count == 0) continue;
+                cells[index] |= Geometry.SOLID;
+                int offset = index * 6;
+                bounds[offset] = shapes.minX;
+                bounds[offset + 1] = shapes.minY;
+                bounds[offset + 2] = shapes.minZ;
+                bounds[offset + 3] = shapes.maxX;
+                bounds[offset + 4] = shapes.maxY;
+                bounds[offset + 5] = shapes.maxZ;
             }
-            cells[index] = (byte) shapes.flags;
-            if (shapes.count == 0) continue;
-            cells[index] |= Geometry.SOLID;
-            int offset = index * 6;
-            bounds[offset] = shapes.minX;
-            bounds[offset + 1] = shapes.minY;
-            bounds[offset + 2] = shapes.minZ;
-            bounds[offset + 3] = shapes.maxX;
-            bounds[offset + 4] = shapes.maxY;
-            bounds[offset + 5] = shapes.maxZ;
-        }
-        return new Geometry(ox, oy, oz, 9, 6, 9, tick, complete, cells, bounds);
+        return new Geometry(
+            ox,
+            oy,
+            oz,
+            CombatGeometryWindow.WIDTH,
+            CombatGeometryWindow.HEIGHT,
+            CombatGeometryWindow.WIDTH,
+            tick,
+            complete,
+            cells,
+            bounds,
+            doorCells);
     }
 
     private SampleResult remember(Entity entity, SampleResult result) {
@@ -754,7 +860,10 @@ public final class CombatObservation {
         projectileComplete = !permanentProjectileGap && !missingArrow && arrowEventCursor >= latestArrowSequence;
     }
 
-    /** 完全被动的最后一次capture诊断，不续期、不扫描、不申请配额 */
+    private void recordReadiness(EntityMaid maid, CombatWorkQuota quota, boolean captured) {
+        lastReadiness = new Readiness(this, quota, captured);
+    }
+
     public Readiness readiness() {
         return lastReadiness;
     }
@@ -772,7 +881,7 @@ public final class CombatObservation {
         public final List<Friend> friendSamples;
         public final int blockedMask, chunkCursor, sectionCursor, entityCursor, chunksVisited, deferredEntities,
             targetCount, weaponCount, unknownGeometryCells, budgetGeometryCells, primaryRays, backgroundRays,
-            secondaryRays, visibleTargets;
+            secondaryRays, visibleTargets, gravityQueries, gravityReuses;
         public final boolean fullAtStart, fullAtCapture, fullContinuation, captured;
         public final boolean permanentObservationGap, permanentProjectileGap, urgentPending, scanPending, scopeReset;
         public final int[] used, observationDenials, denials;
@@ -834,6 +943,8 @@ public final class CombatObservation {
             primaryRays = source.primaryRays;
             backgroundRays = source.backgroundRays;
             secondaryRays = source.secondaryRays;
+            gravityQueries = source.gravityQueries;
+            gravityReuses = source.gravityReuses;
             weaponCount = source.weapons.size();
             unknownGeometryCells = source.geometryUnknownCells;
             budgetGeometryCells = source.geometryBudgetCells;
@@ -892,6 +1003,9 @@ public final class CombatObservation {
     }
 
     public void clear() {
+        fullService.clear();
+        observationGravity = null;
+        gravityQueries = gravityReuses = 0;
         epoch++;
         targets.clear();
         living.clear();
