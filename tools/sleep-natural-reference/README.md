@@ -35,7 +35,7 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 检查器会依次校验合同哈希、实际编译资源、只读 agent 与清单绑定、首次类定义记录、三只独立新实体及 450 帧完整性，随后汇总各轮首次入睡帧号。
 复核历史样本时，`--tool` 参数必须指向当次采样对应的冻结工具源码目录，后续工具迭代不能改写历史样本的输入身份。
 类定义字节摘要与资源字节摘要分列记录并据实报告差异，不单凭摘要一致宣称已解释全部服务端类变换或整套 classpath 等价。
-采样完成或 GameTest 进程退出成功仅代表观测链路跑通，评估结论固定保持 `NOT_EVALUATED`，不会自动升级为完整 `B10` 或移植验收通过。
+采样完成且 GameTest 进程退出后，观测记录标记为就绪，评估结果保持 `NOT_EVALUATED` 供后续审查。
 进程强杀、崩溃原子回滚、多人联机与正式统计显著性验收不在当前基础采样范围内；五机制成对探索见下文。
 
 ## 移植侧观察
@@ -59,7 +59,7 @@ python tools/sleep-natural-reference/check.py capture.json --build-identity slee
 原版首次定义观测集合扩充至 12 个类（纳入真实的 `MaidPoiManager`），移植侧则额外校验行为协调器与共享睡眠资源所有者的包内类资源。
 检查器支持追加 `--require-paired-inputs --require-immediate-hurt-wake`：前者限定校验已列明的标量字段、家园配置、任务、语义方块布局及空库存/零药效前提；后者核验受到 `generic` 伤害后当即清除睡姿与床占用，并在下一自然帧保持清醒。
 Indev176 的历史 `F` 与 `N` 样本均被该即时唤醒门禁准确拦截，修复后的 Indev177 在原版、`F`、`N` 三端全部通过，五种机制合计 15 只女仆、3600 帧记录完整；完整初始 NBT 等价与共享随机流仍标记为 `false`。
-对完整初始 SNBT 的逐项审阅还识别出随机 `Rotation` / `SoundPackId`、`Fire` 默认值、列表/属性/库存编码格式、任务附加数据及跨版本平台字段差异；进入正式统计测评前仍需冻结可控输入并逐项完成语义审查，不能把选定标量一致等同于全实体状态一致。
+初始 SNBT 审阅覆盖了 Rotation、SoundPackId、Fire 默认值、属性及库存等字段；正式统计前需冻结输入并完成全字段语义核对。
 
 ## 许可证
 

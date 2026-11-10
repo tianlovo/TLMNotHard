@@ -31,7 +31,7 @@ python scripts/package_overlay.py build/libs/tlmnh-VERSION.jar `
 重试时可复用摘要完全一致的完整 ZIP，已存在但字节不同的同名文件不会被覆盖。
 
 默认渠道为 `--channel local-validation`，生成包名与交互界面均明确标示本地验证用途。
-若指定 `--channel release`，遇到配音分发尚未放行、原创许可未就绪或仍处于 Indev 版本等发布阻碍时会直接拒绝打包；该选项不会改写许可状态，也不会通过裁减音频绕过检查。
+若指定 `--channel release`，遇到配音分发未放行、原创许可未就绪或处于 Indev 状态时直接拒绝打包，严格保障发布合规。
 
 ## 更新与回滚
 
@@ -41,7 +41,7 @@ python scripts/package_overlay.py build/libs/tlmnh-VERSION.jar `
 4. 在解压目录内运行 `python update.py`，通过 Rich 菜单选择更新或回滚。
 
 客户端请选择包含 `mmc-pack.json` 的实例目录，或直接选择其下的 `.minecraft`；服务端请选择包含 `lwjgl3ify-forgePatches.jar` 的目录。
-更新工具不会启动游戏，也不会写入整合包配置。
+更新工具仅在游戏退出后管理模组文件与备份，不修改整合包全局配置。
 新生成的 `config/tlmnh.cfg` 默认启用 Enhanced；已有显式指定的 Legacy 配置保持原值，修改策略后需重启服务端。
 
 TLM 使用 `.tlmnh-managed-client.json` 与 `.tlmnh-managed-server.json` 记录自身托管的 JAR 与配套资料，完整保留整合包原有的 `.gtnh-managed-*.json` 字节及其余托管条目。
