@@ -28,6 +28,7 @@ public final class CombatSnapshot {
     public final Geometry geometry;
     public final UUID selectedTarget;
     public final boolean complete, bodyComplete;
+    public final boolean continuationComplete, bodyContinuationComplete;
     public final boolean friendsComplete;
     public final long oldestCoverage;
 
@@ -103,6 +104,32 @@ public final class CombatSnapshot {
         Self self, List<Target> targets, List<Projectile> projectiles, List<Friend> friends, List<Weapon> weapons,
         Geometry geometry, UUID selectedTarget, boolean complete, boolean friendsComplete, long oldestCoverage,
         CombatMovementFact movementFact, boolean bodyComplete) {
+        this(
+            tick,
+            entityEpoch,
+            observationEpoch,
+            equipmentEpoch,
+            selfId,
+            self,
+            targets,
+            projectiles,
+            friends,
+            weapons,
+            geometry,
+            selectedTarget,
+            complete,
+            friendsComplete,
+            oldestCoverage,
+            movementFact,
+            bodyComplete,
+            friendsComplete || !friends.isEmpty());
+    }
+
+    /** 显式区分当拍完整同伴刷新与TTL内无溢出/身份缺口的近战阶段续行资格 */
+    public CombatSnapshot(long tick, long entityEpoch, long observationEpoch, long equipmentEpoch, UUID selfId,
+        Self self, List<Target> targets, List<Projectile> projectiles, List<Friend> friends, List<Weapon> weapons,
+        Geometry geometry, UUID selectedTarget, boolean complete, boolean friendsComplete, long oldestCoverage,
+        CombatMovementFact movementFact, boolean bodyComplete, boolean friendsBounded) {
         this.movementFact = movementFact;
         this.tick = tick;
         this.entityEpoch = entityEpoch;
@@ -117,10 +144,19 @@ public final class CombatSnapshot {
         this.geometry = geometry;
         this.selectedTarget = selectedTarget;
         boolean currentFriends = friendsComplete;
-        for (Friend friend : friends)
+        boolean freshFriends = friendsBounded;
+        for (Friend friend : this.friends) {
             currentFriends &= friend.id != null && friend.current && friend.observedAt == tick;
+            freshFriends &= friend.id != null && friend.observedAt != Long.MIN_VALUE
+                && friend.observedAt <= tick
+                && tick - friend.observedAt <= OBSERVATION_TTL;
+        }
         this.friendsComplete = currentFriends;
         this.oldestCoverage = oldestCoverage;
+        boolean freshGeometry = geometry != null && geometry.complete && geometry.fresh(tick);
+        boolean freshCoverage = oldestCoverage != Long.MIN_VALUE && oldestCoverage <= tick
+            && tick - oldestCoverage >= 0
+            && tick - oldestCoverage <= OBSERVATION_TTL;
         this.bodyComplete = bodyComplete && currentFriends
             && geometry != null
             && geometry.complete
@@ -133,6 +169,8 @@ public final class CombatSnapshot {
             && oldestCoverage <= tick
             && tick - oldestCoverage >= 0
             && tick - oldestCoverage <= OBSERVATION_TTL;
+        this.bodyContinuationComplete = bodyComplete && freshFriends && freshGeometry && freshCoverage;
+        this.continuationComplete = complete && freshFriends && freshGeometry && freshCoverage;
     }
 
     private static <T> List<T> frozen(List<T> values) {

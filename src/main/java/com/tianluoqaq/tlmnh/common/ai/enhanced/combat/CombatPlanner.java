@@ -652,8 +652,9 @@ public final class CombatPlanner {
         }
         weapon = selected;
         intentEligible = false;
-        if (!currentObservation(snapshot, target) || !usable(snapshot, weapon)
-            || stage.state == StageState.NATIVE_FAILURE) {
+        boolean observationReady = currentObservation(snapshot, target)
+            || !quota.full && stage.admitted && meleeContinuationObservation(snapshot, target, weapon);
+        if (!observationReady || !usable(snapshot, weapon) || stage.state == StageState.NATIVE_FAILURE) {
             if (stage.entry != null && stage.entry.state != EntryState.NATIVE_FAILURE) stage.entry.suspend();
             if (stage.state != StageState.NATIVE_FAILURE) {
                 stage.state = StageState.WAIT_SERVICE;
@@ -770,7 +771,7 @@ public final class CombatPlanner {
             if (entry.state != EntryState.ACTIVE || !stage.admitted
                 || entry.proof == null
                 || !entry.proof.fresh(s.tick)
-                || !s.bodyComplete
+                || !(s.bodyComplete || weapon != null && weapon.profile.melee() && s.bodyContinuationComplete)
                 || entry.proof.movement(s.self.position, null, s.tick, quota) == null) route = null;
         }
         entryWork += quota.used(Work.COLLISION) - before;
@@ -818,6 +819,16 @@ public final class CombatPlanner {
 
     private static boolean currentObservation(CombatSnapshot snapshot, Target target) {
         return snapshot.complete && snapshot.friendsComplete
+            && snapshot.self.grounded
+            && !snapshot.self.stationary
+            && target != null
+            && target.visible
+            && target.observedAt == snapshot.tick;
+    }
+
+    private static boolean meleeContinuationObservation(CombatSnapshot snapshot, Target target, Weapon weapon) {
+        return snapshot.continuationComplete && weapon != null
+            && weapon.profile.melee()
             && snapshot.self.grounded
             && !snapshot.self.stationary
             && target != null
@@ -1236,6 +1247,9 @@ public final class CombatPlanner {
         if (stage != null && committed == null && stage.state != StageState.NATIVE_FAILURE) {
             stage.state = StageState.WAIT_SERVICE;
             stage.reason = "SAFE_REACTION_OR_COMPARISON_WAIT";
+        } else if (committed != null && normalProgressAdmitted && committed.state == StageState.WAIT_SERVICE) {
+            committed.state = StageState.PROPOSED;
+            committed.reason = "FULL_SERVICE_RESUMED";
         }
         if (stage != null && stage.entry != null && (committed == null || candidate.entry != stage.entry)) {
             if (committed != null && normalProgressAdmitted

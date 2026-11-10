@@ -151,6 +151,25 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigationLease();
         maid.getModernCombatMemory()
             .beginBrainFrame(world, entityTick, worldTick);
+        settleArrivedOrdinaryCombatNode();
+    }
+
+    private void settleArrivedOrdinaryCombatNode() {
+        if (walk == null || restrictedCombatMove != null
+            || !isCombatNode(walk)
+            || combatNode.role != com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.ORDINARY)
+            return;
+        Path currentPath = navigationPath();
+        if (!combatNodeArrived(walk, currentPath)) return;
+        combatNavigationOutcome(
+            walk,
+            currentPath,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED,
+            0);
+        stopNavigation();
+        eraseWalkTarget();
+        setPathMemory(null);
+        eraseCantReachSince();
     }
 
     public void invalidateBehaviorViews() {

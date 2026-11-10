@@ -762,7 +762,8 @@ public final class CombatObservation {
                 && scanComplete
                 && projectileComplete
                 && observationComplete
-                && coverageFresh());
+                && coverageFresh(),
+            !friendOverflow && !friendIdentityGap);
         if (fullService.attempted(tick)) fullService.captured(tick, result.bodyComplete, false);
         return result;
     }
