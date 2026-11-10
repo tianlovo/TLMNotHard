@@ -116,7 +116,8 @@ Discuss substantial gameplay or architecture changes first, and include reproduc
 New standalone adaptation files use the `com.tianluoqaq.tlmnh` package root.
 Ported upstream files keep their original packages, provenance and applicable licences.
 Use Conventional Commits in Simplified Chinese.
-Keep new Chinese text natural and precise, without a final Chinese full stop.
+Keep new Chinese text natural and precise: Chinese code comments omit only the final full stop on a line, while
+earlier complete sentences on the same line and documentation prose use normal Chinese full stops.
 Run `build` and README linting before submitting, and keep scope, progress and commands consistent across both READMEs.
 Update `PROGRESS.md` in the same commit when implementation or validation status changes.
 Check that document locally; it is excluded from documentation CI triggers and lint inputs.
