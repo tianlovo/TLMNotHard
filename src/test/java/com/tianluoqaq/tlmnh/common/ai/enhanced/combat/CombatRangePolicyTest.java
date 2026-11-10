@@ -74,49 +74,79 @@ public class CombatRangePolicyTest {
         var policy = new CombatRangePolicy();
         // 单女仆5tick节拍在20tick无敌帧下交替拒收与命中，不应误判无产出
         for (long tick = 5; tick <= 60; tick += 10) {
-            policy.recordMeleeOutcome(ONE, tick, false);
+            policy.recordMeleeOutcome(ONE, tick, false, 5);
             assertFalse(policy.isMeleeUnproductive(ONE, tick));
-            policy.recordMeleeOutcome(ONE, tick + 5, true);
+            policy.recordMeleeOutcome(ONE, tick + 5, true, 0);
             assertFalse(policy.isMeleeUnproductive(ONE, tick + 5));
         }
 
         // 高攻速3tick连挥3次跨6tick未满20tick无敌帧周期，不应提前判死
-        policy.recordMeleeOutcome(ONE, 100, true);
-        policy.recordMeleeOutcome(ONE, 103, false);
-        policy.recordMeleeOutcome(ONE, 106, false);
-        policy.recordMeleeOutcome(ONE, 109, false);
+        policy.recordMeleeOutcome(ONE, 100, true, 0);
+        policy.recordMeleeOutcome(ONE, 103, false, 3);
+        policy.recordMeleeOutcome(ONE, 106, false, 3);
+        policy.recordMeleeOutcome(ONE, 109, false, 3);
         assertFalse(policy.isMeleeUnproductive(ONE, 109));
-        policy.recordMeleeOutcome(ONE, 112, true);
+        policy.recordMeleeOutcome(ONE, 112, true, 0);
         assertFalse(policy.isMeleeUnproductive(ONE, 112));
 
         // 5tick锁相拥挤：t=200..215跨15tick仍保持观察，t=220跨满20tick才触发退让冷却
-        policy.recordMeleeOutcome(ONE, 200, false);
-        policy.recordMeleeOutcome(ONE, 205, false);
-        policy.recordMeleeOutcome(ONE, 210, false);
-        policy.recordMeleeOutcome(ONE, 215, false);
+        policy.recordMeleeOutcome(ONE, 200, false, 5);
+        policy.recordMeleeOutcome(ONE, 205, false, 5);
+        policy.recordMeleeOutcome(ONE, 210, false, 5);
+        policy.recordMeleeOutcome(ONE, 215, false, 5);
         assertFalse(policy.isMeleeUnproductive(ONE, 215));
-        policy.recordMeleeOutcome(ONE, 220, false);
+        policy.recordMeleeOutcome(ONE, 220, false, 5);
         assertTrue(policy.isMeleeUnproductive(ONE, 220));
         assertTrue(policy.isMeleeUnproductive(ONE, 319));
         assertFalse(policy.isMeleeUnproductive(ONE, 320));
 
-        // 超过40tick中断后重算窗口，不把旧零散挥空拼进新交战
-        policy.recordMeleeOutcome(TWO, 400, false);
-        policy.recordMeleeOutcome(TWO, 405, false);
-        policy.recordMeleeOutcome(TWO, 446, false);
-        policy.recordMeleeOutcome(TWO, 451, false);
-        policy.recordMeleeOutcome(TWO, 456, false);
-        policy.recordMeleeOutcome(TWO, 461, false);
+        // 常规5tick节拍超过40tick中断后重算窗口，不把旧零散挥空拼进新交战
+        policy.recordMeleeOutcome(TWO, 400, false, 5);
+        policy.recordMeleeOutcome(TWO, 405, false, 5);
+        policy.recordMeleeOutcome(TWO, 446, false, 5);
+        policy.recordMeleeOutcome(TWO, 451, false, 5);
+        policy.recordMeleeOutcome(TWO, 456, false, 5);
+        policy.recordMeleeOutcome(TWO, 461, false, 5);
         assertFalse(policy.isMeleeUnproductive(TWO, 461));
-        policy.recordMeleeOutcome(TWO, 466, false);
+        policy.recordMeleeOutcome(TWO, 466, false, 5);
         assertTrue(policy.isMeleeUnproductive(TWO, 466));
+    }
+
+    @Test
+    public void slowMeleeCadenceAboveFortyTicksAccumulatesAcrossTicksAndExpiresWhenStale() {
+        var policy = new CombatRangePolicy();
+        assertEquals(40, CombatRangePolicy.staleRejectionGapTicks(5));
+        assertEquals(40, CombatRangePolicy.staleRejectionGapTicks(20));
+        assertEquals(100, CombatRangePolicy.staleRejectionGapTicks(50));
+
+        // speed=0.4对应50tick冷却：逐tick推进期间不被40tick提前裁剪，第3次拒收正常触发无产出
+        policy.recordMeleeOutcome(ONE, 0, false, 50);
+        for (long tick = 1; tick < 50; tick++) policy.tick(tick, null, null);
+        policy.recordMeleeOutcome(ONE, 50, false, 50);
+        assertFalse(policy.isMeleeUnproductive(ONE, 50));
+        for (long tick = 51; tick < 100; tick++) policy.tick(tick, null, null);
+        policy.recordMeleeOutcome(ONE, 100, false, 50);
+        assertTrue(policy.isMeleeUnproductive(ONE, 100));
+        assertTrue(policy.isMeleeUnproductive(ONE, 199));
+        assertFalse(policy.isMeleeUnproductive(ONE, 200));
+
+        // 慢速节拍若中断超过两倍提交冷却（>100tick），后续拒收重新起算而不与旧窗口拼接
+        policy.recordMeleeOutcome(TWO, 300, false, 50);
+        policy.recordMeleeOutcome(TWO, 350, false, 50);
+        for (long tick = 351; tick <= 451; tick++) policy.tick(tick, null, null);
+        policy.recordMeleeOutcome(TWO, 451, false, 50);
+        assertFalse(policy.isMeleeUnproductive(TWO, 451));
+        policy.recordMeleeOutcome(TWO, 501, false, 50);
+        assertFalse(policy.isMeleeUnproductive(TWO, 501));
+        policy.recordMeleeOutcome(TWO, 551, false, 50);
+        assertTrue(policy.isMeleeUnproductive(TWO, 551));
     }
 
     @Test
     public void acceptedHitOnlyClearsAttemptedTargetAndCancelPreservesCooldown() {
         var policy = new CombatRangePolicy();
         policy.select(ONE);
-        for (long tick = 0; tick <= 20; tick += 5) policy.recordMeleeOutcome(ONE, tick, false);
+        for (long tick = 0; tick <= 20; tick += 5) policy.recordMeleeOutcome(ONE, tick, false, 5);
         assertTrue(policy.isMeleeUnproductive(ONE, 20));
 
         // 换靶触发cancel只撤销保持半径，不清空原拥挤目标冷却；命中新选目标也不解除原目标冷却
@@ -124,19 +154,19 @@ public class CombatRangePolicyTest {
         policy.select(TWO);
         assertFalse(policy.retained(ONE));
         assertTrue(policy.isMeleeUnproductive(ONE, 25));
-        policy.recordMeleeOutcome(TWO, 26, true);
+        policy.recordMeleeOutcome(TWO, 26, true, 0);
         assertFalse(policy.isMeleeUnproductive(TWO, 26));
         assertTrue(policy.isMeleeUnproductive(ONE, 26));
         assertTrue(policy.isMeleeUnproductive(ONE, 119));
 
         // 原目标自身获得真实命中、显式clear或时钟回退时正常解除
-        policy.recordMeleeOutcome(ONE, 50, true);
+        policy.recordMeleeOutcome(ONE, 50, true, 0);
         assertFalse(policy.isMeleeUnproductive(ONE, 50));
-        for (long tick = 60; tick <= 80; tick += 5) policy.recordMeleeOutcome(ONE, tick, false);
+        for (long tick = 60; tick <= 80; tick += 5) policy.recordMeleeOutcome(ONE, tick, false, 5);
         assertTrue(policy.isMeleeUnproductive(ONE, 80));
         policy.tick(10, null, null);
         assertFalse(policy.isMeleeUnproductive(ONE, 10));
-        for (long tick = 20; tick <= 40; tick += 5) policy.recordMeleeOutcome(ONE, tick, false);
+        for (long tick = 20; tick <= 40; tick += 5) policy.recordMeleeOutcome(ONE, tick, false, 5);
         assertTrue(policy.isMeleeUnproductive(ONE, 40));
         policy.clear();
         assertFalse(policy.isMeleeUnproductive(ONE, 40));
@@ -164,18 +194,17 @@ public class CombatRangePolicyTest {
         assertTrue(CombatRangePolicy.shouldYieldUnproductive(ownerHurt, true, ownerHurt));
 
         // 已观测友方贴身目标温和让位给未争抢近邻，但护主与自身受击加分保持完整
-        double uncontested = CombatRangePolicy.score(6.1, false, false, false, false, false);
-        double crowded = CombatRangePolicy.score(5.3, false, false, false, true, false);
+        double uncontested = CombatRangePolicy.score(6.1, false, false, false, false);
+        double crowded = CombatRangePolicy.score(5.3, false, false, false, true);
         assertTrue(uncontested > crowded);
         assertEquals(
             CombatRangePolicy.score(5.3, true, false, false),
-            CombatRangePolicy.score(5.3, true, false, false, true, false),
+            CombatRangePolicy.score(5.3, true, false, false, true),
             0);
         assertEquals(
             CombatRangePolicy.score(5.3, false, true, false),
-            CombatRangePolicy.score(5.3, false, true, false, true, false),
+            CombatRangePolicy.score(5.3, false, true, false, true),
             0);
-        assertEquals(0, CombatRangePolicy.score(3, false, false, true, false, true), 0);
-        assertEquals(0, CombatRangePolicy.score(100, false, false, false, true, false), 0);
+        assertEquals(0, CombatRangePolicy.score(100, false, false, false, true), 0);
     }
 }
