@@ -34,6 +34,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -72,6 +73,13 @@ public final class UnifiedCombatCapacityTests {
         h.assertTrue("1".equals(System.getProperty("horizonqa.turbo", "1")), "Native capacity requires turbo=1");
         var diagnosticScope = sustained ? null
             : com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
+        boolean previousTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.traceEnabled();
+        boolean plannerTrace = sustained && Boolean.getBoolean("tlmnh.capacityTrace");
+        if (plannerTrace) {
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(true);
+            h.afterTest(
+                () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(previousTrace));
+        }
         if (diagnosticScope != null) h.afterTest(diagnosticScope::close);
         var run = new Attempt(h, sustained);
         h.afterTest(() -> {
@@ -449,6 +457,7 @@ public final class UnifiedCombatCapacityTests {
             report.addProperty("drainTicks", drain);
             report.addProperty("compactTelemetry", sustained);
             report.addProperty("productionDiagnosticScopeEnabled", !sustained);
+            report.addProperty("plannerTraceEnabled", sustained && Boolean.getBoolean("tlmnh.capacityTrace"));
             report.add("worldQuotaLimits", integers(CombatWorkQuota.worldLimits()));
             if (sustained) {
                 report.addProperty("workWindowTicks", WORK_WINDOW);
@@ -760,6 +769,10 @@ public final class UnifiedCombatCapacityTests {
                         }
                     } else {
                         boolean currentCapture = ready.captured && snapshot != null && snapshot.tick == now;
+                        if (sustained && Boolean.getBoolean("tlmnh.capacityTrace") && currentCapture) {
+                            row.lastFullSnapshot = snapshot;
+                            row.lastFullPlan = plan;
+                        }
                         if (currentCapture) row.fullCaptures++;
                         else row.grantedWithoutCurrentCapture++;
                         if (currentCapture && ready.blockedMask == 0) row.readyCaptures++;
@@ -872,6 +885,7 @@ public final class UnifiedCombatCapacityTests {
                 window.add("actors", actors);
                 workWindows.add(window);
             }
+            int firstMissing = -1;
             for (Row row : rows.values()) {
                 var core = row.maid.getBrainCoordinator()
                     .peekEnhancedCore();
@@ -887,13 +901,14 @@ public final class UnifiedCombatCapacityTests {
                     actor.addProperty("nativeAcceptedAttacks", attacks);
                     actor.addProperty("fullDecisions", decisions);
                     actors.add(actor);
-                    h.assertTrue(
-                        attacks > 0 && decisions > 0,
-                        "Sustained work missing for original actor " + row.index + " at sampling tick " + elapsed);
+                    if ((attacks <= 0 || decisions <= 0) && firstMissing < 0) firstMissing = row.index;
                 }
                 row.windowAcceptedBefore = accepted;
                 row.windowFullBefore = full;
             }
+            h.assertTrue(
+                firstMissing < 0,
+                "Sustained work missing for original actor " + firstMissing + " at sampling tick " + elapsed);
             if (window != null) window.addProperty("complete", true);
         }
 
@@ -998,6 +1013,45 @@ public final class UnifiedCombatCapacityTests {
                     .lastPlan();
                 out.addProperty("lastPlan", plan == null ? "none" : plan.macro.name());
                 out.addProperty("lastPlanReason", plan == null ? "none" : plan.reason);
+                if (sustained) {
+                    var context = new JsonObject();
+                    context.add("nativePosition", position(row.maid.posX, row.maid.posY, row.maid.posZ));
+                    context.add("nativeVelocity", position(row.maid.motionX, row.maid.motionY, row.maid.motionZ));
+                    context.addProperty("onGround", row.maid.onGround);
+                    context.addProperty("air", row.maid.getAir());
+                    context.addProperty("health", row.maid.getHealth());
+                    context.addProperty("hunger", row.maid.getHunger());
+                    context.addProperty("sitting", row.maid.isSitting());
+                    var held = row.maid.getHeldItem();
+                    context.addProperty(
+                        "held",
+                        held == null ? "none"
+                            : held.getItem()
+                                .getUnlocalizedName());
+                    context.addProperty("heldDamage", held == null ? 0 : held.getItemDamage());
+                    if (plan != null) {
+                        context.addProperty("planTarget", String.valueOf(plan.targetId));
+                        context.addProperty("planObservedAt", plan.observedAt);
+                        context.addProperty("planExpiresAt", plan.expiresAt);
+                        context.addProperty("stageState", String.valueOf(plan.stageState));
+                        context.addProperty("stageReason", plan.stageReason);
+                        context.addProperty("stagePhase", plan.stagePhase);
+                        context.addProperty("planFamily", String.valueOf(plan.family));
+                        context.addProperty("planStrategy", String.valueOf(plan.strategy));
+                        context.addProperty("stageRetryAt", plan.stageRetryAt);
+                        if (plan.destination != null) context.add("destination", position(plan.destination));
+                    }
+                    var snapshot = core.combat()
+                        .lastSnapshot();
+                    if (snapshot != null) context.add("cachedSnapshot", cachedContext(snapshot));
+                    if (row.lastFullSnapshot != null) {
+                        context.add("lastFullSnapshot", cachedContext(row.lastFullSnapshot));
+                        var json = new GsonBuilder().serializeSpecialFloatingPointValues()
+                            .create();
+                        context.add("lastFullPlan", json.toJsonTree(row.lastFullPlan));
+                    }
+                    out.add("terminalContext", context);
+                }
                 out.addProperty(
                     "lastSelected",
                     core.selectedKind() == null ? "none"
@@ -1006,7 +1060,28 @@ public final class UnifiedCombatCapacityTests {
                 actors.add(out);
             }
             double loss = 0;
-            for (EntityPig target : targets) loss += targetHealth - target.getHealth();
+            var nativeTargets = new JsonArray();
+            for (int i = 0; i < targets.size(); i++) {
+                var target = targets.get(i);
+                loss += targetHealth - target.getHealth();
+                if (sustained) {
+                    var out = new JsonObject();
+                    out.addProperty("index", i);
+                    out.addProperty(
+                        "uuid",
+                        target.getUniqueID()
+                            .toString());
+                    out.addProperty("health", target.getHealth());
+                    out.add("position", position(target.posX, target.posY, target.posZ));
+                    nativeTargets.add(out);
+                }
+            }
+            if (sustained) {
+                report.add("terminalNativeTargets", nativeTargets);
+                report.addProperty(
+                    "terminalContextScope",
+                    "Once before retirement or on failure; native entity fields and cached plan/snapshot only; no world query, new capture, admission or decision mutation");
+            }
             report.add("actors", actors);
             report.addProperty("nativeTargetHealthLoss", loss);
             report.addProperty("actualFullDecisions", full);
@@ -1021,6 +1096,58 @@ public final class UnifiedCombatCapacityTests {
                 "forecastReadinessDiagnostic",
                 full > 0 ? "actual complete forecasts observed"
                     : "no complete forecast observed; grants do not establish usable geometry/observations");
+        }
+
+        static JsonArray position(double x, double y, double z) {
+            var out = new JsonArray();
+            for (double value : new double[] { x, y, z }) out.add(new com.google.gson.JsonPrimitive(value));
+            return out;
+        }
+
+        static JsonArray position(CombatSnapshot.Vec value) {
+            return position(value.x, value.y, value.z);
+        }
+
+        static JsonObject cachedContext(CombatSnapshot snapshot) {
+            var out = new JsonObject();
+            out.addProperty("tick", snapshot.tick);
+            out.addProperty("complete", snapshot.complete);
+            out.addProperty("bodyComplete", snapshot.bodyComplete);
+            out.addProperty("friendsComplete", snapshot.friendsComplete);
+            out.addProperty("selectedTarget", String.valueOf(snapshot.selectedTarget));
+            out.addProperty("targetCount", snapshot.targets.size());
+            out.addProperty("friendCount", snapshot.friends.size());
+            if (snapshot.self != null) {
+                out.add("selfPosition", position(snapshot.self.position));
+                out.addProperty("cadenceRemainingTicks", snapshot.self.cadenceRemainingTicks);
+                out.addProperty("equipped", snapshot.self.equipped);
+                out.addProperty("grounded", snapshot.self.grounded);
+                out.addProperty("reach", snapshot.self.reach);
+            }
+            var targets = new JsonArray();
+            for (int i = 0; i < snapshot.targets.size() && i < 32; i++) {
+                var target = snapshot.targets.get(i);
+                var row = new JsonObject();
+                row.addProperty("uuid", String.valueOf(target.id));
+                row.addProperty("observedAt", target.observedAt);
+                row.addProperty("visible", target.visible);
+                row.addProperty("health", target.health);
+                row.add("position", position(target.position));
+                targets.add(row);
+            }
+            out.add("targets", targets);
+            var friends = new JsonArray();
+            for (int i = 0; i < snapshot.friends.size() && i < 64; i++) {
+                var friend = snapshot.friends.get(i);
+                var row = new JsonObject();
+                row.addProperty("uuid", String.valueOf(friend.id));
+                row.addProperty("observedAt", friend.observedAt);
+                row.addProperty("current", friend.current);
+                row.add("position", position(friend.position));
+                friends.add(row);
+            }
+            out.add("friends", friends);
+            return out;
         }
 
         void retire() {
@@ -1116,6 +1243,8 @@ public final class UnifiedCombatCapacityTests {
         long trackedRequestSerial = -1, lastRequestSerial = -1, lastRequestCompletedAt = Long.MIN_VALUE;
         long pendingContinuousSince = -1, maxPendingRequestWait, requestRecreations, requestCompletions;
         long windowAcceptedBefore, windowFullBefore;
+        CombatSnapshot lastFullSnapshot;
+        CombatPlan lastFullPlan;
         final int[] readinessBlockers = new int[12], nonFullReadinessBlockers = new int[12];
         double provisionalDamage;
 
