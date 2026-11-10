@@ -161,7 +161,6 @@ public final class CombatPlanner {
                 forecast(snapshot, candidate, quota, occlusion);
                 completeForecast &= candidate.evaluated && Double.isFinite(candidate.utility);
             } else fallback(snapshot, candidate, quota, occlusion);
-            if (snapshot.self.drawing && previous != null && !same(candidate, previous)) candidate.utility -= .12;
             if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
             if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
                 best = candidate;
@@ -221,6 +220,16 @@ public final class CombatPlanner {
                 if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
                     best = candidate;
                 if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
+            }
+            // 服务等待期间若当前站位已确认零即时风险，原地等待而非后退抵消阶段推进
+            if (stage != null && stage.state == StageState.WAIT_SERVICE
+                && best != null
+                && best.macro == Macro.RETREAT
+                && !acute
+                && immediateComplete
+                && immediateRisk <= 0
+                && !hasFreshProjectile(snapshot)) {
+                best = current = null;
             }
         }
         // A newly installed arrow defense must not lose its safe startup interval merely because
@@ -414,6 +423,7 @@ public final class CombatPlanner {
                 }
             }
         }
+        Candidate jump = null;
         for (int i = 0; i < Math.min(5, attacks.size()); i++) {
             Candidate attack = attacks.get(i);
             // 服务等待不能以普通轻量重选倒退已提交的任务；可在当前点攻击仍走原链
@@ -421,15 +431,11 @@ public final class CombatPlanner {
             CombatTerrain.Route route = terrainRoute(terrain, attack.macro);
             if (route != null) attack.route(route);
             add(result, attack, quota);
+            if (jump == null && jumpUseful(snapshot, attack)) jump = attack;
         }
-        if (strongest != null && jumpUseful(snapshot, strongest)) add(
+        if (jump != null) add(
             result,
-            new Candidate(
-                Macro.JUMP_STRIKE,
-                strongest.target,
-                strongest.weapon,
-                snapshot.self.position,
-                strongest.staticValue + .03),
+            new Candidate(Macro.JUMP_STRIKE, jump.target, jump.weapon, snapshot.self.position, jump.staticValue + .03),
             quota);
         if (strongest != null && !snapshot.self.stationary) {
             if (terrain.firingCover != null && terrain.firingCover != pureCover) {
@@ -871,8 +877,10 @@ public final class CombatPlanner {
 
     private static Candidate attack(CombatSnapshot snapshot, Target target, Weapon weapon) {
         double distance = snapshot.self.position.distance(target.position), damage = physical(weapon);
-        double delay = weapon.profile.bow() ? Math.max(1, 20 - (weapon.slot == -1 ? snapshot.self.drawTicks : 0))
-            : snapshot.self.attackDelay + Math.max(0, distance - snapshot.self.reach) / .2;
+        int cooldown = remainingCooldown(snapshot);
+        double delay = weapon.profile.bow()
+            ? Math.max(cooldown, Math.max(1, 20 - (weapon.slot == -1 ? snapshot.self.drawTicks : 0)))
+            : Math.max(cooldown, snapshot.self.attackDelay) + Math.max(0, distance - snapshot.self.reach) / .2;
         double value = Math.min(1, damage / target.health) / (1 + delay / 20);
         if (target.attackingOwner) value += .22;
         if (!target.visible) value -= .4;
@@ -1170,6 +1178,11 @@ public final class CombatPlanner {
             if (candidate.target != null && !snapshot.self.stationary) {
                 double improvement = snapshot.self.position.distance(candidate.target.position)
                     - position.distance(candidate.target.position);
+                // 横移用于规避威胁或改善射界，不借栅格取整伪造接近收益引发无收益绕圈
+                if (candidate.macro == Macro.STRAFE_LEFT || candidate.macro == Macro.STRAFE_RIGHT) {
+                    improvement = Math.min(0, improvement);
+                    terminal += .005;
+                }
                 progress += Math.max(-.15, Math.min(.2, improvement / 15));
             }
             double resource = candidate.weapon == null || candidate.weapon.profile.remainingDurability <= 0 ? 0
