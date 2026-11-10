@@ -73,9 +73,18 @@ public final class ServerLoadProfileTests {
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 23000, batch = "server_load_serial")
     public static void serialNativeCapacityAndActualRequestFairness(GameTestHelper helper) throws Exception {
+        collect(helper, false);
+    }
+
+    @GameTest(template = "modern_core_cell", timeoutTicks = 650, batch = "server_load_cake_diagnostic")
+    public static void nativeThirtyFaithfulCakeActorsDiagnostic(GameTestHelper helper) throws Exception {
+        collect(helper, true);
+    }
+
+    private static void collect(GameTestHelper helper, boolean cakeDiagnostic) throws Exception {
         helper.assertTrue(Boolean.getBoolean("tlmnh.devCommands"), "Explicit development mode required");
         helper.assertTrue("1".equals(System.getProperty("horizonqa.turbo", "1")), "Native saves require turbo=1");
-        var attempt = new Attempt(helper);
+        var attempt = new Attempt(helper, cakeDiagnostic);
         helper.afterTest(attempt::close);
         try {
             attempt.prepare();
@@ -131,6 +140,7 @@ public final class ServerLoadProfileTests {
             .toString();
         final int x, y, z;
         final boolean oldAnimals, oldGift;
+        final boolean cakeDiagnostic;
         final String oldSpawning, oldDaylight;
         final long oldTime, started;
         EntityPlayerMP owner;
@@ -140,8 +150,10 @@ public final class ServerLoadProfileTests {
         float targetHealthBefore;
         boolean fairness, draining, complete, closed;
 
-        Attempt(GameTestHelper h) {
+        Attempt(GameTestHelper h, boolean cakeDiagnostic) {
             this.h = h;
+            this.cakeDiagnostic = cakeDiagnostic;
+            if (cakeDiagnostic) stage = Activity.CAKE.ordinal() * COUNTS.length + 3;
             world = h.getWorld();
             var origin = h.absolute(0, 0, 0);
             x = origin.x() + 64;
@@ -231,6 +243,12 @@ public final class ServerLoadProfileTests {
                 "One isolated JVM, five internally serial activity families, complete F/N roots; memory owner is not real multiplayer or a formal independent replication");
             report.addProperty("cpuIsolationRequired", "No other game JVM, build, reference sampling or benchmark");
             report.addProperty("activityReadOnlyObservationSchema", "finite-cake-read-only-v1");
+            if (cakeDiagnostic) {
+                report.addProperty("diagnosticOnly", true);
+                report.addProperty(
+                    "scope",
+                    "One cake/F-30 diagnostic stage with the original finite inputs and 400 measured ticks");
+            }
             report.addProperty(
                 "finiteCakeScope",
                 "One originally admitted cake per actor, no replenishment or forced behavior. A bite is event coverage, not sustained eating. All original actors and 400 measured ticks remain the denominator; observer work is included in CPU/allocation measurements");
@@ -239,8 +257,8 @@ public final class ServerLoadProfileTests {
                 "Shared actor WORK_TARGET peeks describe F work memory. Enhanced SNACK selection is recorded separately; an empty shared target is not proof of no Enhanced life intent");
             report.addProperty("warmupTicksPerStage", WARMUP);
             report.addProperty("sampleTicksPerStage", SAMPLES);
-            report.addProperty("capacityStages", 40);
-            report.addProperty("fairnessWindowTicks", 240);
+            report.addProperty("capacityStages", cakeDiagnostic ? 1 : 40);
+            report.addProperty("fairnessWindowTicks", cakeDiagnostic ? 0 : 240);
             report.addProperty("serverCanSpawnAnimalsBefore", oldAnimals);
             report.addProperty("periodicNativeSaveTicks", 900);
             report.addProperty(
@@ -488,6 +506,11 @@ public final class ServerLoadProfileTests {
             removeActors();
             removeProps();
             stage++;
+            if (cakeDiagnostic) {
+                draining = true;
+                probe.phase("queue-drain", 0, false);
+                return;
+            }
             if (stage < 40) beginStage();
             else {
                 fairness = true;
