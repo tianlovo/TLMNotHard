@@ -41,8 +41,13 @@ public final class CombatProjectileEvents {
 
     @SubscribeEvent
     public void unloaded(WorldEvent.Unload event) {
-        WORLDS.remove(event.world);
+        unload(event.world);
         CombatWorldBudget.unload(event.world);
+    }
+
+    /** 只退役本组件拥有的箭出生历史，调用者负责世界生命周期或已验证的独占空边界 */
+    public static void unload(Object world) {
+        WORLDS.remove(world);
     }
 
     public static long sequence(Object world) {

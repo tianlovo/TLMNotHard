@@ -34,7 +34,7 @@ public final class CombatWorldBudget {
         state.begin(now);
         Request r = state.requests.get(id);
         if (r == null) {
-            r = new Request(id, now, state.nextOrder++);
+            r = new Request(id, now, state.nextOrder++, ++state.nextRequestSerial);
             state.requests.put(id, r);
         }
         r.heartbeat = now;
@@ -47,16 +47,18 @@ public final class CombatWorldBudget {
         }
         if (r.quota == null || r.quota.tick != now) r.quota = new CombatWorkQuota(now, false, state.ledger);
         if (r.preparing) r.quota.prepare(r.round);
+        int preparationAhead = -1, preparationBefore = -1;
         if (r.waiting && !r.ready
             && !r.preparing
             && !state.preparations.contains(id)
-            && state.preparations.size() < PREPARATIONS_PER_TICK) {
+            && (preparationBefore = state.preparations.size()) < PREPARATIONS_PER_TICK) {
             int ahead = 0;
             for (Request other : state.requests.values()) if (other != r && other.waiting
                 && !other.ready
                 && !other.preparing
                 && !state.preparations.contains(other.id)
                 && before(other, r)) ahead++;
+            preparationAhead = ahead;
             if (ahead < PREPARATIONS_PER_TICK - state.preparations.size()) {
                 r.preparing = true;
                 r.started = now;
@@ -67,19 +69,38 @@ public final class CombatWorldBudget {
                 r.quota.prepare(r.round);
             }
         }
-        if (wantsFull && r.ready && affordable(r, now, state.ledger) && !r.granted(now) && state.full < FULL_PER_TICK) {
+        int affordability = -1, fullAhead = -1, fullBefore = state.full;
+        if (wantsFull && r.ready
+            && (affordability = affordable(r, now, state.ledger) ? 1 : 0) == 1
+            && !r.granted(now)
+            && state.full < FULL_PER_TICK) {
             int ahead = 0;
             for (Request other : state.requests.values()) if (other != r && other.waiting
                 && other.ready
                 && affordable(other, now, state.ledger)
                 && !other.granted(now)
                 && beforeFull(other, r)) ahead++;
+            fullAhead = ahead;
             if (ahead < FULL_PER_TICK - state.full) {
                 state.full++;
                 r.quota.upgrade();
                 state.previousFull.add(r);
             }
         }
+        trace(
+            world,
+            state,
+            r,
+            now,
+            "HEARTBEAT",
+            wantsFull ? 1 : 0,
+            -1,
+            affordability,
+            fullAhead,
+            fullBefore,
+            preparationAhead,
+            preparationBefore,
+            -1);
         return r.quota;
     }
 
@@ -102,6 +123,7 @@ public final class CombatWorldBudget {
             r.preparing = false;
             state.rotatePreparation(r);
         }
+        trace(world, state, r, now, "PREPARED", -1, ready ? 1 : 0, -1, -1, state.full, -1, -1, -1);
     }
 
     /** 同tick的档位升级只算一个真实采样tick */
@@ -112,17 +134,72 @@ public final class CombatWorldBudget {
             r.sampledAt = now;
             r.samples++;
         }
+        if (r != null) trace(world, state, r, now, "SAMPLED", -1, -1, -1, -1, state.full, -1, -1, round);
     }
 
     public static void completed(Object world, UUID id, long now) {
         State state = WORLDS.get(world);
         Request r = state == null ? null : state.requests.get(id);
         if (r != null && r.granted(now)) {
+            r.completedAt = now;
             r.waiting = r.ready = false;
             if (r.preparing) {
                 r.preparing = false;
                 state.rotatePreparation(r);
             }
+        }
+        if (r != null) trace(world, state, r, now, "COMPLETED", -1, -1, -1, -1, state.full, -1, -1, -1);
+    }
+
+    private static void trace(Object world, State state, Request r, long now, String method, int wants, int readyInput,
+        int affordability, int ahead, int fullBefore, int preparationAhead, int preparationBefore,
+        long sampledRoundInput) {
+        CombatDiagnosticScope scope = CombatDiagnosticScope.current(world);
+        if (scope == null) return;
+        var log = scope.log(r, 24);
+        if (!log.shouldCapture(now, method)) return;
+        int width = CombatWorkQuota.Work.values().length;
+        long[] v = new long[31 + width * 3];
+        long[] head = { r.serial, wants, readyInput, affordability, ahead, fullBefore, state.full, r.since, r.order,
+            r.fullOrder, r.round, r.started, r.expires, r.sampledAt, r.samples, r.oldestCoverage, r.friendDebt,
+            r.knownFriends, r.debtAt, r.waiting ? 1 : 0, r.ready ? 1 : 0, r.preparing ? 1 : 0,
+            r.quota != null && r.quota.full ? 1 : 0, r.completedAt, r.quota != null && r.quota.preparing ? 1 : 0,
+            preparationAhead, preparationBefore, sampledRoundInput, r.quota == null ? Long.MIN_VALUE : r.quota.tick,
+            r.fullRequested, r.heartbeat };
+        System.arraycopy(head, 0, v, 0, head.length);
+        int[] used = r.quota == null ? new int[width] : r.quota.counts();
+        int[] denied = r.quota == null ? new int[width] : r.quota.denials();
+        for (int i = 0; i < width; i++) {
+            v[31 + i] = used[i];
+            v[31 + width + i] = state.ledger.used[i];
+            v[31 + width * 2 + i] = denied[i];
+        }
+        log.addCaptured(now, method, "-1=NOT_EVALUATED; head31/localUsed15/worldUsed15/localDenied15", v);
+    }
+
+    /** 只读取显式QA作用域的缓存，不启动tick或续租 */
+    public static RequestDiagnostic requestDiagnostic(Object world, UUID id) {
+        CombatDiagnosticScope scope = CombatDiagnosticScope.current(world);
+        if (scope == null) return null;
+        State state = WORLDS.get(world);
+        Request r = state == null ? null : state.requests.get(id);
+        if (r == null) return null;
+        Object cached = scope.get(r);
+        return new RequestDiagnostic(
+            cached instanceof CombatDiagnosticScope.Log log ? log.snapshot() : null,
+            r.quota == null ? null : r.quota.counts(),
+            r.quota == null ? null : r.quota.denials());
+    }
+
+    public static final class RequestDiagnostic {
+
+        public final CombatDiagnosticScope.Frame calls;
+        public final int[] endUsed, endDenied;
+
+        private RequestDiagnostic(CombatDiagnosticScope.Frame calls, int[] used, int[] denied) {
+            this.calls = calls;
+            endUsed = used;
+            endDenied = denied;
         }
     }
 
@@ -164,10 +241,15 @@ public final class CombatWorldBudget {
         public final UUID id;
         public final Phase phase;
         public final long since, preparationRound, startedAt, expiresAt, oldestCoverage;
+        public final long requestSerial, completedAt;
+        public final boolean pending;
         public final int sampledTicks;
 
         private Entry(Request r, long now) {
             id = r.id;
+            requestSerial = r.serial;
+            pending = r.waiting;
+            completedAt = r.completedAt;
             phase = r.granted(now) ? Phase.FULL : r.ready ? Phase.READY : r.preparing ? Phase.PREPARING : Phase.WAITING;
             since = r.since;
             preparationRound = r.round;
@@ -225,7 +307,7 @@ public final class CombatWorldBudget {
 
     private static final class State {
 
-        long tick = Long.MIN_VALUE, nextOrder, nextRound;
+        long tick = Long.MIN_VALUE, nextOrder, nextRound, nextRequestSerial;
         int full;
         CombatWorkQuota.Ledger ledger = new CombatWorkQuota.Ledger();
         final Map<UUID, Request> requests = new HashMap<>();
@@ -272,6 +354,8 @@ public final class CombatWorldBudget {
     private static final class Request {
 
         final UUID id;
+        final long serial;
+        long completedAt = Long.MIN_VALUE;
         long heartbeat, since, order, fullOrder, fullRequested = Long.MIN_VALUE;
         long round, started, expires, sampledAt = Long.MIN_VALUE, oldestCoverage = Long.MIN_VALUE;
         long debtAt = Long.MIN_VALUE;
@@ -279,8 +363,9 @@ public final class CombatWorldBudget {
         boolean waiting, preparing, ready;
         CombatWorkQuota quota;
 
-        Request(UUID id, long now, long order) {
+        Request(UUID id, long now, long order, long serial) {
             this.id = id;
+            this.serial = serial;
             heartbeat = since = now;
             this.order = fullOrder = order;
         }
