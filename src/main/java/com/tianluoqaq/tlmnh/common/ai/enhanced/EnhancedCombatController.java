@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -11,6 +13,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatRangePolicy;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
@@ -22,6 +25,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
 import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.Phase;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -96,25 +100,63 @@ public final class EnhancedCombatController {
                 abandonedTargets++;
             }
         }
+        CombatRangePolicy rangePolicy = observation.rangePolicy();
+        var owner = maid.getOwner();
+        List<OfferCandidate> candidates = new ArrayList<>();
         for (EntityLivingBase target : observation.targets()) {
-            if (!knownTarget(target) || failures.containsKey(target.getUniqueID())) continue;
-            Vec seen = observation.lastSeen(target.getUniqueID());
+            UUID id = target.getUniqueID();
+            if (!knownTarget(target) || failures.containsKey(id)) continue;
+            Vec seen = observation.lastSeen(id);
             if (seen == null) continue;
-            double distance = Math.sqrt(maid.getDistanceSq(seen.x, seen.y, seen.z));
-            var owner = maid.getOwner();
-            double utility = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatRangePolicy.score(
-                distance,
-                owner != null && target == owner.getAITarget(),
-                target == maid.getAITarget(),
-                target == ownedTarget);
-            frame.offer(
-                Group.COMBAT,
-                Kind.COMBAT,
-                target.getUniqueID()
-                    .toString(),
-                utility,
-                target);
+            boolean ownerHurt = owner != null && target == owner.getAITarget();
+            boolean maidHurt = target == maid.getAITarget();
+            candidates.add(
+                new OfferCandidate(
+                    target,
+                    id,
+                    seen,
+                    CombatRangePolicy.urgency(ownerHurt, maidHurt),
+                    ownerHurt,
+                    maidHurt,
+                    rangePolicy.isMeleeUnproductive(id, now),
+                    observation.hasObservedFriendNear(maid, seen, CombatRangePolicy.FRIEND_MELEE_RADIUS_SQ),
+                    canProgressAgainst(observation, target, seen, now)));
         }
+        for (OfferCandidate current : candidates) {
+            int bestAlternativeUrgency = -1;
+            boolean uncontestedAlternative = false;
+            for (OfferCandidate other : candidates) {
+                if (other == current || other.unproductive || !other.progressable) continue;
+                bestAlternativeUrgency = Math.max(bestAlternativeUrgency, other.urgency);
+                if (!other.friendEngaged) uncontestedAlternative = true;
+            }
+            // 仅当存在同级或更高防卫紧迫度且可推进的替代目标时退让，避免被仲裁滞回锁在无效目标
+            boolean yieldUnproductive = CombatRangePolicy
+                .shouldYieldUnproductive(current.urgency, current.unproductive, bestAlternativeUrgency);
+            if (yieldUnproductive) continue;
+            double distance = Math.sqrt(maid.getDistanceSq(current.seen.x, current.seen.y, current.seen.z));
+            double utility = CombatRangePolicy.score(
+                distance,
+                current.ownerHurt,
+                current.maidHurt,
+                current.target == ownedTarget,
+                current.friendEngaged && uncontestedAlternative,
+                false);
+            frame.offer(Group.COMBAT, Kind.COMBAT, current.id.toString(), utility, current.target);
+        }
+    }
+
+    private boolean canProgressAgainst(CombatObservation observation, EntityLivingBase target, Vec seen, long now) {
+        if (target == ownedTarget && actor.getCantReachSince() != null) return false;
+        if (!EnhancedRideController.stationary(maid)) return true;
+        if (!observation.visible(target.getUniqueID())) return false;
+        double distanceSq = maid.getDistanceSq(seen.x, seen.y, seen.z);
+        boolean bowInRange = observation.supportedBow() && observation.observedAmmunition(now)
+            && distanceSq <= MaidBowAttack.RANGE_SQ;
+        if (bowInRange) return true;
+        double reach = MaidCombatAttributes.entityReach(maid) + maid.getFavorabilityManager()
+            .getAttackDistancePlusByPoint(maid.getFavorability());
+        return distanceSq <= reach * reach;
     }
 
     private void reportPreparation(CombatObservation observation, long now) {
@@ -228,6 +270,10 @@ public final class EnhancedCombatController {
             if (!lastPlan.simulated) bodyServices++;
             CombatWorldBudget.completed(maid.worldObj, maid.getUniqueID(), now);
         }
+        UUID attemptedTarget = ownedTarget.getUniqueID();
+        boolean cadenceWasReady = maid.getCombatCadence()
+            .ready();
+        long attempts = actor.meleeAttempts();
         long hits = actor.meleeNativeAccepted(), shots = actor.rangedBow()
             .getShots();
         CombatPlan.Result result;
@@ -236,7 +282,19 @@ public final class EnhancedCombatController {
         }
         if (trial != null) trial.applied(result, quota);
         lastResult = result;
-        attacks += Math.max(0, actor.meleeNativeAccepted() - hits);
+        long accepted = Math.max(0, actor.meleeNativeAccepted() - hits);
+        attacks += accepted;
+        if (actor.isCurrent()) {
+            boolean rejectedMelee = accepted == 0 && actor.meleeAttempts() > attempts
+                && cadenceWasReady
+                && !maid.getCombatCadence()
+                    .ready();
+            if (accepted > 0 || rejectedMelee) {
+                actor.combatObservation()
+                    .rangePolicy()
+                    .recordMeleeOutcome(attemptedTarget, now, accepted > 0);
+            }
+        }
         releases += Math.max(
             0,
             actor.rangedBow()
@@ -340,6 +398,28 @@ public final class EnhancedCombatController {
 
     public long staleDecisions() {
         return staleDecisions;
+    }
+
+    private static final class OfferCandidate {
+
+        final EntityLivingBase target;
+        final UUID id;
+        final Vec seen;
+        final int urgency;
+        final boolean ownerHurt, maidHurt, unproductive, friendEngaged, progressable;
+
+        OfferCandidate(EntityLivingBase target, UUID id, Vec seen, int urgency, boolean ownerHurt, boolean maidHurt,
+            boolean unproductive, boolean friendEngaged, boolean progressable) {
+            this.target = target;
+            this.id = id;
+            this.seen = seen;
+            this.urgency = urgency;
+            this.ownerHurt = ownerHurt;
+            this.maidHurt = maidHurt;
+            this.unproductive = unproductive;
+            this.friendEngaged = friendEngaged;
+            this.progressable = progressable;
+        }
     }
 
     private static final class Failure {
