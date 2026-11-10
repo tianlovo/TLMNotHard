@@ -28,6 +28,8 @@ public final class CombatTacticsChecks {
         sweptBodyCannotCrossWall();
         sweptProjectileCannotSkipBody();
         lightProjectileResponseRespectsReachableMovement();
+        fullProjectileRiskHasPerHypothesisLifetime();
+        fullProjectileRiskSeparatesBodiesAndContexts();
         unknownHandCanSelectOwnedSword();
         unavailableGeometryRejectsJump();
         finiteHorizonChargesUnfinishedDraw();
@@ -114,6 +116,81 @@ public final class CombatTacticsChecks {
                 .damage(snapshot, new Vec(0, 0, 0), new Vec(0, 0, 0), 2, 0, false, CombatWorkQuota.isolated(100, true))
                 >= 6,
             "Projectile crossed body between sparse endpoints");
+    }
+
+    private static void fullProjectileRiskHasPerHypothesisLifetime() {
+        var arrow = new CombatSnapshot.Projectile(new UUID(0, 94), new Vec(.5, .7, .5),
+            new Vec(.05, 0, 0), 100, 0, 1, .3, 6);
+        var baseline = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Collections.emptyList(), 0, true);
+        var single = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(arrow), 0, true);
+        var second = new CombatSnapshot.Projectile(new UUID(0, 95), arrow.position, arrow.velocity,
+            100, 0, 1, .3, 6);
+        var pair = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Arrays.asList(arrow, second), 0, true);
+        var basePlan = new CombatPlanner().decide(baseline, CombatWorkQuota.isolated(100, true));
+        var singlePlan = new CombatPlanner().decide(single, CombatWorkQuota.isolated(100, true));
+        var pairPlan = new CombatPlanner().decide(pair, CombatWorkQuota.isolated(100, true));
+        var s = single.self;
+        var owner = new Vec(2.5, 0, .5);
+        var withOwner = new CombatSnapshot.Self(s.position, s.velocity, owner, s.health, 20,
+            s.halfWidth, s.height, s.reach, 0, true, false, true, false, true, true, false,
+            s.attackDelay, 0, 0, 0, false, false);
+        var ownerArrow = new CombatSnapshot.Projectile(new UUID(0, 96), owner.add(new Vec(0, .7, 0)),
+            new Vec(.05, 0, 0), 100, 0, 1, .3, 6);
+        var ownerFrame = new CombatSnapshot(100, 1, 1, 1, SELF, withOwner, Collections.emptyList(),
+            Arrays.asList(ownerArrow), Collections.emptyList(), single.weapons, single.geometry, null, true);
+        var first = forecastOwnerRisk(ownerFrame);
+        var anotherHypothesis = forecastOwnerRisk(ownerFrame);
+        double one = singlePlan.expectedRisk - basePlan.expectedRisk;
+        double two = pairPlan.expectedRisk - basePlan.expectedRisk;
+        System.out.println("FULL_ARROW_RISK single=" + one + " two=" + two + " owner=" + first.ownerReceived
+            + " freshHypothesis=" + anotherHypothesis.ownerReceived);
+        check(basePlan.simulated && singlePlan.simulated && pairPlan.simulated, "FULL risk fixture lost full forecast");
+        check(Math.abs(one - 6) < 1.0E-6, "One native arrow was counted in multiple FULL intervals: " + one);
+        check(Math.abs(two - 12) < 1.0E-6, "Independent arrows did not retain independent FULL damage: " + two);
+        check(first.ownerReceived == 6 && anotherHypothesis.ownerReceived == 6,
+            "Owner projectile risk repeated across intervals or leaked between hypotheses");
+    }
+
+    private static void fullProjectileRiskSeparatesBodiesAndContexts() {
+        var baseline = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Collections.emptyList(), 0, true);
+        var s = baseline.self;
+        var owner = new Vec(2, 0, .5);
+        var withOwner = new CombatSnapshot.Self(s.position, s.velocity, owner, s.health, 20,
+            s.halfWidth, s.height, s.reach, 0, true, false, true, false, true, true, false,
+            s.attackDelay, 0, 0, 0, false, false);
+        var arrow = new CombatSnapshot.Projectile(new UUID(0, 97), new Vec(.5, .7, .5),
+            new Vec(1, 0, 0), 100, 0, 1, .1, 6);
+        var frame = new CombatSnapshot(100, 1, 1, 1, SELF, withOwner, Collections.emptyList(),
+            Arrays.asList(arrow), Collections.emptyList(), baseline.weapons, baseline.geometry, null, true);
+        var risk = forecastOwnerRisk(frame);
+        var mixedHypothesis = forecastOwnerRisk(frame);
+        double hypothesisResult = ThreatEstimator.damage(frame, s.position, s.position, 2, 1, false,
+            CombatWorkQuota.isolated(100, true), null, mixedHypothesis);
+        var copy = new CombatSnapshot(100, 1, 1, 1, SELF, withOwner, frame.targets,
+            frame.projectiles, frame.friends, frame.weapons, frame.geometry, null, true);
+        var mixedSnapshot = forecastOwnerRisk(frame);
+        double snapshotResult = ThreatEstimator.damage(copy, s.position, s.position, 2, 0, false,
+            CombatWorkQuota.isolated(100, true), null, mixedSnapshot);
+        System.out.println("FULL_ARROW_BOUNDARIES self=" + risk.selfSingle + " owner=" + risk.ownerReceived
+            + " mixedHypothesis=" + hypothesisResult + " mixedSnapshot=" + snapshotResult);
+        check(risk.selfSingle == 6 && risk.ownerReceived == 6,
+            "Self hit skipped the remaining owner sweep within the same two-tick interval");
+        check(Double.isInfinite(hypothesisResult) && !mixedHypothesis.known,
+            "One projectile ledger silently crossed prediction hypotheses");
+        check(Double.isInfinite(snapshotResult) && !mixedSnapshot.known,
+            "One projectile ledger silently crossed immutable snapshots");
+    }
+
+    private static ThreatEstimator.Risk forecastOwnerRisk(CombatSnapshot frame) {
+        var q = CombatWorkQuota.isolated(frame.tick, true);
+        var risk = new ThreatEstimator.Risk();
+        var occlusion = ThreatEstimator.occlusion(frame, q);
+        for (int elapsed = 2; elapsed <= CombatWorkQuota.HORIZON; elapsed += CombatWorkQuota.STEP) {
+            double value = ThreatEstimator.damage(frame, frame.self.position, frame.self.position,
+                elapsed, 0, false, q, occlusion, risk);
+            check(Double.isFinite(value), "Owner risk exhausted the unchanged FULL budget");
+        }
+        return risk;
     }
 
     private static void lightProjectileResponseRespectsReachableMovement() {
