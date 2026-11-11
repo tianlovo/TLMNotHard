@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.ysmu.YsmuCompat;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -43,7 +44,7 @@ public final class MaidPassengerAlias {
                 }
             }
             if (declaredId == null) return original;
-            if (!PROVIDER.equals(DependencyFingerprint.mod("ysmu")))
+            if (!PROVIDER.equals(DependencyFingerprint.mod(YsmuCompat.MOD_ID)))
                 throw new IllegalStateException("YSM passenger matcher provider differs from the inspected artifact");
             String clip = prefix + declaredId;
             if (DevelopmentFlags.isDevCommandsEnabled()) {

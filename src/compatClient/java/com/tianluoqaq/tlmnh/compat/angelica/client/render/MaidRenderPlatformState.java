@@ -9,8 +9,10 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 
 import org.lwjgl.opengl.GL11;
 
+import com.tianluoqaq.tlmnh.client.compat.spi.RenderPlatformCompat;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.angelica.AngelicaCompat;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
@@ -81,7 +83,7 @@ public final class MaidRenderPlatformState {
         return field;
     }
 
-    public static final class FilterWindow implements AutoCloseable {
+    public static final class FilterWindow implements RenderPlatformCompat.FilterWindowHandle {
 
         private final Bindings state;
         private final Object vanillaMin, vanillaMag, vanillaAniso;
@@ -107,6 +109,7 @@ public final class MaidRenderPlatformState {
             restore();
         }
 
+        @Override
         public void restore() {
             Throwable failure = null;
             failure = restoreField(state.vanillaMin, null, vanillaMin, failure);
@@ -191,7 +194,7 @@ public final class MaidRenderPlatformState {
             try {
                 manager = Class.forName("com.gtnewhorizons.angelica.glsm.GLStateManager", true, providerLoader);
             } catch (ClassNotFoundException absent) {
-                if (Loader.isModLoaded("angelica"))
+                if (Loader.isModLoaded(AngelicaCompat.MOD_ID))
                     throw new IllegalStateException("Angelica render API missing", absent);
                 return null;
             }

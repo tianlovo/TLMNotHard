@@ -13,6 +13,9 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraftforge.common.util.Constants;
 
+import com.tianluoqaq.tlmnh.common.combat.spi.ShieldCompatProvider;
+import com.tianluoqaq.tlmnh.compat.battlegear2.Battlegear2Compat;
+
 import cpw.mods.fml.common.registry.GameRegistry;
 
 /** 提供方物品、音效与盾牌接口；外部类型保持在惰性API类中 */
@@ -35,7 +38,7 @@ public final class BattlegearShieldAccess {
     }
 
     public static Item woodenShieldItem() {
-        return GameRegistry.findItem("battlegear2", "shield.wood");
+        return GameRegistry.findItem(Battlegear2Compat.MOD_ID, "shield.wood");
     }
 
     public static boolean isShield(ItemStack stack) {
@@ -63,7 +66,7 @@ public final class BattlegearShieldAccess {
         return Api.prepareArrowCapture(stack);
     }
 
-    public static final class ArrowCapture {
+    public static final class ArrowCapture implements ShieldCompatProvider.ArrowCaptureHandle {
 
         private final NBTBase previous;
         private final short next;
@@ -77,6 +80,7 @@ public final class BattlegearShieldAccess {
         }
 
         /** 只合并已核计数，不覆盖磨损回调刚写入的其他NBT或重放外部回调 */
+        @Override
         public NBTTagCompound applyTo(ItemStack stack) {
             var data = stack.hasTagCompound() ? stack.getTagCompound() : null;
             if (!Objects.equals(previous, data == null ? null : data.getTag("arrows"))) return null;

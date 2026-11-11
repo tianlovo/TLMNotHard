@@ -10,6 +10,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 
+import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
@@ -47,7 +48,7 @@ public final class NativeArrowGravity {
         }, () -> null);
     }
 
-    public static final class LaunchSample {
+    public static final class LaunchSample implements ProjectilePhysicsProvider.ArrowLaunchSample {
 
         public final float gravity;
         private final EntityArrow arrow;
@@ -79,6 +80,12 @@ public final class NativeArrowGravity {
         }
 
         /** 发射流程可正常写入朝向与附魔，但箭矢所属世界、维度提供方及实体身份须保持一致 */
+        @Override
+        public float gravity() {
+            return gravity;
+        }
+
+        @Override
         public boolean isCurrent(EntityArrow candidate) {
             return candidate == arrow && available()
                 && !arrow.isDead
@@ -91,6 +98,7 @@ public final class NativeArrowGravity {
         }
 
         /** 星系的箭矢重力仅取决于世界与维度提供方，同帧同维度的原版箭可复用本次采样 */
+        @Override
         public boolean sameObservationInput(EntityArrow candidate) {
             return arrow.getClass() == EntityArrow.class && candidate != null
                 && candidate.getClass() == EntityArrow.class

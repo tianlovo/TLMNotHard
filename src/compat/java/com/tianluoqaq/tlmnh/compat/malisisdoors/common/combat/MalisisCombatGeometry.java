@@ -17,6 +17,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.MalisisDoorsCompat;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
@@ -248,8 +249,8 @@ public final class MalisisCombatGeometry {
     private static Api api() {
         var mod = Loader.instance()
             .getIndexedModList()
-            .get("malisisdoors");
-        if (mod == null || !"1.19.13-GTNH".equals(mod.getVersion())) return null;
+            .get(MalisisDoorsCompat.MOD_ID);
+        if (mod == null || !MalisisDoorsCompat.REVIEWED_VERSION.equals(mod.getVersion())) return null;
         try {
             var loader = MalisisCombatGeometry.class.getClassLoader();
             Class<?> gate = Class.forName("net.malisis.doors.door.block.FenceGate", false, loader);

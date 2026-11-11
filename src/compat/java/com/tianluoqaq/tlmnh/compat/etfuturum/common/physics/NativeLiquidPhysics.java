@@ -5,7 +5,9 @@ import java.lang.reflect.Modifier;
 
 import net.minecraft.util.Vec3;
 
+import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
+import com.tianluoqaq.tlmnh.compat.etfuturum.EtFuturumCompat;
 
 import cpw.mods.fml.common.Loader;
 
@@ -20,7 +22,7 @@ public final class NativeLiquidPhysics {
         return new Sample(read());
     }
 
-    public static final class Sample {
+    public static final class Sample implements ProjectilePhysicsProvider.LiquidFlowSample {
 
         private final boolean adjusted;
 
@@ -28,15 +30,18 @@ public final class NativeLiquidPhysics {
             this.adjusted = adjusted;
         }
 
+        @Override
         public boolean isCurrent() {
             return adjusted == read();
         }
 
+        @Override
         public boolean adjusted() {
             return adjusted;
         }
 
         /** 对应liquidphysics.MixinBlockLiquid：在求和前按此格metadata缩放水平分量 */
+        @Override
         public Vec3 cellFlow(Vec3 original, int metadata) {
             if (!adjusted) return original;
             double power = metadata == 8 ? 1 : 1 - (metadata / 7D) * (1 - .4D);
@@ -44,6 +49,7 @@ public final class NativeLiquidPhysics {
         }
 
         /** 对应liquidphysics.MixinWorld：非EntityItem保留合流长度，上限1.15，Y仍为归一分量 */
+        @Override
         public Vec3 normalizeTotal(Vec3 sum) {
             var normalized = sum.normalize();
             if (!adjusted) return normalized;
@@ -65,8 +71,8 @@ public final class NativeLiquidPhysics {
         static final Field CONFIG = resolve();
 
         private static Field resolve() {
-            if (!Loader.isModLoaded("etfuturum")) return null;
-            String fingerprint = DependencyFingerprint.mod("etfuturum");
+            if (!Loader.isModLoaded(EtFuturumCompat.MOD_ID)) return null;
+            String fingerprint = DependencyFingerprint.mod(EtFuturumCompat.MOD_ID);
             if (!fingerprint.endsWith(":sha256:" + SOURCE_SHA256))
                 throw new IllegalStateException("Unverified EFR liquid physics provider: " + fingerprint);
             try {

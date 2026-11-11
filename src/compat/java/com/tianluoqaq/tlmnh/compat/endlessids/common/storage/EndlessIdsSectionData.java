@@ -5,6 +5,7 @@ import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.endlessids.EndlessIdsCompat;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -33,7 +34,7 @@ public final class EndlessIdsSectionData {
         try {
             if (section == null || index < 0 || index >= 4096)
                 throw new IllegalArgumentException("Native section and index 0..4095 required");
-            String fingerprint = DependencyFingerprint.mod("endlessids");
+            String fingerprint = DependencyFingerprint.mod(EndlessIdsCompat.MOD_ID);
             boolean extended = !"absent".equals(fingerprint);
             if (extended && !EXPECTED.equals(fingerprint))
                 throw new IllegalStateException("Unaudited EndlessIDs section provider: " + fingerprint);
