@@ -1,13 +1,12 @@
 package com.tianluoqaq.tlmnh.common.protection;
 
-import java.io.FileInputStream;
-import java.security.MessageDigest;
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 import cpw.mods.fml.common.Loader;
 
-/** 每进程只读一次依赖源文件摘要，同版本自研代码变更也会使摘要变化 */
+/** 按进程缓存已加载模组的源文件 SHA-256 指纹，供存档账本与特定提供方校验复用 */
 public final class DependencyFingerprint {
 
     private static final Map<String, String> CACHE = new HashMap<>();
@@ -34,16 +33,8 @@ public final class DependencyFingerprint {
         return fingerprint;
     }
 
-    public static String source(java.io.File source, String version) throws Exception {
-        try (var input = new FileInputStream(source)) {
-            var digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = new byte[65536];
-            int count;
-            while ((count = input.read(bytes)) >= 0) if (count > 0) digest.update(bytes, 0, count);
-            var hex = new StringBuilder();
-            for (byte value : digest.digest()) hex.append(String.format("%02x", value & 255));
-            return version + ":sha256:" + hex;
-        }
+    public static String source(File source, String version) throws Exception {
+        return version + ":sha256:" + Sha256Hex.ofFile(source);
     }
 
     public static String item(String registryName) {

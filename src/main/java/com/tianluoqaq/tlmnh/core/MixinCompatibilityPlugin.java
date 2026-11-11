@@ -3,10 +3,13 @@ package com.tianluoqaq.tlmnh.core;
 import java.util.List;
 import java.util.Set;
 
+import net.minecraft.launchwrapper.Launch;
+
 import org.apache.logging.log4j.LogManager;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.FieldNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
 import org.spongepowered.asm.lib.tree.VarInsnNode;
@@ -14,7 +17,10 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.service.MixinService;
 
-/** 启动阶段只读字节码，不提前加载模组实体；不兼容的可选碰撞钩子留给伤害前后备 */
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
+
+/** 启动阶段只读目标字节码做形态核对，避免提前加载模组实体；可选碰撞钩子对不上时退回伤害前保护 */
 public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     private static volatile boolean shieldCaptureHook;
@@ -34,8 +40,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) return supportsNaturalWorldGen(targetClassName);
         if (mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return supportsShieldCapture(targetClassName);
         if (!mixinClassName.endsWith(".MixinArrowImpact")) return true;
-        if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.qaProjectileImpactFallback"))
-            return false;
+        if (DevelopmentFlags.isQaProjectileImpactFallback()) return false;
         try {
             var node = MixinService.getService()
                 .getBytecodeProvider()
@@ -72,24 +77,20 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
         return false;
     }
 
-    /** 可选YSM只在已读取的提供方class原字节及实际注入shape一致时加载 */
+    /** 核对 YSM 乘客匹配器的 class 字节摘要与注入形态，一致时才启用可选别名钩子 */
     private static boolean supportsYsmMaidPassenger(String targetClassName) {
         if (!"com.fox.ysmu.client.animation.condition.ConditionalEntityIdMatch".equals(targetClassName)) return false;
         try {
-            var resource = net.minecraft.launchwrapper.Launch.classLoader
+            var resource = Launch.classLoader
                 .getResource("com/fox/ysmu/client/animation/condition/ConditionalEntityIdMatch.class");
             if (resource == null) return false;
-            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            String hex;
             try (var stream = resource.openStream()) {
-                byte[] bytes = new byte[8192];
-                int count;
-                while ((count = stream.read(bytes)) >= 0) if (count > 0) digest.update(bytes, 0, count);
+                hex = Sha256Hex.ofStream(stream);
             }
-            var hex = new StringBuilder();
-            for (byte value : digest.digest()) hex.append(String.format("%02x", value & 255));
-            // 同一已审计Multi-Release JAR：Java8原entry和Java21+实际选中的entry分别保留精确摘要
-            if (!"6736b016732daa5cb32676fc3f88f1989bda8797663e4f806295d8d43109c994".equals(hex.toString())
-                && !"a6cef19780740b05e7babb590e32dba7c9a088d5fcb59bfe3edac1e25bcb9a3d".equals(hex.toString())) {
+            // 同一个 Multi-Release JAR 内 Java 8 原始条目与 Java 21+ 命中条目的摘要分别放行
+            if (!"6736b016732daa5cb32676fc3f88f1989bda8797663e4f806295d8d43109c994".equals(hex)
+                && !"a6cef19780740b05e7babb590e32dba7c9a088d5fcb59bfe3edac1e25bcb9a3d".equals(hex)) {
                 LogManager.getLogger("tlmnh")
                     .warn(
                         "YSM passenger matcher differs; resource={} observedSha256={}; original matching remains active",
@@ -103,7 +104,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
             int matching = 0;
             boolean field = false;
             for (Object raw : node.fields) {
-                var entry = (org.spongepowered.asm.lib.tree.FieldNode) raw;
+                var entry = (FieldNode) raw;
                 if (entry.name.equals("ids") && entry.desc.equals("Ljava/util/Set;")
                     && (entry.access & Opcodes.ACC_FINAL) != 0) field = true;
             }
@@ -128,8 +129,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
     }
 
     private static boolean supportsNaturalWorldGen(String targetClassName) {
-        if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.qaNaturalWorldgenHookDisabled"))
-            return false;
+        if (DevelopmentFlags.isQaNaturalWorldgenHookDisabled()) return false;
         try {
             var node = MixinService.getService()
                 .getBytecodeProvider()
@@ -169,7 +169,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
         return previous;
     }
 
-    /** 仅接受唯一伤害调用和原生getArrowCount()+1布局，不改写未知引擎实现 */
+    /** 核对箭矢命中伤害与原生 getArrowCountInEntity() + 1 指令序列是否完好 */
     private static boolean supportsShieldCapture(String targetClassName) {
         try {
             var node = MixinService.getService()

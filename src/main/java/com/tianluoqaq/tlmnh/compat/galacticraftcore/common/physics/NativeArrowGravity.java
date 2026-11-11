@@ -1,7 +1,7 @@
 package com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -12,11 +12,14 @@ import net.minecraft.world.WorldProvider;
 
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 
-/** 实装Galacticraft的只读箭重力查询；没有该模组时使用原生EntityArrow的float常量 */
+/** 读取星系（Galacticraft）的维度箭矢重力；未安装该模组时沿用原版 EntityArrow 的默认重力 0.05F */
 public final class NativeArrowGravity {
 
-    private static final Method GALACTICRAFT = IntegrationGuard
+    private static final float VANILLA_ARROW_GRAVITY = 0.05F;
+    private static final MethodHandle GALACTICRAFT = IntegrationGuard
         .call(ExternalFeature.ARROW_GRAVITY, NativeArrowGravity::resolve, () -> null);
     private static final ThreadLocal<Boolean> LAUNCH_QUERY = new ThreadLocal<>();
 
@@ -30,7 +33,7 @@ public final class NativeArrowGravity {
         return IntegrationGuard.call(ExternalFeature.ARROW_GRAVITY, () -> read(arrow), () -> 0F);
     }
 
-    /** 发射前只查询一次；查询回调必须保持实际箭和环境不变，失败没有可用物理输入 */
+    /** 发射前采样一次当前箭矢重力，同时校验外部查询回调没有篡改箭实体或所在世界 */
     public static LaunchSample sampleForLaunch(EntityArrow arrow) {
         return IntegrationGuard.call(ExternalFeature.ARROW_GRAVITY, () -> {
             if (Boolean.TRUE.equals(LAUNCH_QUERY.get()))
@@ -75,7 +78,7 @@ public final class NativeArrowGravity {
                 throw new IllegalStateException("Arrow gravity query changed the actual arrow or its environment");
         }
 
-        /** 定向与附魔可按发射合同更新箭，世界/provider/身份不允许被回调偷换 */
+        /** 发射流程可正常写入朝向与附魔，但箭矢所属世界、维度提供方及实体身份须保持一致 */
         public boolean isCurrent(EntityArrow candidate) {
             return candidate == arrow && available()
                 && !arrow.isDead
@@ -87,7 +90,7 @@ public final class NativeArrowGravity {
                 && identity.equals(arrow.getUniqueID());
         }
 
-        /** 已核GC查询只依赖world/provider分类；仅供同帧观察复用，不扩展到自定义箭物理 */
+        /** 星系的箭矢重力仅取决于世界与维度提供方，同帧同维度的原版箭可复用本次采样 */
         public boolean sameObservationInput(EntityArrow candidate) {
             return arrow.getClass() == EntityArrow.class && candidate != null
                 && candidate.getClass() == EntityArrow.class
@@ -112,34 +115,24 @@ public final class NativeArrowGravity {
     }
 
     private static float read(EntityArrow arrow) {
-        if (GALACTICRAFT == null) return .05F;
+        if (GALACTICRAFT == null) return VANILLA_ARROW_GRAVITY;
         try {
-            float result = ((Float) GALACTICRAFT.invoke(null, arrow)).floatValue();
+            float result = (float) GALACTICRAFT.invokeExact(arrow);
             if (!Float.isFinite(result) || result < 0)
                 throw new IllegalStateException("Invalid external arrow gravity");
             return result;
-        } catch (ReflectiveOperationException failure) {
+        } catch (RuntimeException | Error direct) {
+            throw direct;
+        } catch (Throwable failure) {
             throw new IllegalStateException("Installed arrow gravity query failed", failure);
         }
     }
 
-    private static Method resolve() {
-        try {
-            var method = Class
-                .forName(
-                    "micdoodle8.mods.galacticraft.core.util.WorldUtil",
-                    false,
-                    NativeArrowGravity.class.getClassLoader())
-                .getMethod("getArrowGravity", EntityArrow.class);
-            if (method.getReturnType() != float.class || !Modifier.isStatic(method.getModifiers()))
-                throw new IllegalStateException("Installed arrow gravity signature differs from the reviewed API");
-            return method;
-        } catch (ClassNotFoundException absent) {
-            if (cpw.mods.fml.common.Loader.isModLoaded("GalacticraftCore"))
-                throw new IllegalStateException("Installed arrow gravity class missing", absent);
-            return null;
-        } catch (NoSuchMethodException incompatible) {
-            throw new IllegalStateException("Installed arrow gravity API differs", incompatible);
-        }
+    private static MethodHandle resolve() {
+        return OptionalApi.findStatic(
+            KnownModIds.GALACTICRAFT_CORE,
+            "micdoodle8.mods.galacticraft.core.util.WorldUtil",
+            "getArrowGravity",
+            MethodType.methodType(float.class, EntityArrow.class));
     }
 }

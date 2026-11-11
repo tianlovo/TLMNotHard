@@ -3,17 +3,31 @@ package com.tianluoqaq.tlmnh;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.github.tartaricacid.touhoulittlemaid.datapack.KaomojiData;
+import com.github.tartaricacid.touhoulittlemaid.event.EntityHurtEvent;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
+import com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents;
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes;
+import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
+import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.ProtectionCommand;
+import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.registry.EventBuses;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
@@ -21,21 +35,27 @@ import com.tianluoqaq.tlmnh.common.registry.ModEntities;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLMissingMappingsEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
+import cpw.mods.fml.common.registry.GameRegistry;
 
-/**
- * TLMNotHard 的公共启动入口，禁止在这里加载客户端渲染类型
- */
+/** 模组主入口，统一串联双端共享生命周期，不在此直接触碰客户端渲染类 */
 @Mod(
     modid = TLMNotHard.MOD_ID,
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "after:battlegear2;after:AppleCore;after:gregtech;after:dreamcraft")
+    dependencies = "after:" + KnownModIds.BATTLEGEAR2
+        + ";after:"
+        + KnownModIds.APPLE_CORE
+        + ";after:"
+        + KnownModIds.GREGTECH
+        + ";after:"
+        + KnownModIds.DREAMCRAFT)
 public final class TLMNotHard {
 
     public static final String MOD_ID = "tlmnh";
@@ -50,33 +70,26 @@ public final class TLMNotHard {
         serverSide = "com.tianluoqaq.tlmnh.common.proxy.CommonProxy")
     public static CommonProxy PROXY;
 
-    /**
-     * 记录实际两端环境，后续注册和配置仍由各自的职责模块负责
-     */
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();
         MaidAcquisitionConfig.load(event.getSuggestedConfigurationFile());
-        com.github.tartaricacid.touhoulittlemaid.datapack.KaomojiData.load();
+        KaomojiData.load();
         ModEntities.register(this);
         MaidLifeContent.register();
-        com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.register();
-        com.tianluoqaq.tlmnh.common.protection.ProtectionEvents.register();
+        RecoveryParcel.register();
+        ProtectionEvents.register();
         MaidResurrectionContent.register();
         AnimationLab.register();
         MaidBrainLifecycle.register();
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents.register();
+        CombatProjectileEvents.register();
         MaidShieldEvents.register();
-        com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.register();
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS
-            .register(new com.github.tartaricacid.touhoulittlemaid.event.EntityHurtEvent());
+        MaidCreeperAvoidance.register();
+        EventBuses.registerForge(new EntityHurtEvent());
     }
 
-    /**
-     * 提供与构建版本绑定的加载证据，不将空入口记录成玩法完成
-     */
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         NetworkRegistry.INSTANCE.registerGuiHandler(this, PROXY);
@@ -87,15 +100,15 @@ public final class TLMNotHard {
 
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
-        com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes.register();
+        MaidProgressionRecipes.register();
     }
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
-        // 依赖摘要在启动阶段预热，避免第一次战斗在实体tick读取整个GT JAR
-        com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint.mod("gregtech");
-        event.registerServerCommand(new com.tianluoqaq.tlmnh.common.protection.ProtectionCommand());
-        if (Boolean.getBoolean("tlmnh.devCommands")) {
+        // 开服阶段顺手预热 GT 依赖指纹，省得第一场战斗在实体 tick 里临时读整包 JAR
+        DependencyFingerprint.mod(KnownModIds.GREGTECH);
+        event.registerServerCommand(new ProtectionCommand());
+        if (DevelopmentFlags.isDevCommandsEnabled()) {
             AnimationLab.validateAutoEntry();
             MaidShieldRuntimeProbe.registerForDevelopment();
             event.registerServerCommand(new DevelopmentCommand());
@@ -103,16 +116,16 @@ public final class TLMNotHard {
     }
 
     @Mod.EventHandler
-    public void missingMappings(cpw.mods.fml.common.event.FMLMissingMappingsEvent event) {
-        for (var mapping : event.getAll()) if (mapping.type == cpw.mods.fml.common.registry.GameRegistry.Type.ITEM)
-            com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.missing(mapping.id, mapping.name);
+    public void missingMappings(FMLMissingMappingsEvent event) {
+        for (var mapping : event.getAll()) {
+            if (mapping.type == GameRegistry.Type.ITEM) ProtectedItemCodec.missing(mapping.id, mapping.name);
+        }
     }
 
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
         Throwable failure = null;
-        for (Runnable close : new Runnable[] {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe::cancelPanicRuntime,
+        for (Runnable close : new Runnable[] { MaidCoreInteractionProbe::cancelPanicRuntime,
             MaidBowRuntimeProbe::cancel, MaidLifeRuntimeProbe::cancel, MaidShieldRuntimeProbe::cancel,
             MaidEpisodeRecorder::closeAll }) {
             try {
