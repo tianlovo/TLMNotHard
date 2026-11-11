@@ -9,7 +9,10 @@ import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHandAttachment;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms.Side;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 只验证实际资源的定位结构和只读边界，不替代真实动画或绘制采样 */

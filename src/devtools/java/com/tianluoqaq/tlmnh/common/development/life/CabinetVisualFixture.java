@@ -13,7 +13,7 @@ import net.minecraftforge.common.util.Constants;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 空库存柜体/原生27格界面显示，持久登记后才写世界，未知改动保留 */

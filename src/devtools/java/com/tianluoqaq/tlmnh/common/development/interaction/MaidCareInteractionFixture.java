@@ -31,8 +31,8 @@ import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

@@ -11,10 +11,10 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 

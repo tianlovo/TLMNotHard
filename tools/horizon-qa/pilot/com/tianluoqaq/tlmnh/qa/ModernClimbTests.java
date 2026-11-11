@@ -5,10 +5,10 @@ import net.minecraft.init.Blocks;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidClimbActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidClimbActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })

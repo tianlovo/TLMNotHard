@@ -43,12 +43,12 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathExperience;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

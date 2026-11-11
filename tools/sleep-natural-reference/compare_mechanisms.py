@@ -13,7 +13,7 @@ from nbt_binding import BINDING_SCHEMA, compare_same_side_nbt
 
 MECHANISMS = ("normal", "occupied_release", "unreachable", "bed_removed", "hurt_sleeping")
 SLEEP_OWNER = ["com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator",
-               "com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife"]
+               "com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidModernLife"]
 PAIRED_OBSERVER = ["com.tianluoqaq.tlmnh.qa.SleepMechanismPortTests" + s for s in ("", "$Collector")]
 
 

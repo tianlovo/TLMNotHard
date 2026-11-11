@@ -15,7 +15,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;

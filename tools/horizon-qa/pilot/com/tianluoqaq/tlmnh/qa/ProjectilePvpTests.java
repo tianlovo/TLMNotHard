@@ -8,10 +8,10 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowImpactState;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowImpactState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection;
 import com.tianluoqaq.tlmnh.qa.ProjectileImpactTests.Environment;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;

@@ -24,6 +24,8 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.FormatVer
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder;
 import com.google.gson.JsonParser;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 /** 检查 Gecko 的几何与骨骼状态，未接动画时间轴，也不创建 GL 上下文 */
 public class GeckoGeometryTest {

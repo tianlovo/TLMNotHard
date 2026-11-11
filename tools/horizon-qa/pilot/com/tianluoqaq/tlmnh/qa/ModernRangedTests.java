@@ -19,7 +19,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;

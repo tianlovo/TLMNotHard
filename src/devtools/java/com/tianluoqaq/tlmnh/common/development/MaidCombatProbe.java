@@ -17,7 +17,7 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;

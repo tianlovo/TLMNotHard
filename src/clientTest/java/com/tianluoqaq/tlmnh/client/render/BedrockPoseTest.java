@@ -16,6 +16,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.github.tartaricacid.touhoulittlemaid.client.animation.script.GlWrapper;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 用实际几何输出核对每帧复位与整体坐标，避免坐姿、悬浮和附件变换串帧 */

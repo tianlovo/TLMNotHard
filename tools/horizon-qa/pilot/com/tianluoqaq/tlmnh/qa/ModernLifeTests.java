@@ -14,7 +14,7 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState.Activity;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
@@ -147,7 +147,7 @@ public final class ModernLifeTests {
                 other[0].setPose(MaidPose.SLEEPING, true);
                 var actor = f.core.getActor();
                 actor.setWorkTarget(
-                    new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
+                    new com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point(
                         farBed.xCoord,
                         farBed.yCoord,
                         farBed.zCoord));
@@ -159,7 +159,7 @@ public final class ModernLifeTests {
                 boolean rejected = false;
                 try {
                     actor.sleepAt(
-                        new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
+                        new com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point(
                             farBed.xCoord,
                             farBed.yCoord,
                             farBed.zCoord));

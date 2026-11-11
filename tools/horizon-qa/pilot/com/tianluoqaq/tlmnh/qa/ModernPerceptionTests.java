@@ -13,7 +13,7 @@ import net.minecraft.potion.PotionEffect;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidVisibleLivingEntities;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidVisibleLivingEntities;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 

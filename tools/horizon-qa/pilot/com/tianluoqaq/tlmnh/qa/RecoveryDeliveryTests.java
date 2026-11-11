@@ -24,14 +24,14 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 

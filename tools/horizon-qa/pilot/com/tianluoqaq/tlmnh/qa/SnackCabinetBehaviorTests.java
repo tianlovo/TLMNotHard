@@ -27,8 +27,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.life.cabinet.ItemSnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import io.netty.channel.embedded.EmbeddedChannel;

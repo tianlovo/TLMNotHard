@@ -34,6 +34,9 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.value.IVal
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.binding.ObjectBinding;
+import com.tianluoqaq.tlmnh.client.render.animation.GeckoKeyframes;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinGeckoAnimations;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangBindings;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangAnimationContext;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;

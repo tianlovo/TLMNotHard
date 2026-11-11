@@ -8,7 +8,7 @@ import net.minecraft.client.Minecraft;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

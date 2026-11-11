@@ -32,12 +32,12 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 

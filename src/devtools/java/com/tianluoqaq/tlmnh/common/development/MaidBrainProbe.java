@@ -22,15 +22,15 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
-import com.tianluoqaq.tlmnh.common.ai.MaidCombatController;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 实际世界与导航适配检查；同步夹具不代替自然世界 tick 下的跟随和原版 benchmark */

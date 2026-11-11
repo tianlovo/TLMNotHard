@@ -197,8 +197,8 @@ public final class CombatMechanismPortTests {
             report.add(
                 "sourceArrowArtifact",
                 DevelopmentArtifactIdentity.capture(
-                    com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class,
-                    com.tianluoqaq.tlmnh.common.combat.SourceBowShot.class));
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow.class,
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.SourceBowShot.class));
             report.add(
                 "combatRootArtifact",
                 DevelopmentArtifactIdentity.capture(

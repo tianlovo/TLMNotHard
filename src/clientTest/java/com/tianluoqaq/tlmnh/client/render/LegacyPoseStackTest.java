@@ -9,6 +9,8 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+
 public class LegacyPoseStackTest {
 
     private static final float EPSILON = 1.0E-5F;

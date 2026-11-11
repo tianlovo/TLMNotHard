@@ -10,7 +10,7 @@ import net.minecraftforge.client.MinecraftForgeClient;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

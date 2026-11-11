@@ -6,7 +6,7 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.util.ResourceLocation;
 
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;

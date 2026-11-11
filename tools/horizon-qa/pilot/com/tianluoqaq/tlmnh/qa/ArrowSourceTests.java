@@ -12,13 +12,13 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowImpactState;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowImpactState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
+import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.qa.ProjectileImpactTests.Environment;
 
 import cpw.mods.fml.relauncher.Side;

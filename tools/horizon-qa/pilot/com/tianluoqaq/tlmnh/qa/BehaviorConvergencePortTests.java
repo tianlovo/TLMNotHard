@@ -33,8 +33,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -103,9 +103,9 @@ public final class BehaviorConvergencePortTests {
             output.add(
                 "convergenceProductionArtifact",
                 DevelopmentArtifactIdentity.capture(
-                    com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource.class,
+                    com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource.class,
                     MaidProjectileImpactProtection.class,
-                    com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel.class,
+                    com.tianluoqaq.tlmnh.common.lifecycle.world.MaidDimensionTravel.class,
                     NativeDoorState.class,
                     com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager.class,
                     com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.class));

@@ -32,13 +32,13 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidFilmData;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
@@ -230,8 +230,8 @@ public final class RedemptionDurabilityTests {
             changed.release(other) != MaidLifecycleService.Result.SUCCESS && changed.calls == calls,
             "Persistent unknown successor admitted another spawn");
         var recovery = new NBTTagList();
-        recovery
-            .appendTag(com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(new ItemStack(Items.arrow, 9)));
+        recovery.appendTag(
+            com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec.encode(new ItemStack(Items.arrow, 9)));
         changed.last.getMaidInventory()
             .recovery()
             .read(recovery);
@@ -239,7 +239,7 @@ public final class RedemptionDurabilityTests {
         changed.last.writeToNBT(pendingSource);
         var playerSource = (NBTTagList) changed.player.inventory.writeToNBT(new NBTTagList())
             .copy();
-        new com.tianluoqaq.tlmnh.common.protection.ProtectionCommand()
+        new com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionCommand()
             .processCommand(changed.player, new String[] { "recover", Integer.toString(changed.last.getEntityId()) });
         var afterClaim = new NBTTagCompound();
         changed.last.writeToNBT(afterClaim);
@@ -372,7 +372,8 @@ public final class RedemptionDurabilityTests {
             "Actual restart lost the durable native redemption intent");
         f.assertPending(token);
         // 先核完整来源与精确既有候选，再沿真实登录恢复代价；不自动补造实体
-        var film = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(pending.getCompoundTag("Source"));
+        var film = com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec
+            .decode(pending.getCompoundTag("Source"));
         helper.assertTrue(
             MaidLifecycleItems.isFilm(film) && token.equals(MaidLifecycleItems.token(film)),
             "Native restart lost the complete source film");

@@ -27,8 +27,11 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowCoreMoveDriver;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.BlockPos;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Vec3;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState;
 
 /** 实际移植移动sink的受控重放，不读取原版各步before/after作为执行答案 */
 public final class MoveCoreReplayMain {

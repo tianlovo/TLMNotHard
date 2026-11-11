@@ -46,16 +46,16 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowImpactState;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowImpactState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.development.DeterministicMaidSpawn;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
@@ -264,10 +264,10 @@ public final class NaturalRangedPairTests {
                     com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain.class,
                     com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController.class,
                     MaidBowAttack.class,
-                    com.tianluoqaq.tlmnh.common.combat.NativeArrowMedium.class,
-                    com.tianluoqaq.tlmnh.common.combat.ArrowPhysics.class,
-                    com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver.class,
-                    com.tianluoqaq.tlmnh.common.combat.ObservedTargetMotion.class));
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.NativeArrowMedium.class,
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowPhysics.class,
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowInterceptSolver.class,
+                    com.tianluoqaq.tlmnh.common.combat.ballistics.ObservedTargetMotion.class));
             report.add(
                 "observerArtifact",
                 DevelopmentArtifactIdentity.capture(
@@ -886,7 +886,7 @@ public final class NaturalRangedPairTests {
             float providerGravity = NativeArrowGravity.forArrow(a);
             gravity = original ? 0 : providerGravity;
             c.h.assertTrue(
-                (original ? a.getClass() == com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class
+                (original ? a.getClass() == com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow.class
                     : a.getClass() == EntityArrow.class) && a instanceof MaidArrowSourceState
                     && a instanceof MaidArrowImpactState
                     && !a.getIsCritical()

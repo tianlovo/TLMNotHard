@@ -32,7 +32,7 @@ import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
-import com.tianluoqaq.tlmnh.common.ai.faithful.DryPlatformFollowTeleport;
+import com.tianluoqaq.tlmnh.common.ai.faithful.navigation.DryPlatformFollowTeleport;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;

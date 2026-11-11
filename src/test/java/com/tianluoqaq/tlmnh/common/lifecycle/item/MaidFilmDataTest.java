@@ -1,10 +1,12 @@
-package com.tianluoqaq.tlmnh.common.lifecycle;
+package com.tianluoqaq.tlmnh.common.lifecycle.item;
 
 import static org.junit.Assert.*;
 
 import net.minecraft.nbt.NBTTagCompound;
 
 import org.junit.Test;
+
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 
 public class MaidFilmDataTest {
 

@@ -8,7 +8,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;

@@ -12,8 +12,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryParcel;
 
 import cpw.mods.fml.common.Loader;
 

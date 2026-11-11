@@ -31,7 +31,7 @@ import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.FMLCommonHandler;

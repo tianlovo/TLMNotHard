@@ -8,8 +8,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Profile;
-import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms.Profile;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms.Side;
 
 /** 原生源常数的独立double精度landmark，不冒充原版运行G1或GPU绘制 */
 public class MaidHeldItemTransformsTest {

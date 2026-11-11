@@ -16,7 +16,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglContainerMouseInput;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;

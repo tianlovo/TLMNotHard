@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.follow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -15,7 +15,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidFollowOwnerTask;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowOwnerActor.Owner;
 
 public class MaidFollowOwnerTaskTest {
 

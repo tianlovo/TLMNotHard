@@ -22,7 +22,7 @@ import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFi
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
 /** 复用照料会话的临时角色与玩家原槽保全；只准备原生交互/自然tick的输入 */

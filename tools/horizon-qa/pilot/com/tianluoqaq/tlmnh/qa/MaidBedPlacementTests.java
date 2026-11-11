@@ -28,10 +28,10 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
+import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

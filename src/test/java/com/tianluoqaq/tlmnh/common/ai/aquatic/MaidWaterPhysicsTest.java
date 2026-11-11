@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai;
+package com.tianluoqaq.tlmnh.common.ai.aquatic;
 
 import static org.junit.Assert.*;
 

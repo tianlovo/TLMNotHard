@@ -18,7 +18,7 @@ PRODUCTION = [
     "com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime",
     "com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor",
     "com.tianluoqaq.tlmnh.common.life.MaidHomeArea",
-    "com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed",
+    "com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed",
 ]
 OBSERVER = ["com.tianluoqaq.tlmnh.qa.NaturalSleepPortTests" + suffix for suffix in ("", "$Collector")]
 

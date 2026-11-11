@@ -11,9 +11,9 @@ import net.minecraft.util.ResourceLocation;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 比较器和同姿态几何重放检查；真实GL绑定和故障仍由客户端实验验证 */

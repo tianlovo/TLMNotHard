@@ -40,15 +40,15 @@ import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFi
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 

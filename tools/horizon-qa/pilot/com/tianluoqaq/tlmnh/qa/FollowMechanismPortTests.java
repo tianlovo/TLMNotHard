@@ -400,7 +400,7 @@ public final class FollowMechanismPortTests {
                     && maid.getBrainCoordinator()
                         .peekFaithfulBrain()
                         .getFlightProfile()
-                        == com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
+                        == com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
                 "Full F source contract changed");
             output.addProperty("selection", selected.name());
             output.addProperty(

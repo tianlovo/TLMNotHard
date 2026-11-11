@@ -5,6 +5,8 @@ import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.client.render.animation.AnimationClock;
+
 public class AnimationClockTest {
 
     @Test

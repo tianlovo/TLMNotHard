@@ -38,7 +38,7 @@ import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 

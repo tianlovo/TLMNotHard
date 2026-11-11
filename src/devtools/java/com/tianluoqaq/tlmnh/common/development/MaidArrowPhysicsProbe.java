@@ -10,9 +10,9 @@ import net.minecraft.world.WorldServer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver;
-import com.tianluoqaq.tlmnh.common.combat.ArrowPhysics;
-import com.tianluoqaq.tlmnh.common.combat.BallisticVector;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowInterceptSolver;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowPhysics;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticVector;
 
 /** 实际原生平台箭实体的同步自由飞行检查；不等于自然tick武器、碰撞或命中率benchmark */
 public final class MaidArrowPhysicsProbe {

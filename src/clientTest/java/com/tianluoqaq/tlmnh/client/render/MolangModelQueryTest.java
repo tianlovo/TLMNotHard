@@ -16,6 +16,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.molang.Ph
 import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.molang.functions.physics.IPhysics;
 import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.molang.functions.physics.SecondOrder;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.VariableStorage;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangBindings;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangAnimationContext;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;

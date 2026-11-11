@@ -2,10 +2,10 @@ package com.tianluoqaq.tlmnh.devtools;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.Tags;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
@@ -14,9 +14,9 @@ import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentHooks;
+import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentAccess;
+import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentHooks;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;

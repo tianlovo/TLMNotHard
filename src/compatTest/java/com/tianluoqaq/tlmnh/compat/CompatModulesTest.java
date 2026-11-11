@@ -13,8 +13,8 @@ import java.util.Set;
 import org.junit.Test;
 
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 
 /** 核对 16 个外部模组描述类的包名映射、版本元数据与 ExternalFeature 依赖覆盖 */
 public class CompatModulesTest {

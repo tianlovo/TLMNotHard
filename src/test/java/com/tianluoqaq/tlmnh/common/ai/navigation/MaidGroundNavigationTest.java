@@ -8,8 +8,12 @@ import org.junit.Test;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidSwimmingActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidSwimmingActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidPathSearchFixtures;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public class MaidGroundNavigationTest {
 
@@ -71,7 +75,7 @@ public class MaidGroundNavigationTest {
             node.type = MaidPathType.WATER;
             points.add(node);
         }
-        return new MaidModernPath(new MaidPathSearch.Result(points, reachable, 5, 4, 1, 0, water));
+        return new MaidModernPath(MaidPathSearchFixtures.result(points, reachable, 5, 4, 1, 0, water));
     }
 
     private static final class Nav implements MaidNavigationActor.Navigation {

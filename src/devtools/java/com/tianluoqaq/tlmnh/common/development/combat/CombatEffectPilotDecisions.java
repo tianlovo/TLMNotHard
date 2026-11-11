@@ -2,14 +2,14 @@ package com.tianluoqaq.tlmnh.common.development.combat;
 
 import java.util.Objects;
 
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Target;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 
 /** 试点A/B的纯值决策，不访问实体、物品、世界或威胁/预演实现 */
 final class CombatEffectPilotDecisions {

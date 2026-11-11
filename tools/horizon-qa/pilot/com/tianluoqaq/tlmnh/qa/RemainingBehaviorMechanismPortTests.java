@@ -34,8 +34,8 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -136,9 +136,9 @@ public final class RemainingBehaviorMechanismPortTests {
                     DevelopmentArtifactIdentity.capture(
                         MaidBowAttack.class,
                         com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.class,
-                        com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource.class,
-                        com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection.class,
-                        com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel.class));
+                        com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource.class,
+                        com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection.class,
+                        com.tianluoqaq.tlmnh.common.lifecycle.world.MaidDimensionTravel.class));
             } catch (Exception error) {
                 throw new IllegalStateException("Remaining mechanism identity unavailable", error);
             }
@@ -512,7 +512,9 @@ public final class RemainingBehaviorMechanismPortTests {
             arrows.add(arrow);
             var row = raw(arrow, x, y, z);
             row.addProperty("frame", frames.size());
-            row.addProperty("sourceOriginal", arrow instanceof com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow);
+            row.addProperty(
+                "sourceOriginal",
+                arrow instanceof com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow);
             shots.add(row);
         }
 

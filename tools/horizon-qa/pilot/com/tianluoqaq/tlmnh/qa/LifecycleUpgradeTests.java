@@ -29,8 +29,8 @@ import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleRestartProbe;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 

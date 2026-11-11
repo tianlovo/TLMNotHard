@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 同姿态的几何重放与实际适配器参数对照，不作为上游几何或GPU成像的独立判据 */

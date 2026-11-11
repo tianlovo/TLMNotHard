@@ -13,8 +13,8 @@ import net.minecraftforge.common.util.Constants;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 仅在自有虚空展台创建无物品来源的床显示夹具；持久标记用于校验后清理，不恢复未知改动 */

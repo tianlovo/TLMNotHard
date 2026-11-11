@@ -9,7 +9,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidSensingBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -103,7 +103,7 @@ public final class EnhancedAmbientTests {
         var core = select(helper, f);
         int[] phase = { 0 }, changed = { 0 };
         long[] samples = { 0 }, searches = { 0 };
-        var lost = new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point[1];
+        var lost = new com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point[1];
         helper.succeedWhen(() -> {
             check(helper, f, core);
             int age = f.maid.ticksExisted;

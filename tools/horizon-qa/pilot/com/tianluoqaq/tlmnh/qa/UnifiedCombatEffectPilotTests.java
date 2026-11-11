@@ -68,7 +68,7 @@ import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
@@ -87,7 +87,7 @@ import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;

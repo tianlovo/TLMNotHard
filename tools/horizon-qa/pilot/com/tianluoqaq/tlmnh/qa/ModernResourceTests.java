@@ -11,7 +11,7 @@ import net.minecraft.util.DamageSource;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.WalkTarget;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.WalkTarget;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;

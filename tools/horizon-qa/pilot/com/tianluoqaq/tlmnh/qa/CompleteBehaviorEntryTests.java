@@ -74,7 +74,7 @@ public final class CompleteBehaviorEntryTests {
                 com.tianluoqaq.tlmnh.common.life.meal.MaidMealController.class,
                 MaidItemUseState.class,
                 MaidInventory.class,
-                com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.class));
+                com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec.class));
         int[] phase = { 0 }, started = { -1 }, finished = { -1 }, writes = { 0 };
         MaidItemUseState.Lease[] owned = { null };
         h.succeedWhen(() -> {

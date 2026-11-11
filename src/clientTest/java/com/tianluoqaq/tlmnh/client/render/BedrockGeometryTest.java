@@ -22,6 +22,8 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPa
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.BedrockModelPOJO;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.FaceUVsItem;
 import com.google.gson.JsonParser;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 /** 仅检验 CPU 几何输出，不创建 GL 上下文，也不替代游戏内视觉验收 */
 public class BedrockGeometryTest {

@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.follow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -19,8 +19,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.BlockPos;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Vec3;
 
 public class FollowFallbackSamplerTest {
 

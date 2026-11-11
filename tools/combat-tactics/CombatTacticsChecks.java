@@ -4,19 +4,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatGeometryWindow;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatTerrain;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.ThreatEstimator;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatGeometryWindow;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Geometry;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Target;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
 /** 不加载 Minecraft 类的纯规划实测检查。输出交由主构建批次运行 */
@@ -623,7 +624,7 @@ public final class CombatTacticsChecks {
                     if (++samples[i] >= need[i]) coverage[i] = started[i];
                     CombatWorldBudget.sampled(world, id, tick, q.preparationRound);
                 }
-                boolean ready = tick - coverage[i] <= CombatSnapshot.OBSERVATION_TTL;
+                boolean ready = tick - coverage[i] <= CombatBudgetTuning.OBSERVATION_TTL;
                 CombatWorldBudget.prepared(world, id, tick, ready, coverage[i]);
                 q = CombatWorldBudget.heartbeat(world, id, tick, due);
                 CombatWorldBudget.prepared(world, id, tick, ready, coverage[i]);
@@ -2371,7 +2372,7 @@ public final class CombatTacticsChecks {
     }
 
     private static CombatSnapshot progressFrame(CombatSnapshot base, Vec position, long tick, float health,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact fact, boolean complete) {
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact fact, boolean complete) {
         var old = base.self;
         var self = new CombatSnapshot.Self(
             position,
@@ -2608,9 +2609,9 @@ public final class CombatTacticsChecks {
         int defenseEnd = plan.route.defenseNode;
         for (int n = 1; n <= defenseEnd; n++) {
             var node = plan.movementNode;
-            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 node,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.INSTALLED,
                 tick,
                 n,
                 0,
@@ -2626,9 +2627,9 @@ public final class CombatTacticsChecks {
                     && plan.firstNativeAcceptanceAt == 100,
                 "Real path installation failed to activate its exact stage");
             node = plan.movementNode;
-            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 node,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 tick,
                 n,
                 0,
@@ -2695,9 +2696,9 @@ public final class CombatTacticsChecks {
         check(
             plan.stageId == initial.stageId && plan.movementNode != null,
             "Service recovery lost the proposed prefix");
-        var failure = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var failure = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             plan.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.NATIVE_FAILURE,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.NATIVE_FAILURE,
             181,
             0,
             201,
@@ -2728,14 +2729,14 @@ public final class CombatTacticsChecks {
 
     private static void nativeNodeFactsRejectWrongFootIdentityAndPhase() {
         var base = progressScene(20, CombatSnapshot.DamageSource.GENERIC_PRIOR, Collections.emptyList());
-        var node = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node(
+        var node = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Node(
             2,
             1,
             base,
             new Vec(.5, .5, .5));
-        var correct = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var correct = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             node,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
             100,
             3,
             0,
@@ -2745,16 +2746,16 @@ public final class CombatTacticsChecks {
             true);
         check(correct.completed(node, 101), "Native same-cell completion incorrectly required center distance .35");
         check(!correct.completed(node, 102), "Expired completion from an older frame advanced a stage");
-        var wrongNode = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node(
+        var wrongNode = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Node(
             4,
             1,
             base,
             node.foot);
         check(!correct.completed(wrongNode, 101), "Other stage's ARRIVED advanced this route");
         for (double foot : new double[] { 0, 1 }) {
-            var wrong = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var wrong = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 node,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 100,
                 3,
                 0,
@@ -2764,9 +2765,9 @@ public final class CombatTacticsChecks {
                 true);
             check(!wrong.completed(node, 101), "Rounded half-slab Y fabricated a correct support foot");
         }
-        var uninstalled = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var uninstalled = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             node,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
             100,
             0,
             0,
@@ -2819,9 +2820,9 @@ public final class CombatTacticsChecks {
                 + (defense.route == null ? 0 : defense.route.nodes.size()));
         for (int index = 1; index <= 2; index++) {
             var submitted = defense.movementNode;
-            var done = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var done = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 submitted,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 99 + index,
                 7,
                 0,
@@ -2839,7 +2840,7 @@ public final class CombatTacticsChecks {
 
     private static void navigationCompletionPrecedesCleanupAndServiceWaitIsNotFailure() {
         var actor = new ProgressNavigationActor();
-        var navigation = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController(
+        var navigation = new com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController(
             actor,
             pos -> new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(
                 com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.WAITING_BUDGET,
@@ -2849,7 +2850,7 @@ public final class CombatTacticsChecks {
             actor.tick = tick;
             check(
                 navigation.tick()
-                    == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.WAITING_BUDGET
+                    == com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome.WAITING_BUDGET
                     && navigation.failureCount() == 0
                     && actor.cantReach == null,
                 "Path service starvation fabricated a native unreachable attempt or H40 timeout");
@@ -2858,11 +2859,13 @@ public final class CombatTacticsChecks {
         actor.position = new Vec(2.98, 0, .98);
         actor.desired = new Vec(2.5, .5, .5);
         check(
-            navigation.tick() != com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED,
+            navigation.tick()
+                != com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome.ARRIVED,
             "Half-slab node completed at the wrong actual footY");
         actor.position = new Vec(2.98, .5, .98);
         check(
-            navigation.tick() == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED
+            navigation.tick()
+                == com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome.ARRIVED
                 && actor.arrivedBeforeCleanup
                 && actor.path == null
                 && actor.walk == null,
@@ -2871,7 +2874,7 @@ public final class CombatTacticsChecks {
 
     /** 仅验证真实增强导航类的结果顺序，不替代 Minecraft 物理或实际路径安装 */
     private static final class ProgressNavigationActor
-        implements com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor,
+        implements com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor,
         com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver {
 
         long tick = 100;
@@ -2993,13 +2996,15 @@ public final class CombatTacticsChecks {
         public boolean combatNodeArrived(WalkTarget target, Path current) {
             return current != null && current == installed
                 && isCombatNode(target)
-                && com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact
+                && com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact
                     .sameStandingCell(position, desired);
         }
 
         public void combatNavigationOutcome(WalkTarget target, Path current,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome outcome, long retryAt) {
-            if (outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED)
+            com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome outcome,
+            long retryAt) {
+            if (outcome
+                == com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome.ARRIVED)
                 arrivedBeforeCleanup = target == walk && current == path && current == installed;
         }
 
@@ -3047,9 +3052,9 @@ public final class CombatTacticsChecks {
         int count = completeDefense ? value.plan.route.defenseNode : 0;
         for (int node = 0; node <= count; node++) {
             var submitted = value.plan.movementNode;
-            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 submitted,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.INSTALLED,
                 value.tick,
                 node + 1,
                 0,
@@ -3061,9 +3066,9 @@ public final class CombatTacticsChecks {
             value.plan = value.planner.decide(value.base, CombatWorkQuota.isolated(value.tick, false));
             if (!completeDefense || node == count) break;
             submitted = value.plan.movementNode;
-            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 submitted,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 value.tick,
                 node + 1,
                 0,
@@ -3144,9 +3149,9 @@ public final class CombatTacticsChecks {
 
     private static void r1NativeBackoffKeepsFallback() {
         var value = r1Prepared(false);
-        var failed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var failed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             value.plan.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.NATIVE_FAILURE,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.NATIVE_FAILURE,
             value.tick,
             1,
             value.tick + 20,
@@ -3311,7 +3316,7 @@ public final class CombatTacticsChecks {
     }
 
     private static CombatSnapshot reobsFrame(CombatSnapshot base, Vec at, long tick, float hp,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact fact, boolean body, boolean refresh) {
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact fact, boolean body, boolean refresh) {
         var current = progressFrame(base, at, tick, hp, fact, false);
         var targets = new ArrayList<Target>();
         for (Target t : base.targets) targets.add(
@@ -3530,7 +3535,7 @@ public final class CombatTacticsChecks {
         check(
             !reobserving(new CombatPlanner().decide(acute, CombatWorkQuota.isolated(100, true))),
             "Acute real sweep was ignored for body recovery");
-        var a = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservedRisk(
+        var a = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatObservedRisk(
             new double[] { 1, 0, 0 },
             new double[] { 0, 0, 0 },
             4,
@@ -3538,7 +3543,7 @@ public final class CombatTacticsChecks {
             4,
             true,
             false);
-        var b = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservedRisk(
+        var b = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatObservedRisk(
             new double[] { 0, 0, 0 },
             new double[] { 0, 0, 0 },
             4,
@@ -3566,9 +3571,9 @@ public final class CombatTacticsChecks {
         var planner = new CombatPlanner();
         var plan = planner.decide(scene, CombatWorkQuota.isolated(100, true));
         var node = plan.movementNode;
-        var fact = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var fact = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             node,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
             100,
             4,
             0,
@@ -3582,9 +3587,9 @@ public final class CombatTacticsChecks {
             reobserving(next) && next.stageId == plan.stageId && next.movementNode.index == node.index + 1,
             "Real REOBSERVE arrival did not advance its own cursor exactly once");
         check(fact.terminalFor(node, 101), "True arrival was not retained across subsequent native path cleanup");
-        var revoked = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var revoked = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             next.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.WAIT_SERVICE,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.WAIT_SERVICE,
             101,
             4,
             0,
@@ -3606,9 +3611,9 @@ public final class CombatTacticsChecks {
                 && reproved.movementNode.index == next.movementNode.index
                 && reproved.firstNativeAcceptanceAt == 100,
             "FULL lease reproof reset the existing cursor/native acceptance");
-        var budgetWait = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var budgetWait = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             reproved.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.WAIT_SERVICE,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.WAIT_SERVICE,
             103,
             4,
             0,
@@ -3624,9 +3629,9 @@ public final class CombatTacticsChecks {
             reobsFrame(refreshed, node.foot, 104, 20, budgetWait, true, false),
             CombatWorkQuota.isolated(104, false));
         check(reobserving(ordinary), "Ordinary budget wait unnecessarily invalidated an installed fresh body proof");
-        var localDone = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var localDone = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             ordinary.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
             104,
             5,
             0,
@@ -3640,7 +3645,7 @@ public final class CombatTacticsChecks {
                     reobsFrame(refreshed, ordinary.movementNode.foot, 105, 20, localDone, true, false),
                     CombatWorkQuota.isolated(105, false))),
             "Completed local endpoint fabricated a new LIGHT route/node");
-        var parent = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node(
+        var parent = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Node(
             node.stage + 2,
             node.index,
             scene,
@@ -3658,7 +3663,7 @@ public final class CombatTacticsChecks {
         check(
             !segment.acceptsNative(new int[9], 3, 0, CombatWorkQuota.isolated(100, false)),
             "Native detour escaped the proved node sequence");
-        var continued = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment(
+        var continued = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementSegment(
             segment.node,
             segment.to,
             segment.geometryAt);
@@ -3680,7 +3685,7 @@ public final class CombatTacticsChecks {
             !segment.acceptsNative(wrong, 2, 0, CombatWorkQuota.isolated(100, false)),
             "Same tail disguised a native unproved prefix");
         Object token = new Object(), behavior = new Object(), path = new Object();
-        var context = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDoorContext(
+        var context = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatDoorContext(
             token,
             behavior,
             4,
@@ -3699,7 +3704,7 @@ public final class CombatTacticsChecks {
     }
 
     private static void reobsServicesSettleOnlyRealCaptureOnce() {
-        var receipt = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt();
+        var receipt = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatFullServiceReceipt();
         check(!receipt.settle(100), "Ungrant service was settled");
         receipt.granted(100);
         check(!receipt.settle(100), "Granted but uncaptured service was settled");
@@ -3707,7 +3712,7 @@ public final class CombatTacticsChecks {
         receipt.captured(100, true, false);
         check(
             receipt.status(100)
-                == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status.BODY_READY
+                == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatFullServiceReceipt.Status.BODY_READY
                 && receipt.settle(100)
                 && !receipt.settle(100)
                 && !receipt.settle(101),
@@ -3806,9 +3811,9 @@ public final class CombatTacticsChecks {
         int consumed = 0;
         while (linked.movementNode.stage != parentId * 2 && consumed++ < 8) {
             var submitted = linked.movementNode;
-            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var arrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 submitted,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 prepared.tick,
                 12,
                 0,
@@ -3824,9 +3829,9 @@ public final class CombatTacticsChecks {
                 && linked.movementNode.index == parentIndex
                 && linked.movementNode.foot.distance(parentNext) < .0001,
             "Connector completion skipped or fabricated the original unfinished parent node");
-        var parentArrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        var parentArrived = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
             linked.movementNode,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
             prepared.tick,
             13,
             0,
@@ -4248,9 +4253,9 @@ public final class CombatTacticsChecks {
                     && initial.movementNode != null
                     && initial.route.nodes.size() >= 4,
                 "Multi-maid FULL frame did not commit an admitted melee stage: " + initial.macro);
-            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var installed = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 initial.movementNode,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.INSTALLED,
                 100,
                 1,
                 0,
@@ -4285,9 +4290,9 @@ public final class CombatTacticsChecks {
                 "Admitted melee stage dropped to WAIT_SERVICE on ordinary multi-maid LIGHT: " + step101.stageState
                     + "/"
                     + step101.macro);
-            var arrivedSameTick = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var arrivedSameTick = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 step101.movementNode,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
                 102,
                 1,
                 0,
@@ -4381,9 +4386,9 @@ public final class CombatTacticsChecks {
             check(
                 bowCommitted.normalProgressAdmitted && bowCommitted.stageId > 0,
                 "Bow defensive-return fixture failed to commit on refreshed FULL frame");
-            var bowInstalled = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+            var bowInstalled = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
                 bowCommitted.movementNode,
-                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED,
+                com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.INSTALLED,
                 200,
                 1,
                 0,
@@ -4415,8 +4420,8 @@ public final class CombatTacticsChecks {
     }
 
     private static CombatSnapshot multiMaidProgressFrame(CombatSnapshot base, Vec position, long tick, float health,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact fact, boolean complete, boolean friendCurrent,
-        long friendAt, boolean friendsBounded, long geometryAt, long coverageAt) {
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact fact, boolean complete,
+        boolean friendCurrent, long friendAt, boolean friendsBounded, long geometryAt, long coverageAt) {
         var current = progressFrame(base, position, tick, health, fact, true);
         Geometry g = base.geometry;
         byte[] cells = new byte[g.sizeX * g.sizeY * g.sizeZ];

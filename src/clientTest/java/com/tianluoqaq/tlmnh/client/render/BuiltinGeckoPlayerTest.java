@@ -25,6 +25,10 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedG
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.pojo.Converter;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.raw.tree.RawGeometryTree;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder;
+import com.tianluoqaq.tlmnh.client.render.animation.BuiltinGeckoPlayer;
+import com.tianluoqaq.tlmnh.client.render.animation.MaidAnimationState;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinGeckoAnimations;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangBindings;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame.Slot;

@@ -17,15 +17,15 @@ from reference_environment import PROJECT
 
 MAIN = "com.tianluoqaq.tlmnh.reference.replay.ReferenceAnimationReplay"
 REQUIRED_CLASSES = {MAIN,
-    "com.tianluoqaq.tlmnh.client.render.BuiltinGeckoPlayer",
+    "com.tianluoqaq.tlmnh.client.render.animation.BuiltinGeckoPlayer",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor.AnimationProcessor",
-    "com.tianluoqaq.tlmnh.client.render.BuiltinBedrockAnimations",
-    "com.tianluoqaq.tlmnh.client.render.MaidAnimationState",
+    "com.tianluoqaq.tlmnh.client.render.animation.BuiltinBedrockAnimations",
+    "com.tianluoqaq.tlmnh.client.render.animation.MaidAnimationState",
     "com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame",
-    "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel",
-    "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels",
-    "com.tianluoqaq.tlmnh.client.render.BuiltinGeckoAnimations"}
+    "com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel",
+    "com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels",
+    "com.tianluoqaq.tlmnh.client.render.model.BuiltinGeckoAnimations"}
 
 
 def file_url(value):

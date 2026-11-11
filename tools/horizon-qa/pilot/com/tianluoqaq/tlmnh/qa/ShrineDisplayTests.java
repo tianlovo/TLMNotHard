@@ -15,10 +15,10 @@ import net.minecraft.util.Vec3;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineBlock;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryParcel;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import io.netty.buffer.Unpooled;

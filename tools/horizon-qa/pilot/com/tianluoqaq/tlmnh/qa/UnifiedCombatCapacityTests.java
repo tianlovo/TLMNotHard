@@ -33,10 +33,10 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -45,7 +45,7 @@ import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -72,13 +72,13 @@ public final class UnifiedCombatCapacityTests {
         h.assertTrue(Boolean.getBoolean("tlmnh.devCommands"), "Explicit development mode required");
         h.assertTrue("1".equals(System.getProperty("horizonqa.turbo", "1")), "Native capacity requires turbo=1");
         var diagnosticScope = sustained ? null
-            : com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
-        boolean previousTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.traceEnabled();
+            : com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatDiagnosticScope.open(h.getWorld());
+        boolean previousTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.traceEnabled();
         boolean plannerTrace = sustained && Boolean.getBoolean("tlmnh.capacityTrace");
         if (plannerTrace) {
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(true);
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.setTraceEnabled(true);
             h.afterTest(
-                () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(previousTrace));
+                () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.setTraceEnabled(previousTrace));
         }
         if (diagnosticScope != null) h.afterTest(diagnosticScope::close);
         var run = new Attempt(h, sustained);
@@ -142,7 +142,7 @@ public final class UnifiedCombatCapacityTests {
         int[] phase = { 0 }, diagnosticFrames = { 0 }, diagnosticPhase = { -1 };
         boolean[] diagnosticSeen = { false };
         long[] hiddenAt = { -1 };
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend[] original = { null };
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Friend[] original = { null };
         h.onEachTick("native visible friend then occlusion/movement and bounded identity overflow", () -> {
             var core = f.maid.getBrainCoordinator()
                 .peekEnhancedCore();
@@ -152,7 +152,7 @@ public final class UnifiedCombatCapacityTests {
             var ready = core.perception()
                 .combatReadiness();
             long now = world.getTotalWorldTime();
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend sample = null;
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Friend sample = null;
             if (ready != null) for (var value : ready.friendSamples) if (known.getUniqueID()
                 .equals(value.id)) sample = value;
             boolean firstSample = sample != null && !diagnosticSeen[0];

@@ -7,8 +7,7 @@ import java.util.UUID;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeCandidate.Kind;
 
 public class MaidLifeCandidateTest {
 

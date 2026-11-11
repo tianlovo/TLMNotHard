@@ -27,7 +27,7 @@ import net.minecraft.world.WorldSettings.GameType;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;

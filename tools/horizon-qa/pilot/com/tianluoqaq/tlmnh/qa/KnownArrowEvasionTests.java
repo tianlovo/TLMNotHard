@@ -28,11 +28,11 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatTerrain;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.WalkTarget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.WalkTarget;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
@@ -95,10 +95,11 @@ public final class KnownArrowEvasionTests {
             "Fixture did not establish the real owner and WORK schedule");
 
         // Diagnostic only: restore the exact prior global setting even after a failing test.
-        boolean previousPlannerTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.traceEnabled();
+        boolean previousPlannerTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.traceEnabled();
         h.afterTest(
-            () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(previousPlannerTrace));
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(true);
+            () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner
+                .setTraceEnabled(previousPlannerTrace));
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.setTraceEnabled(true);
         var trace = new Trace(h.getWorld().provider.dimensionId, f.maid, f.owner, skeleton);
         MinecraftForge.EVENT_BUS.register(trace);
         h.afterTest(() -> {

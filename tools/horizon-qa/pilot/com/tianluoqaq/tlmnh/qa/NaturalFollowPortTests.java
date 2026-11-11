@@ -419,7 +419,7 @@ public final class NaturalFollowPortTests {
                 "Natural actor has no bound Brain or runtime");
             if (enhanced == null) helper.assertTrue(
                 core.getFlightProfile()
-                    == com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL
+                    == com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile.SOURCE_ORIGINAL
                     && core.hasFlightContract(),
                 "Natural F factory did not retain its source flight contract");
             frame = 0;

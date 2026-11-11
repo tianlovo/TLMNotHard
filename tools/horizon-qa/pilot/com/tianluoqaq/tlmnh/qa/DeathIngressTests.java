@@ -34,9 +34,9 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 

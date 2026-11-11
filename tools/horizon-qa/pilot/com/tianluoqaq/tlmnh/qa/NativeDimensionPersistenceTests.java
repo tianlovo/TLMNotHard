@@ -34,7 +34,7 @@ import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidDimensionTravel;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

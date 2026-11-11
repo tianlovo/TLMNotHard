@@ -109,8 +109,8 @@ public final class TerrainLifeMechanismPortTests {
                     com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedLifeController.class,
                     com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedPanicController.class,
                     com.tianluoqaq.tlmnh.common.life.MaidHomeArea.class,
-                    com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.class,
-                    com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.AvoidMaidGoal.class,
+                    com.tianluoqaq.tlmnh.common.ai.combat.MaidCreeperAvoidance.class,
+                    com.tianluoqaq.tlmnh.common.ai.combat.MaidCreeperAvoidance.AvoidMaidGoal.class,
                     com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidCheckRateTask.class,
                     com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidMoveToBlockTask.class,
                     com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidStealEdibleMoveBlockTask.class,
@@ -422,7 +422,7 @@ public final class TerrainLifeMechanismPortTests {
                     entry.action.getClass()
                         .getName());
                 row.addProperty("priority", entry.priority);
-                if (entry.action instanceof com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance.AvoidMaidGoal) {
+                if (entry.action instanceof com.tianluoqaq.tlmnh.common.ai.combat.MaidCreeperAvoidance.AvoidMaidGoal) {
                     owned++;
                     helper.assertTrue(entry.priority == 1, "Source avoidance priority changed");
                 }

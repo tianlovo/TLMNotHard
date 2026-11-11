@@ -6,7 +6,7 @@ import net.minecraft.world.WorldSettings.GameType;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;

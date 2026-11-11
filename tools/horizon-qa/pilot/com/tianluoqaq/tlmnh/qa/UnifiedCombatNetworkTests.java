@@ -42,7 +42,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.gtnewhorizons.horizonqa.world.GameTestWorldType;
 import com.gtnewhorizons.horizonqa.world.VoidChunkProvider;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
@@ -705,7 +705,8 @@ public final class UnifiedCombatNetworkTests {
             return row;
         }
 
-        private static JsonObject vector(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec value) {
+        private static JsonObject vector(
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec value) {
             if (value == null) return null;
             JsonObject row = new JsonObject();
             finite(row, "x", value.x);

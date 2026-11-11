@@ -10,9 +10,6 @@ import java.util.UUID;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
-
 public class MaidLifeSelectorTest {
 
     @Test

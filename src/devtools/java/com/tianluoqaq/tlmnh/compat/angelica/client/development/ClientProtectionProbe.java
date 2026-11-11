@@ -14,7 +14,7 @@ import org.lwjgl.opengl.GL13;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.tianluoqaq.tlmnh.client.render.MaidRenderProtection;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;

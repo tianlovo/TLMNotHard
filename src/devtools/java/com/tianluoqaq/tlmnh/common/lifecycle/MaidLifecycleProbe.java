@@ -33,7 +33,10 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidFilmData;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.common.eventhandler.Event;

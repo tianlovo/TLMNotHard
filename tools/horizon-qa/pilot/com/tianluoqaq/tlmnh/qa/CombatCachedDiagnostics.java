@@ -15,12 +15,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializer;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatTerrain;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatDiagnosticScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
 
 /** 受控QA输出，只序列化已缓存的纯值；不申请服务或读动态网络state */
 final class CombatCachedDiagnostics {

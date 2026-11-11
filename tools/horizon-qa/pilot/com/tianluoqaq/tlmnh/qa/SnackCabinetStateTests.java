@@ -12,8 +12,8 @@ import net.minecraft.world.World;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.life.BlockSnackCabinet;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.BlockSnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 原生放置/metadata/27格菜单与既有Items/Recovery原NBT；无真实鼠标或客户端投递声明 */

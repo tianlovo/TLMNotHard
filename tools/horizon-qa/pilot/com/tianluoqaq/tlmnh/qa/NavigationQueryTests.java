@@ -9,9 +9,9 @@ import com.github.tartaricacid.touhoulittlemaid.util.CenterOffsetBlockPosSet;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNode;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class NavigationQueryTests {

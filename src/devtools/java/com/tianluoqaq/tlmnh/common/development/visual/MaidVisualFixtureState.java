@@ -12,7 +12,7 @@ import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 /** 视觉夹具只恢复自身改动的字段；原始快照随测试实体保存，意外换入的装备不覆盖 */
 public final class MaidVisualFixtureState {

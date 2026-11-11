@@ -11,7 +11,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidDoorActor.DoorPath;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidDoorActor.DoorPath;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 

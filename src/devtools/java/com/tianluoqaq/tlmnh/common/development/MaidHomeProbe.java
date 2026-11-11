@@ -20,14 +20,14 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.MaidHomeController;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 在原生世界手动调度 Root，验证家园边界与生命周期，不代替自然行为或客户端界面验收 */

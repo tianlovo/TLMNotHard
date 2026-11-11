@@ -59,7 +59,7 @@ def compare(reference_path, replay_path, tool, build_identity):
     gate.equal(replay["inputObservationSchema"], reference["inputObservationSchema"], "actual input schema")
     gate.require(replay["aiCapabilityEvaluated"] is False and replay["combinedV2Implemented"] is False,
                  "Replay claimed wider scope")
-    gate.equal(replay["driverClass"], "com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreLookDriver", "driver class")
+    gate.equal(replay["driverClass"], "com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowCoreLookDriver", "driver class")
     expected = {key: row for key, row in rows.items() if row["contract"] == "LOOK_SINK_CORE_V1"}
     omitted = {(row["id"], gate.integer(row["rebuild"])) for row in replay["excluded"]
                if row["reason"] == "FOLLOW_MOVE_LOOK_COMPONENT_V2_NOT_IMPLEMENTED"}

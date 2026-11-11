@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.life;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

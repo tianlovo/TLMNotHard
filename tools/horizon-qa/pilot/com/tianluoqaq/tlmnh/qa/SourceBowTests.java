@@ -20,8 +20,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
-import com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow;
-import com.tianluoqaq.tlmnh.common.combat.SourceBowShot;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.SourceBowShot;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

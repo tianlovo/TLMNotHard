@@ -37,15 +37,15 @@ import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathExperience;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

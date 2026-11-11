@@ -16,9 +16,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidPlayerVehicleState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidVehicleActor.Vehicle;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidPlayerVehicleState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidVehicleActor.Vehicle;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ModernVehicleTests {

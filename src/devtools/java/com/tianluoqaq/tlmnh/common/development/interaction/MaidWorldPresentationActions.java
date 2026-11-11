@@ -28,17 +28,17 @@ import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** Finite world inputs: the full native brain supplies actions; this fixture never writes a render pose. */

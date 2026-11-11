@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai;
+package com.tianluoqaq.tlmnh.common.ai.combat;
 
 import static org.junit.Assert.assertEquals;
 

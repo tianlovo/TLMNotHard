@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.follow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -13,11 +13,11 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Path;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.WalkTarget;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState.Status;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.BlockPos;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Path;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Vec3;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.WalkTarget;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState.Status;
 
 public class FollowCoreMoveDriverTest {
 

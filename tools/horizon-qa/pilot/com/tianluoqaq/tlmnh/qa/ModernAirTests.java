@@ -12,8 +12,8 @@ import net.minecraft.potion.PotionEffect;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 

@@ -12,12 +12,12 @@ import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })

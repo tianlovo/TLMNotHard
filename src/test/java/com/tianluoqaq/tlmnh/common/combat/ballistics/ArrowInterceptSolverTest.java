@@ -1,10 +1,10 @@
-package com.tianluoqaq.tlmnh.common.combat;
+package com.tianluoqaq.tlmnh.common.combat.ballistics;
 
 import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver.Status;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowInterceptSolver.Status;
 
 public class ArrowInterceptSolverTest {
 

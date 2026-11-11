@@ -18,8 +18,8 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import io.netty.buffer.Unpooled;

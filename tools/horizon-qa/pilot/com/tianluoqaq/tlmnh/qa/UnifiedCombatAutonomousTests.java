@@ -24,9 +24,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
@@ -279,7 +279,8 @@ public final class UnifiedCombatAutonomousTests {
 
     @GameTest(template = "modern_core_cell", timeoutTicks = 560, batch = "unified_environment_routes")
     public static void nativeCoverExitHalfStepChannelAndGatePermissionUseActualRoot(GameTestHelper h) {
-        var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.open(h.getWorld());
+        var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatDiagnosticScope
+            .open(h.getWorld());
         h.afterTest(diagnosticScope::close);
         var cachedEnvironment = new CombatCachedDiagnostics.Environment();
         h.afterTest(() -> {
@@ -289,9 +290,10 @@ public final class UnifiedCombatAutonomousTests {
                 diagnosticScope.close();
             }
         });
-        boolean previousTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.traceEnabled();
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(true);
-        h.afterTest(() -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner.setTraceEnabled(previousTrace));
+        boolean previousTrace = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.traceEnabled();
+        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.setTraceEnabled(true);
+        h.afterTest(
+            () -> com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner.setTraceEnabled(previousTrace));
         var f = fixture(h, MaidTask.ATTACK, tagged(new ItemStack(Items.bow), "environment-bow"), 1.5);
         f.maid.setPosition(f.x + 7.5, f.y + 1, f.z + 2.5);
         f.maid.setOffhandItem(new ItemStack(Items.arrow, 32));

@@ -13,6 +13,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidSwimJumpActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidSwimmingActor;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions;
 

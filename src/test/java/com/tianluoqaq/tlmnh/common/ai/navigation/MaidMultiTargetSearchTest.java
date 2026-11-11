@@ -7,7 +7,11 @@ import java.util.Collections;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidPathSearch;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathRegion;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public class MaidMultiTargetSearchTest {
 

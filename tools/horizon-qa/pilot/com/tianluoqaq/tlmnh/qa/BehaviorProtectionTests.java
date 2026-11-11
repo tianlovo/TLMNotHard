@@ -26,7 +26,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
+import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator;
 
 import cpw.mods.fml.relauncher.Side;

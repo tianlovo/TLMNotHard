@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai;
+package com.tianluoqaq.tlmnh.common.ai.combat;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -6,8 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.MaidCombatController.Status;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController.Status;
 
 public class MaidCombatControllerTest {
 

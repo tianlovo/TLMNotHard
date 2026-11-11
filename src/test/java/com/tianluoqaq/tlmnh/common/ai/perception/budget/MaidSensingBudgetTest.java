@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.perception;
+package com.tianluoqaq.tlmnh.common.ai.perception.budget;
 
 import static org.junit.Assert.*;
 
@@ -8,8 +8,8 @@ import java.util.UUID;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Request;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidSensingBudget.Kind;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidSensingBudget.Request;
 
 public class MaidSensingBudgetTest {
 

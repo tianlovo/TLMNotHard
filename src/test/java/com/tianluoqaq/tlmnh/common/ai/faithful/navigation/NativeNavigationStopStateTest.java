@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.navigation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

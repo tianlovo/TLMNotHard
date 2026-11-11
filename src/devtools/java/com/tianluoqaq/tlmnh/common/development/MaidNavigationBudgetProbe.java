@@ -20,7 +20,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
-import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidWorldNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.config.MaidNavigationConfig;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;

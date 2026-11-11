@@ -22,6 +22,10 @@ import com.github.tartaricacid.touhoulittlemaid.client.animation.inner.MaidBaseA
 import com.github.tartaricacid.touhoulittlemaid.client.animation.inner.MaidExtraAnimation;
 import com.github.tartaricacid.touhoulittlemaid.client.animation.script.GlWrapper;
 import com.github.tartaricacid.touhoulittlemaid.client.animation.script.ModelRendererWrapper;
+import com.tianluoqaq.tlmnh.client.render.animation.BuiltinBedrockAnimations;
+import com.tianluoqaq.tlmnh.client.render.animation.MaidAnimationState;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 覆盖原组合与资源中的真实骨骼；无 GL，不代替两端画面和生活行为验收 */

@@ -17,7 +17,7 @@ import net.minecraft.world.WorldServer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;

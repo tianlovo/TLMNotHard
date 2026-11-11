@@ -16,7 +16,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -113,9 +113,9 @@ public final class LifeConditionMechanismPortTests {
                     "lifeConditionProductionArtifact",
                     DevelopmentArtifactIdentity.capture(
                         TileEntityMaidBed.class,
-                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidCakeAction"),
-                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife"),
-                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.MaidBedExitOffsets")));
+                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidCakeAction"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidModernLife"),
+                        Class.forName("com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidBedExitOffsets")));
             } catch (Exception error) {
                 throw new IllegalStateException("Life condition identities unavailable", error);
             }
@@ -526,7 +526,7 @@ public final class LifeConditionMechanismPortTests {
                     DevelopmentArtifactIdentity.capture(
                         com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirTask.class,
                         com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask.class,
-                        com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedBreathingController.class,
+                        com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedBreathingController.class,
                         com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator.class));
             } catch (Exception failure) {
                 throw new IllegalStateException("Air collection identity unavailable", failure);

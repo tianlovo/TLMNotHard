@@ -20,7 +20,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackListPayload;
 import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;

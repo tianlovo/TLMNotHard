@@ -34,9 +34,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 

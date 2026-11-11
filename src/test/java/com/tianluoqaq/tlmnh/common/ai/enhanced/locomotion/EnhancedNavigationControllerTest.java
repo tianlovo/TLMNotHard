@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.enhanced;
+package com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion;
 
 import static org.junit.Assert.*;
 
@@ -8,12 +8,12 @@ import java.util.function.BooleanSupplier;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.MaidNavigationBudget;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Path;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.WalkTarget;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController.Outcome;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.BlockPos;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Path;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.WalkTarget;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result;
 

@@ -1,9 +1,13 @@
-package com.tianluoqaq.tlmnh.common.ai.navigation;
+package com.tianluoqaq.tlmnh.common.ai.navigation.eval;
 
-import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType.*;
+import static com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType.*;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathRegion;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public class MaidAmphibiousSearchTest {
 

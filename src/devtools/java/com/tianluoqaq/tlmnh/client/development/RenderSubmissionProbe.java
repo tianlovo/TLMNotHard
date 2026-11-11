@@ -12,8 +12,8 @@ import org.lwjgl.opengl.GL13;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 

@@ -17,9 +17,9 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 
 /** 原生原版窗口的服务端任务按钮；不将此记录称为真实客户端鼠标或自然战斗 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa", "etfuturum" })

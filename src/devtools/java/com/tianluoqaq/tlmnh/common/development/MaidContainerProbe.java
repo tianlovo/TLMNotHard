@@ -13,9 +13,9 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.Emp
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;

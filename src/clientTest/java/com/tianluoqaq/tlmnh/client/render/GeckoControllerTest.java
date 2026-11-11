@@ -26,6 +26,8 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.util.RateLimiter;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoBone;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoBone;
+import com.tianluoqaq.tlmnh.client.render.animation.GeckoAnimationTarget;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinGeckoAnimations;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangBindings;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangAnimationContext;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;

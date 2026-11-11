@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.combat;
+package com.tianluoqaq.tlmnh.common.combat.ballistics;
 
 import static org.junit.Assert.assertEquals;
 

@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
+package com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget;
 
 import static org.junit.Assert.*;
 

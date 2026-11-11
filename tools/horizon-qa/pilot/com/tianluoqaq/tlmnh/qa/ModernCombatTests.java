@@ -29,7 +29,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidActivityState;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;

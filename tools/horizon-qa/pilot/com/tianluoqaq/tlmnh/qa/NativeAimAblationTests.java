@@ -20,12 +20,12 @@ import com.google.gson.JsonObject;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.combat.ArrowInterceptSolver;
-import com.tianluoqaq.tlmnh.common.combat.ArrowPhysics;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
-import com.tianluoqaq.tlmnh.common.combat.ObservedTargetMotion;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowInterceptSolver;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowPhysics;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.ObservedTargetMotion;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 

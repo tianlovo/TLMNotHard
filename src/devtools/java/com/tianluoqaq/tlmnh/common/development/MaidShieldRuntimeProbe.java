@@ -51,7 +51,7 @@ import com.google.gson.JsonPrimitive;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
-import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;

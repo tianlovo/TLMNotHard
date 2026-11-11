@@ -154,7 +154,7 @@ public final class SleepMechanismPortTests {
                     DevelopmentArtifactIdentity.capture(
                         com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator.class,
                         Class.forName(
-                            "com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernLife",
+                            "com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidModernLife",
                             false,
                             EntityMaid.class.getClassLoader())));
             } catch (Exception error) {

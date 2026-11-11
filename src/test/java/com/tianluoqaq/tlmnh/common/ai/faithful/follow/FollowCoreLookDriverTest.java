@@ -1,4 +1,4 @@
-package com.tianluoqaq.tlmnh.common.ai.faithful;
+package com.tianluoqaq.tlmnh.common.ai.faithful.follow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -11,7 +11,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowCoreLookDriver.Status;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowCoreLookDriver.Status;
 
 public class FollowCoreLookDriverTest {
 

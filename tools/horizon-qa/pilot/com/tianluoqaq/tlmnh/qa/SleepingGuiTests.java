@@ -25,7 +25,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 import io.netty.channel.embedded.EmbeddedChannel;

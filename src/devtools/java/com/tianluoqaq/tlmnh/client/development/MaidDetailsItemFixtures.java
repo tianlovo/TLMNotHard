@@ -8,7 +8,7 @@ import net.minecraft.item.ItemStack;
 
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 /** 详情验收复用已登记物品和真实ToolBuilder，不生成手写匠魂成品或登记世界实体 */

@@ -28,6 +28,12 @@ import org.joml.Matrix4f;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinGeckoAnimations;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
+import com.tianluoqaq.tlmnh.client.render.model.MaidNamedModelOverride;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 检查实体渲染桥的几何、缓存和资源生命周期，不创建 GL 上下文 */

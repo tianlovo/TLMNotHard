@@ -38,11 +38,11 @@ REFERENCE_REQUIRED = {
     "com.tianluoqaq.tlmnh.reference.GeometryReferenceProbe$2",
 }
 PORT_REQUIRED = {
-    "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels",
-    "com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel",
-    "com.tianluoqaq.tlmnh.client.render.LegacyPoseStack",
-    "com.tianluoqaq.tlmnh.client.render.BedrockPose",
-    "com.tianluoqaq.tlmnh.client.render.GeometryBoneObserver",
+    "com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels",
+    "com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel",
+    "com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack",
+    "com.tianluoqaq.tlmnh.client.render.animation.BedrockPose",
+    "com.tianluoqaq.tlmnh.client.render.animation.GeometryBoneObserver",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils",
     "com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder",

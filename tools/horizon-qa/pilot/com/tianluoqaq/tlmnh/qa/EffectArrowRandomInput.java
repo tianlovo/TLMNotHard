@@ -57,12 +57,12 @@ import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
@@ -70,7 +70,7 @@ import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.PackagedClassResourceResolver;
 import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection;
+import com.tianluoqaq.tlmnh.common.protection.runtime.MaidBehaviorProtection;
 import com.tianluoqaq.tlmnh.compat.bugtorch.development.random.BugtorchArrowRandom;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -1222,7 +1222,7 @@ public final class EffectArrowRandomInput implements AutoCloseable {
                     EntityLivingBase.class,
                     MaidCombatActor.Target.class,
                     CombatPlan.class,
-                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.class,
+                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.class,
                     com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile.class),
                 key(MaidUnifiedCombatActionRunner.class, "applyCurrent", CombatPlan.Result.class, CombatPlan.class),
                 key(MaidUnifiedCombatActionRunner.class, "apply", CombatPlan.Result.class, CombatPlan.class),
@@ -1552,7 +1552,7 @@ public final class EffectArrowRandomInput implements AutoCloseable {
                         "preview",
                         MaidBowAttack.Status.class,
                         EntityLivingBase.class,
-                        com.tianluoqaq.tlmnh.common.combat.BallisticVector.class,
+                        com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticVector.class,
                         java.util.function.BooleanSupplier.class);
                     require(
                         frames.get(at)

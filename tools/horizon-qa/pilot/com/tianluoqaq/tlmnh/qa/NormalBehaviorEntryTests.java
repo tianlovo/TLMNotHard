@@ -34,8 +34,8 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.development.PackagedClassResourceResolver;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 /** Startup config enters the production factory; no development selection or manual AI tick in the normal case. */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
@@ -444,7 +444,7 @@ public final class NormalBehaviorEntryTests {
                 if (expected == MaidBrainProfile.FAITHFUL_TLM) h.assertTrue(
                     brain.peekFaithfulBrain() != null && brain.peekFaithfulBrain()
                         .getFlightProfile()
-                        == com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
+                        == com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
                     "Development F reference was replaced by production N/native physics");
                 else h.assertTrue(
                     brain.peekFaithfulBrain() == null && brain.peekEnhancedCore() == null,

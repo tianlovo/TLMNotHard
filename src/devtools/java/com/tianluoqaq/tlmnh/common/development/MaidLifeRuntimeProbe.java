@@ -37,10 +37,10 @@ import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidSpawnChecks;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.FMLCommonHandler;

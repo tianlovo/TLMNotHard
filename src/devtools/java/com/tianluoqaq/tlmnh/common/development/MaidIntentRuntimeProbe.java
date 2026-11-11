@@ -19,10 +19,10 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeCandidate;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 

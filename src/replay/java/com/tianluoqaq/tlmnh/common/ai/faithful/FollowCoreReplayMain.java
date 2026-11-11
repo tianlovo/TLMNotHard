@@ -17,6 +17,7 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowOwnerActor;
 
 /**
  * 实际移植纯核的离线组件重放入口，输入来自独立原版采集，不读取其 normalised 结果作为期望值
