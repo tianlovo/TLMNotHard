@@ -13,12 +13,12 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDe
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
-import com.tianluoqaq.tlmnh.client.gui.MaidPreviewEntity;
-import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
+import com.tianluoqaq.tlmnh.client.gui.preview.MaidPreviewEntity;
+import com.tianluoqaq.tlmnh.client.gui.preview.MaidPreviewSeat;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
+import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;

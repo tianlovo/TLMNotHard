@@ -10,8 +10,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopSource;
-import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.navigation.NativeNavigationStopSource;
+import com.tianluoqaq.tlmnh.common.ai.faithful.navigation.NativeNavigationStopState;
 
 /** 观察原生 watchdog 的唯一清空调用，不替换或重发原调用 */
 @Mixin(PathNavigate.class)

@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.backhand;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 玩家副手联动能力边界与开发期交互夹具 */

@@ -6,8 +6,6 @@ import net.minecraft.inventory.ContainerChest;
 import net.minecraft.util.AxisAlignedBB;
 
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
-import com.tianluoqaq.tlmnh.common.life.BlockSnackCabinet;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 
 /** 原ContainerOpenersCounter的首开/末关声音；旧IInventory回调无玩家，下一tick核实际窗口 */
 public final class CabinetOpeners {

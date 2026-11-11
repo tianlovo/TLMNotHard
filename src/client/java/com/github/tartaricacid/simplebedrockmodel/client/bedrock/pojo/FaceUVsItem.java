@@ -9,7 +9,7 @@ package com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo;
 import javax.annotation.Nullable;
 
 import com.google.gson.annotations.SerializedName;
-import com.tianluoqaq.tlmnh.client.render.ModelDirection;
+import com.tianluoqaq.tlmnh.client.render.animation.ModelDirection;
 
 public class FaceUVsItem {
 

@@ -16,6 +16,8 @@ import org.lwjgl.opengl.GL12;
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

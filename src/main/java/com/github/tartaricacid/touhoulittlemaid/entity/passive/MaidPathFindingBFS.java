@@ -12,9 +12,9 @@ import java.util.function.Predicate;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.ICachedEvaluator;
 import com.github.tartaricacid.touhoulittlemaid.util.CenterOffsetBlockPosSet;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNode;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
 
 /** 查询局部增量BFS，供原版呼吸和生活目标任务使用；不创建或安装执行路线 */
 public final class MaidPathFindingBFS implements AutoCloseable {

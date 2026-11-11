@@ -13,7 +13,7 @@ import java.util.Objects;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
 
 public class GlWrapper {
 

@@ -10,7 +10,7 @@ import java.util.HashMap;
 
 import net.minecraft.util.ResourceLocation;
 
-import com.tianluoqaq.tlmnh.client.render.MaidAnimationState;
+import com.tianluoqaq.tlmnh.client.render.animation.MaidAnimationState;
 
 public final class InnerAnimation {
 

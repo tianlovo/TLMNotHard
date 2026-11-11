@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import com.github.tartaricacid.touhoulittlemaid.event.EntityHurtEvent;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowImpactState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowImpactState;
 
 /** 仅过滤原生选出的当前碰撞；移动、阻力、重力及命中后处理继续由原方法执行 */
 @Mixin(EntityArrow.class)

@@ -2,7 +2,7 @@ package com.tianluoqaq.tlmnh.common.ai.navigation;
 
 import java.util.Objects;
 
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatQueuedMove;
 
 /** 原导航最终坐标已算出后的一次窄适配结果，REJECT不得回落普通下发 */
 public final class MaidCombatMoveDispatch {

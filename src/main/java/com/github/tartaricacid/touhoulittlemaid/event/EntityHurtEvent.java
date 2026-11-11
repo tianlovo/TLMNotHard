@@ -11,9 +11,9 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileImpactProtection;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

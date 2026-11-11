@@ -5,8 +5,8 @@ import java.util.Objects;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 
 /** 当前主手的当tick能力观测；原地改NBT或换世界不能继续复用旧能力 */
 public final class MaidCombatWeaponView {

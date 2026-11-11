@@ -13,7 +13,7 @@ import org.lwjgl.input.Keyboard;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.render.MaidIconCapture;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

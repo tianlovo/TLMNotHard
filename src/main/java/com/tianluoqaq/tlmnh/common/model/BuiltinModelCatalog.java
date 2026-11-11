@@ -13,7 +13,7 @@ import net.minecraft.util.ResourceLocation;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 /** 两端共用的内置模型白名单，不访问客户端渲染类，也不扫描外部模型包 */
 public final class BuiltinModelCatalog {
@@ -57,7 +57,7 @@ public final class BuiltinModelCatalog {
             throw new IllegalStateException("Unexpected builtin model inventory");
         BY_ID.putAll(loaded);
         choices = Collections.unmodifiableList(new ArrayList<>(loaded.values()));
-        TLMNotHard.LOG.info("TLMNH_MODEL_CATALOG_READY choices={} winefox={}", choices.size(), winefoxChoices);
+        ModContext.LOG.info("TLMNH_MODEL_CATALOG_READY choices={} winefox={}", choices.size(), winefoxChoices);
     }
 
     public static boolean contains(String id) {

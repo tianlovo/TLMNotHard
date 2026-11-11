@@ -6,7 +6,7 @@
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
 import com.github.tartaricacid.touhoulittlemaid.util.TeleportHelper;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidScheduleActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidScheduleActor;
 
 public final class SchedulePos {
 

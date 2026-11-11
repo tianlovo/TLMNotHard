@@ -15,7 +15,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
 import com.google.gson.JsonParser;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
@@ -110,7 +110,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
             } catch (IOException missingLanguage) {
                 // 模型包不必提供所有语言，缺少时沿用英文或模型ID
             } catch (RuntimeException invalidLanguage) {
-                TLMNotHard.LOG.warn("Cannot read builtin model names {}", location, invalidLanguage);
+                ModContext.LOG.warn("Cannot read builtin model names {}", location, invalidLanguage);
             }
         }
     }

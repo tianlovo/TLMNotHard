@@ -30,9 +30,9 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.BonesItem;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.CubesItem;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.Description;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.FaceUVsItem;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
-import com.tianluoqaq.tlmnh.client.render.TessellatorVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.TessellatorVertexConsumer;
 
 import cpw.mods.fml.common.versioning.InvalidVersionSpecificationException;
 import cpw.mods.fml.relauncher.Side;

@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation;
 
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 
 public interface ICachedEvaluator {
 

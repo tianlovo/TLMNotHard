@@ -16,8 +16,8 @@ import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

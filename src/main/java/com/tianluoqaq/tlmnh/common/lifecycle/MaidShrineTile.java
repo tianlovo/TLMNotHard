@@ -11,8 +11,9 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.Constants;
 
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryParcel;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.relauncher.Side;

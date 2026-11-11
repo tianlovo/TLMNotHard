@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 
 public final class MaidUseShieldTask {
 

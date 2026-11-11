@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.ai.faithful;
 import java.util.EnumMap;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 

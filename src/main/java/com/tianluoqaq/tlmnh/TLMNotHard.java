@@ -1,24 +1,26 @@
 package com.tianluoqaq.tlmnh;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.github.tartaricacid.touhoulittlemaid.datapack.KaomojiData;
 import com.github.tartaricacid.touhoulittlemaid.event.EntityHurtEvent;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
-import com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCreeperAvoidance;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
+import com.tianluoqaq.tlmnh.common.foundation.ModIds;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.network.MaidClientPackets;
 import com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionCommand;
-import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionCommand;
+import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.registry.EventBuses;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -40,30 +42,24 @@ import cpw.mods.fml.common.registry.GameRegistry;
     modid = TLMNotHard.MOD_ID,
     name = TLMNotHard.MOD_NAME,
     version = Tags.VERSION,
-    acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "after:" + KnownModIds.BATTLEGEAR2
-        + ";after:"
-        + KnownModIds.APPLE_CORE
-        + ";after:"
-        + KnownModIds.GREGTECH
-        + ";after:"
-        + KnownModIds.DREAMCRAFT)
+    acceptedMinecraftVersions = ModIds.ACCEPTED_MC_VERSIONS,
+    dependencies = ModIds.MOD_DEPENDENCIES)
 public final class TLMNotHard {
 
-    public static final String MOD_ID = "tlmnh";
-    public static final String MOD_NAME = "Touhou Little Maid (Not Hard)";
-    public static final Logger LOG = LogManager.getLogger(MOD_ID);
+    public static final String MOD_ID = ModIds.MOD_ID;
+    public static final String MOD_NAME = ModIds.MOD_NAME;
+    public static final Logger LOG = ModContext.LOG;
 
     @Mod.Instance(MOD_ID)
     public static TLMNotHard INSTANCE;
 
-    @SidedProxy(
-        clientSide = "com.tianluoqaq.tlmnh.client.proxy.ClientProxy",
-        serverSide = "com.tianluoqaq.tlmnh.common.proxy.CommonProxy")
+    @SidedProxy(clientSide = ModIds.CLIENT_PROXY_CLASS, serverSide = ModIds.SERVER_PROXY_CLASS)
     public static CommonProxy PROXY;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        ModContext.bindModInstance(this);
+        MaidClientPackets.bind(PROXY);
         CompatServices.preInitAndFreeze();
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);

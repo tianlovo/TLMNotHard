@@ -28,11 +28,11 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaid
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.Tags;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
-import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientConfigGui;
+import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 

@@ -8,7 +8,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.mixin.MixinEntityPose;
 
 /** 现代 refreshDimensions 的增长搜索：候选中心体积减去按新尺寸膨胀的方块碰撞 */
 public final class MaidPoseDimensions {
@@ -31,7 +30,7 @@ public final class MaidPoseDimensions {
             maid.posZ + pose.width / 2.0);
         if (maid.worldObj == null || maid.worldObj.isRemote
             || maid.noClip
-            || ((MixinEntityPose) maid).tlmnh$isFirstUpdate()
+            || ((MaidPoseStateAccess) maid).tlmnh$isFirstUpdate()
             || pose.width <= oldWidth && pose.height <= oldHeight) return;
         double dx = Math.max(0F, pose.width - oldWidth) + 1.0e-6;
         double dy = Math.max(0F, pose.height - oldHeight) + 1.0e-6;

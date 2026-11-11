@@ -40,12 +40,12 @@ import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Favorability
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.MaidAquaticController;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
-import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.aquatic.MaidAquaticController;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidMeleeAttack;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatMemory;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.navigation.EntityNavigationAccess;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -68,6 +68,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions;
 import com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.entity.MaidTeleportParticles;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -76,18 +77,17 @@ import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidMealController;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel;
+import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidDimensionTravel;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection;
-import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.runtime.MaidBehaviorProtection;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 import com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState;
-import com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator;
 
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import cpw.mods.fml.relauncher.Side;
@@ -168,9 +168,9 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         // 原版真实实体沿用0.6的迈步高度，1.7.10 LivingEntity的默认值仅为0.5
         stepHeight = 0.6F;
         func_110163_bv();
-        ((MixinEntityNavigator) this).tlmnh$setNavigator(new MaidPathNavigator(this, world));
+        ((EntityNavigationAccess) this).tlmnh$setNavigator(new MaidPathNavigator(this, world));
         getNavigator().setCanSwim(true);
-        ((MixinEntityNavigator) this).tlmnh$setMoveHelper(new MaidMoveControl(this));
+        ((EntityNavigationAccess) this).tlmnh$setMoveHelper(new MaidMoveControl(this));
         tasks.addTask(0, brain);
     }
 
@@ -731,7 +731,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
                 getNavigator().clearPathEntity();
                 setAttackTarget(null);
             } else {
-                player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, worldObj, getEntityId(), 0, 0);
+                player.openGui(ModContext.modInstance(), CommonProxy.GUI_MAID_ORIGINAL, worldObj, getEntityId(), 0, 0);
             }
         }
         return true;
@@ -1119,7 +1119,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             extraSaveData = (NBTTagCompound) tag.getCompoundTag("TLMNH")
                 .copy();
             if (extraSaveData.getInteger("Schema") > SAVE_VERSION) {
-                TLMNotHard.LOG.warn(
+                ModContext.LOG.warn(
                     "Maid {} has newer save schema {}; preserving extension data",
                     getUniqueID(),
                     extraSaveData.getInteger("Schema"));

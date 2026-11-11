@@ -9,9 +9,9 @@ import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.combat.BallisticVector;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticVector;
 
 /** 已确认拒发后的短期让位与局部换位；导航仍由完整N原有预算入口执行 */
 final class EnhancedRangedRecovery {

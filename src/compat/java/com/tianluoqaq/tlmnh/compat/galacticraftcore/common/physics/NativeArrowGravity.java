@@ -11,9 +11,9 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 
 /** 读取星系（Galacticraft）的维度箭矢重力；未安装该模组时沿用原版 EntityArrow 的默认重力 0.05F */

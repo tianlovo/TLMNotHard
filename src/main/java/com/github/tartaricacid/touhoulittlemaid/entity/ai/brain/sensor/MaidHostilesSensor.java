@@ -9,7 +9,7 @@ import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
 
 public final class MaidHostilesSensor {
 

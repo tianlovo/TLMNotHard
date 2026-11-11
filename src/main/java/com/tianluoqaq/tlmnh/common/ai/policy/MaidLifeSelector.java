@@ -4,8 +4,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
-
 /** 只比较已许可的本轮意图，不查询世界或重新生成目标 */
 public final class MaidLifeSelector {
 

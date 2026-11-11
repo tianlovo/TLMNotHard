@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidPlayerVehicleState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidPlayerVehicleState;
 
 /** 适配固定原TLM PlayerMixin.removeVehicle的单调3000ms窗口，旧版入口为mountEntity(null) */
 @Mixin(EntityPlayer.class)

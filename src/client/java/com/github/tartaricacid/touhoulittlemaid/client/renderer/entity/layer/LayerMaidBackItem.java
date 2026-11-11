@@ -9,9 +9,9 @@ import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
-import com.tianluoqaq.tlmnh.client.render.MaidBackItemKinds;
-import com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidBackItemKinds;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidBackItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;

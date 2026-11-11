@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.galacticraftcore;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 维度箭矢重力查询与发射前无副作用核验 */

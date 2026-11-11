@@ -6,7 +6,7 @@
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidStealActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidStealActor;
 
 public final class MaidStealEdibleUseTask {
 

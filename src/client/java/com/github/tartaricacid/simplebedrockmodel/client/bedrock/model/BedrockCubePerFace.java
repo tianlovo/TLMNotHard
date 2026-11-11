@@ -11,9 +11,9 @@ import org.joml.Vector3f;
 
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.FaceItem;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo.FaceUVsItem;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
-import com.tianluoqaq.tlmnh.client.render.ModelDirection;
+import com.tianluoqaq.tlmnh.client.render.animation.ModelDirection;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 public class BedrockCubePerFace implements BedrockCube {
 

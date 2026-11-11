@@ -15,9 +15,9 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedG
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoMesh;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
-import com.tianluoqaq.tlmnh.client.render.GeometryBoneObserver;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.animation.GeometryBoneObserver;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 public interface IGeoRenderer<T> {
 

@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.endlessids;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 区块区段扩展方块 ID 与元数据层只读解码 */

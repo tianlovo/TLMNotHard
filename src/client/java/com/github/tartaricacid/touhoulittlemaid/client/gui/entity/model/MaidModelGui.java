@@ -11,8 +11,8 @@ import java.util.Map;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
-import com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.client.render.model.MaidNamedModelOverride;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;

@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidSnowballActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidSnowballActor;
 
 public final class MaidSnowballTargetTask {
 

@@ -5,14 +5,14 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation;
 
-import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext.floor;
+import static com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext.floor;
 
 import com.github.tartaricacid.touhoulittlemaid.util.CenterOffsetBlockPosSet;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidAmphibiousEvaluator;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNode;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidAmphibiousEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public final class MaidUnderWaterNodeEvaluator extends MaidAmphibiousEvaluator implements ICachedEvaluator {
 

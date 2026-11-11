@@ -22,10 +22,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
-import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.render.MaidDetailsPreview;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;

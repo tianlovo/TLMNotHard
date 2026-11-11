@@ -8,7 +8,7 @@ package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.value;
 
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.binding.ValueConversions;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 public interface IValue {
 
@@ -23,7 +23,7 @@ public interface IValue {
                 return value;
             }
         } catch (Exception e) {
-            TLMNotHard.LOG.error("Failed to evaluate molang value.", e);
+            ModContext.LOG.error("Failed to evaluate molang value.", e);
         }
         return 0;
     }
@@ -36,7 +36,7 @@ public interface IValue {
             Object result = evalUnsafe(evaluator);
             return ValueConversions.asBoolean(result);
         } catch (Exception e) {
-            TLMNotHard.LOG.error("Failed to evaluate molang value.", e);
+            ModContext.LOG.error("Failed to evaluate molang value.", e);
         }
         return false;
     }

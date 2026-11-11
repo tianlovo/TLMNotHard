@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.battlegear2;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 盾牌识别、格挡角、减伤、插箭计数与副手渲染变换 */

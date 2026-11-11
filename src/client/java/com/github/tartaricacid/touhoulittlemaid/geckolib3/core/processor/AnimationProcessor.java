@@ -29,7 +29,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.snapshot.BoneTopL
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.util.MathUtil;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.util.RateLimiter;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
-import com.tianluoqaq.tlmnh.client.render.GeckoAnimationTarget;
+import com.tianluoqaq.tlmnh.client.render.animation.GeckoAnimationTarget;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangAnimationContext;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })

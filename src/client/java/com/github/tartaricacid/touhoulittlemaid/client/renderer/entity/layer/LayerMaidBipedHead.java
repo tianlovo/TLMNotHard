@@ -6,8 +6,8 @@
 package com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.layer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
-import com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeadItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 

@@ -9,7 +9,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.config.Configuration;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 /** 原版进食黑名单；低版本河豚以fish@3区分，避免禁掉所有鱼 */
 public final class MaidMealConfig {
@@ -46,7 +46,7 @@ public final class MaidMealConfig {
         for (String value : values) try {
             result.add(Pattern.compile(value));
         } catch (PatternSyntaxException failure) {
-            TLMNotHard.LOG.warn("Ignored invalid meal blacklist regex: {}", value);
+            ModContext.LOG.warn("Ignored invalid meal blacklist regex: {}", value);
         }
         return result;
     }

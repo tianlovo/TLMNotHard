@@ -5,8 +5,8 @@ import net.minecraft.block.BlockDoor;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.DoorCell;
 
 /** 门与栅栏门的状态读写及战斗碰撞几何契约；未安装外部动画门模组时按原版门处理 */
 public interface DoorCompatProvider {

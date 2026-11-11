@@ -27,8 +27,8 @@ import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
-import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;

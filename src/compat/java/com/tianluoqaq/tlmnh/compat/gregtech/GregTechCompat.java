@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.gregtech;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 元生成近战武器能力审查与元生成食物效果解析 */

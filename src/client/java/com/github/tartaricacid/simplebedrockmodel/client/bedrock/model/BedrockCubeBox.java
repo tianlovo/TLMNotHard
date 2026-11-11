@@ -11,8 +11,8 @@ import net.minecraft.util.MathHelper;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 public class BedrockCubeBox implements BedrockCube {
 

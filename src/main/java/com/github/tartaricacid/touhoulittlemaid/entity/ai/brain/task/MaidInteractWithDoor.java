@@ -10,10 +10,10 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidDoorActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidDoorActor.Kind;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidDoorActor.Position;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidDoorActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidDoorActor.Kind;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidDoorActor.Position;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 
 public final class MaidInteractWithDoor {
 

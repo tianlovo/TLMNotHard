@@ -14,7 +14,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.spi.DoorCompatProvider;
 import com.tianluoqaq.tlmnh.common.ai.spi.WorldExtraContentProvider;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;

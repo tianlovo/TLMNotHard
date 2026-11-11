@@ -10,8 +10,7 @@ import net.minecraft.util.ChatComponentTranslation;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SetAttackListMessage;
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -116,7 +115,7 @@ public final class MaidTaskConfigNetwork {
 
         @Override
         public IMessage onMessage(MaidAttackSnapshot message, MessageContext context) {
-            if (context.side == Side.CLIENT) TLMNotHard.PROXY.enqueueMaidAttackSnapshot(message);
+            if (context.side == Side.CLIENT) MaidClientPackets.enqueueMaidAttackSnapshot(message);
             return null;
         }
     }

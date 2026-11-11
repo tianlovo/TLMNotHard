@@ -8,16 +8,16 @@ import net.minecraft.item.Item;
 import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidCoreItem;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmItem;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineBlock;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidCoreItem;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidFilmItem;
+import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin;
 
@@ -56,7 +56,8 @@ public final class MaidResurrectionContent {
         SHRINE.setCreativeTab(CreativeTabs.tabDecorations);
         GameRegistry.registerBlock(SHRINE, "shrine");
         GameRegistry.registerTileEntity(MaidShrineTile.class, "tlmnh:shrine");
-        EntityRegistry.registerModEntity(MaidTombstoneEntity.class, "tombstone", 1, TLMNotHard.INSTANCE, 80, 10, false);
+        EntityRegistry
+            .registerModEntity(MaidTombstoneEntity.class, "tombstone", 1, ModContext.modInstance(), 80, 10, false);
         var events = new MaidLifecycleEvents();
         MinecraftForge.EVENT_BUS.register(events);
         FMLCommonHandler.instance()
@@ -79,7 +80,7 @@ public final class MaidResurrectionContent {
         if (biomes.length == 0) return;
         EntityRegistry
             .addSpawn(EntityMaid.class, MaidAcquisitionConfig.naturalWeight, 1, 1, EnumCreatureType.creature, biomes);
-        TLMNotHard.LOG.info(
+        ModContext.LOG.info(
             "Natural maid spawning registered: usableBiomes={} configuredBiomes={} weight={} dimensions={}",
             biomes.length,
             Arrays.toString(MaidAcquisitionConfig.naturalBiomes),

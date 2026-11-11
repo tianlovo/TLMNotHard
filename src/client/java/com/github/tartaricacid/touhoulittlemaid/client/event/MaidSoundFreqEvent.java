@@ -9,7 +9,7 @@ import net.minecraftforge.client.event.sound.PlaySoundEvent17;
 
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInstance;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.sound.MaidSoundFrequency;
 

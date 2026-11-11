@@ -13,12 +13,12 @@ import org.lwjgl.opengl.GL11;
 
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
-import com.tianluoqaq.tlmnh.client.render.MaidRenderProtection;
-import com.tianluoqaq.tlmnh.client.render.TessellatorVertexConsumer;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.TessellatorVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 

@@ -10,10 +10,14 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.aquatic.MaidBreathController;
+import com.tianluoqaq.tlmnh.common.ai.aquatic.MaidTraversalController;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
@@ -29,7 +33,8 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
+import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
 
 /** 唯一服务端任务入口，战斗优先打断生活动作，路径和目标由当前动作独占 */
 public final class MaidBrainCoordinator extends EntityAIBase {
@@ -735,7 +740,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         try {
             var before = maid.copyBehaviorSaveData();
             var after = actions.flushPersistentBehaviorData((NBTTagCompound) before.copy());
-            if (!maid.commitBehaviorExtensionData(before, after)) TLMNotHard.LOG.warn(
+            if (!maid.commitBehaviorExtensionData(before, after)) ModContext.LOG.warn(
                 "Behavior extension save rejected for maid {}: stale snapshot or invalid tag type",
                 maid.getUniqueID());
         } finally {

@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidAirActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidAirActor;
 
 public final class MaidBreathAirStopTask {
 

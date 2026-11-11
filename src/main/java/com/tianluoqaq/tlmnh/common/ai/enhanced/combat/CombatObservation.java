@@ -25,14 +25,24 @@ import net.minecraft.world.chunk.Chunk;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Friend;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Projectile;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatDiagnosticScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatFullServiceReceipt;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatGeometryWindow;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatRangePolicy;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.DoorCell;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Friend;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Geometry;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Projectile;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Target;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSpace;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
@@ -143,7 +153,7 @@ public final class CombatObservation {
         observationComplete = true;
         living.entrySet()
             .removeIf(
-                entry -> now - entry.getValue().at > CombatSnapshot.OBSERVATION_TTL
+                entry -> now - entry.getValue().at > CombatBudgetTuning.OBSERVATION_TTL
                     || !current(maid, entry.getValue().entity));
         captureWeapons(maid, quota);
         collectUrgent(maid, quota);
@@ -181,7 +191,8 @@ public final class CombatObservation {
             // 原准备窗末次采样仍须在覆盖TTL内；不回收本tick已付费用或扫描计数
             if (!coverageFresh() && scanStartedAt != Long.MIN_VALUE
                 && tick >= scanStartedAt
-                && tick - scanStartedAt > CombatSnapshot.OBSERVATION_TTL - (CombatWorldBudget.PREPARATION_TICKS - 1)) {
+                && tick - scanStartedAt
+                    > CombatBudgetTuning.OBSERVATION_TTL - (CombatWorldBudget.PREPARATION_TICKS - 1)) {
                 traceCoverage(maid, "PREPARATION_WINDOW_SCAN");
                 startCoverage();
                 preparationRestarted = true;
@@ -190,7 +201,7 @@ public final class CombatObservation {
         if (!preparationRestarted && !coverageFresh()
             && scanStartedAt != Long.MIN_VALUE
             && tick >= scanStartedAt
-            && tick - scanStartedAt > CombatSnapshot.OBSERVATION_TTL) {
+            && tick - scanStartedAt > CombatBudgetTuning.OBSERVATION_TTL) {
             traceCoverage(maid, "PREPARATION_EXPIRED_SCAN");
             startCoverage();
             preparationRestarted = true;
@@ -209,7 +220,7 @@ public final class CombatObservation {
 
     private boolean coverageFresh() {
         return completedCoverageOldest != Long.MIN_VALUE && tick >= completedCoverageOldest
-            && tick - completedCoverageOldest <= CombatSnapshot.OBSERVATION_TTL;
+            && tick - completedCoverageOldest <= CombatBudgetTuning.OBSERVATION_TTL;
     }
 
     /** 已有身份具备FULL重验条件，尚不授予友方安全或几何完整性 */
@@ -483,7 +494,7 @@ public final class CombatObservation {
             chunkCursor = 0;
             completedScanTicks = scanStartedAt != Long.MIN_VALUE && tick >= scanStartedAt ? tick - scanStartedAt
                 : Long.MAX_VALUE;
-            scanComplete = completedScanTicks <= CombatSnapshot.OBSERVATION_TTL;
+            scanComplete = completedScanTicks <= CombatBudgetTuning.OBSERVATION_TTL;
             scanCompletedAt = tick;
             completedCoverageOldest = scanStartedAt;
             coverageScanning = false;
@@ -1228,7 +1239,7 @@ public final class CombatObservation {
         EntityLivingBase owner = maid.getOwner();
         for (FriendTrack friend : friendTracks.values()) {
             if (friend.entity == maid || friend.entity == owner || friend.position == null) continue;
-            if (tick < friend.at || tick - friend.at > CombatSnapshot.OBSERVATION_TTL) continue;
+            if (tick < friend.at || tick - friend.at > CombatBudgetTuning.OBSERVATION_TTL) continue;
             double dx = friend.position.x - targetSeen.x, dy = friend.position.y - targetSeen.y,
                 dz = friend.position.z - targetSeen.z;
             if (dx * dx + dy * dy + dz * dz <= radiusSq) return true;

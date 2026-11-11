@@ -5,8 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveActor.Vec3;
 
 public final class MaidRunAwayTask extends SetWalkTargetAwayFrom {
 

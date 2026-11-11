@@ -16,12 +16,13 @@ import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot;
+import com.tianluoqaq.tlmnh.common.network.MaidClientPackets;
 import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
@@ -30,7 +31,7 @@ import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
 import cpw.mods.fml.common.network.IGuiHandler;
 
 /** 公共侧只创建服务端容器，不加载客户端 GUI 类型 */
-public class CommonProxy implements IGuiHandler {
+public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
 
     public static final int GUI_MAID = 0;
     public static final int GUI_MAID_MODELS = 1;
@@ -43,16 +44,20 @@ public class CommonProxy implements IGuiHandler {
     public static final int GUI_MAID_DEFAULT_TASK_CONFIG = 8;
 
     public void init() {
+        MaidClientPackets.bind(this);
         MaidNamingNetwork.init();
         MaidSoundNetwork.init();
         MaidEffectNetwork.init();
         MaidTaskConfigNetwork.init();
     }
 
+    @Override
     public void enqueueMaidSound(PlayMaidSoundMessage message) {}
 
+    @Override
     public void enqueueMaidEffects(SendEffectMessage message) {}
 
+    @Override
     public void enqueueMaidAttackSnapshot(MaidAttackSnapshot message) {}
 
     @Override

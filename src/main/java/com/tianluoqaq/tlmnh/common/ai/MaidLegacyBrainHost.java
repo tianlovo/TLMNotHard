@@ -14,9 +14,13 @@ import net.minecraft.util.MathHelper;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.aquatic.MaidBreathController;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.combat.MaidStrafingState;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidTargetMemory;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
@@ -26,14 +30,15 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentArbiter;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
+import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
 
 /** 旧原型控制器图与执行宿主，在旧策略执行或兼容性 getter 调用时按需创建 */
 final class MaidLegacyBrainHost {

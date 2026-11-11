@@ -30,10 +30,10 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks.Pack;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
-import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
-import com.tianluoqaq.tlmnh.client.gui.MaidCacheCheckbox;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.widget.MaidCacheCheckbox;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 

@@ -15,7 +15,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.value.Mola
 import com.github.tartaricacid.touhoulittlemaid.molang.MolangEngine;
 import com.github.tartaricacid.touhoulittlemaid.molang.parser.ParseException;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.binding.ObjectBinding;
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 public class MolangParser {
 
@@ -32,7 +32,7 @@ public class MolangParser {
         try {
             return parseExpressionUnsafe(molangExpression);
         } catch (Exception e) {
-            TLMNotHard.LOG.error("Failed to parse value \"{}\": {}", molangExpression, e.getMessage());
+            ModContext.LOG.error("Failed to parse value \"{}\": {}", molangExpression, e.getMessage());
             return DoubleValue.ZERO;
         }
     }

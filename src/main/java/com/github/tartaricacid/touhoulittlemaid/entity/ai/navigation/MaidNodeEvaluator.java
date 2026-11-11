@@ -5,10 +5,10 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation;
 
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNode;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public final class MaidNodeEvaluator extends MaidWalkEvaluator {
 

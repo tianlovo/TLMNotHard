@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.hodgepodge;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 世界存档账本写前同步屏障 */

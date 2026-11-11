@@ -18,8 +18,8 @@ import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubbl
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.implement.TextChatBubbleRenderer;
 import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.IChatBubbleData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
-import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;

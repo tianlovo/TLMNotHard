@@ -5,8 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidAirActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidAirActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 
 /** 低氧物品优先，再找空气；外层保留默认Behavior开始/运行相位与RNG */
 public final class MaidBreathAirTask {

@@ -11,7 +11,7 @@ import java.util.Comparator;
 import net.minecraft.entity.EntityLivingBase;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
 
 public final class MaidNearestLivingEntitySensor {
 

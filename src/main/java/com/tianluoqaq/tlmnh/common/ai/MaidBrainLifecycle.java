@@ -13,8 +13,9 @@ import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidWorldSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidWorldSensingBudget;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -84,7 +85,7 @@ public final class MaidBrainLifecycle {
             try {
                 action.accept(maid);
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                TLMNotHard.LOG.error(
+                ModContext.LOG.error(
                     "Maid policy lifecycle failed; actor remains blocked: operation={} maid={}",
                     operation,
                     maid.getUniqueID(),

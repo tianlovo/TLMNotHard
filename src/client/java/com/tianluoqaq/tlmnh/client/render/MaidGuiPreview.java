@@ -8,6 +8,8 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

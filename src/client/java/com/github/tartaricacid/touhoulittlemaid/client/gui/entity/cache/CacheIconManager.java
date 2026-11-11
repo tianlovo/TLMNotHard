@@ -22,11 +22,11 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidMode
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.render.MaidIconCapture;
-import com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.client.render.model.MaidNamedModelOverride;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;
@@ -88,7 +88,7 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
             } else textures.put(index, texture);
         } catch (RuntimeException failure) {
             failures++;
-            TLMNotHard.LOG.error("Cannot cache builtin model icon {}", choice.getId(), failure);
+            ModContext.LOG.error("Cannot cache builtin model icon {}", choice.getId(), failure);
         }
     }
 

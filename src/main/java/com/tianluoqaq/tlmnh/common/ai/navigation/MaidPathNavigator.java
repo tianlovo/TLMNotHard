@@ -1,7 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.navigation;
 
-import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathContext.floor;
-import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType.*;
+import static com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext.floor;
+import static com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType.*;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -22,11 +22,18 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
-import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Navigation;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatDiagnosticScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatQueuedMove;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidNativePathRegion;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidPathSearch;
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Navigation;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathContext;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathRegion;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 /** One action-facing navigator, with independent modern ground/water navigation states */
 public final class MaidPathNavigator extends PathNavigate implements MaidNavigationActor {

@@ -12,7 +12,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor.ILocationBone;
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
 
 public final class RenderUtils {
 

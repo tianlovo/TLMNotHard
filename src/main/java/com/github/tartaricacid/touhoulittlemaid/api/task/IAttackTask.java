@@ -15,7 +15,7 @@ import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.misc.DefaultMonsterType;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidVisibleLivingEntities;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidVisibleLivingEntities;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.config.MaidCombatConfig;
 

@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.protection;
 
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
+
 /** 各外部联动特性的熔断单元定义；契约版本号仅在兼容性重验通过后递增 */
 public enum ExternalFeature {
 

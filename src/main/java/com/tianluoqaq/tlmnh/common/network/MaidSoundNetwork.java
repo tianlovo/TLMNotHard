@@ -2,7 +2,6 @@ package com.tianluoqaq.tlmnh.common.network;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -35,7 +34,7 @@ public final class MaidSoundNetwork {
 
         @Override
         public IMessage onMessage(PlayMaidSoundMessage message, MessageContext context) {
-            if (context.side == Side.CLIENT) TLMNotHard.PROXY.enqueueMaidSound(message);
+            if (context.side == Side.CLIENT) MaidClientPackets.enqueueMaidSound(message);
             return null;
         }
     }

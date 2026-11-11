@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.ysmu;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 乘客动画实体 ID 匹配尾部女仆别名回退 */

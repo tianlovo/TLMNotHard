@@ -7,7 +7,7 @@ package com.github.tartaricacid.touhoulittlemaid.util;
 
 import java.util.BitSet;
 
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 
 /**
  * 基于中心偏移量的快速方块位置标记缓存

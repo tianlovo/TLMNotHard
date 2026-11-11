@@ -26,9 +26,9 @@ import com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInsta
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
 import cpw.mods.fml.relauncher.Side;
@@ -176,7 +176,7 @@ public final class MaidSoundPackGui extends GuiScreen implements GuiYesNoCallbac
                 Desktop.getDesktop()
                     .browse(new URI(pendingLink));
             } catch (Exception error) {
-                TLMNotHard.LOG.warn("Cannot open builtin sound credit page", error);
+                ModContext.LOG.warn("Cannot open builtin sound credit page", error);
             }
         }
         pendingLink = null;

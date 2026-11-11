@@ -5,8 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidVehicleActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidVehicleActor.Vehicle;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidVehicleActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidVehicleActor.Vehicle;
 
 public final class MaidFollowOwnerVehicleTask {
 

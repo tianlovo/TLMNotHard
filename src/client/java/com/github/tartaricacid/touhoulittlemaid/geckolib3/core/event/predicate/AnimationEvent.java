@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController;
-import com.tianluoqaq.tlmnh.client.render.GeckoAnimationTarget;
+import com.tianluoqaq.tlmnh.client.render.animation.GeckoAnimationTarget;
 
 public class AnimationEvent<T extends GeckoAnimationTarget> {
 

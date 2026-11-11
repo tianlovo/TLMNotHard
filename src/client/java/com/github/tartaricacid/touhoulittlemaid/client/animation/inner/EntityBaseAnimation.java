@@ -16,7 +16,7 @@ import java.util.Objects;
 import net.minecraft.util.ResourceLocation;
 
 import com.github.tartaricacid.touhoulittlemaid.client.animation.script.ModelRendererWrapper;
-import com.tianluoqaq.tlmnh.client.render.MaidAnimationState;
+import com.tianluoqaq.tlmnh.client.render.animation.MaidAnimationState;
 
 public final class EntityBaseAnimation {
 

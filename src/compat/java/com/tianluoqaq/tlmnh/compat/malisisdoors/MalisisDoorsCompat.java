@@ -3,7 +3,7 @@ package com.tianluoqaq.tlmnh.compat.malisisdoors;
 import java.util.Collections;
 import java.util.List;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 动画门与栅栏门开关状态读写及战斗碰撞箱采样 */

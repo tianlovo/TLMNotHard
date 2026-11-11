@@ -20,6 +20,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemLayer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.TessellatorVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;

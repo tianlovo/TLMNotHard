@@ -8,8 +8,8 @@ package com.github.tartaricacid.simplebedrockmodel.client.bedrock.model;
 
 import org.joml.Vector3f;
 
-import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
-import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyVertexConsumer;
 
 public interface BedrockCube {
 

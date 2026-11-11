@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.util;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidScheduleActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidScheduleActor;
 
 public final class TeleportHelper {
 

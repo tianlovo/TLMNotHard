@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.lwjgl3ify;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 客户端底层输入兼容说明与开发期容器键鼠夹具 */

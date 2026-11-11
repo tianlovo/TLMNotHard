@@ -6,7 +6,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidSwimmingActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidSwimmingActor;
 
 public final class MaidSwimManager {
 

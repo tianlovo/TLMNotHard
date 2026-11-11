@@ -3,9 +3,9 @@ package com.tianluoqaq.tlmnh.compat.twilightforest.client.render;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 
 import cpw.mods.fml.common.Loader;

@@ -6,7 +6,7 @@
  */
 package com.github.tartaricacid.simplebedrockmodel.client.bedrock.pojo;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import cpw.mods.fml.common.versioning.InvalidVersionSpecificationException;
@@ -46,7 +46,7 @@ public enum BedrockVersion {
         try {
             return VersionRange.createFromVersionSpec(spec);
         } catch (InvalidVersionSpecificationException e) {
-            TLMNotHard.LOG.fatal("Failed to parse version spec {}", spec, e);
+            ModContext.LOG.fatal("Failed to parse version spec {}", spec, e);
             throw new RuntimeException("Failed to parse spec", e);
         }
     }

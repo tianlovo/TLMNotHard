@@ -1,8 +1,8 @@
 package com.tianluoqaq.tlmnh.common.progression;
 
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;

@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.etfuturum;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 气泡柱、蜂蜜块、船只乘客、水流物理、旗帜头颅渲染与方块音效 */

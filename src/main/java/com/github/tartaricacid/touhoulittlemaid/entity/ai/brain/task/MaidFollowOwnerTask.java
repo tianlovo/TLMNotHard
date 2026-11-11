@@ -6,8 +6,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowOwnerActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowOwnerActor.Owner;
 
 /** 原版 FollowOwner 的检查与启动逻辑，不包含移动 sink、日程或完整 F 策略 */
 public final class MaidFollowOwnerTask {

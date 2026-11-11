@@ -4,8 +4,8 @@ import java.util.Arrays;
 
 import net.minecraftforge.common.config.Configuration;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatRangePolicy;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatRangePolicy;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 /** 原攻击忽略名单由服务端读取，实体ID采用目标版本的注册名 */
 public final class MaidCombatConfig {
@@ -36,7 +36,7 @@ public final class MaidCombatConfig {
         if (acquire != ownerCombatAcquireRange) {
             config.get("combat", "ownerCombatAcquireRange", 20)
                 .set(ownerCombatAcquireRange);
-            TLMNotHard.LOG.warn(
+            ModContext.LOG.warn(
                 "Normalized ownerCombatAcquireRange from {} to {} (retain {})",
                 acquire,
                 ownerCombatAcquireRange,

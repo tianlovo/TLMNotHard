@@ -8,7 +8,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.budget.MaidTelemetryChannel;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 
 /** 同一策略决策帧只查询一次主人；缓存的在线结果不授予动作权限 */

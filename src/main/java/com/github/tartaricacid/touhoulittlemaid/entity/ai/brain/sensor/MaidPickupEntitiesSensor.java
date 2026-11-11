@@ -12,7 +12,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
 
 public final class MaidPickupEntitiesSensor {
 

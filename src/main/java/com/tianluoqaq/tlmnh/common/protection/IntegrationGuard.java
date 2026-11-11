@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -110,7 +110,7 @@ public final class IntegrationGuard {
         if (existing != null) return existing;
         var fault = new Fault(side, key, String.format("TLMNH-P%06d", ++sequence), failure, owner);
         faults.put(key, fault);
-        TLMNotHard.LOG.error(
+        ModContext.LOG.error(
             "{}: {} protected fallback for {}; original owned data must remain intact",
             fault.code,
             side,

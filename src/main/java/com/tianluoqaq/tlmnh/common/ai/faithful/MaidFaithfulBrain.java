@@ -32,6 +32,14 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateA
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidModernCombat;
+import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidModernRanged;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowCoreLookDriver;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowCoreMoveDriver;
+import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidAbsentContentChecks;
+import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;

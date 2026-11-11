@@ -7,7 +7,7 @@ package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
 import java.util.function.IntUnaryOperator;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidMealActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidMealActor;
 
 public abstract class MaidCheckRateTask {
 

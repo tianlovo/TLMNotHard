@@ -12,19 +12,19 @@ import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent.Action;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidSensingSession;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeCandidate;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent.Action;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 
 /** 增强策略只读候选与实际生活动作；动作共享平台物品提交，不借用旧root */
 public final class EnhancedLifeController {

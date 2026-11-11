@@ -16,8 +16,8 @@ import net.minecraft.item.ItemSword;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 

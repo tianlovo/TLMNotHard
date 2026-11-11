@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.witchery;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 复活交付阶段的女仆初始体型兼容处理 */

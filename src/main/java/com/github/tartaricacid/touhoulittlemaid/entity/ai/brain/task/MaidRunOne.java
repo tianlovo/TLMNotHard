@@ -5,8 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidRandomActor;
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidRandomGate;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidRandomActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidRandomGate;
 
 public final class MaidRunOne extends MaidRandomGate {
 

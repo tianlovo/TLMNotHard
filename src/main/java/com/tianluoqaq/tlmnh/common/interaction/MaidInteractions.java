@@ -22,8 +22,8 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
@@ -70,7 +70,7 @@ public final class MaidInteractions {
                         .nextLong();
                     while (session == 0);
                     player.openGui(
-                        TLMNotHard.INSTANCE,
+                        ModContext.modInstance(),
                         CommonProxy.GUI_MAID_NAMING,
                         maid.worldObj,
                         maid.getEntityId(),

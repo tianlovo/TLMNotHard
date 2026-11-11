@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.twilightforest;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 暮色森林维度的墓碑专属贴图解析 */

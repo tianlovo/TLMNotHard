@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.tianluoqaq.tlmnh.common.combat.MaidArrowSourceState;
-import com.tianluoqaq.tlmnh.common.combat.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
+import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
 
 /** 独立于可选碰撞体形状的原生生命周期边界；停止时保留实体及原始NBT */
 @Mixin(EntityArrow.class)

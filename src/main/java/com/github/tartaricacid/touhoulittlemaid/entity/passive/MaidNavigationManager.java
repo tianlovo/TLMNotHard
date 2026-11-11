@@ -5,9 +5,9 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Navigation;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Navigation;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 
 public final class MaidNavigationManager {
 

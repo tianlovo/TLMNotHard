@@ -13,7 +13,7 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.util.StatCollector;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 

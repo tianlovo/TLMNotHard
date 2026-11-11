@@ -4,7 +4,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.common.network.NetworkRegistry;
@@ -45,7 +44,7 @@ public final class MaidEffectNetwork {
 
         @Override
         public IMessage onMessage(SendEffectMessage message, MessageContext context) {
-            if (context.side == Side.CLIENT) TLMNotHard.PROXY.enqueueMaidEffects(message);
+            if (context.side == Side.CLIENT) MaidClientPackets.enqueueMaidEffects(message);
             return null;
         }
     }

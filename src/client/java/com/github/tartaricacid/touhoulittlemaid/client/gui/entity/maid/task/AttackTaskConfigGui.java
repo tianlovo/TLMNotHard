@@ -21,7 +21,7 @@ import org.lwjgl.opengl.GL11;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.MonsterListButton;
 import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
-import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackListPayload;
 

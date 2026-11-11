@@ -6,8 +6,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings.Point;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
@@ -58,7 +58,7 @@ public final class MaidHomeArea {
                 settings = MaidHomeSettings.EMPTY;
                 restrictionCenter = Point.ZERO;
                 restrictionRadius = MaidHomeConfig.nonHomeRange;
-                TLMNotHard.LOG.warn("Invalid synchronized home settings for maid {}", maid.getUniqueID());
+                ModContext.LOG.warn("Invalid synchronized home settings for maid {}", maid.getUniqueID());
             }
         }
         return settings;
@@ -231,7 +231,7 @@ public final class MaidHomeArea {
             restrictToCurrentSchedule();
         } catch (IllegalArgumentException invalid) {
             unreadSave = (NBTTagCompound) home.copy();
-            TLMNotHard.LOG.warn("Preserving unreadable home settings for maid {}; home disabled", maid.getUniqueID());
+            ModContext.LOG.warn("Preserving unreadable home settings for maid {}; home disabled", maid.getUniqueID());
         }
     }
 }

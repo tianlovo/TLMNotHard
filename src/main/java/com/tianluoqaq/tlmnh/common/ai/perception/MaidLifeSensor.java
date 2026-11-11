@@ -11,11 +11,12 @@ import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate.Kind;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeCandidate;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeCandidate.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 
 /** 只读取附近已加载区块的TE表，执行许可仍由生活动作重新检查 */
 public final class MaidLifeSensor {

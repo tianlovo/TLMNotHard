@@ -18,8 +18,8 @@ import net.minecraft.item.ItemStack;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.OriginalMaidTransfers;
+import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 

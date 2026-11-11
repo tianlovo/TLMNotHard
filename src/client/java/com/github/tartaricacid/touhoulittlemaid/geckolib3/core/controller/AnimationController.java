@@ -41,9 +41,9 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.keyframe.bone.Eas
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.snapshot.BoneSnapshot;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.snapshot.BoneTopLevelSnapshot;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
-import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.client.render.GeckoAnimationTarget;
+import com.tianluoqaq.tlmnh.client.render.animation.GeckoAnimationTarget;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangAnimationContext;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 public class AnimationController<T extends GeckoAnimationTarget> {
 
@@ -151,7 +151,7 @@ public class AnimationController<T extends GeckoAnimationTarget> {
                     .map((rawAnimation) -> {
                         Animation animation = this.animatable.getAnimation(rawAnimation.animationName);
                         if (animation == null) {
-                            TLMNotHard.LOG
+                            ModContext.LOG
                                 .warn("Could not load animation: {}. Is it missing?", rawAnimation.animationName);
                             encounteredError.set(true);
                             return null;

@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.angelica;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 客户端矩阵栈深度读取与图集纹理过滤状态窗口保存 */

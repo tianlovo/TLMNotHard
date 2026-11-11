@@ -6,10 +6,10 @@ import net.minecraft.util.ResourceLocation;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
-import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 

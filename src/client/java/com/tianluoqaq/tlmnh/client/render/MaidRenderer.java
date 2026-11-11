@@ -30,12 +30,23 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidBannerRenderer;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHandAttachment;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemLayer;
+import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeldItemTransforms;
+import com.tianluoqaq.tlmnh.client.render.buffer.LegacyPoseStack;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModel;
+import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
+import com.tianluoqaq.tlmnh.client.render.model.MaidNamedModelOverride;
+import com.tianluoqaq.tlmnh.client.render.model.MaidSwimRenderPose;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;
@@ -124,7 +135,7 @@ public final class MaidRenderer extends RenderLiving {
         try {
             model = models.create(choice);
         } catch (IOException error) {
-            if (failures.add(requested)) TLMNotHard.LOG.error("Cannot render builtin model {}", requested, error);
+            if (failures.add(requested)) ModContext.LOG.error("Cannot render builtin model {}", requested, error);
             try {
                 model = models.create(BuiltinModelCatalog.get(DEFAULT_MODEL));
             } catch (IOException fallbackError) {

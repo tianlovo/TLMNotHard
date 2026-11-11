@@ -4,9 +4,9 @@ import java.lang.invoke.MethodHandle;
 
 import net.minecraft.world.World;
 
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 
 /** 读取 Et Futurum Requiem 的现代音效命名空间；未装该模组时平滑回退到原版箱子音效 */

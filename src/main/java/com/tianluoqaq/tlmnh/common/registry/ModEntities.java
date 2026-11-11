@@ -1,7 +1,7 @@
 package com.tianluoqaq.tlmnh.common.registry;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
 

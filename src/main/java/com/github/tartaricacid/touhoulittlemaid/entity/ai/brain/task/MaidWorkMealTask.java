@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidMealActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidMealActor;
 
 public final class MaidWorkMealTask extends MaidCheckRateTask {
 

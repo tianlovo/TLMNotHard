@@ -2,12 +2,12 @@ package com.tianluoqaq.tlmnh.common.registry;
 
 import net.minecraft.item.ItemBlock;
 
-import com.tianluoqaq.tlmnh.common.life.BlockMaidBed;
-import com.tianluoqaq.tlmnh.common.life.BlockSnackCabinet;
-import com.tianluoqaq.tlmnh.common.life.ItemMaidBed;
-import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
-import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.bed.BlockMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.ItemMaidBed;
+import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.cabinet.BlockSnackCabinet;
 import com.tianluoqaq.tlmnh.common.life.cabinet.ItemSnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 

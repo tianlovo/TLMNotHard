@@ -13,10 +13,10 @@ import net.minecraft.entity.ai.EntityMoveHelper;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidMovementAngles;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatQueuedMove;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
-import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidMovementAngles;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
 
 public final class MaidMoveControl extends EntityMoveHelper {
 

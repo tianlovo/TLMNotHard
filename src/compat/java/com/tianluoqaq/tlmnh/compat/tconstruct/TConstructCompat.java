@@ -1,6 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.tconstruct;
 
-import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
+import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 
 /** 模块化工具损坏态与破盾斧能力只读解析 */

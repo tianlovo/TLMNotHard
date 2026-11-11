@@ -3,6 +3,11 @@ package com.tianluoqaq.tlmnh.common.ai.navigation;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.pathfinding.PathPoint;
 
+import com.tianluoqaq.tlmnh.common.ai.navigation.eval.MaidPathSearch;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
+import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathType;
+
 /** 同一个路线对象保留现代类型/可达事实，并供既有动作所有权边界识别 */
 public class MaidModernPath extends PathEntity implements MaidNavigationActor.Path {
 

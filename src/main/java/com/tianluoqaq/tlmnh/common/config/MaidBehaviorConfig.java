@@ -2,8 +2,8 @@ package com.tianluoqaq.tlmnh.common.config;
 
 import net.minecraftforge.common.config.Configuration;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 /** 服务端启动配置；新实体统一解析，不写每女仆策略NBT，也不开放研究组件 */
 public final class MaidBehaviorConfig {
@@ -25,7 +25,7 @@ public final class MaidBehaviorConfig {
         var parsed = MaidBrainProfile.fromProductionId(configuredValue);
         fallback = parsed == null;
         profile = fallback ? MaidBrainProfile.LEGACY_PROTOTYPE : parsed;
-        if (fallback) TLMNotHard.LOG.warn(
+        if (fallback) ModContext.LOG.warn(
             "Unknown or development-only behavior.profile='{}'; original configuration retained, using legacy_prototype until restart",
             configuredValue);
     }

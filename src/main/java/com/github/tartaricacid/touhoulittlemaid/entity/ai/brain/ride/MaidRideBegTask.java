@@ -5,7 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.ride;
 
-import com.tianluoqaq.tlmnh.common.ai.faithful.MaidLifeActor;
+import com.tianluoqaq.tlmnh.common.ai.faithful.life.MaidLifeActor;
 
 public final class MaidRideBegTask {
 

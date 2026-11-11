@@ -6,7 +6,6 @@ import java.util.function.BooleanSupplier;
 
 import net.minecraft.nbt.NBTTagCompound;
 
-import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorContext;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorInitContext;
@@ -16,6 +15,7 @@ import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorStage;
 import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidBehaviorExtensionData;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
+import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 
 /** 单女仆外部扩展模块隔离槽；统一承接生命周期异常熔断、持久读写隔离与手部租约回收 */
 public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData.ModulePersistentAdapter {
@@ -107,7 +107,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
         var slice = MaidBehaviorExtensionData.extractModuleTag(tlmnhExtension, id);
         if (slice.blocked) {
             persistenceBlocked = true;
-            TLMNotHard.LOG.warn("Behavior module {} persistent read paused on maid {}: {}", id, maidId, slice.reason);
+            ModContext.LOG.warn("Behavior module {} persistent read paused on maid {}: {}", id, maidId, slice.reason);
             return;
         }
         persistenceBlocked = false;
@@ -212,7 +212,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
             if (cleanupError != cause) cause.addSuppressed(cleanupError);
         }
         if (firstFault) {
-            TLMNotHard.LOG.error(
+            ModContext.LOG.error(
                 "External maid behavior module {} faulted during {} on maid {} and was isolated",
                 id,
                 phaseName,
