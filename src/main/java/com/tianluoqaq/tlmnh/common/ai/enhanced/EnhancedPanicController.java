@@ -19,9 +19,8 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 /** 增强安全决策独立消费真实伤害/可见威胁，受伤事实本身不提供逃离坐标 */
 public final class EnhancedPanicController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("panic");
-    private static final int MAX_CANDIDATES = 64, RETRY_TICKS = 20;
-    private static final double DANGER_DISTANCE_SQUARED = 64;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_PANIC);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
@@ -40,13 +39,20 @@ public final class EnhancedPanicController {
         EntityLivingBase nearest = visibleThreat(perception.nearestHostile()) ? perception.nearestHostile() : null;
         int checked = 0;
         for (var candidate : perception.nearby()) {
-            if (++checked > MAX_CANDIDATES) break;
+            if (++checked > EnhancedAiTuning.MAX_CANDIDATES) break;
             if (visibleThreat(candidate)
                 && (nearest == null || maid.getDistanceSqToEntity(candidate) < maid.getDistanceSqToEntity(nearest)))
                 nearest = candidate;
         }
         if (nearest == null && maid.getMaidLastDamageSource() == null) return false;
-        frame.offerTyped(ID, Group.DANGER, Kind.PANIC, "panic", 1, nearest, this::execute);
+        frame.offerTyped(
+            ID,
+            Group.DANGER,
+            Kind.PANIC,
+            EnhancedAiIds.ID_PANIC,
+            EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP,
+            nearest,
+            this::execute);
         return true;
     }
 
@@ -62,7 +68,7 @@ public final class EnhancedPanicController {
             && candidate.dimension == maid.dimension
             && candidate.isEntityAlive()
             && maid.worldObj.getEntityByID(candidate.getEntityId()) == candidate
-            && maid.getDistanceSqToEntity(candidate) < DANGER_DISTANCE_SQUARED
+            && maid.getDistanceSqToEntity(candidate) < EnhancedAiTuning.DANGER_DISTANCE_SQUARED
             && maid.canEntityBeSeen(candidate);
     }
 
@@ -71,7 +77,7 @@ public final class EnhancedPanicController {
         long now = maid.worldObj.getTotalWorldTime();
         if (now < lastTick || threat != observed) {
             destination = null;
-            nextSample = 0;
+            nextSample = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         }
         lastTick = now;
         threat = observed != null && visibleThreat(observed) ? observed : null;
@@ -90,14 +96,20 @@ public final class EnhancedPanicController {
             actor.eraseWalkTarget();
             return;
         }
-        if (destination != null && (!legalDestination(destination)
-            || maid.getDistanceSq(destination.x + .5, destination.y, destination.z + .5) < 1)) {
+        if (destination != null && (!legalDestination(destination) || maid.getDistanceSq(
+            destination.x + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+            destination.y,
+            destination.z + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE)
+            < EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP)) {
             destination = null;
         }
         if (now >= nextSample) {
-            nextSample = now + RETRY_TICKS;
+            nextSample = now + EnhancedAiTuning.RETRY_TICKS_2;
             samples++;
-            var sampled = actor.findEnhancedLandAway(10, 3, new Vec3(threat.posX, threat.posY, threat.posZ));
+            var sampled = actor.findEnhancedLandAway(
+                EnhancedAiTuning.ENHANCED_PANIC_FIND_ENHANCED_LAND_AWAY_FIRST_PARAM,
+                EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM,
+                new Vec3(threat.posX, threat.posY, threat.posZ));
             if (!actor.isCurrent()) return;
             if (sampled != null) {
                 var point = new Point(
@@ -108,7 +120,10 @@ public final class EnhancedPanicController {
             }
         }
         if (destination == null) actor.eraseWalkTarget();
-        else actor.setPositionWalkAndLook(destination, .7F, 0);
+        else actor.setPositionWalkAndLook(
+            destination,
+            EnhancedAiTuning.ENHANCED_HOME_SET_POSITION_WALK_AND_LOOK_SECOND_FACT,
+            EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
     }
 
     private boolean legalDestination(Point point) {
@@ -117,7 +132,10 @@ public final class EnhancedPanicController {
             && maid.getHomeArea()
                 .withinRestriction(point.x, point.y, point.z)
             && actor.isEnhancedLandDestination(point)
-            && threat.getDistanceSq(point.x + .5, point.y, point.z + .5) > maid.getDistanceSqToEntity(threat);
+            && threat.getDistanceSq(
+                point.x + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+                point.y,
+                point.z + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE) > maid.getDistanceSqToEntity(threat);
     }
 
     public void onDeselected(TransitionReason reason) {
@@ -127,7 +145,7 @@ public final class EnhancedPanicController {
     public void cancel() {
         threat = null;
         destination = null;
-        nextSample = 0;
+        nextSample = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         lastTick = Long.MIN_VALUE;
     }
 

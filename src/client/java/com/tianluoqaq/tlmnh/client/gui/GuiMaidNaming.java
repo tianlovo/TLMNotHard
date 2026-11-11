@@ -6,8 +6,6 @@
  */
 package com.tianluoqaq.tlmnh.client.gui;
 
-import com.tianluoqaq.tlmnh.common.interaction.MaidInteractionTuning;
-
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -20,6 +18,7 @@ import org.lwjgl.opengl.GL11;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
+import com.tianluoqaq.tlmnh.common.interaction.MaidInteractionTuning;
 import com.tianluoqaq.tlmnh.common.interaction.MaidNameRules;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
@@ -52,14 +51,37 @@ public final class GuiMaidNaming extends GuiContainer {
         super.initGui();
         Keyboard.enableRepeatEvents(true);
         int middleX = width / ClientGuiLayout.MIDPOINT_DIVISOR, middleY = height / ClientGuiLayout.MIDPOINT_DIVISOR;
-        nameField = new GuiTextField(fontRendererObj, middleX - ClientGuiLayout.GUI_NAMING_NAME_FIELD, middleY - ClientGuiLayout.FILTER_BTN_Y, ClientGuiLayout.GUI_RECT_LEFT, ClientGuiLayout.ACTION_BTN_HEIGHT);
+        nameField = new GuiTextField(
+            fontRendererObj,
+            middleX - ClientGuiLayout.GUI_NAMING_NAME_FIELD,
+            middleY - ClientGuiLayout.FILTER_BTN_Y,
+            ClientGuiLayout.GUI_RECT_LEFT,
+            ClientGuiLayout.ACTION_BTN_HEIGHT);
         nameField.setMaxStringLength(MaidInteractionTuning.MAX_LENGTH);
         nameField.setText(name);
         nameField.setFocused(true);
         buttonList.clear();
-        visibility = new GuiButton(ClientGuiLayout.GUI_MODELS_PAGE, middleX + ClientGuiLayout.GUI_NAMING_VISIBILITY, middleY - ClientGuiLayout.FILTER_BTN_Y, ClientGuiLayout.ACTION_BTN_HEIGHT, ClientGuiLayout.ACTION_BTN_HEIGHT, "");
-        done = new GuiButton(ClientGuiLayout.SUBSTRING_START_OFFSET, middleX - ClientGuiLayout.PICKUP_ITEMS_BTN_Y, middleY, ClientGuiLayout.GUI_NAMING_BTN_WIDTH, ClientGuiLayout.ACTION_BTN_HEIGHT, text(ClientGuiIds.I18N_GUI_DONE));
-        cancel = new GuiButton(ClientGuiLayout.MIDPOINT_DIVISOR, middleX + ClientGuiLayout.MIDPOINT_DIVISOR, middleY, ClientGuiLayout.GUI_NAMING_BTN_WIDTH, ClientGuiLayout.ACTION_BTN_HEIGHT, text(ClientGuiIds.I18N_GUI_CANCEL));
+        visibility = new GuiButton(
+            ClientGuiLayout.GUI_MODELS_PAGE,
+            middleX + ClientGuiLayout.GUI_NAMING_VISIBILITY,
+            middleY - ClientGuiLayout.FILTER_BTN_Y,
+            ClientGuiLayout.ACTION_BTN_HEIGHT,
+            ClientGuiLayout.ACTION_BTN_HEIGHT,
+            "");
+        done = new GuiButton(
+            ClientGuiLayout.SUBSTRING_START_OFFSET,
+            middleX - ClientGuiLayout.PICKUP_ITEMS_BTN_Y,
+            middleY,
+            ClientGuiLayout.GUI_NAMING_BTN_WIDTH,
+            ClientGuiLayout.ACTION_BTN_HEIGHT,
+            text(ClientGuiIds.I18N_GUI_DONE));
+        cancel = new GuiButton(
+            ClientGuiLayout.MIDPOINT_DIVISOR,
+            middleX + ClientGuiLayout.MIDPOINT_DIVISOR,
+            middleY,
+            ClientGuiLayout.GUI_NAMING_BTN_WIDTH,
+            ClientGuiLayout.ACTION_BTN_HEIGHT,
+            text(ClientGuiIds.I18N_GUI_CANCEL));
         buttonList.add(visibility);
         buttonList.add(done);
         buttonList.add(cancel);
@@ -143,14 +165,27 @@ public final class GuiMaidNaming extends GuiContainer {
             GL11.glDisable(GL11.GL_LIGHTING);
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             nameField.drawTextBox();
-            GL11.glColor4f(ClientGuiLayout.SUBSTRING_START_OFFSET, ClientGuiLayout.SUBSTRING_START_OFFSET, ClientGuiLayout.SUBSTRING_START_OFFSET, ClientGuiLayout.SUBSTRING_START_OFFSET);
+            GL11.glColor4f(
+                ClientGuiLayout.SUBSTRING_START_OFFSET,
+                ClientGuiLayout.SUBSTRING_START_OFFSET,
+                ClientGuiLayout.SUBSTRING_START_OFFSET,
+                ClientGuiLayout.SUBSTRING_START_OFFSET);
             mc.getTextureManager()
                 .bindTexture(TEXTURES);
-            drawTexturedModalRect(width / ClientGuiLayout.MIDPOINT_DIVISOR + ClientGuiLayout.GUI_NAMING_VISIBILITY, height / ClientGuiLayout.MIDPOINT_DIVISOR - ClientGuiLayout.FILTER_BTN_Y, alwaysShow ? ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM_2 : ClientGuiLayout.GUI_NAMING_TEX_U, ClientGuiLayout.GUI_NAMING_TEX_V, ClientGuiLayout.ACTION_BTN_HEIGHT, ClientGuiLayout.ACTION_BTN_HEIGHT);
+            drawTexturedModalRect(
+                width / ClientGuiLayout.MIDPOINT_DIVISOR + ClientGuiLayout.GUI_NAMING_VISIBILITY,
+                height / ClientGuiLayout.MIDPOINT_DIVISOR - ClientGuiLayout.FILTER_BTN_Y,
+                alwaysShow ? ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM_2 : ClientGuiLayout.GUI_NAMING_TEX_U,
+                ClientGuiLayout.GUI_NAMING_TEX_V,
+                ClientGuiLayout.ACTION_BTN_HEIGHT,
+                ClientGuiLayout.ACTION_BTN_HEIGHT);
             if (mouseX >= visibility.xPosition && mouseX < visibility.xPosition + visibility.width
                 && mouseY >= visibility.yPosition
                 && mouseY < visibility.yPosition + visibility.height)
-                drawCreativeTabHoveringText(text(ClientGuiIds.I18N_GUI_TOUHOU_LITTLE_MAID_TAG_ALWAYS_SHOW), mouseX, mouseY);
+                drawCreativeTabHoveringText(
+                    text(ClientGuiIds.I18N_GUI_TOUHOU_LITTLE_MAID_TAG_ALWAYS_SHOW),
+                    mouseX,
+                    mouseY);
         } finally {
             GL11.glPopAttrib();
         }
@@ -167,7 +202,8 @@ public final class GuiMaidNaming extends GuiContainer {
             || !container.canInteractWith(mc.thePlayer)) return false;
         if (action.equals(ClientGuiIds.ID_NAMING_TEXT)) {
             if (pending || value == null || value.length() > MaidInteractionTuning.MAX_LENGTH) return false;
-            int x = nameField.xPosition + nameField.width / ClientGuiLayout.MIDPOINT_DIVISOR, y = nameField.yPosition + nameField.height / ClientGuiLayout.MIDPOINT_DIVISOR;
+            int x = nameField.xPosition + nameField.width / ClientGuiLayout.MIDPOINT_DIVISOR,
+                y = nameField.yPosition + nameField.height / ClientGuiLayout.MIDPOINT_DIVISOR;
             mouseClicked(x, y, ClientGuiLayout.GUI_MODELS_PAGE);
             mouseMovedOrUp(x, y, ClientGuiLayout.GUI_MODELS_PAGE);
             keyTyped('\0', Keyboard.KEY_HOME);
@@ -198,7 +234,8 @@ public final class GuiMaidNaming extends GuiContainer {
             default -> throw new IllegalArgumentException(ClientGuiDiagnostics.MSG_UNKNOWN_NAMING_ACTION);
         };
         if (!button.visible || !button.enabled) return false;
-        int x = button.xPosition + button.width / ClientGuiLayout.MIDPOINT_DIVISOR, y = button.yPosition + button.height / ClientGuiLayout.MIDPOINT_DIVISOR;
+        int x = button.xPosition + button.width / ClientGuiLayout.MIDPOINT_DIVISOR,
+            y = button.yPosition + button.height / ClientGuiLayout.MIDPOINT_DIVISOR;
         mouseClicked(x, y, ClientGuiLayout.GUI_MODELS_PAGE);
         mouseMovedOrUp(x, y, ClientGuiLayout.GUI_MODELS_PAGE);
         if (action.equals(ClientGuiIds.ID_NAMING_REPEAT)) {
@@ -226,7 +263,9 @@ public final class GuiMaidNaming extends GuiContainer {
         result.addProperty(ClientGuiIds.ID_VISIBILITYY, visibility.yPosition);
         result.addProperty(ClientGuiIds.ID_VISIBILITYWIDTH, visibility.width);
         result.addProperty(ClientGuiIds.ID_VISIBILITYHEIGHT, visibility.height);
-        result.addProperty(ClientGuiIds.ID_VISIBILITYTEXTUREU, alwaysShow ? ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM_2 : ClientGuiLayout.GUI_NAMING_TEX_U);
+        result.addProperty(
+            ClientGuiIds.ID_VISIBILITYTEXTUREU,
+            alwaysShow ? ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM_2 : ClientGuiLayout.GUI_NAMING_TEX_U);
         return result;
     }
 

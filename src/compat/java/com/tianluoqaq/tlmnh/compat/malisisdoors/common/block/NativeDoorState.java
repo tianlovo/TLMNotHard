@@ -33,7 +33,9 @@ public final class NativeDoorState {
                     || value.name()
                         .equals(MalisisDoorsBlockIds.KEY_OPENING);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_NATIVE_ANIMATED_DOOR_STATE_IS, failure);
+                throw new IllegalStateException(
+                    MalisisDoorsBlockDiagnostics.MSG_NATIVE_ANIMATED_DOOR_STATE_IS,
+                    failure);
             }
         }
         return door.func_150015_f(world, x, y, z);
@@ -48,8 +50,9 @@ public final class NativeDoorState {
                     NativeDoorState.class.getClassLoader())
                 .getMethod(MalisisDoorsBlockIds.ID_GETSTATE);
         } catch (ClassNotFoundException | NoSuchMethodException absent) {
-            if (Loader.isModLoaded(MalisisDoorsBlockIds.ID_MALISISDOORS))
-                throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_STATE_API, absent);
+            if (Loader.isModLoaded(MalisisDoorsBlockIds.ID_MALISISDOORS)) throw new IllegalStateException(
+                MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_STATE_API,
+                absent);
             return null;
         }
     }

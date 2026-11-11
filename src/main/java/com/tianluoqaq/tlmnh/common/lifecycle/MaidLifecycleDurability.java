@@ -49,7 +49,7 @@ final class MaidLifecycleDurability {
         try {
             var server = server(world);
             if (MaidLifecycleData.get(world) != ledger)
-                throw new IllegalStateException("Lifecycle storage no longer owns the active ledger");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_LIFECYCLE_STORAGE_NO_LONGER_OWNS);
             server.checkSessionLock();
             CompatServices.lifecycleStorage()
                 .beforeLedgerWrite();
@@ -59,18 +59,18 @@ final class MaidLifecycleDurability {
             var expected = new File(
                 server.getSaveHandler()
                     .getWorldDirectory(),
-                "data/" + MaidLifecycleData.NAME + ".dat").getCanonicalFile();
+                MaidLifecycleIds.ID_DATA + MaidLifecycleData.NAME + MaidLifecycleIds.ID_DAT).getCanonicalFile();
             if (!target.equals(expected) || !target.toPath()
                 .startsWith(
                     server.getSaveHandler()
                         .getWorldDirectory()
                         .getCanonicalFile()
                         .toPath()))
-                throw new IllegalStateException("Unknown lifecycle data location");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_LIFECYCLE_DATA_LOCATION);
             var data = new NBTTagCompound();
             ledger.writeToNBT(data);
             var root = new NBTTagCompound();
-            root.setTag("data", data);
+            root.setTag(MaidLifecycleIds.ID_DATA_2, data);
             var buffer = new ByteArrayOutputStream();
             CompressedStreamTools.writeCompressed(root, buffer);
             Files.createDirectories(
@@ -79,8 +79,8 @@ final class MaidLifecycleDurability {
             var temporary = Files.createTempFile(
                 target.toPath()
                     .getParent(),
-                MaidLifecycleData.NAME + ".",
-                ".tmp");
+                MaidLifecycleData.NAME + MaidLifecycleIds.DOT_SEPARATOR,
+                MaidLifecycleIds.ID_TMP);
             try (var output = new FileOutputStream(temporary.toFile())) {
                 output.write(buffer.toByteArray());
                 output.getFD()
@@ -88,10 +88,13 @@ final class MaidLifecycleDurability {
             }
             // 不以delete+rename或非原子fallback替代；写前失败不得进入外部交付
             Files.move(temporary, target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            if (!root.equals(read(target))) throw new IllegalStateException("Durable lifecycle snapshot differs");
+            if (!root.equals(read(target)))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_DURABLE_LIFECYCLE_SNAPSHOT_DIFFERS);
             ledger.setDirty(false);
         } catch (Exception failure) {
-            throw new IllegalStateException("Cannot confirm durable lifecycle escrow; delivery remains held", failure);
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_CANNOT_CONFIRM_DURABLE_LIFECYCLE_ESCROW,
+                failure);
         }
     }
 
@@ -100,11 +103,13 @@ final class MaidLifecycleDurability {
         if (!(player instanceof EntityPlayerMP actual) || actual.playerNetServerHandler == null
             || !(server.getSaveHandler()
                 .getSaveHandler() instanceof SaveHandler))
-            throw new IllegalStateException("Unknown native player persistence target");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_PLAYER_PERSISTENCE_TARGET);
         try {
             playerFile(player);
         } catch (Exception failure) {
-            throw new IllegalStateException("Unknown native player data location", failure);
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_PLAYER_DATA_LOCATION,
+                failure);
         }
     }
 
@@ -122,29 +127,31 @@ final class MaidLifecycleDurability {
             if (!expectedInventory.equals(player.inventory.writeToNBT(new NBTTagList()))
                 || player.inventory.currentItem != selected
                 || health != null && player.getHealth() != health)
-                throw new IllegalStateException("Player delivery changed before native save");
+                throw new IllegalStateException(
+                    MaidLifecyclePart2Diagnostics.MSG_PLAYER_DELIVERY_CHANGED_BEFORE_NATIVE);
             // 沿原生SaveHandler及PlayerSavingEvent写出，绝不readPlayerData覆写活玩家
             store.writePlayerData(player);
             var file = playerFile(player);
             var saved = read(file);
-            if (!saved.hasKey("Inventory", Constants.NBT.TAG_LIST)
-                || !saved.hasKey("SelectedItemSlot", Constants.NBT.TAG_INT)
-                || !expectedInventory.equals(saved.getTagList("Inventory", Constants.NBT.TAG_COMPOUND))
-                || saved.getInteger("SelectedItemSlot") != selected
+            if (!saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, Constants.NBT.TAG_LIST)
+                || !saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_SELECTED_ITEM_SLOT, Constants.NBT.TAG_INT)
+                || !expectedInventory
+                    .equals(saved.getTagList(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, Constants.NBT.TAG_COMPOUND))
+                || saved.getInteger(MaidLifecyclePart2NbtKeys.KEY_SELECTED_ITEM_SLOT) != selected
                 || !expectedInventory.equals(player.inventory.writeToNBT(new NBTTagList()))
                 || player.inventory.currentItem != selected
-                || health != null
-                    && (!saved.hasKey("HealF", Constants.NBT.TAG_FLOAT) || saved.getFloat("HealF") != health
-                        || !saved.hasKey("Health", Constants.NBT.TAG_SHORT)
-                        || saved.getShort("Health") != (short) Math.ceil(health)
-                        || player.getHealth() != health))
-                throw new IllegalStateException("Native player inventory save was rejected or rewritten");
+                || health != null && (!saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_HEAL_F, Constants.NBT.TAG_FLOAT)
+                    || saved.getFloat(MaidLifecyclePart2NbtKeys.KEY_HEAL_F) != health
+                    || !saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_HEALTH, Constants.NBT.TAG_SHORT)
+                    || saved.getShort(MaidLifecyclePart2NbtKeys.KEY_HEALTH) != (short) Math.ceil(health)
+                    || player.getHealth() != health))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NATIVE_PLAYER_INVENTORY_SAVE_WAS);
             try (var channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
                 channel.force(true);
             }
         } catch (Exception failure) {
             throw new IllegalStateException(
-                "Cannot confirm native player delivery; original escrow remains held",
+                MaidLifecyclePart2Diagnostics.MSG_CANNOT_CONFIRM_NATIVE_PLAYER_DELIVERY,
                 failure);
         }
     }
@@ -157,7 +164,8 @@ final class MaidLifecycleDurability {
         var world = server(tile.getWorldObj());
         int x = tile.xCoord, y = tile.yCoord, z = tile.zCoord;
         if (!world.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4)) throw new IllegalStateException("Source tile chunk is no longer loaded");
+            .chunkExists(x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT, z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_SOURCE_TILE_CHUNK_IS_NO);
         var block = world.getBlock(x, y, z);
         int metadata = world.getBlockMetadata(x, y, z);
         storeTileState(world, x, y, z, block, metadata, tile, expected);
@@ -166,9 +174,10 @@ final class MaidLifecycleDurability {
     static void absentTile(World world, int x, int y, int z, Block original) {
         var actual = server(world);
         if (!actual.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4) || actual.getTileEntity(x, y, z) != null
+            .chunkExists(x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT, z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+            || actual.getTileEntity(x, y, z) != null
             || actual.getBlock(x, y, z) == original)
-            throw new IllegalStateException("Original source block removal is not confirmed");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_ORIGINAL_SOURCE_BLOCK_REMOVAL_IS);
         storeTileState(actual, x, y, z, actual.getBlock(x, y, z), actual.getBlockMetadata(x, y, z), null, null);
     }
 
@@ -178,64 +187,85 @@ final class MaidLifecycleDurability {
             expected = expected == null ? null : (NBTTagCompound) expected.copy();
             checkTileState(world, x, y, z, block, metadata, tile, expected);
             var chunks = new LinkedHashMap<Long, Chunk>();
-            addChunk(world, chunks, x >> 4, z >> 4);
+            addChunk(
+                world,
+                chunks,
+                x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT);
             var loader = loader(world);
             for (var chunk : chunks.values()) loader.saveChunk(world, chunk);
             ThreadedFileIOBase.threadedIOInstance.waitForFinish();
-            try (var input = RegionFileCache.getChunkInputStream(loader.chunkSaveLocation, x >> 4, z >> 4)) {
-                if (input == null) throw new IllegalStateException("No native saved source tile chunk");
+            try (var input = RegionFileCache.getChunkInputStream(
+                loader.chunkSaveLocation,
+                x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)) {
+                if (input == null)
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_NATIVE_SAVED_SOURCE_TILE);
                 var root = CompressedStreamTools.read(input);
-                var level = root.getCompoundTag("Level");
-                if (!root.hasKey("Level", Constants.NBT.TAG_COMPOUND) || !level.hasKey("xPos", Constants.NBT.TAG_INT)
-                    || !level.hasKey("zPos", Constants.NBT.TAG_INT)
-                    || level.getInteger("xPos") != x >> 4
-                    || level.getInteger("zPos") != z >> 4
-                    || !level.hasKey("Sections", Constants.NBT.TAG_LIST)
-                    || !level.hasKey("TileEntities", Constants.NBT.TAG_LIST))
-                    throw new IllegalStateException("Unknown native source tile chunk layout");
-                var sections = level.getTagList("Sections", Constants.NBT.TAG_COMPOUND);
-                if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
-                    throw new IllegalStateException("Unknown source block section entries");
+                var level = root.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_LEVEL);
+                if (!root.hasKey(MaidLifecyclePart2NbtKeys.KEY_LEVEL, Constants.NBT.TAG_COMPOUND)
+                    || !level.hasKey(MaidLifecycleIds.ID_XPOS, Constants.NBT.TAG_INT)
+                    || !level.hasKey(MaidLifecycleIds.ID_ZPOS, Constants.NBT.TAG_INT)
+                    || level.getInteger(MaidLifecycleIds.ID_XPOS) != x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT
+                    || level.getInteger(MaidLifecycleIds.ID_ZPOS) != z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT
+                    || !level.hasKey(MaidLifecyclePart2NbtKeys.KEY_SECTIONS, Constants.NBT.TAG_LIST)
+                    || !level.hasKey(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES, Constants.NBT.TAG_LIST))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_SOURCE_TILE_CHUNK);
+                var sections = level.getTagList(MaidLifecyclePart2NbtKeys.KEY_SECTIONS, Constants.NBT.TAG_COMPOUND);
+                if (((NBTTagList) level.getTag(MaidLifecyclePart2NbtKeys.KEY_SECTIONS)).tagCount()
+                    != sections.tagCount())
+                    throw new IllegalStateException(
+                        MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SOURCE_BLOCK_SECTION_ENTRIES);
                 int sectionCount = 0;
                 for (int i = 0; i < sections.tagCount(); i++) {
                     var section = sections.getCompoundTagAt(i);
-                    if (!section.hasKey("Y", Constants.NBT.TAG_BYTE))
-                        throw new IllegalStateException("Unknown native section index");
-                    if (section.getByte("Y") != y >> 4) continue;
+                    if (!section.hasKey(MaidLifecyclePart2NbtKeys.KEY_Y, Constants.NBT.TAG_BYTE))
+                        throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_SECTION_INDEX);
+                    if (section.getByte(MaidLifecyclePart2NbtKeys.KEY_Y)
+                        != y >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT) continue;
                     sectionCount++;
-                    int index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
+                    int index = ((y & MaidLifecycleTuning.CHUNK_LOCAL_MASK)
+                        << MaidLifecycleTuning.CAPTURE_RECORD_VALIDATE_PARAM)
+                        | ((z & MaidLifecycleTuning.CHUNK_LOCAL_MASK) << MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+                        | (x & MaidLifecycleTuning.CHUNK_LOCAL_MASK);
                     if (CompatServices.lifecycleStorage()
                         .sectionBlockId(section, index) != Block.getIdFromBlock(block)
                         || CompatServices.lifecycleStorage()
                             .sectionMetadata(section, index) != metadata)
-                        throw new IllegalStateException("Native source block or metadata changed during save");
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_NATIVE_SOURCE_BLOCK_OR_METADATA);
                 }
-                if (sectionCount != 1 && !(sectionCount == 0 && block == Blocks.air && metadata == 0))
-                    throw new IllegalStateException("Native source block section is not unique");
-                var tiles = level.getTagList("TileEntities", Constants.NBT.TAG_COMPOUND);
-                if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
-                    throw new IllegalStateException("Unknown source tile list");
+                if (sectionCount != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                    && !(sectionCount == 0 && block == Blocks.air && metadata == 0))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NATIVE_SOURCE_BLOCK_SECTION_IS);
+                var tiles = level.getTagList(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES, Constants.NBT.TAG_COMPOUND);
+                if (((NBTTagList) level.getTag(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES)).tagCount()
+                    != tiles.tagCount())
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SOURCE_TILE_LIST);
                 int count = 0;
                 for (int i = 0; i < tiles.tagCount(); i++) {
                     var saved = tiles.getCompoundTagAt(i);
-                    if (!saved.hasKey("x", Constants.NBT.TAG_INT) || !saved.hasKey("y", Constants.NBT.TAG_INT)
-                        || !saved.hasKey("z", Constants.NBT.TAG_INT))
-                        throw new IllegalStateException("Unknown saved tile position");
-                    if (saved.getInteger("x") != x || saved.getInteger("y") != y || saved.getInteger("z") != z)
-                        continue;
+                    if (!saved.hasKey(MaidLifecycleIds.ID_X, Constants.NBT.TAG_INT)
+                        || !saved.hasKey(MaidLifecycleIds.ID_Y, Constants.NBT.TAG_INT)
+                        || !saved.hasKey(MaidLifecycleIds.ID_Z, Constants.NBT.TAG_INT))
+                        throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SAVED_TILE_POSITION);
+                    if (saved.getInteger(MaidLifecycleIds.ID_X) != x || saved.getInteger(MaidLifecycleIds.ID_Y) != y
+                        || saved.getInteger(MaidLifecycleIds.ID_Z) != z) continue;
                     count++;
-                    if (tile == null || !expected.equals(saved))
-                        throw new IllegalStateException("Native source tile contents changed during save");
+                    if (tile == null || !expected.equals(saved)) throw new IllegalStateException(
+                        MaidLifecyclePart2Diagnostics.MSG_NATIVE_SOURCE_TILE_CONTENTS_CHANGED);
                 }
-                if (count != (tile == null ? 0 : 1))
-                    throw new IllegalStateException("Native source tile presence differs");
+                if (count != (tile == null ? MaidLifecycleTuning.CORE_INITIAL_VALUE
+                    : MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD))
+                    throw new IllegalStateException(
+                        MaidLifecyclePart2Diagnostics.MSG_NATIVE_SOURCE_TILE_PRESENCE_DIFFERS);
             }
             checkTileState(world, x, y, z, block, metadata, tile, expected);
         } catch (Exception failure) {
             if (failure instanceof InterruptedException) Thread.currentThread()
                 .interrupt();
             throw new IllegalStateException(
-                "Cannot confirm native source tile; original material remains held",
+                MaidLifecyclePart2Diagnostics.MSG_CANNOT_CONFIRM_NATIVE_SOURCE_TILE,
                 failure);
         }
     }
@@ -243,9 +273,11 @@ final class MaidLifecycleDurability {
     private static void checkTileState(WorldServer world, int x, int y, int z, Block block, int metadata,
         TileEntity tile, NBTTagCompound expected) {
         if (!world.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4) || world.getBlock(x, y, z) != block
+            .chunkExists(x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT, z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+            || world.getBlock(x, y, z) != block
             || world.getBlockMetadata(x, y, z) != metadata
-            || world.getTileEntity(x, y, z) != tile) throw new IllegalStateException("Source tile identity changed");
+            || world.getTileEntity(x, y, z) != tile)
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_SOURCE_TILE_IDENTITY_CHANGED);
         if (tile != null) {
             var snapshot = new NBTTagCompound();
             tile.writeToNBT(snapshot);
@@ -254,7 +286,8 @@ final class MaidLifecycleDurability {
                 || tile.yCoord != y
                 || tile.zCoord != z
                 || !expected.equals(snapshot))
-                throw new IllegalStateException("Unknown source tile successor retained");
+                throw new IllegalStateException(
+                    MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SOURCE_TILE_SUCCESSOR_RETAINED);
         }
     }
 
@@ -262,8 +295,8 @@ final class MaidLifecycleDurability {
         var result = new NBTTagCompound();
         var type = EntityList.getEntityString(maid);
         if (type == null || maid.ridingEntity != null || maid.riddenByEntity != null)
-            throw new IllegalStateException("Unknown or mounted maid publication");
-        result.setString("id", type);
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_OR_MOUNTED_MAID_PUBLICATION);
+        result.setString(MaidLifecycleIds.ID_ID, type);
         maid.writeToNBT(result);
         return (NBTTagCompound) result.copy();
     }
@@ -273,43 +306,57 @@ final class MaidLifecycleDurability {
             var world = server(shrine.getWorldObj());
             var chunks = new LinkedHashMap<Long, Chunk>();
             checkShrine(shrine, expected, metadata);
-            addChunk(world, chunks, shrine.xCoord >> 4, shrine.zCoord >> 4);
+            addChunk(
+                world,
+                chunks,
+                shrine.xCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                shrine.zCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT);
             var loader = loader(world);
             for (var chunk : chunks.values()) loader.saveChunk(world, chunk);
             ThreadedFileIOBase.threadedIOInstance.waitForFinish();
-            try (var input = RegionFileCache
-                .getChunkInputStream(loader.chunkSaveLocation, shrine.xCoord >> 4, shrine.zCoord >> 4)) {
-                if (input == null) throw new IllegalStateException("No saved shrine chunk");
+            try (var input = RegionFileCache.getChunkInputStream(
+                loader.chunkSaveLocation,
+                shrine.xCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                shrine.zCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)) {
+                if (input == null)
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_SAVED_SHRINE_CHUNK);
                 var root = CompressedStreamTools.read(input);
-                var level = root.getCompoundTag("Level");
-                if (!root.hasKey("Level", Constants.NBT.TAG_COMPOUND)
-                    || !level.hasKey("TileEntities", Constants.NBT.TAG_LIST)
-                    || !level.hasKey("xPos", Constants.NBT.TAG_INT)
-                    || !level.hasKey("zPos", Constants.NBT.TAG_INT)
-                    || level.getInteger("xPos") != (shrine.xCoord >> 4)
-                    || level.getInteger("zPos") != (shrine.zCoord >> 4))
-                    throw new IllegalStateException("Unknown saved shrine chunk");
+                var level = root.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_LEVEL);
+                if (!root.hasKey(MaidLifecyclePart2NbtKeys.KEY_LEVEL, Constants.NBT.TAG_COMPOUND)
+                    || !level.hasKey(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES, Constants.NBT.TAG_LIST)
+                    || !level.hasKey(MaidLifecycleIds.ID_XPOS, Constants.NBT.TAG_INT)
+                    || !level.hasKey(MaidLifecycleIds.ID_ZPOS, Constants.NBT.TAG_INT)
+                    || level.getInteger(MaidLifecycleIds.ID_XPOS)
+                        != (shrine.xCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+                    || level.getInteger(MaidLifecycleIds.ID_ZPOS)
+                        != (shrine.zCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SAVED_SHRINE_CHUNK);
                 checkShrineBlock(level, shrine, metadata);
-                var tiles = level.getTagList("TileEntities", Constants.NBT.TAG_COMPOUND);
-                if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
-                    throw new IllegalStateException("Unknown saved shrine tile list");
+                var tiles = level.getTagList(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES, Constants.NBT.TAG_COMPOUND);
+                if (((NBTTagList) level.getTag(MaidLifecyclePart2NbtKeys.KEY_TILE_ENTITIES)).tagCount()
+                    != tiles.tagCount())
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_SAVED_SHRINE_TILE_LIST);
                 int count = 0;
                 for (int i = 0; i < tiles.tagCount(); i++) {
                     var tile = tiles.getCompoundTagAt(i);
-                    if (tile.getInteger("x") == shrine.xCoord && tile.getInteger("y") == shrine.yCoord
-                        && tile.getInteger("z") == shrine.zCoord) {
+                    if (tile.getInteger(MaidLifecycleIds.ID_X) == shrine.xCoord
+                        && tile.getInteger(MaidLifecycleIds.ID_Y) == shrine.yCoord
+                        && tile.getInteger(MaidLifecycleIds.ID_Z) == shrine.zCoord) {
                         count++;
-                        if (!expected.equals(tile))
-                            throw new IllegalStateException("Saved shrine differs from its owned snapshot");
+                        if (!expected.equals(tile)) throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_SAVED_SHRINE_DIFFERS_FROM_ITS);
                     }
                 }
-                if (count != 1) throw new IllegalStateException("Saved shrine identity is not unique");
+                if (count != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD)
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_SAVED_SHRINE_IDENTITY_IS_NOT);
             }
             checkShrine(shrine, expected, metadata);
         } catch (Exception failure) {
             if (failure instanceof InterruptedException) Thread.currentThread()
                 .interrupt();
-            throw new IllegalStateException("Cannot confirm native shrine cost; redemption remains pending", failure);
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_CANNOT_CONFIRM_NATIVE_SHRINE_COST,
+                failure);
         }
     }
 
@@ -317,34 +364,45 @@ final class MaidLifecycleDurability {
         var world = shrine.getWorldObj();
         var actual = new NBTTagCompound();
         if (shrine.isInvalid() || !world.getChunkProvider()
-            .chunkExists(shrine.xCoord >> 4, shrine.zCoord >> 4)
+            .chunkExists(
+                shrine.xCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                shrine.zCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
             || world.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) != shrine
             || world.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord) != MaidResurrectionContent.SHRINE
             || world.getBlockMetadata(shrine.xCoord, shrine.yCoord, shrine.zCoord) != metadata)
-            throw new IllegalStateException("Shrine identity changed during redemption");
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_SHRINE_IDENTITY_CHANGED_DURING_REDEMPTION);
         shrine.writeToNBT(actual);
-        if (!expected.equals(actual)) throw new IllegalStateException("Shrine storage changed during redemption");
+        if (!expected.equals(actual))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_SHRINE_STORAGE_CHANGED_DURING_REDEMPTION);
     }
 
     private static void checkShrineBlock(NBTTagCompound level, MaidShrineTile shrine, int metadata) {
-        if (!level.hasKey("Sections", Constants.NBT.TAG_LIST))
-            throw new IllegalStateException("Unknown native shrine block sections");
-        var sections = level.getTagList("Sections", Constants.NBT.TAG_COMPOUND);
-        if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
-            throw new IllegalStateException("Unknown native shrine section entries");
+        if (!level.hasKey(MaidLifecyclePart2NbtKeys.KEY_SECTIONS, Constants.NBT.TAG_LIST))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_SHRINE_BLOCK_SECTIONS);
+        var sections = level.getTagList(MaidLifecyclePart2NbtKeys.KEY_SECTIONS, Constants.NBT.TAG_COMPOUND);
+        if (((NBTTagList) level.getTag(MaidLifecyclePart2NbtKeys.KEY_SECTIONS)).tagCount() != sections.tagCount())
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_SHRINE_SECTION_ENTRIES);
         int count = 0;
         for (int i = 0; i < sections.tagCount(); i++) {
             var section = sections.getCompoundTagAt(i);
-            if (!section.hasKey("Y", Constants.NBT.TAG_BYTE) || section.getByte("Y") != shrine.yCoord >> 4) continue;
+            if (!section.hasKey(MaidLifecyclePart2NbtKeys.KEY_Y, Constants.NBT.TAG_BYTE)
+                || section.getByte(MaidLifecyclePart2NbtKeys.KEY_Y)
+                    != shrine.yCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+                continue;
             count++;
-            int index = ((shrine.yCoord & 15) << 8) | ((shrine.zCoord & 15) << 4) | (shrine.xCoord & 15);
+            int index = ((shrine.yCoord & MaidLifecycleTuning.CHUNK_LOCAL_MASK)
+                << MaidLifecycleTuning.CAPTURE_RECORD_VALIDATE_PARAM)
+                | ((shrine.zCoord & MaidLifecycleTuning.CHUNK_LOCAL_MASK) << MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+                | (shrine.xCoord & MaidLifecycleTuning.CHUNK_LOCAL_MASK);
             int id = CompatServices.lifecycleStorage()
                 .sectionBlockId(section, index);
             if (id != Block.getIdFromBlock(MaidResurrectionContent.SHRINE) || CompatServices.lifecycleStorage()
                 .sectionMetadata(section, index) != metadata)
-                throw new IllegalStateException("Native shrine block or facing changed during save");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NATIVE_SHRINE_BLOCK_OR_FACING);
         }
-        if (count != 1) throw new IllegalStateException("Native shrine block section is not unique");
+        if (count != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD)
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NATIVE_SHRINE_BLOCK_SECTION_IS);
     }
 
     /** 只保存涉及的已加载区块；一批经验球共用一次原生IO等待，不遍历整个世界 */
@@ -366,59 +424,69 @@ final class MaidLifecycleDurability {
             for (var chunk : chunks.values()) {
                 try (var input = RegionFileCache
                     .getChunkInputStream(loader.chunkSaveLocation, chunk.xPosition, chunk.zPosition)) {
-                    if (input == null) throw new IllegalStateException("No saved native chunk for delivery");
+                    if (input == null)
+                        throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_SAVED_NATIVE_CHUNK_FOR);
                     var raw = CompressedStreamTools.read(input);
-                    if (!raw.hasKey("Level", Constants.NBT.TAG_COMPOUND))
-                        throw new IllegalStateException("Unknown native chunk data root");
-                    var level = raw.getCompoundTag("Level");
-                    if (!level.hasKey("xPos", Constants.NBT.TAG_INT) || !level.hasKey("zPos", Constants.NBT.TAG_INT)
-                        || level.getInteger("xPos") != chunk.xPosition
-                        || level.getInteger("zPos") != chunk.zPosition
-                        || !level.hasKey("Entities", Constants.NBT.TAG_LIST))
-                        throw new IllegalStateException("Unknown native chunk entity storage");
-                    var list = level.getTagList("Entities", Constants.NBT.TAG_COMPOUND);
-                    if (((NBTTagList) level.getTag("Entities")).tagCount() != list.tagCount())
-                        throw new IllegalStateException("Invalid native chunk entity list");
+                    if (!raw.hasKey(MaidLifecyclePart2NbtKeys.KEY_LEVEL, Constants.NBT.TAG_COMPOUND))
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_CHUNK_DATA_ROOT);
+                    var level = raw.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_LEVEL);
+                    if (!level.hasKey(MaidLifecycleIds.ID_XPOS, Constants.NBT.TAG_INT)
+                        || !level.hasKey(MaidLifecycleIds.ID_ZPOS, Constants.NBT.TAG_INT)
+                        || level.getInteger(MaidLifecycleIds.ID_XPOS) != chunk.xPosition
+                        || level.getInteger(MaidLifecycleIds.ID_ZPOS) != chunk.zPosition
+                        || !level.hasKey(MaidLifecyclePart2NbtKeys.KEY_ENTITIES, Constants.NBT.TAG_LIST))
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_NATIVE_CHUNK_ENTITY_STORAGE);
+                    var list = level.getTagList(MaidLifecyclePart2NbtKeys.KEY_ENTITIES, Constants.NBT.TAG_COMPOUND);
+                    if (((NBTTagList) level.getTag(MaidLifecyclePart2NbtKeys.KEY_ENTITIES)).tagCount()
+                        != list.tagCount())
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_INVALID_NATIVE_CHUNK_ENTITY_LIST);
                     for (int i = 0; i < list.tagCount(); i++) stored.add(list.getCompoundTagAt(i));
                 }
             }
             for (var publication : publications) {
                 publication.check(world, present);
                 int count = 0;
-                for (var entity : stored) if (publication.identity
-                    .equals(new UUID(entity.getLong("UUIDMost"), entity.getLong("UUIDLeast")))) {
-                        count++;
-                        if (present && !publication.matches(entity))
-                            throw new IllegalStateException("Native chunk rewrote the material publication");
-                    }
-                if (count != (present ? 1 : 0))
-                    throw new IllegalStateException("Native chunk publication or retraction was not confirmed");
+                for (var entity : stored) if (publication.identity.equals(
+                    new UUID(
+                        entity.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_MOST),
+                        entity.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_LEAST)))) {
+                            count++;
+                            if (present && !publication.matches(entity)) throw new IllegalStateException(
+                                MaidLifecyclePart3Diagnostics.MSG_NATIVE_CHUNK_REWROTE_THE_MATERIAL);
+                        }
+                if (count != (present ? MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                    : MaidLifecycleTuning.CORE_INITIAL_VALUE))
+                    throw new IllegalStateException(
+                        MaidLifecyclePart3Diagnostics.MSG_NATIVE_CHUNK_PUBLICATION_OR_RETRACTION);
             }
         } catch (Exception failure) {
             if (failure instanceof InterruptedException) Thread.currentThread()
                 .interrupt();
             throw new IllegalStateException(
-                "Cannot confirm native material publication; original escrow remains held",
+                MaidLifecyclePart3Diagnostics.MSG_CANNOT_CONFIRM_NATIVE_MATERIAL_PUBLICATION,
                 failure);
         }
     }
 
     private static void addChunk(WorldServer world, LinkedHashMap<Long, Chunk> chunks, int x, int z) {
         if (!world.theChunkProviderServer.chunkExists(x, z))
-            throw new IllegalStateException("Delivery chunk is no longer loaded");
-        long key = ((long) x << 32) ^ (z & 0xffffffffL);
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_DELIVERY_CHUNK_IS_NO_LONGER);
+        long key = ((long) x << MaidLifecycleTuning.UPPER_WORD_SHIFT) ^ (z & MaidLifecycleTuning.UNSIGNED_INT_BIT_MASK);
         chunks.put(key, world.theChunkProviderServer.provideChunk(x, z));
     }
 
     private static WorldServer server(World world) {
         if (!(world instanceof WorldServer server) || world.isRemote)
-            throw new IllegalStateException("Native server world required for durable delivery");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_NATIVE_SERVER_WORLD_REQUIRED_FOR);
         return server;
     }
 
     private static AnvilChunkLoader loader(WorldServer world) {
         if (!(world.theChunkProviderServer.currentChunkLoader instanceof AnvilChunkLoader loader))
-            throw new IllegalStateException("Unknown native chunk persistence target");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_NATIVE_CHUNK_PERSISTENCE_TARGET);
         return loader;
     }
 
@@ -434,14 +502,15 @@ final class MaidLifecycleDurability {
             .getSaveHandler();
         var directory = store.getWorldDirectory()
             .getCanonicalFile();
-        var file = new File(directory, "playerdata/" + player.getUniqueID() + ".dat").getCanonicalFile();
+        var file = new File(directory, MaidLifecycleIds.ID_PLAYERDATA + player.getUniqueID() + MaidLifecycleIds.ID_DAT)
+            .getCanonicalFile();
         if (!directory.equals(
             server.getSaveHandler()
                 .getWorldDirectory()
                 .getCanonicalFile())
             || !file.toPath()
                 .startsWith(directory.toPath()))
-            throw new IllegalStateException("Player storage is outside the owned native world");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_PLAYER_STORAGE_IS_OUTSIDE_THE);
         return file;
     }
 
@@ -459,7 +528,7 @@ final class MaidLifecycleDurability {
         private boolean retracted;
 
         Publication(EntityItem entity, ItemStack expected) {
-            this(entity, expected.copy(), 0);
+            this(entity, expected.copy(), MaidLifecycleTuning.CORE_INITIAL_VALUE);
         }
 
         Publication(EntityXPOrb entity, int expected) {
@@ -467,7 +536,7 @@ final class MaidLifecycleDurability {
         }
 
         Publication(EntityMaid entity, NBTTagCompound expected) {
-            this(entity, null, 0);
+            this(entity, null, MaidLifecycleTuning.CORE_INITIAL_VALUE);
             maid = (NBTTagCompound) expected.copy();
         }
 
@@ -477,7 +546,7 @@ final class MaidLifecycleDurability {
         }
 
         Publication(MaidTombstoneEntity entity, NBTTagCompound expected) {
-            this(entity, null, 0);
+            this(entity, null, MaidLifecycleTuning.CORE_INITIAL_VALUE);
             maid = (NBTTagCompound) expected.copy();
         }
 
@@ -490,15 +559,17 @@ final class MaidLifecycleDurability {
             x = entity.posX;
             y = entity.posY;
             z = entity.posZ;
-            chunkX = (int) Math.floor(x) >> 4;
-            chunkZ = (int) Math.floor(z) >> 4;
+            chunkX = (int) Math.floor(x) >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT;
+            chunkZ = (int) Math.floor(z) >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT;
             type = EntityList.getEntityString(entity);
-            if (type == null) throw new IllegalStateException("Unknown material publication entity type");
+            if (type == null) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_MATERIAL_PUBLICATION_ENTITY_TYPE);
         }
 
         void check(World world, boolean present) {
             if (!owned(world) || (present ? !MaidSpawnChecks.present(entity, world) : !retracted || !entity.isDead))
-                throw new IllegalStateException("Material publication changed ownership or presence");
+                throw new IllegalStateException(
+                    MaidLifecyclePart3Diagnostics.MSG_MATERIAL_PUBLICATION_CHANGED_OWNERSHIP_OR);
         }
 
         boolean owned(World world) {
@@ -519,24 +590,26 @@ final class MaidLifecycleDurability {
 
         void discard(World world) {
             if (!owned(world) || entity.isDead && (maid == null || entity instanceof MaidTombstoneEntity))
-                throw new IllegalStateException("Unknown material successor or prior consumption must remain intact");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_MATERIAL_SUCCESSOR_OR_PRIOR);
             world.removeEntity(entity);
             retracted = true;
             check(world, false);
         }
 
         private boolean matches(NBTTagCompound saved) {
-            var position = saved.getTagList("Pos", Constants.NBT.TAG_DOUBLE);
+            var position = saved.getTagList(MaidLifecyclePart2NbtKeys.KEY_POS, Constants.NBT.TAG_DOUBLE);
             if (maid != null) return maid.equals(saved);
-            return saved.hasKey("Pos", Constants.NBT.TAG_LIST) && position.tagCount() == 3
-                && position.func_150309_d(0) == x
-                && position.func_150309_d(1) == y
-                && position.func_150309_d(2) == z
-                && type.equals(saved.getString("id"))
+            return saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_POS, Constants.NBT.TAG_LIST)
+                && position.tagCount() == MaidLifecycleTuning.TARGET_SIZE_THRESHOLD
+                && position.func_150309_d(MaidLifecycleTuning.CORE_INITIAL_VALUE) == x
+                && position.func_150309_d(MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD) == y
+                && position.func_150309_d(MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM) == z
+                && type.equals(saved.getString(MaidLifecycleIds.ID_ID))
                 && (item == null
-                    ? saved.hasKey("Value", Constants.NBT.TAG_SHORT) && saved.getShort("Value") == experience
+                    ? saved.hasKey(MaidLifecyclePart2NbtKeys.KEY_VALUE, Constants.NBT.TAG_SHORT)
+                        && saved.getShort(MaidLifecyclePart2NbtKeys.KEY_VALUE) == experience
                     : item.writeToNBT(new NBTTagCompound())
-                        .equals(saved.getCompoundTag("Item")));
+                        .equals(saved.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_ITEM)));
         }
     }
 }

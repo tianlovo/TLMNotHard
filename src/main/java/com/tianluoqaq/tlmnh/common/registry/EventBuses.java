@@ -12,12 +12,12 @@ public final class EventBuses {
     private EventBuses() {}
 
     public static void registerForge(Object listener) {
-        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(listener, ContentRegistryIds.ID_LISTENER);
         MinecraftForge.EVENT_BUS.register(listener);
     }
 
     public static void registerFml(Object listener) {
-        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(listener, ContentRegistryIds.ID_LISTENER);
         FMLCommonHandler.instance()
             .bus()
             .register(listener);
@@ -29,7 +29,7 @@ public final class EventBuses {
     }
 
     public static void unregisterBoth(Object listener) {
-        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(listener, ContentRegistryIds.ID_LISTENER);
         MinecraftForge.EVENT_BUS.unregister(listener);
         FMLCommonHandler.instance()
             .bus()

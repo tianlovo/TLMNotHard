@@ -29,7 +29,7 @@ public final class MaidCombatEntities {
             .lookupModSpawn(type, true);
         String name = registration == null ? nativeName
             : registration.getContainer()
-                .getModId() + ":"
+                .getModId() + MaidCombatIds.COLON_DELIMITER
                 + registration.getEntityName();
         return new ResourceLocation(name.toLowerCase(Locale.ENGLISH));
     }
@@ -53,7 +53,7 @@ public final class MaidCombatEntities {
     }
 
     public static boolean isMaidItemEntity(Entity entity) {
-        return inherits(entity, "com.github.tartaricacid.touhoulittlemaid.entity.item.AbstractEntityFromItem");
+        return inherits(entity, MaidCombatIds.TARGET_CLASS_ABSTRACT_ENTITY_FROM_ITEM);
     }
 
     private static boolean inherits(Entity entity, String name) {

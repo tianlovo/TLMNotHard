@@ -21,13 +21,39 @@ public final class CombatWorkQuota {
         PATH
     }
 
-    public static final int MAX_CANDIDATES = 12, HYPOTHESES = 3, HORIZON = 40, STEP = 2;
-    public static final int MAX_ADVANCES = MAX_CANDIDATES * HYPOTHESES * HORIZON / STEP;
     // 最终净空、支撑和实体分区检查也收费；LIGHT仍不运行预演
-    private static final int[] FULL = { 32, 128, 32, 640, 512, 24, 16, 12, 12, MAX_ADVANCES, 40000, 96, 24, 2, 2 };
-    private static final int[] LIGHT = { 16, 48, 16, 96, 64, 12, 16, 12, 12, 0, 2400, 96, 16, 1, 1 };
-    private static final int[] PREPARING = { 20, 64, 16, 96, 64, 24, 16, 12, 12, 0, 2400, 96, 16, 1, 1 };
-    static final int[] WORLD = { 576, 4096, 512, 3072, 2048, 512, 512, 512, 256, 1440, 90000, 3072, 512, 16, 16 };
+    private static final int[] FULL = { CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_2, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_3, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_5, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7,
+        CombatBudgetTuning.MAX_ADVANCES, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_8,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_9, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_5,
+        CombatBudgetTuning.COMBAT_RANGE_URGENCY_PARAM, CombatBudgetTuning.COMBAT_RANGE_URGENCY_PARAM };
+    private static final int[] LIGHT = { CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_10, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_9, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_11,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7,
+        CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_12,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_9, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP, CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP };
+    private static final int[] PREPARING = { CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_13,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_11, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_9, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_11,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_5, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7,
+        CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_12,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_9, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6,
+        CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP, CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP };
+    static final int[] WORLD = { CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_14,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_15, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_16, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_17,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_18,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_19, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_20,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_16, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_4,
+        CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6 };
     private int[] limit;
     private final int[] used = new int[Work.values().length];
     private final Ledger ledger;
@@ -61,12 +87,12 @@ public final class CombatWorkQuota {
     }
 
     public boolean spend(Work work) {
-        return spend(work, 1);
+        return spend(work, CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP);
     }
 
     /** 感知不能占用最终空间、可见性和伤害复核所需额度 */
     public boolean spendObservation(Work work) {
-        return spendObservation(work, 1);
+        return spendObservation(work, CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP);
     }
 
     public boolean spendObservation(Work work, int amount) {
@@ -78,7 +104,7 @@ public final class CombatWorkQuota {
 
     /** 可选刷新先查看剩余额度，不为探测额度制造观测缺口 */
     public int observationRemaining(Work work) {
-        return Math.max(0, remaining(work) - observationReserve(work));
+        return Math.max(CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED, remaining(work) - observationReserve(work));
     }
 
     /** 只核原FULL可容纳性；实际重验仍须逐项spend */
@@ -87,12 +113,20 @@ public final class CombatWorkQuota {
     }
 
     static boolean canRefreshFriends(Ledger ledger, int rays) {
-        return canRefreshFriends(ledger, 0, 0, rays);
+        return canRefreshFriends(
+            ledger,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            rays);
     }
 
     private static boolean canRefreshFriends(Ledger ledger, int rayUsed, int entityUsed, int rays) {
         return rays >= 0 && canFullObservation(ledger, Work.RAY, rayUsed, rays)
-            && canFullObservation(ledger, Work.ENTITY, entityUsed, rays * 2);
+            && canFullObservation(
+                ledger,
+                Work.ENTITY,
+                entityUsed,
+                rays * CombatBudgetTuning.COMBAT_RANGE_URGENCY_PARAM);
     }
 
     private static boolean canFullObservation(Ledger ledger, Work work, int localUsed, int amount) {
@@ -102,15 +136,15 @@ public final class CombatWorkQuota {
 
     private static int observationReserve(Work work) {
         return switch (work) {
-            case CHUNK -> 12;
-            case ENTITY -> 16;
-            case RAY -> 7;
+            case CHUNK -> CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_7;
+            case ENTITY -> CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_6;
+            case RAY -> CombatBudgetTuning.COMBAT_WORK_OBSERVATION_RESERVE_PARAM;
             default -> 0;
         };
     }
 
     public boolean spend(Work work, int amount) {
-        if (amount < 0) throw new IllegalArgumentException("Negative combat work");
+        if (amount < 0) throw new IllegalArgumentException(CombatBudgetDiagnostics.MSG_NEGATIVE_COMBAT_WORK);
         int index = work.ordinal();
         if (used[index] > limit[index] - amount || ledger.used[index] > WORLD[index] - amount) {
             denied[index]++;

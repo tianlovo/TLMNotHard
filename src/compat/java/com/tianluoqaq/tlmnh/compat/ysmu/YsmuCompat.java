@@ -8,7 +8,6 @@ public final class YsmuCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.YSMU;
 
-
     public static final YsmuCompat INSTANCE = new YsmuCompat();
 
     private YsmuCompat() {}

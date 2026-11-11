@@ -35,7 +35,13 @@ public final class MaidShrineTile extends TileEntity {
     @SideOnly(Side.CLIENT)
     public AxisAlignedBB getRenderBoundingBox() {
         // 原模型visible_bounds宽3/高2.5/中心Y.75，屋顶高于单方块碰撞，不能随碰撞盒被裁去
-        return AxisAlignedBB.getBoundingBox(xCoord - 1, yCoord - .5, zCoord - 1, xCoord + 2, yCoord + 2, zCoord + 2);
+        return AxisAlignedBB.getBoundingBox(
+            xCoord - 1,
+            yCoord - MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+            zCoord - 1,
+            xCoord + MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM,
+            yCoord + MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM,
+            zCoord + MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM);
     }
 
     public ItemStack getFilm() {
@@ -46,14 +52,16 @@ public final class MaidShrineTile extends TileEntity {
     public ItemStack displayItem() {
         int kind = worldObj != null && worldObj.isRemote ? clientStorageKind : storageKind();
         return switch (kind) {
-            case 1 -> new ItemStack(MaidResurrectionContent.FILM);
-            case 2 -> new ItemStack(RecoveryParcel.ITEM);
+            case MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD -> new ItemStack(MaidResurrectionContent.FILM);
+            case MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM -> new ItemStack(RecoveryParcel.ITEM);
             default -> null;
         };
     }
 
     private int storageKind() {
-        return film == null ? 0 : MaidLifecycleItems.isFilm(film) ? 1 : 2;
+        return film == null ? MaidLifecycleTuning.CORE_INITIAL_VALUE
+            : MaidLifecycleItems.isFilm(film) ? MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                : MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM;
     }
 
     @Override
@@ -96,7 +104,7 @@ public final class MaidShrineTile extends TileEntity {
 
     void replaceUse(ItemStack expected, ItemStack replacement) {
         if (!busy || !ItemStack.areItemStacksEqual(film, expected))
-            throw new IllegalStateException("Unknown shrine slot successor retained");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_SHRINE_SLOT_SUCCESSOR_RETAINED);
         film = ItemStack.copyItemStack(replacement);
         changed();
     }
@@ -109,13 +117,13 @@ public final class MaidShrineTile extends TileEntity {
 
     void consumeUse(ItemStack expected) {
         if (!busy || !ItemStack.areItemStacksEqual(film, expected))
-            throw new IllegalStateException("Shrine film no longer belongs to this redemption");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_SHRINE_FILM_NO_LONGER_BELONGS);
         film = null;
         changed();
     }
 
     void finishUse(boolean consumed) {
-        if (!busy) throw new IllegalStateException("No shrine transaction");
+        if (!busy) throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_NO_SHRINE_TRANSACTION);
         if (consumed) film = null;
         busy = false;
         if (consumed) changed();
@@ -129,24 +137,27 @@ public final class MaidShrineTile extends TileEntity {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
-        var stored = ProtectedItemCodec.decodeField(tag, "StorageItem");
+        var stored = ProtectedItemCodec.decodeField(tag, MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM);
         film = stored == null || MaidLifecycleItems.isFilm(stored) || stored.getItem() == RecoveryParcel.ITEM ? stored
-            : ProtectedItemCodec.seal(tag.getCompoundTag("StorageItem"), "shrine_slot");
+            : ProtectedItemCodec
+                .seal(tag.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM), MaidLifecycleIds.ID_SHRINE_SLOT);
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
-        if (film != null) tag.setTag("StorageItem", ProtectedItemCodec.encode(film));
-        else tag.removeTag("StorageItem");
+        if (film != null) tag.setTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM, ProtectedItemCodec.encode(film));
+        else tag.removeTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM);
     }
 
     @Override
     public Packet getDescriptionPacket() {
         var tag = new NBTTagCompound();
-        tag.setByte("DisplayVersion", (byte) 1);
-        tag.setByte("StorageKind", (byte) storageKind());
-        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, tag);
+        tag.setByte(
+            MaidLifecyclePart2NbtKeys.KEY_DISPLAY_VERSION,
+            (byte) MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
+        tag.setByte(MaidLifecyclePart2NbtKeys.KEY_STORAGE_KIND, (byte) storageKind());
+        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, MaidLifecycleTuning.CORE_INITIAL_VALUE, tag);
     }
 
     @Override
@@ -154,10 +165,14 @@ public final class MaidShrineTile extends TileEntity {
         // S35只更新客户端显示字段，绝不能作为服务端持久StorageItem输入
         if (worldObj == null || !worldObj.isRemote) return;
         var tag = packet.func_148857_g();
-        clientStorageKind = tag != null && tag.hasKey("DisplayVersion", Constants.NBT.TAG_BYTE)
-            && tag.getByte("DisplayVersion") == 1
-            && tag.hasKey("StorageKind", Constants.NBT.TAG_BYTE)
-            && tag.getByte("StorageKind") >= 0
-            && tag.getByte("StorageKind") <= 2 ? tag.getByte("StorageKind") : 0;
+        clientStorageKind = tag != null
+            && tag.hasKey(MaidLifecyclePart2NbtKeys.KEY_DISPLAY_VERSION, Constants.NBT.TAG_BYTE)
+            && tag.getByte(MaidLifecyclePart2NbtKeys.KEY_DISPLAY_VERSION)
+                == MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            && tag.hasKey(MaidLifecyclePart2NbtKeys.KEY_STORAGE_KIND, Constants.NBT.TAG_BYTE)
+            && tag.getByte(MaidLifecyclePart2NbtKeys.KEY_STORAGE_KIND) >= 0
+            && tag.getByte(MaidLifecyclePart2NbtKeys.KEY_STORAGE_KIND) <= MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM
+                ? tag.getByte(MaidLifecyclePart2NbtKeys.KEY_STORAGE_KIND)
+                : MaidLifecycleTuning.CORE_INITIAL_VALUE;
     }
 }

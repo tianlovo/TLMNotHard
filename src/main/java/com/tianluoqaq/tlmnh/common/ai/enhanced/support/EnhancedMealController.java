@@ -15,8 +15,7 @@ import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 /** 增强进食会话模块；每帧只评估一次，按原顺序提交自疗进食或工作餐提案 */
 public final class EnhancedMealController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("meal_care");
-    private static final int WORK_MEAL_COOLDOWN_TICKS = 50;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedSupportIds.ID_MEAL_CARE);
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
@@ -34,22 +33,27 @@ public final class EnhancedMealController {
         boolean eating = maid.getMealController()
             .isEating();
         long now = actor.worldGameTime();
-        if (now < lastCareTick) nextMeal = 0;
+        if (now < lastCareTick) nextMeal = EnhancedSupportTuning.ENHANCED_MEAL_NEXT_MEAL;
         lastCareTick = now;
         Kind selectedKind = selectedKindSupplier.get();
         // 新受击仍立即还手；伤害窗口结束后，持续战斗不能永久阻止自疗
-        boolean reactingToHit = maid.hurtTime > 0 && ((frame.kindMask()
-            & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()) | (1 << Kind.COMBAT.ordinal()))) != 0
-            || frame.hasGroupOffer(Group.COMBAT));
+        boolean reactingToHit = maid.hurtTime > 0
+            && ((frame.kindMask() & ((EnhancedSupportTuning.ENHANCED_MEAL_OFFER_UNIT_STEP << Kind.MELEE.ordinal())
+                | (EnhancedSupportTuning.ENHANCED_MEAL_OFFER_UNIT_STEP << Kind.RANGED.ordinal())
+                | (EnhancedSupportTuning.ENHANCED_MEAL_OFFER_UNIT_STEP << Kind.COMBAT.ordinal()))) != 0
+                || frame.hasGroupOffer(Group.COMBAT));
         if (maid.isTamed() && !actor.isSleeping()
             && !reactingToHit
-            && (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true))) {
+            && (eating && selectedKind != Kind.MEAL
+                || actor.missingHealth() >= EnhancedSupportTuning.MAX_MISSING_HEALTH_THRESHOLD && hasFood(true))) {
             frame.offerTyped(
                 ID,
                 Group.RECOVERY,
                 Kind.HEAL,
-                "meal",
-                Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
+                EnhancedSupportIds.ID_MEAL,
+                Math.min(
+                    EnhancedSupportTuning.ENHANCED_MEAL_OFFER_UNIT_STEP,
+                    actor.missingHealth() / maid.getMaxHealth()),
                 Boolean.TRUE,
                 ignored -> executeHeal());
         } else if (maid.isTamed() && (eating && selectedKind == Kind.MEAL || !eating && now >= nextMeal
@@ -59,8 +63,14 @@ public final class EnhancedMealController {
             && maid.getItemUseState()
                 .peek() == null
             && hasFood(false))) {
-                frame
-                    .offerTyped(ID, Group.CARE, Kind.MEAL, "workmeal", .1, Boolean.FALSE, ignored -> executeWorkMeal());
+                frame.offerTyped(
+                    ID,
+                    Group.CARE,
+                    Kind.MEAL,
+                    EnhancedSupportIds.ID_WORKMEAL,
+                    EnhancedSupportTuning.ENHANCED_MEAL_OFFER_TYPED_FIFTH_FACTOR,
+                    Boolean.FALSE,
+                    ignored -> executeWorkMeal());
             }
     }
 
@@ -74,7 +84,7 @@ public final class EnhancedMealController {
         if (!maid.getMealController()
             .isEating()) {
             actor.eatMeal(false);
-            nextMeal = actor.worldGameTime() + WORK_MEAL_COOLDOWN_TICKS;
+            nextMeal = actor.worldGameTime() + EnhancedSupportTuning.WORK_MEAL_COOLDOWN_TICKS;
         }
     }
 

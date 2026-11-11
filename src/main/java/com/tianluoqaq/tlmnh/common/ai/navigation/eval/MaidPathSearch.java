@@ -39,11 +39,11 @@ public final class MaidPathSearch {
                 ignored -> new Best(evaluator.goal(target.x, target.y, target.z), target, boarding));
             var goals = new ArrayList<>(unique.values());
             var open = new MaidPathHeap();
-            start.g = 0;
+            start.g = NavigationEvalTuning.COST_INITIAL_VALUE;
             start.h = update(goals, start);
             start.f = start.h;
             open.add(start);
-            var neighbors = new MaidPathNode[32];
+            var neighbors = new MaidPathNode[NavigationEvalTuning.PATH_SEARCH_DOMAIN_PARAM];
             int visited = 0;
             boolean reached = false;
             while (!open.empty()) {
@@ -67,7 +67,7 @@ public final class MaidPathSearch {
                     if (next.walked < range && (next.heapIndex < 0 || cost < next.g)) {
                         next.parent = from;
                         next.g = cost;
-                        next.h = update(goals, next) * 1.5F;
+                        next.h = update(goals, next) * NavigationEvalTuning.PATH_SEARCH_LAYOUT_H_OFFSET;
                         if (next.heapIndex >= 0) open.cost(next, next.g + next.h);
                         else {
                             next.f = next.g + next.h;
@@ -121,7 +121,8 @@ public final class MaidPathSearch {
 
         float update(MaidPathNode candidate) {
             float value = candidate.distance(goal);
-            if (boarding && candidate.y < goal.y) value += (goal.y - candidate.y) * 100;
+            if (boarding && candidate.y < goal.y)
+                value += (goal.y - candidate.y) * NavigationEvalTuning.PATH_SEARCH_UPDATE_PARAM;
             if (value < distance) {
                 distance = value;
                 node = candidate;

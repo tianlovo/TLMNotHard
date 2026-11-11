@@ -77,7 +77,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         legacyControllerSeed = maid.getEntityId();
         traversal = new MaidTraversalController(maid);
         lifePermission = () -> !suspended && !dangerSensor.hasKnownDanger();
-        setMutexBits(7);
+        setMutexBits(MaidAiTuning.BRAIN_COORDINATOR_SET_MUTEX_BITS_FIRST_PARAM);
     }
 
     @Override
@@ -223,7 +223,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         dangerSensor.beginFrame(runtime.getContext(), decisionTick);
         if (legacy != null) legacy.beginFrame(runtime.getContext(), maid.worldObj.getTotalWorldTime());
         boolean recording = telemetry.isEnabled();
-        long started = recording ? System.nanoTime() : 0;
+        long started = recording ? System.nanoTime() : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
         try {
             var result = afterNativeNavigation ? runtime.tickAfterNativeNavigation() : runtime.tick(lifePermission);
             if (afterNativeNavigation && result == MaidPolicyRuntime.TickResult.COMPLETED)
@@ -231,22 +231,22 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             traversal.tick(!afterNativeNavigation);
             if (recording) {
                 String state = runtime.getProfile()
-                    .getId() + ":"
+                    .getId() + MaidAiIds.COLON_DELIMITER
                     + runtime.isReady()
-                    + ":"
+                    + MaidAiIds.COLON_DELIMITER
                     + runtime.getContext()
                         .getEpoch()
-                    + ":"
+                    + MaidAiIds.COLON_DELIMITER
                     + runtime.getLastInvalidationReason()
-                    + ":"
+                    + MaidAiIds.COLON_DELIMITER
                     + result;
                 if (!state.equals(lastPolicyState)) {
-                    telemetry.state("policy", "", state);
+                    telemetry.state(MaidAiIds.ID_POLICY, "", state);
                     lastPolicyState = state;
                 }
             }
         } finally {
-            if (recording) telemetry.work("brain", WorkComponent.BRAIN, System.nanoTime() - started);
+            if (recording) telemetry.work(MaidAiIds.ID_BRAIN, WorkComponent.BRAIN, System.nanoTime() - started);
         }
     }
 
@@ -344,7 +344,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
                 policyWorld = maid.worldObj;
                 if (requestedBrainProfile != null
                     && policy.select(requestedBrainProfile) != MaidPolicyRuntime.SelectionResult.SELECTED)
-                    throw new IllegalStateException("Requested Brain binding failed");
+                    throw new IllegalStateException(MaidAiDiagnostics.MSG_REQUESTED_BRAIN_BINDING_FAILED);
             } finally {
                 creatingPolicy = false;
             }
@@ -364,7 +364,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             || behaviorProtected
             || creatingPolicy
             || transitioningPolicy)
-            throw new IllegalStateException("Development component cannot be installed at this lifecycle boundary");
+            throw new IllegalStateException(MaidAiDiagnostics.MSG_DEVELOPMENT_COMPONENT_CANNOT_BE_INSTALLED);
         retireCurrent(InvalidationReason.PROFILE_CHANGED);
         policy = null;
         developmentOverride = true;
@@ -373,10 +373,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
         afterNavigationActions = actions;
         var runtime = getPolicyRuntime();
-        if (runtime == null) throw new IllegalStateException("No development policy runtime");
+        if (runtime == null) throw new IllegalStateException(MaidAiDiagnostics.MSG_NO_DEVELOPMENT_POLICY_RUNTIME);
         if (actions != null
             && runtime.select(MaidBrainProfile.FOLLOW_CORE_COMPONENT) != MaidPolicyRuntime.SelectionResult.SELECTED)
-            throw new IllegalStateException("Development component selection failed");
+            throw new IllegalStateException(MaidAiDiagnostics.MSG_DEVELOPMENT_COMPONENT_SELECTION_FAILED);
     }
 
     /** 显式开发选择；F/N 由本协调器统一创建并维护独立根 */
@@ -387,8 +387,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     /** 弹道合同在创建完整根之前选择，同对象NBT重建沿用原请求，不依赖观察器改写actor */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
         MaidFaithfulFlightProfile flightProfile) {
-        Objects.requireNonNull(requested, "requested");
-        Objects.requireNonNull(flightProfile, "flightProfile");
+        Objects.requireNonNull(requested, MaidAiIds.ID_REQUESTED);
+        Objects.requireNonNull(flightProfile, MaidAiIds.ID_FLIGHTPROFILE);
         if (requested != MaidBrainProfile.FAITHFUL_TLM && flightProfile != MaidFaithfulFlightProfile.SOURCE_ORIGINAL)
             return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
         return selectProfileForDevelopment(requested, flightProfile, ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
@@ -397,8 +397,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     /** 完整N的开发消融规格在根创建时绑定，原生NBT重建仍沿用同对象的请求 */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
         ModernFlightProfile flightProfile) {
-        Objects.requireNonNull(requested, "requested");
-        Objects.requireNonNull(flightProfile, "flightProfile");
+        Objects.requireNonNull(requested, MaidAiIds.ID_REQUESTED);
+        Objects.requireNonNull(flightProfile, MaidAiIds.ID_FLIGHTPROFILE);
         if (requested != MaidBrainProfile.ENHANCED || !EnhancedCoreBrain.supportsFlightProfile(flightProfile))
             return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
         return selectProfileForDevelopment(requested, MaidFaithfulFlightProfile.SOURCE_ORIGINAL, flightProfile);
@@ -505,16 +505,16 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     public void beforePersistentRead() {
         if (maid.worldObj == null || maid.worldObj.isRemote) return;
         persistentReadDepth++;
-        if (persistentReadDepth > 1) return;
+        if (persistentReadDepth > MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD) return;
         persistentReadFailed = false;
         try {
             if (transitioningPolicy || creatingPolicy)
-                throw new IllegalStateException("Persistent read during policy cleanup or creation");
+                throw new IllegalStateException(MaidAiDiagnostics.MSG_PERSISTENT_READ_DURING_POLICY_CLEANUP);
             // 优先使旧 runtime 失效，清理异常时亦确保旧授权及时撤销
             Throwable failure = cancel(() -> retireCurrent(InvalidationReason.IDENTITY_CHANGED), null);
             failure = cancel(
                 () -> maid.getShieldController()
-                    .onEntityBoundary("persistent_read"),
+                    .onEntityBoundary(MaidAiIds.ID_PERSISTENT_READ),
                 failure);
             if (failure instanceof RuntimeException error) throw error;
             if (failure instanceof Error error) throw error;
@@ -523,13 +523,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             throw failure;
         } finally {
             afterNavigationActions = null;
-            if (telemetry.isEnabled()) telemetry.invalidate("actor_persistent_read_during_recording");
+            if (telemetry.isEnabled()) telemetry.invalidate(MaidAiIds.ID_ACTOR_PERSISTENT_READ_DURING_RECORDING);
         }
     }
 
     public void afterPersistentRead(boolean successful) {
         if (maid.worldObj == null || maid.worldObj.isRemote) return;
-        if (persistentReadDepth <= 0) throw new IllegalStateException("Unbalanced persistent read boundary");
+        if (persistentReadDepth <= 0)
+            throw new IllegalStateException(MaidAiDiagnostics.MSG_UNBALANCED_PERSISTENT_READ_BOUNDARY);
         if (!successful) lifecycleFailed = persistentReadFailed = true;
         persistentReadDepth--;
         if (persistentReadDepth == 0 && !persistentReadFailed && !lifecycleFailed) {
@@ -570,7 +571,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             Throwable failure = cancel(() -> retireCurrent(InvalidationReason.UNLOADED), null);
             failure = cancel(
                 () -> maid.getShieldController()
-                    .onEntityBoundary("entity_unloaded"),
+                    .onEntityBoundary(MaidAiIds.ID_ENTITY_UNLOADED),
                 failure);
             if (failure instanceof RuntimeException error) throw error;
             if (failure instanceof Error error) throw error;
@@ -581,7 +582,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             maid.getModernCombatMemory()
                 .clear();
             afterNavigationActions = null;
-            if (telemetry.isEnabled()) telemetry.invalidate("actor_unloaded_during_recording");
+            if (telemetry.isEnabled()) telemetry.invalidate(MaidAiIds.ID_ACTOR_UNLOADED_DURING_RECORDING);
         }
     }
 
@@ -637,7 +638,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         failure = cancel(actionRunner::clear, failure);
         failure = cancel(
             () -> maid.getShieldController()
-                .cancelUse("policy_cancel"),
+                .cancelUse(MaidAiIds.ID_POLICY_CANCEL),
             failure);
         failure = cancel(
             () -> maid.getItemUseState()
@@ -740,9 +741,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         try {
             var before = maid.copyBehaviorSaveData();
             var after = actions.flushPersistentBehaviorData((NBTTagCompound) before.copy());
-            if (!maid.commitBehaviorExtensionData(before, after)) ModContext.LOG.warn(
-                "Behavior extension save rejected for maid {}: stale snapshot or invalid tag type",
-                maid.getUniqueID());
+            if (!maid.commitBehaviorExtensionData(before, after))
+                ModContext.LOG.warn(MaidAiDiagnostics.MSG_BEHAVIOR_EXTENSION_SAVE_REJECTED_FOR, maid.getUniqueID());
         } finally {
             flushingBehaviorData = false;
         }

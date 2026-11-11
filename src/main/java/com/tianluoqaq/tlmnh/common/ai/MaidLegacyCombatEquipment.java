@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.combat.AiCombatTuning;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
@@ -10,7 +11,7 @@ import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 /** Legacy只补统一任务的确定性装备回退，不接入增强战术或预演 */
@@ -29,9 +30,10 @@ final class MaidLegacyCombatEquipment {
         if (snapshot == null) return;
         var quota = CombatWorldBudget
             .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
-        var profiles = new MaidWeaponProfile[MaidInventory.BACKPACK_SIZE];
+        var profiles = new MaidWeaponProfile[MaidInventoryLayout.BACKPACK_SIZE];
         for (int slot = 0; slot < profiles.length; slot++) {
-            if (snapshot.stack(slot) == null) profiles[slot] = MaidWeaponProfile.unknown("missing_or_invalid_stack");
+            if (snapshot.stack(slot) == null)
+                profiles[slot] = MaidWeaponProfile.unknown(MaidAiIds.ID_MISSING_OR_INVALID_STACK);
             else {
                 if (!quota.spend(Work.ITEM)) return;
                 profiles[slot] = MaidWeaponCatalog.inspect(snapshot.stack(slot));
@@ -93,6 +95,6 @@ final class MaidLegacyCombatEquipment {
         if (home.enabled()) return home.sameDimension() && home.containsMaid();
         var owner = maid.getOwner();
         return MaidCombatTargeting.validOwner(maid, owner)
-            && maid.getDistanceSqToEntity(owner) <= MaidCombatTargeting.OWNER_RADIUS_SQ;
+            && maid.getDistanceSqToEntity(owner) <= AiCombatTuning.OWNER_RADIUS_SQ;
     }
 }

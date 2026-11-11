@@ -21,7 +21,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 玩家切换战斗任务时复用原TaskEquipUtil的首个背包武器/原主手整栈互换规则 */
 public final class MaidTaskEquipment {
 
-    private static final String GUARD = "equipment/task_switch";
     private static final Set<EntityMaid> SWITCHING = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private MaidTaskEquipment() {}
@@ -32,7 +31,7 @@ public final class MaidTaskEquipment {
             || maid.getCombatHitReceipt()
                 .blocksTransfer()
             || task != MaidTask.ATTACK && task != MaidTask.RANGED_ATTACK
-            || !IntegrationGuard.available(Side.SERVER, GUARD)
+            || !IntegrationGuard.available(Side.SERVER, MaidInventoryIds.GUARD_2)
             || !authorized(player, maid, task)
             || !SWITCHING.add(maid)) return false;
         try {
@@ -40,16 +39,16 @@ public final class MaidTaskEquipment {
             maid.getMealController()
                 .cancel();
             maid.getShieldController()
-                .cancelUse("task_weapon_switch");
+                .cancelUse(MaidInventoryIds.ID_TASK_WEAPON_SWITCH);
             maid.getItemUseState()
                 .invalidate();
             if (!authorized(player, maid, task)) return false;
             var inventory = maid.getMaidInventory();
             var before = new Snapshot(inventory);
-            if (acceptsFor(maid, task, before.references[MaidInventory.MAIN_HAND]))
+            if (acceptsFor(maid, task, before.references[MaidInventoryLayout.MAIN_HAND]))
                 return before.owned(inventory) && authorized(player, maid, task);
             if (!before.owned(inventory) || !authorized(player, maid, task)) return false;
-            for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+            for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
                 boolean accepted = acceptsFor(maid, task, before.references[slot]);
                 // 外部物品属性查询可以同步回调；只移动仍属本次完整快照的真实物品
                 if (!before.owned(inventory) || !authorized(player, maid, task)
@@ -60,11 +59,11 @@ public final class MaidTaskEquipment {
                 return inventory.exchangeBackpackWithMainHand(
                     slot,
                     before.references[slot],
-                    before.references[MaidInventory.MAIN_HAND]);
+                    before.references[MaidInventoryLayout.MAIN_HAND]);
             }
             return false;
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report(Side.SERVER, GUARD, failure);
+            IntegrationGuard.report(Side.SERVER, MaidInventoryIds.GUARD_2, failure);
             return false;
         } finally {
             SWITCHING.remove(maid);
@@ -89,7 +88,9 @@ public final class MaidTaskEquipment {
         if (stack == null || stack.getItem() == null
             || stack.getItem() == RecoveryParcel.ITEM
             || stack.stackSize <= 0
-            || stack.stackSize > Math.min(64, stack.getMaxStackSize())) return false;
+            || stack.stackSize
+                > Math.min(MaidInventoryLayout.INVENTORY_GET_INVENTORY_STACK_LIMIT_PARAM, stack.getMaxStackSize()))
+            return false;
         // 当前生产发射器只支持实际Items.bow；不自动装备尚无发射适配的外部弓
         if (task == MaidTask.RANGED_ATTACK) return stack.getItem() == Items.bow;
         return task == MaidTask.ATTACK && !(stack.getItem() instanceof ItemBow)
@@ -99,8 +100,8 @@ public final class MaidTaskEquipment {
 
     private static final class Snapshot {
 
-        final ItemStack[] references = new ItemStack[MaidInventory.TOTAL_SIZE];
-        final ItemStack[] contents = new ItemStack[MaidInventory.TOTAL_SIZE];
+        final ItemStack[] references = new ItemStack[MaidInventoryLayout.TOTAL_SIZE];
+        final ItemStack[] contents = new ItemStack[MaidInventoryLayout.TOTAL_SIZE];
 
         Snapshot(MaidInventory inventory) {
             for (int slot = 0; slot < references.length; slot++) {

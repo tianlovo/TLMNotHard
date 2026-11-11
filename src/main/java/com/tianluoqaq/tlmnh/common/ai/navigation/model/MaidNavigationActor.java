@@ -80,7 +80,8 @@ public interface MaidNavigationActor {
 
         @Override
         public int hashCode() {
-            return (y + z * 31) * 31 + x;
+            return (y + z * NavigationModelTuning.NAVIGATION_ACTOR_HASH_CODE_PARAM)
+                * NavigationModelTuning.NAVIGATION_ACTOR_HASH_CODE_PARAM + x;
         }
     }
 }

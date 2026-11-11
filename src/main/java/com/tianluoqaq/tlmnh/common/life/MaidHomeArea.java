@@ -14,8 +14,6 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 家园设置由服务端修改；读取活动范围不访问区块或加载目标维度 */
 public final class MaidHomeArea {
 
-    private static final int DATA_HOME = 29;
-    private static final String SAVE_TAG = "TLMNHHome";
     private final EntityMaid maid;
     private String observed;
     private MaidHomeSettings settings = MaidHomeSettings.EMPTY;
@@ -29,36 +27,41 @@ public final class MaidHomeArea {
     }
 
     public static void register(DataWatcher watcher) {
-        watcher.addObject(DATA_HOME, encode(MaidHomeSettings.EMPTY, Point.ZERO, MaidHomeConfig.nonHomeRange));
+        watcher.addObject(
+            MaidLifeTuning.DATA_HOME,
+            encode(MaidHomeSettings.EMPTY, Point.ZERO, MaidHomeConfig.nonHomeRange));
     }
 
     public MaidHomeSettings settings() {
         var encoded = maid.getDataWatcher()
-            .getWatchableObjectString(DATA_HOME);
+            .getWatchableObjectString(MaidLifeTuning.DATA_HOME);
         if (!encoded.equals(observed)) {
             observed = encoded;
             try {
-                var parts = encoded.split("\\|", -1);
-                settings = MaidHomeSettings.decode(parts[0]);
-                if (parts.length == 3) {
-                    var xyz = parts[1].split(",", -1);
-                    if (xyz.length != 3) throw new IllegalArgumentException("Invalid restriction center");
+                var parts = encoded.split(MaidLifeIds.HOME_AREA_SPLIT_MESSAGE, MaidLifeTuning.UNSET_OR_NOT_FOUND);
+                settings = MaidHomeSettings.decode(parts[MaidLifeTuning.DECODE_INITIAL_VALUE]);
+                if (parts.length == MaidLifeTuning.TARGET_LENGTH_THRESHOLD) {
+                    var xyz = parts[MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP]
+                        .split(MaidLifeIds.COMMA_DELIMITER, MaidLifeTuning.UNSET_OR_NOT_FOUND);
+                    if (xyz.length != MaidLifeTuning.TARGET_LENGTH_THRESHOLD)
+                        throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_RESTRICTION_CENTER);
                     restrictionCenter = new Point(
-                        Integer.parseInt(xyz[0]),
-                        Integer.parseInt(xyz[1]),
-                        Integer.parseInt(xyz[2]));
-                    restrictionRadius = Integer.parseInt(parts[2]);
-                    if (restrictionRadius < 1 || restrictionRadius > 64)
-                        throw new IllegalArgumentException("Invalid restriction radius");
-                } else if (parts.length == 1) {
+                        Integer.parseInt(xyz[MaidLifeTuning.DECODE_INITIAL_VALUE]),
+                        Integer.parseInt(xyz[MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP]),
+                        Integer.parseInt(xyz[MaidLifeTuning.HOME_AREA_PARSE_INT_FIRST_PARAM]));
+                    restrictionRadius = Integer.parseInt(parts[MaidLifeTuning.HOME_AREA_PARSE_INT_FIRST_PARAM]);
+                    if (restrictionRadius < MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP
+                        || restrictionRadius > MaidLifeTuning.MAX_RESTRICTION_RADIUS_THRESHOLD)
+                        throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_RESTRICTION_RADIUS);
+                } else if (parts.length == MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP) {
                     restrictionCenter = Point.ZERO;
                     restrictionRadius = MaidHomeConfig.nonHomeRange;
-                } else throw new IllegalArgumentException("Invalid restriction metadata");
+                } else throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_RESTRICTION_METADATA);
             } catch (IllegalArgumentException invalid) {
                 settings = MaidHomeSettings.EMPTY;
                 restrictionCenter = Point.ZERO;
                 restrictionRadius = MaidHomeConfig.nonHomeRange;
-                ModContext.LOG.warn("Invalid synchronized home settings for maid {}", maid.getUniqueID());
+                ModContext.LOG.warn(MaidLifeDiagnostics.MSG_INVALID_SYNCHRONIZED_HOME_SETTINGS_FOR, maid.getUniqueID());
             }
         }
         return settings;
@@ -126,7 +129,7 @@ public final class MaidHomeArea {
     }
 
     private static String encode(MaidHomeSettings settings, Point center, int radius) {
-        return settings.encode() + "|" + center + "|" + radius;
+        return settings.encode() + MaidLifeIds.PIPE_DELIMITER + center + MaidLifeIds.PIPE_DELIMITER + radius;
     }
 
     public boolean setEnabled(boolean enabled) {
@@ -173,10 +176,10 @@ public final class MaidHomeArea {
             && Double.isFinite(maid.posX)
             && Double.isFinite(maid.posY)
             && Double.isFinite(maid.posZ)
-            && Math.abs(maid.posX) <= 29999984
-            && Math.abs(maid.posZ) <= 29999984
+            && Math.abs(maid.posX) <= MaidLifeTuning.HOME_AREA_CAN_EDIT_PARAM
+            && Math.abs(maid.posZ) <= MaidLifeTuning.HOME_AREA_CAN_EDIT_PARAM
             && maid.posY >= 0
-            && maid.posY < 256;
+            && maid.posY < MaidLifeTuning.MIN_POS_Y_THRESHOLD;
     }
 
     private Point currentPoint() {
@@ -196,7 +199,7 @@ public final class MaidHomeArea {
 
     private void publish(MaidHomeSettings next) {
         maid.getDataWatcher()
-            .updateObject(DATA_HOME, encode(next, restrictionCenter, restrictionRadius));
+            .updateObject(MaidLifeTuning.DATA_HOME, encode(next, restrictionCenter, restrictionRadius));
         observed = null;
     }
 
@@ -210,28 +213,29 @@ public final class MaidHomeArea {
 
     public void save(NBTTagCompound tag) {
         if (unreadSave != null) {
-            tag.setTag(SAVE_TAG, unreadSave.copy());
+            tag.setTag(MaidLifeIds.SAVE_TAG, unreadSave.copy());
             return;
         }
         var home = new NBTTagCompound();
-        home.setInteger("Schema", 1);
-        home.setString("Settings", settings().encode());
-        tag.setTag(SAVE_TAG, home);
+        home.setInteger(MaidLifeIds.KEY_SCHEMA, MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP);
+        home.setString(MaidLifeIds.KEY_SETTINGS, settings().encode());
+        tag.setTag(MaidLifeIds.SAVE_TAG, home);
     }
 
     public void load(NBTTagCompound tag) {
         unreadSave = null;
         observedActivity = null;
         publish(MaidHomeSettings.EMPTY);
-        if (!tag.hasKey(SAVE_TAG, Constants.NBT.TAG_COMPOUND)) return;
-        var home = tag.getCompoundTag(SAVE_TAG);
+        if (!tag.hasKey(MaidLifeIds.SAVE_TAG, Constants.NBT.TAG_COMPOUND)) return;
+        var home = tag.getCompoundTag(MaidLifeIds.SAVE_TAG);
         try {
-            if (home.getInteger("Schema") != 1) throw new IllegalArgumentException("Unknown home schema");
-            publish(MaidHomeSettings.decode(home.getString("Settings")));
+            if (home.getInteger(MaidLifeIds.KEY_SCHEMA) != MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP)
+                throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_UNKNOWN_HOME_SCHEMA);
+            publish(MaidHomeSettings.decode(home.getString(MaidLifeIds.KEY_SETTINGS)));
             restrictToCurrentSchedule();
         } catch (IllegalArgumentException invalid) {
             unreadSave = (NBTTagCompound) home.copy();
-            ModContext.LOG.warn("Preserving unreadable home settings for maid {}; home disabled", maid.getUniqueID());
+            ModContext.LOG.warn(MaidLifeDiagnostics.MSG_PRESERVING_UNREADABLE_HOME_SETTINGS_FOR, maid.getUniqueID());
         }
     }
 }

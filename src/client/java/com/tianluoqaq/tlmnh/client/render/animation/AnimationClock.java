@@ -7,7 +7,8 @@ public final class AnimationClock {
     private double lastInput, ticks;
 
     public double advance(double gameTicks, boolean paused) {
-        if (!Double.isFinite(gameTicks) || gameTicks < 0) throw new IllegalArgumentException(AnimationDiagnostics.MSG_INVALID_ANIMATION_TIME);
+        if (!Double.isFinite(gameTicks) || gameTicks < 0)
+            throw new IllegalArgumentException(AnimationDiagnostics.MSG_INVALID_ANIMATION_TIME);
         if (!initialized) {
             initialized = true;
             ticks = gameTicks;

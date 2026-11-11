@@ -8,7 +8,8 @@ public final class MaidSoundFrequency {
     private MaidSoundFrequency() {}
 
     public static boolean allow(float maidFrequency, int globalPercent, boolean testSound, DoubleSupplier random) {
-        double effective = (double) maidFrequency * globalPercent / 100;
-        return testSound || !(effective < 1) || !(random.getAsDouble() > effective);
+        double effective = (double) maidFrequency * globalPercent / MaidSoundTuning.FULL_PERCENTAGE;
+        return testSound || !(effective < MaidSoundTuning.TARGET_GET_AS_INT_THRESHOLD)
+            || !(random.getAsDouble() > effective);
     }
 }

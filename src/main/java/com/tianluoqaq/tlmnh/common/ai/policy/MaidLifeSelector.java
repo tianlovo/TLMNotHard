@@ -44,8 +44,8 @@ public final class MaidLifeSelector {
         private final Reason reason;
 
         public Selection(MaidLifeIntent intent, Reason reason) {
-            this.intent = Objects.requireNonNull(intent, "intent");
-            this.reason = Objects.requireNonNull(reason, "reason");
+            this.intent = Objects.requireNonNull(intent, AiPolicyIds.ID_INTENT);
+            this.reason = Objects.requireNonNull(reason, AiPolicyIds.ID_REASON);
         }
 
         public MaidLifeIntent getIntent() {

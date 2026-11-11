@@ -19,7 +19,7 @@ public final class MaidTargetMemory {
     private Observation observation;
 
     public MaidTargetMemory(int maximumAge) {
-        if (maximumAge < 0) throw new IllegalArgumentException("Negative memory age");
+        if (maximumAge < 0) throw new IllegalArgumentException(MaidPerceptionDiagnostics.MSG_NEGATIVE_MEMORY_AGE);
         this.maximumAge = maximumAge;
     }
 
@@ -75,7 +75,7 @@ public final class MaidTargetMemory {
         world = null;
         context = null;
         token = null;
-        frameTime = 0;
+        frameTime = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
     }
 
     private boolean current() {

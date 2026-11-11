@@ -62,7 +62,7 @@ public final class TLMNotHard {
         MaidClientPackets.bind(PROXY);
         CompatServices.preInitAndFreeze();
         var side = event.getSide();
-        LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
+        LOG.info(ModBootstrapDiagnostics.MSG_INITIALIZING_ON, MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();
         MaidAcquisitionConfig.load(event.getSuggestedConfigurationFile());
         KaomojiData.load();
@@ -83,7 +83,7 @@ public final class TLMNotHard {
         NetworkRegistry.INSTANCE.registerGuiHandler(this, PROXY);
         PROXY.init();
         MaidResurrectionContent.registerSpawns();
-        LOG.info("TLMNH_BOOTSTRAP_READY side={} version={} bytecodeTarget=8", event.getSide(), Tags.VERSION);
+        LOG.info(ModBootstrapDiagnostics.MSG_TLMNH_BOOTSTRAP_READY_SIDE_VERSION, event.getSide(), Tags.VERSION);
     }
 
     @Mod.EventHandler

@@ -21,7 +21,7 @@ public final class ModContext {
     public static Object modInstance() {
         Object current = modInstance;
         if (current == null) {
-            throw new IllegalStateException("ModContext.modInstance accessed before FML construction/preInit");
+            throw new IllegalStateException(FoundationDiagnostics.MSG_MODCONTEXT_MODINSTANCE_ACCESSED_BEFORE_FML);
         }
         return current;
     }

@@ -32,16 +32,20 @@ public final class MaidMolangFrames {
     public static MolangQueryFrame capture(EntityMaid maid, float partialTick, double seekTicks, float netHeadYaw,
         float headPitch) {
         var frame = new MolangQueryFrame();
-        frame.partialTick = Math.max(MolangRenderLayout.MAX_INITIAL_VALUE, Math.min(MolangRenderLayout.MIN_SINGLE_UNIT, partialTick));
+        frame.partialTick = Math
+            .max(MolangRenderLayout.MAX_INITIAL_VALUE, Math.min(MolangRenderLayout.MIN_SINGLE_UNIT, partialTick));
         frame.lifetime = seekTicks / MolangRenderLayout.MOLANG_FRAMES_LIFETIME;
         // ModelBase给出实体角度；上游Gecko renderer会先wrap/clamp相对yaw，再将两轴取负
-        frame.netHeadYaw = -Math.max(MolangRenderLayout.MOLANG_FRAMES_MAX_FIRST_FACTOR, Math.min(MolangRenderLayout.MOLANG_FRAMES_MIN_FIRST_FACTOR, MathHelper.wrapDegrees(netHeadYaw)));
+        frame.netHeadYaw = -Math.max(
+            MolangRenderLayout.MOLANG_FRAMES_MAX_FIRST_FACTOR,
+            Math.min(MolangRenderLayout.MOLANG_FRAMES_MIN_FIRST_FACTOR, MathHelper.wrapDegrees(netHeadYaw)));
         frame.headPitch = -headPitch;
         frame.bodyYaw = MathHelper.wrapDegrees(
             maid.prevRenderYawOffset + (maid.renderYawOffset - maid.prevRenderYawOffset) * frame.partialTick);
         frame.health = maid.getHealth();
         frame.maxHealth = maid.getMaxHealth();
-        frame.groundSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (float) Math.sqrt((float) (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ));
+        frame.groundSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED
+            * (float) Math.sqrt((float) (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ));
         frame.verticalSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (float) (maid.posY - maid.prevPosY);
         frame.yawSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (maid.rotationYaw - maid.prevRotationYaw);
         frame.inWater = maid.isInWater();
@@ -55,7 +59,8 @@ public final class MaidMolangFrames {
             maid.getUniqueID()
                 .getLeastSignificantBits() % MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM))
             % MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_2;
-        frame.closeEyes = maid.hasPose(MaidPose.SLEEPING) || (MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_3 < blink && blink < MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_2);
+        frame.closeEyes = maid.hasPose(MaidPose.SLEEPING) || (MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_3 < blink
+            && blink < MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_2);
         frame.viewYaw = (float) (maid.prevRotationYaw
             + MathHelper.wrapDegrees(maid.rotationYaw - maid.prevRotationYaw) * frame.partialTick);
         frame.previousX = maid.prevPosX;
@@ -66,9 +71,18 @@ public final class MaidMolangFrames {
         frame.z = maid.posZ;
         equipment(frame, Slot.MAINHAND, maid.getHeldItem());
         equipment(frame, Slot.OFFHAND, maid.getOffhandItem());
-        equipment(frame, Slot.HEAD, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM));
-        equipment(frame, Slot.CHEST, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_2));
-        equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_3));
+        equipment(
+            frame,
+            Slot.HEAD,
+            maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM));
+        equipment(
+            frame,
+            Slot.CHEST,
+            maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_2));
+        equipment(
+            frame,
+            Slot.LEGS,
+            maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_3));
         equipment(frame, Slot.FEET, maid.getEquipmentInSlot(MolangRenderLayout.MIN_SINGLE_UNIT));
         var chest = frame.equipment(Slot.CHEST);
         frame.hasElytra = chest != null && CompatServices.worldContent()
@@ -105,7 +119,8 @@ public final class MaidMolangFrames {
         if (item instanceof ItemPickaxe) return MolangRenderIds.ID_PICKAXE;
         if (item instanceof ItemSpade) return MolangRenderIds.ID_SHOVEL;
         if (item instanceof ItemHoe) return MolangRenderIds.ID_HOE;
-        if (item instanceof ItemPotion && ItemPotion.isSplash(stack.getItemDamage())) return MolangRenderIds.ID_THROWABLE_POTION;
+        if (item instanceof ItemPotion && ItemPotion.isSplash(stack.getItemDamage()))
+            return MolangRenderIds.ID_THROWABLE_POTION;
         return "";
     }
 }

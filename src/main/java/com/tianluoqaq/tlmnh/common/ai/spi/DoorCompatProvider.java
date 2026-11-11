@@ -36,7 +36,8 @@ public interface DoorCompatProvider {
     }
 
     default boolean isDoorOpen(Block block, World world, int x, int y, int z) {
-        return block instanceof BlockDoor door && (door.func_150012_g(world, x, y, z) & 4) != 0;
+        return block instanceof BlockDoor door
+            && (door.func_150012_g(world, x, y, z) & AiSpiTuning.DOOR_COMPAT_BIT_MASK_4) != 0;
     }
 
     default boolean setDoorOpen(Block block, World world, int x, int y, int z, boolean open) {
@@ -46,7 +47,7 @@ public interface DoorCompatProvider {
     }
 
     default boolean isDoorOpenOrOpening(BlockDoor door, World world, int x, int y, int z) {
-        return door != null && (door.func_150012_g(world, x, y, z) & 4) != 0;
+        return door != null && (door.func_150012_g(world, x, y, z) & AiSpiTuning.DOOR_COMPAT_BIT_MASK_4) != 0;
     }
 
     default boolean supportsCombatGeometry(Block block) {

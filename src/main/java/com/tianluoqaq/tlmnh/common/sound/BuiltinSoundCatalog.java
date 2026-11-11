@@ -17,27 +17,29 @@ public final class BuiltinSoundCatalog {
 
     private static final List<Pack> PACKS = load();
     private static final List<String> EVENTS = Collections
-        .unmodifiableList(new ArrayList<>(PACKS.get(0).events.keySet()));
+        .unmodifiableList(new ArrayList<>(PACKS.get(MaidSoundTuning.GET_INITIAL_VALUE).events.keySet()));
 
     static {
         for (var pack : PACKS) if (!new ArrayList<>(pack.events.keySet()).equals(EVENTS))
-            throw new IllegalStateException("Inconsistent builtin sound event order");
+            throw new IllegalStateException(MaidSoundDiagnostics.MSG_INCONSISTENT_BUILTIN_SOUND_EVENT_ORDER);
     }
 
     private BuiltinSoundCatalog() {}
 
     private static List<Pack> load() {
-        try (var stream = BuiltinSoundCatalog.class.getResourceAsStream("/assets/tlmnh/builtin-sounds.json")) {
-            if (stream == null) throw new IllegalStateException("Missing builtin sound catalog");
+        try (var stream = BuiltinSoundCatalog.class.getResourceAsStream(MaidSoundIds.MODEL_JSON_BUILTIN_SOUNDS)) {
+            if (stream == null) throw new IllegalStateException(MaidSoundDiagnostics.MSG_MISSING_BUILTIN_SOUND_CATALOG);
             var root = new JsonParser().parse(new InputStreamReader(stream, StandardCharsets.UTF_8))
                 .getAsJsonObject();
-            if (root.get("schema")
-                .getAsInt() != 1) throw new IllegalStateException("Unknown sound catalog schema");
+            if (root.get(MaidSoundIds.ID_SCHEMA)
+                .getAsInt() != MaidSoundTuning.TARGET_GET_AS_INT_THRESHOLD)
+                throw new IllegalStateException(MaidSoundDiagnostics.MSG_UNKNOWN_SOUND_CATALOG_SCHEMA);
             var packs = new ArrayList<Pack>();
-            for (var element : root.getAsJsonArray("packs")) packs.add(new Pack(element.getAsJsonObject()));
+            for (var element : root.getAsJsonArray(MaidSoundIds.ID_PACKS))
+                packs.add(new Pack(element.getAsJsonObject()));
             return Collections.unmodifiableList(packs);
         } catch (IOException error) {
-            throw new IllegalStateException("Cannot read sound catalog", error);
+            throw new IllegalStateException(MaidSoundDiagnostics.MSG_CANNOT_READ_SOUND_CATALOG, error);
         }
     }
 
@@ -61,20 +63,20 @@ public final class BuiltinSoundCatalog {
         public final Map<String, Integer> events;
 
         private Pack(JsonObject json) {
-            id = json.get("id")
+            id = json.get(MaidSoundIds.ID_ID)
                 .getAsString();
-            var info = json.getAsJsonObject("info");
-            name = value(info, "pack_name");
-            description = value(info, "description");
-            version = value(info, "version");
-            date = value(info, "date");
-            url = value(info, "url");
-            icon = value(info, "icon");
+            var info = json.getAsJsonObject(MaidSoundIds.ID_INFO);
+            name = value(info, MaidSoundIds.ID_PACK_NAME);
+            description = value(info, MaidSoundIds.ID_DESCRIPTION);
+            version = value(info, MaidSoundIds.ID_VERSION);
+            date = value(info, MaidSoundIds.ID_DATE);
+            url = value(info, MaidSoundIds.ID_URL);
+            icon = value(info, MaidSoundIds.ID_ICON);
             var list = new ArrayList<String>();
-            for (var author : info.getAsJsonArray("author")) list.add(author.getAsString());
+            for (var author : info.getAsJsonArray(MaidSoundIds.ID_AUTHOR)) list.add(author.getAsString());
             authors = Collections.unmodifiableList(list);
             var map = new LinkedHashMap<String, Integer>();
-            for (var event : json.getAsJsonObject("events")
+            for (var event : json.getAsJsonObject(MaidSoundIds.ID_EVENTS)
                 .entrySet())
                 map.put(
                     event.getKey(),

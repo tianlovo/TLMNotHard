@@ -164,9 +164,9 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     public boolean claimBrainTarget(Object owner, Object lease, BrainTarget target) {
-        Objects.requireNonNull(owner, "owner");
-        Objects.requireNonNull(lease, "lease");
-        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(owner, MaidNavigationIds.ID_OWNER);
+        Objects.requireNonNull(lease, MaidNavigationIds.ID_LEASE);
+        Objects.requireNonNull(target, MaidNavigationIds.ID_TARGET);
         if (brainOwner != null && brainOwner != owner) return false;
         brainOwner = owner;
         brainLease = lease;
@@ -192,7 +192,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     private void requireBrainOwner(Object owner) {
         if (owner == null || brainOwner != owner || !brainCurrent())
-            throw new IllegalStateException("Foreign or expired brain navigation owner");
+            throw new IllegalStateException(MaidNavigationDiagnostics.MSG_FOREIGN_OR_EXPIRED_BRAIN_NAVIGATION);
     }
 
     /** 原现代导航API：先核可更新条件，再复用同目标活路线，否则用实际FOLLOW_RANGE创建 */
@@ -218,7 +218,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             || created.worldTick != maid.worldObj.getTotalWorldTime()
             || created.entityTick != maid.ticksExisted
             || created.path.result.water != active.water)
-            throw new IllegalStateException("Brain path creation context changed before installation");
+            throw new IllegalStateException(MaidNavigationDiagnostics.MSG_BRAIN_PATH_CREATION_CONTEXT_CHANGED);
         return active.install(created.path, speed, false);
     }
 
@@ -229,19 +229,19 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     private static String diagnosticRaw(PathEntity path) {
-        if (path == null) return "null";
-        if (!(path instanceof MaidModernPath)) return "NOT_MODERN_NOT_EVALUATED";
+        if (path == null) return MaidNavigationIds.ID_NULL;
+        if (!(path instanceof MaidModernPath)) return MaidNavigationIds.KEY_NOT_MODERN_NOT_EVALUATED;
         int count = path.getCurrentPathLength(), index = path.getCurrentPathIndex();
-        StringBuilder out = new StringBuilder("raw#").append(System.identityHashCode(path))
+        StringBuilder out = new StringBuilder(MaidNavigationIds.ID_RAW).append(System.identityHashCode(path))
             .append('/')
             .append(count)
             .append('/')
             .append(index)
-            .append("/finished=")
+            .append(MaidNavigationIds.ID_FINISHED)
             .append(path.isFinished())
-            .append("/canReach=")
+            .append(MaidNavigationIds.ID_CANREACH)
             .append(((MaidModernPath) path).canReach());
-        if (count >= 0 && count <= 2) for (int i = 0; i < count; i++) {
+        if (count >= 0 && count <= MaidNavigationTuning.MIN_COUNT_THRESHOLD) for (int i = 0; i < count; i++) {
             var p = path.getPathPointFromIndex(i);
             out.append('[')
                 .append(p.xCoord)
@@ -251,7 +251,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 .append(p.zCoord)
                 .append(']');
         }
-        else out.append("/POINTS_NOT_EVALUATED_TOO_LONG");
+        else out.append(MaidNavigationIds.ID_POINTS_NOT_EVALUATED_TOO_LONG);
         return out.toString();
     }
 
@@ -299,8 +299,13 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             return null;
         }
         searches++;
-        var result = MaidPathSearch
-            .find(context(region()), state.water, targets, range, accuracy, floor(getPathSearchRange() * 16));
+        var result = MaidPathSearch.find(
+            context(region()),
+            state.water,
+            targets,
+            range,
+            accuracy,
+            floor(getPathSearchRange() * MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_PARAM));
         if (result == null) return null;
         if (requested == null) requested = new Point(result.targetX, result.targetY, result.targetZ);
         return state.water ? new MaidAmphibiousPath(result, requested) : new MaidModernPath(result, requested);
@@ -404,7 +409,13 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     @Override
     public PathEntity getPathToXYZ(double x, double y, double z) {
         if (!canUpdatePath()) return null;
-        var path = query(active, floor(x), (int) y, floor(z), getPathSearchRange(), 1);
+        var path = query(
+            active,
+            floor(x),
+            (int) y,
+            floor(z),
+            getPathSearchRange(),
+            MaidNavigationTuning.QUERY_SINGLE_UNIT);
         active.resetTimeout();
         return path;
     }
@@ -527,7 +538,8 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     @Override
     public void activate(Navigation navigation) {
-        if (navigation != ground && navigation != water) throw new IllegalArgumentException("Foreign navigation state");
+        if (navigation != ground && navigation != water)
+            throw new IllegalArgumentException(MaidNavigationDiagnostics.MSG_FOREIGN_NAVIGATION_STATE);
         if (active != navigation) {
             active = (State) navigation;
             generation++;
@@ -546,7 +558,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         long timeoutTimer, lastTimeoutCheck;
         double timeoutLimit;
         boolean stuck;
-        Vec3 lastStuckPos = Vec3.createVectorHelper(0, 0, 0);
+        Vec3 lastStuckPos = Vec3.createVectorHelper(
+            MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE,
+            MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE,
+            MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE);
 
         State(boolean water) {
             this.water = water;
@@ -604,13 +619,19 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         @Override
         public MaidNavigationActor.Path create(Point target) {
-            if (brainCurrent()) return brainQuery(target, 0);
+            if (brainCurrent()) return brainQuery(target, MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE);
             if (path instanceof MaidModernPath modern && !path.isFinished()
                 && modern.result.targetX == target.x
                 && modern.result.targetY == target.y
                 && modern.result.targetZ == target.z) return modern;
             if (!enhancedBudgeted() && !MaidWorldNavigationBudget.acquire(maid)) return null;
-            var created = query(this, target.x, target.y, target.z, Math.min(16, getPathSearchRange()), 0);
+            var created = query(
+                this,
+                target.x,
+                target.y,
+                target.z,
+                Math.min(MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_PARAM, getPathSearchRange()),
+                MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE);
             resetTimeout();
             return created;
         }
@@ -632,13 +653,14 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 Object ownerLog = diagnosticScope.get(brainOwner);
                 if (!(ownerLog instanceof CombatDiagnosticScope.Log log)) diagnosticScope = null;
                 else if (!log.hasRemainingCurrentCapacity()) {
-                    diagnosticScope.put(this, "NOT_EVALUATED_LOG_FULL");
+                    diagnosticScope.put(this, MaidNavigationIds.KEY_NOT_EVALUATED_LOG_FULL);
                     diagnosticScope = null;
                 }
             }
             String diagnosticBefore = diagnosticScope == null ? null : diagnosticRaw(path);
             String diagnosticCandidate = diagnosticScope == null ? null : diagnosticRaw(candidate);
-            int same = -1, transformations = 0;
+            int same = MaidNavigationTuning.UNSET_OR_NOT_FOUND,
+                transformations = MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE;
             if (candidate == null) {
                 stop();
                 traceInstall(
@@ -647,12 +669,14 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     diagnosticBefore,
                     same,
                     transformations,
-                    "NULL",
+                    MaidNavigationIds.KEY_NULL,
                     false);
                 return false;
             }
             if (candidate instanceof MaidModernPath) {
-                if ((same = candidate.isSamePath(path) ? 1 : 0) == 0 || path.isFinished()) path = candidate;
+                if ((same = candidate.isSamePath(path) ? MaidNavigationTuning.QUERY_SINGLE_UNIT
+                    : MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE) == 0 || path.isFinished())
+                    path = candidate;
                 if (path.isFinished()) {
                     traceInstall(
                         diagnosticScope,
@@ -660,7 +684,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                         diagnosticBefore,
                         same,
                         transformations,
-                        "FINISHED",
+                        MaidNavigationIds.KEY_FINISHED,
                         false);
                     return false;
                 }
@@ -670,7 +694,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 for (int i = 0; i < modern.getCurrentPathLength(); i++) {
                     var node = modern.getPathPointFromIndex(i);
                     if (maid.worldObj.getBlock(node.xCoord, node.yCoord, node.zCoord) == Blocks.cauldron) {
-                        transformations |= 1;
+                        transformations |= MaidNavigationTuning.QUERY_SINGLE_UNIT;
                         modern.raise(i, node.yCoord + 1);
                         if (i + 1 < modern.getCurrentPathLength()
                             && node.yCoord >= modern.getPathPointFromIndex(i + 1).yCoord)
@@ -678,11 +702,14 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     }
                 }
                 if (!water && avoidSun
-                    && !maid.worldObj.canBlockSeeTheSky(floor(maid.posX), floor(maid.posY + .5), floor(maid.posZ))) {
+                    && !maid.worldObj.canBlockSeeTheSky(
+                        floor(maid.posX),
+                        floor(maid.posY + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR),
+                        floor(maid.posZ))) {
                     for (int i = 0; i < modern.getCurrentPathLength(); i++) {
                         var n = modern.getPathPointFromIndex(i);
                         if (maid.worldObj.canBlockSeeTheSky(n.xCoord, n.yCoord, n.zCoord)) {
-                            transformations |= 2;
+                            transformations |= MaidNavigationTuning.MIN_COUNT_THRESHOLD;
                             modern.setCurrentPathLength(i);
                             break;
                         }
@@ -696,7 +723,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                         diagnosticBefore,
                         same,
                         transformations,
-                        "LEGACY_INSTALL",
+                        MaidNavigationIds.KEY_LEGACY_INSTALL,
                         false);
                     return false;
                 }
@@ -710,7 +737,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     diagnosticBefore,
                     same,
                     transformations,
-                    "ZERO_LENGTH",
+                    MaidNavigationIds.KEY_ZERO_LENGTH,
                     false);
                 return false;
             }
@@ -725,7 +752,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 diagnosticBefore,
                 same,
                 transformations,
-                "ACCEPTED",
+                MaidNavigationIds.KEY_ACCEPTED,
                 true);
             return true;
         }
@@ -734,35 +761,35 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             int transformations, String reason, boolean accepted) {
             if (scope != null) scope.put(
                 this,
-                "candidate=" + candidate
-                    + ";before="
+                MaidNavigationIds.ID_CANDIDATE + candidate
+                    + MaidNavigationIds.ID_BEFORE
                     + before
-                    + ";selected="
+                    + MaidNavigationIds.ID_SELECTED
                     + diagnosticRaw(path)
-                    + ";same="
+                    + MaidNavigationIds.ID_SAME
                     + same
-                    + ";transform="
+                    + MaidNavigationIds.ID_TRANSFORM
                     + transformations
-                    + ";reason="
+                    + MaidNavigationIds.ID_REASON
                     + reason
-                    + ";accepted="
+                    + MaidNavigationIds.ID_ACCEPTED
                     + accepted);
         }
 
         Vec3 position() {
-            double y = maid.posY + maid.height * .5;
+            double y = maid.posY + maid.height * MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR;
             if (!water) {
                 int surface = floor(maid.posY);
                 if (maid.isInWater()) {
                     int steps = 0;
                     while (region().water(floor(maid.posX), surface, floor(maid.posZ))) {
                         surface++;
-                        if (++steps > 16) {
+                        if (++steps > MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_PARAM) {
                             surface = floor(maid.posY);
                             break;
                         }
                     }
-                } else surface = floor(maid.posY + .5);
+                } else surface = floor(maid.posY + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR);
                 y = surface;
             }
             return Vec3.createVectorHelper(maid.posX, y, maid.posZ);
@@ -775,11 +802,14 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 return;
             }
             var node = route.getPathPointFromIndex(route.getCurrentPathIndex());
-            float tolerance = maid.width > .75F ? maid.width / 2F : .75F - maid.width / 2F;
-            double offset = (double) (maid.width + 1F) / 2;
+            float tolerance = maid.width > MaidNavigationTuning.MAX_WIDTH_THRESHOLD
+                ? maid.width / MaidNavigationTuning.MIDPOINT_DIVISOR_F
+                : MaidNavigationTuning.MAX_WIDTH_THRESHOLD - maid.width / MaidNavigationTuning.MIDPOINT_DIVISOR_F;
+            double offset = (double) (maid.width + MaidNavigationTuning.PATH_NAVIGATOR_OFFSET)
+                / MaidNavigationTuning.MIN_COUNT_THRESHOLD;
             boolean near = Math.abs(maid.posX - (node.xCoord + offset)) <= tolerance
                 && Math.abs(maid.posZ - (node.zCoord + offset)) <= tolerance
-                && Math.abs(maid.posY - node.yCoord) < 1;
+                && Math.abs(maid.posY - node.yCoord) < MaidNavigationTuning.QUERY_SINGLE_UNIT;
             var type = route.currentType();
             if (near || type != DANGER_FIRE && type != DANGER_OTHER
                 && type != WALKABLE_DOOR
@@ -791,27 +821,40 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             int index = route.getCurrentPathIndex();
             if (index + 1 >= route.getCurrentPathLength()) return false;
             var first = route.getPathPointFromIndex(index);
-            var target = Vec3.createVectorHelper(first.xCoord + .5, first.yCoord, first.zCoord + .5);
-            if (position.squareDistanceTo(target) >= 4) return false;
+            var target = Vec3.createVectorHelper(
+                first.xCoord + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR,
+                first.yCoord,
+                first.zCoord + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR);
+            if (position.squareDistanceTo(target) >= MaidNavigationTuning.PATH_NAVIGATOR_NEXT_IN_DIRECTION_PARAM)
+                return false;
             if (water && (maid.isInWater() || maid.handleLavaMovement())) {
                 var end = route.getPosition(maid)
-                    .addVector(0, maid.height * .5, 0);
+                    .addVector(
+                        MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE,
+                        maid.height * MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR,
+                        MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE);
                 if (maid.worldObj.func_147447_a(position, end, false, true, false) == null) return true;
             }
             var second = route.getPathPointFromIndex(index + 1);
             var one = target.subtract(position);
-            var two = Vec3.createVectorHelper(second.xCoord + .5, second.yCoord, second.zCoord + .5)
+            var two = Vec3
+                .createVectorHelper(
+                    second.xCoord + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR,
+                    second.yCoord,
+                    second.zCoord + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR)
                 .subtract(position);
             double a = one.xCoord * one.xCoord + one.yCoord * one.yCoord + one.zCoord * one.zCoord,
                 b = two.xCoord * two.xCoord + two.yCoord * two.yCoord + two.zCoord * two.zCoord;
-            return (b < a || a < .5) && one.normalize()
+            return (b < a || a < MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR) && one.normalize()
                 .dotProduct(two.normalize()) < 0;
         }
 
         void detectStuck(Vec3 position) {
-            if (tick - lastStuckCheck > 100) {
+            if (tick - lastStuckCheck > MaidNavigationTuning.MAX_LAST_STUCK_CHECK_THRESHOLD) {
                 float speed = maid.getAIMoveSpeed();
-                float distance = (speed >= 1 ? speed : speed * speed) * 100F * .25F;
+                float distance = (speed >= MaidNavigationTuning.QUERY_SINGLE_UNIT ? speed : speed * speed)
+                    * MaidNavigationTuning.PATH_NAVIGATOR_DETECT_STUCK_FACTOR
+                    * MaidNavigationTuning.PATH_NAVIGATOR_DETECT_STUCK_FACTOR_2;
                 if (position.squareDistanceTo(lastStuckPos) < distance * distance) {
                     stuck = true;
                     stop(StopCause.WATCHDOG);
@@ -828,10 +871,17 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 timeoutX = node.xCoord;
                 timeoutY = node.yCoord;
                 timeoutZ = node.zCoord;
-                double distance = position.distanceTo(Vec3.createVectorHelper(timeoutX + .5, timeoutY, timeoutZ + .5));
-                timeoutLimit = maid.getAIMoveSpeed() > 0 ? distance / maid.getAIMoveSpeed() * 20 : 0;
+                double distance = position.distanceTo(
+                    Vec3.createVectorHelper(
+                        timeoutX + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR,
+                        timeoutY,
+                        timeoutZ + MaidNavigationTuning.PATH_NAVIGATOR_FLOOR_FIRST_FACTOR));
+                timeoutLimit = maid.getAIMoveSpeed() > 0
+                    ? distance / maid.getAIMoveSpeed() * MaidNavigationTuning.PATH_NAVIGATOR_TIMEOUT_LIMIT
+                    : MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE;
             }
-            if (timeoutLimit > 0 && timeoutTimer > timeoutLimit * 3) {
+            if (timeoutLimit > 0
+                && timeoutTimer > timeoutLimit * MaidNavigationTuning.PATH_NAVIGATOR_DETECT_STUCK_PARAM) {
                 resetTimeout();
                 stop(StopCause.TIMEOUT);
             }
@@ -839,9 +889,9 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
 
         void resetTimeout() {
-            timeoutX = timeoutY = timeoutZ = 0;
-            timeoutTimer = 0;
-            timeoutLimit = 0;
+            timeoutX = timeoutY = timeoutZ = MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE;
+            timeoutTimer = MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE;
+            timeoutLimit = MaidNavigationTuning.CREATE_VECTOR_HELPER_INITIAL_VALUE;
             stuck = false;
         }
     }

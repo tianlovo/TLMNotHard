@@ -69,66 +69,66 @@ public final class MaidCombatTaskState {
         explicitlySelected = false;
         unresolvedTask = null;
         futureState = null;
-        var raw = entityTag.getTag(MaidCombatTaskSchema.TASK);
+        var raw = entityTag.getTag(MaidEntityNbtKeys.TASK);
         loadedTask = raw == null ? null : raw.copy();
-        String id = entityTag.hasKey(MaidCombatTaskSchema.TASK, Constants.NBT.TAG_STRING)
-            ? entityTag.getString(MaidCombatTaskSchema.TASK)
+        String id = entityTag.hasKey(MaidEntityNbtKeys.TASK, Constants.NBT.TAG_STRING)
+            ? entityTag.getString(MaidEntityNbtKeys.TASK)
             : MaidTask.IDLE.getId();
         boolean known = known(id)
-            && (raw == null || entityTag.hasKey(MaidCombatTaskSchema.TASK, Constants.NBT.TAG_STRING));
+            && (raw == null || entityTag.hasKey(MaidEntityNbtKeys.TASK, Constants.NBT.TAG_STRING));
         if (!known && raw != null) unresolvedTask = raw.copy();
-        var extension = entityTag.getCompoundTag(MaidCombatTaskSchema.EXTENSION);
-        var state = extension.getTag(MaidCombatTaskSchema.STATE);
+        var extension = entityTag.getCompoundTag(MaidEntityNbtKeys.EXTENSION);
+        var state = extension.getTag(MaidEntityNbtKeys.STATE);
         loadedState = state == null ? null : state.copy();
         persistedState = state != null;
         preserved = state instanceof NBTTagCompound compound ? (NBTTagCompound) compound.copy() : new NBTTagCompound();
         if (state != null && (!(state instanceof NBTTagCompound)
-            || !preserved.hasKey(MaidCombatTaskSchema.VERSION, Constants.NBT.TAG_INT)
-            || preserved.getInteger(MaidCombatTaskSchema.VERSION) != MaidCombatTaskSchema.CURRENT_VERSION))
+            || !preserved.hasKey(MaidEntityNbtKeys.VERSION, Constants.NBT.TAG_INT)
+            || preserved.getInteger(MaidEntityNbtKeys.VERSION) != MaidEntityTuning.CURRENT_VERSION))
             futureState = state.copy();
         if (futureState != null && raw != null) unresolvedTask = raw.copy();
-        originalId = preserved.hasKey(MaidCombatTaskSchema.ORIGINAL, Constants.NBT.TAG_STRING)
-            ? preserved.getString(MaidCombatTaskSchema.ORIGINAL)
+        originalId = preserved.hasKey(MaidEntityNbtKeys.ORIGINAL, Constants.NBT.TAG_STRING)
+            ? preserved.getString(MaidEntityNbtKeys.ORIGINAL)
             : id;
-        referenceId = preserved.hasKey(MaidCombatTaskSchema.REFERENCE, Constants.NBT.TAG_STRING)
-            ? preserved.getString(MaidCombatTaskSchema.REFERENCE)
+        referenceId = preserved.hasKey(MaidEntityNbtKeys.REFERENCE, Constants.NBT.TAG_STRING)
+            ? preserved.getString(MaidEntityNbtKeys.REFERENCE)
             : id;
-        String preferred = preserved.getString(MaidCombatTaskSchema.PREFERENCE);
+        String preferred = preserved.getString(MaidEntityNbtKeys.PREFERENCE);
         preference = known(preferred) && !preferred.equals(MaidTask.IDLE.getId()) ? MaidTask.fromId(preferred)
             : referenceId.equals(MaidTask.RANGED_ATTACK.getId()) ? MaidTask.RANGED_ATTACK : MaidTask.ATTACK;
         preferencePending = state == null ? known && !id.equals(MaidTask.IDLE.getId())
-            : preserved.getBoolean(MaidCombatTaskSchema.PENDING);
+            : preserved.getBoolean(MaidEntityNbtKeys.PENDING);
         revision++;
         return known ? id : MaidTask.IDLE.getId();
     }
 
     public void save(NBTTagCompound entityTag, String watchedId, boolean unified) {
         if (!unified && loaded && !explicitlySelected) {
-            if (loadedTask == null) entityTag.removeTag(MaidCombatTaskSchema.TASK);
-            else entityTag.setTag(MaidCombatTaskSchema.TASK, loadedTask.copy());
-            var extension = entityTag.getCompoundTag(MaidCombatTaskSchema.EXTENSION);
-            if (loadedState == null) extension.removeTag(MaidCombatTaskSchema.STATE);
-            else extension.setTag(MaidCombatTaskSchema.STATE, loadedState.copy());
-            if (entityTag.hasKey(MaidCombatTaskSchema.EXTENSION) || loadedState != null)
-                entityTag.setTag(MaidCombatTaskSchema.EXTENSION, extension);
+            if (loadedTask == null) entityTag.removeTag(MaidEntityNbtKeys.TASK);
+            else entityTag.setTag(MaidEntityNbtKeys.TASK, loadedTask.copy());
+            var extension = entityTag.getCompoundTag(MaidEntityNbtKeys.EXTENSION);
+            if (loadedState == null) extension.removeTag(MaidEntityNbtKeys.STATE);
+            else extension.setTag(MaidEntityNbtKeys.STATE, loadedState.copy());
+            if (entityTag.hasKey(MaidEntityNbtKeys.EXTENSION) || loadedState != null)
+                entityTag.setTag(MaidEntityNbtKeys.EXTENSION, extension);
             return;
         }
-        if (unresolvedTask != null) entityTag.setTag(MaidCombatTaskSchema.TASK, unresolvedTask.copy());
-        else entityTag.setString(MaidCombatTaskSchema.TASK, task(watchedId, unified).getId());
+        if (unresolvedTask != null) entityTag.setTag(MaidEntityNbtKeys.TASK, unresolvedTask.copy());
+        else entityTag.setString(MaidEntityNbtKeys.TASK, task(watchedId, unified).getId());
         if (!unified && !persistedState) return;
         persistedState = true;
-        var extension = entityTag.getCompoundTag(MaidCombatTaskSchema.EXTENSION);
-        if (futureState != null) extension.setTag(MaidCombatTaskSchema.STATE, futureState.copy());
+        var extension = entityTag.getCompoundTag(MaidEntityNbtKeys.EXTENSION);
+        if (futureState != null) extension.setTag(MaidEntityNbtKeys.STATE, futureState.copy());
         else {
             var state = (NBTTagCompound) preserved.copy();
-            state.setInteger(MaidCombatTaskSchema.VERSION, MaidCombatTaskSchema.CURRENT_VERSION);
-            state.setString(MaidCombatTaskSchema.ORIGINAL, originalId);
-            state.setString(MaidCombatTaskSchema.REFERENCE, referenceId);
-            state.setString(MaidCombatTaskSchema.PREFERENCE, preference.getId());
-            state.setBoolean(MaidCombatTaskSchema.PENDING, preferencePending);
-            extension.setTag(MaidCombatTaskSchema.STATE, state);
+            state.setInteger(MaidEntityNbtKeys.VERSION, MaidEntityTuning.CURRENT_VERSION);
+            state.setString(MaidEntityNbtKeys.ORIGINAL, originalId);
+            state.setString(MaidEntityNbtKeys.REFERENCE, referenceId);
+            state.setString(MaidEntityNbtKeys.PREFERENCE, preference.getId());
+            state.setBoolean(MaidEntityNbtKeys.PENDING, preferencePending);
+            extension.setTag(MaidEntityNbtKeys.STATE, state);
         }
-        entityTag.setTag(MaidCombatTaskSchema.EXTENSION, extension);
+        entityTag.setTag(MaidEntityNbtKeys.EXTENSION, extension);
     }
 
     private static boolean known(String id) {

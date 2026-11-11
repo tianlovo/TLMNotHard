@@ -26,7 +26,7 @@ public final class MaidProjectileImpactProtection {
     }
 
     private static String key(EntityMaid maid) {
-        return "projectile_impact/" + maid.getUniqueID();
+        return ProjectileCombatIds.ID_PROJECTILE_IMPACT + maid.getUniqueID();
     }
 
     public static boolean available(EntityMaid maid) {
@@ -37,7 +37,9 @@ public final class MaidProjectileImpactProtection {
     public static boolean admit(EntityMaid maid, EntityArrow arrow) {
         if (!available(maid)) return false;
         if (arrow instanceof MaidArrowImpactState) return MaidProjectileSource.record(arrow, maid);
-        failure(maid, new IllegalStateException("Native arrow impact interception unavailable; release refused"));
+        failure(
+            maid,
+            new IllegalStateException(ProjectileCombatDiagnostics.MSG_NATIVE_ARROW_IMPACT_INTERCEPTION_UNAVAILABLE));
         return false;
     }
 
@@ -58,7 +60,8 @@ public final class MaidProjectileImpactProtection {
                 // 女仆不是玩家，原EntityPlayerMP的PvP检查不会识别这种箭的主人
                 // 必须在原生碰撞开始点燃/伤害前鲜读规则，不能缓存发射时的许可
                 var server = MinecraftServer.getServer();
-                if (server == null) throw new IllegalStateException("Actual server PvP rule is unavailable");
+                if (server == null)
+                    throw new IllegalStateException(ProjectileCombatDiagnostics.MSG_ACTUAL_SERVER_PVP_RULE_IS);
                 if (!server.isPVPEnabled()) return true;
             }
             var id = MaidCombatEntities.id(victim);
@@ -72,8 +75,7 @@ public final class MaidProjectileImpactProtection {
     public static void missedImpact(EntityMaid maid) {
         failure(
             maid,
-            new IllegalStateException(
-                "Protected projectile reached the damage boundary; native impact interception unavailable or impact permission changed"));
+            new IllegalStateException(ProjectileCombatDiagnostics.MSG_PROTECTED_PROJECTILE_REACHED_THE_DAMAGE));
     }
 
     static void failure(EntityMaid maid, Throwable cause) {

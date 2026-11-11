@@ -20,8 +20,6 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 /** 原版空闲任务的苦力怕逃离和受伤活动中断，移动与取消由同一动作所有者管理 */
 public final class MaidPanicController {
 
-    private static final int SCAN_INTERVAL = 20, PATH_RETRY = 20, ATTEMPTS = 10;
-    private static final double DANGER_RANGE_SQ = 64, SPEED = .7;
     private final EntityMaid maid;
     private final MaidActionRunner runner;
     private final BooleanSupplier suspended;
@@ -31,7 +29,7 @@ public final class MaidPanicController {
     private MaidActionRun run;
     private PathEntity ownedPath;
     private long nextScan, nextPath, lastTime = Long.MIN_VALUE;
-    private String status = "idle";
+    private String status = MaidAiIds.ID_IDLE;
 
     public MaidPanicController(EntityMaid maid, MaidActionRunner runner, BooleanSupplier suspended,
         BooleanSupplier recentlyHurt) {
@@ -61,15 +59,15 @@ public final class MaidPanicController {
         lastTime = now;
         if (threat != null && !validThreat()) {
             threat = null;
-            nextScan = 0;
+            nextScan = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
         }
         if (now >= nextScan) {
-            nextScan = now + SCAN_INTERVAL;
+            nextScan = now + MaidAiTuning.SCAN_INTERVAL;
             scan();
         }
         if (threat == null && !recentlyHurt.getAsBoolean()) {
             clearControl();
-            setStatus("idle");
+            setStatus(MaidAiIds.ID_IDLE);
             return false;
         }
         if (run == null || !runner.isOwned(run, maid.worldObj, maid.getTask())) {
@@ -82,7 +80,7 @@ public final class MaidPanicController {
                 if (maid.ridingEntity != null) maid.mountEntity(null);
             }
             maid.getShieldController()
-                .cancelUse("panic");
+                .cancelUse(MaidAiIds.ID_PANIC);
         }
         if (!runner.isOwned(run, maid.worldObj, maid.getTask())) {
             clearControl();
@@ -97,18 +95,18 @@ public final class MaidPanicController {
                 maid.getNavigator()
                     .clearPathEntity();
             ownedPath = null;
-            setStatus("hurt_pause");
+            setStatus(MaidAiIds.ID_HURT_PAUSE);
             return true;
         }
         if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
             ownedPath) && !ownedPath.isFinished() && away(ownedPath)) {
-            setStatus("retreating");
+            setStatus(MaidAiIds.ID_RETREATING);
             return true;
         }
         if (now < nextPath) return true;
-        nextPath = now + PATH_RETRY;
+        nextPath = now + MaidAiTuning.PATH_RETRY;
         if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
@@ -122,19 +120,27 @@ public final class MaidPanicController {
                     .radius()
                 : MaidHomeConfig.workRange;
         if (!loadedCandidates(radius)) {
-            setStatus("waiting_for_chunks");
+            setStatus(MaidAiIds.ID_WAITING_FOR_CHUNKS);
             return true;
         }
         var danger = Vec3.createVectorHelper(threat.posX, threat.posY, threat.posZ);
-        for (int i = 0; i < ATTEMPTS; i++) {
-            var point = RandomPositionGenerator.findRandomTargetBlockAwayFrom(maid, radius, 7, danger);
+        for (int i = 0; i < MaidAiTuning.ATTEMPTS; i++) {
+            var point = RandomPositionGenerator.findRandomTargetBlockAwayFrom(
+                maid,
+                radius,
+                MaidAiTuning.BRAIN_COORDINATOR_SET_MUTEX_BITS_FIRST_PARAM,
+                danger);
             if (point == null || !maid.getHomeArea()
                 .contains(point.xCoord, point.yCoord, point.zCoord)) continue;
-            var created = planner
-                .create(maid, Math.floor(point.xCoord), Math.floor(point.yCoord), Math.floor(point.zCoord), SPEED);
+            var created = planner.create(
+                maid,
+                Math.floor(point.xCoord),
+                Math.floor(point.yCoord),
+                Math.floor(point.zCoord),
+                MaidAiTuning.SPEED);
             if (created.preflightFailure != null && created.preflightFailure.isDeferred()) {
                 nextPath = now + 1;
-                setStatus("navigation_pending");
+                setStatus(MaidAiIds.ID_NAVIGATION_PENDING);
                 return true;
             }
             if (created.path == null || created.path.getCurrentPathLength() == 0 || !away(created.path)) continue;
@@ -145,31 +151,37 @@ public final class MaidPanicController {
             var installed = planner.install(maid, created);
             if (installed.result.isDeferred()) {
                 nextPath = now + 1;
-                setStatus("navigation_pending");
+                setStatus(MaidAiIds.ID_NAVIGATION_PENDING);
                 return true;
             }
             if (installed.result == MaidFollowController.PathResult.STARTED) {
                 ownedPath = installed.installedPath;
-                setStatus("retreating");
+                setStatus(MaidAiIds.ID_RETREATING);
                 return true;
             }
         }
-        setStatus("no_retreat_path");
+        setStatus(MaidAiIds.ID_NO_RETREAT_PATH);
         return true;
     }
 
     private boolean away(PathEntity path) {
         if (threat == null || path.getFinalPathPoint() == null) return false;
         var end = path.getFinalPathPoint();
-        double x = end.xCoord + .5 - maid.posX, z = end.zCoord + .5 - maid.posZ;
+        double x = end.xCoord + MaidAiTuning.HOME_CONTROLLER_DISTANCE - maid.posX,
+            z = end.zCoord + MaidAiTuning.HOME_CONTROLLER_DISTANCE - maid.posZ;
         double dx = threat.posX - maid.posX, dz = threat.posZ - maid.posZ;
         return x * dx + z * dz < 0;
     }
 
     private void scan() {
-        var returned = maid.worldObj.getEntitiesWithinAABB(EntityCreeper.class, maid.boundingBox.expand(8, 8, 8));
+        var returned = maid.worldObj.getEntitiesWithinAABB(
+            EntityCreeper.class,
+            maid.boundingBox.expand(
+                MaidAiTuning.LEGACY_BRAIN_EXPAND_SECOND_PARAM,
+                MaidAiTuning.LEGACY_BRAIN_EXPAND_SECOND_PARAM,
+                MaidAiTuning.LEGACY_BRAIN_EXPAND_SECOND_PARAM));
         EntityCreeper nearest = null;
-        double distance = DANGER_RANGE_SQ;
+        double distance = MaidAiTuning.DANGER_RANGE_SQ;
         for (Object value : returned)
             if (value instanceof EntityCreeper candidate && candidate.isEntityAlive() && !candidate.isDead) {
                 double actual = maid.getDistanceSqToEntity(candidate);
@@ -182,7 +194,11 @@ public final class MaidPanicController {
         threat = nearest;
         maid.getBrainCoordinator()
             .getTelemetry()
-            .scan("panic_creeper", returned.size(), returned.size(), "nearest_visible_within_strict_8_blocks");
+            .scan(
+                MaidAiIds.ID_PANIC_CREEPER,
+                returned.size(),
+                returned.size(),
+                MaidAiIds.ID_NEAREST_VISIBLE_WITHIN_STRICT_8_BLOCKS);
     }
 
     private boolean validThreat() {
@@ -194,9 +210,12 @@ public final class MaidPanicController {
 
     private boolean loadedCandidates(int radius) {
         int x = MathHelper.floor_double(maid.posX), z = MathHelper.floor_double(maid.posZ);
-        for (int cx = (x - radius) >> 4; cx <= (x + radius) >> 4; cx++)
-            for (int cz = (z - radius) >> 4; cz <= (z + radius) >> 4; cz++) if (!maid.worldObj.getChunkProvider()
-                .chunkExists(cx, cz)) return false;
+        for (int cx = (x - radius) >> MaidAiTuning.CHUNK_SECTION_SHIFT; cx
+            <= (x + radius) >> MaidAiTuning.CHUNK_SECTION_SHIFT; cx++)
+            for (int cz = (z - radius) >> MaidAiTuning.CHUNK_SECTION_SHIFT; cz
+                <= (z + radius) >> MaidAiTuning.CHUNK_SECTION_SHIFT; cz++)
+                if (!maid.worldObj.getChunkProvider()
+                    .chunkExists(cx, cz)) return false;
         return true;
     }
 
@@ -205,7 +224,7 @@ public final class MaidPanicController {
         status = value;
         maid.getBrainCoordinator()
             .getTelemetry()
-            .state("panic", threat == null ? "" : MaidTelemetryChannel.id(threat), value);
+            .state(MaidAiIds.ID_PANIC, threat == null ? "" : MaidTelemetryChannel.id(threat), value);
     }
 
     private void clearControl() {
@@ -225,7 +244,7 @@ public final class MaidPanicController {
     public void cancel() {
         clearControl();
         threat = null;
-        nextScan = nextPath = 0;
-        setStatus("idle");
+        nextScan = nextPath = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+        setStatus(MaidAiIds.ID_IDLE);
     }
 }

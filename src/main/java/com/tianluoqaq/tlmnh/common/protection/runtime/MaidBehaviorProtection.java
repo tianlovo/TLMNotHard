@@ -25,7 +25,7 @@ public final class MaidBehaviorProtection {
         if (!maid.getUniqueID()
             .equals(identity)) {
             identity = maid.getUniqueID();
-            key = ExternalFeature.BEHAVIOR_RUNTIME.id + "/" + identity;
+            key = ExternalFeature.BEHAVIOR_RUNTIME.id + ProtectionRuntimeIds.PATH_SLASH_SEPARATOR + identity;
         }
         if (!IntegrationGuard.available(Side.SERVER, ExternalFeature.BEHAVIOR_RUNTIME)
             || !IntegrationGuard.available(Side.SERVER, key)) {

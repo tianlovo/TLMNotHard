@@ -17,7 +17,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
 
     public static final TessellatorVertexConsumer INSTANCE = new TessellatorVertexConsumer();
-    private final FloatBuffer color = BufferUtils.createFloatBuffer(RenderBufferLayout.TESSELLATOR_VERTEX_CREATE_FLOAT_BUFFER_FIRST_PARAM);
+    private final FloatBuffer color = BufferUtils
+        .createFloatBuffer(RenderBufferLayout.TESSELLATOR_VERTEX_CREATE_FLOAT_BUFFER_FIRST_PARAM);
     private final Tessellator tessellator = Tessellator.instance;
     private boolean active;
 

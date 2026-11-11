@@ -16,8 +16,6 @@ public final class MaidIntentArbiter {
         STALE_FRAME
     }
 
-    private static final int MINIMUM_HOLD_TICKS = 20;
-    private static final double SWITCH_MARGIN = .05;
     private static final Comparator<Intent> ORDER = Comparator.comparing((Intent intent) -> intent.group)
         .thenComparing(
             Comparator.comparingDouble((Intent intent) -> intent.utility)
@@ -60,8 +58,8 @@ public final class MaidIntentArbiter {
             else if (best.sameGoal(current)) {
                 selected = current;
                 reason = Reason.CONTINUING;
-            } else
-                if (frame.tick() - selectedAt < MINIMUM_HOLD_TICKS || best.utility <= current.utility + SWITCH_MARGIN) {
+            } else if (frame.tick() - selectedAt < AiPolicyTuning.MINIMUM_HOLD_TICKS
+                || best.utility <= current.utility + AiPolicyTuning.SWITCH_MARGIN) {
                     selected = current;
                     reason = Reason.HYSTERESIS;
                 }

@@ -21,7 +21,8 @@ public final class MaidCombatMemory {
             entityAge = Integer.MIN_VALUE;
             worldTime = Long.MIN_VALUE;
         }
-        if (age == entityAge && time == worldTime) throw new IllegalStateException("Duplicate combat memory frame");
+        if (age == entityAge && time == worldTime)
+            throw new IllegalStateException(FaithfulCombatDiagnostics.MSG_DUPLICATE_COMBAT_MEMORY_FRAME);
         entityAge = age;
         worldTime = time;
         if (cooldown != null) {

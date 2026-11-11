@@ -13,13 +13,6 @@ import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 /** 六格背包、双手与护甲的统一槽位视图，装备仍只有实体中的一份存储 */
 public final class MaidInventory implements IInventory {
 
-    public static final int BACKPACK_SIZE = 6;
-    public static final int BACKPACK_SHOW_SLOT = 5;
-    public static final int MAIN_HAND = 6;
-    public static final int OFF_HAND = 7;
-    public static final int ARMOR_START = 8;
-    public static final int TOTAL_SIZE = 12;
-
     private final EntityMaid maid;
     private final RecoveryStore recovery;
 
@@ -27,7 +20,7 @@ public final class MaidInventory implements IInventory {
         return recovery;
     }
 
-    private final ItemStack[] backpack = new ItemStack[BACKPACK_SIZE];
+    private final ItemStack[] backpack = new ItemStack[MaidInventoryLayout.BACKPACK_SIZE];
 
     public MaidInventory(EntityMaid maid) {
         this.maid = maid;
@@ -36,16 +29,16 @@ public final class MaidInventory implements IInventory {
 
     @Override
     public int getSizeInventory() {
-        return TOTAL_SIZE;
+        return MaidInventoryLayout.TOTAL_SIZE;
     }
 
     @Override
     public ItemStack getStackInSlot(int slot) {
         checkSlot(slot);
-        if (slot < BACKPACK_SIZE) return backpack[slot];
-        if (slot == MAIN_HAND) return maid.getHeldItem();
-        if (slot == OFF_HAND) return maid.getOffhandItem();
-        return maid.getEquipmentInSlot(slot - ARMOR_START + 1);
+        if (slot < MaidInventoryLayout.BACKPACK_SIZE) return backpack[slot];
+        if (slot == MaidInventoryLayout.MAIN_HAND) return maid.getHeldItem();
+        if (slot == MaidInventoryLayout.OFF_HAND) return maid.getOffhandItem();
+        return maid.getEquipmentInSlot(slot - MaidInventoryLayout.ARMOR_START + 1);
     }
 
     @Override
@@ -74,10 +67,11 @@ public final class MaidInventory implements IInventory {
     public void setInventorySlotContents(int slot, ItemStack stack) {
         checkSlot(slot);
         stack = ProtectedItemCodec.admit(stack, getInventoryStackLimit());
-        if (slot < BACKPACK_SIZE) backpack[slot] = stack;
-        else if (slot == MAIN_HAND) maid.setCurrentItemOrArmor(0, stack);
-        else if (slot == OFF_HAND) maid.setOffhandItem(stack);
-        else maid.setCurrentItemOrArmor(slot - ARMOR_START + 1, stack);
+        if (slot < MaidInventoryLayout.BACKPACK_SIZE) backpack[slot] = stack;
+        else if (slot == MaidInventoryLayout.MAIN_HAND)
+            maid.setCurrentItemOrArmor(MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE, stack);
+        else if (slot == MaidInventoryLayout.OFF_HAND) maid.setOffhandItem(stack);
+        else maid.setCurrentItemOrArmor(slot - MaidInventoryLayout.ARMOR_START + 1, stack);
         markDirty();
     }
 
@@ -87,23 +81,25 @@ public final class MaidInventory implements IInventory {
             || maid.getCombatHitReceipt()
                 .blocksTransfer()
             || slot < 0
-            || slot >= BACKPACK_SIZE
+            || slot >= MaidInventoryLayout.BACKPACK_SIZE
             || expectedBackpack == null
             || expectedBackpack == expectedHand
             || backpack[slot] != expectedBackpack
             || maid.getHeldItem() != expectedHand) return false;
         var equipment = maid.getLastActiveItems();
-        if (equipment == null || equipment.length != 5 || equipment[0] != expectedHand) return false;
-        for (int other = 0; other < TOTAL_SIZE; other++) {
-            if (other == slot || other == MAIN_HAND) continue;
+        if (equipment == null || equipment.length != MaidInventoryLayout.TARGET_LENGTH_THRESHOLD
+            || equipment[MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE] != expectedHand) return false;
+        for (int other = 0; other < MaidInventoryLayout.TOTAL_SIZE; other++) {
+            if (other == slot || other == MaidInventoryLayout.MAIN_HAND) continue;
             var actual = getStackInSlot(other);
             if (actual == expectedBackpack || expectedHand != null && actual == expectedHand) return false;
         }
         // 原生EntityLiving.setCurrentItemOrArmor只写同一equipment数组；两份原物品不复制、不扣数量
-        equipment[0] = expectedBackpack;
+        equipment[MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE] = expectedBackpack;
         if (maid.getHeldItem() != expectedBackpack) {
             // 未知提供方若返回装备副本，不撤走原背包物品
-            if (equipment[0] == expectedBackpack) equipment[0] = expectedHand;
+            if (equipment[MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE] == expectedBackpack)
+                equipment[MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE] = expectedHand;
             return false;
         }
         backpack[slot] = expectedHand;
@@ -115,7 +111,7 @@ public final class MaidInventory implements IInventory {
 
     @Override
     public String getInventoryName() {
-        return "container.tlmnh.maid";
+        return MaidInventoryIds.I18N_CONTAINER_TLMNH_MAID;
     }
 
     @Override
@@ -125,7 +121,7 @@ public final class MaidInventory implements IInventory {
 
     @Override
     public int getInventoryStackLimit() {
-        return 64;
+        return MaidInventoryLayout.INVENTORY_GET_INVENTORY_STACK_LIMIT_PARAM;
     }
 
     @Override
@@ -139,8 +135,8 @@ public final class MaidInventory implements IInventory {
     public ItemStack insertAvailable(ItemStack input, boolean simulate) {
         if (input == null || input.getItem() == null || input.stackSize <= 0) return null;
         var remaining = input.copy();
-        for (int pass = 0; pass < 2 && remaining.stackSize > 0; pass++) {
-            for (int slot = 0; slot <= OFF_HAND && remaining.stackSize > 0; slot++) {
+        for (int pass = 0; pass < MaidInventoryLayout.MIN_PASS_THRESHOLD && remaining.stackSize > 0; pass++) {
+            for (int slot = 0; slot <= MaidInventoryLayout.OFF_HAND && remaining.stackSize > 0; slot++) {
                 var existing = getStackInSlot(slot);
                 int limit = Math.min(getInventoryStackLimit(), remaining.getMaxStackSize());
                 int capacity;
@@ -148,8 +144,9 @@ public final class MaidInventory implements IInventory {
                     && remaining.isStackable()
                     && remaining.isItemEqual(existing)
                     && ItemStack.areItemStackTagsEqual(remaining, existing))
-                    capacity = Math.max(0, limit - existing.stackSize);
-                else if (pass == 1 && existing == null) capacity = limit;
+                    capacity = Math
+                        .max(MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE, limit - existing.stackSize);
+                else if (pass == MaidInventoryLayout.TARGET_PASS_THRESHOLD && existing == null) capacity = limit;
                 else continue;
                 int moved = Math.min(capacity, remaining.stackSize);
                 if (!simulate && moved > 0) {
@@ -172,7 +169,7 @@ public final class MaidInventory implements IInventory {
             && player.isEntityAlive()
             && maid.isOwner(player)
             && player.worldObj == maid.worldObj
-            && player.getDistanceSqToEntity(maid) <= 64.0D;
+            && player.getDistanceSqToEntity(maid) <= MaidInventoryLayout.INVENTORY_IS_USEABLE_BY_PLAYER_FACTOR;
     }
 
     @Override
@@ -185,17 +182,20 @@ public final class MaidInventory implements IInventory {
     public boolean isItemValidForSlot(int slot, ItemStack stack) {
         checkSlot(slot);
         if (stack == null) return false;
-        if (slot < ARMOR_START) return true;
+        if (slot < MaidInventoryLayout.ARMOR_START) return true;
         return stack.getItem()
-            .isValidArmor(stack, 3 - (slot - ARMOR_START), maid);
+            .isValidArmor(
+                stack,
+                MaidInventoryLayout.TARGET_GET_ID_THRESHOLD - (slot - MaidInventoryLayout.ARMOR_START),
+                maid);
     }
 
     public NBTTagList writeBackpack() {
         var items = new NBTTagList();
-        for (int slot = 0; slot < BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             if (backpack[slot] != null) {
                 var item = ProtectedItemCodec.encode(backpack[slot]);
-                item.setByte("Slot", (byte) slot);
+                item.setByte(MaidInventoryNbtKeys.KEY_SLOT, (byte) slot);
                 items.appendTag(item);
             }
         }
@@ -203,20 +203,22 @@ public final class MaidInventory implements IInventory {
     }
 
     public void readBackpack(NBTTagList items) {
-        for (int slot = 0; slot < BACKPACK_SIZE; slot++) backpack[slot] = null;
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) backpack[slot] = null;
         for (int index = 0; index < items.tagCount(); index++) {
             var item = items.getCompoundTagAt(index);
-            int slot = item.getByte("Slot") & 255;
-            if (!item.hasKey("Slot", Constants.NBT.TAG_BYTE) || slot >= BACKPACK_SIZE || backpack[slot] != null)
-                recovery.retain(item);
+            int slot = item.getByte(MaidInventoryNbtKeys.KEY_SLOT) & MaidInventoryLayout.UNSIGNED_BYTE_MASK;
+            if (!item.hasKey(MaidInventoryNbtKeys.KEY_SLOT, Constants.NBT.TAG_BYTE)
+                || slot >= MaidInventoryLayout.BACKPACK_SIZE
+                || backpack[slot] != null) recovery.retain(item);
             else {
                 var stack = ProtectedItemCodec.decode(item);
-                backpack[slot] = stack == null ? ProtectedItemCodec.seal(item, "empty_entry") : stack;
+                backpack[slot] = stack == null ? ProtectedItemCodec.seal(item, MaidInventoryIds.ID_EMPTY_ENTRY) : stack;
             }
         }
     }
 
     private static void checkSlot(int slot) {
-        if (slot < 0 || slot >= TOTAL_SIZE) throw new IndexOutOfBoundsException("Maid slot: " + slot);
+        if (slot < 0 || slot >= MaidInventoryLayout.TOTAL_SIZE)
+            throw new IndexOutOfBoundsException(MaidInventoryDiagnostics.MSG_MAID_SLOT + slot);
     }
 }

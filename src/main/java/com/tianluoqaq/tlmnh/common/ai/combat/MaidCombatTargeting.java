@@ -17,9 +17,6 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 /** 首批战斗安全规则，玩家和宠物遵循上游默认排除语义 */
 public final class MaidCombatTargeting {
 
-    public static final double OWNER_RADIUS_SQ = 256;
-    private static final int RECENT_ATTACK_TICKS = 100;
-
     private MaidCombatTargeting() {}
 
     public static boolean validOwner(EntityMaid maid, EntityLivingBase owner) {
@@ -29,7 +26,7 @@ public final class MaidCombatTargeting {
             && maid.isOwner(player)
             && maid.worldObj.playerEntities.contains(player)
             && (!(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
-                .getID() != 3);
+                .getID() != AiCombatTuning.TARGET_GET_ID_THRESHOLD);
     }
 
     public static boolean hasMeleeWeapon(EntityMaid maid) {
@@ -63,15 +60,15 @@ public final class MaidCombatTargeting {
             || owner != null && owner.isOnSameTeam(target)) return false;
         if (target instanceof EntityLiving mob && mob.hasCustomNameTag()
             && mob.getCustomNameTag()
-                .startsWith("MaidNoAttack"))
+                .startsWith(AiCombatIds.KEY_MAID_NO_ATTACK))
             return false;
         var area = maid.getHomeArea();
         if (area.enabled()) {
             if (!area.sameDimension() || !area.containsMaid()
                 || area.activity() != MaidLifeRules.Activity.WORK
                 || !area.contains(target.posX, target.posY, target.posZ)) return false;
-        } else if (maid.getDistanceSqToEntity(owner) > OWNER_RADIUS_SQ
-            || owner.getDistanceSqToEntity(target) > OWNER_RADIUS_SQ) return false;
+        } else if (maid.getDistanceSqToEntity(owner) > AiCombatTuning.OWNER_RADIUS_SQ
+            || owner.getDistanceSqToEntity(target) > AiCombatTuning.OWNER_RADIUS_SQ) return false;
         return target instanceof IMob || recentThreat(maid, owner, target);
     }
 
@@ -83,11 +80,11 @@ public final class MaidCombatTargeting {
 
     private static boolean recent(EntityLivingBase source, int recordedTick) {
         int elapsed = source.ticksExisted - recordedTick;
-        return elapsed >= 0 && elapsed <= RECENT_ATTACK_TICKS;
+        return elapsed >= 0 && elapsed <= AiCombatTuning.RECENT_ATTACK_TICKS;
     }
 
     public static double meleeReachSq(EntityMaid maid, EntityLivingBase target) {
-        double width = maid.width * 2.0D;
+        double width = maid.width * AiCombatTuning.COMBAT_TARGETING_WIDTH;
         return width * width + target.width;
     }
 }

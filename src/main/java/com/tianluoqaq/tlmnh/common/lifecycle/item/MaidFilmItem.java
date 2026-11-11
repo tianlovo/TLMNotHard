@@ -29,6 +29,6 @@ public final class MaidFilmItem extends MaidLifecycleItems.StoredMaidItem {
     public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
         if (MaidLifecycleItems.token(stack) == null) lines.add(
             EnumChatFormatting.DARK_RED
-                + StatCollector.translateToLocal("tooltips.touhou_little_maid.film.no_data.desc"));
+                + StatCollector.translateToLocal(LifecycleItemIds.I18N_TOOLTIPS_TOUHOU_LITTLE_MAID_FILM_NO_DATA_DESC));
     }
 }

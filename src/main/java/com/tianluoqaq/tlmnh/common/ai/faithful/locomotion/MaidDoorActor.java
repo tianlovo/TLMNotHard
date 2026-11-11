@@ -21,7 +21,7 @@ public interface MaidDoorActor {
 
         public Position(int dimension, Point point) {
             this.dimension = dimension;
-            this.point = Objects.requireNonNull(point, "point");
+            this.point = Objects.requireNonNull(point, FaithfulLocomotionIds.ID_POINT);
         }
 
         @Override
@@ -31,7 +31,7 @@ public interface MaidDoorActor {
 
         @Override
         public int hashCode() {
-            return dimension * 31 + point.hashCode();
+            return dimension * FaithfulLocomotionTuning.DOOR_ACTOR_HASH_CODE_PARAM + point.hashCode();
         }
     }
 

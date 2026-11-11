@@ -23,6 +23,7 @@ public final class ItemSnackCabinet extends ItemBlock {
     @SideOnly(Side.CLIENT)
     public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
         lines.add(
-            EnumChatFormatting.GRAY + StatCollector.translateToLocal("block.touhou_little_maid.snack_cabinet.tip"));
+            EnumChatFormatting.GRAY
+                + StatCollector.translateToLocal(SnackCabinetIds.ID_BLOCK_TOUHOU_LITTLE_MAID_SNACK_CABINET_TIP));
     }
 }

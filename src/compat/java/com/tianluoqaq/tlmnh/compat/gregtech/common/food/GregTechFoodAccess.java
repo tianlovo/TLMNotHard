@@ -12,14 +12,12 @@ import com.tianluoqaq.tlmnh.common.life.spi.NutritionCompatProvider.PotionEntry;
 /** 读取格雷科技元生成食物的容器、解毒奶属性与药水数组；爆炸类条目直接拒绝 */
 public final class GregTechFoodAccess {
 
-
-
-
     private GregTechFoodAccess() {}
 
     public static CustomFoodData inspect(ItemStack stack) throws ReflectiveOperationException {
         if (stack == null || stack.getItem() == null) return null;
-        Class<?> meta = Class.forName(GregTechFoodReflectionSpec.META_ITEM_CLASS, false, GregTechFoodAccess.class.getClassLoader());
+        Class<?> meta = Class
+            .forName(GregTechFoodReflectionSpec.META_ITEM_CLASS, false, GregTechFoodAccess.class.getClassLoader());
         if (!meta.isInstance(stack.getItem())) return null;
         var stats = (Map<?, ?>) meta.getField(GregTechFoodIds.ID_MFOODSTATS)
             .get(stack.getItem());
@@ -35,9 +33,15 @@ public final class GregTechFoodAccess {
         boolean ambient = (boolean) field(stat, GregTechFoodIds.ID_MINVISIBLEPARTICLES);
         var effects = new ArrayList<PotionEntry>();
         if (potions != null) {
-            for (int i = GregTechFoodTuning.GREG_TECH_INSPECT_I_OFFSET; i < potions.length; i += GregTechFoodTuning.GREG_TECH_INSPECT_PARAM) {
-                effects
-                    .add(new PotionEntry(potions[i - GregTechFoodTuning.GREG_TECH_INSPECT_I_OFFSET], potions[i - GregTechFoodTuning.GREG_TECH_POTION_ENTRY_SECOND_PARAM], potions[i - 1], potions[i] / GregTechFoodTuning.GREG_TECH_POTION_ENTRY_FOURTH_FACTOR, ambient));
+            for (int i = GregTechFoodTuning.GREG_TECH_INSPECT_I_OFFSET; i
+                < potions.length; i += GregTechFoodTuning.GREG_TECH_INSPECT_PARAM) {
+                effects.add(
+                    new PotionEntry(
+                        potions[i - GregTechFoodTuning.GREG_TECH_INSPECT_I_OFFSET],
+                        potions[i - GregTechFoodTuning.GREG_TECH_POTION_ENTRY_SECOND_PARAM],
+                        potions[i - 1],
+                        potions[i] / GregTechFoodTuning.GREG_TECH_POTION_ENTRY_FOURTH_FACTOR,
+                        ambient));
             }
         }
         return new CustomFoodData(empty, milk, effects);

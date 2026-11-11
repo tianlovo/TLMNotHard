@@ -28,13 +28,15 @@ import cpw.mods.fml.relauncher.Side;
 /** 死亡入站、原生野生掉落和墓碑handle；物品及经验仍由现有各自出口单次兑现 */
 public final class MaidDeathService {
 
-    private static final String WILD_TAG = "TLMNHWildDeathHold";
-    private static final String COMBAT_DEFERRED = "TLMNHCombatDeferredDeath";
     private static final Set<EntityMaid> COMBAT_PENDING = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<EntityMaid> WILD_CONFIRMED = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<EntityMaid> WILD_PENDING = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<String> PUBLICATION_FIELDS = new HashSet<>(
-        Arrays.asList("Version", "Stage", "Snapshot", "Observed"));
+        Arrays.asList(
+            MaidLifecycleNbtKeys.KEY_VERSION,
+            MaidLifecycleNbtKeys.KEY_STAGE,
+            MaidLifecycleNbtKeys.KEY_SNAPSHOT,
+            MaidLifecycleNbtKeys.KEY_OBSERVED));
 
     private MaidDeathService() {}
 
@@ -47,7 +49,7 @@ public final class MaidDeathService {
             var token = ledger.deathToken(maid.getUniqueID());
             if (token != null && ledger.delivered(token) && !ledger.pendingDeath(maid.getUniqueID())) return true;
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("death_ingress/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_DEATH_INGRESS + maid.getUniqueID(), failure);
         }
         maid.getCombatCadence()
             .freezeForDeath();
@@ -59,7 +61,7 @@ public final class MaidDeathService {
             if (token != null && ledger.delivered(token) && !ledger.pendingDeath(maid.getUniqueID()))
                 ensureTombstoneSafely(maid.worldObj, token);
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("death_ingress/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_DEATH_INGRESS + maid.getUniqueID(), failure);
         }
         return owned;
     }
@@ -75,12 +77,12 @@ public final class MaidDeathService {
 
     public static boolean blocksSource(EntityMaid maid) {
         return maid != null && maid.getEntityData()
-            .hasKey(COMBAT_DEFERRED)
+            .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED)
             || MaidDeathIngress.blocks(maid)
             || maid != null && maid.worldObj != null
                 && !maid.worldObj.isRemote
                 && maid.getEntityData()
-                    .hasKey(WILD_TAG)
+                    .hasKey(MaidLifecycleNbtKeys.WILD_TAG)
                 && !WILD_CONFIRMED.contains(maid);
     }
 
@@ -88,9 +90,9 @@ public final class MaidDeathService {
         if ((nativeDead || maid.getHealth() <= 0) && deferCombatDeath(maid)) return false;
         completeDeferred(maid);
         if (maid.getEntityData()
-            .hasKey(COMBAT_DEFERRED)) return false;
+            .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED)) return false;
         if (maid.getEntityData()
-            .hasKey(WILD_TAG)) return confirmWildHold(maid);
+            .hasKey(MaidLifecycleNbtKeys.WILD_TAG)) return confirmWildHold(maid);
         boolean pending = MaidDeathIngress.blocks(maid);
         if (!nativeDead && !pending) return true;
         var owner = owner(maid);
@@ -103,7 +105,7 @@ public final class MaidDeathService {
                 && !ledger.pendingDeath(maid.getUniqueID())
                 && !MaidDeathIngress.blocks(maid);
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("death_ingress/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_DEATH_INGRESS + maid.getUniqueID(), failure);
             return false;
         }
     }
@@ -112,18 +114,19 @@ public final class MaidDeathService {
         if (maid.getCombatHitReceipt()
             .blocksTransfer()
             || maid.getEntityData()
-                .hasKey(COMBAT_DEFERRED))
-            return 0;
+                .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED))
+            return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         if (maid.getEntityData()
-            .hasKey(WILD_TAG) || MaidDeathIngress.blocks(maid)) return 0;
+            .hasKey(MaidLifecycleNbtKeys.WILD_TAG) || MaidDeathIngress.blocks(maid))
+            return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         try {
             var ledger = MaidLifecycleData.get(maid.worldObj);
             var token = ledger.deathToken(maid.getUniqueID());
-            if (token != null && ledger.delivered(token)) return 0;
+            if (token != null && ledger.delivered(token)) return MaidLifecycleTuning.CORE_INITIAL_VALUE;
             return MaidInteractionTransfer.availableExperience(maid);
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("death_ingress/" + maid.getUniqueID(), failure);
-            return 0;
+            report(MaidLifecycleIds.ID_DEATH_INGRESS + maid.getUniqueID(), failure);
+            return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         }
     }
 
@@ -137,7 +140,7 @@ public final class MaidDeathService {
         try {
             boolean opaqueHold = false;
             for (Object key : maid.getEntityData()
-                .func_150296_c()) if (((String) key).startsWith(MaidInteractionTransfer.TAG)) opaqueHold = true;
+                .func_150296_c()) if (((String) key).startsWith(MaidLifecycleNbtKeys.TAG_2)) opaqueHold = true;
             if (opaqueHold) MaidInteractionTransfer.preserveDeathBalance(maid);
             source = MaidDeathIngress.snapshot(maid);
             if (opaqueHold || !IntegrationGuard.available(Side.SERVER, ExternalFeature.ITEM_DELIVERY)) {
@@ -150,11 +153,12 @@ public final class MaidDeathService {
                 var stack = inventory.getStackInSlot(slot);
                 if (stack == null) continue;
                 var expected = stack.copy();
-                var drop = maid.entityDropItem(expected.copy(), 0);
+                var drop = maid.entityDropItem(expected.copy(), MaidLifecycleTuning.CORE_INITIAL_VALUE);
                 if (drop == null || !ItemStack.areItemStacksEqual(drop.getEntityItem(), expected)
                     || inventory.getStackInSlot(slot) != stack
                     || !ItemStack.areItemStacksEqual(stack, expected))
-                    throw new IllegalStateException("Unknown native wild equipment successor retained");
+                    throw new IllegalStateException(
+                        MaidLifecycleDiagnostics.MSG_UNKNOWN_NATIVE_WILD_EQUIPMENT_SUCCESSOR);
                 inventory.setInventorySlotContents(slot, null);
             }
             while (inventory.recovery()
@@ -162,47 +166,53 @@ public final class MaidDeathService {
                 var actual = inventory.recovery()
                     .firstForTransfer();
                 var expected = actual.copy();
-                var drop = maid.entityDropItem(expected.copy(), 0);
+                var drop = maid.entityDropItem(expected.copy(), MaidLifecycleTuning.CORE_INITIAL_VALUE);
                 if (drop == null || !ItemStack.areItemStacksEqual(drop.getEntityItem(), expected)
                     || !ItemStack.areItemStacksEqual(actual, expected)
                     || !inventory.recovery()
                         .takeFirstForTransfer(actual))
-                    throw new IllegalStateException("Unknown native wild recovery successor retained");
+                    throw new IllegalStateException(
+                        MaidLifecycleDiagnostics.MSG_UNKNOWN_NATIVE_WILD_RECOVERY_SUCCESSOR);
             }
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("wild_death/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_WILD_DEATH + maid.getUniqueID(), failure);
             if (failure instanceof LinkageError)
                 IntegrationGuard.trip(Side.SERVER, ExternalFeature.ITEM_DELIVERY, failure);
             try {
                 if (source != null) {
                     holdWild(maid, source);
                     var marker = maid.getEntityData()
-                        .getCompoundTag(WILD_TAG);
-                    if (marker.hasKey("Version", Constants.NBT.TAG_INT) && marker.getInteger("Version") == 1
-                        && marker.hasKey("Id", Constants.NBT.TAG_STRING)
-                        && marker.hasKey("Raw", Constants.NBT.TAG_COMPOUND)
+                        .getCompoundTag(MaidLifecycleNbtKeys.WILD_TAG);
+                    if (marker.hasKey(MaidLifecycleNbtKeys.KEY_VERSION, Constants.NBT.TAG_INT)
+                        && marker.getInteger(MaidLifecycleNbtKeys.KEY_VERSION)
+                            == MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                        && marker.hasKey(MaidLifecycleNbtKeys.KEY_ID, Constants.NBT.TAG_STRING)
+                        && marker.hasKey(MaidLifecycleNbtKeys.KEY_RAW, Constants.NBT.TAG_COMPOUND)
                         && marker.func_150296_c()
-                            .size() == 3) {
+                            .size() == MaidLifecycleTuning.TARGET_SIZE_THRESHOLD) {
                         var observed = MaidDeathIngress.snapshot(maid);
                         marker.setString(
-                            "ObservedId",
+                            MaidLifecycleNbtKeys.KEY_OBSERVED_ID,
                             UUID.randomUUID()
                                 .toString());
-                        marker.setTag("ObservedRaw", observed);
+                        marker.setTag(MaidLifecycleNbtKeys.KEY_OBSERVED_RAW, observed);
                         WILD_CONFIRMED.remove(maid);
                         confirmWildHold(maid);
                     }
                 }
             } catch (Exception | LinkageError | AssertionError retentionFailure) {
-                report("wild_death/" + maid.getUniqueID() + "/retention", retentionFailure);
+                report(
+                    MaidLifecycleIds.ID_WILD_DEATH + maid.getUniqueID() + MaidLifecycleIds.ID_RETENTION,
+                    retentionFailure);
             }
             if (source == null && !maid.getEntityData()
-                .hasKey(WILD_TAG)) {
+                .hasKey(MaidLifecycleNbtKeys.WILD_TAG)) {
                 var unreadable = new NBTTagCompound();
-                unreadable.setInteger("Version", 1);
-                unreadable.setString("Stage", "UNREADABLE");
+                unreadable
+                    .setInteger(MaidLifecycleNbtKeys.KEY_VERSION, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
+                unreadable.setString(MaidLifecycleNbtKeys.KEY_STAGE, MaidLifecycleNbtKeys.KEY_UNREADABLE);
                 maid.getEntityData()
-                    .setTag(WILD_TAG, unreadable);
+                    .setTag(MaidLifecycleNbtKeys.WILD_TAG, unreadable);
                 WILD_PENDING.add(maid);
             }
         }
@@ -210,16 +220,16 @@ public final class MaidDeathService {
 
     private static void holdWild(EntityMaid maid, NBTTagCompound source) {
         if (!maid.getEntityData()
-            .hasKey(WILD_TAG)) {
+            .hasKey(MaidLifecycleNbtKeys.WILD_TAG)) {
             var marker = new NBTTagCompound();
-            marker.setInteger("Version", 1);
+            marker.setInteger(MaidLifecycleNbtKeys.KEY_VERSION, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
             marker.setString(
-                "Id",
+                MaidLifecycleNbtKeys.KEY_ID,
                 UUID.randomUUID()
                     .toString());
-            marker.setTag("Raw", source.copy());
+            marker.setTag(MaidLifecycleNbtKeys.KEY_RAW, source.copy());
             maid.getEntityData()
-                .setTag(WILD_TAG, marker);
+                .setTag(MaidLifecycleNbtKeys.WILD_TAG, marker);
         }
         confirmWildHold(maid);
     }
@@ -228,35 +238,39 @@ public final class MaidDeathService {
         if (WILD_CONFIRMED.contains(maid)) return true;
         try {
             var data = maid.getEntityData();
-            if (!data.hasKey(WILD_TAG, Constants.NBT.TAG_COMPOUND))
-                throw new IllegalStateException("Unknown wild death hold marker retained");
-            var marker = data.getCompoundTag(WILD_TAG);
-            boolean observed = marker.hasKey("ObservedId") || marker.hasKey("ObservedRaw");
+            if (!data.hasKey(MaidLifecycleNbtKeys.WILD_TAG, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_WILD_DEATH_HOLD_MARKER);
+            var marker = data.getCompoundTag(MaidLifecycleNbtKeys.WILD_TAG);
+            boolean observed = marker.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED_ID)
+                || marker.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED_RAW);
             if (marker.func_150296_c()
-                .size() != (observed ? 5 : 3) || !marker.hasKey("Version", Constants.NBT.TAG_INT)
-                || marker.getInteger("Version") != 1
-                || !marker.hasKey("Id", Constants.NBT.TAG_STRING)
-                || !marker.hasKey("Raw", Constants.NBT.TAG_COMPOUND)
-                || marker.getCompoundTag("Raw")
+                .size()
+                != (observed ? MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM
+                    : MaidLifecycleTuning.TARGET_SIZE_THRESHOLD)
+                || !marker.hasKey(MaidLifecycleNbtKeys.KEY_VERSION, Constants.NBT.TAG_INT)
+                || marker.getInteger(MaidLifecycleNbtKeys.KEY_VERSION)
+                    != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                || !marker.hasKey(MaidLifecycleNbtKeys.KEY_ID, Constants.NBT.TAG_STRING)
+                || !marker.hasKey(MaidLifecycleNbtKeys.KEY_RAW, Constants.NBT.TAG_COMPOUND)
+                || marker.getCompoundTag(MaidLifecycleNbtKeys.KEY_RAW)
                     .hasNoTags())
-                throw new IllegalStateException("Invalid wild death hold marker retained");
-            if (observed
-                && (!marker.hasKey("ObservedId", Constants.NBT.TAG_STRING)
-                    || !marker.hasKey("ObservedRaw", Constants.NBT.TAG_COMPOUND)
-                    || marker.getCompoundTag("ObservedRaw")
-                        .hasNoTags()))
-                throw new IllegalStateException("Invalid observed wild death successor retained");
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_WILD_DEATH_HOLD_MARKER);
+            if (observed && (!marker.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED_ID, Constants.NBT.TAG_STRING)
+                || !marker.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED_RAW, Constants.NBT.TAG_COMPOUND)
+                || marker.getCompoundTag(MaidLifecycleNbtKeys.KEY_OBSERVED_RAW)
+                    .hasNoTags()))
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_OBSERVED_WILD_DEATH_SUCCESSOR);
             var ledger = MaidLifecycleData.get(maid.worldObj);
             ledger.retainUnownedDeath(
-                UUID.fromString(marker.getString("Id")),
-                marker.getCompoundTag("Raw"),
+                UUID.fromString(marker.getString(MaidLifecycleNbtKeys.KEY_ID)),
+                marker.getCompoundTag(MaidLifecycleNbtKeys.KEY_RAW),
                 maid.worldObj.provider.dimensionId,
                 maid.posX,
                 maid.posY,
                 maid.posZ);
             if (observed) ledger.retainUnownedDeath(
-                UUID.fromString(marker.getString("ObservedId")),
-                marker.getCompoundTag("ObservedRaw"),
+                UUID.fromString(marker.getString(MaidLifecycleNbtKeys.KEY_OBSERVED_ID)),
+                marker.getCompoundTag(MaidLifecycleNbtKeys.KEY_OBSERVED_RAW),
                 maid.worldObj.provider.dimensionId,
                 maid.posX,
                 maid.posY,
@@ -267,7 +281,7 @@ public final class MaidDeathService {
             return true;
         } catch (Exception | LinkageError | AssertionError failure) {
             WILD_PENDING.add(maid);
-            report("wild_death/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_WILD_DEATH + maid.getUniqueID(), failure);
             return false;
         }
     }
@@ -279,11 +293,11 @@ public final class MaidDeathService {
         maid.getCombatCadence()
             .freezeForDeath();
         if (!maid.getEntityData()
-            .hasKey(COMBAT_DEFERRED)) {
+            .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED)) {
             var marker = new NBTTagCompound();
-            marker.setInteger("Version", 1);
+            marker.setInteger(MaidLifecycleNbtKeys.KEY_VERSION, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
             maid.getEntityData()
-                .setTag(COMBAT_DEFERRED, marker);
+                .setTag(MaidLifecycleNbtKeys.COMBAT_DEFERRED, marker);
         }
         COMBAT_PENDING.add(maid);
         return true;
@@ -294,34 +308,35 @@ public final class MaidDeathService {
         if (maid == null || maid.worldObj == null
             || maid.worldObj.isRemote
             || !maid.getEntityData()
-                .hasKey(COMBAT_DEFERRED))
+                .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED))
             return;
         COMBAT_PENDING.add(maid);
         if (maid.getCombatHitReceipt()
             .blocksTransfer()) return;
         var raw = maid.getEntityData()
-            .getTag(COMBAT_DEFERRED);
-        if (!(raw instanceof NBTTagCompound marker) || !marker.hasKey("Version", Constants.NBT.TAG_INT)
-            || marker.getInteger("Version") != 1
+            .getTag(MaidLifecycleNbtKeys.COMBAT_DEFERRED);
+        if (!(raw instanceof NBTTagCompound marker)
+            || !marker.hasKey(MaidLifecycleNbtKeys.KEY_VERSION, Constants.NBT.TAG_INT)
+            || marker.getInteger(MaidLifecycleNbtKeys.KEY_VERSION) != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             || marker.func_150296_c()
-                .size() != 1
+                .size() != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             || maid.getHealth() > 0) {
             report(
-                "combat_death/" + maid.getUniqueID(),
-                new IllegalStateException("Unknown delayed combat death retained"));
+                MaidLifecycleIds.ID_COMBAT_DEATH + maid.getUniqueID(),
+                new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_DELAYED_COMBAT_DEATH_RETAINED));
             return;
         }
         maid.getEntityData()
-            .removeTag(COMBAT_DEFERRED);
+            .removeTag(MaidLifecycleNbtKeys.COMBAT_DEFERRED);
         COMBAT_PENDING.remove(maid);
         try {
             if (owner(maid) != null) preserve(maid);
             else dropUnowned(maid);
         } catch (Exception | LinkageError | AssertionError failure) {
             maid.getEntityData()
-                .setTag(COMBAT_DEFERRED, raw.copy());
+                .setTag(MaidLifecycleNbtKeys.COMBAT_DEFERRED, raw.copy());
             COMBAT_PENDING.add(maid);
-            report("combat_death/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_COMBAT_DEATH + maid.getUniqueID(), failure);
         }
     }
 
@@ -345,7 +360,7 @@ public final class MaidDeathService {
 
     static boolean onJoin(EntityMaid maid) {
         if (maid.getEntityData()
-            .hasKey(COMBAT_DEFERRED)) {
+            .hasKey(MaidLifecycleNbtKeys.COMBAT_DEFERRED)) {
             COMBAT_PENDING.add(maid);
             return true;
         }
@@ -357,40 +372,46 @@ public final class MaidDeathService {
         }
         try {
             if (maid.getEntityData()
-                .hasKey(WILD_TAG)) confirmWildHold(maid);
+                .hasKey(MaidLifecycleNbtKeys.WILD_TAG)) confirmWildHold(maid);
             return MaidDeathIngress.onJoin(maid);
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("death_ingress/" + maid.getUniqueID(), failure);
+            report(MaidLifecycleIds.ID_DEATH_INGRESS + maid.getUniqueID(), failure);
             return true; // 账本不可读不能靠拒载删除仍持有原始数据的实体
         }
     }
 
     static void validatePublication(NBTTagCompound receipt, UUID token, UUID owner) {
-        for (Object key : receipt.func_150296_c()) if (!PUBLICATION_FIELDS.contains(key))
-            throw new IllegalStateException("Unknown tombstone publication field retained: " + key);
+        for (Object key : receipt.func_150296_c())
+            if (!PUBLICATION_FIELDS.contains(key)) throw new IllegalStateException(
+                MaidLifecycleDiagnostics.MSG_UNKNOWN_TOMBSTONE_PUBLICATION_FIELD_RETAINED + key);
         if (receipt.func_150296_c()
-            .size() != PUBLICATION_FIELDS.size() - (receipt.hasKey("Observed") ? 0 : 1)
-            || !receipt.hasKey("Version", Constants.NBT.TAG_INT)
-            || receipt.getInteger("Version") != 1
-            || !receipt.hasKey("Stage", Constants.NBT.TAG_STRING)
-            || !(receipt.getString("Stage")
-                .equals("PREPARED")
-                || receipt.getString("Stage")
-                    .equals("PUBLISHED")
-                || receipt.getString("Stage")
-                    .equals("HELD"))
-            || !receipt.hasKey("Snapshot", Constants.NBT.TAG_COMPOUND)
-            || receipt.hasKey("Observed") && !receipt.hasKey("Observed", Constants.NBT.TAG_COMPOUND))
-            throw new IllegalStateException("Invalid tombstone publication intent");
-        var source = receipt.getCompoundTag("Snapshot");
-        if (!source.hasKey("UUIDMost", Constants.NBT.TAG_LONG) || !source.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
-            || !source.hasKey("Token", Constants.NBT.TAG_STRING)
+            .size()
+            != PUBLICATION_FIELDS.size()
+                - (receipt.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED) ? MaidLifecycleTuning.CORE_INITIAL_VALUE
+                    : MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD)
+            || !receipt.hasKey(MaidLifecycleNbtKeys.KEY_VERSION, Constants.NBT.TAG_INT)
+            || receipt.getInteger(MaidLifecycleNbtKeys.KEY_VERSION) != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            || !receipt.hasKey(MaidLifecycleNbtKeys.KEY_STAGE, Constants.NBT.TAG_STRING)
+            || !(receipt.getString(MaidLifecycleNbtKeys.KEY_STAGE)
+                .equals(MaidLifecycleNbtKeys.KEY_PREPARED)
+                || receipt.getString(MaidLifecycleNbtKeys.KEY_STAGE)
+                    .equals(MaidLifecycleNbtKeys.KEY_PUBLISHED)
+                || receipt.getString(MaidLifecycleNbtKeys.KEY_STAGE)
+                    .equals(MaidLifecycleNbtKeys.KEY_HELD))
+            || !receipt.hasKey(MaidLifecycleNbtKeys.KEY_SNAPSHOT, Constants.NBT.TAG_COMPOUND)
+            || receipt.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED)
+                && !receipt.hasKey(MaidLifecycleNbtKeys.KEY_OBSERVED, Constants.NBT.TAG_COMPOUND))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_TOMBSTONE_PUBLICATION_INTENT);
+        var source = receipt.getCompoundTag(MaidLifecycleNbtKeys.KEY_SNAPSHOT);
+        if (!source.hasKey(MaidLifecycleNbtKeys.KEY_UUID_MOST, Constants.NBT.TAG_LONG)
+            || !source.hasKey(MaidLifecycleNbtKeys.KEY_UUID_LEAST, Constants.NBT.TAG_LONG)
+            || !source.hasKey(MaidLifecycleNbtKeys.KEY_TOKEN, Constants.NBT.TAG_STRING)
             || !token.toString()
-                .equals(source.getString("Token"))
-            || !source.hasKey("OwnerId", Constants.NBT.TAG_STRING)
+                .equals(source.getString(MaidLifecycleNbtKeys.KEY_TOKEN))
+            || !source.hasKey(MaidLifecycleNbtKeys.KEY_OWNER_ID, Constants.NBT.TAG_STRING)
             || !owner.toString()
-                .equals(source.getString("OwnerId")))
-            throw new IllegalStateException("Tombstone intent identity disagrees");
+                .equals(source.getString(MaidLifecycleNbtKeys.KEY_OWNER_ID)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_TOMBSTONE_INTENT_IDENTITY_DISAGREES);
     }
 
     private static void ensureTombstoneSafely(World world, UUID token) {
@@ -398,7 +419,7 @@ public final class MaidDeathService {
         try {
             ensureTombstone(world, token);
         } catch (Exception | LinkageError | AssertionError failure) {
-            report("tombstone_publication/" + token, failure);
+            report(MaidLifecycleIds.ID_TOMBSTONE_PUBLICATION + token, failure);
             if (failure instanceof LinkageError)
                 IntegrationGuard.trip(Side.SERVER, ExternalFeature.ITEM_DELIVERY, failure);
         }
@@ -408,7 +429,9 @@ public final class MaidDeathService {
         var ledger = MaidLifecycleData.get(world);
         var position = ledger.tombstonePosition(token);
         if (position == null || !world.getChunkProvider()
-            .chunkExists((int) Math.floor(position.xCoord) >> 4, (int) Math.floor(position.zCoord) >> 4)
+            .chunkExists(
+                (int) Math.floor(position.xCoord) >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                (int) Math.floor(position.zCoord) >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
             || ledger.reserve(token, MaidLifecycleData.Kind.FILM) == null) return;
         MaidTombstoneEntity tombstone = null;
         MaidLifecycleDurability.Publication publication = null;
@@ -417,13 +440,16 @@ public final class MaidDeathService {
         try {
             receipt = ledger.tombstonePublication(token);
             if (!receipt.hasNoTags()) {
-                if (!"PREPARED".equals(receipt.getString("Stage"))) return;
-                var expected = receipt.getCompoundTag("Snapshot");
-                var identity = new UUID(expected.getLong("UUIDMost"), expected.getLong("UUIDLeast"));
+                if (!MaidLifecycleNbtKeys.KEY_PREPARED.equals(receipt.getString(MaidLifecycleNbtKeys.KEY_STAGE)))
+                    return;
+                var expected = receipt.getCompoundTag(MaidLifecycleNbtKeys.KEY_SNAPSHOT);
+                var identity = new UUID(
+                    expected.getLong(MaidLifecycleNbtKeys.KEY_UUID_MOST),
+                    expected.getLong(MaidLifecycleNbtKeys.KEY_UUID_LEAST));
                 for (Object entity : world.loadedEntityList)
                     if (entity instanceof MaidTombstoneEntity candidate && identity.equals(candidate.getUniqueID())) {
-                        if (tombstone != null)
-                            throw new IllegalStateException("Pending tombstone identity is not unique");
+                        if (tombstone != null) throw new IllegalStateException(
+                            MaidLifecycleDiagnostics.MSG_PENDING_TOMBSTONE_IDENTITY_IS_NOT);
                         tombstone = candidate;
                     }
                 if (tombstone == null) return; // 未确认的跨重启目标绝不按同token另造handle
@@ -444,9 +470,9 @@ public final class MaidDeathService {
             var expected = MaidDeathIngress.snapshot(tombstone);
             publication = new MaidLifecycleDurability.Publication(tombstone, expected);
             receipt = new NBTTagCompound();
-            receipt.setInteger("Version", 1);
-            receipt.setString("Stage", "PREPARED");
-            receipt.setTag("Snapshot", expected);
+            receipt.setInteger(MaidLifecycleNbtKeys.KEY_VERSION, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
+            receipt.setString(MaidLifecycleNbtKeys.KEY_STAGE, MaidLifecycleNbtKeys.KEY_PREPARED);
+            receipt.setTag(MaidLifecycleNbtKeys.KEY_SNAPSHOT, expected);
             prepared = true;
             ledger.beginTombstonePublication(world, token, receipt);
             external = true;
@@ -470,18 +496,22 @@ public final class MaidDeathService {
                     ledger.cancelTombstonePublication(world, token, receipt);
                 }
             } catch (Exception | LinkageError | AssertionError cleanup) {
-                report("tombstone_publication/" + token, cleanup);
+                report(MaidLifecycleIds.ID_TOMBSTONE_PUBLICATION + token, cleanup);
                 try {
                     NBTTagCompound observed = new NBTTagCompound();
                     if (tombstone != null) try {
                         observed = MaidDeathIngress.snapshot(tombstone);
                     } catch (Exception | LinkageError | AssertionError unreadable) {
-                        report("tombstone_publication/" + token + "/snapshot", unreadable);
+                        report(
+                            MaidLifecycleIds.ID_TOMBSTONE_PUBLICATION + token + MaidLifecycleIds.ID_SNAPSHOT,
+                            unreadable);
                     }
                     ledger.holdTombstonePublication(token, observed);
                     MaidLifecycleDurability.ledger(world, ledger);
                 } catch (Exception | LinkageError | AssertionError retentionFailure) {
-                    report("tombstone_publication/" + token + "/retention", retentionFailure);
+                    report(
+                        MaidLifecycleIds.ID_TOMBSTONE_PUBLICATION + token + MaidLifecycleIds.ID_RETENTION,
+                        retentionFailure);
                 }
             } finally {
                 ledger.endTombstonePublication(token);

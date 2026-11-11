@@ -25,8 +25,8 @@ public class MaidWalkEvaluator {
     public MaidWalkEvaluator(MaidPathContext actor) {
         this.actor = actor;
         region = actor.region;
-        width = floor(actor.width + 1F);
-        height = floor(actor.height + 1F);
+        width = floor(actor.width + NavigationEvalTuning.WALK_EVALUATOR_WIDTH);
+        height = floor(actor.height + NavigationEvalTuning.WALK_EVALUATOR_WIDTH);
     }
 
     public void prepare() {
@@ -55,14 +55,16 @@ public class MaidWalkEvaluator {
         if (canFloat && region.water(x, y, z)) {
             while (y < region.maxY() && region.water(x, y, z)) y++;
             y--;
-        } else if (actor.onGround) y = floor(actor.y + .5);
+        } else if (actor.onGround) y = floor(actor.y + NavigationEvalTuning.MAX_Y_THRESHOLD);
         else {
             while (y > region.minY() && (region.air(x, y, z) || region.landPassable(x, y, z))) y--;
             y++;
         }
         if (!canStart(x, y, z)) {
-            int lowX = floor(actor.x - actor.width / 2), highX = floor(actor.x + actor.width / 2);
-            int lowZ = floor(actor.z - actor.width / 2), highZ = floor(actor.z + actor.width / 2);
+            int lowX = floor(actor.x - actor.width / NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_RAW_TYPE_THIRD_PARAM),
+                highX = floor(actor.x + actor.width / NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_RAW_TYPE_THIRD_PARAM);
+            int lowZ = floor(actor.z - actor.width / NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_RAW_TYPE_THIRD_PARAM),
+                highZ = floor(actor.z + actor.width / NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_RAW_TYPE_THIRD_PARAM);
             int[][] corners = { { lowX, lowZ }, { lowX, highZ }, { highX, lowZ }, { highX, highZ } };
             for (var corner : corners) if (canStart(corner[0], y, corner[1])) return startNode(corner[0], y, corner[1]);
         }
@@ -86,32 +88,96 @@ public class MaidWalkEvaluator {
     }
 
     public int neighbors(MaidPathNode[] output, MaidPathNode from) {
-        int step = step(from), count = 0;
+        int step = step(from), count = NavigationEvalTuning.COST_INITIAL_VALUE;
         double level = floorLevel(from.x, from.y, from.z);
         var kind = type(from.x, from.y, from.z);
-        var south = accepted(from.x, from.y, from.z + 1, step, level, 0, 1, kind);
+        var south = accepted(
+            from.x,
+            from.y,
+            from.z + 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP,
+            kind);
         if (valid(south, from)) output[count++] = south;
-        var west = accepted(from.x - 1, from.y, from.z, step, level, -1, 0, kind);
+        var west = accepted(
+            from.x - 1,
+            from.y,
+            from.z,
+            step,
+            level,
+            NavigationEvalTuning.UNSET_OR_NOT_FOUND,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            kind);
         if (valid(west, from)) output[count++] = west;
-        var east = accepted(from.x + 1, from.y, from.z, step, level, 1, 0, kind);
+        var east = accepted(
+            from.x + 1,
+            from.y,
+            from.z,
+            step,
+            level,
+            NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            kind);
         if (valid(east, from)) output[count++] = east;
-        var north = accepted(from.x, from.y, from.z - 1, step, level, 0, -1, kind);
+        var north = accepted(
+            from.x,
+            from.y,
+            from.z - 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.UNSET_OR_NOT_FOUND,
+            kind);
         if (valid(north, from)) output[count++] = north;
-        var nw = accepted(from.x - 1, from.y, from.z - 1, step, level, 0, -1, kind);
+        var nw = accepted(
+            from.x - 1,
+            from.y,
+            from.z - 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.UNSET_OR_NOT_FOUND,
+            kind);
         if (diagonal(from, west, north, nw)) output[count++] = nw;
-        var ne = accepted(from.x + 1, from.y, from.z - 1, step, level, 0, -1, kind);
+        var ne = accepted(
+            from.x + 1,
+            from.y,
+            from.z - 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.UNSET_OR_NOT_FOUND,
+            kind);
         if (diagonal(from, east, north, ne)) output[count++] = ne;
-        var sw = accepted(from.x - 1, from.y, from.z + 1, step, level, 0, 1, kind);
+        var sw = accepted(
+            from.x - 1,
+            from.y,
+            from.z + 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP,
+            kind);
         if (diagonal(from, west, south, sw)) output[count++] = sw;
-        var se = accepted(from.x + 1, from.y, from.z + 1, step, level, 0, 1, kind);
+        var se = accepted(
+            from.x + 1,
+            from.y,
+            from.z + 1,
+            step,
+            level,
+            NavigationEvalTuning.COST_INITIAL_VALUE,
+            NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP,
+            kind);
         if (diagonal(from, east, south, se)) output[count++] = se;
         return count;
     }
 
     protected int step(MaidPathNode node) {
         return actor.cost(type(node.x, node.y + 1, node.z)) >= 0 && type(node.x, node.y, node.z) != STICKY_HONEY
-            ? floor(Math.max(1F, actor.stepHeight))
-            : 0;
+            ? floor(Math.max(NavigationEvalTuning.WALK_EVALUATOR_WIDTH, actor.stepHeight))
+            : NavigationEvalTuning.COST_INITIAL_VALUE;
     }
 
     protected boolean valid(MaidPathNode next, MaidPathNode from) {
@@ -121,18 +187,20 @@ public class MaidWalkEvaluator {
     private boolean diagonal(MaidPathNode root, MaidPathNode x, MaidPathNode z, MaidPathNode next) {
         if (next == null || x == null || z == null || next.closed || x.y > root.y || z.y > root.y) return false;
         if (x.type == WALKABLE_DOOR || z.type == WALKABLE_DOOR || next.type == WALKABLE_DOOR) return false;
-        boolean narrow = x.type == FENCE && z.type == FENCE && actor.width < .5;
+        boolean narrow = x.type == FENCE && z.type == FENCE && actor.width < NavigationEvalTuning.MAX_Y_THRESHOLD;
         return next.cost >= 0 && (z.y < root.y || z.cost >= 0 || narrow) && (x.y < root.y || x.cost >= 0 || narrow);
     }
 
     protected double floorLevel(int x, int y, int z) {
-        return (canFloat || amphibious()) && region.water(x, y, z) ? y + .5 : region.floor(x, y, z);
+        return (canFloat || amphibious()) && region.water(x, y, z) ? y + NavigationEvalTuning.MAX_Y_THRESHOLD
+            : region.floor(x, y, z);
     }
 
     protected MaidPathNode accepted(int x, int y, int z, int remainingStep, double fromFloor, int dx, int dz,
         MaidPathType fromType) {
         if (y < region.minY() || y >= region.maxY()) return null;
-        if (floorLevel(x, y, z) - fromFloor > Math.max(1.125, actor.stepHeight)) return null;
+        if (floorLevel(x, y, z) - fromFloor
+            > Math.max(NavigationEvalTuning.WALK_EVALUATOR_MAX_FIRST_FACTOR, actor.stepHeight)) return null;
         var type = type(x, y, z);
         float cost = actor.cost(type);
         MaidPathNode result = cost >= 0 ? update(x, y, z, type, cost) : null;
@@ -144,14 +212,18 @@ public class MaidWalkEvaluator {
             && type != TRAPDOOR
             && type != POWDER_SNOW) {
             result = accepted(x, y + 1, z, remainingStep - 1, fromFloor, dx, dz, fromType);
-            if (result != null && (result.type == OPEN || result.type == WALKABLE) && actor.width < 1F) {
-                double cx = x - dx + .5, cz = z - dz + .5, half = actor.width / 2.0;
+            if (result != null && (result.type == OPEN || result.type == WALKABLE)
+                && actor.width < NavigationEvalTuning.WALK_EVALUATOR_WIDTH) {
+                double cx = x - dx + NavigationEvalTuning.MAX_Y_THRESHOLD,
+                    cz = z - dz + NavigationEvalTuning.MAX_Y_THRESHOLD,
+                    half = actor.width / NavigationEvalTuning.MIDPOINT_DIVISOR_D;
                 if (region.collides(
                     cx - half,
-                    floorLevel(floor(cx), y + 1, floor(cz)) + .001,
+                    floorLevel(floor(cx), y + 1, floor(cz)) + NavigationEvalTuning.WALK_EVALUATOR_DOMAIN_FACTOR,
                     cz - half,
                     cx + half,
-                    actor.height + floorLevel(result.x, result.y, result.z) - .002,
+                    actor.height + floorLevel(result.x, result.y, result.z)
+                        - NavigationEvalTuning.WALK_EVALUATOR_DOMAIN_FACTOR_2,
                     cz + half)) result = null;
             }
         }
@@ -200,16 +272,20 @@ public class MaidWalkEvaluator {
     private MaidPathNode blocked(int x, int y, int z) {
         var node = node(x, y, z);
         node.type = BLOCKED;
-        node.cost = -1;
+        node.cost = NavigationEvalTuning.UNSET_OR_NOT_FOUND;
         return node;
     }
 
     private boolean reachable(MaidPathNode node) {
-        double half = actor.width / 2.0;
-        double dx = node.x - actor.x + actor.width / 2.0, dy = node.y - actor.y + actor.height / 2.0,
-            dz = node.z - actor.z + actor.width / 2.0;
-        int steps = (int) Math.ceil(Math.sqrt(dx * dx + dy * dy + dz * dz) / ((actor.width * 2.0 + actor.height) / 3));
-        double scale = 1F / steps;
+        double half = actor.width / NavigationEvalTuning.MIDPOINT_DIVISOR_D;
+        double dx = node.x - actor.x + actor.width / NavigationEvalTuning.MIDPOINT_DIVISOR_D,
+            dy = node.y - actor.y + actor.height / NavigationEvalTuning.MIDPOINT_DIVISOR_D,
+            dz = node.z - actor.z + actor.width / NavigationEvalTuning.MIDPOINT_DIVISOR_D;
+        int steps = (int) Math.ceil(
+            Math.sqrt(dx * dx + dy * dy + dz * dz)
+                / ((actor.width * NavigationEvalTuning.MIDPOINT_DIVISOR_D + actor.height)
+                    / NavigationEvalTuning.WALK_EVALUATOR_STEPS));
+        double scale = NavigationEvalTuning.WALK_EVALUATOR_WIDTH / steps;
         double x = actor.x, y = actor.y, z = actor.z;
         for (int i = 1; i <= steps; i++) {
             x += dx * scale;
@@ -221,7 +297,11 @@ public class MaidWalkEvaluator {
     }
 
     public MaidPathType type(int x, int y, int z) {
-        long key = ((long) x & 67108863) << 38 | ((long) z & 67108863) << 12 | (long) y & 4095;
+        long key = ((long) x & NavigationEvalTuning.WALK_EVALUATOR_BIT_MASK_67108863)
+            << NavigationEvalTuning.WALK_EVALUATOR_BIT_SHIFT_38
+            | ((long) z & NavigationEvalTuning.WALK_EVALUATOR_BIT_MASK_67108863)
+                << NavigationEvalTuning.WALK_EVALUATOR_BIT_SHIFT_12
+            | (long) y & NavigationEvalTuning.WALK_EVALUATOR_BIT_MASK_4095;
         return types.computeIfAbsent(key, ignored -> occupiedType(x, y, z));
     }
 
@@ -250,7 +330,8 @@ public class MaidWalkEvaluator {
             if (actor.cost(type) < 0) return type;
             if (actor.cost(type) >= actor.cost(chosen)) chosen = type;
         }
-        return first == OPEN && actor.cost(chosen) == 0 && width <= 1 ? OPEN : chosen;
+        return first == OPEN && actor.cost(chosen) == 0
+            && width <= NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP ? OPEN : chosen;
     }
 
     protected MaidPathType blockType(int x, int y, int z) {
@@ -263,14 +344,16 @@ public class MaidWalkEvaluator {
             if (below == POWDER_SNOW) type = DANGER_POWDER_SNOW;
         }
         if (type == WALKABLE) {
-            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
-                if (dx == 0 && dz == 0) continue;
-                var neighbor = region.rawType(x + dx, y + dy, z + dz);
-                if (neighbor == DAMAGE_OTHER) return DANGER_OTHER;
-                if (neighbor == DAMAGE_FIRE || neighbor == LAVA) return DANGER_FIRE;
-                if (region.water(x + dx, y + dy, z + dz)) return WATER_BORDER;
-                if (neighbor == DAMAGE_CAUTIOUS) return DAMAGE_CAUTIOUS;
-            }
+            for (int dx = NavigationEvalTuning.UNSET_OR_NOT_FOUND; dx <= 1; dx++)
+                for (int dy = NavigationEvalTuning.UNSET_OR_NOT_FOUND; dy <= 1; dy++)
+                    for (int dz = NavigationEvalTuning.UNSET_OR_NOT_FOUND; dz <= 1; dz++) {
+                        if (dx == 0 && dz == 0) continue;
+                        var neighbor = region.rawType(x + dx, y + dy, z + dz);
+                        if (neighbor == DAMAGE_OTHER) return DANGER_OTHER;
+                        if (neighbor == DAMAGE_FIRE || neighbor == LAVA) return DANGER_FIRE;
+                        if (region.water(x + dx, y + dy, z + dz)) return WATER_BORDER;
+                        if (neighbor == DAMAGE_CAUTIOUS) return DAMAGE_CAUTIOUS;
+                    }
         }
         return type;
     }

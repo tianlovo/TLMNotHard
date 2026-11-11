@@ -23,7 +23,7 @@ public final class EnhancedBuoyancyController {
             || !actor.isCurrent()) return;
         eligibleFrames++;
         if (maid.getRNG()
-            .nextFloat() < .8F && actor.isCurrent()) {
+            .nextFloat() < EnhancedLocomotionTuning.MIN_NEXT_FLOAT_THRESHOLD && actor.isCurrent()) {
             aquatic.requestJump();
             requests++;
         }

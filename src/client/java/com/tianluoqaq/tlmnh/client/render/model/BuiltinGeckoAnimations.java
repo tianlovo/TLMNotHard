@@ -55,7 +55,8 @@ public final class BuiltinGeckoAnimations {
         var file = files.get(location);
         if (file == null) {
             try (var stream = opener.open(location)) {
-                if (stream == null) throw new IOException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_ANIMATION + location);
+                if (stream == null)
+                    throw new IOException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_ANIMATION + location);
                 file = read(stream, parser);
             } catch (RuntimeException error) {
                 throw new IOException(BuiltinModelDiagnostics.MSG_CANNOT_PARSE_BUILTIN_ANIMATION + location, error);
@@ -87,7 +88,9 @@ public final class BuiltinGeckoAnimations {
                 validate(animation);
                 result.put(entry.getKey(), animation);
             } catch (RuntimeException error) {
-                throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_ANIMATION + entry.getKey(), error);
+                throw new IllegalArgumentException(
+                    BuiltinModelDiagnostics.MSG_INVALID_ANIMATION + entry.getKey(),
+                    error);
             }
         }
         return new AnimationFile(Collections.unmodifiableMap(result));
@@ -108,7 +111,8 @@ public final class BuiltinGeckoAnimations {
         for (var frame : frames) {
             if (!Double.isFinite(frame.getStartTick()) || frame.getStartTick() < 0
                 || !Double.isFinite(frame.getTotalTick())
-                || frame.getTotalTick() < 0) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_BONE_KEYFRAME_TICK);
+                || frame.getTotalTick() < 0)
+                throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_BONE_KEYFRAME_TICK);
         }
     }
 }

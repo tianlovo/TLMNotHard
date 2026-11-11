@@ -18,7 +18,7 @@ public interface ShieldCompatProvider {
     }
 
     default String defaultBlockSound() {
-        return "random.break";
+        return CombatSpiIds.ID_RANDOM_BREAK;
     }
 
     default Item previewShieldItem() {
@@ -62,11 +62,11 @@ public interface ShieldCompatProvider {
     }
 
     default float blockAngle(ItemStack stackCopy) {
-        return 0F;
+        return CombatSpiTuning.PROJECTILE_PHYSICS_ARROW_GRAVITY_FACTOR;
     }
 
     default float damageReduction(ItemStack stackCopy, DamageSource source) {
-        return 0F;
+        return CombatSpiTuning.PROJECTILE_PHYSICS_ARROW_GRAVITY_FACTOR;
     }
 
     default boolean supportsArrowCapture(ItemStack stack) {

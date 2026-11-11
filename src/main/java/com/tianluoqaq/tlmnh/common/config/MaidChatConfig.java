@@ -6,21 +6,38 @@ import net.minecraftforge.common.config.Configuration;
 public final class MaidChatConfig {
 
     public static boolean enableEmoji = true;
-    public static int checkRate = 1200, imageWeight = 10, kaomojiWeight = 10;
+    public static int checkRate = MaidConfigConfigSpec.CHAT_CONFIG_CHECK_RATE,
+        imageWeight = MaidConfigConfigSpec.CHAT_CONFIG_IMAGE_WEIGHT,
+        kaomojiWeight = MaidConfigConfigSpec.CHAT_CONFIG_IMAGE_WEIGHT;
 
     private MaidChatConfig() {}
 
     public static void load(Configuration config) {
-        enableEmoji = config.getBoolean("EnableEmoji", "chatBubble", true, "启用普通随机表情 / Enable ordinary random emoji");
-        checkRate = config
-            .getInt("EmojiCheckRate", "chatBubble", 1200, 20, 24000, "随机表情检查间隔，tick / Emoji check interval in ticks");
-        imageWeight = config.getInt("ImageEmojiWeight", "chatBubble", 10, 0, 100, "图片表情权重 / Image emoji weight");
+        enableEmoji = config.getBoolean(
+            MaidConfigConfigSpec.KEY_ENABLE_EMOJI,
+            MaidConfigConfigSpec.ID_CHATBUBBLE,
+            true,
+            MaidConfigConfigSpec.MSG_ENABLE_ORDINARY_RANDOM_EMOJI);
+        checkRate = config.getInt(
+            MaidConfigConfigSpec.KEY_EMOJI_CHECK_RATE,
+            MaidConfigConfigSpec.ID_CHATBUBBLE,
+            MaidConfigConfigSpec.CHAT_CONFIG_CHECK_RATE,
+            MaidConfigConfigSpec.CHAT_CONFIG_GET_INT_FOURTH_PARAM,
+            MaidConfigConfigSpec.CHAT_CONFIG_GET_INT_FIFTH_PARAM,
+            MaidConfigConfigSpec.MSG_TICK_EMOJI_CHECK_INTERVAL_IN);
+        imageWeight = config.getInt(
+            MaidConfigConfigSpec.KEY_IMAGE_EMOJI_WEIGHT,
+            MaidConfigConfigSpec.ID_CHATBUBBLE,
+            MaidConfigConfigSpec.CHAT_CONFIG_IMAGE_WEIGHT,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_DEFAULT_ZERO_BASE,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_LOAD_PARAM,
+            MaidConfigConfigSpec.MSG_IMAGE_EMOJI_WEIGHT);
         kaomojiWeight = config.getInt(
-            "KaomojiEmojiWeight",
-            "chatBubble",
-            10,
-            0,
-            100,
-            "颜文字权重；两者均为0时不生成 / Kaomoji weight; both zero disables generation");
+            MaidConfigConfigSpec.KEY_KAOMOJI_EMOJI_WEIGHT,
+            MaidConfigConfigSpec.ID_CHATBUBBLE,
+            MaidConfigConfigSpec.CHAT_CONFIG_IMAGE_WEIGHT,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_DEFAULT_ZERO_BASE,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_LOAD_PARAM,
+            MaidConfigConfigSpec.MSG_KAOMOJI_WEIGHT_BOTH_ZERO_DISABLES);
     }
 }

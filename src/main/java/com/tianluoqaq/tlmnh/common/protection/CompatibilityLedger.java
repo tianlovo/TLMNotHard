@@ -10,7 +10,7 @@ import cpw.mods.fml.relauncher.Side;
 /** 不覆盖失配基线，恢复原环境或经验证的新合同后才能重新接入 */
 public final class CompatibilityLedger extends WorldSavedData {
 
-    public static final String NAME = "TLMNH_Compatibility";
+    public static final String NAME = ProtectionIds.KEY_TLMNH_COMPATIBILITY;
     private NBTTagCompound data = new NBTTagCompound();
     private boolean readComplete;
 
@@ -28,7 +28,7 @@ public final class CompatibilityLedger extends WorldSavedData {
             for (var feature : ExternalFeature.values()) if (!feature.clientOnly) IntegrationGuard.trip(
                 Side.SERVER,
                 feature,
-                new IllegalStateException("Existing compatibility ledger unreadable; no replacement baseline"));
+                new IllegalStateException(ProtectionDiagnostics.MSG_EXISTING_COMPATIBILITY_LEDGER_UNREADABLE_NO));
             return;
         }
         if (ledger == null) {
@@ -38,8 +38,7 @@ public final class CompatibilityLedger extends WorldSavedData {
                 for (var feature : ExternalFeature.values()) if (!feature.clientOnly) IntegrationGuard.trip(
                     Side.SERVER,
                     feature,
-                    new IllegalStateException(
-                        "Existing compatibility ledger could not be read; baseline not replaced"));
+                    new IllegalStateException(ProtectionDiagnostics.MSG_EXISTING_COMPATIBILITY_LEDGER_COULD_NOT));
                 return;
             }
             ledger = new CompatibilityLedger(NAME);
@@ -55,51 +54,56 @@ public final class CompatibilityLedger extends WorldSavedData {
     }
 
     public void check(Side side) {
-        if ((readComplete || !data.hasNoTags())
-            && (!data.hasKey("Schema", Constants.NBT.TAG_INT) || data.getInteger("Schema") != 1)) {
+        if ((readComplete || !data.hasNoTags()) && (!data.hasKey(ProtectionIds.KEY_SCHEMA, Constants.NBT.TAG_INT)
+            || data.getInteger(ProtectionIds.KEY_SCHEMA) != ProtectionTuning.COMPATIBILITY_LEDGER_CHECK_UNIT_STEP)) {
             for (var feature : ExternalFeature.values())
                 if (feature.clientOnly == (side == Side.CLIENT)) IntegrationGuard.trip(
                     side,
                     feature,
-                    new IllegalStateException("Newer compatibility schema retained without downgrade"));
+                    new IllegalStateException(ProtectionDiagnostics.MSG_NEWER_COMPATIBILITY_SCHEMA_RETAINED_WITHOUT));
             return;
         }
-        data.setInteger("Schema", 1);
+        data.setInteger(ProtectionIds.KEY_SCHEMA, ProtectionTuning.COMPATIBILITY_LEDGER_CHECK_UNIT_STEP);
         for (var feature : ExternalFeature.values()) {
             if (feature.clientOnly != (side == Side.CLIENT)) continue;
             String current = feature.fingerprint();
-            if (current.contains("=unreadable;")) {
-                IntegrationGuard
-                    .trip(side, feature, new IllegalStateException("Dependency source fingerprint unavailable"));
+            if (current.contains(ProtectionIds.ID_UNREADABLE)) {
+                IntegrationGuard.trip(
+                    side,
+                    feature,
+                    new IllegalStateException(ProtectionDiagnostics.MSG_DEPENDENCY_SOURCE_FINGERPRINT_UNAVAILABLE));
                 continue;
             }
             var saved = data.getCompoundTag(feature.id);
             if (data.hasKey(feature.id) && (!data.hasKey(feature.id, Constants.NBT.TAG_COMPOUND)
-                || !saved.hasKey("Contract", Constants.NBT.TAG_INT)
-                || !saved.hasKey("Fingerprint", Constants.NBT.TAG_STRING))) {
-                IntegrationGuard
-                    .trip(side, feature, new IllegalStateException("Malformed compatibility record retained"));
+                || !saved.hasKey(ProtectionIds.KEY_CONTRACT, Constants.NBT.TAG_INT)
+                || !saved.hasKey(ProtectionIds.KEY_FINGERPRINT, Constants.NBT.TAG_STRING))) {
+                IntegrationGuard.trip(
+                    side,
+                    feature,
+                    new IllegalStateException(ProtectionDiagnostics.MSG_MALFORMED_COMPATIBILITY_RECORD_RETAINED));
                 continue;
             }
             if (!data.hasKey(feature.id, Constants.NBT.TAG_COMPOUND)
-                || saved.getInteger("Contract") < feature.contractRevision) {
+                || saved.getInteger(ProtectionIds.KEY_CONTRACT) < feature.contractRevision) {
                 saved = new NBTTagCompound();
-                saved.setInteger("Contract", feature.contractRevision);
-                saved.setString("Fingerprint", current);
+                saved.setInteger(ProtectionIds.KEY_CONTRACT, feature.contractRevision);
+                saved.setString(ProtectionIds.KEY_FINGERPRINT, current);
                 data.setTag(feature.id, saved);
                 markDirty();
-            } else if (saved.getInteger("Contract") != feature.contractRevision || !saved.getString("Fingerprint")
-                .equals(current)) {
-                    IntegrationGuard.trip(
-                        side,
-                        feature,
-                        new IllegalStateException(
-                            "Dependency environment changed for " + feature.id
-                                + "; stored="
-                                + saved.getString("Fingerprint")
-                                + "; current="
-                                + current));
-                }
+            } else if (saved.getInteger(ProtectionIds.KEY_CONTRACT) != feature.contractRevision
+                || !saved.getString(ProtectionIds.KEY_FINGERPRINT)
+                    .equals(current)) {
+                        IntegrationGuard.trip(
+                            side,
+                            feature,
+                            new IllegalStateException(
+                                ProtectionDiagnostics.MSG_DEPENDENCY_ENVIRONMENT_CHANGED_FOR + feature.id
+                                    + ProtectionDiagnostics.MSG_STORED
+                                    + saved.getString(ProtectionIds.KEY_FINGERPRINT)
+                                    + ProtectionDiagnostics.MSG_CURRENT
+                                    + current));
+                    }
         }
     }
 

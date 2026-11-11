@@ -15,7 +15,7 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -28,7 +28,7 @@ public final class MaidCakeAction {
     private final Supplier<Object> lease;
     private boolean committing;
     private long epoch, lastTick = Long.MIN_VALUE;
-    private int lastAge = -1, bites, placements;
+    private int lastAge = FaithfulLifeTuning.UNSET_OR_NOT_FOUND, bites, placements;
     private Object lastLease;
 
     public MaidCakeAction(EntityMaid maid, BooleanSupplier current, Supplier<Object> lease) {
@@ -41,12 +41,13 @@ public final class MaidCakeAction {
     private int cakeSlot() {
         var inv = maid.getMaidInventory();
         // 原getAvailableInv(true)：先双手，再实际六格背包，不包括护甲
-        for (int index = 0; index < MaidInventory.BACKPACK_SIZE + 2; index++) {
-            int slot = index < 2 ? MaidInventory.MAIN_HAND + index : index - 2;
+        for (int index = 0; index < MaidInventoryLayout.BACKPACK_SIZE + FaithfulLifeTuning.BED_EXIT_SIDE; index++) {
+            int slot = index < FaithfulLifeTuning.BED_EXIT_SIDE ? MaidInventoryLayout.MAIN_HAND + index
+                : index - FaithfulLifeTuning.BED_EXIT_SIDE;
             var stack = inv.getStackInSlot(slot);
             if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.cake) return slot;
         }
-        return -1;
+        return FaithfulLifeTuning.MISSING_CAKE_SLOT;
     }
 
     public ItemStack firstCakeStack() {
@@ -97,21 +98,25 @@ public final class MaidCakeAction {
         try {
             int next = MaidLifeRules.nextCakeBites(world.getBlockMetadata(point.x, point.y, point.z));
             boolean result = next < 0 ? world.setBlockToAir(point.x, point.y, point.z)
-                : world.setBlockMetadataWithNotify(point.x, point.y, point.z, next, 3);
+                : world
+                    .setBlockMetadataWithNotify(point.x, point.y, point.z, next, FaithfulLifeTuning.LOW_TWO_BITS_MASK);
             if (result) {
                 bites++;
                 if (current.getAsBoolean()) {
                     if (world instanceof WorldServer server) server.func_147487_a(
-                        "iconcrack_" + Item.getIdFromItem(Items.cake),
+                        FaithfulLifeIds.ID_ICONCRACK + Item.getIdFromItem(Items.cake),
                         maid.posX,
                         maid.posY + maid.getEyeHeight(),
                         maid.posZ,
-                        8,
-                        .1,
-                        .1,
-                        .1,
-                        .02);
-                    maid.playSound("random.eat", 1, 1);
+                        FaithfulLifeTuning.CAKE_ACTION_CONSUME_PARAM,
+                        FaithfulLifeTuning.CAKE_ACTION_CONSUME_FACTOR,
+                        FaithfulLifeTuning.CAKE_ACTION_CONSUME_FACTOR,
+                        FaithfulLifeTuning.CAKE_ACTION_CONSUME_FACTOR,
+                        FaithfulLifeTuning.CAKE_ACTION_CONSUME_FACTOR_2);
+                    maid.playSound(
+                        FaithfulLifeIds.ID_RANDOM_EAT,
+                        FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP,
+                        FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP);
                 }
             }
             return result;
@@ -130,8 +135,9 @@ public final class MaidCakeAction {
         Object token = lease.get();
         var expected = original.copy();
         var one = original.copy();
-        one.stackSize = 1;
-        var fake = FakePlayerFactory.get(server, new GameProfile(maid.getUniqueID(), "[TLMNH Maid]"));
+        one.stackSize = FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP;
+        var fake = FakePlayerFactory
+            .get(server, new GameProfile(maid.getUniqueID(), FaithfulLifeDiagnostics.MSG_TLMNH_MAID));
         int selected = fake.inventory.currentItem;
         var previous = fake.inventory.getStackInSlot(selected);
         double px = fake.posX, py = fake.posY, pz = fake.posZ;
@@ -140,7 +146,16 @@ public final class MaidCakeAction {
             fake.setPosition(maid.posX, maid.posY, maid.posZ);
             fake.capabilities.isCreativeMode = false;
             fake.inventory.setInventorySlotContents(selected, one);
-            boolean placed = one.tryPlaceItemIntoWorld(fake, server, point.x, point.y - 1, point.z, 1, .5F, 1, .5F);
+            boolean placed = one.tryPlaceItemIntoWorld(
+                fake,
+                server,
+                point.x,
+                point.y - 1,
+                point.z,
+                FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP,
+                FaithfulLifeTuning.CAKE_ACTION_TRY_PLACE_ITEM_INTO_WORLD_ARG7_FACTOR,
+                FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP,
+                FaithfulLifeTuning.CAKE_ACTION_TRY_PLACE_ITEM_INTO_WORLD_ARG7_FACTOR);
             if (!placed || one.stackSize != 0
                 || !world.blockExists(point.x, point.y, point.z)
                 || world.getBlock(point.x, point.y, point.z) != Blocks.cake) return false;
@@ -154,7 +169,7 @@ public final class MaidCakeAction {
                     world.setBlockToAir(point.x, point.y, point.z);
                 return false;
             }
-            inv.decrStackSize(slot, 1);
+            inv.decrStackSize(slot, FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP);
             placements++;
             return true;
         } finally {

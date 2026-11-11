@@ -30,6 +30,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedSupportTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.perception.MaidModernPerception;
@@ -39,7 +40,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 /** 外部行为模块窄能力视图宿主；严格实施回调相位门控、不可变快照导出与受验动作委托 */
@@ -79,20 +80,20 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         MaidModernPerception perception, EnhancedNavigationController navigation, EnhancedCombatController combat,
         MaidPlatformHandLease handLeaseIssuer, MaidSessionCallbackScope scope, Supplier<Boolean> moduleHealthyGuard,
         Consumer<Throwable> asyncFaultHandler) {
-        this.moduleId = Objects.requireNonNull(moduleId, "moduleId");
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.actor = Objects.requireNonNull(actor, "actor");
-        this.perception = Objects.requireNonNull(perception, "perception");
-        this.navigation = Objects.requireNonNull(navigation, "navigation");
-        this.combat = Objects.requireNonNull(combat, "combat");
-        this.handLeaseIssuer = Objects.requireNonNull(handLeaseIssuer, "handLeaseIssuer");
-        this.scope = Objects.requireNonNull(scope, "scope");
-        this.moduleHealthyGuard = Objects.requireNonNull(moduleHealthyGuard, "moduleHealthyGuard");
+        this.moduleId = Objects.requireNonNull(moduleId, EnhancedSessionIds.ID_MODULEID);
+        this.maid = Objects.requireNonNull(maid, EnhancedSessionIds.ID_MAID);
+        this.actor = Objects.requireNonNull(actor, EnhancedSessionIds.ID_ACTOR);
+        this.perception = Objects.requireNonNull(perception, EnhancedSessionIds.ID_PERCEPTION);
+        this.navigation = Objects.requireNonNull(navigation, EnhancedSessionIds.ID_NAVIGATION);
+        this.combat = Objects.requireNonNull(combat, EnhancedSessionIds.ID_COMBAT);
+        this.handLeaseIssuer = Objects.requireNonNull(handLeaseIssuer, EnhancedSessionIds.ID_HANDLEASEISSUER);
+        this.scope = Objects.requireNonNull(scope, EnhancedSessionIds.ID_SCOPE);
+        this.moduleHealthyGuard = Objects.requireNonNull(moduleHealthyGuard, EnhancedSessionIds.ID_MODULEHEALTHYGUARD);
         this.handAdapter = new IsolatedHandAccess(
             this.moduleId,
             this.scope,
             this.moduleHealthyGuard,
-            Objects.requireNonNull(asyncFaultHandler, "asyncFaultHandler"),
+            Objects.requireNonNull(asyncFaultHandler, EnhancedSessionIds.ID_ASYNCFAULTHANDLER),
             this.handLeaseIssuer,
             this);
     }
@@ -309,7 +310,7 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
                 || owner.dimension != maid.dimension
                 || !owner.isEntityAlive()
                 || owner instanceof EntityPlayerMP mp && mp.theItemInWorldManager.getGameType()
-                    .getID() == 3)
+                    .getID() == EnhancedSessionTuning.TARGET_GET_ID_THRESHOLD)
                 return null;
             return snapshotEntity(owner, maid.canEntityBeSeen(owner));
         }
@@ -367,8 +368,9 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
             check();
             CombatSnapshot snapshot = combat.lastSnapshot();
             long now = actor.worldGameTime();
-            if (snapshot == null || snapshot.projectiles.isEmpty() || now < snapshot.tick || now - snapshot.tick > 2)
-                return Collections.emptyList();
+            if (snapshot == null || snapshot.projectiles.isEmpty()
+                || now < snapshot.tick
+                || now - snapshot.tick > EnhancedSessionTuning.MAX_TICK_THRESHOLD) return Collections.emptyList();
             var list = new ArrayList<ProjectileThreatSnapshot>(snapshot.projectiles.size());
             for (var arrow : snapshot.projectiles) {
                 list.add(
@@ -392,10 +394,15 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         public boolean walkToBlock(int x, int y, int z, float speed, int closeEnough) {
             check();
             if (!Float.isFinite(speed) || speed <= 0.0F) return false;
-            if (!actor.canBrainMoving() || !MaidDomainGuard.isPointWithinActiveDomain(maid, x + .5, y, z + .5))
-                return false;
-            float clampedSpeed = Math.max(0.1F, Math.min(1.0F, speed));
-            int clampedClose = Math.max(0, closeEnough);
+            if (!actor.canBrainMoving() || !MaidDomainGuard.isPointWithinActiveDomain(
+                maid,
+                x + EnhancedSessionTuning.PLATFORM_BEHAVIOR_IS_POINT_WITHIN_ACTIVE_DOMAIN_SECO,
+                y,
+                z + EnhancedSessionTuning.PLATFORM_BEHAVIOR_IS_POINT_WITHIN_ACTIVE_DOMAIN_SECO)) return false;
+            float clampedSpeed = Math.max(
+                EnhancedSessionTuning.PLATFORM_BEHAVIOR_MAX_FIRST_FACTOR,
+                Math.min(EnhancedSessionTuning.PLATFORM_BEHAVIOR_MIN_FIRST_FACTOR, speed));
+            int clampedClose = Math.max(EnhancedSessionTuning.MAX_INITIAL_VALUE, closeEnough);
             actor.setPositionWalkAndLook(new Point(x, y, z), clampedSpeed, clampedClose);
             return true;
         }
@@ -409,8 +416,10 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
             if (target == null
                 || !MaidDomainGuard.isPointWithinActiveDomain(maid, target.posX, target.posY, target.posZ))
                 return false;
-            float clampedSpeed = Math.max(0.1F, Math.min(1.0F, speed));
-            int clampedClose = Math.max(0, closeEnough);
+            float clampedSpeed = Math.max(
+                EnhancedSessionTuning.PLATFORM_BEHAVIOR_MAX_FIRST_FACTOR,
+                Math.min(EnhancedSessionTuning.PLATFORM_BEHAVIOR_MIN_FIRST_FACTOR, speed));
+            int clampedClose = Math.max(EnhancedSessionTuning.MAX_INITIAL_VALUE, closeEnough);
             actor.setEntityWalkAndLook(target, clampedSpeed, clampedClose);
             return true;
         }
@@ -463,10 +472,10 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         @Override
         public boolean selectHotbarOrInventoryWeapon(int maidInventorySlot) {
             check();
-            if (maidInventorySlot < 0 || maidInventorySlot >= MaidInventory.BACKPACK_SIZE) return false;
+            if (maidInventorySlot < 0 || maidInventorySlot >= MaidInventoryLayout.BACKPACK_SIZE) return false;
             if (!maid.isTamed() || maid.getCombatHitReceipt()
                 .blocksTransfer()) return false;
-            if (maidInventorySlot == MaidInventory.MAIN_HAND) {
+            if (maidInventorySlot == MaidInventoryLayout.MAIN_HAND) {
                 var held = maid.getHeldItem();
                 return held != null && MaidWeaponCatalog.inspect(held)
                     .supported();
@@ -489,7 +498,7 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         public boolean requestMeleeAttack(UUID targetUniqueId, int targetEntityId) {
             check();
             if (!maid.isTamed() || maid.getTask() != MaidTask.ATTACK
-                || !MaidDomainGuard.isMaidWithinDomain(maid, actor, MaidDomainGuard.DEFAULT_OWNER_DOMAIN_RADIUS))
+                || !MaidDomainGuard.isMaidWithinDomain(maid, actor, EnhancedSupportTuning.DEFAULT_OWNER_DOMAIN_RADIUS))
                 return false;
             var entity = resolveSameWorldEntity(targetUniqueId, targetEntityId);
             if (!(entity instanceof EntityLivingBase living)) return false;
@@ -547,12 +556,13 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         public IsolatedHandAccess(MaidBehaviorId moduleId, MaidSessionCallbackScope scope,
             Supplier<Boolean> moduleHealthyGuard, Consumer<Throwable> asyncFaultHandler, Backend backend,
             Object leaseOwner) {
-            this.moduleId = Objects.requireNonNull(moduleId, "moduleId");
-            this.scope = Objects.requireNonNull(scope, "scope");
-            this.moduleHealthyGuard = Objects.requireNonNull(moduleHealthyGuard, "moduleHealthyGuard");
-            this.asyncFaultHandler = Objects.requireNonNull(asyncFaultHandler, "asyncFaultHandler");
-            this.backend = Objects.requireNonNull(backend, "backend");
-            this.leaseOwner = Objects.requireNonNull(leaseOwner, "leaseOwner");
+            this.moduleId = Objects.requireNonNull(moduleId, EnhancedSessionIds.ID_MODULEID);
+            this.scope = Objects.requireNonNull(scope, EnhancedSessionIds.ID_SCOPE);
+            this.moduleHealthyGuard = Objects
+                .requireNonNull(moduleHealthyGuard, EnhancedSessionIds.ID_MODULEHEALTHYGUARD);
+            this.asyncFaultHandler = Objects.requireNonNull(asyncFaultHandler, EnhancedSessionIds.ID_ASYNCFAULTHANDLER);
+            this.backend = Objects.requireNonNull(backend, EnhancedSessionIds.ID_BACKEND);
+            this.leaseOwner = Objects.requireNonNull(leaseOwner, EnhancedSessionIds.ID_LEASEOWNER);
         }
 
         private void check() {
@@ -563,9 +573,9 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         public MaidHandAccess.Lease tryAcquireHand(MaidHandAccess.Hand hand, MaidHandAccess.Kind kind,
             Predicate<ItemStack> itemValidator, BooleanSupplier extraGuard) {
             check();
-            Objects.requireNonNull(hand, "hand");
-            Objects.requireNonNull(kind, "kind");
-            Objects.requireNonNull(itemValidator, "itemValidator");
+            Objects.requireNonNull(hand, EnhancedSessionIds.ID_HAND);
+            Objects.requireNonNull(kind, EnhancedSessionIds.ID_KIND);
+            Objects.requireNonNull(itemValidator, EnhancedSessionIds.ID_ITEMVALIDATOR);
             Predicate<ItemStack> guardedValidator = stackCopy -> {
                 if (!Boolean.TRUE.equals(moduleHealthyGuard.get())) return false;
                 try {

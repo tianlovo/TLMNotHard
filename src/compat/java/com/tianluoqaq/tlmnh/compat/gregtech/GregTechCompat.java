@@ -8,7 +8,6 @@ public final class GregTechCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.GREGTECH;
 
-
     public static final GregTechCompat INSTANCE = new GregTechCompat();
 
     private GregTechCompat() {}

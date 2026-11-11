@@ -21,7 +21,6 @@ import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 /** 只读取附近已加载区块的TE表，执行许可仍由生活动作重新检查 */
 public final class MaidLifeSensor {
 
-    private static final int SCAN_BUDGET = 128;
     private final EntityMaid maid;
     private Object world;
     private MaidPolicyContext.Token token;
@@ -36,28 +35,35 @@ public final class MaidLifeSensor {
         if (!(maid.worldObj instanceof WorldServer server) || context == null || !context.isCurrent(context.getToken()))
             return Collections.emptyList();
         long now = server.getTotalWorldTime();
-        if (world != server || token != context.getToken() || now < observedAt) cursor = 0;
+        if (world != server || token != context.getToken() || now < observedAt)
+            cursor = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
         world = server;
         token = context.getToken();
         observedAt = now;
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
-        long started = recording ? System.nanoTime() : 0;
+        long started = recording ? System.nanoTime() : MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
         var home = maid.getHomeArea();
         if (home.enabled() && !home.sameDimension()) return Collections.emptyList();
-        int radius = home.enabled() ? rest ? home.radius() : Math.min(5, home.radius()) : rest ? 12 : 5;
-        double centerX = home.enabled() ? home.center().x + 0.5 : maid.posX;
-        double centerZ = home.enabled() ? home.center().z + 0.5 : maid.posZ;
+        int radius = home.enabled()
+            ? rest ? home.radius() : Math.min(MaidPerceptionTuning.LIFE_SENSOR_MIN_FIRST_PARAM, home.radius())
+            : rest ? MaidPerceptionTuning.LIFE_SENSOR_SCAN_PARAM : MaidPerceptionTuning.LIFE_SENSOR_MIN_FIRST_PARAM;
+        double centerX = home.enabled() ? home.center().x + MaidPerceptionTuning.CENTER_OFFSET_D : maid.posX;
+        double centerZ = home.enabled() ? home.center().z + MaidPerceptionTuning.CENTER_OFFSET_D : maid.posZ;
         var tiles = new ArrayList<TileEntity>();
-        for (int cx = MathHelper.floor_double(centerX - radius) >> 4,
-            maxX = MathHelper.floor_double(centerX + radius) >> 4; cx <= maxX; cx++)
-            for (int cz = MathHelper.floor_double(centerZ - radius) >> 4,
-                maxZ = MathHelper.floor_double(centerZ + radius) >> 4; cz <= maxZ; cz++) {
-                    var chunk = loadedChunk(server, cx, cz);
-                    if (chunk != null) tiles.addAll(chunk.chunkTileEntityMap.values());
-                }
-        int size = tiles.size(), processed = Math.min(size, SCAN_BUDGET);
+        for (int cx = MathHelper.floor_double(centerX - radius)
+            >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM,
+            maxX = MathHelper.floor_double(centerX + radius)
+                >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM; cx <= maxX; cx++)
+            for (int cz = MathHelper.floor_double(centerZ - radius)
+                >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM,
+                maxZ = MathHelper.floor_double(centerZ + radius)
+                    >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM; cz <= maxZ; cz++) {
+                        var chunk = loadedChunk(server, cx, cz);
+                        if (chunk != null) tiles.addAll(chunk.chunkTileEntityMap.values());
+                    }
+        int size = tiles.size(), processed = Math.min(size, MaidPerceptionTuning.SCAN_BUDGET_2);
         var result = new ArrayList<MaidLifeCandidate>();
         for (int i = 0; i < processed; i++) {
             var tile = tiles.get(Math.floorMod(cursor++, size));
@@ -77,18 +83,25 @@ public final class MaidLifeSensor {
                     tile));
         }
         telemetry.scan(
-            "life_tiles",
+            MaidPerceptionIds.ID_LIFE_TILES,
             size,
             processed,
-            "loaded_nearby_chunk_te_maps;partial=" + (size > processed) + ";rest=" + rest);
-        if (recording) telemetry.work("life_tiles", WorkComponent.SENSOR, System.nanoTime() - started);
+            MaidPerceptionIds.ID_LOADED_NEARBY_CHUNK_TE_MAPS_PARTIAL + (size > processed)
+                + MaidPerceptionIds.ID_REST
+                + rest);
+        if (recording)
+            telemetry.work(MaidPerceptionIds.ID_LIFE_TILES, WorkComponent.SENSOR, System.nanoTime() - started);
         return Collections.unmodifiableList(result);
     }
 
     public TileEntity resolve(MaidLifeCandidate candidate, MaidPolicyContext context) {
         if (candidate == null || !(maid.worldObj instanceof WorldServer server)
             || candidate.getDimension() != server.provider.dimensionId
-            || loadedChunk(server, candidate.getX() >> 4, candidate.getZ() >> 4) == null) return null;
+            || loadedChunk(
+                server,
+                candidate.getX() >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM,
+                candidate.getZ() >> MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM) == null)
+            return null;
         var tile = server.getTileEntity(candidate.getX(), candidate.getY(), candidate.getZ());
         if (tile == null || tile.isInvalid()
             || tile.getWorldObj() != server
@@ -109,22 +122,29 @@ public final class MaidLifeSensor {
 
     private boolean withinSearch(boolean rest, int x, int y, int z) {
         var home = maid.getHomeArea();
-        int radius = home.enabled() ? rest ? home.radius() : Math.min(5, home.radius()) : rest ? 12 : 5;
+        int radius = home.enabled()
+            ? rest ? home.radius() : Math.min(MaidPerceptionTuning.LIFE_SENSOR_MIN_FIRST_PARAM, home.radius())
+            : rest ? MaidPerceptionTuning.LIFE_SENSOR_SCAN_PARAM : MaidPerceptionTuning.LIFE_SENSOR_MIN_FIRST_PARAM;
         double cx = maid.posX, cy = maid.posY, cz = maid.posZ;
         if (home.enabled()) {
-            if (!home.contains(x, y + (rest ? 0 : 1), z)) return false;
+            if (!home.contains(
+                x,
+                y + (rest ? MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN : MaidPerceptionTuning.CONTAINS_SINGLE_UNIT),
+                z)) return false;
             var center = home.center();
-            cx = center.x + 0.5;
+            cx = center.x + MaidPerceptionTuning.CENTER_OFFSET_D;
             cy = center.y;
-            cz = center.z + 0.5;
+            cz = center.z + MaidPerceptionTuning.CENTER_OFFSET_D;
         }
-        double dx = x + 0.5 - cx, dz = z + 0.5 - cz;
-        return Math.abs(y - cy) <= (home.enabled() && rest ? radius : 3) && dx * dx + dz * dz <= radius * radius;
+        double dx = x + MaidPerceptionTuning.CENTER_OFFSET_D - cx, dz = z + MaidPerceptionTuning.CENTER_OFFSET_D - cz;
+        return Math.abs(y - cy)
+            <= (home.enabled() && rest ? radius : MaidPerceptionTuning.LIFE_SENSOR_WITHIN_SEARCH_PARAM)
+            && dx * dx + dz * dz <= radius * radius;
     }
 
     public void clear() {
         world = null;
         token = null;
-        cursor = 0;
+        cursor = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
     }
 }

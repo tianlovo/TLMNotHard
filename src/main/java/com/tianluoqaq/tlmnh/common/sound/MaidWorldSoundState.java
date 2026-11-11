@@ -12,8 +12,8 @@ import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 public final class MaidWorldSoundState {
 
     private final EntityMaid maid;
-    private int playerHurtSoundCount = 120;
-    private int pickupSoundCount = 5;
+    private int playerHurtSoundCount = MaidSoundTuning.WORLD_SOUND_PLAYER_HURT_SOUND_COUNT;
+    private int pickupSoundCount = MaidSoundTuning.WORLD_SOUND_PICKUP_SOUND_COUNT;
     private DamageSource damage;
 
     public MaidWorldSoundState(EntityMaid maid) {
@@ -41,31 +41,37 @@ public final class MaidWorldSoundState {
     public String ambient() {
         if (cancelled()) return null;
         return switch (maid.getTask()) {
-            case IDLE -> SoundUtil.environmentSound(maid, SoundUtil.name("mode.idle"), 0.5F);
-            case ATTACK -> SoundUtil.attackSound(maid, SoundUtil.name("mode.attack"), 0.5F);
-            case RANGED_ATTACK -> SoundUtil.attackSound(maid, SoundUtil.name("mode.range_attack"), 0.5F);
+            case IDLE -> SoundUtil
+                .environmentSound(maid, SoundUtil.name(MaidSoundIds.ID_MODE_IDLE), MaidSoundTuning.HALF_FACTOR_F);
+            case ATTACK -> SoundUtil
+                .attackSound(maid, SoundUtil.name(MaidSoundIds.ID_MODE_ATTACK), MaidSoundTuning.HALF_FACTOR_F);
+            case RANGED_ATTACK -> SoundUtil
+                .attackSound(maid, SoundUtil.name(MaidSoundIds.ID_MODE_RANGE_ATTACK), MaidSoundTuning.HALF_FACTOR_F);
         };
     }
 
     public String hurt() {
         if (cancelled()) return null;
-        if (damage != null && damage.isFireDamage()) return SoundUtil.name("ai.hurt_fire");
+        if (damage != null && damage.isFireDamage()) return SoundUtil.name(MaidSoundIds.ID_AI_HURT_FIRE);
         if (damage != null && damage.getEntity() instanceof EntityPlayer) {
             if (playerHurtSoundCount > 0) return null;
-            playerHurtSoundCount = 120;
-            return SoundUtil.name("ai.hurt_player");
+            playerHurtSoundCount = MaidSoundTuning.WORLD_SOUND_PLAYER_HURT_SOUND_COUNT;
+            return SoundUtil.name(MaidSoundIds.ID_AI_HURT_PLAYER);
         }
-        return SoundUtil.name("ai.hurt");
+        return SoundUtil.name(MaidSoundIds.ID_AI_HURT);
     }
 
     public String death() {
-        return cancelled() ? null : SoundUtil.name("ai.death");
+        return cancelled() ? null : SoundUtil.name(MaidSoundIds.ID_AI_DEATH);
     }
 
     public void tryPickup() {
         if (!cancelled() && --pickupSoundCount == 0) {
-            maid.playSound(SoundUtil.name("ai.item_get"), 1, 1);
-            pickupSoundCount = 5;
+            maid.playSound(
+                SoundUtil.name(MaidSoundIds.ID_AI_ITEM_GET),
+                MaidSoundTuning.TARGET_GET_AS_INT_THRESHOLD,
+                MaidSoundTuning.TARGET_GET_AS_INT_THRESHOLD);
+            pickupSoundCount = MaidSoundTuning.WORLD_SOUND_PICKUP_SOUND_COUNT;
         }
     }
 }

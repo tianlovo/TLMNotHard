@@ -19,7 +19,8 @@ public final class MaidModernCombat {
         var target = maid.attackTarget();
         if (target != null) {
             Long since = maid.getCantReachSince();
-            if (!maid.canAttack(target) || since != null && maid.worldGameTime() - since > 200
+            if (!maid.canAttack(target)
+                || since != null && maid.worldGameTime() - since > FaithfulCombatTuning.MAX_SINCE_THRESHOLD
                 || !maid.targetAlive(target)
                 || !maid.targetInSameWorld(target)
                 || !maid.hasAssaultWeapon()
@@ -31,10 +32,10 @@ public final class MaidModernCombat {
                 maid.eraseWalkTarget();
             else {
                 maid.lookAtAttackTarget(target);
-                maid.walkToAttackTarget(target, .6F);
+                maid.walkToAttackTarget(target, FaithfulCombatTuning.MODERN_COMBAT_WALK_TO_ATTACK_TARGET_SECOND_FACTOR);
             }
         }
-        MaidMeleeAttack.trigger(maid, 20);
+        MaidMeleeAttack.trigger(maid, FaithfulCombatTuning.MODERN_COMBAT_TRIGGER_SECOND_PARAM);
         if (!maid.isCurrent()) return;
         if (!maid.shieldBehaviorRunning() && shield.checkExtraStartConditions(maid)) shield.start(maid);
     }

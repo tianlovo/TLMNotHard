@@ -27,8 +27,8 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 无其他活动时才选择短程闲逛或观察；请求食物只表现意图，不取走主人手中物品 */
 public final class EnhancedAmbientController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("ambient");
-    private static final int CHOICE_INTERVAL = 20, LOOK_TICKS = 40, WALK_TICKS = 100;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_AMBIENT);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
@@ -53,7 +53,7 @@ public final class EnhancedAmbientController {
         long now = actor.worldGameTime();
         if (now < lastTick) {
             clearPlan();
-            nextChoice = 0;
+            nextChoice = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         }
         lastTick = now;
         if (frame.hasOffers() || !permitted()) {
@@ -62,7 +62,9 @@ public final class EnhancedAmbientController {
         }
         if (watching != null || destination != null) {
             boolean legal = now < until && (watching != null ? legalLook(watching)
-                : legalWalk(destination) && actor.distanceToBlockCenterSquared(destination) > 1
+                : legalWalk(destination)
+                    && actor.distanceToBlockCenterSquared(destination)
+                        > EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
                     && navigation.outcome() != EnhancedNavigationController.Outcome.UNREACHABLE
                     && navigation.outcome() != EnhancedNavigationController.Outcome.RECOVERY_WAIT);
             if (legal) {
@@ -70,14 +72,14 @@ public final class EnhancedAmbientController {
                 return;
             }
             clearPlan();
-            nextChoice = now + CHOICE_INTERVAL;
+            nextChoice = now + EnhancedAiTuning.CHOICE_INTERVAL;
         }
         if (now < nextChoice) {
             sensing.cancel(MaidSensingBudget.Kind.AMBIENT);
             return;
         }
         if (!sensing.acquire(MaidSensingBudget.Kind.AMBIENT)) return;
-        nextChoice = now + CHOICE_INTERVAL;
+        nextChoice = now + EnhancedAiTuning.CHOICE_INTERVAL;
         var visible = perception.visible();
         var target = visible == null ? null : visible.findClosest(this::legalLook);
         // 可见对象存在时轮换观察和闲逛，避免随机抽样长期遗漏一种表现
@@ -87,13 +89,16 @@ public final class EnhancedAmbientController {
             return;
         }
         samples++;
-        var point = actor.sampleEnhancedLand(5, 3);
+        var point = actor.sampleEnhancedLand(
+            EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_FIRST_PARAM,
+            EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM);
         if (point != null) {
             var block = new Point(
                 MathHelper.floor_double(point.x),
                 MathHelper.floor_double(point.y),
                 MathHelper.floor_double(point.z));
-            if (legalWalk(block) && actor.distanceToBlockCenterSquared(block) > 1) {
+            if (legalWalk(block)
+                && actor.distanceToBlockCenterSquared(block) > EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP) {
                 preferLook = true;
                 offerWalk(frame, block);
                 return;
@@ -111,7 +116,14 @@ public final class EnhancedAmbientController {
         if (frame.hasOffers()) return false;
         boolean wanted = temptingOwner() != null;
         if (wanted && permitted()) {
-            frame.offerTyped(ID, Group.AMBIENT, Kind.BEG, "owner", 1, null, ignored -> executeBeg());
+            frame.offerTyped(
+                ID,
+                Group.AMBIENT,
+                Kind.BEG,
+                EnhancedAiIds.ID_OWNER,
+                EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP,
+                null,
+                ignored -> executeBeg());
         }
         return wanted;
     }
@@ -123,7 +135,7 @@ public final class EnhancedAmbientController {
             Kind.OBSERVE,
             target.getUniqueID()
                 .toString(),
-            .3,
+            EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_OBSERVE_FACTOR,
             target,
             this::executeObserve);
     }
@@ -133,8 +145,8 @@ public final class EnhancedAmbientController {
             ID,
             Group.AMBIENT,
             Kind.WANDER,
-            point.x + ":" + point.y + ":" + point.z,
-            .1,
+            point.x + EnhancedAiIds.COLON_DELIMITER + point.y + EnhancedAiIds.COLON_DELIMITER + point.z,
+            EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_WALK_FACTOR,
             point,
             this::executeWander);
     }
@@ -151,7 +163,7 @@ public final class EnhancedAmbientController {
     private Owner temptingOwner() {
         if (maid.getHomeArea()
             .activity() == Activity.REST) return null;
-        var owner = actor.visibleOwnerNow(6);
+        var owner = actor.visibleOwnerNow(EnhancedAiTuning.ENHANCED_AMBIENT_VISIBLE_OWNER_NOW_FIRST_PARAM);
         var player = maid.getOwner();
         return owner != null && player != null
             && actor.ownerHoldsTemptation(owner)
@@ -172,8 +184,8 @@ public final class EnhancedAmbientController {
                 || target instanceof EntityOcelot)
             && (!(target instanceof EntityPlayer player) || !player.isPlayerSleeping()
                 && (!(player instanceof EntityPlayerMP mp) || mp.theItemInWorldManager.getGameType()
-                    .getID() != 3))
-            && maid.getDistanceSqToEntity(target) < 25
+                    .getID() != EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM))
+            && maid.getDistanceSqToEntity(target) < EnhancedAiTuning.ENHANCED_AMBIENT_LEGAL_LOOK_PARAM
             && maid.getHomeArea()
                 .withinRestriction(
                     MathHelper.floor_double(target.posX),
@@ -191,7 +203,11 @@ public final class EnhancedAmbientController {
         var owner = temptingOwner();
         if (owner == null) return;
         actor.setBegging(true);
-        if (!actor.closerThan(owner, 2)) actor.setWalkAndLookTargetMemories(owner, .6F, 2);
+        if (!actor.closerThan(owner, EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM))
+            actor.setWalkAndLookTargetMemories(
+                owner,
+                EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM);
         else {
             actor.eraseWalkTarget();
             actor.lookAtOwner(owner);
@@ -202,7 +218,7 @@ public final class EnhancedAmbientController {
         if (!permitted() || !legalLook(target)) return;
         if (watching != target) {
             watching = target;
-            until = actor.worldGameTime() + LOOK_TICKS;
+            until = actor.worldGameTime() + EnhancedAiTuning.LOOK_TICKS;
             lookStarts++;
         }
         actor.lookAtAmbientEntity(target);
@@ -212,10 +228,13 @@ public final class EnhancedAmbientController {
         if (!permitted() || !legalWalk(point)) return;
         if (!point.equals(destination)) {
             destination = point;
-            until = actor.worldGameTime() + WALK_TICKS;
+            until = actor.worldGameTime() + EnhancedAiTuning.WALK_TICKS;
             walkStarts++;
         }
-        actor.setPositionWalkAndLook(point, .3F, 0);
+        actor.setPositionWalkAndLook(
+            point,
+            EnhancedAiTuning.ENHANCED_AMBIENT_SET_POSITION_WALK_AND_LOOK_SECOND_F,
+            EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
     }
 
     public void execute(Intent intent) {
@@ -223,14 +242,14 @@ public final class EnhancedAmbientController {
             case BEG -> executeBeg();
             case OBSERVE -> executeObserve((EntityLivingBase) intent.payload);
             case WANDER -> executeWander((Point) intent.payload);
-            default -> throw new IllegalArgumentException("Ambient intent required");
+            default -> throw new IllegalArgumentException(EnhancedAiDiagnostics.MSG_AMBIENT_INTENT_REQUIRED);
         }
     }
 
     private void clearPlan() {
         destination = null;
         watching = null;
-        until = 0;
+        until = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
     }
 
     public void onTargetChanged() {

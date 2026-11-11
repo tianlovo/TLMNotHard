@@ -5,8 +5,6 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model;
 
-import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +35,7 @@ import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidCacheCheckbox;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 
 import cpw.mods.fml.relauncher.Side;

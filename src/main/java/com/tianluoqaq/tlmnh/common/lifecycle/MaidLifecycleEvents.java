@@ -57,7 +57,8 @@ public final class MaidLifecycleEvents {
 
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && event.player.ticksExisted % 100 == 0) {
+        if (event.phase == TickEvent.Phase.END
+            && event.player.ticksExisted % MaidLifecycleTuning.LIFECYCLE_ON_PLAYER_TICK_PARAM == 0) {
             MaidCaptureService.resume(event.player);
             MaidAcquisitionDelivery.resume(event.player);
             MaidRedemptionDelivery.resume(event.player);
@@ -73,7 +74,8 @@ public final class MaidLifecycleEvents {
 
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && !event.world.isRemote && event.world.getTotalWorldTime() % 20 == 0) {
+        if (event.phase == TickEvent.Phase.END && !event.world.isRemote
+            && event.world.getTotalWorldTime() % MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM == 0) {
             MaidDeathService.retryPending(event.world);
             MaidFilmRecovery.retryPending(event.world);
         }

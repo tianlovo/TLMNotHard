@@ -21,7 +21,6 @@ import cpw.mods.fml.common.registry.GameRegistry;
 /** 提供方物品、音效与盾牌接口；外部类型保持在惰性API类中 */
 public final class BattlegearShieldAccess {
 
-
     private static final Set<String> IDS = Collections.unmodifiableSet(
         new HashSet<>(
             Arrays.asList(
@@ -83,7 +82,8 @@ public final class BattlegearShieldAccess {
         @Override
         public NBTTagCompound applyTo(ItemStack stack) {
             var data = stack.hasTagCompound() ? stack.getTagCompound() : null;
-            if (!Objects.equals(previous, data == null ? null : data.getTag(BattlegearShieldIds.ID_ARROWS))) return null;
+            if (!Objects.equals(previous, data == null ? null : data.getTag(BattlegearShieldIds.ID_ARROWS)))
+                return null;
             var updated = data == null ? new NBTTagCompound() : (NBTTagCompound) data.copy();
             updated.setShort(BattlegearShieldIds.ID_ARROWS, next);
             return updated;

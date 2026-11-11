@@ -34,7 +34,8 @@ public final class MaidBedModelResources implements IResourceManagerReloadListen
         if (model == null) {
             if (manager == null) throw new IOException(ClientMaidBedDiagnostics.MSG_MAID_BED_RESOURCES_ARE_NOT);
             var location = new ResourceLocation(
-                ClientMaidBedIds.ID_TOUHOU_LITTLE_MAID_MODELS_BEDROCK_BLOCK_MAID_BED + color.resourceName + ClientMaidBedIds.MODEL_JSON);
+                ClientMaidBedIds.ID_TOUHOU_LITTLE_MAID_MODELS_BEDROCK_BLOCK_MAID_BED + color.resourceName
+                    + ClientMaidBedIds.MODEL_JSON);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {
                 model = new SimpleBedrockModel<>(stream);

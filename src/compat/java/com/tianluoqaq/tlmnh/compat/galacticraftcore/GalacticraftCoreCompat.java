@@ -8,7 +8,6 @@ public final class GalacticraftCoreCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.GALACTICRAFT_CORE;
 
-
     public static final GalacticraftCoreCompat INSTANCE = new GalacticraftCoreCompat();
 
     private GalacticraftCoreCompat() {}

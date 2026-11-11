@@ -25,17 +25,17 @@ public final class MaidPlatformHandLease implements MaidPlatformBehaviorContext.
 
     public MaidPlatformHandLease(EntityMaid maid, ModernFollowCoreActor actor,
         Supplier<MaidPolicyRuntime> runtimeSupplier, BooleanSupplier notSuspendedGuard) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.actor = Objects.requireNonNull(actor, "actor");
-        this.runtimeSupplier = Objects.requireNonNull(runtimeSupplier, "runtimeSupplier");
-        this.notSuspendedGuard = Objects.requireNonNull(notSuspendedGuard, "notSuspendedGuard");
+        this.maid = Objects.requireNonNull(maid, EnhancedSessionIds.ID_MAID);
+        this.actor = Objects.requireNonNull(actor, EnhancedSessionIds.ID_ACTOR);
+        this.runtimeSupplier = Objects.requireNonNull(runtimeSupplier, EnhancedSessionIds.ID_RUNTIMESUPPLIER);
+        this.notSuspendedGuard = Objects.requireNonNull(notSuspendedGuard, EnhancedSessionIds.ID_NOTSUSPENDEDGUARD);
     }
 
     /** 供内置模块按当前真实手持引用申请租约，免除业务模块直接访问顶层协调器 */
     public Lease tryAcquireExact(Object owner, ItemStack item, Hand hand, Kind kind, BooleanSupplier extraGuard) {
-        Objects.requireNonNull(owner, "owner");
-        Objects.requireNonNull(hand, "hand");
-        Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(owner, EnhancedSessionIds.ID_OWNER);
+        Objects.requireNonNull(hand, EnhancedSessionIds.ID_HAND);
+        Objects.requireNonNull(kind, EnhancedSessionIds.ID_KIND);
         if (item == null || !actor.isCurrent()) return null;
         var runtime = runtimeSupplier.get();
         if (runtime == null || !runtime.isReady()) return null;
@@ -65,10 +65,10 @@ public final class MaidPlatformHandLease implements MaidPlatformBehaviorContext.
     /** 供外部扩展模块申请租约；初始判定与每帧续期均只向校验器传递物品独立副本 */
     public Lease tryAcquireCopyValidated(Object owner, Hand hand, Kind kind, Predicate<ItemStack> itemValidator,
         BooleanSupplier extraGuard) {
-        Objects.requireNonNull(owner, "owner");
-        Objects.requireNonNull(hand, "hand");
-        Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(itemValidator, "itemValidator");
+        Objects.requireNonNull(owner, EnhancedSessionIds.ID_OWNER);
+        Objects.requireNonNull(hand, EnhancedSessionIds.ID_HAND);
+        Objects.requireNonNull(kind, EnhancedSessionIds.ID_KIND);
+        Objects.requireNonNull(itemValidator, EnhancedSessionIds.ID_ITEMVALIDATOR);
         if (!actor.isCurrent()) return null;
         var live = currentHandStack(hand);
         if (live == null || live.stackSize <= 0) return null;

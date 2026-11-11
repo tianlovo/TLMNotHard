@@ -88,48 +88,48 @@ public final class CompatServices {
         private Sink() {}
 
         private static void ensureMutable() {
-            if (frozen) throw new IllegalStateException("CompatServices is already frozen");
+            if (frozen) throw new IllegalStateException(CommonCompatDiagnostics.MSG_COMPATSERVICES_IS_ALREADY_FROZEN);
         }
 
         public Sink shields(ShieldCompatProvider provider) {
             ensureMutable();
-            shields = Objects.requireNonNull(provider, "provider");
+            shields = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink weapons(WeaponCompatProvider provider) {
             ensureMutable();
-            weapons = Objects.requireNonNull(provider, "provider");
+            weapons = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink projectilePhysics(ProjectilePhysicsProvider provider) {
             ensureMutable();
-            projectilePhysics = Objects.requireNonNull(provider, "provider");
+            projectilePhysics = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink doors(DoorCompatProvider provider) {
             ensureMutable();
-            doors = Objects.requireNonNull(provider, "provider");
+            doors = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink worldContent(WorldExtraContentProvider provider) {
             ensureMutable();
-            worldContent = Objects.requireNonNull(provider, "provider");
+            worldContent = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink nutrition(NutritionCompatProvider provider) {
             ensureMutable();
-            nutrition = Objects.requireNonNull(provider, "provider");
+            nutrition = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink lifecycleStorage(LifecycleStorageCompatProvider provider) {
             ensureMutable();
-            lifecycleStorage = Objects.requireNonNull(provider, "provider");
+            lifecycleStorage = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
     }

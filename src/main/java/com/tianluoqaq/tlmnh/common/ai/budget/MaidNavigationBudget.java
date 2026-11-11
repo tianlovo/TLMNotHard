@@ -9,19 +9,19 @@ import java.util.UUID;
 /** 世界线程上的 FIFO 准入；只保存身份，不排队执行世界回调或保存旧目标 */
 public final class MaidNavigationBudget {
 
-    private static final int ABANDONED_TICKS = 2;
     private final int limit;
     private final Map<UUID, Long> waiting = new LinkedHashMap<>();
     private long tick = Long.MIN_VALUE, admitted, deferred;
     private int used;
 
     public MaidNavigationBudget(int limit) {
-        if (limit < 1) throw new IllegalArgumentException("Positive navigation budget required");
+        if (limit < AiBudgetTuning.MIN_LIMIT_THRESHOLD)
+            throw new IllegalArgumentException(AiBudgetDiagnostics.MSG_POSITIVE_NAVIGATION_BUDGET_REQUIRED);
         this.limit = limit;
     }
 
     public boolean acquire(UUID actor, long now) {
-        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(actor, AiBudgetIds.ID_ACTOR);
         advance(now);
         waiting.put(actor, now);
         if (used < limit && waiting.keySet()
@@ -45,11 +45,11 @@ public final class MaidNavigationBudget {
     private void advance(long now) {
         if (now != tick) {
             if (now < tick) waiting.clear();
-            used = 0;
+            used = AiBudgetTuning.NAVIGATION_BUDGET_USED;
             tick = now;
         }
         for (Iterator<Long> values = waiting.values()
-            .iterator(); values.hasNext();) if (now - values.next() > ABANDONED_TICKS) values.remove();
+            .iterator(); values.hasNext();) if (now - values.next() > AiBudgetTuning.ABANDONED_TICKS) values.remove();
     }
 
     public int used(long now) {

@@ -13,31 +13,36 @@ public final class ProtectionCommand extends CommandBase {
 
     @Override
     public String getCommandName() {
-        return "tlmnhprotect";
+        return ProtectionRuntimeIds.ID_TLMNHPROTECT;
     }
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "commands.tlmnhprotect.usage";
+        return ProtectionRuntimeIds.ID_COMMANDS_TLMNHPROTECT_USAGE;
     }
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 0;
+        return ProtectionRuntimeTuning.PROTECTION_COMMAND_GET_REQUIRED_PERMISSION_LEVEL_ZER;
     }
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
-        if (!(sender instanceof EntityPlayerMP player) || args.length != 2 || !args[0].equals("recover"))
+        if (!(sender instanceof EntityPlayerMP player) || args.length != ProtectionRuntimeTuning.TARGET_LENGTH_THRESHOLD
+            || !args[ProtectionRuntimeTuning.PROTECTION_COMMAND_GET_REQUIRED_PERMISSION_LEVEL_ZER]
+                .equals(ProtectionRuntimeIds.ID_RECOVER))
             throw new WrongUsageException(getCommandUsage(sender));
-        int id = parseInt(sender, args[1]);
+        int id = parseInt(sender, args[ProtectionRuntimeTuning.PARSE_INT_SINGLE_UNIT]);
         var entity = player.worldObj.getEntityByID(id);
         if (!(entity instanceof EntityMaid maid) || !maid.getMaidInventory()
-            .isUseableByPlayer(player)) throw new WrongUsageException("commands.tlmnhprotect.owner");
+            .isUseableByPlayer(player))
+            throw new WrongUsageException(ProtectionRuntimeIds.ID_COMMANDS_TLMNHPROTECT_OWNER);
         boolean moved = maid.getMaidInventory()
             .recovery()
             .recoverOne(player);
         sender.addChatMessage(
-            new ChatComponentTranslation(moved ? "chat.tlmnh.protection.recovered" : "chat.tlmnh.protection.no_space"));
+            new ChatComponentTranslation(
+                moved ? ProtectionRuntimeIds.I18N_CHAT_TLMNH_PROTECTION_RECOVERED
+                    : ProtectionRuntimeIds.I18N_CHAT_TLMNH_PROTECTION_NO_SPACE));
     }
 }

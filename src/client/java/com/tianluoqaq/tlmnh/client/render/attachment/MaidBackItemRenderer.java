@@ -38,7 +38,8 @@ public final class MaidBackItemRenderer {
         return LAST_DRAWN.getOrDefault(maid, AttachmentRenderLayout.PUT_INITIAL_VALUE);
     }
 
-    private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
+    private static final FloatBuffer MATRIX_BUFFER = BufferUtils
+        .createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
 
     private MaidBackItemRenderer() {}
 
@@ -51,7 +52,10 @@ public final class MaidBackItemRenderer {
             var chain = model.getGecko()
                 .backpackBones();
             if (!chain.isEmpty() && RenderUtils.prepMatrixForLocator(poses, chain)) return null;
-            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z);
+            poses.translate(
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z);
             poses.last()
                 .pose()
                 .rotateX((float) Math.PI);
@@ -64,8 +68,14 @@ public final class MaidBackItemRenderer {
                 .rotateX((float) Math.PI);
         }
         // LayerMaidBackItem + EmptyBackpack.offsetBackpackItem
-        poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_2, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z_2);
-        poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_3, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z_3);
+        poses.translate(
+            AttachmentRenderLayout.PUT_INITIAL_VALUE,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_2,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z_2);
+        poses.translate(
+            AttachmentRenderLayout.PUT_INITIAL_VALUE,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_3,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Z_3);
         var matrix = poses.last()
             .pose();
         return MaidHeldItemTransforms.finite(matrix) && matrix.determinant() != 0 ? new Matrix4f(matrix) : null;
@@ -90,11 +100,18 @@ public final class MaidBackItemRenderer {
             GL11.glMultMatrix(MATRIX_BUFFER);
             GL11.glEnable(GL11.GL_NORMALIZE);
             var item = stack.getItem();
-            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage()) : AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y;
+            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage())
+                : AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y;
             for (int pass = 0; pass < passes; pass++) {
                 if (maid.getBackpackShowItem() != stack) return;
                 int color = item.getColorFromItemStack(stack, pass);
-                GL11.glColor4f((color >> AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color >> AttachmentRenderLayout.SECOND_BYTE_SHIFT & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+                GL11.glColor4f(
+                    (color >> AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM
+                        & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    (color >> AttachmentRenderLayout.SECOND_BYTE_SHIFT & AttachmentRenderLayout.UNSIGNED_BYTE_MASK)
+                        / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    (color & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
                 renderer.renderItem(maid, stack, pass);
                 if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, pass + 1);
             }
@@ -103,13 +120,23 @@ public final class MaidBackItemRenderer {
 
     private static Matrix4f fixedIconBridge() {
         // MC1.20.1 item/generated FIXED: Y=180, scale=1；旧图标quad为[0,1]，先移到中心
-        var nativeIcon = new Matrix4f().translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y, AttachmentRenderLayout.PUT_INITIAL_VALUE)
+        var nativeIcon = new Matrix4f()
+            .translate(
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y,
+                AttachmentRenderLayout.PUT_INITIAL_VALUE)
             .scale(AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_SCALE_X)
             .rotateY((float) Math.toRadians(AttachmentRenderLayout.BACK_ITEM_TO_RADIANS_FIRST_PARAM))
             .rotateZ((float) Math.toRadians(AttachmentRenderLayout.BACK_ITEM_TO_RADIANS_FIRST_PARAM_2))
-            .translate(AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_X, AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y_2, AttachmentRenderLayout.PUT_INITIAL_VALUE);
+            .translate(
+                AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_X,
+                AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y_2,
+                AttachmentRenderLayout.PUT_INITIAL_VALUE);
         return new Matrix4f().rotateY((float) Math.PI)
-            .translate(AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_Z)
+            .translate(
+                AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X,
+                AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X,
+                AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_Z)
             .mul(nativeIcon.invert());
     }
 }

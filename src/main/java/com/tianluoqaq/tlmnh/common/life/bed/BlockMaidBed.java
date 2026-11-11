@@ -25,15 +25,15 @@ import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 public final class BlockMaidBed extends BlockBed {
 
     public BlockMaidBed() {
-        setBlockName("tlmnh.maid_bed");
-        setBlockTextureName("bed");
-        setHardness(0.2F);
+        setBlockName(MaidBedIds.ID_TLMNH_MAID_BED);
+        setBlockTextureName(MaidBedIds.ID_BED);
+        setHardness(MaidBedLayout.BLOCK_BED_SET_HARDNESS_FIRST_FACTOR);
         setStepSound(soundTypeWood);
     }
 
     @Override
     public int getRenderType() {
-        return -1;
+        return MaidBedIds.CUSTOM_BLOCK_RENDER_TYPE;
     }
 
     @Override
@@ -44,9 +44,9 @@ public final class BlockMaidBed extends BlockBed {
         if (color == null) return false;
         int metadata = world.getBlockMetadata(x, y, z);
         if (!isBlockHeadOfBed(metadata)) {
-            int direction = metadata & 3;
-            x += field_149981_a[direction][0];
-            z += field_149981_a[direction][1];
+            int direction = metadata & MaidBedLayout.LOW_TWO_BITS_MASK;
+            x += field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE];
+            z += field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
         }
         if (!world.blockExists(x, y, z) || !(world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed))
             return false;
@@ -57,13 +57,14 @@ public final class BlockMaidBed extends BlockBed {
         if (!bed.complete()) return false;
         if (bed.getColor() == null) {
             if (!world.isRemote) {
-                player.addChatMessage(new ChatComponentTranslation("message.tlmnh.maid_bed.unreadable_color"));
+                player.addChatMessage(
+                    new ChatComponentTranslation(MaidBedIds.I18N_MESSAGE_TLMNH_MAID_BED_UNREADABLE_COLOR));
                 ModContext.LOG.warn(
-                    "Unrecognized saved maid-bed color; dye refused at {},{},{}",
+                    MaidBedDiagnostics.MSG_UNRECOGNIZED_SAVED_MAID_BED_COLOR,
                     x,
                     y,
                     z,
-                    new IllegalStateException("Saved BedColor is not a supported integer color"));
+                    new IllegalStateException(MaidBedDiagnostics.MSG_SAVED_BEDCOLOR_IS_NOT_SUPPORTED));
             }
             return false;
         }
@@ -96,8 +97,8 @@ public final class BlockMaidBed extends BlockBed {
 
     private TileEntityMaidBed head(World world, int x, int y, int z, int metadata) {
         if (!isBlockHeadOfBed(metadata)) {
-            x += field_149981_a[metadata & 3][0];
-            z += field_149981_a[metadata & 3][1];
+            x += field_149981_a[metadata & MaidBedLayout.LOW_TWO_BITS_MASK][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE];
+            z += field_149981_a[metadata & MaidBedLayout.LOW_TWO_BITS_MASK][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
         }
         return world.blockExists(x, y, z) && world.getBlock(x, y, z) == this
             && world.getTileEntity(x, y, z) instanceof TileEntityMaidBed bed ? bed : null;
@@ -127,7 +128,7 @@ public final class BlockMaidBed extends BlockBed {
     protected void dropBlockAsItem(World world, int x, int y, int z, ItemStack stack) {
         if (world.isRemote || world.restoringBlockSnapshots
             || !world.getGameRules()
-                .getGameRuleBooleanValue("doTileDrops"))
+                .getGameRuleBooleanValue(MaidBedIds.ID_DOTILEDROPS))
             return;
         if (!captureDrops.get() && stack != null
             && stack.getItem() == MaidLifeContent.maidBedItem
@@ -140,14 +141,16 @@ public final class BlockMaidBed extends BlockBed {
 
     @Override
     public void onNeighborBlockChange(World world, int x, int y, int z, Block neighbor) {
-        int metadata = world.getBlockMetadata(x, y, z), direction = metadata & 3;
-        int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
-        int otherX = x + sign * field_149981_a[direction][0], otherZ = z + sign * field_149981_a[direction][1];
+        int metadata = world.getBlockMetadata(x, y, z), direction = metadata & MaidBedLayout.LOW_TWO_BITS_MASK;
+        int sign = isBlockHeadOfBed(metadata) ? MaidBedLayout.UNSET_OR_NOT_FOUND
+            : MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP;
+        int otherX = x + sign * field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE],
+            otherZ = z + sign * field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
         if (!world.blockExists(otherX, y, otherZ) || world.getBlock(otherX, y, otherZ) == this) return;
         if (isBlockHeadOfBed(metadata)) {
             var bed = head(world, x, y, z, metadata);
             if (bed != null && bed.itemDataRetained()) return;
-            dropBlockAsItem(world, x, y, z, metadata, 0);
+            dropBlockAsItem(world, x, y, z, metadata, MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE);
         }
         world.setBlockToAir(x, y, z);
     }
@@ -179,10 +182,19 @@ public final class BlockMaidBed extends BlockBed {
     public void onBlockHarvested(World world, int x, int y, int z, int metadata, EntityPlayer player) {
         var bed = head(world, x, y, z, metadata);
         if (world.isRemote || !player.capabilities.isCreativeMode || bed != null && bed.itemDataRetained()) return;
-        int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
-        int otherX = x + sign * field_149981_a[metadata & 3][0], otherZ = z + sign * field_149981_a[metadata & 3][1];
-        if (world.blockExists(otherX, y, otherZ) && world.getBlock(otherX, y, otherZ) == this)
-            world.setBlock(otherX, y, otherZ, Blocks.air, 0, 2);
+        int sign = isBlockHeadOfBed(metadata) ? MaidBedLayout.UNSET_OR_NOT_FOUND
+            : MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP;
+        int otherX = x + sign
+            * field_149981_a[metadata & MaidBedLayout.LOW_TWO_BITS_MASK][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE],
+            otherZ = z + sign
+                * field_149981_a[metadata & MaidBedLayout.LOW_TWO_BITS_MASK][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
+        if (world.blockExists(otherX, y, otherZ) && world.getBlock(otherX, y, otherZ) == this) world.setBlock(
+            otherX,
+            y,
+            otherZ,
+            Blocks.air,
+            MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE,
+            MaidBedLayout.BLOCK_BED_SET_BLOCK_SIXTH_PARAM);
     }
 
     @Override
@@ -194,8 +206,8 @@ public final class BlockMaidBed extends BlockBed {
     private static void tellRetained(EntityPlayer player, TileEntityMaidBed bed) {
         if (player != null && !player.worldObj.isRemote) player.addChatMessage(
             new ChatComponentTranslation(
-                bed.placementPending() ? "message.tlmnh.maid_bed.uncommitted_placement"
-                    : "message.tlmnh.maid_bed.transfer_retained"));
+                bed.placementPending() ? MaidBedIds.I18N_MESSAGE_TLMNH_MAID_BED_UNCOMMITTED_PLACEMENT
+                    : MaidBedIds.I18N_MESSAGE_TLMNH_MAID_BED_TRANSFER_RETAINED));
     }
 
     @Override

@@ -40,7 +40,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidHeadItemRenderer {
 
-    private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
+    private static final FloatBuffer MATRIX_BUFFER = BufferUtils
+        .createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
     private static final Map<EntityMaid, Integer> LAST_DRAWN = new WeakHashMap<>();
     private static final Map<EntityMaid, String> LAST_SKULL_RENDERER = new WeakHashMap<>();
 
@@ -74,16 +75,24 @@ public final class MaidHeadItemRenderer {
         if (helmet != null && helmet.stackSize > 0 && helmet.getItem() == Items.skull) {
             var matrix = new Matrix4f(attachment);
             matrix.scale(
-                model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR : AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR_2,
-                model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR_2 : AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR,
+                model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR
+                    : AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR_2,
+                model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR_2
+                    : AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR,
                 AttachmentRenderLayout.HEAD_ITEM_RENDER_FACTOR_2);
             try (var scope = new MaidItemRenderScope()) {
                 apply(matrix);
                 // EFR给同一Tile类型注册了原生外层模型，不能固定调用已被替换的旧singleton
                 var renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(new TileEntitySkull());
                 if (renderer != null && renderer.getClass() == TileEntitySkullRenderer.class) {
-                    ((TileEntitySkullRenderer) renderer)
-                        .func_152674_a(AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.HEAD_ITEM_FUNC_152674_A_FIFTH_PARAM, helmet.getItemDamage(), profile(helmet));
+                    ((TileEntitySkullRenderer) renderer).func_152674_a(
+                        AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X,
+                        AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                        AttachmentRenderLayout.BACK_ITEM_RENDER_OFFSET_X,
+                        AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                        AttachmentRenderLayout.HEAD_ITEM_FUNC_152674_A_FIFTH_PARAM,
+                        helmet.getItemDamage(),
+                        profile(helmet));
                 } else ClientCompatServices.itemRender()
                     .renderCustomSkull(renderer, helmet.getItemDamage(), profile(helmet));
                 if (DevelopmentFlags.isDevCommandsEnabled()) LAST_SKULL_RENDERER.put(
@@ -109,12 +118,24 @@ public final class MaidHeadItemRenderer {
         }
         if (block == null) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HEAD_DISPLAY_PLANT_HAS_NO);
         var matrix = new Matrix4f(attachment);
-        matrix.scale(model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X : AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2, model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2 : AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X, AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2);
+        matrix.scale(
+            model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X
+                : AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2,
+            model.getGecko() == null ? AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2
+                : AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X,
+            AttachmentRenderLayout.HEAD_ITEM_RENDER_SCALE_X_2);
         // 原block坐标[0,1]先translate(-.5,.625,-.5)，旧renderBlockAsItem坐标以中心为原点
-        matrix.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.HEAD_ITEM_RENDER_OFFSET_Y, AttachmentRenderLayout.PUT_INITIAL_VALUE);
+        matrix.translate(
+            AttachmentRenderLayout.PUT_INITIAL_VALUE,
+            AttachmentRenderLayout.HEAD_ITEM_RENDER_OFFSET_Y,
+            AttachmentRenderLayout.PUT_INITIAL_VALUE);
         int type = block.getRenderType();
         // 原生这些分支额外旋转Y90；只抵消已知入口，不干预其它模组的库存渲染器
-        if (type == 0 || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_2 || type == AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_3 || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_4)
+        if (type == 0 || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD
+            || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_2
+            || type == AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM
+            || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_3
+            || type == AttachmentRenderLayout.TARGET_TYPE_THRESHOLD_4)
             matrix.rotateY((float) -Math.PI / AttachmentRenderLayout.MIDPOINT_DIVISOR);
         try (var scope = new MaidItemRenderScope(); var filters = new MaidItemFilterScope(stack)) {
             apply(matrix);
@@ -132,8 +153,10 @@ public final class MaidHeadItemRenderer {
         var nbt = stack.getTagCompound();
         if (nbt.hasKey(AttachmentRenderIds.KEY_SKULL_OWNER, Constants.NBT.TAG_COMPOUND))
             return NBTUtil.func_152459_a(nbt.getCompoundTag(AttachmentRenderIds.KEY_SKULL_OWNER));
-        if (nbt.hasKey(AttachmentRenderIds.KEY_SKULL_OWNER, Constants.NBT.TAG_STRING) && !nbt.getString(AttachmentRenderIds.KEY_SKULL_OWNER)
-            .isEmpty()) return new GameProfile((UUID) null, nbt.getString(AttachmentRenderIds.KEY_SKULL_OWNER));
+        if (nbt.hasKey(AttachmentRenderIds.KEY_SKULL_OWNER, Constants.NBT.TAG_STRING)
+            && !nbt.getString(AttachmentRenderIds.KEY_SKULL_OWNER)
+                .isEmpty())
+            return new GameProfile((UUID) null, nbt.getString(AttachmentRenderIds.KEY_SKULL_OWNER));
         return null;
     }
 
@@ -143,6 +166,10 @@ public final class MaidHeadItemRenderer {
         MATRIX_BUFFER.position(AttachmentRenderLayout.PUT_INITIAL_VALUE);
         GL11.glMultMatrix(MATRIX_BUFFER);
         GL11.glEnable(GL11.GL_NORMALIZE);
-        GL11.glColor4f(AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+        GL11.glColor4f(
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+            AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
     }
 }

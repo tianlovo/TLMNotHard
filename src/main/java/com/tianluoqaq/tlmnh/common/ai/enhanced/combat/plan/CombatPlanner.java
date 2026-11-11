@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
@@ -26,10 +27,6 @@ import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 /** 有限动作组合的纯预演；不构造实体、不查询物品、不调用世界或随机源 */
 public final class CombatPlanner {
 
-    private static final double SWITCH_MARGIN = .06, SELF_WEIGHT = 1.45, OWNER_WEIGHT = .55, PROGRESS_WEIGHT = .95;
-    private static final double RESOURCE_WEIGHT = .10, CONTINUITY_WEIGHT = .16;
-    private static final int JUMP_PREPARATION_TICKS = 8;
-    private static final double ROUTE_ARRIVAL_DISTANCE = .35;
     private long nextDecision, heldSince = Long.MIN_VALUE;
     private long arrowDefenseStarted = Long.MIN_VALUE;
     private CombatPlan previous;
@@ -81,7 +78,18 @@ public final class CombatPlanner {
     }
 
     static Trace reobservationTrace(int visited, int work) {
-        return traceEnabled ? new Trace(visited, work, false, Collections.emptyList(), null, false, false, 0, 0) : null;
+        return traceEnabled
+            ? new Trace(
+                visited,
+                work,
+                false,
+                Collections.emptyList(),
+                null,
+                false,
+                false,
+                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)
+            : null;
     }
 
     public static final class CandidateTrace {
@@ -108,7 +116,8 @@ public final class CombatPlanner {
             singleSelf = source.singleSelf;
             ownerRisk = source.ownerRisk;
             singleOwner = source.singleOwner;
-            weaponSlot = source.weapon == null ? -2 : source.weapon.slot;
+            weaponSlot = source.weapon == null ? CombatPlanTuning.COMBAT_PLANNER_CANDIDATE_TRACE_PARAM
+                : source.weapon.slot;
             family = source.weapon == null ? MaidWeaponProfile.Family.UNKNOWN : source.weapon.profile.family;
             destination = source.destination;
             route = source.route;
@@ -122,7 +131,7 @@ public final class CombatPlanner {
     }
 
     public CombatPlan decide(CombatSnapshot snapshot, CombatWorkQuota quota) {
-        terrainVisited = terrainWork = alignmentWork = entryWork = 0;
+        terrainVisited = terrainWork = alignmentWork = entryWork = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         normalProgressAdmitted = false;
         synchronizeStage(snapshot);
         Target selected = snapshot.target(snapshot.selectedTarget);
@@ -131,7 +140,8 @@ public final class CombatPlanner {
             if (selected == null || !Objects.equals(reobservation.target, selected.id)
                 || reobservation.targetEntityId != selected.entityId
                 || reobservation.entityEpoch != snapshot.entityEpoch
-                || reobservation.observationEpoch != snapshot.observationEpoch) reobservationRetryAt = 0;
+                || reobservation.observationEpoch != snapshot.observationEpoch)
+                reobservationRetryAt = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             reobservation = null;
         }
         if (selected != null && !selected.visible && selected.fresh(snapshot.tick)) {
@@ -139,11 +149,14 @@ public final class CombatPlanner {
                 stage.admitted = false;
                 if (stage.state != StageState.NATIVE_FAILURE) {
                     stage.state = StageState.WAIT_SERVICE;
-                    stage.reason = "PARENT_WAITING_FOR_CURRENT_TARGET_OBSERVATION";
+                    stage.reason = CombatPlanIds.KEY_PARENT_WAITING_FOR_CURRENT_TARGET_OBSERVATION;
                 }
             }
-            if (reobservation == null && quota.full && snapshot.bodyComplete)
-                reobservation = new CombatReobservation(++nextStage, stage == null ? 0 : stage.id, snapshot, selected);
+            if (reobservation == null && quota.full && snapshot.bodyComplete) reobservation = new CombatReobservation(
+                ++nextStage,
+                stage == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE : stage.id,
+                snapshot,
+                selected);
             if (reobservation != null && snapshot.tick >= reobservationRetryAt
                 && (stage == null || stage.state != StageState.NATIVE_FAILURE)) {
                 CombatPlan observing = reobservation.decide(snapshot, quota, ++nextDecision);
@@ -173,11 +186,19 @@ public final class CombatPlanner {
                 best = candidate;
         }
         var immediate = new ThreatEstimator.Risk();
-        double immediateRisk = full ? ThreatEstimator
-            .damage(snapshot, snapshot.self.position, snapshot.self.position, 2, 0, false, quota, occlusion, immediate)
-            : fallbackRisk(snapshot, snapshot.self.position, false, quota, occlusion, immediate);
+        double immediateRisk = full ? ThreatEstimator.damage(
+            snapshot,
+            snapshot.self.position,
+            snapshot.self.position,
+            CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+            false,
+            quota,
+            occlusion,
+            immediate) : fallbackRisk(snapshot, snapshot.self.position, false, quota, occlusion, immediate);
         boolean acute = snapshot.self.recentlyHurt || immediate.acute
-            || !full && hasFreshProjectile(snapshot) && immediateRisk >= snapshot.self.health * .15;
+            || !full && hasFreshProjectile(snapshot)
+                && immediateRisk >= snapshot.self.health * CombatPlanTuning.COMBAT_PLANNER_DECIDE_FACTOR;
         boolean immediateComplete = Double.isFinite(immediateRisk) && immediate.known;
         if (!immediateComplete || full && (!completeForecast || !comparisonReady)) intentEligible = false;
         if (acute && stage != null) stage = null;
@@ -209,7 +230,7 @@ public final class CombatPlanner {
             best = current = null;
             for (Candidate candidate : candidates) {
                 if (!candidate.task() || stage != null && candidate.stage != stage
-                    || candidate.utility <= -100
+                    || candidate.utility <= CombatPlanTuning.MIN_UTILITY_THRESHOLD
                     || normalProgressAdmitted && !survivable(snapshot, candidate)) continue;
                 if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
                     best = candidate;
@@ -244,10 +265,11 @@ public final class CombatPlanner {
         if (best != null && previous != null
             && arrowDefenseStarted != Long.MIN_VALUE
             && snapshot.tick >= arrowDefenseStarted
-            && snapshot.tick - arrowDefenseStarted < 2 * CombatWorkQuota.STEP) {
+            && snapshot.tick - arrowDefenseStarted
+                < CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM * CombatBudgetTuning.STEP) {
             for (Candidate candidate : candidates) {
                 if (candidate.strategy == Strategy.PURE_DEFENSE && same(candidate, previous)
-                    && candidate.utility > -100
+                    && candidate.utility > CombatPlanTuning.MIN_UTILITY_THRESHOLD
                     && candidate.risk <= best.risk) {
                     best = current = candidate;
                     normalProgressAdmitted = false;
@@ -256,10 +278,11 @@ public final class CombatPlanner {
             }
         }
         if (current != null && best != null
-            && current.utility > -100
+            && current.utility > CombatPlanTuning.MIN_UTILITY_THRESHOLD
             && snapshot.tick >= heldSince
-            && snapshot.tick - heldSince < 8
-            && (immediateRisk < snapshot.self.health * .15 && best.utility < current.utility + SWITCH_MARGIN
+            && snapshot.tick - heldSince < CombatPlanTuning.MIN_HELD_SINCE_THRESHOLD
+            && (immediateRisk < snapshot.self.health * CombatPlanTuning.COMBAT_PLANNER_DECIDE_FACTOR
+                && best.utility < current.utility + CombatPlanTuning.SWITCH_MARGIN
                 || !full && acute
                     && hasFreshProjectile(snapshot)
                     && current.strategy == Strategy.PURE_DEFENSE
@@ -289,7 +312,7 @@ public final class CombatPlanner {
         arrowDefenseStarted = Long.MIN_VALUE;
         stage = null;
         reobservation = null;
-        reobservationRetryAt = 0;
+        reobservationRetryAt = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         clearRouteProposal();
     }
 
@@ -306,15 +329,16 @@ public final class CombatPlanner {
             && plan.targetEntityId == routeProposal.targetEntityId
             && plan.entityEpoch == routeProposal.entityEpoch
             && plan.observationEpoch == routeProposal.observationEpoch
-            && position.distance(routeProposal.destination) >= ROUTE_ARRIVAL_DISTANCE;
+            && position.distance(routeProposal.destination) >= CombatPlanTuning.ROUTE_ARRIVAL_DISTANCE;
         if (!pending) finishDecision();
     }
 
     private List<Candidate> candidates(CombatSnapshot snapshot, CombatWorkQuota quota) {
         List<Candidate> result = new ArrayList<>(), attacks = new ArrayList<>();
         Target target = snapshot.target(snapshot.selectedTarget);
-        if (target == null && !snapshot.targets.isEmpty()) target = snapshot.targets.get(0);
-        Weapon current = snapshot.weapon(-1);
+        if (target == null && !snapshot.targets.isEmpty())
+            target = snapshot.targets.get(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE);
+        Weapon current = snapshot.weapon(CombatPlanTuning.UNSET_OR_NOT_FOUND);
         comparisonReady = true;
         for (Weapon weapon : snapshot.weapons) {
             if (!usable(snapshot, weapon)) continue;
@@ -329,7 +353,7 @@ public final class CombatPlanner {
         attacks.sort(
             Comparator.comparingDouble((Candidate value) -> -value.staticValue)
                 .thenComparingInt(value -> value.weapon.slot));
-        Candidate strongest = attacks.isEmpty() ? null : attacks.get(0);
+        Candidate strongest = attacks.isEmpty() ? null : attacks.get(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE);
         CombatTerrain.Choices terrain = strongest == null ? new CombatTerrain.Choices()
             : CombatTerrain.find(snapshot, strongest.target, quota);
         terrainVisited = terrain.visited;
@@ -341,7 +365,7 @@ public final class CombatPlanner {
                 comparisonReady = false;
                 if (stage.state != StageState.NATIVE_FAILURE) {
                     stage.state = StageState.WAIT_SERVICE;
-                    stage.reason = "CURRENT_CANDIDATE_NOT_ADMITTED";
+                    stage.reason = CombatPlanIds.KEY_CURRENT_CANDIDATE_NOT_ADMITTED;
                 }
             }
         } else addLegacyCurrent(result, snapshot, target, current, quota);
@@ -350,7 +374,12 @@ public final class CombatPlanner {
         if (snapshot.self.shieldAvailable) {
             comparisonReady &= add(
                 result,
-                new Candidate(Macro.SHIELD, target, current, snapshot.self.position, .12),
+                new Candidate(
+                    Macro.SHIELD,
+                    target,
+                    current,
+                    snapshot.self.position,
+                    CombatPlanTuning.COMBAT_PLANNER_CANDIDATE_FIFTH_FACTOR),
                 quota);
             defenses++;
         }
@@ -360,13 +389,13 @@ public final class CombatPlanner {
                 target,
                 current,
                 destination(snapshot, target, Macro.RETREAT),
-                .06);
+                CombatPlanTuning.COMBAT_PLANNER_CANDIDATES_FACTOR);
             if (terrain.retreat != null) retreat.route(terrain.retreat);
             comparisonReady &= add(result, retreat, quota);
             defenses++;
         }
         CombatTerrain.Route pureCover = terrain.cover != null ? terrain.cover : terrain.firingCover;
-        if (defenses < 2 && strongest != null && pureCover != null) {
+        if (defenses < CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM && strongest != null && pureCover != null) {
             comparisonReady &= addTerrain(result, Macro.COVER_EDGE, strongest, pureCover, quota);
             defenses++;
         }
@@ -383,7 +412,7 @@ public final class CombatPlanner {
                     target,
                     current,
                     destination(snapshot, target, Macro.STRAFE_LEFT),
-                    .06,
+                    CombatPlanTuning.COMBAT_PLANNER_CANDIDATES_FACTOR,
                     Strategy.PURE_DEFENSE),
                 quota);
             if (terrain.right == null) add(
@@ -393,7 +422,7 @@ public final class CombatPlanner {
                     target,
                     current,
                     destination(snapshot, target, Macro.STRAFE_RIGHT),
-                    .06,
+                    CombatPlanTuning.COMBAT_PLANNER_CANDIDATES_FACTOR,
                     Strategy.PURE_DEFENSE),
                 quota);
         }
@@ -431,7 +460,7 @@ public final class CombatPlanner {
             }
         }
         Candidate jump = null;
-        for (int i = 0; i < Math.min(5, attacks.size()); i++) {
+        for (int i = 0; i < Math.min(CombatPlanTuning.COMBAT_PLANNER_MIN_FIRST_PARAM, attacks.size()); i++) {
             Candidate attack = attacks.get(i);
             // 服务等待不能以普通轻量重选倒退已提交的任务；可在当前点攻击仍走原链
             if (stage != null && attack.macro == Macro.APPROACH) continue;
@@ -442,7 +471,12 @@ public final class CombatPlanner {
         }
         if (jump != null) add(
             result,
-            new Candidate(Macro.JUMP_STRIKE, jump.target, jump.weapon, snapshot.self.position, jump.staticValue + .03),
+            new Candidate(
+                Macro.JUMP_STRIKE,
+                jump.target,
+                jump.weapon,
+                snapshot.self.position,
+                jump.staticValue + CombatPlanTuning.COMBAT_PLANNER_CANDIDATE_FIFTH_FACTOR_2),
             quota);
         if (strongest != null && !snapshot.self.stationary) {
             if (terrain.firingCover != null && terrain.firingCover != pureCover) {
@@ -470,7 +504,7 @@ public final class CombatPlanner {
     private void addLegacyCurrent(List<Candidate> result, CombatSnapshot snapshot, Target target, Weapon current,
         CombatWorkQuota quota) {
         if (routeProposal != null && (!proposalMatches(snapshot, target)
-            || snapshot.self.position.distance(routeProposal.destination) < ROUTE_ARRIVAL_DISTANCE))
+            || snapshot.self.position.distance(routeProposal.destination) < CombatPlanTuning.ROUTE_ARRIVAL_DISTANCE))
             clearRouteProposal();
         intentEligible = canContinue(snapshot, target, current);
         boolean repropose = quota.full && routeProposal != null
@@ -486,7 +520,7 @@ public final class CombatPlanner {
             && current != null
             && (usable(snapshot, current) || heldPlan.macro == Macro.SHIELD || heldPlan.macro == Macro.RETREAT)
             && (heldPlan.macro != Macro.JUMP_STRIKE || !snapshot.self.grounded
-                || remainingCooldown(snapshot) <= JUMP_PREPARATION_TICKS)) {
+                || remainingCooldown(snapshot) <= CombatPlanTuning.JUMP_PREPARATION_TICKS)) {
             Candidate held = heldPlan.macro == Macro.HOLD_ATTACK || heldPlan.macro == Macro.PREPARE_WEAPON
                 ? attack(snapshot, target, current)
                 : new Candidate(
@@ -495,7 +529,7 @@ public final class CombatPlanner {
                     current,
                     heldPlan.macro == Macro.COVER_EDGE ? heldPlan.destination
                         : destination(snapshot, target, heldPlan.macro),
-                    .1,
+                    CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR,
                     heldPlan.strategy);
             if (heldPlan == routeProposal && (repropose || !quota.full && intentEligible)) {
                 Vec step = continuationStep(snapshot, quota);
@@ -537,8 +571,8 @@ public final class CombatPlanner {
             return;
         }
         boolean ownsCapability = false;
-        for (Weapon weapon : snapshot.weapons) if (usable(snapshot, weapon)
-            && (stage.weapon.equals(weapon.fingerprint) || weapon.slot == -1 && weapon.profile.family == stage.family))
+        for (Weapon weapon : snapshot.weapons) if (usable(snapshot, weapon) && (stage.weapon.equals(weapon.fingerprint)
+            || weapon.slot == CombatPlanTuning.UNSET_OR_NOT_FOUND && weapon.profile.family == stage.family))
             ownsCapability = true;
         if (!ownsCapability) {
             stage = null;
@@ -559,7 +593,7 @@ public final class CombatPlanner {
                 entry.proof = null;
                 stage.admitted = false;
                 stage.state = StageState.WAIT_SERVICE;
-                stage.reason = "ENTRY_ARRIVED_WAIT_FULL";
+                stage.reason = CombatPlanIds.KEY_ENTRY_ARRIVED_WAIT_FULL;
             } else if (fact != null && fact.belongs(auxiliary, snapshot.tick)) {
                 if (fact.outcome == CombatMovementFact.Outcome.INSTALLED && fact.pathIdentity > 0 && fact.inArea) {
                     entry.state = EntryState.ACTIVE;
@@ -586,7 +620,7 @@ public final class CombatPlanner {
                 alignment.state = AlignmentState.READY;
                 stage.admitted = false;
                 stage.state = StageState.WAIT_SERVICE;
-                stage.reason = "ALIGNMENT_JUNCTION_READY_WAIT_FULL";
+                stage.reason = CombatPlanIds.KEY_ALIGNMENT_JUNCTION_READY_WAIT_FULL;
             } else if (fact.belongs(auxiliary, snapshot.tick)) {
                 if (fact.outcome == CombatMovementFact.Outcome.INSTALLED && fact.pathIdentity > 0 && fact.inArea) {
                     alignment.state = AlignmentState.ACTIVE;
@@ -623,7 +657,7 @@ public final class CombatPlanner {
                 stage.cursor++;
                 stage.entry = null;
                 stage.alignment = null;
-                stage.reason = "NATIVE_NODE_COMPLETE";
+                stage.reason = CombatPlanIds.KEY_NATIVE_NODE_COMPLETE;
                 stage.state = stage.cursor >= stage.route.nodes.size() ? StageState.COMPLETE : StageState.ACTIVE;
             } else if (fact.outcome == CombatMovementFact.Outcome.INSTALLED && fact.pathIdentity > 0 && fact.inArea) {
                 if (stage.firstAcceptedAt == Long.MIN_VALUE) stage.firstAcceptedAt = fact.tick;
@@ -639,7 +673,7 @@ public final class CombatPlanner {
         if (stage.state == StageState.COMPLETE) stage = null;
         else if (stage.state == StageState.NATIVE_FAILURE && snapshot.tick >= stage.retryAt) {
             stage.state = StageState.PROPOSED;
-            stage.reason = "ORIGINAL_BACKOFF_ELAPSED";
+            stage.reason = CombatPlanIds.KEY_ORIGINAL_BACKOFF_ELAPSED;
         }
     }
 
@@ -665,7 +699,7 @@ public final class CombatPlanner {
             if (stage.entry != null && stage.entry.state != EntryState.NATIVE_FAILURE) stage.entry.suspend();
             if (stage.state != StageState.NATIVE_FAILURE) {
                 stage.state = StageState.WAIT_SERVICE;
-                stage.reason = "CURRENT_OBSERVATION_OR_CAPABILITY_UNREADY";
+                stage.reason = CombatPlanIds.KEY_CURRENT_OBSERVATION_OR_CAPABILITY_UNREADY;
             }
             return null;
         }
@@ -689,7 +723,8 @@ public final class CombatPlanner {
         if (quota.full && route == null) {
             if (stage.connector == null) {
                 CombatTerrain.Route prefix = CombatTerrain.connector(snapshot, terrain, parentNext, quota);
-                if (prefix != null && prefix.nodes.size() > 2) stage.connector = new Connector(++nextStage, prefix);
+                if (prefix != null && prefix.nodes.size() > CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM)
+                    stage.connector = new Connector(++nextStage, prefix);
             }
             if (stage.connector != null) {
                 CombatTerrain.Route prefix = CombatTerrain
@@ -743,7 +778,7 @@ public final class CombatPlanner {
         }
         if (!connection) {
             stage.state = StageState.WAIT_SERVICE;
-            stage.reason = "CURRENT_CONNECTION_OR_SERVICE_UNPROVED";
+            stage.reason = CombatPlanIds.KEY_CURRENT_CONNECTION_OR_SERVICE_UNPROVED;
             return null;
         }
         stage.lastProof = route;
@@ -753,7 +788,7 @@ public final class CombatPlanner {
             target,
             weapon,
             route.destination,
-            .1,
+            CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR,
             stage.strategy);
         held.route(route);
         held.escapeProved = quota.full ? CombatTerrain.reverseEscape(snapshot, route, quota) : stage.escape;
@@ -785,10 +820,16 @@ public final class CombatPlanner {
         if (route == null) {
             if (entry.state != EntryState.NATIVE_FAILURE) entry.suspend();
             stage.state = StageState.WAIT_SERVICE;
-            stage.reason = "CONDITIONAL_ENTRY_BODY_OR_SERVICE_UNPROVED";
+            stage.reason = CombatPlanIds.KEY_CONDITIONAL_ENTRY_BODY_OR_SERVICE_UNPROVED;
             return null;
         }
-        Candidate held = new Candidate(Macro.APPROACH, target, weapon, route.destination, .1, stage.strategy);
+        Candidate held = new Candidate(
+            Macro.APPROACH,
+            target,
+            weapon,
+            route.destination,
+            CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR,
+            stage.strategy);
         held.route(route);
         held.stage = stage;
         held.entry = entry;
@@ -851,7 +892,7 @@ public final class CombatPlanner {
         routeProposal = null;
         proposalSelfId = null;
         followedRoute = null;
-        followedNode = 1;
+        followedNode = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
     }
 
     private Vec continuationStep(CombatSnapshot snapshot, CombatWorkQuota quota) {
@@ -879,8 +920,10 @@ public final class CombatPlanner {
     private static boolean addTerrain(List<Candidate> result, Macro macro, Candidate attack, CombatTerrain.Route route,
         CombatWorkQuota quota) {
         if (route == null) return true;
-        if (macro == Macro.STRAFE_LEFT || macro == Macro.STRAFE_RIGHT) for (Candidate other : result)
-            if (other.macro == Macro.COVER_EDGE && other.destination.distance(route.destination) < .05) return true;
+        if (macro == Macro.STRAFE_LEFT || macro == Macro.STRAFE_RIGHT)
+            for (Candidate other : result) if (other.macro == Macro.COVER_EDGE
+                && other.destination.distance(route.destination) < CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2)
+                return true;
         Candidate candidate = new Candidate(macro, attack.target, attack.weapon, route.destination, attack.staticValue);
         candidate.route(route);
         return add(result, candidate, quota);
@@ -897,14 +940,26 @@ public final class CombatPlanner {
         double distance = snapshot.self.position.distance(target.position), damage = physical(weapon);
         int cooldown = remainingCooldown(snapshot);
         double delay = weapon.profile.bow()
-            ? Math.max(cooldown, Math.max(1, 20 - (weapon.slot == -1 ? snapshot.self.drawTicks : 0)))
-            : Math.max(cooldown, snapshot.self.attackDelay) + Math.max(0, distance - snapshot.self.reach) / .2;
-        double value = Math.min(1, damage / target.health) / (1 + delay / 20);
-        if (target.attackingOwner) value += .22;
-        if (!target.visible) value -= .4;
-        if (weapon.slot >= 0) value -= .10;
-        if (snapshot.self.drawing && !weapon.profile.bow()) value -= snapshot.self.drawTicks / 80.0;
-        if (snapshot.self.preferencePending && weapon.profile.bow() == snapshot.self.preferBow) value += .025;
+            ? Math.max(
+                cooldown,
+                Math.max(
+                    CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
+                    CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_PARAM
+                        - (weapon.slot == CombatPlanTuning.UNSET_OR_NOT_FOUND ? snapshot.self.drawTicks
+                            : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)))
+            : Math.max(cooldown, snapshot.self.attackDelay)
+                + Math.max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, distance - snapshot.self.reach)
+                    / CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR;
+        double value = Math.min(CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE, damage / target.health)
+            / (CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE
+                + delay / CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_PARAM);
+        if (target.attackingOwner) value += CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_2;
+        if (!target.visible) value -= CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_3;
+        if (weapon.slot >= 0) value -= CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_4;
+        if (snapshot.self.drawing && !weapon.profile.bow())
+            value -= snapshot.self.drawTicks / CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_5;
+        if (snapshot.self.preferencePending && weapon.profile.bow() == snapshot.self.preferBow)
+            value += CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_6;
         Macro macro = !target.visible || !weapon.profile.bow() && distance > snapshot.self.reach ? Macro.APPROACH
             : Macro.HOLD_ATTACK;
         return new Candidate(macro, target, weapon, destination(snapshot, target, macro), value);
@@ -915,21 +970,29 @@ public final class CombatPlanner {
         Vec toward = target.position.subtract(snapshot.self.position)
             .horizontalUnit();
         return switch (macro) {
-            case RETREAT -> snapshot.self.position.add(toward.scale(-2.5));
-            case STRAFE_LEFT, COVER_EDGE -> snapshot.self.position.add(new Vec(-toward.z, 0, toward.x).scale(2));
-            case STRAFE_RIGHT -> snapshot.self.position.add(new Vec(toward.z, 0, -toward.x).scale(2));
+            case RETREAT -> snapshot.self.position
+                .add(toward.scale(CombatPlanTuning.COMBAT_PLANNER_DESTINATION_SCALE_X));
+            case STRAFE_LEFT, COVER_EDGE -> snapshot.self.position.add(
+                new Vec(-toward.z, CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, toward.x)
+                    .scale(CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM));
+            case STRAFE_RIGHT -> snapshot.self.position.add(
+                new Vec(toward.z, CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, -toward.x)
+                    .scale(CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM));
             case APPROACH -> snapshot.self.position.add(
                 toward.scale(
                     Math.min(
-                        3,
-                        Math.max(0, snapshot.self.position.distance(target.position) - snapshot.self.reach * .8))));
+                        CombatPlanTuning.COMBAT_PLANNER_DESTINATION_PARAM,
+                        Math.max(
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                            snapshot.self.position.distance(target.position)
+                                - snapshot.self.reach * CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_FACTOR))));
             default -> snapshot.self.position;
         };
     }
 
     private static boolean add(List<Candidate> result, Candidate candidate, CombatWorkQuota quota) {
         for (Candidate existing : result) if (equivalent(existing, candidate)) return true;
-        if (result.size() >= CombatWorkQuota.MAX_CANDIDATES || !quota.spend(Work.CANDIDATE)) return false;
+        if (result.size() >= CombatBudgetTuning.MAX_CANDIDATES || !quota.spend(Work.CANDIDATE)) return false;
         result.add(candidate);
         return true;
     }
@@ -939,15 +1002,16 @@ public final class CombatPlanner {
         if (a.strategy != b.strategy || a.macro != b.macro
             || a.target != b.target
             || a.weapon != b.weapon
-            || a.destination.distance(b.destination) >= .0001) return false;
+            || a.destination.distance(b.destination) >= CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR) return false;
         if (a.route == b.route) return true;
         if (a.route == null || b.route == null
             || a.route.nodes.size() != b.route.nodes.size()
             || a.route.defenseNode != b.route.defenseNode
             || a.route.conditionalDoor != b.route.conditionalDoor) return false;
-        if (a.route.conditionalDoor && Math.abs(a.route.stopBeforeDoor - b.route.stopBeforeDoor) >= .0001) return false;
+        if (a.route.conditionalDoor && Math.abs(a.route.stopBeforeDoor - b.route.stopBeforeDoor)
+            >= CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR) return false;
         for (int i = 0; i < a.route.nodes.size(); i++) if (a.route.nodes.get(i)
-            .distance(b.route.nodes.get(i)) >= .0001) return false;
+            .distance(b.route.nodes.get(i)) >= CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR) return false;
         return true;
     }
 
@@ -955,10 +1019,10 @@ public final class CombatPlanner {
         Weapon weapon = candidate.weapon;
         Target target = candidate.target;
         if (weapon == null || !weapon.profile.melee()
-            || weapon.profile.criticalMultiplier <= 1
+            || weapon.profile.criticalMultiplier <= CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE
             || !snapshot.self.jumpAllowed
             || !snapshot.self.grounded
-            || remainingCooldown(snapshot) > JUMP_PREPARATION_TICKS
+            || remainingCooldown(snapshot) > CombatPlanTuning.JUMP_PREPARATION_TICKS
             || snapshot.self.stationary
             || !target.visible
             || snapshot.geometry == null
@@ -966,59 +1030,72 @@ public final class CombatPlanner {
             || !snapshot.geometry.fresh(snapshot.tick)
             || snapshot.self.position.distance(target.position) > snapshot.self.reach
             || target.lastOwnHitAt != Long.MIN_VALUE && snapshot.tick >= target.lastOwnHitAt
-                && snapshot.tick - target.lastOwnHitAt < 10)
+                && snapshot.tick - target.lastOwnHitAt < CombatPlanTuning.MIN_LAST_OWN_HIT_AT_THRESHOLD)
             return false;
         double normal = physical(weapon),
             critical = weapon.profile.estimatedMeleePhysical * weapon.profile.criticalMultiplier
-                + weapon.profile.sharpness * 1.25;
-        return Math.min(target.health, critical) - Math.min(target.health, normal) > Math.max(.5, normal * .12);
+                + weapon.profile.sharpness * CombatPlanTuning.COMBAT_PLANNER_JUMP_USEFUL_FACTOR;
+        return Math.min(target.health, critical) - Math.min(target.health, normal) > Math.max(
+            CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR,
+            normal * CombatPlanTuning.COMBAT_PLANNER_CANDIDATE_FIFTH_FACTOR);
     }
 
     private static void fallback(CombatSnapshot snapshot, Candidate candidate, CombatWorkQuota quota,
         ThreatEstimator.ProjectileOcclusion occlusion) {
         if (!quota.spend(Work.FALLBACK)) {
-            candidate.utility = -1000;
+            candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             return;
         }
-        candidate.damage = candidate.risk = 0;
+        candidate.damage = candidate.risk = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         if (candidate.macro == Macro.JUMP_STRIKE || candidate.macro == Macro.COVER_EDGE && !candidate.continuing) {
-            candidate.utility = -1000;
+            candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             return;
         }
         Vec next = candidate.continuing ? candidate.nextStep : candidate.destination;
-        if (next.distance(snapshot.self.position) > .05 && (candidate.continuing
-            ? !CombatTerrain.safeStep(snapshot, snapshot.self.position, next, quota)
-                && !(candidate.stage != null && candidate.stage.admitted
-                    && candidate.stage.connector == null
-                    && candidate.commits()
-                    && candidate.alignment == null
-                    && candidate.entry == null
-                    && candidate.route != null
-                    && candidate.route.conditionalDoor
-                    && candidate.route.fresh(snapshot.tick)
-                    && CombatTerrain.safeRequestStep(snapshot, snapshot.self.position, next, quota))
-            : !ThreatEstimator.safeMove(snapshot, snapshot.self.position, next, true, quota))) {
-            candidate.utility = -1000;
+        if (next.distance(snapshot.self.position) > CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2
+            && (candidate.continuing
+                ? !CombatTerrain.safeStep(snapshot, snapshot.self.position, next, quota)
+                    && !(candidate.stage != null && candidate.stage.admitted
+                        && candidate.stage.connector == null
+                        && candidate.commits()
+                        && candidate.alignment == null
+                        && candidate.entry == null
+                        && candidate.route != null
+                        && candidate.route.conditionalDoor
+                        && candidate.route.fresh(snapshot.tick)
+                        && CombatTerrain.safeRequestStep(snapshot, snapshot.self.position, next, quota))
+                : !ThreatEstimator.safeMove(snapshot, snapshot.self.position, next, true, quota))) {
+            candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             return;
         }
         candidate.risk = fallbackRisk(snapshot, next, candidate.macro == Macro.SHIELD, quota, occlusion, null);
         if (!Double.isFinite(candidate.risk)) {
-            candidate.utility = -1000;
+            candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             candidate.riskKnown = false;
             return;
         }
         // 观测/几何缺口下只允许当前可见攻击、合法举盾或已知安全移动；不按静态高输出贴脸换血
-        double progress = candidate.target != null && candidate.target.visible ? candidate.staticValue : -.1;
+        double progress = candidate.target != null && candidate.target.visible ? candidate.staticValue
+            : CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_3;
         if (candidate.weapon != null && candidate.weapon.profile.bow()
             && !ThreatEstimator.friendlyLine(
                 snapshot,
-                snapshot.self.position.add(new Vec(0, 1.3, 0)),
-                candidate.target.position.add(new Vec(0, candidate.target.height * .5, 0)),
+                snapshot.self.position.add(
+                    new Vec(
+                        CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                        CombatPlanTuning.COMBAT_PLANNER_VEC_SECOND_FACTOR,
+                        CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
+                candidate.target.position.add(
+                    new Vec(
+                        CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                        candidate.target.height * CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR,
+                        CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
                 quota))
-            progress = -.5;
-        candidate.utility = progress - SELF_WEIGHT * candidate.risk / snapshot.self.health;
-        if (candidate.macro == Macro.SHIELD) candidate.utility += .05;
-        if (candidate.weapon != null && candidate.weapon.slot >= 0) candidate.utility -= .1;
+            progress = CombatPlanTuning.COMBAT_PLANNER_PROGRESS;
+        candidate.utility = progress - CombatPlanTuning.SELF_WEIGHT * candidate.risk / snapshot.self.health;
+        if (candidate.macro == Macro.SHIELD) candidate.utility += CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2;
+        if (candidate.weapon != null && candidate.weapon.slot >= 0)
+            candidate.utility -= CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR;
     }
 
     /** Short reaction horizon, limited by the same per-tick movement model as the full forecast. */
@@ -1026,15 +1103,31 @@ public final class CombatPlanner {
         ThreatEstimator.ProjectileOcclusion occlusion, ThreatEstimator.Risk risk) {
         Vec position = snapshot.self.position;
         double total = 0;
-        int horizon = hasFreshProjectile(snapshot) ? 2 * CombatWorkQuota.STEP : CombatWorkQuota.STEP;
+        int horizon = hasFreshProjectile(snapshot)
+            ? CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM * CombatBudgetTuning.STEP
+            : CombatBudgetTuning.STEP;
         boolean[] projectileHits = new boolean[snapshot.projectiles.size()];
-        for (int elapsed = CombatWorkQuota.STEP; elapsed <= horizon; elapsed += CombatWorkQuota.STEP) {
+        for (int elapsed = CombatBudgetTuning.STEP; elapsed <= horizon; elapsed += CombatBudgetTuning.STEP) {
             Vec delta = destination.subtract(position);
-            double step = snapshot.self.stationary ? 0
-                : Math.max(0, snapshot.self.movementPerTick) * CombatWorkQuota.STEP;
-            Vec next = position.add(delta.scale(Math.min(1, step / Math.max(.001, delta.length()))));
-            double value = ThreatEstimator
-                .damage(snapshot, position, next, elapsed, 0, shield, quota, occlusion, risk, projectileHits);
+            double step = snapshot.self.stationary ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+                : Math.max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, snapshot.self.movementPerTick)
+                    * CombatBudgetTuning.STEP;
+            Vec next = position.add(
+                delta.scale(
+                    Math.min(
+                        CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
+                        step / Math.max(CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR_2, delta.length()))));
+            double value = ThreatEstimator.damage(
+                snapshot,
+                position,
+                next,
+                elapsed,
+                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                shield,
+                quota,
+                occlusion,
+                risk,
+                projectileHits);
             if (!Double.isFinite(value)) return Double.POSITIVE_INFINITY;
             total += value;
             position = next;
@@ -1043,39 +1136,51 @@ public final class CombatPlanner {
     }
 
     private static boolean hasFreshProjectile(CombatSnapshot snapshot) {
-        for (var projectile : snapshot.projectiles)
-            if (projectile.observedAt <= snapshot.tick && snapshot.tick - projectile.observedAt <= 2) return true;
+        for (var projectile : snapshot.projectiles) if (projectile.observedAt <= snapshot.tick
+            && snapshot.tick - projectile.observedAt <= CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM)
+            return true;
         return false;
     }
 
     private static void forecast(CombatSnapshot snapshot, Candidate candidate, CombatWorkQuota quota,
         ThreatEstimator.ProjectileOcclusion occlusion) {
         if (candidate.macro == Macro.COVER_EDGE && (candidate.route == null || candidate.route.escape == null)) {
-            candidate.utility = -1000;
+            candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             candidate.evaluated = true;
             return;
         }
-        double worst = Double.POSITIVE_INFINITY, risk = 0, damage = 0;
+        double worst = Double.POSITIVE_INFINITY, risk = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+            damage = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         candidate.riskKnown = true;
-        for (int hypothesis = 0; hypothesis < CombatWorkQuota.HYPOTHESES; hypothesis++) {
+        for (int hypothesis = 0; hypothesis < CombatBudgetTuning.HYPOTHESES; hypothesis++) {
             Vec position = snapshot.self.position;
             var reserve = new ThreatEstimator.Risk();
-            double received = 0, dealt = 0, ownerRisk = 0,
-                verticalSpeed = snapshot.self.grounded ? .42 : snapshot.self.velocity.y;
+            double received = 0, dealt = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                ownerRisk = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                verticalSpeed = snapshot.self.grounded ? CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_4
+                    : snapshot.self.velocity.y;
             int ammunition = snapshot.self.ammunition;
-            long durability = candidate.weapon == null ? 0 : candidate.weapon.profile.remainingDurability;
-            int swap = candidate.weapon != null && candidate.weapon.slot >= 0 ? 3 : 0;
+            long durability = candidate.weapon == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+                : candidate.weapon.profile.remainingDurability;
+            int swap = candidate.weapon != null && candidate.weapon.slot >= 0
+                ? CombatPlanTuning.COMBAT_PLANNER_DESTINATION_PARAM
+                : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             // 自有真实截止时刻与换装阶段可以同时经过，不能把false误当成又等整周期
             int nextAttack = Math.max(swap, remainingCooldown(snapshot));
-            if (candidate.weapon != null && candidate.weapon.profile.bow())
-                nextAttack = Math.max(nextAttack, swap + Math.max(1, 20 - (swap == 0 ? snapshot.self.drawTicks : 0)));
-            int jumpAt = snapshot.self.grounded ? nextAttack : 0;
+            if (candidate.weapon != null && candidate.weapon.profile.bow()) nextAttack = Math.max(
+                nextAttack,
+                swap + Math.max(
+                    CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
+                    CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_PARAM
+                        - (swap == 0 ? snapshot.self.drawTicks : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)));
+            int jumpAt = snapshot.self.grounded ? nextAttack : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             boolean jumpPending = candidate.macro == Macro.JUMP_STRIKE && snapshot.self.grounded;
             boolean airborne = candidate.macro == Macro.JUMP_STRIKE && !snapshot.self.grounded;
             boolean landed = !airborne, hit = false, invalid = false;
-            for (int elapsed = 2; elapsed <= CombatWorkQuota.HORIZON; elapsed += CombatWorkQuota.STEP) {
+            for (int elapsed = CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM; elapsed
+                <= CombatBudgetTuning.HORIZON; elapsed += CombatBudgetTuning.STEP) {
                 if (!quota.spend(Work.ADVANCE)) {
-                    candidate.utility = -1000;
+                    candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
                     return;
                 }
                 Vec next = position;
@@ -1084,7 +1189,7 @@ public final class CombatPlanner {
                         .horizontalUnit()
                         .scale(
                             Math.min(
-                                snapshot.self.movementPerTick * 2,
+                                snapshot.self.movementPerTick * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
                                 candidate.destination.subtract(position)
                                     .length()));
                     next = candidate.route == null ? position.add(delta)
@@ -1099,10 +1204,11 @@ public final class CombatPlanner {
                 if (airborne) {
                     double y = position.y;
                     // 准备期间站立受险照常计入；只有冷却到期后的区间才推进原生跳跃物理
-                    int verticalSteps = Math.min(CombatWorkQuota.STEP, elapsed - jumpAt);
+                    int verticalSteps = Math.min(CombatBudgetTuning.STEP, elapsed - jumpAt);
                     for (int part = 0; part < verticalSteps; part++) {
                         y += verticalSpeed;
-                        verticalSpeed = (verticalSpeed - .08) * .98;
+                        verticalSpeed = (verticalSpeed - CombatPlanTuning.COMBAT_PLANNER_VERTICAL_SPEED)
+                            * CombatPlanTuning.COMBAT_PLANNER_VERTICAL_SPEED_2;
                     }
                     descending = verticalSpeed < 0;
                     if (y <= snapshot.self.position.y) {
@@ -1112,7 +1218,7 @@ public final class CombatPlanner {
                     }
                     next = new Vec(next.x, y, next.z);
                 }
-                if (position.distance(next) > .001
+                if (position.distance(next) > CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR_2
                     && (candidate.route == null ? !ThreatEstimator.safeMove(snapshot, position, next, !airborne, quota)
                         : !quota.spend(Work.COLLISION))) {
                     invalid = true;
@@ -1133,8 +1239,8 @@ public final class CombatPlanner {
                     && snapshot.self.ownerPosition != null) {
                     Vec enemy = ThreatEstimator
                         .enemyPosition(candidate.target, snapshot.self.ownerPosition, elapsed, hypothesis);
-                    if (enemy.distance(snapshot.self.ownerPosition) < 2.7)
-                        ownerRisk += candidate.target.estimatedDamage * .1;
+                    if (enemy.distance(snapshot.self.ownerPosition) < CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_5)
+                        ownerRisk += candidate.target.estimatedDamage * CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR;
                 }
                 if (candidate.target == null || candidate.weapon == null
                     || !candidate.target.visible
@@ -1151,72 +1257,116 @@ public final class CombatPlanner {
                 if (!bow && position.distance(enemy) > snapshot.self.reach + candidate.target.halfWidth) continue;
                 if (candidate.macro == Macro.JUMP_STRIKE && !descending && !hit) continue;
                 if (ThreatEstimator.localCover(snapshot, position, enemy, quota)) continue;
-                if (candidate.route != null && position.distance(snapshot.self.position) > .05
+                if (candidate.route != null
+                    && position.distance(snapshot.self.position) > CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2
                     && CombatTerrain.sight(
                         snapshot,
-                        position.add(new Vec(0, snapshot.self.height * .85, 0)),
-                        enemy.add(new Vec(0, candidate.target.height * .5, 0)),
+                        position.add(
+                            new Vec(
+                                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                                snapshot.self.height * CombatPlanTuning.COMBAT_PLANNER_VEC_SECOND_FACTOR_2,
+                                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
+                        enemy.add(
+                            new Vec(
+                                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                                candidate.target.height * CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR,
+                                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
                         quota) != CombatTerrain.Sight.CLEAR)
                     continue;
                 if (bow && !ThreatEstimator.friendlyLine(
                     snapshot,
-                    position.add(new Vec(0, 1.3, 0)),
-                    enemy.add(new Vec(0, candidate.target.height * .5, 0)),
+                    position.add(
+                        new Vec(
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                            CombatPlanTuning.COMBAT_PLANNER_VEC_SECOND_FACTOR,
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
+                    enemy.add(
+                        new Vec(
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                            candidate.target.height * CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR,
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
                     quota)) continue;
                 // 只估计有机会命中的收益，当前完整弹道仍由真实放箭入口重验
                 double amount = physical(candidate.weapon);
                 if (candidate.macro == Macro.JUMP_STRIKE && descending && !hit)
                     amount += candidate.weapon.profile.estimatedMeleePhysical
                         * (candidate.weapon.profile.criticalMultiplier - 1);
-                double uncertainty = Math.max(.35, 1 - elapsed * .013);
+                double uncertainty = Math.max(
+                    CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR_3,
+                    CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE
+                        - elapsed * CombatPlanTuning.COMBAT_PLANNER_UNCERTAINTY);
                 dealt += amount * uncertainty;
                 if (bow && !candidate.weapon.profile.infinity) ammunition--;
                 if (durability >= 0) durability -= candidate.weapon.profile.durabilityCost;
                 hit = true;
-                nextAttack = elapsed + (bow ? Math.max(20, snapshot.self.attackDelay) : snapshot.self.attackDelay);
+                nextAttack = elapsed
+                    + (bow ? Math.max(CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_PARAM, snapshot.self.attackDelay)
+                        : snapshot.self.attackDelay);
             }
             if (invalid || !Double.isFinite(received)) {
-                candidate.utility = -1000;
+                candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
                 candidate.evaluated = quota.remaining(Work.COLLISION) > 0;
                 return;
             }
-            double terminal = !landed ? .45 : 0;
+            double terminal = !landed ? CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_6
+                : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             if (!hit && candidate.weapon != null) {
-                int remaining = Math.max(0, nextAttack - CombatWorkQuota.HORIZON);
-                terminal += .08 + Math.min(.25, remaining / 80.0);
+                int remaining = Math
+                    .max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, nextAttack - CombatBudgetTuning.HORIZON);
+                terminal += CombatPlanTuning.COMBAT_PLANNER_VERTICAL_SPEED + Math.min(
+                    CombatPlanTuning.COMBAT_PLANNER_MIN_FIRST_FACTOR,
+                    remaining / CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR_5);
             }
             if (candidate.route != null) {
                 double available = Math.min(
-                    snapshot.self.movementPerTick * Math.max(0, CombatWorkQuota.HORIZON - swap),
+                    snapshot.self.movementPerTick
+                        * Math.max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, CombatBudgetTuning.HORIZON - swap),
                     candidate.route.stopBeforeDoor);
-                terminal += Math.min(.35, Math.max(0, candidate.route.currentLength() - available) * .05);
-                if (candidate.route.conditionalDoor) terminal += .08;
+                terminal += Math.min(
+                    CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR_3,
+                    Math.max(
+                        CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                        candidate.route.currentLength() - available) * CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2);
+                if (candidate.route.conditionalDoor) terminal += CombatPlanTuning.COMBAT_PLANNER_VERTICAL_SPEED;
             }
-            double progress = candidate.target == null ? 0 : Math.min(1, dealt / candidate.target.health);
+            double progress = candidate.target == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+                : Math.min(CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE, dealt / candidate.target.health);
             if (candidate.target != null && !snapshot.self.stationary) {
                 double improvement = snapshot.self.position.distance(candidate.target.position)
                     - position.distance(candidate.target.position);
                 // 横移用于规避威胁或改善射界，不借栅格取整伪造接近收益引发无收益绕圈
                 if (candidate.macro == Macro.STRAFE_LEFT || candidate.macro == Macro.STRAFE_RIGHT) {
-                    improvement = Math.min(0, improvement);
-                    terminal += .005;
+                    improvement = Math.min(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, improvement);
+                    terminal += CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_7;
                 }
-                progress += Math.max(-.15, Math.min(.2, improvement / 15));
+                progress += Math.max(
+                    CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR_4,
+                    Math.min(
+                        CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR,
+                        improvement / CombatPlanTuning.COMBAT_PLANNER_MIN_SECOND_PARAM));
             }
-            double resource = candidate.weapon == null || candidate.weapon.profile.remainingDurability <= 0 ? 0
+            double resource = candidate.weapon == null || candidate.weapon.profile.remainingDurability <= 0
+                ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
                 : Math.min(
-                    1,
+                    CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
                     candidate.weapon.profile.durabilityCost / (double) candidate.weapon.profile.remainingDurability);
-            double continuity = candidate.weapon != null && candidate.weapon.slot >= 0 ? .6 : 0;
+            double continuity = candidate.weapon != null && candidate.weapon.slot >= 0
+                ? CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_8
+                : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             if (snapshot.self.drawing
                 && (candidate.weapon == null || !candidate.weapon.profile.bow() || candidate.macro == Macro.SHIELD))
-                continuity += snapshot.self.drawTicks / 20.0;
-            double utility = PROGRESS_WEIGHT * progress - SELF_WEIGHT * received / snapshot.self.health
-                - OWNER_WEIGHT * Math.max(0, ownerRisk - dealt * .2) / snapshot.self.ownerHealth
-                - RESOURCE_WEIGHT * resource
-                - CONTINUITY_WEIGHT * continuity
+                continuity += snapshot.self.drawTicks / CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_9;
+            double utility = CombatPlanTuning.PROGRESS_WEIGHT * progress
+                - CombatPlanTuning.SELF_WEIGHT * received / snapshot.self.health
+                - CombatPlanTuning.OWNER_WEIGHT * Math.max(
+                    CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                    ownerRisk - dealt * CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR) / snapshot.self.ownerHealth
+                - CombatPlanTuning.RESOURCE_WEIGHT * resource
+                - CombatPlanTuning.CONTINUITY_WEIGHT * continuity
                 - terminal;
-            if (candidate.target != null && candidate.target.attackingOwner) utility += Math.min(.2, progress * .2);
+            if (candidate.target != null && candidate.target.attackingOwner) utility += Math.min(
+                CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR,
+                progress * CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR);
             worst = Math.min(worst, utility);
             risk = Math.max(risk, received);
             candidate.singleSelf = Math.max(candidate.singleSelf, reserve.selfSingle);
@@ -1233,13 +1383,14 @@ public final class CombatPlanner {
 
     private CombatPlan plan(CombatSnapshot snapshot, Candidate candidate, CombatWorkQuota quota, boolean simulated,
         Trace trace) {
-        if (candidate == null || !Double.isFinite(candidate.utility) || candidate.utility <= -100)
+        if (candidate == null || !Double.isFinite(candidate.utility)
+            || candidate.utility <= CombatPlanTuning.MIN_UTILITY_THRESHOLD)
             candidate = new Candidate(
                 Macro.WAIT,
                 snapshot.target(snapshot.selectedTarget),
-                snapshot.weapon(-1),
+                snapshot.weapon(CombatPlanTuning.UNSET_OR_NOT_FOUND),
                 snapshot.self.position,
-                0);
+                CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE);
         boolean same = same(candidate, previous);
         if (!same) heldSince = snapshot.tick;
         if (candidate.strategy != Strategy.PURE_DEFENSE) arrowDefenseStarted = Long.MIN_VALUE;
@@ -1253,10 +1404,10 @@ public final class CombatPlanner {
         Stage committed = candidate.commits() ? stage : null;
         if (stage != null && committed == null && stage.state != StageState.NATIVE_FAILURE) {
             stage.state = StageState.WAIT_SERVICE;
-            stage.reason = "SAFE_REACTION_OR_COMPARISON_WAIT";
+            stage.reason = CombatPlanIds.KEY_SAFE_REACTION_OR_COMPARISON_WAIT;
         } else if (committed != null && normalProgressAdmitted && committed.state == StageState.WAIT_SERVICE) {
             committed.state = StageState.PROPOSED;
-            committed.reason = "FULL_SERVICE_RESUMED";
+            committed.reason = CombatPlanIds.KEY_FULL_SERVICE_RESUMED;
         }
         if (stage != null && stage.entry != null && (committed == null || candidate.entry != stage.entry)) {
             if (committed != null && normalProgressAdmitted
@@ -1297,9 +1448,9 @@ public final class CombatPlanner {
             alignmentProof = alignment.proof;
         }
         if (node == null && candidate.route != null) {
-            int index = candidate.route == followedRoute ? followedNode : 1;
+            int index = candidate.route == followedRoute ? followedNode : CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
             node = new CombatMovementFact.Node(
-                id * 2 + 1,
+                id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM + 1,
                 index,
                 snapshot,
                 candidate.target.id,
@@ -1314,7 +1465,7 @@ public final class CombatPlanner {
             macro,
             candidate.destination,
             candidate.target == null ? snapshot.self.position : candidate.target.position,
-            simulated ? "bounded_forecast" : "bounded_reaction",
+            simulated ? CombatPlanIds.ID_BOUNDED_FORECAST : CombatPlanIds.ID_BOUNDED_REACTION,
             candidate.utility,
             candidate.damage,
             candidate.risk,
@@ -1324,15 +1475,17 @@ public final class CombatPlanner {
             trace,
             candidate.strategy,
             stage == null ? StageState.NONE : stage.state,
-            stage == null ? 0 : stage.id,
-            stage == null ? 0
-                : stage.strategy == Strategy.DEFENSIVE_RETURN && stage.cursor <= stage.route.defenseNode ? 0 : 1,
+            stage == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE : stage.id,
+            stage == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+                : stage.strategy == Strategy.DEFENSIVE_RETURN && stage.cursor <= stage.route.defenseNode
+                    ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+                    : CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
             stage == null ? null : stage.route.destination,
             node,
             normalProgressAdmitted,
             simulated && comparisonReady,
             stage == null ? Long.MIN_VALUE : stage.firstAcceptedAt,
-            stage == null ? 0 : stage.retryAt,
+            stage == null ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE : stage.retryAt,
             stage == null ? "" : stage.reason,
             null,
             null,
@@ -1341,7 +1494,7 @@ public final class CombatPlanner {
         if (simulated) {
             if (candidate.route == null) clearRouteProposal();
             else {
-                if (followedRoute != candidate.route) followedNode = 1;
+                if (followedRoute != candidate.route) followedNode = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
                 followedRoute = candidate.route;
                 routeProposal = previous;
                 proposalSelfId = snapshot.selfId;
@@ -1356,17 +1509,22 @@ public final class CombatPlanner {
             && candidate.weapon != null
             && candidate.weapon.fingerprint.equals(plan.weaponFingerprint)
             && Objects.equals(candidate.target == null ? null : candidate.target.id, plan.targetId)
-            && (candidate.route == null || plan.route == null || candidate.destination.distance(plan.destination) < .5);
+            && (candidate.route == null || plan.route == null
+                || candidate.destination.distance(plan.destination) < CombatPlanTuning.COMBAT_PLANNER_MAX_FIRST_FACTOR);
     }
 
     private static int remainingCooldown(CombatSnapshot snapshot) {
         long remaining = snapshot.self.cadenceRemainingTicks;
-        return remaining < 0 ? Integer.MAX_VALUE / 2 : (int) Math.min(Integer.MAX_VALUE / 2L, remaining);
+        return remaining < 0 ? Integer.MAX_VALUE / CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM
+            : (int) Math.min(Integer.MAX_VALUE / CombatPlanTuning.COMBAT_PLANNER_MIN_FIRST_LIMIT, remaining);
     }
 
     private static double physical(Weapon weapon) {
-        return weapon.profile.bow() ? 6 + weapon.profile.power * 1.5
-            : weapon.profile.estimatedMeleePhysical + weapon.profile.sharpness * 1.25;
+        return weapon.profile.bow()
+            ? CombatPlanTuning.COMBAT_PLANNER_PHYSICAL_PARAM
+                + weapon.profile.power * CombatPlanTuning.COMBAT_PLANNER_PHYSICAL_FACTOR
+            : weapon.profile.estimatedMeleePhysical
+                + weapon.profile.sharpness * CombatPlanTuning.COMBAT_PLANNER_JUMP_USEFUL_FACTOR;
     }
 
     private static final class Stage {
@@ -1381,9 +1539,9 @@ public final class CombatPlanner {
         final MaidWeaponProfile.Family family;
         boolean escape, admitted;
         double risk, single, ownerRisk, ownerSingle;
-        int cursor = 1;
+        int cursor = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
         long retryAt, firstAcceptedAt = Long.MIN_VALUE;
-        String reason = "NOT_INSTALLED";
+        String reason = CombatPlanIds.KEY_NOT_INSTALLED;
         StageState state = StageState.PROPOSED;
         CombatTerrain.Route lastProof;
         Connector connector;
@@ -1392,13 +1550,14 @@ public final class CombatPlanner {
         ConditionalEntry entry;
 
         boolean completedSource() {
-            return cursor > 1 && lastCompleted != null
+            return cursor > CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE && lastCompleted != null
                 && lastCompleted.node != null
                 && lastCompleted.node.role == CombatMovementFact.Role.ORDINARY
-                && lastCompleted.node.stage == id * 2
+                && lastCompleted.node.stage == id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM
                 && lastCompleted.node.index == cursor - 1
                 && lastCompleted.completed(lastCompleted.node, lastCompleted.tick)
-                && lastCompleted.node.foot.distance(route.next(cursor - 1)) < .0001;
+                && lastCompleted.node.foot.distance(route.next(cursor - 1))
+                    < CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR;
         }
 
         Stage(long id, CombatSnapshot snapshot, Candidate candidate) {
@@ -1430,7 +1589,13 @@ public final class CombatPlanner {
         }
 
         CombatMovementFact.Node node(CombatSnapshot snapshot) {
-            return new CombatMovementFact.Node(id * 2, cursor, snapshot, target, targetEntityId, route.next(cursor));
+            return new CombatMovementFact.Node(
+                id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+                cursor,
+                snapshot,
+                target,
+                targetEntityId,
+                route.next(cursor));
         }
 
         boolean survivable(CombatSnapshot snapshot) {
@@ -1478,8 +1643,16 @@ public final class CombatPlanner {
         }
 
         CombatMovementFact.Node node(CombatSnapshot s, Stage parent) {
-            return CombatMovementFact.Node
-                .conditionalEntry(id, parentId * 2, parentCursor, s, parent.target, parent.targetEntityId, k, b, edge);
+            return CombatMovementFact.Node.conditionalEntry(
+                id,
+                parentId * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+                parentCursor,
+                s,
+                parent.target,
+                parent.targetEntityId,
+                k,
+                b,
+                edge);
         }
     }
 
@@ -1511,13 +1684,20 @@ public final class CombatPlanner {
 
         boolean matches(Stage parent, Vec c, Vec b) {
             return parentId == parent.id && parentCursor == parent.cursor
-                && center.distance(c) < .0001
-                && next.distance(b) < .0001;
+                && center.distance(c) < CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR
+                && next.distance(b) < CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR;
         }
 
         CombatMovementFact.Node node(CombatSnapshot s, Stage parent) {
-            return CombatMovementFact.Node
-                .alignment(id, parent.id * 2, parent.cursor, s, parent.target, parent.targetEntityId, center, next);
+            return CombatMovementFact.Node.alignment(
+                id,
+                parent.id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+                parent.cursor,
+                s,
+                parent.target,
+                parent.targetEntityId,
+                center,
+                next);
         }
     }
 
@@ -1525,7 +1705,7 @@ public final class CombatPlanner {
 
         final long id;
         final CombatTerrain.Route route;
-        int cursor = 1;
+        int cursor = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
 
         Connector(long id, CombatTerrain.Route route) {
             this.id = id;
@@ -1534,7 +1714,7 @@ public final class CombatPlanner {
 
         CombatMovementFact.Node node(CombatSnapshot s, Stage parent) {
             return new CombatMovementFact.Node(
-                id * 2,
+                id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
                 cursor,
                 s,
                 parent.target,

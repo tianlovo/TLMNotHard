@@ -22,7 +22,8 @@ public final class MaidItemRenderScope implements AutoCloseable {
     private boolean attributesPushed, clientAttributesPushed, closed;
 
     public MaidItemRenderScope() {
-        if (!MaidRenderProtection.ready()) throw new IllegalStateException(RenderScopeDiagnostics.MSG_NATIVE_RENDER_STATE_UNAVAILABLE);
+        if (!MaidRenderProtection.ready())
+            throw new IllegalStateException(RenderScopeDiagnostics.MSG_NATIVE_RENDER_STATE_UNAVAILABLE);
         matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         try {
@@ -140,7 +141,8 @@ public final class MaidItemRenderScope implements AutoCloseable {
                 GL11.glLoadMatrix(top.duplicate());
                 throw new IllegalStateException(RenderScopeDiagnostics.MSG_NATIVE_ITEM_RENDERER_REMOVED_CALLER);
             }
-            if (current - depth > RenderScopeLayout.MAX_DEPTH_THRESHOLD) throw new IllegalStateException(RenderScopeDiagnostics.MSG_UNBOUNDED_NATIVE_ITEM_MATRIX_LEAK);
+            if (current - depth > RenderScopeLayout.MAX_DEPTH_THRESHOLD)
+                throw new IllegalStateException(RenderScopeDiagnostics.MSG_UNBOUNDED_NATIVE_ITEM_MATRIX_LEAK);
             while (current-- > depth) GL11.glPopMatrix();
             GL11.glLoadMatrix(top.duplicate());
         }

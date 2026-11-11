@@ -66,7 +66,8 @@ public final class BuiltinMaidPacks {
             for (int i = 0; i < choices.size(); i++) if (choices.get(i)
                 .getPackId()
                 .equals(id)) indices.add(i);
-            if (indices.isEmpty()) throw new IllegalStateException(ClientGuiDiagnostics.MSG_EMPTY_BUILTIN_MODEL_PACK + id);
+            if (indices.isEmpty())
+                throw new IllegalStateException(ClientGuiDiagnostics.MSG_EMPTY_BUILTIN_MODEL_PACK + id);
             modelIndices = Collections.unmodifiableList(indices);
         }
 

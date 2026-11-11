@@ -26,7 +26,7 @@ public final class CombatAlignmentProof {
             || !target.visible
             || target.observedAt != s.tick
             || !node.target.equals(s.selectedTarget))
-            throw new IllegalArgumentException("Complete visible parent alignment required");
+            throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_COMPLETE_VISIBLE_PARENT_ALIGNMENT_REQUIRED);
         this.node = node;
         geometry = s.geometry;
         halfWidth = s.self.halfWidth;
@@ -114,7 +114,7 @@ public final class CombatAlignmentProof {
         public boolean matches(CombatMovementFact.Node expected, Vec point, long now) {
             return node.same(expected) && tick == now
                 && geometryAt <= now
-                && now - geometryAt <= CombatSnapshot.GEOMETRY_TTL
+                && now - geometryAt <= CombatTerrainTuning.GEOMETRY_TTL
                 && point != null
                 && actual.x == point.x
                 && actual.y == point.y

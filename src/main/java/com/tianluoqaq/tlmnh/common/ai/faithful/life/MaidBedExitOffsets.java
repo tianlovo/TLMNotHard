@@ -8,7 +8,11 @@ package com.tianluoqaq.tlmnh.common.ai.faithful.life;
 final class MaidBedExitOffsets {
 
     // Bed metadata uses SOUTH, WEST, NORTH, EAST in both platform mappings
-    private static final int[][] FACING = { { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 0 } };
+    private static final int[][] FACING = {
+        { FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE, FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP },
+        { FaithfulLifeTuning.UNSET_OR_NOT_FOUND, FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE },
+        { FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE, FaithfulLifeTuning.UNSET_OR_NOT_FOUND },
+        { FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP, FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE } };
 
     private MaidBedExitOffsets() {}
 
@@ -16,11 +20,20 @@ final class MaidBedExitOffsets {
         if (facing < 0 || facing >= FACING.length || !Float.isFinite(lookX) || !Float.isFinite(lookZ))
             return new int[0][];
         int[] forward = FACING[facing];
-        int side = (facing + 1) & 3;
-        if (FACING[side][0] * lookX + FACING[side][1] * lookZ > 0) side = (side + 2) & 3;
-        int fx = forward[0], fz = forward[1], sx = FACING[side][0], sz = FACING[side][1];
-        return new int[][] { { sx, sz }, { sx - fx, sz - fz }, { sx - 2 * fx, sz - 2 * fz }, { -2 * fx, -2 * fz },
-            { -sx - 2 * fx, -sz - 2 * fz }, { -sx - fx, -sz - fz }, { -sx, -sz }, { -sx + fx, -sz + fz }, { fx, fz },
-            { sx + fx, sz + fz }, { 0, 0 }, { -fx, -fz } };
+        int side = (facing + 1) & FaithfulLifeTuning.LOW_TWO_BITS_MASK;
+        if (FACING[side][FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE] * lookX
+            + FACING[side][FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP] * lookZ > 0)
+            side = (side + FaithfulLifeTuning.BED_EXIT_SIDE) & FaithfulLifeTuning.LOW_TWO_BITS_MASK;
+        int fx = forward[FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE],
+            fz = forward[FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP],
+            sx = FACING[side][FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE],
+            sz = FACING[side][FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP];
+        return new int[][] { { sx, sz }, { sx - fx, sz - fz },
+            { sx - FaithfulLifeTuning.BED_EXIT_SIDE * fx, sz - FaithfulLifeTuning.BED_EXIT_SIDE * fz },
+            { FaithfulLifeTuning.BED_EXIT_ORDERED_PARAM * fx, FaithfulLifeTuning.BED_EXIT_ORDERED_PARAM * fz },
+            { -sx - FaithfulLifeTuning.BED_EXIT_SIDE * fx, -sz - FaithfulLifeTuning.BED_EXIT_SIDE * fz },
+            { -sx - fx, -sz - fz }, { -sx, -sz }, { -sx + fx, -sz + fz }, { fx, fz }, { sx + fx, sz + fz },
+            { FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE, FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE },
+            { -fx, -fz } };
     }
 }

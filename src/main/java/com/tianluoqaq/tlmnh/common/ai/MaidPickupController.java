@@ -25,7 +25,6 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 参考上游30tick拾取感知和可达性筛选，跟随/战斗/生活优先，移动仍由同一动作执行器授权 */
 public final class MaidPickupController {
 
-    private static final int SCAN_INTERVAL = 30, CANDIDATE_BUDGET = 64, PATH_CANDIDATES = 3;
     private final EntityMaid maid;
     private final MaidActionRunner runner;
     private final Supplier<EntityPlayer> findOwner;
@@ -45,14 +44,13 @@ public final class MaidPickupController {
     /** 发现不创建路径或认领动作，执行端仍重检当前实体与主人的边界 */
     public List<Entity> prepareIntents() {
         long now = maid.worldObj.getTotalWorldTime();
-        if (now < lastIntentTime) nextIntentScan = 0;
+        if (now < lastIntentTime) nextIntentScan = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
         lastIntentTime = now;
         var home = maid.getHomeArea();
         if (!movementAllowed()) return Collections.emptyList();
         EntityPlayer owner = home.enabled() ? null : findOwner.get();
         if (!home.enabled() && (!MaidOwnerSensor.isValid(maid, owner)
-            || maid.getDistanceSqToEntity(owner) > MaidFollowController.START_DISTANCE_SQ))
-            return Collections.emptyList();
+            || maid.getDistanceSqToEntity(owner) > MaidAiTuning.START_DISTANCE_SQ)) return Collections.emptyList();
         if (target != null) {
             if (now >= expires && !waitingPath) {
                 ignore(target, now);
@@ -61,7 +59,7 @@ public final class MaidPickupController {
             return eligible(target, owner, now) ? Collections.singletonList(target) : Collections.emptyList();
         }
         if (now < nextIntentScan) return Collections.emptyList();
-        nextIntentScan = now + SCAN_INTERVAL;
+        nextIntentScan = now + MaidAiTuning.SCAN_INTERVAL_2;
         return candidates(owner, now);
     }
 
@@ -102,7 +100,7 @@ public final class MaidPickupController {
         if (observedWorld != maid.worldObj) {
             cancel();
             observedWorld = maid.worldObj;
-            nextScan = 0;
+            nextScan = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             ignored = null;
         }
         long now = maid.worldObj.getTotalWorldTime();
@@ -113,7 +111,7 @@ public final class MaidPickupController {
         }
         EntityPlayer owner = home.enabled() ? null : findOwner.get();
         if (!home.enabled() && (!MaidOwnerSensor.isValid(maid, owner)
-            || maid.getDistanceSqToEntity(owner) > MaidFollowController.START_DISTANCE_SQ)) {
+            || maid.getDistanceSqToEntity(owner) > MaidAiTuning.START_DISTANCE_SQ)) {
             cancel();
             return false;
         }
@@ -125,7 +123,7 @@ public final class MaidPickupController {
         }
         if (target == null) {
             if (now < nextScan && preferredIntent == null) return false;
-            nextScan = now + SCAN_INTERVAL;
+            nextScan = now + MaidAiTuning.SCAN_INTERVAL_2;
             if (!select(owner, now)) return false;
         }
         if (!runner.isOwned(run, maid.worldObj, maid.getTask())) {
@@ -133,12 +131,17 @@ public final class MaidPickupController {
             return false;
         }
         maid.getLookHelper()
-            .setLookPosition(target.posX, target.posY, target.posZ, 20, maid.getVerticalFaceSpeed());
-        boolean moved = target.getDistanceSq(plannedX, plannedY, plannedZ) > 0.25;
+            .setLookPosition(
+                target.posX,
+                target.posY,
+                target.posZ,
+                MaidAiTuning.HOME_CONTROLLER_TICK_PARAM,
+                maid.getVerticalFaceSpeed());
+        boolean moved = target.getDistanceSq(plannedX, plannedY, plannedZ) > MaidAiTuning.PICKUP_CONTROLLER_TICK_FACTOR;
         if (now >= nextPath && (waitingPath || moved
             || maid.getNavigator()
                 .noPath())) {
-            nextPath = now + 20;
+            nextPath = now + MaidAiTuning.HOME_CONTROLLER_TICK_PARAM;
             var result = pathTo(target);
             waitingPath = result.isDeferred();
             if (waitingPath) nextPath = now + 1;
@@ -158,8 +161,7 @@ public final class MaidPickupController {
                 .equals(ignored) && now < ignoreUntil
             || !maid.getHomeArea()
                 .contains(entity.posX, entity.posY, entity.posZ)
-            || owner != null && owner.getDistanceSqToEntity(entity) > MaidFollowController.START_DISTANCE_SQ)
-            return false;
+            || owner != null && owner.getDistanceSqToEntity(entity) > MaidAiTuning.START_DISTANCE_SQ) return false;
         return maid.canPickup(entity, true) && maid.getEntitySenses()
             .canSee(entity);
     }
@@ -172,9 +174,10 @@ public final class MaidPickupController {
             var result = pathTo(candidate);
             if (result == PathResult.STARTED || result.isDeferred()) {
                 target = candidate;
-                expires = now + 120;
+                expires = now + MaidAiTuning.PICKUP_CONTROLLER_EXPIRES;
                 waitingPath = result.isDeferred();
-                nextPath = now + (waitingPath ? 1 : 20);
+                nextPath = now + (waitingPath ? MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD
+                    : MaidAiTuning.HOME_CONTROLLER_TICK_PARAM);
                 return true;
             }
             ignore(candidate, now);
@@ -187,29 +190,30 @@ public final class MaidPickupController {
         int radius = maid.getHomeArea()
             .enabled()
                 ? Math.min(
-                    16,
+                    MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM,
                     maid.getHomeArea()
                         .radius())
-                : 8;
-        var returned = maid.worldObj
-            .getEntitiesWithinAABBExcludingEntity(maid, maid.boundingBox.expand(radius, 4, radius));
+                : MaidAiTuning.LEGACY_BRAIN_EXPAND_SECOND_PARAM;
+        var returned = maid.worldObj.getEntitiesWithinAABBExcludingEntity(
+            maid,
+            maid.boundingBox.expand(radius, MaidAiTuning.CHUNK_SECTION_SHIFT, radius));
         var candidates = new ArrayList<Entity>();
         var nearest = Comparator.comparingDouble((Entity entity) -> maid.getDistanceSqToEntity(entity));
         int inspected = 0;
         for (Object value : returned) {
-            if (inspected++ >= CANDIDATE_BUDGET) break;
+            if (inspected++ >= MaidAiTuning.CANDIDATE_BUDGET) break;
             if (!(value instanceof Entity entity) || !eligible(entity, owner, now)) continue;
             candidates.add(entity);
             candidates.sort(nearest);
-            if (candidates.size() > PATH_CANDIDATES) candidates.remove(PATH_CANDIDATES);
+            if (candidates.size() > MaidAiTuning.PATH_CANDIDATES) candidates.remove(MaidAiTuning.PATH_CANDIDATES);
         }
         maid.getBrainCoordinator()
             .getTelemetry()
             .scan(
-                "pickup_candidates",
+                MaidAiIds.ID_PICKUP_CANDIDATES,
                 returned.size(),
-                Math.min(inspected, CANDIDATE_BUDGET),
-                "bounded_scan;partial=" + (returned.size() > CANDIDATE_BUDGET));
+                Math.min(inspected, MaidAiTuning.CANDIDATE_BUDGET),
+                MaidAiIds.ID_BOUNDED_SCAN_PARTIAL + (returned.size() > MaidAiTuning.CANDIDATE_BUDGET));
         return candidates;
     }
 
@@ -217,8 +221,12 @@ public final class MaidPickupController {
         var proposed = run == null ? runner.newRun(maid.worldObj, maid.getTask()) : run;
         if (proposed == null || !proposed.isCurrent(maid.worldObj, maid.getTask())) return PathResult.STALE_REQUEST;
         // 原生整数重载先加0.5再减实体半宽，直接传掉落物所在格
-        var created = planner
-            .create(maid, Math.floor(entity.posX), Math.floor(entity.boundingBox.minY), Math.floor(entity.posZ), 0.6);
+        var created = planner.create(
+            maid,
+            Math.floor(entity.posX),
+            Math.floor(entity.boundingBox.minY),
+            Math.floor(entity.posZ),
+            MaidAiTuning.PICKUP_CONTROLLER_CREATE_FIFTH_FACTOR);
         if (created.preflightFailure != null && created.preflightFailure.isDeferred()) {
             if (run == null) {
                 if (!runner.claim(Owner.PICKUP, proposed, this::cancel)) return PathResult.STALE_REQUEST;
@@ -230,8 +238,10 @@ public final class MaidPickupController {
         if (!proposed.isCurrent(maid.worldObj, maid.getTask())) return PathResult.STALE_REQUEST;
         if (path == null || path.getCurrentPathLength() == 0) return PathResult.UNREACHABLE;
         var end = path.getFinalPathPoint();
-        double dx = end.xCoord + 0.5 - entity.posX, dz = end.zCoord + 0.5 - entity.posZ;
-        if (dx * dx + dz * dz > 0.5 || Math.abs(end.yCoord - entity.boundingBox.minY) > 1)
+        double dx = end.xCoord + MaidAiTuning.CENTER_OFFSET_D - entity.posX,
+            dz = end.zCoord + MaidAiTuning.CENTER_OFFSET_D - entity.posZ;
+        if (dx * dx + dz * dz > MaidAiTuning.CENTER_OFFSET_D
+            || Math.abs(end.yCoord - entity.boundingBox.minY) > MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD)
             return PathResult.UNREACHABLE;
         if (run == null) {
             if (!runner.claim(Owner.PICKUP, proposed, this::cancel)) return PathResult.STALE_REQUEST;
@@ -249,7 +259,7 @@ public final class MaidPickupController {
 
     private void ignore(Entity entity, long now) {
         ignored = entity.getUniqueID();
-        ignoreUntil = now + 100;
+        ignoreUntil = now + MaidAiTuning.LEGACY_BRAIN_IGNORE_UNTIL;
     }
 
     public void cancel() {
@@ -268,8 +278,8 @@ public final class MaidPickupController {
             target = null;
             ownedPath = null;
             run = null;
-            nextPath = 0;
-            nextIntentScan = 0;
+            nextPath = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+            nextIntentScan = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             lastIntentTime = Long.MIN_VALUE;
             waitingPath = false;
             runner.release(stopped);

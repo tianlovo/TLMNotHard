@@ -30,7 +30,8 @@ public final class MaidBannerModelResources implements IResourceManagerReloadLis
 
     public SimpleBedrockModel<Entity> get() throws IOException {
         if (model == null) {
-            if (manager == null) throw new IOException(AttachmentRenderDiagnostics.MSG_BANNER_RESOURCES_ARE_NOT_INITIALIZED);
+            if (manager == null)
+                throw new IOException(AttachmentRenderDiagnostics.MSG_BANNER_RESOURCES_ARE_NOT_INITIALIZED);
             var location = new ResourceLocation(AttachmentRenderIds.MODEL_JSON_MAID_BANNER);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {

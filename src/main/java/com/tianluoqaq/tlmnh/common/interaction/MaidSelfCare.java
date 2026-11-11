@@ -10,12 +10,12 @@ public final class MaidSelfCare {
     public static void tick(EntityMaid maid) {
         if (maid.worldObj.isRemote || !maid.isEntityAlive() || maid.getHealth() >= maid.getMaxHealth()) return;
         if (maid.getRNG()
-            .nextFloat() < .0025F) {
-            maid.heal(1);
+            .nextFloat() < MaidInteractionTuning.MIN_NEXT_FLOAT_THRESHOLD) {
+            maid.heal(MaidInteractionTuning.CONSUME_SINGLE_UNIT);
             maid.worldObj.setEntityState(
                 maid,
-                (byte) (100 + maid.getRNG()
-                    .nextInt(3)));
+                (byte) (MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM_2 + maid.getRNG()
+                    .nextInt(MaidInteractionTuning.TARGET_GET_ID_THRESHOLD)));
         }
     }
 }

@@ -14,7 +14,7 @@ public final class MaidPolicyContext {
     private Object decisionFrame;
 
     MaidPolicyContext(UUID maidId) {
-        this.maidId = Objects.requireNonNull(maidId, "maidId");
+        this.maidId = Objects.requireNonNull(maidId, AiPolicyIds.ID_MAIDID);
         token = new Token(maidId, epoch);
     }
 

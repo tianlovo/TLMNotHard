@@ -17,7 +17,6 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 /** 既成箭出生事实的固定环；不读取隐藏位置，也不在事件中逐女仆广播 */
 public final class CombatProjectileEvents {
 
-    private static final int CAPACITY = 128;
     private static final Map<Object, Ring> WORLDS = new WeakHashMap<>();
     private static boolean registered;
 
@@ -38,7 +37,7 @@ public final class CombatProjectileEvents {
             WORLDS.put(event.world, ring);
         }
         long sequence = ++ring.sequence;
-        ring.entries[(int) (sequence % CAPACITY)] = new Entry(sequence, arrow);
+        ring.entries[(int) (sequence % EnhancedCombatTuning.CAPACITY)] = new Entry(sequence, arrow);
     }
 
     @SubscribeEvent
@@ -54,23 +53,24 @@ public final class CombatProjectileEvents {
 
     public static long sequence(Object world) {
         Ring ring = WORLDS.get(world);
-        return ring == null ? 0 : ring.sequence;
+        return ring == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE : ring.sequence;
     }
 
     public static long oldest(long latest) {
-        return Math.max(1, latest - CAPACITY + 1);
+        return Math
+            .max(EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP, latest - EnhancedCombatTuning.CAPACITY + 1);
     }
 
     public static EntityArrow arrow(Object world, long sequence) {
         Ring ring = WORLDS.get(world);
-        Entry entry = ring == null ? null : ring.entries[(int) (sequence % CAPACITY)];
+        Entry entry = ring == null ? null : ring.entries[(int) (sequence % EnhancedCombatTuning.CAPACITY)];
         return entry != null && entry.sequence == sequence ? entry.arrow.get() : null;
     }
 
     private static final class Ring {
 
         long sequence;
-        final Entry[] entries = new Entry[CAPACITY];
+        final Entry[] entries = new Entry[EnhancedCombatTuning.CAPACITY];
     }
 
     private static final class Entry {

@@ -8,7 +8,6 @@ public final class HodgepodgeCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.HODGEPODGE;
 
-
     public static final HodgepodgeCompat INSTANCE = new HodgepodgeCompat();
 
     private HodgepodgeCompat() {}

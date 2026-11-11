@@ -30,18 +30,19 @@ public final class MaidLifecycleItems {
     public static ItemStack credential(Item item, UUID token, UUID owner) {
         var stack = new ItemStack(item);
         var tag = new NBTTagCompound();
-        tag.setString("TLMNHToken", token.toString());
-        tag.setString("InitMaidOwner", owner.toString());
+        tag.setString(LifecycleItemNbtKeys.KEY_TLMNH_TOKEN, token.toString());
+        tag.setString(LifecycleItemNbtKeys.KEY_INIT_MAID_OWNER, owner.toString());
         stack.setTagCompound(tag);
         return stack;
     }
 
     public static UUID token(ItemStack stack) {
-        if (stack == null || stack.stackSize != 1 || !stack.hasTagCompound()) return null;
+        if (stack == null || stack.stackSize != LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT
+            || !stack.hasTagCompound()) return null;
         try {
             return UUID.fromString(
                 stack.getTagCompound()
-                    .getString("TLMNHToken"));
+                    .getString(LifecycleItemNbtKeys.KEY_TLMNH_TOKEN));
         } catch (IllegalArgumentException exception) {
             return null;
         }
@@ -54,13 +55,16 @@ public final class MaidLifecycleItems {
             if (!entity.worldObj.isRemote && !entity.isEntityInvulnerable()) {
                 var tag = new NBTTagCompound();
                 entity.writeToNBT(tag);
-                tag.setBoolean("Invulnerable", true);
+                tag.setBoolean(LifecycleItemNbtKeys.KEY_INVULNERABLE, true);
                 entity.readFromNBT(tag);
             }
             if (entity.posY < 0) {
-                entity.setPosition(entity.posX, 0.1D, entity.posZ);
-                entity.motionX = entity.motionY = entity.motionZ = 0;
-                entity.fallDistance = 0;
+                entity.setPosition(
+                    entity.posX,
+                    LifecycleItemTuning.LIFECYCLE_ITEMS_SET_POSITION_SECOND_FACTOR,
+                    entity.posZ);
+                entity.motionX = entity.motionY = entity.motionZ = LifecycleItemTuning.LIFECYCLE_ITEMS_MOTION_Z;
+                entity.fallDistance = LifecycleItemTuning.LIFECYCLE_ITEMS_MOTION_Z;
             }
             return false;
         }
@@ -69,15 +73,15 @@ public final class MaidLifecycleItems {
     public static final class InitialSlab extends StoredMaidItem {
 
         public InitialSlab() {
-            setMaxStackSize(1);
-            setUnlocalizedName("tlmnh.smart_slab_init");
-            setTextureName("touhou_little_maid:smart_slab_has_maid");
+            setMaxStackSize(LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT);
+            setUnlocalizedName(LifecycleItemIds.ID_TLMNH_SMART_SLAB_INIT);
+            setTextureName(LifecycleItemIds.ID_TOUHOU_LITTLE_MAID_SMART_SLAB_HAS_MAID);
         }
 
         @Override
         public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
             float hitX, float hitY, float hitZ) {
-            if (side != 1) return false;
+            if (side != LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT) return false;
             if (world.isRemote) return true;
             MaidLifecycleService.tell(player, MaidLifecycleService.releaseInitial(player, stack, x, y, z));
             return true;
@@ -87,21 +91,21 @@ public final class MaidLifecycleItems {
     public static final class FilledSlab extends StoredMaidItem {
 
         public FilledSlab() {
-            setMaxStackSize(1);
-            setUnlocalizedName("tlmnh.smart_slab_has_maid");
-            setTextureName("touhou_little_maid:smart_slab_has_maid");
+            setMaxStackSize(LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT);
+            setUnlocalizedName(LifecycleItemIds.ID_TLMNH_SMART_SLAB_HAS_MAID);
+            setTextureName(LifecycleItemIds.ID_TOUHOU_LITTLE_MAID_SMART_SLAB_HAS_MAID);
         }
 
         @Override
         @SideOnly(Side.CLIENT)
         public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
-            lines.add(StatCollector.translateToLocal("tooltips.tlmnh.smart_slab_has_maid.release"));
+            lines.add(StatCollector.translateToLocal(LifecycleItemIds.I18N_TOOLTIPS_TLMNH_SMART_SLAB_HAS_MAID_RELEASE));
         }
 
         @Override
         public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
             float hitX, float hitY, float hitZ) {
-            if (side != 1) return false;
+            if (side != LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT) return false;
             if (world.isRemote) return true;
             MaidLifecycleService.tell(player, MaidLifecycleService.releaseCaptured(player, stack, x, y, z));
             return true;
@@ -109,6 +113,7 @@ public final class MaidLifecycleItems {
     }
 
     public static boolean isFilm(ItemStack stack) {
-        return stack != null && stack.stackSize == 1 && stack.getItem() == MaidResurrectionContent.FILM;
+        return stack != null && stack.stackSize == LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT
+            && stack.getItem() == MaidResurrectionContent.FILM;
     }
 }

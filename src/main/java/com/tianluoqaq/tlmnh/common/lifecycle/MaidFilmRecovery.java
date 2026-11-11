@@ -22,14 +22,14 @@ public final class MaidFilmRecovery {
 
     public static UUID returnFromShrine(World world, ItemStack film, double x, double y, double z) {
         if (world.isRemote || !MaidLifecycleItems.isFilm(film))
-            throw new IllegalArgumentException("Server film required");
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_SERVER_FILM_REQUIRED);
         return returnOwnedItem(world, film, x, y, z);
     }
 
     /** 本模组持有物品共用先保管后交付边界 */
     public static UUID returnOwnedItem(World world, ItemStack film, double x, double y, double z) {
         if (world.isRemote || film == null || film.stackSize <= 0)
-            throw new IllegalArgumentException("Server item required");
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_SERVER_ITEM_REQUIRED);
         UUID id = queueOwnedItem(world, film, x, y, z);
         attemptSafely(world, id);
         return id;
@@ -38,7 +38,7 @@ public final class MaidFilmRecovery {
     /** 提交已独立持有的物品；仍属于自有Tile的物品由MaidTileReturns确认源移除 */
     public static UUID queueOwnedItem(World world, ItemStack stack, double x, double y, double z) {
         if (world.isRemote || stack == null || stack.stackSize <= 0)
-            throw new IllegalArgumentException("Server item required");
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_SERVER_ITEM_REQUIRED);
         var ledger = MaidLifecycleData.get(world);
         var id = ledger.queueReturnedFilm(ProtectedItemCodec.encode(stack), world.provider.dimensionId, x, y, z);
         MaidLifecycleDurability.ledger(world, ledger);
@@ -61,15 +61,18 @@ public final class MaidFilmRecovery {
     private static void attempt(World world, UUID id) {
         var ledger = MaidLifecycleData.get(world);
         var position = ledger.returnedFilmPosition(id);
-        if (position == null
-            || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord))) return;
+        if (position == null || !world.blockExists(
+            (int) Math.floor(position.xCoord),
+            MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM,
+            (int) Math.floor(position.zCoord))) return;
         var stored = ledger.reserveReturnedFilm(id);
         if (stored == null) return;
         MaidLifecycleDurability.Publication publication = null;
         boolean begun = false, delivered = false;
         try {
             var expected = ProtectedItemCodec.decode(stored);
-            if (expected == null) throw new IllegalStateException("Empty escrowed item retained");
+            if (expected == null)
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_EMPTY_ESCROWED_ITEM_RETAINED);
             MaidLifecycleDurability.requireEntities(world);
             ledger.beginReturnedFilm(id);
             begun = true;
@@ -77,10 +80,10 @@ public final class MaidFilmRecovery {
             var drop = new EntityItem(
                 world,
                 position.xCoord,
-                Math.max(0.1D, position.yCoord),
+                Math.max(MaidLifecycleTuning.FILM_RECOVERY_MAX_FIRST_FACTOR, position.yCoord),
                 position.zCoord,
                 expected.copy());
-            drop.delayBeforeCanPickup = 10;
+            drop.delayBeforeCanPickup = MaidLifecycleTuning.FILM_RECOVERY_DELAY_BEFORE_CAN_PICKUP;
             publication = new MaidLifecycleDurability.Publication(drop, expected);
             if (world.spawnEntityInWorld(drop) && MaidSpawnChecks.itemPresent(drop, expected, world)) {
                 MaidLifecycleDurability.entities(world, Collections.singletonList(publication), true);
@@ -116,6 +119,6 @@ public final class MaidFilmRecovery {
 
     private static void report(UUID id, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
-        IntegrationGuard.report(Side.SERVER, "returned_material/" + id, failure);
+        IntegrationGuard.report(Side.SERVER, MaidLifecycleIds.ID_RETURNED_MATERIAL + id, failure);
     }
 }

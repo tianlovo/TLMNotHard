@@ -43,12 +43,18 @@ public final class MaidSwimRenderPose {
         if (!(event.entityLiving instanceof EntityMaid maid) || !maid.worldObj.isRemote) return;
         var transition = TRANSITIONS.computeIfAbsent(maid, ignored -> new Transition());
         if (transition.tick == maid.ticksExisted) return;
-        if (transition.tick > maid.ticksExisted) transition.previous = transition.current = BuiltinModelLayout.MAX_INITIAL_VALUE;
+        if (transition.tick > maid.ticksExisted)
+            transition.previous = transition.current = BuiltinModelLayout.MAX_INITIAL_VALUE;
         transition.tick = maid.ticksExisted;
         transition.previous = transition.current;
         // MC1.20.1 LivingEntity.updateSwimAmount，以真实视觉Pose而非游泳意图位为准
-        transition.current = maid.getEntityPose() == MaidEntityPose.SWIMMING ? Math.min(BuiltinModelLayout.MIN_SINGLE_UNIT, transition.current + BuiltinModelLayout.SWIM_RENDER_MIN_SECOND_FACTOR)
-            : Math.max(BuiltinModelLayout.MAX_INITIAL_VALUE, transition.current - BuiltinModelLayout.SWIM_RENDER_MIN_SECOND_FACTOR);
+        transition.current = maid.getEntityPose() == MaidEntityPose.SWIMMING
+            ? Math.min(
+                BuiltinModelLayout.MIN_SINGLE_UNIT,
+                transition.current + BuiltinModelLayout.SWIM_RENDER_MIN_SECOND_FACTOR)
+            : Math.max(
+                BuiltinModelLayout.MAX_INITIAL_VALUE,
+                transition.current - BuiltinModelLayout.SWIM_RENDER_MIN_SECOND_FACTOR);
     }
 
     @SubscribeEvent
@@ -60,7 +66,8 @@ public final class MaidSwimRenderPose {
     public static float amount(EntityMaid maid, float partialTick) {
         var transition = TRANSITIONS.get(maid);
         if (transition == null) return BuiltinModelLayout.MAX_INITIAL_VALUE;
-        float partial = Math.max(BuiltinModelLayout.MAX_INITIAL_VALUE, Math.min(BuiltinModelLayout.MIN_SINGLE_UNIT, partialTick));
+        float partial = Math
+            .max(BuiltinModelLayout.MAX_INITIAL_VALUE, Math.min(BuiltinModelLayout.MIN_SINGLE_UNIT, partialTick));
         return transition.previous + (transition.current - transition.previous) * partial;
     }
 
@@ -68,9 +75,18 @@ public final class MaidSwimRenderPose {
     public static void apply(EntityMaid maid, BuiltinMaidModel model, float partialTick) {
         // 固定原SwimAnimation没有覆写setupGeckoRotations，Gecko继续使用自身swim动画
         if (model.getGecko() != null) return;
-        float angle = -(BuiltinModelLayout.SWIM_RENDER_APPLY_PARAM + (maid.isInWater() ? maid.rotationPitch : BuiltinModelLayout.MAX_INITIAL_VALUE)) * amount(maid, partialTick);
-        GL11.glRotatef(angle, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MAX_INITIAL_VALUE, BuiltinModelLayout.MAX_INITIAL_VALUE);
-        if (maid.getEntityPose() == MaidEntityPose.SWIMMING) GL11.glTranslatef(BuiltinModelLayout.MAX_INITIAL_VALUE, BuiltinModelLayout.UNSET_OR_NOT_FOUND, BuiltinModelLayout.SWIM_RENDER_APPLY_OFFSET_Z);
+        float angle = -(BuiltinModelLayout.SWIM_RENDER_APPLY_PARAM
+            + (maid.isInWater() ? maid.rotationPitch : BuiltinModelLayout.MAX_INITIAL_VALUE))
+            * amount(maid, partialTick);
+        GL11.glRotatef(
+            angle,
+            BuiltinModelLayout.MIN_SINGLE_UNIT,
+            BuiltinModelLayout.MAX_INITIAL_VALUE,
+            BuiltinModelLayout.MAX_INITIAL_VALUE);
+        if (maid.getEntityPose() == MaidEntityPose.SWIMMING) GL11.glTranslatef(
+            BuiltinModelLayout.MAX_INITIAL_VALUE,
+            BuiltinModelLayout.UNSET_OR_NOT_FOUND,
+            BuiltinModelLayout.SWIM_RENDER_APPLY_OFFSET_Z);
     }
 
     private static final class Transition {

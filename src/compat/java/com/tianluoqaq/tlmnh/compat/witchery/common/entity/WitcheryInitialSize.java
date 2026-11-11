@@ -12,16 +12,13 @@ import cpw.mods.fml.relauncher.Side;
 /** Witchery出生事件的两项原始尺寸初始化，不调用包含其他玩法的完整事件处理器 */
 public final class WitcheryInitialSize {
 
-
-
-
     private WitcheryInitialSize() {}
 
     /** 已核witchery-1.7.10-0.24.1的GenericEvents.onEntityJoinWorld字节码0–43；其余ForgeData原样保留 */
     public static void prepare(EntityMaid maid, UUID actor) {
         if (!Loader.isModLoaded(WitcheryEntityIds.ID_WITCHERY)) return;
-        if (!IntegrationGuard.available(Side.SERVER, WitcheryEntityIds.KEY)) throw new IllegalStateException(
-            WitcheryEntityDiagnostics.MSG_WITCHERY_INITIAL_SIZE_CONTRACT_IS);
+        if (!IntegrationGuard.available(Side.SERVER, WitcheryEntityIds.KEY))
+            throw new IllegalStateException(WitcheryEntityDiagnostics.MSG_WITCHERY_INITIAL_SIZE_CONTRACT_IS);
         try {
             if (maid.worldObj == null || maid.worldObj.isRemote
                 || !Float.isFinite(maid.width)
@@ -31,7 +28,8 @@ public final class WitcheryInitialSize {
                 throw new IllegalStateException(WitcheryEntityDiagnostics.MSG_UNKNOWN_MAID_DIMENSIONS_BEFORE_WITCHERY);
             if (!DependencyFingerprint.mod(WitcheryEntityIds.ID_WITCHERY)
                 .endsWith(WitcheryEntityIds.REVIEWED_ARTIFACT_REVIEWED + WitcheryEntityIds.SOURCE_SHA256))
-                throw new IllegalStateException(WitcheryEntityDiagnostics.MSG_UNVERIFIED_WITCHERY_INITIAL_SIZE_PROVIDER);
+                throw new IllegalStateException(
+                    WitcheryEntityDiagnostics.MSG_UNVERIFIED_WITCHERY_INITIAL_SIZE_PROVIDER);
             // 原提供方每次Join都覆盖这两float；在写前快照之前执行同一已核初始化
             var data = maid.getEntityData();
             data.setFloat(WitcheryEntityNbtKeys.KEY_WITC_INITIAL_WIDTH, maid.width);

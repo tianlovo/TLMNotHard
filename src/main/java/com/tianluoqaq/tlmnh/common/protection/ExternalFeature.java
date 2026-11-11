@@ -5,30 +5,31 @@ import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
 /** 各外部联动特性的熔断单元定义；契约版本号仅在兼容性重验通过后递增 */
 public enum ExternalFeature {
 
-    PLAYER_OFFHAND("player_offhand", KnownModIds.BACKHAND),
-    SHIELDS("shields", KnownModIds.BATTLEGEAR2, KnownModIds.TCONSTRUCT, KnownModIds.TINKERS_DEFENSE),
-    NUTRITION("nutrition", KnownModIds.APPLE_CORE),
-    GREGTECH_FOOD("gregtech_food", KnownModIds.GREGTECH),
-    PROGRESSION_RECIPES("progression_recipes", KnownModIds.GREGTECH, KnownModIds.DREAMCRAFT),
-    ANIMATED_DOORS("animated_doors", KnownModIds.MALISIS_DOORS, KnownModIds.MALISIS_CORE),
-    VEHICLES("vehicles", KnownModIds.ET_FUTURUM),
-    CABINET_SOUNDS("cabinet_sounds", KnownModIds.ET_FUTURUM),
-    SHRINE_SOUNDS("shrine_sounds", KnownModIds.ET_FUTURUM),
-    ARROW_GRAVITY("arrow_gravity", KnownModIds.GALACTICRAFT_CORE),
-    ITEM_DELIVERY("item_delivery"),
-    BEHAVIOR_RUNTIME("behavior_runtime"),
-    CLIENT_RENDER_STATE("client_render_state", true, KnownModIds.ANGELICA),
-    CLIENT_SLOT_ICONS("client_slot_icons", true, KnownModIds.BATTLEGEAR2),
-    CLIENT_HEAD_ITEMS("client_head_items", true, KnownModIds.ET_FUTURUM),
-    CLIENT_TOMBSTONE("client_tombstone", true),
-    CLIENT_MAID_BED("client_maid_bed", true),
-    CLIENT_SNACK_CABINET("client_snack_cabinet", true),
-    CLIENT_SHRINE("client_shrine", true),
-    CLIENT_BANNER("client_banner", true, KnownModIds.ET_FUTURUM),
-    CLIENT_TOMBSTONE_DIMENSION_TEXTURE("client_tombstone_dimension_texture", true, KnownModIds.TWILIGHT_FOREST);
+    PLAYER_OFFHAND(ProtectionIds.ID_PLAYER_OFFHAND, KnownModIds.BACKHAND),
+    SHIELDS(ProtectionIds.ID_SHIELDS, KnownModIds.BATTLEGEAR2, KnownModIds.TCONSTRUCT, KnownModIds.TINKERS_DEFENSE),
+    NUTRITION(ProtectionIds.ID_NUTRITION, KnownModIds.APPLE_CORE),
+    GREGTECH_FOOD(ProtectionIds.ID_GREGTECH_FOOD, KnownModIds.GREGTECH),
+    PROGRESSION_RECIPES(ProtectionIds.ID_PROGRESSION_RECIPES, KnownModIds.GREGTECH, KnownModIds.DREAMCRAFT),
+    ANIMATED_DOORS(ProtectionIds.ID_ANIMATED_DOORS, KnownModIds.MALISIS_DOORS, KnownModIds.MALISIS_CORE),
+    VEHICLES(ProtectionIds.ID_VEHICLES, KnownModIds.ET_FUTURUM),
+    CABINET_SOUNDS(ProtectionIds.ID_CABINET_SOUNDS, KnownModIds.ET_FUTURUM),
+    SHRINE_SOUNDS(ProtectionIds.ID_SHRINE_SOUNDS, KnownModIds.ET_FUTURUM),
+    ARROW_GRAVITY(ProtectionIds.ID_ARROW_GRAVITY, KnownModIds.GALACTICRAFT_CORE),
+    ITEM_DELIVERY(ProtectionIds.ID_ITEM_DELIVERY),
+    BEHAVIOR_RUNTIME(ProtectionIds.ID_BEHAVIOR_RUNTIME),
+    CLIENT_RENDER_STATE(ProtectionIds.ID_CLIENT_RENDER_STATE, true, KnownModIds.ANGELICA),
+    CLIENT_SLOT_ICONS(ProtectionIds.ID_CLIENT_SLOT_ICONS, true, KnownModIds.BATTLEGEAR2),
+    CLIENT_HEAD_ITEMS(ProtectionIds.ID_CLIENT_HEAD_ITEMS, true, KnownModIds.ET_FUTURUM),
+    CLIENT_TOMBSTONE(ProtectionIds.ID_CLIENT_TOMBSTONE, true),
+    CLIENT_MAID_BED(ProtectionIds.ID_CLIENT_MAID_BED, true),
+    CLIENT_SNACK_CABINET(ProtectionIds.ID_CLIENT_SNACK_CABINET, true),
+    CLIENT_SHRINE(ProtectionIds.ID_CLIENT_SHRINE, true),
+    CLIENT_BANNER(ProtectionIds.ID_CLIENT_BANNER, true, KnownModIds.ET_FUTURUM),
+    CLIENT_TOMBSTONE_DIMENSION_TEXTURE(ProtectionIds.ID_CLIENT_TOMBSTONE_DIMENSION_TEXTURE, true,
+        KnownModIds.TWILIGHT_FOREST);
 
     public final String id;
-    public final int contractRevision = 1;
+    public final int contractRevision = ProtectionTuning.COMPATIBILITY_LEDGER_CHECK_UNIT_STEP;
     public final boolean clientOnly;
     private final String[] dependencies;
 
@@ -52,6 +53,6 @@ public enum ExternalFeature {
     }
 
     public String translationKey() {
-        return "feature.tlmnh.protection." + id;
+        return ProtectionIds.I18N_FEATURE_TLMNH_PROTECTION + id;
     }
 }

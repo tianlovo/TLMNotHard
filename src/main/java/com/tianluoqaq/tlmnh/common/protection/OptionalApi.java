@@ -22,16 +22,18 @@ public final class OptionalApi {
     }
 
     public static Class<?> findClass(Predicate<String> modLoaded, String modId, String className, ClassLoader loader) {
-        Objects.requireNonNull(modLoaded, "modLoaded");
-        Objects.requireNonNull(modId, "modId");
-        Objects.requireNonNull(className, "className");
-        Objects.requireNonNull(loader, "loader");
+        Objects.requireNonNull(modLoaded, ProtectionIds.ID_MODLOADED);
+        Objects.requireNonNull(modId, ProtectionIds.ID_MODID);
+        Objects.requireNonNull(className, ProtectionIds.ID_CLASSNAME);
+        Objects.requireNonNull(loader, ProtectionIds.ID_LOADER);
         if (!modLoaded.test(modId)) return null;
         try {
             return Class.forName(className, false, loader);
         } catch (ClassNotFoundException missing) {
             throw new IllegalStateException(
-                "Optional API class missing while mod " + modId + " is loaded: " + className,
+                ProtectionDiagnostics.MSG_OPTIONAL_API_CLASS_MISSING_WHILE + modId
+                    + ProtectionDiagnostics.MSG_IS_LOADED
+                    + className,
                 missing);
         }
     }
@@ -79,22 +81,22 @@ public final class OptionalApi {
 
     public static MethodHandle findStaticGetter(Predicate<String> modLoaded, ClassLoader loader, String modId,
         String className, String fieldName, Class<?> expectedType) {
-        Objects.requireNonNull(fieldName, "fieldName");
-        Objects.requireNonNull(expectedType, "expectedType");
+        Objects.requireNonNull(fieldName, ProtectionIds.ID_FIELDNAME);
+        Objects.requireNonNull(expectedType, ProtectionIds.ID_EXPECTEDTYPE);
         var owner = findClass(modLoaded, modId, className, loader);
         if (owner == null) return null;
         try {
             var field = owner.getField(fieldName);
             if (!Modifier.isStatic(field.getModifiers()) || field.getType() != expectedType) {
                 throw new IllegalStateException(
-                    "Optional API field signature mismatch on " + className
-                        + "#"
+                    ProtectionDiagnostics.MSG_OPTIONAL_API_FIELD_SIGNATURE_MISMATCH + className
+                        + ProtectionIds.FRAGMENT_PREFIX
                         + fieldName
-                        + ": expected static "
+                        + ProtectionDiagnostics.MSG_EXPECTED_STATIC
                         + expectedType.getName()
-                        + ", found "
+                        + ProtectionDiagnostics.MSG_FOUND
                         + Modifier.toString(field.getModifiers())
-                        + " "
+                        + ProtectionDiagnostics.SINGLE_SPACE
                         + field.getType()
                             .getName());
             }
@@ -102,15 +104,17 @@ public final class OptionalApi {
                 .unreflectGetter(field);
         } catch (NoSuchFieldException | IllegalAccessException failure) {
             throw new IllegalStateException(
-                "Optional API field missing or inaccessible: " + className + "#" + fieldName,
+                ProtectionDiagnostics.MSG_OPTIONAL_API_FIELD_MISSING_OR + className
+                    + ProtectionIds.FRAGMENT_PREFIX
+                    + fieldName,
                 failure);
         }
     }
 
     private static MethodHandle bindMethod(Predicate<String> modLoaded, ClassLoader loader, String modId,
         String className, String methodName, MethodType expectedType, boolean expectStatic) {
-        Objects.requireNonNull(methodName, "methodName");
-        Objects.requireNonNull(expectedType, "expectedType");
+        Objects.requireNonNull(methodName, ProtectionIds.ID_METHODNAME);
+        Objects.requireNonNull(expectedType, ProtectionIds.ID_EXPECTEDTYPE);
         var owner = findClass(modLoaded, modId, className, loader);
         if (owner == null) return null;
         try {
@@ -118,15 +122,15 @@ public final class OptionalApi {
             if (Modifier.isStatic(method.getModifiers()) != expectStatic
                 || method.getReturnType() != expectedType.returnType()) {
                 throw new IllegalStateException(
-                    "Optional API method signature mismatch on " + className
-                        + "#"
+                    ProtectionDiagnostics.MSG_OPTIONAL_API_METHOD_SIGNATURE_MISMATCH + className
+                        + ProtectionIds.FRAGMENT_PREFIX
                         + methodName
-                        + ": expected "
-                        + (expectStatic ? "static " : "instance ")
+                        + ProtectionDiagnostics.MSG_EXPECTED
+                        + (expectStatic ? ProtectionDiagnostics.MSG_STATIC : ProtectionDiagnostics.MSG_INSTANCE)
                         + expectedType
-                        + ", found "
+                        + ProtectionDiagnostics.MSG_FOUND
                         + Modifier.toString(method.getModifiers())
-                        + " "
+                        + ProtectionDiagnostics.SINGLE_SPACE
                         + method.getReturnType()
                             .getName());
             }
@@ -134,7 +138,10 @@ public final class OptionalApi {
                 .unreflect(method);
         } catch (NoSuchMethodException | IllegalAccessException failure) {
             throw new IllegalStateException(
-                "Optional API method missing or inaccessible: " + className + "#" + methodName + expectedType,
+                ProtectionDiagnostics.MSG_OPTIONAL_API_METHOD_MISSING_OR + className
+                    + ProtectionIds.FRAGMENT_PREFIX
+                    + methodName
+                    + expectedType,
                 failure);
         }
     }

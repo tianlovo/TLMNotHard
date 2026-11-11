@@ -19,7 +19,8 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
 
     private final EntityMaid maid;
     private final MaidSwimManager manager;
-    private final MaidSwimJumpTask jump = new MaidSwimJumpTask(.8F);
+    private final MaidSwimJumpTask jump = new MaidSwimJumpTask(
+        AquaticAiTuning.AQUATIC_CONTROLLER_MAID_SWIM_JUMP_TASK_FIRST_FACTOR);
     private boolean pendingJump;
 
     public MaidAquaticController(EntityMaid maid) {
@@ -72,11 +73,11 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
             MaidWaterPhysics.travel(maid, strafe, forward, manager.isReadyToLand() || underWater());
             return true;
         }
-        maid.moveFlying(strafe, forward, .01F);
+        maid.moveFlying(strafe, forward, AquaticAiTuning.AQUATIC_CONTROLLER_MOVE_FLYING_THIRD_FACTOR);
         maid.moveEntity(maid.motionX, maid.motionY, maid.motionZ);
-        maid.motionX *= .9;
-        maid.motionY *= .9;
-        maid.motionZ *= .9;
+        maid.motionX *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
+        maid.motionY *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
+        maid.motionZ *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
         return true;
     }
 
@@ -170,7 +171,9 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
 
     @Override
     public double fluidJumpThreshold() {
-        return maid.getEyeHeight() < .4 ? 0 : .4;
+        return maid.getEyeHeight() < AquaticAiTuning.MIN_GET_EYE_HEIGHT_THRESHOLD
+            ? AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE
+            : AquaticAiTuning.MIN_GET_EYE_HEIGHT_THRESHOLD;
     }
 
     @Override
@@ -206,15 +209,20 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
     public double waterHeight() {
         double height = 0;
         var box = maid.boundingBox;
-        for (int x = MathHelper.floor_double(box.minX + .001); x <= MathHelper.floor_double(box.maxX - .001); x++)
-            for (int z = MathHelper.floor_double(box.minZ + .001); z <= MathHelper.floor_double(box.maxZ - .001); z++)
-                for (int y = MathHelper.floor_double(box.minY + .001); y
-                    <= MathHelper.floor_double(box.maxY - .001); y++) {
-                        if (!water(x, y, z)) continue;
-                        double surface = water(x, y + 1, z) ? y + 1
-                            : y + 1 - BlockLiquid.getLiquidHeightPercent(maid.worldObj.getBlockMetadata(x, y, z));
-                        height = Math.max(height, surface - box.minY);
-                    }
+        for (int x = MathHelper.floor_double(box.minX + AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); x
+            <= MathHelper.floor_double(box.maxX - AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); x++)
+            for (int z = MathHelper.floor_double(box.minZ + AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); z
+                <= MathHelper.floor_double(box.maxZ - AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); z++)
+                for (int y = MathHelper
+                    .floor_double(box.minY + AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); y
+                        <= MathHelper
+                            .floor_double(box.maxY - AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET); y++) {
+                                if (!water(x, y, z)) continue;
+                                double surface = water(x, y + 1, z) ? y + 1
+                                    : y + 1
+                                        - BlockLiquid.getLiquidHeightPercent(maid.worldObj.getBlockMetadata(x, y, z));
+                                height = Math.max(height, surface - box.minY);
+                            }
         return height;
     }
 }

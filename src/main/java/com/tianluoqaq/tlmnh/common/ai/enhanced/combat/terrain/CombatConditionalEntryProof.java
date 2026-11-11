@@ -37,7 +37,9 @@ public final class CombatConditionalEntryProof {
             || target.observedAt != s.tick
             || target.entityId != node.targetEntityId
             || !Objects.equals(s.selectedTarget, node.target)
-            || serial <= 0) throw new IllegalArgumentException("Complete admitted conditional entry required");
+            || serial <= 0)
+            throw new IllegalArgumentException(
+                CombatTerrainDiagnostics.MSG_COMPLETE_ADMITTED_CONDITIONAL_ENTRY_REQUIRED);
         this.node = node;
         geometry = s.geometry;
         halfWidth = s.self.halfWidth;
@@ -47,7 +49,8 @@ public final class CombatConditionalEntryProof {
         equipmentEpoch = s.equipmentEpoch;
         this.weapon = weapon;
         segment = new CombatMovementSegment(node, s.self.position, geometry.observedAt);
-        if (!segment.ordinaryAdjacent()) throw new IllegalArgumentException("Single ordinary entry edge required");
+        if (!segment.ordinaryAdjacent())
+            throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_SINGLE_ORDINARY_ENTRY_EDGE_REQUIRED);
     }
 
     public boolean fresh(long now) {
@@ -82,9 +85,12 @@ public final class CombatConditionalEntryProof {
     }
 
     private boolean dispatchPoint(Vec p) {
-        return same(p, node.anchor) || Math.abs(p.x - (Math.floor(segment.from.x) + .5)) < .0001
-            && Math.abs(p.z - (Math.floor(segment.from.z) + .5)) < .0001
-            && Math.abs(p.y - segment.from.y) < .0001;
+        return same(p, node.anchor) || Math
+            .abs(p.x - (Math.floor(segment.from.x) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR))
+            < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
+            && Math.abs(p.z - (Math.floor(segment.from.z) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR))
+                < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
+            && Math.abs(p.y - segment.from.y) < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR;
     }
 
     private boolean body(Vec a, Vec b, long now, CombatWorkQuota quota) {
@@ -120,17 +126,18 @@ public final class CombatConditionalEntryProof {
             exitZ = (int) Math.floor(b.z);
             dx = Integer.signum(exitX - entranceX);
             dz = Integer.signum(exitZ - entranceZ);
-            x = (int) Math.floor((a.x + b.x) * .5);
+            x = (int) Math.floor((a.x + b.x) * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR);
             y = (int) Math.floor(a.y);
-            z = (int) Math.floor((a.z + b.z) * .5);
+            z = (int) Math.floor((a.z + b.z) * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR);
         }
 
         public static DoorEdge from(Vec a, Vec b) {
             if (a == null || b == null
                 || !Double.isFinite(a.x + a.y + a.z + b.x + b.y + b.z)
-                || Math.abs(a.y - b.y) > .500001) return null;
+                || Math.abs(a.y - b.y) > CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_FACTOR) return null;
             int dx = (int) Math.floor(b.x) - (int) Math.floor(a.x), dz = (int) Math.floor(b.z) - (int) Math.floor(a.z);
-            if (!(Math.abs(dx) == 2 && dz == 0 || dx == 0 && Math.abs(dz) == 2)) return null;
+            if (!(Math.abs(dx) == CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM && dz == 0
+                || dx == 0 && Math.abs(dz) == CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM)) return null;
             var edge = new DoorEdge(a, b);
             return edge.x == edge.entranceX + edge.dx && edge.z == edge.entranceZ + edge.dz ? edge : null;
         }
@@ -160,11 +167,11 @@ public final class CombatConditionalEntryProof {
         public boolean handoff(Vec actual, Vec b) {
             if (actual == null || b == null) return false;
             double distance = actual.distance(b);
-            return Double.isFinite(distance) && distance >= 1.5
+            return Double.isFinite(distance) && distance >= CombatTerrainTuning.MAX_DISTANCE_THRESHOLD
                 && distance <= CombatTerrain.continuationDistance()
-                && (int) Math.floor((actual.x + b.x) * .5) == x
+                && (int) Math.floor((actual.x + b.x) * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR) == x
                 && (int) Math.floor(actual.y) == y
-                && (int) Math.floor((actual.z + b.z) * .5) == z;
+                && (int) Math.floor((actual.z + b.z) * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR) == z;
         }
     }
 
@@ -211,7 +218,7 @@ public final class CombatConditionalEntryProof {
             return node.same(expected) && tick == now
                 && same(actual, point)
                 && geometryAt <= now
-                && now - geometryAt <= CombatSnapshot.GEOMETRY_TTL
+                && now - geometryAt <= CombatTerrainTuning.GEOMETRY_TTL
                 && admissionSerial > 0
                 && work > 0
                 && handoff(node, point);

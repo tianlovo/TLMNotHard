@@ -40,11 +40,13 @@ public final class MaidHandAttachment {
                 .getId();
             backend = model.getGecko() == null ? AttachmentRenderIds.KEY_BEDROCK : AttachmentRenderIds.KEY_GECKO;
             boneChain = Collections.unmodifiableList(new ArrayList<>(bones));
-            sourceMatrix = status == Status.NON_FINITE ? null : matrix.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
+            sourceMatrix = status == Status.NON_FINITE ? null
+                : matrix.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
         }
 
         public Matrix4f getSourceMatrix() {
-            if (sourceMatrix == null) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_NON_FINITE_HAND_ATTACHMENT_MATRIX);
+            if (sourceMatrix == null)
+                throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_NON_FINITE_HAND_ATTACHMENT_MATRIX);
             return new Matrix4f().set(sourceMatrix);
         }
 

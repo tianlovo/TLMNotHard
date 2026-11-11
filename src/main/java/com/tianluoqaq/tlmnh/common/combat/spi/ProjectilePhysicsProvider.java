@@ -56,7 +56,7 @@ public interface ProjectilePhysicsProvider {
     }
 
     default float arrowGravity(EntityArrow arrow) {
-        return 0F;
+        return CombatSpiTuning.PROJECTILE_PHYSICS_ARROW_GRAVITY_FACTOR;
     }
 
     default ArrowLaunchSample sampleArrowLaunch(EntityArrow arrow) {

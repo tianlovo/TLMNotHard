@@ -10,9 +10,10 @@ public final class MaidAcquisitionConfig {
 
     public static boolean naturalSpawning;
     public static boolean giveInitialSlab;
-    public static int naturalWeight = 1;
-    public static int[] naturalBiomes = { 1, 4 };
-    public static int[] naturalDimensions = { 0 };
+    public static int naturalWeight = MaidConfigConfigSpec.ACQUISITION_CONFIG_NATURAL_WEIGHT;
+    public static int[] naturalBiomes = { MaidConfigConfigSpec.ACQUISITION_CONFIG_NATURAL_WEIGHT,
+        MaidConfigConfigSpec.ACQUISITION_CONFIG_DOMAIN_PARAM };
+    public static int[] naturalDimensions = { MaidConfigConfigSpec.ACQUISITION_CONFIG_DEFAULT_ZERO_BASE };
 
     private MaidAcquisitionConfig() {}
 
@@ -20,27 +21,36 @@ public final class MaidAcquisitionConfig {
         var config = new Configuration(file);
         config.load();
         naturalSpawning = config.getBoolean(
-            "naturalSpawning",
-            "acquisition",
+            MaidConfigConfigSpec.ID_NATURALSPAWNING,
+            MaidConfigConfigSpec.ID_ACQUISITION,
             false,
-            "自然生成野生女仆，独立于首次魂符开关；修改后重启 / Natural wild maid spawning; restart required");
+            MaidConfigConfigSpec.MSG_NATURAL_WILD_MAID_SPAWNING_RESTART);
         giveInitialSlab = config.getBoolean(
-            "giveInitialSlab",
-            "acquisition",
+            MaidConfigConfigSpec.ID_GIVEINITIALSLAB,
+            MaidConfigConfigSpec.ID_ACQUISITION,
             false,
-            "可选首次赠送绑定魂符，默认关闭以保留蒸汽获取进度；满背包时等待空位 / Optional free initial owner-bound slab; disabled by default for steam progression; wait for inventory space");
+            MaidConfigConfigSpec.MSG_OPTIONAL_FREE_INITIAL_OWNER_BOUND);
         naturalWeight = config.getInt(
-            "naturalWeight",
-            "acquisition",
-            1,
-            1,
-            100,
-            "自然生成权重，每组1只；Indev默认值待平衡 / Natural spawn weight, one maid per group; Indev balance");
+            MaidConfigConfigSpec.ID_NATURALWEIGHT,
+            MaidConfigConfigSpec.ID_ACQUISITION,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_NATURAL_WEIGHT,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_NATURAL_WEIGHT,
+            MaidConfigConfigSpec.ACQUISITION_CONFIG_LOAD_PARAM,
+            MaidConfigConfigSpec.MSG_INDEV_NATURAL_SPAWN_WEIGHT_ONE);
         naturalBiomes = config
-            .get("acquisition", "naturalBiomes", new int[] { 1, 4 }, "自然生成群系数字ID / Natural spawning biome IDs")
+            .get(
+                MaidConfigConfigSpec.ID_ACQUISITION,
+                MaidConfigConfigSpec.ID_NATURALBIOMES,
+                new int[] { MaidConfigConfigSpec.ACQUISITION_CONFIG_NATURAL_WEIGHT,
+                    MaidConfigConfigSpec.ACQUISITION_CONFIG_DOMAIN_PARAM },
+                MaidConfigConfigSpec.MSG_ID_NATURAL_SPAWNING_BIOME_IDS)
             .getIntList();
         naturalDimensions = config
-            .get("acquisition", "naturalDimensions", new int[] { 0 }, "自然生成维度数字ID / Natural spawning dimension IDs")
+            .get(
+                MaidConfigConfigSpec.ID_ACQUISITION,
+                MaidConfigConfigSpec.ID_NATURALDIMENSIONS,
+                new int[] { MaidConfigConfigSpec.ACQUISITION_CONFIG_DEFAULT_ZERO_BASE },
+                MaidConfigConfigSpec.MSG_ID_NATURAL_SPAWNING_DIMENSION_IDS)
             .getIntList();
         MaidHomeConfig.load(config);
         MaidChatConfig.load(config);

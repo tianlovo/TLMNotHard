@@ -22,7 +22,8 @@ public final class EtFuturumSounds {
         return IntegrationGuard.call(ExternalFeature.CABINET_SOUNDS, () -> {
             String domain = soundNamespace();
             if (domain == null) return fallback;
-            return domain + (opening ? EtFuturumSoundIds.ID_BLOCK_BARREL_OPEN : EtFuturumSoundIds.ID_BLOCK_BARREL_CLOSE);
+            return domain
+                + (opening ? EtFuturumSoundIds.ID_BLOCK_BARREL_OPEN : EtFuturumSoundIds.ID_BLOCK_BARREL_CLOSE);
         }, () -> fallback);
     }
 
@@ -32,8 +33,15 @@ public final class EtFuturumSounds {
             if (world.isRemote) return false;
             String domain = soundNamespace();
             if (domain == null) return false;
-            String sound = domain + (inserted ? EtFuturumSoundIds.ID_ENTITY_ITEM_FRAME_ADD_ITEM : EtFuturumSoundIds.ID_ENTITY_ITEM_FRAME_REMOVE_ITEM);
-            world.playSoundEffect(x + EtFuturumSoundTuning.CENTER_OFFSET_D, y + EtFuturumSoundTuning.CENTER_OFFSET_D, z + EtFuturumSoundTuning.CENTER_OFFSET_D, sound, EtFuturumSoundTuning.PLAY_SOUND_EFFECT_SINGLE_UNIT, EtFuturumSoundTuning.PLAY_SOUND_EFFECT_SINGLE_UNIT);
+            String sound = domain + (inserted ? EtFuturumSoundIds.ID_ENTITY_ITEM_FRAME_ADD_ITEM
+                : EtFuturumSoundIds.ID_ENTITY_ITEM_FRAME_REMOVE_ITEM);
+            world.playSoundEffect(
+                x + EtFuturumSoundTuning.CENTER_OFFSET_D,
+                y + EtFuturumSoundTuning.CENTER_OFFSET_D,
+                z + EtFuturumSoundTuning.CENTER_OFFSET_D,
+                sound,
+                EtFuturumSoundTuning.PLAY_SOUND_EFFECT_SINGLE_UNIT,
+                EtFuturumSoundTuning.PLAY_SOUND_EFFECT_SINGLE_UNIT);
             return true;
         }, () -> false);
     }

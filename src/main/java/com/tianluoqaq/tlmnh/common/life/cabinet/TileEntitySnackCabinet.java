@@ -16,6 +16,7 @@ import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -52,7 +53,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         return recovery;
     }
 
-    private final ItemStack[] items = new ItemStack[27];
+    private final ItemStack[] items = new ItemStack[SnackCabinetLayout.TILE_ENTITY_DOMAIN_PARAM];
 
     @Override
     public int getSizeInventory() {
@@ -89,14 +90,15 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack) {
         if (MaidTileReturns.isPrepared(this))
-            throw new IllegalStateException("Cabinet material is already held for its original removal");
+            throw new IllegalStateException(SnackCabinetDiagnostics.MSG_CABINET_MATERIAL_IS_ALREADY_HELD);
         stack = ProtectedItemCodec.admit(stack, getInventoryStackLimit());
         items[slot] = stack;
         markDirty();
     }
 
     void clearForReturn() {
-        if (!MaidTileReturns.isPrepared(this)) throw new IllegalStateException("Original cabinet escrow required");
+        if (!MaidTileReturns.isPrepared(this))
+            throw new IllegalStateException(SnackCabinetDiagnostics.MSG_ORIGINAL_CABINET_ESCROW_REQUIRED);
         Arrays.fill(items, null);
         recovery.clear();
         markDirty();
@@ -105,7 +107,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     @Override
     public String getInventoryName() {
         return hasCustomInventoryName() ? ((NBTTagString) customName).func_150285_a_()
-            : "container.tlmnh.snack_cabinet";
+            : SnackCabinetIds.I18N_CONTAINER_TLMNH_SNACK_CABINET;
     }
 
     @Override
@@ -121,7 +123,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public int getInventoryStackLimit() {
-        return 64;
+        return SnackCabinetLayout.TILE_ENTITY_GET_INVENTORY_STACK_LIMIT_PARAM;
     }
 
     @Override
@@ -132,7 +134,11 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
             && player.worldObj == worldObj
             && worldObj.blockExists(xCoord, yCoord, zCoord)
             && worldObj.getTileEntity(xCoord, yCoord, zCoord) == this
-            && player.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) <= 64;
+            && player.getDistanceSq(
+                xCoord + SnackCabinetLayout.CENTER_OFFSET_D,
+                yCoord + SnackCabinetLayout.CENTER_OFFSET_D,
+                zCoord + SnackCabinetLayout.CENTER_OFFSET_D)
+                <= SnackCabinetLayout.TILE_ENTITY_GET_INVENTORY_STACK_LIMIT_PARAM;
     }
 
     @Override
@@ -156,12 +162,12 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         var contents = new NBTTagList();
         for (int slot = 0; slot < items.length; slot++) if (items[slot] != null) {
             var item = ProtectedItemCodec.encode(items[slot]);
-            item.setByte("Slot", (byte) slot);
+            item.setByte(SnackCabinetNbtKeys.KEY_SLOT, (byte) slot);
             contents.appendTag(item);
         }
-        tag.setTag("Items", contents);
-        tag.setTag(RecoveryStore.TAG, recovery.write());
-        if (customName != null) tag.setTag("CustomName", customName.copy());
+        tag.setTag(SnackCabinetNbtKeys.KEY_ITEMS, contents);
+        tag.setTag(ProtectionRecoveryNbtKeys.TAG, recovery.write());
+        if (customName != null) tag.setTag(SnackCabinetNbtKeys.KEY_CUSTOM_NAME, customName.copy());
     }
 
     @Override
@@ -169,21 +175,21 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         super.readFromNBT(tag);
         displayChecked = false;
         openers.reset();
-        customName = tag.hasKey("CustomName") ? tag.getTag("CustomName")
+        customName = tag.hasKey(SnackCabinetNbtKeys.KEY_CUSTOM_NAME) ? tag.getTag(SnackCabinetNbtKeys.KEY_CUSTOM_NAME)
             .copy() : null;
         Arrays.fill(items, null);
-        recovery.read(tag.getTagList(RecoveryStore.TAG, Constants.NBT.TAG_COMPOUND));
-        recovery.retainInvalidList(tag, "Items");
-        recovery.retainInvalidList(tag, RecoveryStore.TAG);
-        var contents = tag.getTagList("Items", Constants.NBT.TAG_COMPOUND);
+        recovery.read(tag.getTagList(ProtectionRecoveryNbtKeys.TAG, Constants.NBT.TAG_COMPOUND));
+        recovery.retainInvalidList(tag, SnackCabinetNbtKeys.KEY_ITEMS);
+        recovery.retainInvalidList(tag, ProtectionRecoveryNbtKeys.TAG);
+        var contents = tag.getTagList(SnackCabinetNbtKeys.KEY_ITEMS, Constants.NBT.TAG_COMPOUND);
         for (int index = 0; index < contents.tagCount(); index++) {
             var item = contents.getCompoundTagAt(index);
-            int slot = item.getByte("Slot") & 255;
-            if (!item.hasKey("Slot", Constants.NBT.TAG_BYTE) || slot >= items.length || items[slot] != null)
-                recovery.retain(item);
+            int slot = item.getByte(SnackCabinetNbtKeys.KEY_SLOT) & SnackCabinetLayout.UNSIGNED_BYTE_MASK;
+            if (!item.hasKey(SnackCabinetNbtKeys.KEY_SLOT, Constants.NBT.TAG_BYTE) || slot >= items.length
+                || items[slot] != null) recovery.retain(item);
             else {
                 var stack = ProtectedItemCodec.decode(item);
-                items[slot] = stack == null ? ProtectedItemCodec.seal(item, "empty_entry") : stack;
+                items[slot] = stack == null ? ProtectedItemCodec.seal(item, SnackCabinetIds.ID_EMPTY_ENTRY) : stack;
             }
         }
     }

@@ -3,12 +3,15 @@ package com.tianluoqaq.tlmnh.common.combat.ballistics;
 /** 弹道计算的不可变向量，单位为方块和游戏tick */
 public final class BallisticVector {
 
-    public static final BallisticVector ZERO = new BallisticVector(0, 0, 0);
+    public static final BallisticVector ZERO = new BallisticVector(
+        BallisticsTuning.REJECTED_INITIAL_VALUE,
+        BallisticsTuning.REJECTED_INITIAL_VALUE,
+        BallisticsTuning.REJECTED_INITIAL_VALUE);
     public final double x, y, z;
 
     public BallisticVector(double x, double y, double z) {
         if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
-            throw new IllegalArgumentException("Non-finite ballistic vector");
+            throw new IllegalArgumentException(BallisticsDiagnostics.MSG_NON_FINITE_BALLISTIC_VECTOR);
         this.x = x;
         this.y = y;
         this.z = z;

@@ -43,6 +43,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Tar
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSpace;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
@@ -57,8 +58,7 @@ public final class CombatObservation {
     private final CombatRangePolicy rangePolicy = new CombatRangePolicy();
 
     private static final TaskAttack ATTACK = new TaskAttack();
-    private static final int TARGETS = 8, PROJECTILES = 12, FRIENDS = 12, CHUNK_COUNT = 25;
-    private static final int SCAN_CHUNKS_PER_TICK = 4, PREPARATION_CHUNKS_PER_TICK = 8;
+
     private final Map<UUID, Tracked> targets = new LinkedHashMap<>();
     private final Map<UUID, LivingTrack> living = new LinkedHashMap<>();
     private final Map<UUID, ProjectileTrack> arrows = new LinkedHashMap<>();
@@ -75,7 +75,7 @@ public final class CombatObservation {
     private Chunk scanChunk;
     private final Map<UUID, Entity> deferred = new LinkedHashMap<>();
     private final Map<UUID, SampleResult> sampled = new LinkedHashMap<>();
-    private static final int MAX_DEFERRED = 32, MAX_SAMPLED = 128;
+
     private Readiness lastReadiness;
     private long latestArrowSequence, completedScanTicks = Long.MAX_VALUE;
     private boolean scopeResetThisTick;
@@ -103,7 +103,9 @@ public final class CombatObservation {
 
     public void observe(EntityMaid maid, CombatWorkQuota quota) {
         long now = maid.worldObj.getTotalWorldTime();
-        int stage = quota.full ? 2 : quota.preparing ? 1 : 0;
+        int stage = quota.full ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM
+            : quota.preparing ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         if (tick == now) {
             if (stage > observedStage) {
                 observedStage = stage;
@@ -116,7 +118,7 @@ public final class CombatObservation {
                     if (entity instanceof EntityLivingBase livingEntity) sampleLiving(maid, livingEntity, quota);
                     else if (entity instanceof EntityArrow arrow) sampleArrow(maid, arrow, quota);
                 }
-                if (weapons.size() < 7) captureWeapons(maid, quota);
+                if (weapons.size() < EnhancedCombatTuning.MIN_SIZE_THRESHOLD) captureWeapons(maid, quota);
                 scanLoaded(maid, quota);
                 refreshSecondary(maid, quota);
                 finishObservation();
@@ -135,12 +137,12 @@ public final class CombatObservation {
             maidThreat == null ? null : maidThreat.getUniqueID(),
             ownerThreat == null ? null : ownerThreat.getUniqueID());
         observationGravity = null;
-        gravityQueries = gravityReuses = 0;
+        gravityQueries = gravityReuses = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         observedFull = startedFull = quota.full;
         observedStage = stage;
         permanentObservationGap = permanentProjectileGap = urgentPending = scanPending = false;
-        chunksVisitedThisTick = 0;
-        primaryRays = backgroundRays = secondaryRays = friendRays = 0;
+        chunksVisitedThisTick = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
+        primaryRays = backgroundRays = secondaryRays = friendRays = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         scopeResetThisTick = false;
         scanChunk = null;
         deferred.clear();
@@ -160,11 +162,12 @@ public final class CombatObservation {
         for (Iterator<ProjectileTrack> iterator = arrows.values()
             .iterator(); iterator.hasNext();) {
             ProjectileTrack arrow = iterator.next();
-            if (!current(maid, arrow.entity) || now - arrow.at > 2) iterator.remove();
+            if (!current(maid, arrow.entity) || now - arrow.at > EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM)
+                iterator.remove();
             else sampleArrow(maid, arrow.entity, quota);
         }
         for (Tracked tracked : new ArrayList<>(targets.values())) {
-            if (!current(maid, tracked.entity) || now - tracked.observedAt > CombatSnapshot.HIDDEN_TTL) {
+            if (!current(maid, tracked.entity) || now - tracked.observedAt > CombatTerrainTuning.HIDDEN_TTL) {
                 targets.remove(tracked.entity.getUniqueID());
                 continue;
             }
@@ -180,7 +183,9 @@ public final class CombatObservation {
         recordReadiness(maid, quota, false);
         sampledPreparation(maid, quota);
         ownHits.entrySet()
-            .removeIf(entry -> now < entry.getValue() || now - entry.getValue() > 100);
+            .removeIf(
+                entry -> now < entry.getValue()
+                    || now - entry.getValue() > EnhancedCombatTuning.MAX_GET_VALUE_THRESHOLD);
     }
 
     private void beginPreparation(EntityMaid maid, CombatWorkQuota quota) {
@@ -192,8 +197,8 @@ public final class CombatObservation {
             if (!coverageFresh() && scanStartedAt != Long.MIN_VALUE
                 && tick >= scanStartedAt
                 && tick - scanStartedAt
-                    > CombatBudgetTuning.OBSERVATION_TTL - (CombatWorldBudget.PREPARATION_TICKS - 1)) {
-                traceCoverage(maid, "PREPARATION_WINDOW_SCAN");
+                    > CombatBudgetTuning.OBSERVATION_TTL - (CombatBudgetTuning.PREPARATION_TICKS - 1)) {
+                traceCoverage(maid, EnhancedCombatIds.KEY_PREPARATION_WINDOW_SCAN);
                 startCoverage();
                 preparationRestarted = true;
             }
@@ -202,7 +207,7 @@ public final class CombatObservation {
             && scanStartedAt != Long.MIN_VALUE
             && tick >= scanStartedAt
             && tick - scanStartedAt > CombatBudgetTuning.OBSERVATION_TTL) {
-            traceCoverage(maid, "PREPARATION_EXPIRED_SCAN");
+            traceCoverage(maid, EnhancedCombatIds.KEY_PREPARATION_EXPIRED_SCAN);
             startCoverage();
             preparationRestarted = true;
         }
@@ -210,7 +215,7 @@ public final class CombatObservation {
 
     private void startCoverage() {
         scanChunk = null;
-        chunkCursor = sectionCursor = entityCursor = 0;
+        chunkCursor = sectionCursor = entityCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         scanComplete = false;
         coverageScanning = true;
         scanStartedAt = Long.MIN_VALUE;
@@ -249,7 +254,7 @@ public final class CombatObservation {
     public boolean bodyPreparationReady() {
         if (!preparationInputsReady()) return false;
         for (Tracked target : targets.values()) if (target.position != null && target.observedAt <= tick
-            && tick - target.observedAt <= CombatSnapshot.HIDDEN_TTL) return true;
+            && tick - target.observedAt <= CombatTerrainTuning.HIDDEN_TTL) return true;
         return false;
     }
 
@@ -259,7 +264,7 @@ public final class CombatObservation {
 
     private boolean preparationInputsReady() {
         if (!scanComplete || !coverageFresh()
-            || weapons.size() != 7
+            || weapons.size() != EnhancedCombatTuning.MIN_SIZE_THRESHOLD
             || !projectileComplete
             || !observationComplete
             || friendOverflow) return false;
@@ -291,7 +296,7 @@ public final class CombatObservation {
 
     private void recordFriend(EntityLivingBase entity, Vec position) {
         UUID id = entity.getUniqueID();
-        if (!friendTracks.containsKey(id) && friendTracks.size() >= FRIENDS) {
+        if (!friendTracks.containsKey(id) && friendTracks.size() >= EnhancedCombatTuning.FRIENDS) {
             friendOverflow = true;
             return;
         }
@@ -369,7 +374,8 @@ public final class CombatObservation {
         if (arrowEventCursor < CombatProjectileEvents.oldest(latestArrow) - 1) permanentProjectileGap = true;
         arrowEventCursor = Math.max(arrowEventCursor, CombatProjectileEvents.oldest(latestArrow) - 1);
         int acute = 0;
-        while (arrowEventCursor < latestArrow && acute++ < 8) {
+        while (arrowEventCursor < latestArrow
+            && acute++ < EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM) {
             if (!quota.spend(Work.EVENT)) {
                 urgentPending = true;
                 rejectObservation();
@@ -402,7 +408,8 @@ public final class CombatObservation {
         int before = quota.used(Work.RAY);
         for (int examined = 0; examined < candidates.size(); examined++) {
             if (quota.observationRemaining(Work.RAY) == 0 || quota.observationRemaining(Work.ENTITY) == 0) break;
-            if (refreshCursor >= candidates.size()) refreshCursor = 0;
+            if (refreshCursor >= candidates.size())
+                refreshCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
             Tracked tracked = candidates.get(refreshCursor++);
             if (tracked.observedAt != tick) sampleLiving(maid, tracked.entity, quota);
             if (recoveringTarget && hasCurrentVisibleTarget()) break;
@@ -420,31 +427,38 @@ public final class CombatObservation {
     }
 
     private void scanLoadedNow(EntityMaid maid, CombatWorkQuota quota) {
-        int cx = MathHelper.floor_double(maid.posX) >> 4, cz = MathHelper.floor_double(maid.posZ) >> 4;
+        int cx = MathHelper.floor_double(maid.posX) >> EnhancedCombatTuning.CHUNK_SECTION_SHIFT,
+            cz = MathHelper.floor_double(maid.posZ) >> EnhancedCombatTuning.CHUNK_SECTION_SHIFT;
         if (cx != centerX || cz != centerZ) {
             scopeResetThisTick = true;
             centerX = cx;
             centerZ = cz;
-            traceCoverage(maid, "CHUNK_SCOPE_CHANGED");
+            traceCoverage(maid, EnhancedCombatIds.KEY_CHUNK_SCOPE_CHANGED);
             startCoverage();
         }
         // 覆盖等待/消费FULL时不启动新轮，也不事后清除既有必要采集缺口
         if (scanComplete && coverageFresh()) return;
         if (!coverageScanning) {
-            traceCoverage(maid, "NEXT_COVERAGE_SCAN");
+            traceCoverage(maid, EnhancedCombatIds.KEY_NEXT_COVERAGE_SCAN);
             startCoverage();
         }
         scanPending = false;
         // 同tick升级只续做被预算挡住的实际游标，不重开四个chunk的额外扫描
-        int chunkLimit = quota.preparing ? PREPARATION_CHUNKS_PER_TICK : SCAN_CHUNKS_PER_TICK;
+        int chunkLimit = quota.preparing ? EnhancedCombatTuning.PREPARATION_CHUNKS_PER_TICK
+            : EnhancedCombatTuning.SCAN_CHUNKS_PER_TICK;
         while (scanChunk != null || chunksVisitedThisTick < chunkLimit) {
             if (scanChunk == null && !quota.spendObservation(Work.CHUNK)) {
                 scanPending = true;
                 rejectObservation();
                 return;
             }
-            int offset = chunkCursor == 0 ? 12 : chunkCursor <= 12 ? chunkCursor - 1 : chunkCursor;
-            int x = cx + offset % 5 - 2, z = cz + offset / 5 - 2;
+            int offset = chunkCursor == 0 ? EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM
+                : chunkCursor <= EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM ? chunkCursor - 1
+                    : chunkCursor;
+            int x = cx + offset % EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM_2
+                - EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM,
+                z = cz + offset / EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM_2
+                    - EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM;
             if (scanChunk == null) {
                 if (scanStartedAt == Long.MIN_VALUE) scanStartedAt = tick;
                 chunksVisitedThisTick++;
@@ -459,7 +473,8 @@ public final class CombatObservation {
             var chunk = scanChunk;
             while (sectionCursor < chunk.entityLists.length) {
                 // 从女仆所在高度开始，空section也只有固定16次访问
-                int section = (MathHelper.floor_double(maid.posY) / 16 + sectionCursor) % chunk.entityLists.length;
+                int section = (MathHelper.floor_double(maid.posY) / EnhancedCombatTuning.COMBAT_OBSERVATION_SECTION
+                    + sectionCursor) % chunk.entityLists.length;
                 List<?> entities = chunk.entityLists[section];
                 while (entityCursor < entities.size()) {
                     if (!quota.spendObservation(Work.ENTITY)) {
@@ -480,7 +495,7 @@ public final class CombatObservation {
                     entityCursor++;
                 }
                 sectionCursor++;
-                entityCursor = 0;
+                entityCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
             }
             nextChunk();
             if (chunkCursor == 0) return;
@@ -489,9 +504,9 @@ public final class CombatObservation {
 
     private void nextChunk() {
         scanChunk = null;
-        sectionCursor = entityCursor = 0;
-        if (++chunkCursor >= CHUNK_COUNT) {
-            chunkCursor = 0;
+        sectionCursor = entityCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
+        if (++chunkCursor >= EnhancedCombatTuning.CHUNK_COUNT) {
+            chunkCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
             completedScanTicks = scanStartedAt != Long.MIN_VALUE && tick >= scanStartedAt ? tick - scanStartedAt
                 : Long.MAX_VALUE;
             scanComplete = completedScanTicks <= CombatBudgetTuning.OBSERVATION_TTL;
@@ -532,24 +547,30 @@ public final class CombatObservation {
                 range,
                 MaidCombatConfig.ownerCombatAcquireRange,
                 MaidCombatConfig.ownerCombatRetainRange);
-        double detection = entity.isSneaking() ? .8 : 1;
+        double detection = entity.isSneaking() ? EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_FACTOR
+            : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP;
         if (entity.isInvisible()) {
-            if (!quota.spendObservation(Work.ENTITY, 4)) return rejectObservation();
+            if (!quota.spendObservation(Work.ENTITY, EnhancedCombatTuning.CHUNK_SECTION_SHIFT))
+                return rejectObservation();
             int armor = 0;
-            for (int slot = 1; slot <= 4; slot++) {
+            for (int slot = 1; slot <= EnhancedCombatTuning.CHUNK_SECTION_SHIFT; slot++) {
                 ItemStack item = entity.getEquipmentInSlot(slot);
                 if (item != null && item.stackSize > 0) armor++;
             }
-            detection *= .7 * Math.max(.1F, armor / 4F);
+            detection *= EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_FACTOR_2 * Math.max(
+                EnhancedCombatTuning.COMBAT_OBSERVATION_MAX_FIRST_FACTOR,
+                armor / EnhancedCombatTuning.COMBAT_OBSERVATION_MAX_SECOND_FACTOR);
         }
-        if (position.distance(position(maid)) > Math.max(2, range * detection)) {
+        if (position.distance(position(maid))
+            > Math.max(EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM, range * detection)) {
             if (entity != maid.getOwner()) friendTracks.remove(entity.getUniqueID());
             return SampleResult.OUTSIDE_RANGE;
         }
-        if (living.size() >= 32 && !living.containsKey(entity.getUniqueID())) living.remove(
-            living.keySet()
-                .iterator()
-                .next());
+        if (living.size() >= EnhancedCombatTuning.MAX_SIZE_THRESHOLD && !living.containsKey(entity.getUniqueID()))
+            living.remove(
+                living.keySet()
+                    .iterator()
+                    .next());
         living.put(entity.getUniqueID(), new LivingTrack(entity, tick));
         if (!legalVisible(maid, entity, position)) {
             if (friendly(maid, entity)) recordFriend(entity, position);
@@ -562,7 +583,7 @@ public final class CombatObservation {
         friendTracks.remove(id);
         Tracked tracked = targets.get(id);
         if (tracked == null) {
-            if (targets.size() >= TARGETS) {
+            if (targets.size() >= EnhancedCombatTuning.TARGETS) {
                 Tracked worst = null;
                 for (Tracked candidate : targets.values()) if (worst == null || candidate.observedAt < worst.observedAt
                     || candidate.observedAt == worst.observedAt
@@ -582,18 +603,26 @@ public final class CombatObservation {
             targets.put(id, tracked);
         }
         long elapsed = tick - tracked.observedAt;
-        Vec observedVelocity = tracked.position != null && elapsed > 0 && elapsed <= 8
-            ? position.subtract(tracked.position)
-                .scale(1.0 / elapsed)
-            : new Vec(0, 0, 0);
-        if (observedVelocity.length() > .8) observedVelocity = observedVelocity.scale(.8 / observedVelocity.length());
+        Vec observedVelocity = tracked.position != null && elapsed > 0
+            && elapsed <= EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM
+                ? position.subtract(tracked.position)
+                    .scale(EnhancedCombatTuning.UNIT_AXIS_SCALE_D / elapsed)
+                : new Vec(
+                    EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                    EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                    EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE);
+        if (observedVelocity.length() > EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_FACTOR)
+            observedVelocity = observedVelocity
+                .scale(EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_FACTOR / observedVelocity.length());
         tracked.velocity = observedVelocity;
         tracked.position = position;
         tracked.observedAt = tick;
         tracked.visible = true;
         // 外部生物血量依据基础属性范围与既有命中记录估算
-        if (tracked.health <= 0) tracked.health = entity instanceof IMob ? 20 : 30;
-        tracked.width = entity.width * .5;
+        if (tracked.health <= 0)
+            tracked.health = entity instanceof IMob ? EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM_2;
+        tracked.width = entity.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH;
         tracked.height = entity.height;
         tracked.swinging = entity.isSwingInProgress;
         ItemStack held = entity.getHeldItem();
@@ -623,13 +652,14 @@ public final class CombatObservation {
         if (!maid.canEntityBeSeen(arrow)) return SampleResult.HIDDEN;
         if (arrow.shootingEntity == maid || arrow.shootingEntity == maid.getOwner()) return SampleResult.HIDDEN;
         Vec position = position(arrow);
-        if (position.distance(position(maid)) > 24
-            || arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ < .001)
+        if (position.distance(position(maid)) > EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_ARROW_NOW_PARAM
+            || arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ
+                < EnhancedCombatTuning.MIN_MOTION_Z_THRESHOLD)
             return SampleResult.HIDDEN;
         UUID id = arrow.getUniqueID();
         ProjectileTrack tracked = arrows.get(id);
         if (tracked == null) {
-            if (arrows.size() >= PROJECTILES) {
+            if (arrows.size() >= EnhancedCombatTuning.PROJECTILES) {
                 permanentProjectileGap = permanentObservationGap = true;
                 projectileComplete = false;
                 observationComplete = false;
@@ -690,12 +720,12 @@ public final class CombatObservation {
             new Vec(maid.motionX, maid.motionY, maid.motionZ),
             owner == null ? null : position(owner),
             maid.getHealth(),
-            owner == null ? 20 : owner.getHealth(),
-            maid.width * .5,
+            owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM : owner.getHealth(),
+            maid.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
             maid.height,
             MaidCombatAttributes.entityReach(maid) + maid.getFavorabilityManager()
                 .getAttackDistancePlusByPoint(maid.getFavorability()),
-            .20,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR,
             maid.onGround,
             maid.onGround && !maid.isInWater()
                 && !maid.isOnLadder()
@@ -706,28 +736,39 @@ public final class CombatObservation {
             equipped,
             cadenceReady,
             drawing,
-            attackSpeed > 0 ? Math.max(1, (int) Math.ceil(20 / attackSpeed)) : 20,
+            attackSpeed > 0
+                ? Math.max(
+                    EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP,
+                    (int) Math.ceil(EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM / attackSpeed))
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM,
             cadenceRemaining,
             drawTicks,
             ammunition,
             preferBow,
             preferencePending,
             maid.hurtTime > 0,
-            owner == null ? .3 : owner.width * .5,
-            owner == null ? 1.8 : owner.height);
+            owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_2
+                : owner.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
+            owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_3 : owner.height);
         List<Target> pureTargets = new ArrayList<>();
         for (Tracked target : targets.values()) {
-            if (target.position == null || tick - target.observedAt > CombatSnapshot.HIDDEN_TTL) continue;
+            if (target.position == null || tick - target.observedAt > CombatTerrainTuning.HIDDEN_TTL) continue;
             pureTargets.add(
                 new Target(
                     target.entity.getUniqueID(),
                     target.entity.getEntityId(),
                     target.position,
-                    target.visible ? target.velocity : new Vec(0, 0, 0),
+                    target.visible ? target.velocity
+                        : new Vec(
+                            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE),
                     target.observedAt,
                     ownHits.getOrDefault(target.entity.getUniqueID(), Long.MIN_VALUE),
                     target.health,
-                    target.explosive ? 12 : target.ranged ? 5 : 4,
+                    target.explosive ? EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM
+                        : target.ranged ? EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM_2
+                            : EnhancedCombatTuning.CHUNK_SECTION_SHIFT,
                     target.width,
                     target.height,
                     target.visible,
@@ -739,17 +780,18 @@ public final class CombatObservation {
         }
         List<Projectile> pureArrows = new ArrayList<>();
         for (ProjectileTrack arrow : arrows.values())
-            if (arrow.position != null && tick - arrow.at <= 2) pureArrows.add(
-                new Projectile(
-                    arrow.entity.getUniqueID(),
-                    arrow.position,
-                    arrow.velocity,
-                    arrow.at,
-                    arrow.gravity,
-                    (double) .99F,
-                    .3,
-                    6,
-                    CombatSnapshot.DamageSource.GENERIC_PRIOR));
+            if (arrow.position != null && tick - arrow.at <= EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM)
+                pureArrows.add(
+                    new Projectile(
+                        arrow.entity.getUniqueID(),
+                        arrow.position,
+                        arrow.velocity,
+                        arrow.at,
+                        arrow.gravity,
+                        (double) EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_4,
+                        EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_2,
+                        EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_PARAM,
+                        CombatSnapshot.DamageSource.GENERIC_PRIOR));
         friends.clear();
         for (FriendTrack friend : friendTracks.values()) friends.add(friend.pure());
         recordReadiness(maid, quota, true);
@@ -767,7 +809,7 @@ public final class CombatObservation {
             geometry,
             selected == null ? null : selected.getUniqueID(),
             geometry != null && geometry.complete
-                && weapons.size() == 7
+                && weapons.size() == EnhancedCombatTuning.MIN_SIZE_THRESHOLD
                 && scanComplete
                 && projectileComplete
                 && observationComplete
@@ -777,7 +819,7 @@ public final class CombatObservation {
             completedCoverageOldest,
             movementFact,
             geometry != null && geometry.complete
-                && weapons.size() == 7
+                && weapons.size() == EnhancedCombatTuning.MIN_SIZE_THRESHOLD
                 && scanComplete
                 && projectileComplete
                 && observationComplete
@@ -789,16 +831,19 @@ public final class CombatObservation {
 
     private void captureWeapons(EntityMaid maid, CombatWorkQuota quota) {
         List<Weapon> captured = new ArrayList<>();
-        ammunition = 0;
+        ammunition = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         var inventory = maid.getMaidInventory();
-        for (int slot = -1; slot < 6; slot++) {
+        for (int slot = EnhancedCombatTuning.UNSET_OR_NOT_FOUND; slot
+            < EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_PARAM; slot++) {
             if (slot >= 0 && !quota.spend(Work.ITEM)) break;
-            ItemStack stack = slot == -1 ? maid.getHeldItem() : inventory.getStackInSlot(slot);
+            ItemStack stack = slot == EnhancedCombatTuning.UNSET_OR_NOT_FOUND ? maid.getHeldItem()
+                : inventory.getStackInSlot(slot);
             captured.add(
                 new Weapon(
                     slot,
                     fingerprint(stack),
-                    slot == -1 ? maid.getCombatWeaponProfile() : MaidWeaponCatalog.inspect(stack)));
+                    slot == EnhancedCombatTuning.UNSET_OR_NOT_FOUND ? maid.getCombatWeaponProfile()
+                        : MaidWeaponCatalog.inspect(stack)));
             if (stack != null && stack.getItem() == Items.arrow) ammunition += stack.stackSize;
         }
         ItemStack offhand = maid.getOffhandItem();
@@ -830,33 +875,45 @@ public final class CombatObservation {
         boolean currentVisible = selected != null && selected.visible
             && selected.observedAt == tick
             && selected.position != null;
-        int ox = CombatGeometryWindow
-            .horizontalOrigin(maid.posX, currentVisible ? selected.position.x : 0, currentVisible, maid.width * .5),
-            oy = MathHelper.floor_double(maid.boundingBox.minY) - CombatGeometryWindow.FLOOR_DEPTH,
-            oz = CombatGeometryWindow
-                .horizontalOrigin(maid.posZ, currentVisible ? selected.position.z : 0, currentVisible, maid.width * .5);
-        byte[] cells = new byte[CombatGeometryWindow.WIDTH * CombatGeometryWindow.HEIGHT * CombatGeometryWindow.WIDTH];
-        double[] bounds = new double[cells.length * 6];
+        int ox = CombatGeometryWindow.horizontalOrigin(
+            maid.posX,
+            currentVisible ? selected.position.x : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            currentVisible,
+            maid.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH),
+            oy = MathHelper.floor_double(maid.boundingBox.minY) - CombatBudgetTuning.FLOOR_DEPTH,
+            oz = CombatGeometryWindow.horizontalOrigin(
+                maid.posZ,
+                currentVisible ? selected.position.z : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                currentVisible,
+                maid.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH);
+        byte[] cells = new byte[CombatBudgetTuning.WIDTH * CombatBudgetTuning.HEIGHT * CombatBudgetTuning.WIDTH];
+        double[] bounds = new double[cells.length * EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_PARAM];
         DoorCell[] doorCells = new DoorCell[cells.length];
         CombatSpace.BlockReader reader = CombatSpace.reader(
             maid,
             ox,
             oy,
             oz,
-            ox + CombatGeometryWindow.WIDTH - 1,
-            oy + CombatGeometryWindow.HEIGHT - 1,
-            oz + CombatGeometryWindow.WIDTH - 1,
+            ox + CombatBudgetTuning.WIDTH - 1,
+            oy + CombatBudgetTuning.HEIGHT - 1,
+            oz + CombatBudgetTuning.WIDTH - 1,
             quota);
         boolean complete = reader.result == CombatSpace.Result.SAFE;
-        geometryUnknownCells = geometryBudgetCells = 0;
-        for (int y = 0; y < CombatGeometryWindow.HEIGHT; y++)
-            for (int z = 0; z < CombatGeometryWindow.WIDTH; z++) for (int x = 0; x < CombatGeometryWindow.WIDTH; x++) {
-                int index = (y * CombatGeometryWindow.WIDTH + z) * CombatGeometryWindow.WIDTH + x, px = ox + x,
-                    py = oy + y, pz = oz + z;
-                var mask = AxisAlignedBB.getBoundingBox(px - .01, py - .01, pz - .01, px + 1.01, py + 2.01, pz + 1.01);
+        geometryUnknownCells = geometryBudgetCells = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
+        for (int y = 0; y < CombatBudgetTuning.HEIGHT; y++)
+            for (int z = 0; z < CombatBudgetTuning.WIDTH; z++) for (int x = 0; x < CombatBudgetTuning.WIDTH; x++) {
+                int index = (y * CombatBudgetTuning.WIDTH + z) * CombatBudgetTuning.WIDTH + x, px = ox + x, py = oy + y,
+                    pz = oz + z;
+                var mask = AxisAlignedBB.getBoundingBox(
+                    px - EnhancedCombatTuning.COMBAT_OBSERVATION_MASK,
+                    py - EnhancedCombatTuning.COMBAT_OBSERVATION_MASK,
+                    pz - EnhancedCombatTuning.COMBAT_OBSERVATION_MASK,
+                    px + EnhancedCombatTuning.COMBAT_OBSERVATION_MASK_2,
+                    py + EnhancedCombatTuning.COMBAT_OBSERVATION_MASK_3,
+                    pz + EnhancedCombatTuning.COMBAT_OBSERVATION_MASK_2);
                 CombatSpace.BlockShapes shapes = reader.block(px, py, pz, mask);
                 if (shapes.result != CombatSpace.Result.SAFE) {
-                    cells[index] = Geometry.UNKNOWN;
+                    cells[index] = CombatTerrainTuning.UNKNOWN;
                     if (shapes.result == CombatSpace.Result.BUDGET) geometryBudgetCells++;
                     else geometryUnknownCells++;
                     complete = false;
@@ -865,22 +922,22 @@ public final class CombatObservation {
                 cells[index] = (byte) shapes.flags;
                 doorCells[index] = shapes.doorCell;
                 if (shapes.count == 0) continue;
-                cells[index] |= Geometry.SOLID;
-                int offset = index * 6;
+                cells[index] |= CombatTerrainTuning.SOLID;
+                int offset = index * EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_PARAM;
                 bounds[offset] = shapes.minX;
                 bounds[offset + 1] = shapes.minY;
-                bounds[offset + 2] = shapes.minZ;
-                bounds[offset + 3] = shapes.maxX;
-                bounds[offset + 4] = shapes.maxY;
-                bounds[offset + 5] = shapes.maxZ;
+                bounds[offset + EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM] = shapes.minZ;
+                bounds[offset + EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_GEOMETRY_PARAM] = shapes.maxX;
+                bounds[offset + EnhancedCombatTuning.CHUNK_SECTION_SHIFT] = shapes.maxY;
+                bounds[offset + EnhancedCombatTuning.COMBAT_OBSERVATION_SCAN_LOADED_NOW_PARAM_2] = shapes.maxZ;
             }
         return new Geometry(
             ox,
             oy,
             oz,
-            CombatGeometryWindow.WIDTH,
-            CombatGeometryWindow.HEIGHT,
-            CombatGeometryWindow.WIDTH,
+            CombatBudgetTuning.WIDTH,
+            CombatBudgetTuning.HEIGHT,
+            CombatBudgetTuning.WIDTH,
             tick,
             complete,
             cells,
@@ -891,11 +948,12 @@ public final class CombatObservation {
     private SampleResult remember(Entity entity, SampleResult result) {
         UUID id = entity.getUniqueID();
         if (result == SampleResult.BUDGET_REJECTED) {
-            if (deferred.size() < MAX_DEFERRED || deferred.containsKey(id)) deferred.put(id, entity);
+            if (deferred.size() < EnhancedCombatTuning.MAX_DEFERRED || deferred.containsKey(id))
+                deferred.put(id, entity);
             else permanentObservationGap = true;
         } else {
             deferred.remove(id);
-            if (sampled.size() < MAX_SAMPLED || sampled.containsKey(id)) sampled.put(id, result);
+            if (sampled.size() < EnhancedCombatTuning.MAX_SAMPLED || sampled.containsKey(id)) sampled.put(id, result);
             else permanentObservationGap = true;
         }
         return result;
@@ -911,8 +969,9 @@ public final class CombatObservation {
     /** 完全被动的最后一次capture诊断，不续期、不扫描、不申请配额 */
     private static final class DiagnosticHistory {
 
-        final CombatDiagnosticScope.Log stages = new CombatDiagnosticScope.Log(4);
-        String startReason = "NOT_RECORDED";
+        final CombatDiagnosticScope.Log stages = new CombatDiagnosticScope.Log(
+            EnhancedCombatTuning.CHUNK_SECTION_SHIFT);
+        String startReason = EnhancedCombatIds.KEY_NOT_RECORDED;
         long[] start;
     }
 
@@ -931,7 +990,9 @@ public final class CombatObservation {
         var h = history(scope);
         h.startReason = reason;
         h.start = new long[] { tick, coverageRound, scanStartedAt, scanCompletedAt, chunkCursor, sectionCursor,
-            entityCursor, chunksVisitedThisTick, preparationRound, preparationRestarted ? 1 : 0 };
+            entityCursor, chunksVisitedThisTick, preparationRound,
+            preparationRestarted ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE };
     }
 
     private void recordReadiness(EntityMaid maid, CombatWorkQuota quota, boolean captured) {
@@ -939,24 +1000,54 @@ public final class CombatObservation {
         var scope = CombatDiagnosticScope.current(maid.worldObj);
         if (scope == null) return;
         var h = history(scope);
-        String kind = captured ? "CAPTURE" : quota.full ? "FULL" : quota.preparing ? "PREPARING" : "LIGHT";
+        String kind = captured ? EnhancedCombatIds.KEY_CAPTURE
+            : quota.full ? EnhancedCombatIds.KEY_FULL
+                : quota.preparing ? EnhancedCombatIds.KEY_PREPARING : EnhancedCombatIds.KEY_LIGHT;
         if (!h.stages.shouldCapture(tick, kind)) return;
         var r = lastReadiness;
-        long[] v = new long[30 + r.used.length * 3];
-        long[] head = { scanStartedAt, scanCompletedAt, bodyPreparationReady() ? 1 : 0, preparationRestarted ? 1 : 0,
+        long[] v = new long[EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM_2
+            + r.used.length * EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_GEOMETRY_PARAM];
+        long[] head = { scanStartedAt, scanCompletedAt,
+            bodyPreparationReady() ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            preparationRestarted ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
             r.preparationRound, r.coverageRound, r.oldestCoverage, r.blockedMask, r.chunkCursor, r.sectionCursor,
             r.entityCursor, r.chunksVisited, r.deferredEntities, r.scanCycleTicks, r.completedScanTicks,
             r.completedScanAge, r.primaryRays, r.backgroundRays, r.secondaryRays, r.friendCount, r.friendRays,
-            r.scanPending ? 1 : 0, r.urgentPending ? 1 : 0, r.permanentObservationGap ? 1 : 0,
-            r.permanentProjectileGap ? 1 : 0, r.scopeReset ? 1 : 0, r.preparing ? 1 : 0, r.fullAtCapture ? 1 : 0,
-            r.preparationReady ? 1 : 0, captured ? 1 : 0 };
-        System.arraycopy(head, 0, v, 0, head.length);
+            r.scanPending ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.urgentPending ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.permanentObservationGap ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.permanentProjectileGap ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.scopeReset ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.preparing ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.fullAtCapture ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            r.preparationReady ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            captured ? EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP
+                : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE };
+        System.arraycopy(
+            head,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            v,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            head.length);
         for (int i = 0; i < r.used.length; i++) {
-            v[30 + i] = r.used[i];
-            v[30 + r.used.length + i] = r.observationDenials[i];
-            v[30 + r.used.length * 2 + i] = r.denials[i];
+            v[EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM_2 + i] = r.used[i];
+            v[EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM_2 + r.used.length
+                + i] = r.observationDenials[i];
+            v[EnhancedCombatTuning.COMBAT_OBSERVATION_SAMPLE_LIVING_NOW_PARAM_2
+                + r.used.length * EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_PARAM
+                + i] = r.denials[i];
         }
-        h.stages.addCaptured(tick, kind, "head30/localUsed15/observationDenied15/localDenied15", v);
+        h.stages.addCaptured(tick, kind, EnhancedCombatIds.ID_HEAD30_LOCALUSED15_OBSERVATIONDENIED15_LOCALDENIE, v);
     }
 
     public ObservationDiagnostic diagnostic(Object world) {
@@ -996,7 +1087,7 @@ public final class CombatObservation {
         return new SampleDiagnostic(
             tick,
             id,
-            result == null ? "NOT_SAMPLED" : result.name(),
+            result == null ? EnhancedCombatIds.KEY_NOT_SAMPLED : result.name(),
             deferred.containsKey(id),
             friend != null,
             friend == null ? Long.MIN_VALUE : friend.at,
@@ -1038,10 +1129,6 @@ public final class CombatObservation {
 
     public static final class Readiness {
 
-        public static final int FRIENDS_INCOMPLETE = 1024, TARGET_INCOMPLETE = 2048;
-        public static final int GEOMETRY_MISSING = 1, GEOMETRY_UNKNOWN = 2, GEOMETRY_STALE = 4, WEAPONS_PARTIAL = 8,
-            SCAN_INCOMPLETE = 16, SCAN_STALE = 32, PROJECTILE_INCOMPLETE = 64, OBSERVATION_INCOMPLETE = 128,
-            NO_CAPTURE = 256, OBSERVATION_DENIED = 512;
         public final long tick, scanCycleTicks, completedScanAge, completedScanTicks, geometryAge;
         public final long oldestCoverage, coverageRound, preparationRound;
         public final int friendCount, friendRays;
@@ -1086,17 +1173,21 @@ public final class CombatObservation {
                 : tick - source.scanCompletedAt;
             geometryAge = source.geometry == null || tick < source.geometry.observedAt ? Long.MAX_VALUE
                 : tick - source.geometry.observedAt;
-            int mask = source.geometry == null ? GEOMETRY_MISSING : !source.geometry.complete ? GEOMETRY_UNKNOWN : 0;
-            if (source.geometry != null && !source.geometry.fresh(tick)) mask |= GEOMETRY_STALE;
-            if (source.weapons.size() != 7) mask |= WEAPONS_PARTIAL;
-            if (!source.scanComplete) mask |= SCAN_INCOMPLETE;
-            if (!source.coverageFresh()) mask |= SCAN_STALE;
-            if (!friendsComplete) mask |= FRIENDS_INCOMPLETE;
-            if (captured && !source.selectedCurrent) mask |= TARGET_INCOMPLETE;
-            if (!source.projectileComplete) mask |= PROJECTILE_INCOMPLETE;
-            if (!source.observationComplete) mask |= OBSERVATION_INCOMPLETE;
-            if (!source.deferred.isEmpty() || source.urgentPending || source.scanPending) mask |= OBSERVATION_DENIED;
-            if (!captured) mask |= NO_CAPTURE;
+            int mask = source.geometry == null ? EnhancedCombatTuning.GEOMETRY_MISSING
+                : !source.geometry.complete ? EnhancedCombatTuning.GEOMETRY_UNKNOWN
+                    : EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
+            if (source.geometry != null && !source.geometry.fresh(tick)) mask |= EnhancedCombatTuning.GEOMETRY_STALE;
+            if (source.weapons.size() != EnhancedCombatTuning.MIN_SIZE_THRESHOLD)
+                mask |= EnhancedCombatTuning.WEAPONS_PARTIAL;
+            if (!source.scanComplete) mask |= EnhancedCombatTuning.SCAN_INCOMPLETE;
+            if (!source.coverageFresh()) mask |= EnhancedCombatTuning.SCAN_STALE;
+            if (!friendsComplete) mask |= EnhancedCombatTuning.FRIENDS_INCOMPLETE;
+            if (captured && !source.selectedCurrent) mask |= EnhancedCombatTuning.TARGET_INCOMPLETE;
+            if (!source.projectileComplete) mask |= EnhancedCombatTuning.PROJECTILE_INCOMPLETE;
+            if (!source.observationComplete) mask |= EnhancedCombatTuning.OBSERVATION_INCOMPLETE;
+            if (!source.deferred.isEmpty() || source.urgentPending || source.scanPending)
+                mask |= EnhancedCombatTuning.OBSERVATION_DENIED;
+            if (!captured) mask |= EnhancedCombatTuning.NO_CAPTURE;
             blockedMask = mask;
             chunkCursor = source.chunkCursor;
             sectionCursor = source.sectionCursor;
@@ -1161,20 +1252,22 @@ public final class CombatObservation {
     }
 
     public void acceptedHit(UUID target, long now) {
-        if (ownHits.size() >= TARGETS && !ownHits.containsKey(target)) ownHits.remove(
+        if (ownHits.size() >= EnhancedCombatTuning.TARGETS && !ownHits.containsKey(target)) ownHits.remove(
             ownHits.keySet()
                 .iterator()
                 .next());
         ownHits.put(target, now);
         Tracked tracked = targets.get(target);
-        if (tracked != null) tracked.health = Math.max(1, tracked.health - 4);
+        if (tracked != null) tracked.health = Math.max(
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP,
+            tracked.health - EnhancedCombatTuning.CHUNK_SECTION_SHIFT);
     }
 
     public void clear() {
         rangePolicy.clear();
         fullService.clear();
         observationGravity = null;
-        gravityQueries = gravityReuses = 0;
+        gravityQueries = gravityReuses = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         epoch++;
         targets.clear();
         living.clear();
@@ -1183,7 +1276,7 @@ public final class CombatObservation {
         friendTracks.clear();
         friendOverflow = friendIdentityGap = false;
         completedCoverageOldest = Long.MIN_VALUE;
-        preparationRound = 0;
+        preparationRound = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         coverageRound++;
         ownHits.clear();
         geometry = null;
@@ -1192,7 +1285,7 @@ public final class CombatObservation {
         sampled.clear();
         lastReadiness = null;
         weapons = Collections.emptyList();
-        ammunition = 0;
+        ammunition = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         tick = Long.MIN_VALUE;
         centerX = Integer.MIN_VALUE;
         scanComplete = false;
@@ -1200,8 +1293,8 @@ public final class CombatObservation {
         scanStartedAt = Long.MIN_VALUE;
         scanCompletedAt = Long.MIN_VALUE;
         completedScanTicks = Long.MAX_VALUE;
-        refreshCursor = 0;
-        arrowEventCursor = 0;
+        refreshCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
+        arrowEventCursor = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
     }
 
     public boolean scanComplete() {
@@ -1209,12 +1302,12 @@ public final class CombatObservation {
     }
 
     public static String fingerprint(ItemStack stack) {
-        if (stack == null) return "empty";
-        return Item.getIdFromItem(stack.getItem()) + ":"
+        if (stack == null) return EnhancedCombatIds.ID_EMPTY;
+        return Item.getIdFromItem(stack.getItem()) + EnhancedCombatIds.COLON_DELIMITER
             + stack.getItemDamage()
-            + ":"
+            + EnhancedCombatIds.COLON_DELIMITER
             + stack.stackSize
-            + ":"
+            + EnhancedCombatIds.COLON_DELIMITER
             + (stack.stackTagCompound == null ? "" : stack.stackTagCompound.toString());
     }
 
@@ -1295,7 +1388,7 @@ public final class CombatObservation {
             entityId = entity.getEntityId();
             dimension = entity.dimension;
             this.position = position;
-            halfWidth = entity.width * .5;
+            halfWidth = entity.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH;
             height = entity.height;
             this.at = at;
             this.round = round;
@@ -1320,7 +1413,10 @@ public final class CombatObservation {
     private static final class Tracked {
 
         final EntityLivingBase entity;
-        Vec position, velocity = new Vec(0, 0, 0);
+        Vec position, velocity = new Vec(
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE);
         long observedAt = Long.MIN_VALUE;
         float health;
         double width, height;
@@ -1336,7 +1432,7 @@ public final class CombatObservation {
         final EntityArrow entity;
         Vec position, velocity;
         long at;
-        double gravity = (double) .05F;
+        double gravity = (double) EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_5;
 
         ProjectileTrack(EntityArrow entity) {
             this.entity = entity;

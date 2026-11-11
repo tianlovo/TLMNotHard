@@ -26,38 +26,42 @@ public final class BuiltinModelCatalog {
 
     public static synchronized void load() {
         if (!BY_ID.isEmpty()) return;
-        var stream = BuiltinModelCatalog.class.getResourceAsStream("/assets/tlmnh/builtin-models.json");
-        if (stream == null) throw new IllegalStateException("Missing TLMNH builtin model catalog");
+        var stream = BuiltinModelCatalog.class.getResourceAsStream(BuiltinModelDataIds.MODEL_JSON_BUILTIN_MODELS);
+        if (stream == null)
+            throw new IllegalStateException(BuiltinModelDataDiagnostics.MSG_MISSING_TLMNH_BUILTIN_MODEL_CATALOG);
         var loaded = new LinkedHashMap<String, Choice>();
         try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             var root = new JsonParser().parse(reader)
                 .getAsJsonObject();
-            if (root.get("schema")
-                .getAsInt() != 1) throw new IllegalStateException("Unknown builtin model schema");
-            for (var packElement : root.getAsJsonArray("packs")) {
+            if (root.get(BuiltinModelDataIds.ID_SCHEMA)
+                .getAsInt() != BuiltinModelDataTuning.TARGET_GET_AS_INT_THRESHOLD)
+                throw new IllegalStateException(BuiltinModelDataDiagnostics.MSG_UNKNOWN_BUILTIN_MODEL_SCHEMA);
+            for (var packElement : root.getAsJsonArray(BuiltinModelDataIds.ID_PACKS)) {
                 var pack = packElement.getAsJsonObject();
-                String packId = pack.get("id")
+                String packId = pack.get(BuiltinModelDataIds.ID_ID)
                     .getAsString();
-                for (var modelElement : pack.getAsJsonArray("models")) {
+                for (var modelElement : pack.getAsJsonArray(BuiltinModelDataIds.ID_MODELS)) {
                     var choice = new Choice(packId, modelElement.getAsJsonObject());
-                    if (loaded.put(choice.getId(), choice) != null)
-                        throw new IllegalStateException("Duplicate builtin model ID: " + choice.getId());
+                    if (loaded.put(choice.getId(), choice) != null) throw new IllegalStateException(
+                        BuiltinModelDataDiagnostics.MSG_DUPLICATE_BUILTIN_MODEL_ID + choice.getId());
                 }
             }
         } catch (IOException error) {
-            throw new IllegalStateException("Cannot read TLMNH builtin model catalog", error);
+            throw new IllegalStateException(BuiltinModelDataDiagnostics.MSG_CANNOT_READ_TLMNH_BUILTIN_MODEL, error);
         }
-        if (!loaded.containsKey("touhou_little_maid:hakurei_reimu"))
-            throw new IllegalStateException("Missing TLM default maid model");
+        if (!loaded.containsKey(BuiltinModelDataIds.ID_TOUHOU_LITTLE_MAID_HAKUREI_REIMU))
+            throw new IllegalStateException(BuiltinModelDataDiagnostics.MSG_MISSING_TLM_DEFAULT_MAID_MODEL);
         long winefoxChoices = loaded.values()
             .stream()
             .filter(Choice::isWinefox)
             .count();
-        if (loaded.size() != 254 || winefoxChoices != 35)
-            throw new IllegalStateException("Unexpected builtin model inventory");
+        if (loaded.size() != BuiltinModelDataTuning.TARGET_SIZE_THRESHOLD
+            || winefoxChoices != BuiltinModelDataTuning.TARGET_WINEFOX_CHOICES_THRESHOLD)
+            throw new IllegalStateException(BuiltinModelDataDiagnostics.MSG_UNEXPECTED_BUILTIN_MODEL_INVENTORY);
         BY_ID.putAll(loaded);
         choices = Collections.unmodifiableList(new ArrayList<>(loaded.values()));
-        ModContext.LOG.info("TLMNH_MODEL_CATALOG_READY choices={} winefox={}", choices.size(), winefoxChoices);
+        ModContext.LOG
+            .info(BuiltinModelDataDiagnostics.MSG_TLMNH_MODEL_CATALOG_READY_CHOICES, choices.size(), winefoxChoices);
     }
 
     public static boolean contains(String id) {
@@ -98,61 +102,65 @@ public final class BuiltinModelCatalog {
         private final float itemScale;
 
         private Choice(String packId, JsonObject json) {
-            this.id = json.get("id")
+            this.id = json.get(BuiltinModelDataIds.ID_ID)
                 .getAsString();
-            this.baseId = json.get("base_id")
+            this.baseId = json.get(BuiltinModelDataIds.ID_BASE_ID)
                 .getAsString();
             this.packId = packId;
-            this.name = json.get("name")
+            this.name = json.get(BuiltinModelDataIds.ID_NAME)
                 .getAsString();
-            var source = json.getAsJsonObject("source_info");
-            var egg = source.getAsJsonObject("easter_egg");
-            this.easterEggTag = egg != null && egg.has("tag") ? egg.get("tag")
+            var source = json.getAsJsonObject(BuiltinModelDataIds.ID_SOURCE_INFO);
+            var egg = source.getAsJsonObject(BuiltinModelDataIds.ID_EASTER_EGG);
+            this.easterEggTag = egg != null && egg.has(BuiltinModelDataIds.ID_TAG) ? egg.get(BuiltinModelDataIds.ID_TAG)
                 .getAsString() : "";
-            this.easterEggEncrypted = egg != null && egg.has("encrypt")
-                && egg.get("encrypt")
+            this.easterEggEncrypted = egg != null && egg.has(BuiltinModelDataIds.ID_ENCRYPT)
+                && egg.get(BuiltinModelDataIds.ID_ENCRYPT)
                     .getAsBoolean();
-            this.preferredSoundPack = source.has("use_sound_pack_id") && !source.get("use_sound_pack_id")
-                .isJsonNull() ? source.get("use_sound_pack_id")
-                    .getAsString() : "";
-            this.showBackpack = !source.has("show_backpack") || source.get("show_backpack")
-                .getAsBoolean();
-            this.showCustomHead = !source.has("show_custom_head") || source.get("show_custom_head")
-                .getAsBoolean();
+            this.preferredSoundPack = source.has(BuiltinModelDataIds.ID_USE_SOUND_PACK_ID)
+                && !source.get(BuiltinModelDataIds.ID_USE_SOUND_PACK_ID)
+                    .isJsonNull() ? source.get(BuiltinModelDataIds.ID_USE_SOUND_PACK_ID)
+                        .getAsString() : "";
+            this.showBackpack = !source.has(BuiltinModelDataIds.ID_SHOW_BACKPACK)
+                || source.get(BuiltinModelDataIds.ID_SHOW_BACKPACK)
+                    .getAsBoolean();
+            this.showCustomHead = !source.has(BuiltinModelDataIds.ID_SHOW_CUSTOM_HEAD)
+                || source.get(BuiltinModelDataIds.ID_SHOW_CUSTOM_HEAD)
+                    .getAsBoolean();
             this.geometry = new ResourceLocation(
-                json.get("geometry")
+                json.get(BuiltinModelDataIds.ID_GEOMETRY)
                     .getAsString());
             this.texture = new ResourceLocation(
-                json.get("texture")
+                json.get(BuiltinModelDataIds.ID_TEXTURE)
                     .getAsString());
-            this.gecko = json.get("gecko")
+            this.gecko = json.get(BuiltinModelDataIds.ID_GECKO)
                 .getAsBoolean();
-            this.entityScale = json.get("entity_scale")
+            this.entityScale = json.get(BuiltinModelDataIds.ID_ENTITY_SCALE)
                 .getAsFloat();
-            this.itemScale = json.get("item_scale")
+            this.itemScale = json.get(BuiltinModelDataIds.ID_ITEM_SCALE)
                 .getAsFloat();
             var animationList = new ArrayList<ResourceLocation>();
-            for (var animation : json.getAsJsonArray("animations"))
+            for (var animation : json.getAsJsonArray(BuiltinModelDataIds.ID_ANIMATIONS))
                 animationList.add(new ResourceLocation(animation.getAsString()));
             this.animations = Collections.unmodifiableList(animationList);
             var descriptionList = new ArrayList<String>();
-            for (var line : json.getAsJsonArray("description")) descriptionList.add(line.getAsString());
+            for (var line : json.getAsJsonArray(BuiltinModelDataIds.ID_DESCRIPTION))
+                descriptionList.add(line.getAsString());
             this.description = Collections.unmodifiableList(descriptionList);
         }
 
         private Choice() {
-            id = baseId = "touhou_little_maid:easter_egg_model";
-            packId = "touhou_little_maid";
-            name = "{gui.touhou_little_maid.model_gui.easter_egg.normal}";
+            id = baseId = BuiltinModelDataIds.ID_TOUHOU_LITTLE_MAID_EASTER_EGG_MODEL;
+            packId = BuiltinModelDataIds.ID_TOUHOU_LITTLE_MAID;
+            name = BuiltinModelDataIds.ID_GUI_TOUHOU_LITTLE_MAID_MODEL_GUI_EASTER_EGG_NORMA;
             preferredSoundPack = easterEggTag = "";
             easterEggEncrypted = false;
-            geometry = new ResourceLocation("touhou_little_maid:models/bedrock/entity/easter_egg_model.json");
-            texture = new ResourceLocation("touhou_little_maid:textures/bedrock/entity/easter_egg_model.png");
+            geometry = new ResourceLocation(BuiltinModelDataIds.MODEL_JSON_EASTER_EGG_MODEL);
+            texture = new ResourceLocation(BuiltinModelDataIds.TEXTURE_EASTER_EGG_MODEL);
             animations = Collections.emptyList();
             description = Collections.emptyList();
             gecko = false;
             showBackpack = showCustomHead = true;
-            entityScale = itemScale = 1;
+            entityScale = itemScale = BuiltinModelDataTuning.TARGET_GET_AS_INT_THRESHOLD;
         }
 
         public String getId() {
@@ -200,7 +208,7 @@ public final class BuiltinModelCatalog {
         }
 
         public boolean isWinefox() {
-            return baseId.contains("winefox") || baseId.contains("wine_fox");
+            return baseId.contains(BuiltinModelDataIds.ID_WINEFOX) || baseId.contains(BuiltinModelDataIds.ID_WINE_FOX);
         }
 
         public boolean isShowBackpack() {

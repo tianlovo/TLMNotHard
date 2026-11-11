@@ -26,7 +26,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidWorldSoundPlayer {
 
     public static final MaidWorldSoundPlayer INSTANCE = new MaidWorldSoundPlayer();
-    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(ClientSoundTuning.WORLD_SOUND_DOMAIN_PARAM);
+    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(
+        ClientSoundTuning.WORLD_SOUND_DOMAIN_PARAM);
     private final AtomicInteger generation = new AtomicInteger(), received = new AtomicInteger(),
         overflow = new AtomicInteger();
     private final AtomicBoolean resetRequested = new AtomicBoolean();

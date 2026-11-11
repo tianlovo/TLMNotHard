@@ -3,31 +3,31 @@ package com.tianluoqaq.tlmnh.common.ai.navigation.model;
 /** 现代节点类型及默认代价；枚举次序参与占据范围内的同代价选择 */
 public enum MaidPathType {
 
-    BLOCKED(-1),
-    OPEN(0),
-    WALKABLE(0),
-    WALKABLE_DOOR(0),
-    TRAPDOOR(0),
-    POWDER_SNOW(-1),
-    DANGER_POWDER_SNOW(0),
-    FENCE(-1),
-    LAVA(-1),
-    WATER(8),
-    WATER_BORDER(8),
-    RAIL(0),
-    UNPASSABLE_RAIL(-1),
-    DANGER_FIRE(8),
-    DAMAGE_FIRE(16),
-    DANGER_OTHER(8),
-    DAMAGE_OTHER(-1),
-    DOOR_OPEN(0),
-    DOOR_WOOD_CLOSED(-1),
-    DOOR_IRON_CLOSED(-1),
-    BREACH(4),
-    LEAVES(-1),
-    STICKY_HONEY(8),
-    COCOA(0),
-    DAMAGE_CAUTIOUS(0);
+    BLOCKED(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    OPEN(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    WALKABLE(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    WALKABLE_DOOR(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    TRAPDOOR(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    POWDER_SNOW(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    DANGER_POWDER_SNOW(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    FENCE(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    LAVA(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    WATER(NavigationModelTuning.SECOND_BYTE_SHIFT),
+    WATER_BORDER(NavigationModelTuning.SECOND_BYTE_SHIFT),
+    RAIL(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    UNPASSABLE_RAIL(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    DANGER_FIRE(NavigationModelTuning.SECOND_BYTE_SHIFT),
+    DAMAGE_FIRE(NavigationModelTuning.PATH_TYPE_DAMAGE_FIRE_FIRST_PARAM),
+    DANGER_OTHER(NavigationModelTuning.SECOND_BYTE_SHIFT),
+    DAMAGE_OTHER(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    DOOR_OPEN(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    DOOR_WOOD_CLOSED(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    DOOR_IRON_CLOSED(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    BREACH(NavigationModelTuning.PATH_TYPE_BREACH_FIRST_PARAM),
+    LEAVES(NavigationModelTuning.UNSET_OR_NOT_FOUND),
+    STICKY_HONEY(NavigationModelTuning.SECOND_BYTE_SHIFT),
+    COCOA(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE),
+    DAMAGE_CAUTIOUS(NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE);
 
     public final float defaultCost;
 
@@ -38,7 +38,7 @@ public enum MaidPathType {
     public static float[] maidCosts() {
         float[] costs = new float[values().length];
         for (var type : values()) costs[type.ordinal()] = type.defaultCost;
-        costs[COCOA.ordinal()] = -1;
+        costs[COCOA.ordinal()] = NavigationModelTuning.UNSET_OR_NOT_FOUND;
         return costs;
     }
 }

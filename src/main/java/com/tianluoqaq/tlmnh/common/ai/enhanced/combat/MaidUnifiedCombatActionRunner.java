@@ -10,6 +10,7 @@ import net.minecraft.util.MathHelper;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUseShieldTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
+import com.tianluoqaq.tlmnh.common.ai.combat.AiCombatTuning;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
@@ -25,22 +26,19 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedRideController
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatFeedback;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 /** 只执行当前首段；实际伤害、消耗、举盾和导航仍通过各自已有权威入口 */
 public final class MaidUnifiedCombatActionRunner {
 
-    private static final float APPROACH_SPEED = .6F;
-    private static final double BOW_STAND_DISTANCE = Math.sqrt(MaidBowAttack.RANGE_SQ), HEAD_SWEEP = 1.3;
     // 无跳跃药水的原生飞行约12tick；16tick无阻位移比0.91空气阻力的整段尾和还保守
-    private static final int JUMP_DRIFT_TICKS = 16;
-    private static final double JUMP_SWEEP_EPSILON = .0001;
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final TaskAttack targets = new TaskAttack();
@@ -56,7 +54,7 @@ public final class MaidUnifiedCombatActionRunner {
     private int routeNode;
     private final CombatSpace.Diagnostic jumpHeadCheck = new CombatSpace.Diagnostic();
     private final CombatSpace.Diagnostic jumpSupportCheck = new CombatSpace.Diagnostic();
-    private String jumpDiagnostic = "not_checked";
+    private String jumpDiagnostic = EnhancedCombatIds.ID_NOT_CHECKED;
     private boolean headChecked, supportChecked;
     private double sweepMinX, sweepMinY, sweepMinZ, sweepMaxX, sweepMaxY, sweepMaxZ;
     private Result jumpMeleeResult;
@@ -115,14 +113,15 @@ public final class MaidUnifiedCombatActionRunner {
             actor.eraseWalkTarget();
             return Result.RUNNING;
         }
-        int slot = plan.weaponSlot < 0 ? MaidInventory.MAIN_HAND : plan.weaponSlot;
-        if (slot < 0 || slot >= MaidInventory.BACKPACK_SIZE && slot != MaidInventory.MAIN_HAND) return Result.REJECTED;
+        int slot = plan.weaponSlot < 0 ? MaidInventoryLayout.MAIN_HAND : plan.weaponSlot;
+        if (slot < 0 || slot >= MaidInventoryLayout.BACKPACK_SIZE && slot != MaidInventoryLayout.MAIN_HAND)
+            return Result.REJECTED;
         ItemStack expected = maid.getMaidInventory()
             .getStackInSlot(slot);
         if (!CombatObservation.fingerprint(expected)
             .equals(plan.weaponFingerprint)) return Result.STALE;
         if (plan.strategy == CombatPlan.Strategy.REOBSERVE) {
-            if (plan.weaponSlot != -1 || plan.noDoorSegment == null
+            if (plan.weaponSlot != EnhancedCombatTuning.UNSET_OR_NOT_FOUND || plan.noDoorSegment == null
                 || plan.movementNode == null
                 || !plan.noDoorSegment.fresh(now)
                 || plan.normalProgressAdmitted
@@ -197,7 +196,7 @@ public final class MaidUnifiedCombatActionRunner {
         }
         if (!isMovement(plan.macro) && !EnhancedRideController.stationary(maid)) {
             if (!quota.spend(Work.PATH)) return Result.WAIT_BUDGET;
-            actor.walkToAttackTarget(view, APPROACH_SPEED);
+            actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
         }
         return Result.RUNNING;
     }
@@ -237,19 +236,21 @@ public final class MaidUnifiedCombatActionRunner {
         actor.rangedBow()
             .observe(target, true, maid.worldObj.getTotalWorldTime());
         if (!isMovement(plan.macro)) {
-            if (EnhancedRideController.stationary(maid) || actor.distanceToTarget(view) <= BOW_STAND_DISTANCE)
+            if (EnhancedRideController.stationary(maid)
+                || actor.distanceToTarget(view) <= EnhancedCombatDerivedTuning.BOW_STAND_DISTANCE)
                 actor.eraseWalkTarget();
-            else if (quota.spend(Work.PATH)) actor.walkToAttackTarget(view, APPROACH_SPEED);
+            else if (quota.spend(Work.PATH)) actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
             else return Result.WAIT_BUDGET;
         }
         if (actor.ownsRangedUse()) {
-            if (actor.rangedUsedTicks() < MaidBowAttack.DRAW_TICKS || !maid.getCombatCadence()
+            if (actor.rangedUsedTicks() < MaidCombatTuning.DRAW_TICKS || !maid.getCombatCadence()
                 .ready()) return Result.RUNNING;
             actor.stopOwnedRangedUse();
             if (!authorized()) return Result.STALE;
-            return actor.fireRangedAttackForPolicy(view, 1, () -> authorized() && targetIdentity(target))
-                ? Result.FINISHED
-                : Result.RUNNING;
+            return actor.fireRangedAttackForPolicy(
+                view,
+                EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP,
+                () -> authorized() && targetIdentity(target)) ? Result.FINISHED : Result.RUNNING;
         }
         if (maid.getItemUseState()
             .peek() == null && maid.getCombatCadence()
@@ -278,21 +279,21 @@ public final class MaidUnifiedCombatActionRunner {
 
     public String lastJumpDiagnostic() {
         String value = jumpDiagnostic;
-        if (headChecked) value += ":head=" + jumpHeadCheck.summary()
-            + ":sweep="
+        if (headChecked) value += EnhancedCombatIds.ID_HEAD + jumpHeadCheck.summary()
+            + EnhancedCombatIds.ID_SWEEP
             + sweepMinX
-            + ","
+            + EnhancedCombatIds.COMMA_DELIMITER
             + sweepMinY
-            + ","
+            + EnhancedCombatIds.COMMA_DELIMITER
             + sweepMinZ
-            + "/"
+            + EnhancedCombatIds.PATH_SLASH_SEPARATOR
             + sweepMaxX
-            + ","
+            + EnhancedCombatIds.COMMA_DELIMITER
             + sweepMaxY
-            + ","
+            + EnhancedCombatIds.COMMA_DELIMITER
             + sweepMaxZ;
-        if (supportChecked) value += ":support=" + jumpSupportCheck.summary();
-        return jumpMeleeResult == null ? value : value + ":" + jumpMeleeResult;
+        if (supportChecked) value += EnhancedCombatIds.ID_SUPPORT + jumpSupportCheck.summary();
+        return jumpMeleeResult == null ? value : value + EnhancedCombatIds.COLON_DELIMITER + jumpMeleeResult;
     }
 
     private Result jump(EntityLivingBase target, MaidCombatActor.Target view, CombatPlan plan, CombatWorkQuota quota) {
@@ -300,12 +301,13 @@ public final class MaidUnifiedCombatActionRunner {
         jumpMeleeResult = null;
         if (!jumpRequested || !target.getUniqueID()
             .equals(jumpTarget)) {
-            jumpDiagnostic = "prepare_gate";
+            jumpDiagnostic = EnhancedCombatIds.ID_PREPARE_GATE;
             if ((!plan.simulated && !jumpPreparing) || !maid.getCombatCadence()
                 .formatSupported()
                 || maid.getCombatCadence()
-                    .remainingTicks() > 8
-                || jumpPreparing && maid.worldObj.getTotalWorldTime() - jumpAt > 8
+                    .remainingTicks() > EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM
+                || jumpPreparing && maid.worldObj.getTotalWorldTime() - jumpAt
+                    > EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM
                 || !maid.onGround
                 || maid.isInWater()
                 || maid.isOnLadder()
@@ -315,7 +317,7 @@ public final class MaidUnifiedCombatActionRunner {
                 || maid.isPotionActive(Potion.jump)
                 || !Double.isFinite(jumpPreparing ? jumpExpectedDamage : plan.expectedDamage)
                 || (jumpPreparing ? jumpExpectedDamage : plan.expectedDamage) <= 0) {
-                jumpDiagnostic = "prepare_gate_rejected";
+                jumpDiagnostic = EnhancedCombatIds.ID_PREPARE_GATE_REJECTED;
                 return Result.REJECTED;
             }
             if (!jumpPreparing) {
@@ -330,22 +332,28 @@ public final class MaidUnifiedCombatActionRunner {
             actor.brakeForCombatJump();
             if (!maid.getCombatCadence()
                 .ready()) {
-                jumpDiagnostic = "waiting_cadence";
+                jumpDiagnostic = EnhancedCombatIds.ID_WAITING_CADENCE;
                 return Result.RUNNING;
             }
             // 等待真实惯性自然减速，不把清除WALK当成水平速度已经归零
-            if (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ > .0001) {
-                if (maid.worldObj.getTotalWorldTime() - jumpAt > 8) {
-                    jumpDiagnostic = "brake_timeout";
+            if (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ
+                > EnhancedCombatTuning.MAX_MOTION_Z_THRESHOLD) {
+                if (maid.worldObj.getTotalWorldTime() - jumpAt
+                    > EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM) {
+                    jumpDiagnostic = EnhancedCombatIds.ID_BRAKE_TIMEOUT;
                     return Result.REJECTED;
                 }
-                jumpDiagnostic = "braking";
+                jumpDiagnostic = EnhancedCombatIds.ID_BRAKING;
                 return Result.RUNNING;
             }
             // 基于实际垂直身体边界与残余水平惯性综合计算碰撞区间
-            double driftX = maid.motionX * JUMP_DRIFT_TICKS, driftZ = maid.motionZ * JUMP_DRIFT_TICKS;
-            var sweep = maid.boundingBox.addCoord(driftX, HEAD_SWEEP, driftZ)
-                .expand(JUMP_SWEEP_EPSILON, 0, JUMP_SWEEP_EPSILON);
+            double driftX = maid.motionX * EnhancedCombatTuning.JUMP_DRIFT_TICKS,
+                driftZ = maid.motionZ * EnhancedCombatTuning.JUMP_DRIFT_TICKS;
+            var sweep = maid.boundingBox.addCoord(driftX, EnhancedCombatTuning.HEAD_SWEEP, driftZ)
+                .expand(
+                    EnhancedCombatTuning.JUMP_SWEEP_EPSILON,
+                    EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE,
+                    EnhancedCombatTuning.JUMP_SWEEP_EPSILON);
             var clear = CombatSpace.safeJumpStandingPoint(maid, sweep, quota, jumpHeadCheck, jumpSupportCheck);
             headChecked = true;
             sweepMinX = sweep.minX;
@@ -355,12 +363,12 @@ public final class MaidUnifiedCombatActionRunner {
             sweepMaxY = sweep.maxY;
             sweepMaxZ = sweep.maxZ;
             supportChecked = jumpHeadCheck.result == CombatSpace.Result.SAFE;
-            jumpDiagnostic = supportChecked ? "support_checked" : "head_checked";
+            jumpDiagnostic = supportChecked ? EnhancedCombatIds.ID_SUPPORT_CHECKED : EnhancedCombatIds.ID_HEAD_CHECKED;
             if (clear == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
             if (clear != CombatSpace.Result.SAFE) return Result.REJECTED;
             maid.getJumpHelper()
                 .setJumping();
-            jumpDiagnostic = "requested";
+            jumpDiagnostic = EnhancedCombatIds.ID_REQUESTED;
             jumpRequested = true;
             jumpPreparing = false;
             airborne = false;
@@ -368,15 +376,17 @@ public final class MaidUnifiedCombatActionRunner {
             return Result.RUNNING;
         }
         if (!maid.onGround) airborne = true;
-        jumpDiagnostic = airborne ? "airborne_wait_descent" : "waiting_native_jump";
+        jumpDiagnostic = airborne ? EnhancedCombatIds.ID_AIRBORNE_WAIT_DESCENT
+            : EnhancedCombatIds.ID_WAITING_NATIVE_JUMP;
         if (airborne && maid.motionY < 0 && maid.fallDistance > 0 && actor.withinMeleeRange(view)) {
             Result result = melee(target, view);
-            jumpDiagnostic = "descending_melee";
+            jumpDiagnostic = EnhancedCombatIds.ID_DESCENDING_MELEE;
             jumpMeleeResult = result;
             if (result == Result.FINISHED) jumpRequested = jumpPreparing = false;
             return result;
         }
-        if (maid.onGround && (airborne || maid.worldObj.getTotalWorldTime() - jumpAt > 4)) {
+        if (maid.onGround
+            && (airborne || maid.worldObj.getTotalWorldTime() - jumpAt > EnhancedCombatTuning.CHUNK_SECTION_SHIFT)) {
             jumpRequested = jumpPreparing = false;
             return Result.FINISHED;
         }
@@ -403,11 +413,11 @@ public final class MaidUnifiedCombatActionRunner {
         if (plan.route == null) return plan.destination;
         if (routePath != plan.route) {
             routePath = plan.route;
-            routeNode = 1;
+            routeNode = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_UNIT_STEP;
         }
         Vec current = new Vec(maid.posX, maid.boundingBox.minY, maid.posZ);
-        while (routeNode + 1 < plan.route.nodes.size() && current.distance(plan.route.next(routeNode)) < .35)
-            routeNode++;
+        while (routeNode + 1 < plan.route.nodes.size() && current.distance(plan.route.next(routeNode))
+            < EnhancedCombatTuning.UNIFIED_COMBAT_ROUTE_DESTINATION_FACTOR) routeNode++;
         return plan.route.next(routeNode);
     }
 
@@ -422,18 +432,23 @@ public final class MaidUnifiedCombatActionRunner {
             || !targetArea(destination.x, destination.y, destination.z)) return Result.REJECTED;
         var point = new Point(
             MathHelper.floor_double(destination.x),
-            MathHelper.floor_double(destination.y + .5),
+            MathHelper.floor_double(destination.y + EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH),
             MathHelper.floor_double(destination.z));
         long now = maid.worldObj.getTotalWorldTime();
         boolean continuing = approvedPoint != null && approvedPoint.x == point.x
             && approvedPoint.y == point.y
             && approvedPoint.z == point.z
-            && Math.abs(approvedFootY - destination.y) < .0001
+            && Math.abs(approvedFootY - destination.y) < EnhancedCombatTuning.MAX_MOTION_Z_THRESHOLD
             && now >= routeApprovedAt
-            && now - routeApprovedAt <= 8;
+            && now - routeApprovedAt <= EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM;
         if (!quota.spend(Work.PATH)) return Result.WAIT_BUDGET;
         if (!continuing) {
-            var checked = CombatSpace.safeStandingPoint(maid, point.x + .5, destination.y, point.z + .5, quota);
+            var checked = CombatSpace.safeStandingPoint(
+                maid,
+                point.x + EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
+                destination.y,
+                point.z + EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
+                quota);
             if (checked == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
             if (checked != CombatSpace.Result.SAFE) return Result.REJECTED;
             approvedPoint = point;
@@ -449,7 +464,10 @@ public final class MaidUnifiedCombatActionRunner {
                     || airborne) return Result.WAIT_BUDGET;
                 if (!actor.hasInstalledCombatNode(plan.movementNode)
                     && (!quota.full || plan.passiveDoorExitProof.admittedAt != now)) return Result.WAIT_BUDGET;
-                actor.setPassiveDoorExitWalk(plan.movementNode, plan.passiveDoorExitProof, APPROACH_SPEED);
+                actor.setPassiveDoorExitWalk(
+                    plan.movementNode,
+                    plan.passiveDoorExitProof,
+                    EnhancedCombatTuning.APPROACH_SPEED);
             } else if (plan.movementNode.role == CombatMovementFact.Role.CONDITIONAL_ENTRY) {
                 if (plan.conditionalEntryProof == null || !plan.conditionalEntryProof.fresh(now)
                     || !maid.onGround
@@ -459,7 +477,10 @@ public final class MaidUnifiedCombatActionRunner {
                     || !plan.necessaryComparisonComplete && plan.simulated
                     || plan.simulated && !plan.normalProgressAdmitted) return Result.WAIT_BUDGET;
                 if (!plan.simulated && !actor.hasInstalledCombatNode(plan.movementNode)) return Result.WAIT_BUDGET;
-                actor.setConditionalEntryNodeWalk(plan.movementNode, plan.conditionalEntryProof, APPROACH_SPEED);
+                actor.setConditionalEntryNodeWalk(
+                    plan.movementNode,
+                    plan.conditionalEntryProof,
+                    EnhancedCombatTuning.APPROACH_SPEED);
             } else if (plan.movementNode.role == CombatMovementFact.Role.SAME_CELL_ALIGNMENT) {
                 if (plan.alignmentProof == null || !plan.alignmentProof.fresh(now)
                     || !maid.onGround
@@ -467,11 +488,14 @@ public final class MaidUnifiedCombatActionRunner {
                     || jumpPreparing
                     || airborne) return Result.WAIT_BUDGET;
                 if (!plan.simulated && !actor.hasInstalledCombatNode(plan.movementNode)) return Result.WAIT_BUDGET;
-                actor.setAlignmentNodeWalk(plan.movementNode, plan.alignmentProof, APPROACH_SPEED);
-            } else if (plan.strategy == CombatPlan.Strategy.REOBSERVE)
-                actor.setReobservationNodeWalk(plan.movementNode, plan.noDoorSegment, APPROACH_SPEED);
-            else actor.setCombatNodeWalk(plan.movementNode, APPROACH_SPEED);
-        } else actor.setPositionWalkAndLook(approvedPoint, APPROACH_SPEED, 0);
+                actor.setAlignmentNodeWalk(plan.movementNode, plan.alignmentProof, EnhancedCombatTuning.APPROACH_SPEED);
+            } else if (plan.strategy == CombatPlan.Strategy.REOBSERVE) actor
+                .setReobservationNodeWalk(plan.movementNode, plan.noDoorSegment, EnhancedCombatTuning.APPROACH_SPEED);
+            else actor.setCombatNodeWalk(plan.movementNode, EnhancedCombatTuning.APPROACH_SPEED);
+        } else actor.setPositionWalkAndLook(
+            approvedPoint,
+            EnhancedCombatTuning.APPROACH_SPEED,
+            EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE);
         return Result.RUNNING;
     }
 
@@ -489,7 +513,7 @@ public final class MaidUnifiedCombatActionRunner {
         if (home.enabled()) return home.sameDimension() && home.containsMaid();
         var owner = maid.getOwner();
         return MaidCombatTargeting.validOwner(maid, owner)
-            && maid.getDistanceSqToEntity(owner) <= MaidCombatTargeting.OWNER_RADIUS_SQ;
+            && maid.getDistanceSqToEntity(owner) <= AiCombatTuning.OWNER_RADIUS_SQ;
     }
 
     private boolean targetIdentity(EntityLivingBase target) {
@@ -510,7 +534,7 @@ public final class MaidUnifiedCombatActionRunner {
         var home = maid.getHomeArea();
         if (home.enabled()) return home.sameDimension() && home.contains(x, y, z);
         var owner = maid.getOwner();
-        return owner != null && owner.getDistanceSq(x, y, z) <= MaidCombatTargeting.OWNER_RADIUS_SQ;
+        return owner != null && owner.getDistanceSq(x, y, z) <= AiCombatTuning.OWNER_RADIUS_SQ;
     }
 
     private static boolean isMovement(Macro macro) {
@@ -528,7 +552,7 @@ public final class MaidUnifiedCombatActionRunner {
     public void cancel() {
         actor.clearCombatMovement();
         routePath = null;
-        routeNode = 0;
+        routeNode = EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE;
         jumpRequested = jumpPreparing = airborne = false;
         jumpTarget = null;
         jumpWeapon = null;

@@ -25,7 +25,7 @@ public final class MaidWeaponStrike {
     public MaidWeaponStrike(ItemStack original, MaidWeaponProfile profile, boolean normalizationChanged,
         HitEffects effects) {
         if (original == null || profile == null || !profile.melee() || effects == null)
-            throw new IllegalArgumentException("Melee weapon binding required");
+            throw new IllegalArgumentException(WeaponCombatDiagnostics.MSG_MELEE_WEAPON_BINDING_REQUIRED);
         this.original = original;
         this.contents = original.copy();
         this.profile = profile;
@@ -59,13 +59,15 @@ public final class MaidWeaponStrike {
     }
 
     public DamageSource damageSource(EntityMaid maid, EntityLivingBase target) {
-        if (!isCurrent()) throw new IllegalStateException("Weapon changed before damage source");
+        if (!isCurrent())
+            throw new IllegalStateException(WeaponCombatDiagnostics.MSG_WEAPON_CHANGED_BEFORE_DAMAGE_SOURCE);
         return effects.damageSource(maid, target);
     }
 
     /** 开始后即不可重试，异常交由命中凭证保留待处理事实 */
     public void settleAcceptedHit(EntityLivingBase target, EntityMaid maid) {
-        if (!isCurrent()) throw new IllegalStateException("Weapon changed or settlement already attempted");
+        if (!isCurrent())
+            throw new IllegalStateException(WeaponCombatDiagnostics.MSG_WEAPON_CHANGED_OR_SETTLEMENT_ALREADY);
         settlementStarted = true;
         effects.settleAcceptedHit(original, target, maid);
     }

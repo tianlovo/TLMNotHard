@@ -16,7 +16,8 @@ public final class MaidWorldNavigationBudget {
     private MaidWorldNavigationBudget() {}
 
     public static MaidNavigationBudget forWorld(World world) {
-        if (world == null || world.isRemote) throw new IllegalArgumentException("Server world required");
+        if (world == null || world.isRemote)
+            throw new IllegalArgumentException(AiBudgetDiagnostics.MSG_SERVER_WORLD_REQUIRED);
         return WORLDS.computeIfAbsent(world, ignored -> new MaidNavigationBudget(MaidNavigationConfig.queriesPerTick));
     }
 

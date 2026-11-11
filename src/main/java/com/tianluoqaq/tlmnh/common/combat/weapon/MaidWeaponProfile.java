@@ -17,9 +17,6 @@ public final class MaidWeaponProfile {
         GREGTECH_BUTCHERY_KNIFE
     }
 
-    public static final float FALLING_CRITICAL_MULTIPLIER = 1.5F;
-    public static final double MAID_BASE_ATTACK_DAMAGE = 2.0D;
-
     public final Kind kind;
     public final Family family;
     public final String reason, dependency;
@@ -65,19 +62,19 @@ public final class MaidWeaponProfile {
             Family.UNKNOWN,
             reason,
             "",
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
             false,
             false);
     }

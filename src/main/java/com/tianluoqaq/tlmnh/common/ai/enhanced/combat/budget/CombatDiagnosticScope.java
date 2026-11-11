@@ -12,7 +12,7 @@ import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 public final class CombatDiagnosticScope implements AutoCloseable {
 
     private static final Map<Object, CombatDiagnosticScope> ACTIVE = new WeakHashMap<>();
-    private static final int MAX_OWNERS = 256;
+
     private final WeakReference<Object> world;
     private final CombatDiagnosticScope previous;
     private final Map<Object, Object> values = new IdentityHashMap<>();
@@ -26,7 +26,7 @@ public final class CombatDiagnosticScope implements AutoCloseable {
 
     public static CombatDiagnosticScope open(Object world) {
         if (!DevelopmentFlags.isDevCommandsEnabled() || world == null)
-            throw new IllegalStateException("Explicit development QA diagnostics required");
+            throw new IllegalStateException(CombatBudgetDiagnostics.MSG_EXPLICIT_DEVELOPMENT_QA_DIAGNOSTICS_REQUIRED);
         var scope = new CombatDiagnosticScope(world, ACTIVE.get(world));
         ACTIVE.put(world, scope);
         return scope;
@@ -41,8 +41,8 @@ public final class CombatDiagnosticScope implements AutoCloseable {
     }
 
     public void put(Object owner, Object value) {
-        if (closed) throw new IllegalStateException("Closed diagnostic scope");
-        if (!values.containsKey(owner) && values.size() >= MAX_OWNERS) {
+        if (closed) throw new IllegalStateException(CombatBudgetDiagnostics.MSG_CLOSED_DIAGNOSTIC_SCOPE);
+        if (!values.containsKey(owner) && values.size() >= CombatBudgetTuning.MAX_OWNERS) {
             droppedOwners++;
             return;
         }
@@ -123,7 +123,7 @@ public final class CombatDiagnosticScope implements AutoCloseable {
             if (now != tick) {
                 Arrays.fill(events, null);
                 tick = now;
-                size = dropped = 0;
+                size = dropped = CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED;
             }
         }
 
@@ -141,12 +141,12 @@ public final class CombatDiagnosticScope implements AutoCloseable {
             begin(now);
             if (size < events.length) return true;
             dropped++;
-            return kind.equals("REJECT") || kind.equals("STOP");
+            return kind.equals(CombatBudgetIds.KEY_REJECT) || kind.equals(CombatBudgetIds.KEY_STOP);
         }
 
         public void addCaptured(long now, String kind, String detail, long... values) {
             begin(now);
-            boolean reject = kind.equals("REJECT") || kind.equals("STOP");
+            boolean reject = kind.equals(CombatBudgetIds.KEY_REJECT) || kind.equals(CombatBudgetIds.KEY_STOP);
             if (size >= events.length && !reject) return;
             Event event = new Event(now, ++sequence, kind, detail, values);
             if (reject) lastReject = event;

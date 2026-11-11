@@ -14,80 +14,94 @@ final class MaidRedemptionRecord {
 
     private static final Set<String> FIELDS = new HashSet<>(
         Arrays.asList(
-            "Version",
-            "Stage",
-            "Actor",
-            "Candidate",
-            "Dimension",
-            "X",
-            "Y",
-            "Z",
-            "Shrine",
-            "Metadata",
-            "Source",
-            "Maid",
-            "Inventory",
-            "ResultInventory",
-            "Cursor",
-            "Selected",
-            "Health",
-            "Maximum",
-            "Creative",
-            "Tile",
-            "ResultTile"));
+            MaidLifecyclePart2NbtKeys.KEY_VERSION,
+            MaidLifecyclePart2NbtKeys.KEY_STAGE,
+            MaidLifecyclePart2NbtKeys.KEY_ACTOR,
+            MaidLifecyclePart2NbtKeys.KEY_CANDIDATE,
+            MaidLifecyclePart2NbtKeys.KEY_DIMENSION,
+            MaidLifecyclePart2NbtKeys.KEY_X,
+            MaidLifecyclePart2NbtKeys.KEY_Y,
+            MaidLifecyclePart2NbtKeys.KEY_Z,
+            MaidLifecyclePart2NbtKeys.KEY_SHRINE,
+            MaidLifecyclePart2NbtKeys.KEY_METADATA,
+            MaidLifecyclePart2NbtKeys.KEY_SOURCE,
+            MaidLifecyclePart2NbtKeys.KEY_MAID,
+            MaidLifecyclePart2NbtKeys.KEY_INVENTORY,
+            MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY,
+            MaidLifecyclePart2NbtKeys.KEY_CURSOR,
+            MaidLifecyclePart2NbtKeys.KEY_SELECTED,
+            MaidLifecyclePart2NbtKeys.KEY_HEALTH,
+            MaidLifecyclePart2NbtKeys.KEY_MAXIMUM,
+            MaidLifecyclePart2NbtKeys.KEY_CREATIVE,
+            MaidLifecyclePart2NbtKeys.KEY_TILE,
+            MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE));
 
     private MaidRedemptionRecord() {}
 
     static void validate(NBTTagCompound data) {
-        for (Object key : data.func_150296_c()) if (!FIELDS.contains(key))
-            throw new IllegalStateException("Unknown maid redemption field preserved: " + key);
+        for (Object key : data.func_150296_c()) if (!FIELDS.contains(key)) throw new IllegalStateException(
+            MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_MAID_REDEMPTION_FIELD_PRESERVED + key);
         if (data.func_150296_c()
-            .size() != FIELDS.size() || !data.hasKey("Version", Constants.NBT.TAG_INT)
-            || data.getInteger("Version") != 1
-            || !data.hasKey("Stage", Constants.NBT.TAG_STRING)
-            || !(data.getString("Stage")
-                .equals("PREPARED")
-                || data.getString("Stage")
-                    .equals("COSTS")))
-            throw new IllegalStateException("Unknown maid redemption intent");
-        for (String key : new String[] { "Actor", "Candidate" }) {
+            .size() != FIELDS.size() || !data.hasKey(MaidLifecyclePart2NbtKeys.KEY_VERSION, Constants.NBT.TAG_INT)
+            || data.getInteger(MaidLifecyclePart2NbtKeys.KEY_VERSION) != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            || !data.hasKey(MaidLifecyclePart2NbtKeys.KEY_STAGE, Constants.NBT.TAG_STRING)
+            || !(data.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE)
+                .equals(MaidLifecyclePart2NbtKeys.KEY_PREPARED)
+                || data.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE)
+                    .equals(MaidLifecyclePart2NbtKeys.KEY_COSTS)))
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_MAID_REDEMPTION_INTENT);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_ACTOR,
+            MaidLifecyclePart2NbtKeys.KEY_CANDIDATE }) {
             if (!data.hasKey(key, Constants.NBT.TAG_STRING))
-                throw new IllegalStateException("Invalid redemption identity");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_IDENTITY);
             UUID.fromString(data.getString(key));
         }
-        for (String key : new String[] { "Dimension", "Metadata", "Selected" })
-            if (!data.hasKey(key, Constants.NBT.TAG_INT)) throw new IllegalStateException("Invalid redemption integer");
-        for (String key : new String[] { "X", "Y", "Z" })
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_DIMENSION,
+            MaidLifecyclePart2NbtKeys.KEY_METADATA, MaidLifecyclePart2NbtKeys.KEY_SELECTED })
+            if (!data.hasKey(key, Constants.NBT.TAG_INT))
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_INTEGER);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_X, MaidLifecyclePart2NbtKeys.KEY_Y,
+            MaidLifecyclePart2NbtKeys.KEY_Z })
             if (!data.hasKey(key, Constants.NBT.TAG_DOUBLE) || !Double.isFinite(data.getDouble(key)))
-                throw new IllegalStateException("Invalid redemption position");
-        for (String key : new String[] { "Shrine", "Creative" })
-            if (!data.hasKey(key, Constants.NBT.TAG_BYTE) || data.getByte(key) < 0 || data.getByte(key) > 1)
-                throw new IllegalStateException("Invalid redemption flag");
-        for (String key : new String[] { "Health", "Maximum" })
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_POSITION);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_SHRINE, MaidLifecyclePart2NbtKeys.KEY_CREATIVE })
+            if (!data.hasKey(key, Constants.NBT.TAG_BYTE) || data.getByte(key) < 0
+                || data.getByte(key) > MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD)
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_FLAG);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_HEALTH, MaidLifecyclePart2NbtKeys.KEY_MAXIMUM })
             if (!data.hasKey(key, Constants.NBT.TAG_FLOAT) || !Float.isFinite(data.getFloat(key))
-                || data.getFloat(key) <= 0) throw new IllegalStateException("Invalid redemption health");
-        for (String key : new String[] { "Source", "Maid", "Cursor", "Tile", "ResultTile" })
+                || data.getFloat(key) <= 0)
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_HEALTH);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_SOURCE, MaidLifecyclePart2NbtKeys.KEY_MAID,
+            MaidLifecyclePart2NbtKeys.KEY_CURSOR, MaidLifecyclePart2NbtKeys.KEY_TILE,
+            MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE })
             if (!data.hasKey(key, Constants.NBT.TAG_COMPOUND))
-                throw new IllegalStateException("Invalid redemption snapshot");
-        for (String key : new String[] { "Inventory", "ResultInventory" }) {
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_SNAPSHOT);
+        for (String key : new String[] { MaidLifecyclePart2NbtKeys.KEY_INVENTORY,
+            MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY }) {
             if (!data.hasKey(key, Constants.NBT.TAG_LIST))
-                throw new IllegalStateException("Invalid redemption inventory");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_INVENTORY);
             var typed = data.getTagList(key, Constants.NBT.TAG_COMPOUND);
             if (((NBTTagList) data.getTag(key)).tagCount() != typed.tagCount())
-                throw new IllegalStateException("Invalid redemption inventory entries");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_REDEMPTION_INVENTORY_ENTRIES);
         }
-        var maid = data.getCompoundTag("Maid");
-        if (data.getCompoundTag("Source")
-            .hasNoTags() || !maid.hasKey("UUIDMost", Constants.NBT.TAG_LONG)
-            || !maid.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
-            || !data.getString("Candidate")
-                .equals(new UUID(maid.getLong("UUIDMost"), maid.getLong("UUIDLeast")).toString())
-            || data.getBoolean("Shrine") && data.getCompoundTag("Tile")
-                .hasNoTags()
-            || !data.getBoolean("Shrine") && (!data.getCompoundTag("Tile")
-                .hasNoTags()
-                || !data.getCompoundTag("ResultTile")
-                    .hasNoTags()))
-            throw new IllegalStateException("Maid redemption snapshots disagree");
+        var maid = data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_MAID);
+        if (data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE)
+            .hasNoTags() || !maid.hasKey(MaidLifecyclePart2NbtKeys.KEY_UUID_MOST, Constants.NBT.TAG_LONG)
+            || !maid.hasKey(MaidLifecyclePart2NbtKeys.KEY_UUID_LEAST, Constants.NBT.TAG_LONG)
+            || !data.getString(MaidLifecyclePart2NbtKeys.KEY_CANDIDATE)
+                .equals(
+                    new UUID(
+                        maid.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_MOST),
+                        maid.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_LEAST)).toString())
+            || data.getBoolean(MaidLifecyclePart2NbtKeys.KEY_SHRINE)
+                && data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TILE)
+                    .hasNoTags()
+            || !data.getBoolean(MaidLifecyclePart2NbtKeys.KEY_SHRINE)
+                && (!data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TILE)
+                    .hasNoTags()
+                    || !data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE)
+                        .hasNoTags()))
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_MAID_REDEMPTION_SNAPSHOTS_DISAGREE);
     }
 }

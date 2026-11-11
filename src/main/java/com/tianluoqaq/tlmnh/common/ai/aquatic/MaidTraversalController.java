@@ -85,9 +85,13 @@ public final class MaidTraversalController {
 
     private void open(PathPoint point) {
         int x = point.xCoord, y = point.yCoord, z = point.zCoord;
-        if (!maid.worldObj.blockExists(x, y, z) || maid.getDistanceSq(x + 0.5, y, z + 0.5) > 4) return;
+        if (!maid.worldObj.blockExists(x, y, z)
+            || maid.getDistanceSq(x + AquaticAiTuning.CENTER_OFFSET_D, y, z + AquaticAiTuning.CENTER_OFFSET_D)
+                > AquaticAiTuning.CHUNK_SECTION_SHIFT)
+            return;
         var block = maid.worldObj.getBlock(x, y, z);
-        if (block instanceof BlockDoor && (maid.worldObj.getBlockMetadata(x, y, z) & 8) != 0) y--;
+        if (block instanceof BlockDoor
+            && (maid.worldObj.getBlockMetadata(x, y, z) & AquaticAiTuning.TRAVERSAL_CONTROLLER_BIT_MASK_8) != 0) y--;
         boolean permitted = block instanceof BlockDoor && block.getMaterial() == Material.wood ? maid.getConfigManager()
             .isOpenDoor()
             : block instanceof BlockFenceGate && maid.getConfigManager()
@@ -100,15 +104,27 @@ public final class MaidTraversalController {
 
     private boolean isOpen(Block block, int x, int y, int z) {
         return block instanceof BlockDoor door ? CompatServices.doors()
-            .isDoorOpenOrOpening(door, maid.worldObj, x, y, z) : (maid.worldObj.getBlockMetadata(x, y, z) & 4) != 0;
+            .isDoorOpenOrOpening(door, maid.worldObj, x, y, z)
+            : (maid.worldObj.getBlockMetadata(x, y, z) & AquaticAiTuning.CHUNK_SECTION_SHIFT) != 0;
     }
 
     private void setOpen(Block block, int x, int y, int z, boolean value) {
         if (block instanceof BlockDoor door) door.func_150014_a(maid.worldObj, x, y, z, value);
         else {
             int meta = maid.worldObj.getBlockMetadata(x, y, z);
-            maid.worldObj.setBlockMetadataWithNotify(x, y, z, value ? meta | 4 : meta & ~4, 2);
-            maid.worldObj.playAuxSFXAtEntity(null, 1003, x, y, z, 0);
+            maid.worldObj.setBlockMetadataWithNotify(
+                x,
+                y,
+                z,
+                value ? meta | AquaticAiTuning.CHUNK_SECTION_SHIFT : meta & ~AquaticAiTuning.CHUNK_SECTION_SHIFT,
+                AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM);
+            maid.worldObj.playAuxSFXAtEntity(
+                null,
+                AquaticAiTuning.TRAVERSAL_CONTROLLER_PLAY_AUX_SFX_AT_ENTITY_SECOND_P,
+                x,
+                y,
+                z,
+                AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE);
         }
     }
 
@@ -120,7 +136,11 @@ public final class MaidTraversalController {
             var p = entry.getKey();
             if (!maid.worldObj.blockExists(p.posX, p.posY, p.posZ)
                 || maid.worldObj.getBlock(p.posX, p.posY, p.posZ) != entry.getValue()
-                || maid.getDistanceSq(p.posX + 0.5, p.posY, p.posZ + 0.5) > 64) {
+                || maid.getDistanceSq(
+                    p.posX + AquaticAiTuning.CENTER_OFFSET_D,
+                    p.posY,
+                    p.posZ + AquaticAiTuning.CENTER_OFFSET_D)
+                    > AquaticAiTuning.TRAVERSAL_CONTROLLER_CLOSE_PASSED_DOORS_PARAM) {
                 entries.remove();
                 continue;
             }
@@ -129,18 +149,34 @@ public final class MaidTraversalController {
                 continue;
             }
             if (usesDoor(path, p) || maid.boundingBox.intersectsWith(
-                AxisAlignedBB
-                    .getBoundingBox(p.posX - 0.25, p.posY, p.posZ - 0.25, p.posX + 1.25, p.posY + 2, p.posZ + 1.25)))
+                AxisAlignedBB.getBoundingBox(
+                    p.posX - AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FIRST_FACTOR,
+                    p.posY,
+                    p.posZ - AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FIRST_FACTOR,
+                    p.posX + AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FOURTH_FACTOR,
+                    p.posY + AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM,
+                    p.posZ + AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FOURTH_FACTOR)))
                 continue;
             var nearby = maid.worldObj.getEntitiesWithinAABB(
                 EntityLivingBase.class,
-                AxisAlignedBB.getBoundingBox(p.posX - 2, p.posY - 1, p.posZ - 2, p.posX + 3, p.posY + 3, p.posZ + 3));
+                AxisAlignedBB.getBoundingBox(
+                    p.posX - AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM,
+                    p.posY - 1,
+                    p.posZ - AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM,
+                    p.posX + AquaticAiTuning.BREATH_CONTROLLER_MOVE_FLYING_SECOND_PARAM,
+                    p.posY + AquaticAiTuning.BREATH_CONTROLLER_MOVE_FLYING_SECOND_PARAM,
+                    p.posZ + AquaticAiTuning.BREATH_CONTROLLER_MOVE_FLYING_SECOND_PARAM));
             boolean occupied = false;
             for (Object value : nearby) {
                 if (value == maid || !(value instanceof EntityLivingBase other) || !other.isEntityAlive()) continue;
                 if (other.boundingBox.intersectsWith(
-                    AxisAlignedBB
-                        .getBoundingBox(p.posX - 0.25, p.posY, p.posZ - 0.25, p.posX + 1.25, p.posY + 2, p.posZ + 1.25))
+                    AxisAlignedBB.getBoundingBox(
+                        p.posX - AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FIRST_FACTOR,
+                        p.posY,
+                        p.posZ - AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FIRST_FACTOR,
+                        p.posX + AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FOURTH_FACTOR,
+                        p.posY + AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM,
+                        p.posZ + AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FOURTH_FACTOR))
                     || other instanceof EntityMaid following && usesDoor(
                         following.getNavigator()
                             .getPath(),
@@ -164,7 +200,8 @@ public final class MaidTraversalController {
         if (path == null || path.isFinished()) return false;
         for (int i = Math.max(0, path.getCurrentPathIndex() - 1); i <= path.getCurrentPathIndex(); i++) {
             var point = path.getPathPointFromIndex(i);
-            if (point.xCoord == p.posX && point.zCoord == p.posZ && Math.abs(point.yCoord - p.posY) <= 1) return true;
+            if (point.xCoord == p.posX && point.zCoord == p.posZ
+                && Math.abs(point.yCoord - p.posY) <= AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP) return true;
         }
         return false;
     }
@@ -188,7 +225,10 @@ public final class MaidTraversalController {
                 up = following.yCoord > y;
             }
         }
-        if (Math.abs(next.xCoord + 0.5 - maid.posX) > 0.8 || Math.abs(next.zCoord + 0.5 - maid.posZ) > 0.8) {
+        if (Math.abs(next.xCoord + AquaticAiTuning.CENTER_OFFSET_D - maid.posX)
+            > AquaticAiTuning.TRAVERSAL_CONTROLLER_CLIMB_FACTOR
+            || Math.abs(next.zCoord + AquaticAiTuning.CENTER_OFFSET_D - maid.posZ)
+                > AquaticAiTuning.TRAVERSAL_CONTROLLER_CLIMB_FACTOR) {
             stopClimbing();
             return;
         }
@@ -198,10 +238,19 @@ public final class MaidTraversalController {
         }
         climbing = true;
         maid.setSneaking(!up);
-        maid.motionX = Math.max(-0.1, Math.min(0.1, next.xCoord + 0.5 - maid.posX));
-        maid.motionZ = Math.max(-0.1, Math.min(0.1, next.zCoord + 0.5 - maid.posZ));
-        maid.motionY = up ? 0.25 : -0.25;
-        maid.fallDistance = 0;
+        maid.motionX = Math.max(
+            AquaticAiTuning.TRAVERSAL_CONTROLLER_MAX_FIRST_FACTOR,
+            Math.min(
+                AquaticAiTuning.TRAVERSAL_CONTROLLER_MIN_FIRST_FACTOR,
+                next.xCoord + AquaticAiTuning.CENTER_OFFSET_D - maid.posX));
+        maid.motionZ = Math.max(
+            AquaticAiTuning.TRAVERSAL_CONTROLLER_MAX_FIRST_FACTOR,
+            Math.min(
+                AquaticAiTuning.TRAVERSAL_CONTROLLER_MIN_FIRST_FACTOR,
+                next.zCoord + AquaticAiTuning.CENTER_OFFSET_D - maid.posZ));
+        maid.motionY = up ? AquaticAiTuning.TRAVERSAL_CONTROLLER_GET_BOUNDING_BOX_FIRST_FACTOR
+            : AquaticAiTuning.TRAVERSAL_CONTROLLER_CLIMB_FACTOR_2;
+        maid.fallDistance = AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE;
     }
 
     private void stopClimbing() {

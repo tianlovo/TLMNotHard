@@ -7,12 +7,10 @@ import net.minecraft.nbt.NBTTagInt;
 /** 床头与物品共用原始颜色字段；未知编号/类型跨容器复制时也不能归一化 */
 public final class MaidBedColorData {
 
-    public static final String TAG = "BedColor";
-
     private MaidBedColorData() {}
 
     public static NBTBase read(NBTTagCompound tag) {
-        return tag != null && tag.hasKey(TAG) ? tag.getTag(TAG)
+        return tag != null && tag.hasKey(MaidBedNbtKeys.TAG) ? tag.getTag(MaidBedNbtKeys.TAG)
             .copy() : null;
     }
 
@@ -22,6 +20,6 @@ public final class MaidBedColorData {
     }
 
     public static void write(NBTTagCompound tag, NBTBase raw) {
-        tag.setTag(TAG, raw == null ? new NBTTagInt(MaidBedColor.PINK.id) : raw.copy());
+        tag.setTag(MaidBedNbtKeys.TAG, raw == null ? new NBTTagInt(MaidBedColor.PINK.id) : raw.copy());
     }
 }

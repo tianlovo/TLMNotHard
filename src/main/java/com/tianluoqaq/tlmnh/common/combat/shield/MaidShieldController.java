@@ -68,7 +68,8 @@ public final class MaidShieldController {
             caughtArrows = controller.caughtArrows;
             var stack = controller.maid.getOffhandItem();
             itemId = MaidShieldItems.itemId(stack);
-            currentItemCooldown = stack == null ? 0 : controller.getCooldownRemaining(stack.getItem());
+            currentItemCooldown = stack == null ? ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE
+                : controller.getCooldownRemaining(stack.getItem());
             lastStop = controller.lastStop;
             arrowCatchSupported = MaidShieldArrowCapture.available(controller.maid)
                 && MaidShieldItems.supportsArrowCapture(stack);
@@ -104,7 +105,8 @@ public final class MaidShieldController {
             durabilityReduction = reduction;
             requestedWear = wear;
             wearCallbackInvoked = wearInvoked;
-            stackSizeAfter = shield == null ? 0 : shield.stackSize;
+            stackSizeAfter = shield == null ? ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE
+                : shield.stackSize;
             brokenAfter = CompatServices.shields()
                 .isToolBroken(shield);
             equipmentChangedDuringCallback = equipmentChanged;
@@ -114,7 +116,7 @@ public final class MaidShieldController {
 
     private static final class DamageFrame {
 
-        private final int depth = 1;
+        private final int depth = ShieldCombatTuning.SHIELD_CONTROLLER_DEPTH;
     }
 
     private final EntityMaid maid;
@@ -131,13 +133,13 @@ public final class MaidShieldController {
     private long lastTickTime = Long.MIN_VALUE;
     private long lastActiveTime = Long.MIN_VALUE;
     private int lastEntityTick = Integer.MIN_VALUE;
-    private String lastStop = "initial";
+    private String lastStop = ShieldCombatIds.ID_INITIAL;
     private DamageFrame damageFrame;
     private BlockResult lastBlock;
 
     public MaidShieldController(EntityMaid maid, MaidItemUseState uses) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.uses = Objects.requireNonNull(uses, "uses");
+        this.maid = Objects.requireNonNull(maid, ShieldCombatIds.ID_MAID);
+        this.uses = Objects.requireNonNull(uses, ShieldCombatIds.ID_USES);
     }
 
     public boolean canUseShield() {
@@ -151,7 +153,8 @@ public final class MaidShieldController {
     }
 
     public int getCooldownRemaining(Item item) {
-        return item == null ? 0 : cooldowns.getOrDefault(item, 0);
+        return item == null ? ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE
+            : cooldowns.getOrDefault(item, ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
     }
 
     public Snapshot getSnapshot() {
@@ -172,7 +175,7 @@ public final class MaidShieldController {
         if (current != null && current.getHand() == Hand.OFF && uses.isCurrent(current)) return;
         passiveLease = beginUse(Cause.PASSIVE);
         // 原startUsingItem会拒绝抢占MAIN，但TLM仍设置counter
-        passiveRemaining = MaidShieldRules.PASSIVE_TICKS;
+        passiveRemaining = ShieldCombatTuning.PASSIVE_TICKS;
     }
 
     /** 此入口维护近战举盾 Behavior，与近战攻击逻辑及路径规划解耦 */
@@ -185,7 +188,9 @@ public final class MaidShieldController {
         boolean permitted = activeTargetPermitted(target, false);
         if (activeTaskRunning) {
             if (activeTaskOwner == this && (!permitted || MaidShieldRules.activeTimedOut(now, activeEndTime)))
-                stopActiveTask(this, permitted ? "active_timed_out" : "active_condition_lost");
+                stopActiveTask(
+                    this,
+                    permitted ? ShieldCombatIds.ID_ACTIVE_TIMED_OUT : ShieldCombatIds.ID_ACTIVE_CONDITION_LOST);
             return;
         }
         if (permitted) startPermittedActiveTask(this);
@@ -199,12 +204,13 @@ public final class MaidShieldController {
             && target == maid.getAttackTarget()
             && target.worldObj == maid.worldObj
             && target.isEntityAlive()
-            && (modernDistance ? maid.getDistanceToEntity(target) < 8 : maid.getDistanceSqToEntity(target) < 64);
+            && (modernDistance ? maid.getDistanceToEntity(target) < ShieldCombatTuning.SHIELD_CONTROLLER_DOMAIN_PARAM
+                : maid.getDistanceSqToEntity(target) < ShieldCombatTuning.SHIELD_CONTROLLER_DOMAIN_PARAM_2);
     }
 
     /** 现代 Brain 在全部行为的启动相位统一调度，保持既有行为的生命周期完整 */
     public boolean startActiveTask(EntityLivingBase target, Object owner) {
-        Objects.requireNonNull(owner, "owner");
+        Objects.requireNonNull(owner, ShieldCombatIds.ID_OWNER);
         if (activeTaskRunning || !activeTargetPermitted(target, true)) return false;
         startPermittedActiveTask(owner);
         return true;
@@ -212,8 +218,8 @@ public final class MaidShieldController {
 
     private void startPermittedActiveTask(Object owner) {
         // Behavior默认min=max=60，bound=1仍消耗一次世界RNG
-        activeEndTime = maid.worldObj.getTotalWorldTime() + MaidShieldRules.ACTIVE_DURATION
-            + maid.worldObj.rand.nextInt(1);
+        activeEndTime = maid.worldObj.getTotalWorldTime() + ShieldCombatTuning.ACTIVE_DURATION
+            + maid.worldObj.rand.nextInt(ShieldCombatTuning.SHIELD_CONTROLLER_DEPTH);
         activeTaskRunning = true;
         activeTaskOwner = owner;
         activeLease = beginUse(Cause.ACTIVE);
@@ -261,7 +267,8 @@ public final class MaidShieldController {
                 passiveRemaining,
                 MaidShieldItems.inspect(maid.getOffhandItem())
                     .isReady());
-            if (passiveRemaining == 1) release(passiveLease, "passive_counter_one");
+            if (passiveRemaining == ShieldCombatTuning.SHIELD_CONTROLLER_DEPTH)
+                release(passiveLease, ShieldCombatIds.ID_PASSIVE_COUNTER_ONE);
             if (passiveRemaining == 0) passiveLease = null;
         }
     }
@@ -276,7 +283,7 @@ public final class MaidShieldController {
 
     public void onEntityBoundary(String reason) {
         cancelUse(reason);
-        passiveRemaining = 0;
+        passiveRemaining = ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE;
         passiveLease = null;
         lastActiveWorld = null;
         lastActiveTime = Long.MIN_VALUE;
@@ -344,11 +351,11 @@ public final class MaidShieldController {
                 null,
                 null,
                 null,
-                -1,
+                ShieldCombatTuning.UNSET_OR_NOT_FOUND,
                 false,
                 maid.getOffhandItem(),
                 false,
-                0);
+                ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
             return;
         }
         var frame = new DamageFrame();
@@ -367,7 +374,8 @@ public final class MaidShieldController {
         var profile = MaidShieldItems.inspect(shield);
         String itemId = profile.itemId;
         Float yaw = null, angle = null, reduction = null;
-        int wear = -1, cooldown = 0;
+        int wear = ShieldCombatTuning.UNSET_OR_NOT_FOUND,
+            cooldown = ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE;
         boolean wore = false;
         if (!Float.isFinite(amount) || amount <= 0) {
             record(
@@ -383,7 +391,7 @@ public final class MaidShieldController {
                 wore,
                 shield,
                 false,
-                0);
+                ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
             return;
         }
         uses.reconcile();
@@ -402,7 +410,7 @@ public final class MaidShieldController {
                 wore,
                 shield,
                 false,
-                0);
+                ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
             return;
         }
         if (!profile.isReady()) {
@@ -419,7 +427,7 @@ public final class MaidShieldController {
                 wore,
                 shield,
                 false,
-                0);
+                ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
             return;
         }
         var world = maid.worldObj;
@@ -441,7 +449,7 @@ public final class MaidShieldController {
                     wore,
                     shield,
                     false,
-                    0);
+                    ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
                 return;
             }
             Entity opponent = source.getEntity();
@@ -466,7 +474,7 @@ public final class MaidShieldController {
                         wore,
                         shield,
                         false,
-                        0);
+                        ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
                     return;
                 }
             }
@@ -487,7 +495,7 @@ public final class MaidShieldController {
                     wore,
                     shield,
                     false,
-                    0);
+                    ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
                 return;
             }
             wear = MaidShieldRules.requestedWear(amount, rawReduction);
@@ -505,7 +513,7 @@ public final class MaidShieldController {
                     wore,
                     shield,
                     true,
-                    0);
+                    ShieldCombatTuning.SHIELD_CONTROLLER_SNAPSHOT_ZERO_BASE);
                 return;
             }
             // 计数API先在副本上执行，依赖失败时本次不取消伤害、不磨盾也不改箭
@@ -516,8 +524,8 @@ public final class MaidShieldController {
             maid.playSound(
                 CompatServices.shields()
                     .defaultBlockSound(),
-                1,
-                1);
+                ShieldCombatTuning.SHIELD_CONTROLLER_DEPTH,
+                ShieldCombatTuning.SHIELD_CONTROLLER_DEPTH);
             if (wear >= 0) {
                 wore = true;
                 shield.damageItem(wear, maid);
@@ -529,9 +537,9 @@ public final class MaidShieldController {
             // getToolClasses 涉及外部物品回调，每次调用时重新获取最新授权
             sameUse = sameUseContext(use, shield, world, identity);
             if (disable && sameUse) {
-                cooldowns.put(originalItem, MaidShieldRules.DISABLE_TICKS);
-                cooldown = MaidShieldRules.DISABLE_TICKS;
-                release(use, "shield_disabled");
+                cooldowns.put(originalItem, ShieldCombatTuning.DISABLE_TICKS);
+                cooldown = ShieldCombatTuning.DISABLE_TICKS;
+                release(use, ShieldCombatIds.ID_SHIELD_DISABLED);
             }
             if (capture != null && sameUse && capture.commit(() -> sameUseContext(use, shield, world, identity)))
                 caughtArrows++;
@@ -556,13 +564,14 @@ public final class MaidShieldController {
         } catch (RuntimeException | LinkageError | AssertionError failure) {
             IntegrationGuard.trip(ExternalFeature.SHIELDS, failure);
             event.setCanceled(false);
-            release(use, "shield_callback_failed");
+            release(use, ShieldCombatIds.ID_SHIELD_CALLBACK_FAILED);
             // 仅封存当前由本女仆持有的同引用对象，保持物品所有权流转一致性
             var inventory = maid.getMaidInventory();
             for (int slot = 0; slot < inventory.getSizeInventory(); slot++)
                 if (inventory.getStackInSlot(slot) == shield) {
-                    inventory
-                        .setInventorySlotContents(slot, ProtectedItemCodec.seal(protectedBefore, "shield_callback"));
+                    inventory.setInventorySlotContents(
+                        slot,
+                        ProtectedItemCodec.seal(protectedBefore, ShieldCombatIds.ID_SHIELD_CALLBACK));
                     break;
                 }
             record(

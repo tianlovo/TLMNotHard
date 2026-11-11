@@ -16,11 +16,11 @@ public final class MaidLifeIntent {
     private final double distanceSq;
 
     public MaidLifeIntent(Action action, MaidLifeCandidate candidate, double distanceSq) {
-        this.action = Objects.requireNonNull(action, "action");
-        this.candidate = Objects.requireNonNull(candidate, "candidate");
+        this.action = Objects.requireNonNull(action, AiPolicyIds.ID_ACTION);
+        this.candidate = Objects.requireNonNull(candidate, AiPolicyIds.ID_CANDIDATE);
         if (!Double.isFinite(distanceSq) || distanceSq < 0
             || (action == Action.BED) != (candidate.getKind() == MaidLifeCandidate.Kind.BED))
-            throw new IllegalArgumentException("Invalid life intent");
+            throw new IllegalArgumentException(AiPolicyDiagnostics.MSG_INVALID_LIFE_INTENT);
         this.distanceSq = distanceSq;
     }
 

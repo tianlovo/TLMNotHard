@@ -107,8 +107,9 @@ public final class MaidMeleeAttack {
         var quota = CombatWorldBudget
             .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
         // 三次许可重验，每次最多actor和调用方各一条视线；真实武器准备单独计入ITEM
-        if (!quota.spend(Work.FINAL_CHECK, 3) || !quota.spend(Work.RAY, 6) || !quota.spend(Work.ITEM))
-            return new Result(false, false, false);
+        if (!quota.spend(Work.FINAL_CHECK, AiCombatTuning.TARGET_GET_ID_THRESHOLD)
+            || !quota.spend(Work.RAY, AiCombatTuning.MELEE_ATTACK_SPEND_SECOND_PARAM)
+            || !quota.spend(Work.ITEM)) return new Result(false, false, false);
         var receipt = maid.getCombatHitReceipt();
         if (!receipt.beginPreparation()) return new Result(false, false, false);
         MaidWeaponStrike strike;
@@ -130,7 +131,7 @@ public final class MaidMeleeAttack {
         } catch (Exception | LinkageError | AssertionError failure) {
             maid.getEquipmentEpoch()
                 .invalidate();
-            report(maid, "prepare", failure);
+            report(maid, AiCombatIds.ID_PREPARE, failure);
             return new Result(false, false, false);
         } finally {
             receipt.endPreparation();
@@ -139,12 +140,14 @@ public final class MaidMeleeAttack {
             strike.stack(),
             maid.getEquipmentEpoch()
                 .generation(),
-            strike.profile().family.name() + "/" + strike.profile().dependency,
+            strike.profile().family.name() + AiCombatIds.PATH_SLASH_SEPARATOR + strike.profile().dependency,
             target)) return new Result(false, false, false);
         boolean nativeEntered = false, post = false;
         try {
             double speed = MaidCombatAttributes.attackSpeed(maid);
-            long cooldown = Double.isFinite(speed) && speed > 0 ? Math.max(1, (long) (20 / speed)) : 20;
+            long cooldown = Double.isFinite(speed) && speed > 0 ? Math
+                .max(AiCombatTuning.ADD_TASK_SINGLE_UNIT, (long) (AiCombatTuning.MELEE_ATTACK_MAX_SECOND_PARAM / speed))
+                : AiCombatTuning.MELEE_ATTACK_MAX_SECOND_PARAM;
             if (!maid.getCombatCadence()
                 .commit(cooldown)) {
                 receipt.rejected();
@@ -188,36 +191,40 @@ public final class MaidMeleeAttack {
             else {
                 receipt.accepted();
                 if (receipt.stage() == CombatHitReceipt.Stage.ACCEPTED && !receipt.originalOwned(true))
-                    receipt.hold("original_stack_changed_during_native_damage");
+                    receipt.hold(AiCombatIds.ID_ORIGINAL_STACK_CHANGED_DURING_NATIVE_DAMAGE);
                 if (receipt.stage() == CombatHitReceipt.Stage.ACCEPTED) {
                     maid.setLastAttacker(target);
                     if (knockback > 0) {
                         target.addVelocity(
-                            -MathHelper.sin(maid.rotationYaw * (float) Math.PI / 180.0F) * knockback * 0.5D,
-                            0.1D,
-                            MathHelper.cos(maid.rotationYaw * (float) Math.PI / 180.0F) * knockback * 0.5D);
-                        maid.motionX *= 0.6D;
-                        maid.motionZ *= 0.6D;
+                            -MathHelper.sin(maid.rotationYaw * (float) Math.PI / AiCombatTuning.HALF_TURN_DEGREES_F)
+                                * knockback
+                                * AiCombatTuning.HALF_FACTOR_D,
+                            AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR,
+                            MathHelper.cos(maid.rotationYaw * (float) Math.PI / AiCombatTuning.HALF_TURN_DEGREES_F)
+                                * knockback
+                                * AiCombatTuning.HALF_FACTOR_D);
+                        maid.motionX *= AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR_2;
+                        maid.motionZ *= AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR_2;
                     }
-                    if (fire > 0) target.setFire(fire * 4);
+                    if (fire > 0) target.setFire(fire * AiCombatTuning.MIN_SLOT_THRESHOLD);
                     EnchantmentHelper.func_151384_a(target, maid);
                     // 反伤死亡或任务取消不撤销本次事实；外部直接改/移原栈则保留未知后继
                     if (receipt.originalOwned(true)) EnchantmentHelper.func_151385_b(maid, target);
-                    else receipt.hold("original_stack_changed_during_enchantment");
+                    else receipt.hold(AiCombatIds.ID_ORIGINAL_STACK_CHANGED_DURING_ENCHANTMENT);
                 }
             }
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
-            if (nativeEntered) receipt.hold("native_damage_outcome_unknown");
+            if (nativeEntered) receipt.hold(AiCombatIds.ID_NATIVE_DAMAGE_OUTCOME_UNKNOWN);
             else if (receipt.stage() == CombatHitReceipt.Stage.ATTEMPTING) receipt.rejected();
-            report(maid, "execute", failure);
+            report(maid, AiCombatIds.ID_EXECUTE, failure);
         } finally {
             try {
                 if (receipt.stage() == CombatHitReceipt.Stage.ACCEPTED) settle(maid, target, strike, receipt);
                 if (post) try {
                     MinecraftForge.EVENT_BUS.post(new MaidHurtTarget.Post(maid, target, receipt.nativeAccepted()));
                 } catch (Exception | LinkageError | AssertionError failure) {
-                    report(maid, "post", failure);
+                    report(maid, AiCombatIds.ID_POST, failure);
                 }
             } finally {
                 receipt.closeCall();
@@ -236,16 +243,17 @@ public final class MaidMeleeAttack {
         try {
             strike.settleAcceptedHit(target, maid);
             if (!receipt.originalOwned(false)) {
-                receipt.hold("original_stack_successor_unknown_after_settlement");
+                receipt.hold(AiCombatIds.ID_ORIGINAL_STACK_SUCCESSOR_UNKNOWN_AFTER_SETTLEMENT);
                 return;
             }
-            if (strike.stack().stackSize <= 0) maid.setCurrentItemOrArmor(0, null);
+            if (strike.stack().stackSize <= 0)
+                maid.setCurrentItemOrArmor(AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES, null);
             receipt.settled();
             maid.getEquipmentEpoch()
                 .invalidate();
         } catch (Exception | LinkageError | AssertionError failure) {
-            receipt.hold("settlement_outcome_unknown");
-            report(maid, "settle", failure);
+            receipt.hold(AiCombatIds.ID_SETTLEMENT_OUTCOME_UNKNOWN);
+            report(maid, AiCombatIds.ID_SETTLE, failure);
         }
     }
 
@@ -260,7 +268,10 @@ public final class MaidMeleeAttack {
 
     private static void report(EntityMaid maid, String stage, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
-        IntegrationGuard.report(Side.SERVER, "combat_melee/" + stage + "/" + maid.getUniqueID(), failure);
+        IntegrationGuard.report(
+            Side.SERVER,
+            AiCombatIds.ID_COMBAT_MELEE + stage + AiCombatIds.PATH_SLASH_SEPARATOR + maid.getUniqueID(),
+            failure);
     }
 
     private static boolean hurtNative(EntityMaid maid, EntityLivingBase living, BooleanSupplier permitted) {
@@ -276,14 +287,16 @@ public final class MaidMeleeAttack {
         maid.setLastAttacker(living);
         if (knockback > 0) {
             living.addVelocity(
-                -MathHelper.sin(maid.rotationYaw * (float) Math.PI / 180.0F) * knockback * 0.5D,
-                0.1D,
-                MathHelper.cos(maid.rotationYaw * (float) Math.PI / 180.0F) * knockback * 0.5D);
-            maid.motionX *= 0.6D;
-            maid.motionZ *= 0.6D;
+                -MathHelper.sin(maid.rotationYaw * (float) Math.PI / AiCombatTuning.HALF_TURN_DEGREES_F) * knockback
+                    * AiCombatTuning.HALF_FACTOR_D,
+                AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR,
+                MathHelper.cos(maid.rotationYaw * (float) Math.PI / AiCombatTuning.HALF_TURN_DEGREES_F) * knockback
+                    * AiCombatTuning.HALF_FACTOR_D);
+            maid.motionX *= AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR_2;
+            maid.motionZ *= AiCombatTuning.MELEE_ATTACK_HURT_FOR_UNIFIED_FACTOR_2;
         }
         int fire = EnchantmentHelper.getFireAspectModifier(maid);
-        if (fire > 0) living.setFire(fire * 4);
+        if (fire > 0) living.setFire(fire * AiCombatTuning.MIN_SLOT_THRESHOLD);
         EnchantmentHelper.func_151384_a(living, maid);
         if (!permitted.getAsBoolean()) return true;
         EnchantmentHelper.func_151385_b(maid, living);
@@ -291,7 +304,8 @@ public final class MaidMeleeAttack {
         if (weapon != null && weapon.stackSize > 0) {
             weapon.getItem()
                 .hitEntity(weapon, living, maid);
-            if (weapon.stackSize <= 0 && maid.getHeldItem() == weapon) maid.setCurrentItemOrArmor(0, null);
+            if (weapon.stackSize <= 0 && maid.getHeldItem() == weapon)
+                maid.setCurrentItemOrArmor(AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES, null);
         }
         return true;
     }

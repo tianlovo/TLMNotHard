@@ -5,8 +5,6 @@ import java.util.Random;
 /** 保留上游整数随机的上界排除语义，处理等端点、范围溢出和过大的投掷次数 */
 public final class MolangRandom {
 
-
-
     private MolangRandom() {}
 
     public static int rollCount(int requested) {

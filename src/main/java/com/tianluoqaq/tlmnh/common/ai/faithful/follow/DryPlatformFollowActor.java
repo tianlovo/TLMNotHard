@@ -38,7 +38,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
          * home=false 的 10/7 采样先排除水平超界；须核足点中心水平±11、垂直±8 的完整已加载体积
          */
         default void verifyFallbackVolume(EntityMaid maid, int horizontalRange, int verticalRange) {
-            throw new OutsideContractException("fallback_volume_not_admitted");
+            throw new OutsideContractException(FaithfulFollowIds.ID_FALLBACK_VOLUME_NOT_ADMITTED);
         }
     }
 
@@ -52,12 +52,14 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             setRestrictRadius(radius);
             this.homeMode = homeMode;
             this.goingToBreath = goingToBreath;
-            this.domain = Objects.requireNonNull(domain, "domain");
+            this.domain = Objects.requireNonNull(domain, FaithfulFollowIds.ID_DOMAIN);
         }
 
         public void setRestrictRadius(float radius) {
-            if (!Float.isFinite(radius) || radius < 3 || radius > 32)
-                throw new IllegalArgumentException("Development radius outside original configuration range");
+            if (!Float.isFinite(radius) || radius < FaithfulFollowTuning.MIN_RADIUS_THRESHOLD
+                || radius > FaithfulFollowTuning.MAX_RADIUS_THRESHOLD)
+                throw new IllegalArgumentException(
+                    FaithfulFollowDiagnostics.MSG_DEVELOPMENT_RADIUS_OUTSIDE_ORIGINAL_CONFIGURATIO);
             this.radius = radius;
         }
 
@@ -85,7 +87,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     public static final class OutsideContractException extends IllegalStateException {
 
         public OutsideContractException(String reason) {
-            super("FOLLOW_CORE_COMPONENT out of scope: " + reason);
+            super(FaithfulFollowDiagnostics.MSG_FOLLOW_CORE_COMPONENT_OUT_OF + reason);
         }
     }
 
@@ -115,8 +117,8 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     private Vec3 fallbackOrigin;
 
     public DryPlatformFollowActor(EntityMaid maid, Contract contract) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.contract = Objects.requireNonNull(contract, "contract");
+        this.maid = Objects.requireNonNull(maid, FaithfulFollowIds.ID_MAID);
+        this.contract = Objects.requireNonNull(contract, FaithfulFollowIds.ID_CONTRACT);
         world = maid.worldObj;
         navigator = maid.getNavigator();
     }
@@ -124,15 +126,17 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     void beginFrame(MaidPolicyRuntime runtime, Token token) {
         this.runtime = runtime;
         this.token = token;
-        worldTick = world == null ? 0 : world.getTotalWorldTime();
+        worldTick = world == null ? FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE : world.getTotalWorldTime();
         entityTick = maid.ticksExisted;
         ownerId = maid.func_152113_b();
         followStop = false;
         guard();
         navigationLease();
         verifyDry(blockPosition());
-        if (walk != null && resolveOwner() != walk.owner.player) throw outside("owner_object_changed_with_walk_target");
-        if (look != null && resolveOwner() != look.player) throw outside("owner_object_changed_with_look_target");
+        if (walk != null && resolveOwner() != walk.owner.player)
+            throw outside(FaithfulFollowIds.ID_OWNER_OBJECT_CHANGED_WITH_WALK_TARGET);
+        if (look != null && resolveOwner() != look.player)
+            throw outside(FaithfulFollowIds.ID_OWNER_OBJECT_CHANGED_WITH_LOOK_TARGET);
     }
 
     private boolean current() {
@@ -158,19 +162,21 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     }
 
     private void guard() {
-        if (!current()) throw outside("stale_actor_context");
-        if (maid.getNavigator() != navigator) throw outside("navigator_replaced");
+        if (!current()) throw outside(FaithfulFollowIds.ID_STALE_ACTOR_CONTEXT);
+        if (maid.getNavigator() != navigator) throw outside(FaithfulFollowIds.ID_NAVIGATOR_REPLACED);
         if (contract.homeMode || maid.getHomeArea()
-            .enabled() || contract.goingToBreath) throw outside("home_or_breathing_not_admitted");
+            .enabled() || contract.goingToBreath) throw outside(FaithfulFollowIds.ID_HOME_OR_BREATHING_NOT_ADMITTED);
         if (maid.isSitting() || maid.ridingEntity != null
             || maid.getLeashed()
             || maid.hasPose(MaidPose.SLEEPING)
-            || maid.getAttackTarget() != null) throw outside("movement_or_competing_action_outside_contract");
+            || maid.getAttackTarget() != null)
+            throw outside(FaithfulFollowIds.ID_MOVEMENT_OR_COMPETING_ACTION_OUTSIDE_CONTRACT);
     }
 
     private void verifyDry(BlockPos target) {
         guard();
-        if (maid.width != 0.6F || maid.height != 1.5F
+        if (maid.width != FaithfulFollowTuning.TARGET_WIDTH_THRESHOLD
+            || maid.height != FaithfulFollowTuning.TARGET_HEIGHT_THRESHOLD
             || maid.yOffset != 0
             || maid.ySize != 0
             || !Double.isFinite(maid.posX)
@@ -178,12 +184,13 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             || !Double.isFinite(maid.posY)
             || maid.posY != Math.floor(maid.posY)
             || maid.boundingBox.minY != maid.posY
-            || target.y != MathHelper.floor_double(maid.posY)) throw outside("fixed_size_same_integer_y_required");
+            || target.y != MathHelper.floor_double(maid.posY))
+            throw outside(FaithfulFollowIds.ID_FIXED_SIZE_SAME_INTEGER_Y_REQUIRED);
         int x = MathHelper.floor_double(maid.posX), y = target.y, z = MathHelper.floor_double(maid.posZ);
         if (!world.blockExists(x, y - 1, z) || !world.blockExists(target.x, target.y, target.z))
-            throw outside("dry_domain_unloaded");
+            throw outside(FaithfulFollowIds.ID_DRY_DOMAIN_UNLOADED);
         if (world.getBlock(x, y - 1, z) != Blocks.stone || world.getBlock(x, y, z) != Blocks.air
-            || world.getBlock(x, y + 1, z) != Blocks.air) throw outside("maid_not_on_dry_stone");
+            || world.getBlock(x, y + 1, z) != Blocks.air) throw outside(FaithfulFollowIds.ID_MAID_NOT_ON_DRY_STONE);
         contract.domain.verify(maid, target);
         navigationLease();
     }
@@ -199,13 +206,15 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
                 navigationView = null;
                 return;
             }
-            throw outside(actual == null ? "navigation_disappeared_cause_unknown" : "foreign_navigation_path");
+            throw outside(
+                actual == null ? FaithfulFollowIds.ID_NAVIGATION_DISAPPEARED_CAUSE_UNKNOWN
+                    : FaithfulFollowIds.ID_FOREIGN_NAVIGATION_PATH);
         }
     }
 
     private NativeNavigationStopState stopState() {
         if (!(navigator instanceof NativeNavigationStopSource source))
-            throw outside("native_navigation_feedback_missing");
+            throw outside(FaithfulFollowIds.ID_NATIVE_NAVIGATION_FEEDBACK_MISSING);
         return source.tlmnh$navigationStopState();
     }
 
@@ -216,14 +225,15 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
         try {
             uuid = UUID.fromString(id);
         } catch (IllegalArgumentException invalid) {
-            throw outside("invalid_owner_uuid");
+            throw outside(FaithfulFollowIds.ID_INVALID_OWNER_UUID);
         }
         var server = MinecraftServer.getServer();
-        if (server == null || server.getConfigurationManager() == null) throw outside("server_player_list_missing");
+        if (server == null || server.getConfigurationManager() == null)
+            throw outside(FaithfulFollowIds.ID_SERVER_PLAYER_LIST_MISSING);
         EntityPlayerMP found = null;
         for (Object item : server.getConfigurationManager().playerEntityList) {
             if (item instanceof EntityPlayerMP player && uuid.equals(player.getUniqueID())) {
-                if (found != null) throw outside("duplicate_online_owner_uuid");
+                if (found != null) throw outside(FaithfulFollowIds.ID_DUPLICATE_ONLINE_OWNER_UUID);
                 found = player;
             }
         }
@@ -305,7 +315,10 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             });
         if (lastTeleport.status == DryPlatformFollowTeleport.Status.SUCCESS) return true;
         if (lastTeleport.status == DryPlatformFollowTeleport.Status.EXHAUSTED) return false;
-        throw outside("teleport_" + lastTeleport.status + ":" + lastTeleport.diagnostic);
+        throw outside(
+            FaithfulFollowIds.ID_TELEPORT + lastTeleport.status
+                + FaithfulFollowIds.COLON_DELIMITER
+                + lastTeleport.diagnostic);
     }
 
     public void resetNavigation() {
@@ -314,12 +327,12 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
     public void setGoingToBreath(boolean value) {
         guard();
-        if (value) throw outside("breathing_not_admitted");
+        if (value) throw outside(FaithfulFollowIds.ID_BREATHING_NOT_ADMITTED);
         contract.goingToBreath = false;
     }
 
     public void eraseTargetPos() {
-        throw outside("target_pos_memory_not_admitted");
+        throw outside(FaithfulFollowIds.ID_TARGET_POS_MEMORY_NOT_ADMITTED);
     }
 
     public void stopFollowingTask() {
@@ -404,23 +417,24 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     public Path createPath(BlockPos target, int accuracy) {
         guard();
         navigationLease();
-        if (accuracy != 0 || walk == null) throw outside("only_owner_walk_accuracy_zero_admitted");
+        if (accuracy != 0 || walk == null) throw outside(FaithfulFollowIds.ID_ONLY_OWNER_WALK_ACCURACY_ZERO_ADMITTED);
         verifyDry(target);
         lastCreation = planner.create(maid, target.x, target.y, target.z, walk.speed);
         guard();
-        if (!lastCreation.queryExecuted) throw outside("native_query_rejected:" + lastCreation.diagnostic);
+        if (!lastCreation.queryExecuted)
+            throw outside(FaithfulFollowIds.ID_NATIVE_QUERY_REJECTED + lastCreation.diagnostic);
         if (lastCreation.nativeTarget == null || lastCreation.nativeTarget.x != target.x
             || lastCreation.nativeTarget.y != target.y
             || lastCreation.nativeTarget.z != target.z)
-            throw outside("native_target_rounding_differs_from_modern_block_target");
+            throw outside(FaithfulFollowIds.ID_NATIVE_TARGET_ROUNDING_DIFFERS_FROM_MODERN_BLOCK);
         if (lastCreation.path == null) return null;
         boolean reaches;
         if (lastCreation.endpointRelation == EndpointRelation.MATCHES_NATIVE_TARGET) reaches = true;
         else if (lastCreation.endpointRelation == EndpointRelation.DIFFERS_FROM_NATIVE_TARGET) reaches = false;
-        else throw outside("native_endpoint_unclassified:" + lastCreation.endpointRelation);
+        else throw outside(FaithfulFollowIds.ID_NATIVE_ENDPOINT_UNCLASSIFIED + lastCreation.endpointRelation);
         for (int i = 0; i < lastCreation.pathLength; i++) {
             if (lastCreation.path.getPathPointFromIndex(i).yCoord != target.y)
-                throw outside("vertical_path_not_admitted");
+                throw outside(FaithfulFollowIds.ID_VERTICAL_PATH_NOT_ADMITTED);
         }
         return new NativePath(lastCreation.path, lastCreation, reaches, token);
     }
@@ -437,11 +451,13 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     public Vec3 findFallbackTowards(int horizontalRange, int verticalRange, Vec3 target, double angle) {
         guard();
         navigationLease();
-        if (horizontalRange != 10 || verticalRange != 7 || angle != 1.5707963705062866D)
-            throw outside("only_move_sink_fallback_10_7_admitted");
-        requireBottomCenter(target, 0);
-        if (walk == null) throw outside("fallback_requires_owner_walk");
-        if (fallbackSampling) throw outside("fallback_sampling_reentry");
+        if (horizontalRange != FaithfulFollowTuning.TARGET_HORIZONTAL_RANGE_THRESHOLD
+            || verticalRange != FaithfulFollowTuning.TARGET_VERTICAL_RANGE_THRESHOLD
+            || angle != FaithfulFollowTuning.TARGET_ANGLE_THRESHOLD)
+            throw outside(FaithfulFollowIds.ID_ONLY_MOVE_SINK_FALLBACK_10_7_ADMITTED);
+        requireBottomCenter(target, FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE);
+        if (walk == null) throw outside(FaithfulFollowIds.ID_FALLBACK_REQUIRES_OWNER_WALK);
+        if (fallbackSampling) throw outside(FaithfulFollowIds.ID_FALLBACK_SAMPLING_REENTRY);
         Vec3 origin = new Vec3(maid.posX, maid.posY, maid.posZ);
         fallbackOrigin = origin;
         fallbackSampling = true;
@@ -464,36 +480,38 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             || !Double.isFinite(target.x)
             || !Double.isFinite(target.y)
             || !Double.isFinite(target.z)
-            || target.x <= -30000000D
-            || target.x >= 30000000D
-            || target.z <= -30000000D
-            || target.z >= 30000000D
+            || target.x <= FaithfulFollowTuning.MIN_X_THRESHOLD
+            || target.x >= FaithfulFollowTuning.MAX_X_THRESHOLD
+            || target.z <= FaithfulFollowTuning.MIN_X_THRESHOLD
+            || target.z >= FaithfulFollowTuning.MAX_X_THRESHOLD
             || target.y != maid.posY
             || target.y != Math.floor(target.y)
-            || target.x != Math.floor(target.x) + 0.5D
-            || target.z != Math.floor(target.z) + 0.5D) throw outside("same_y_bottom_center_accuracy_zero_required");
+            || target.x != Math.floor(target.x) + FaithfulFollowTuning.CENTER_OFFSET_D
+            || target.z != Math.floor(target.z) + FaithfulFollowTuning.CENTER_OFFSET_D)
+            throw outside(FaithfulFollowIds.ID_SAME_Y_BOTTOM_CENTER_ACCURACY_ZERO_REQUIRED);
     }
 
     private void verifyFallbackOrigin(Vec3 origin) {
         guard();
         navigationLease();
         if (maid.posX != origin.x || maid.posY != origin.y || maid.posZ != origin.z)
-            throw outside("fallback_origin_changed");
+            throw outside(FaithfulFollowIds.ID_FALLBACK_ORIGIN_CHANGED);
     }
 
     private void verifyFallbackLightContext() {
         guard();
         if (!(world.provider instanceof WorldProviderSurface) || world.provider.dimensionId != 0
             || world.provider.hasNoSky
-            || world.getHeight() != 256
-            || world.skylightSubtracted != 0) throw outside("fallback_only_bright_overworld_admitted");
+            || world.getHeight() != FaithfulFollowTuning.TARGET_GET_HEIGHT_THRESHOLD
+            || world.skylightSubtracted != 0)
+            throw outside(FaithfulFollowIds.ID_FALLBACK_ONLY_BRIGHT_OVERWORLD_ADMITTED);
     }
 
     private void verifyFallbackVolumeFacts(Vec3 origin, int horizontalRange, int verticalRange) {
         int x = MathHelper.floor_double(origin.x), y = (int) origin.y, z = MathHelper.floor_double(origin.z);
         int horizontalPadding = horizontalRange + 1, verticalPadding = verticalRange + 1;
         if (y - verticalPadding < 0 || y + verticalPadding >= world.getHeight())
-            throw outside("fallback_volume_crosses_build_height");
+            throw outside(FaithfulFollowIds.ID_FALLBACK_VOLUME_CROSSES_BUILD_HEIGHT);
         // stable、malus及其邻居全部可读；本切片只接受一层STONE，其余为原生AIR
         for (int dx = -horizontalPadding; dx <= horizontalPadding; dx++) {
             for (int dz = -horizontalPadding; dz <= horizontalPadding; dz++) {
@@ -507,26 +525,31 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
     private Block fallbackCell(int x, int y, int z, int footY) {
         guard();
-        if (!world.blockExists(x, y, z)) throw outside("fallback_volume_unloaded");
+        if (!world.blockExists(x, y, z)) throw outside(FaithfulFollowIds.ID_FALLBACK_VOLUME_UNLOADED);
         Block actual = world.getBlock(x, y, z);
         if (world.getBlockMetadata(x, y, z) != 0 || world.getTileEntity(x, y, z) != null)
-            throw outside("fallback_volume_metadata_or_tile");
+            throw outside(FaithfulFollowIds.ID_FALLBACK_VOLUME_METADATA_OR_TILE);
         if (actual != (y == footY - 1 ? Blocks.stone : Blocks.air))
-            throw outside("fallback_volume_not_single_stone_air_plane");
+            throw outside(FaithfulFollowIds.ID_FALLBACK_VOLUME_NOT_SINGLE_STONE_AIR_PLANE);
         return actual;
     }
 
     private void fallbackSamplingGuard() {
-        if (!fallbackSampling || fallbackOrigin == null) throw outside("fallback_sampling_not_active");
+        if (!fallbackSampling || fallbackOrigin == null)
+            throw outside(FaithfulFollowIds.ID_FALLBACK_SAMPLING_NOT_ACTIVE);
         verifyFallbackOrigin(fallbackOrigin);
     }
 
     private void fallbackCandidateGuard(BlockPos position) {
         fallbackSamplingGuard();
-        if (position == null || Math.abs((long) position.x - MathHelper.floor_double(fallbackOrigin.x)) > 10L
-            || Math.abs((long) position.z - MathHelper.floor_double(fallbackOrigin.z)) > 10L
-            || Math.abs((long) position.y - (int) fallbackOrigin.y) > 7L)
-            throw outside("fallback_candidate_outside_admitted_volume");
+        if (position == null
+            || Math.abs((long) position.x - MathHelper.floor_double(fallbackOrigin.x))
+                > FaithfulFollowTuning.DRY_PLATFORM_FALLBACK_CANDIDATE_GUARD_LIMIT
+            || Math.abs((long) position.z - MathHelper.floor_double(fallbackOrigin.z))
+                > FaithfulFollowTuning.DRY_PLATFORM_FALLBACK_CANDIDATE_GUARD_LIMIT
+            || Math.abs((long) position.y - (int) fallbackOrigin.y)
+                > FaithfulFollowTuning.DRY_PLATFORM_FALLBACK_CANDIDATE_GUARD_LIMIT_2)
+            throw outside(FaithfulFollowIds.ID_FALLBACK_CANDIDATE_OUTSIDE_ADMITTED_VOLUME);
     }
 
     private final class DryFallbackActor implements FollowFallbackSampler.Actor {
@@ -562,22 +585,22 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
         public BlockPos restrictionCenter() {
             fallbackSamplingGuard();
-            throw outside("home_restriction_not_admitted");
+            throw outside(FaithfulFollowIds.ID_HOME_RESTRICTION_NOT_ADMITTED);
         }
 
         public float restrictionRadius() {
             fallbackSamplingGuard();
-            throw outside("home_restriction_not_admitted");
+            throw outside(FaithfulFollowIds.ID_HOME_RESTRICTION_NOT_ADMITTED);
         }
 
         public boolean isWithinRestriction(BlockPos position) {
             fallbackSamplingGuard();
-            throw outside("home_restriction_not_admitted");
+            throw outside(FaithfulFollowIds.ID_HOME_RESTRICTION_NOT_ADMITTED);
         }
 
         public int minBuildHeight() {
             fallbackSamplingGuard();
-            return 0;
+            return FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE;
         }
 
         public int maxBuildHeight() {
@@ -593,33 +616,37 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
         public float pathfindingMalus(BlockPos position) {
             fallbackCandidateGuard(position);
-            if (position.y != (int) fallbackOrigin.y) throw outside("fallback_malus_without_stable_same_y");
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    for (int dy = -1; dy <= 1; dy++) {
+            if (position.y != (int) fallbackOrigin.y)
+                throw outside(FaithfulFollowIds.ID_FALLBACK_MALUS_WITHOUT_STABLE_SAME_Y);
+            for (int dx = FaithfulFollowTuning.UNSET_OR_NOT_FOUND; dx <= 1; dx++) {
+                for (int dz = FaithfulFollowTuning.UNSET_OR_NOT_FOUND; dz <= 1; dz++) {
+                    for (int dy = FaithfulFollowTuning.UNSET_OR_NOT_FOUND; dy <= 1; dy++) {
                         fallbackCell(position.x + dx, position.y + dy, position.z + dz, position.y);
                     }
                 }
             }
             // Raw AIR + below STONE为WALKABLE；已核邻域无hazard，原版此类型默认malus为0
-            return 0.0F;
+            return FaithfulFollowTuning.DRY_PLATFORM_PATHFINDING_MALUS_FACTOR;
         }
 
         public float walkTargetValue(BlockPos position) {
             fallbackCandidateGuard(position);
             if (position.y != (int) fallbackOrigin.y
                 || fallbackCell(position.x, position.y - 1, position.z, position.y) != Blocks.stone)
-                throw outside("fallback_score_requires_dry_stone_support");
+                throw outside(FaithfulFollowIds.ID_FALLBACK_SCORE_REQUIRES_DRY_STONE_SUPPORT);
             verifyFallbackLightContext();
             int raw = world.getBlockLightValue(position.x, position.y, position.z);
             verifyFallbackLightContext();
             fallbackSamplingGuard();
-            if (raw != 15) throw outside("fallback_nonmax_raw_light_not_admitted");
+            if (raw != FaithfulFollowTuning.TARGET_RAW_THRESHOLD)
+                throw outside(FaithfulFollowIds.ID_FALLBACK_NONMAX_RAW_LIGHT_NOT_ADMITTED);
             // raw=15时现代ambient项归零；不把旧亮度表当作现代ambient来源
-            float atZeroAmbient = FollowFallbackSampler.lightPathfindingCost(raw, 0.0F);
-            float atOneAmbient = FollowFallbackSampler.lightPathfindingCost(raw, 1.0F);
+            float atZeroAmbient = FollowFallbackSampler
+                .lightPathfindingCost(raw, FaithfulFollowTuning.DRY_PLATFORM_PATHFINDING_MALUS_FACTOR);
+            float atOneAmbient = FollowFallbackSampler
+                .lightPathfindingCost(raw, FaithfulFollowTuning.DRY_PLATFORM_LIGHT_PATHFINDING_COST_SECOND_FACTOR);
             if (Float.floatToIntBits(atZeroAmbient) != Float.floatToIntBits(atOneAmbient))
-                throw outside("fallback_ambient_mapping_not_proven");
+                throw outside(FaithfulFollowIds.ID_FALLBACK_AMBIENT_MAPPING_NOT_PROVEN);
             return atZeroAmbient;
         }
     }
@@ -643,7 +670,8 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
     public boolean moveTo(Path path, double speedModifier) {
         navigationLease();
         var requested = nativePath(path);
-        if (speedModifier != requested.creation.speed) throw outside("path_speed_changed_after_creation");
+        if (speedModifier != requested.creation.speed)
+            throw outside(FaithfulFollowIds.ID_PATH_SPEED_CHANGED_AFTER_CREATION);
         PathEntity previous = ownedPath;
         try {
             lastInstallation = planner.install(maid, requested.creation);
@@ -652,10 +680,11 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             throw failure;
         }
         rememberInstalled(requested, previous);
-        if (lastInstallation.contextChanged) throw outside("path_install_context_changed");
+        if (lastInstallation.contextChanged) throw outside(FaithfulFollowIds.ID_PATH_INSTALL_CONTEXT_CHANGED);
         guard();
         navigationLease();
-        if (!lastInstallation.nativeSetPathCalled || ownedPath == null) throw outside("native_install_missing_path");
+        if (!lastInstallation.nativeSetPathCalled || ownedPath == null)
+            throw outside(FaithfulFollowIds.ID_NATIVE_INSTALL_MISSING_PATH);
         return lastInstallation.started;
     }
 
@@ -668,7 +697,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
             if (current()) stopGeneration = stopState().arm(this, actual, world, runtime.getContext(), token);
             else {
                 stopState().release(this);
-                stopGeneration = 0;
+                stopGeneration = FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE;
             }
         }
     }
@@ -677,7 +706,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
         navigationLease();
         if (ownedPath != null && navigator.getPath() == ownedPath) navigator.clearPathEntity();
         stopState().release(this);
-        stopGeneration = 0;
+        stopGeneration = FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE;
         ownedPath = null;
         navigationView = null;
     }
@@ -689,7 +718,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
         } finally {
             if (navigator instanceof NativeNavigationStopSource source) source.tlmnh$navigationStopState()
                 .release(this);
-            stopGeneration = 0;
+            stopGeneration = FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE;
             lastNativeStop = null;
             ownedPath = null;
             navigationView = null;
@@ -719,7 +748,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
     /** 本组件只使用原生平台当前LOS，不冒充原版sensor的候选范围、刷新相位或缓存 */
     public String getLookVisibilitySource() {
-        return "CURRENT_NATIVE_LOS";
+        return FaithfulFollowIds.KEY_CURRENT_NATIVE_LOS;
     }
 
     public boolean isLookTargetRegistered() {
@@ -743,10 +772,16 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
         if (look == null) return;
         look.check();
         double x = look.player.posX, y = look.player.posY + look.player.getEyeHeight(), z = look.player.posZ;
-        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) throw outside("non_finite_look_target");
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
+            throw outside(FaithfulFollowIds.ID_NON_FINITE_LOOK_TARGET);
         guard();
         maid.getLookHelper()
-            .setLookPosition(x, y, z, 10.0F, maid.getVerticalFaceSpeed());
+            .setLookPosition(
+                x,
+                y,
+                z,
+                FaithfulFollowTuning.DRY_PLATFORM_SET_LOOK_POSITION_FOURTH_FACTOR,
+                maid.getVerticalFaceSpeed());
     }
 
     /** 原LookAtTargetSink.stop只擦LOOK，不能改写已经提交或外来helper请求 */
@@ -777,14 +812,15 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
     private OwnerView owner(Owner value) {
         guard();
-        if (!(value instanceof OwnerView view) || view.actor() != this) throw outside("foreign_owner_view");
+        if (!(value instanceof OwnerView view) || view.actor() != this)
+            throw outside(FaithfulFollowIds.ID_FOREIGN_OWNER_VIEW);
         view.check();
         return view;
     }
 
     private NativePath nativePath(Path value) {
         if (!(value instanceof NativePath path) || path.actor() != this || path.lease != token)
-            throw outside("foreign_or_stale_path_view");
+            throw outside(FaithfulFollowIds.ID_FOREIGN_OR_STALE_PATH_VIEW);
         return path;
     }
 
@@ -806,7 +842,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
 
         void check() {
             guard();
-            if (resolveOwner() != player) throw outside("owner_object_not_online");
+            if (resolveOwner() != player) throw outside(FaithfulFollowIds.ID_OWNER_OBJECT_NOT_ONLINE);
         }
 
         public Object getWorldIdentity() {
@@ -817,7 +853,7 @@ public final class DryPlatformFollowActor implements FollowOwnerActor, FollowMov
         public boolean isSpectator() {
             check();
             return player.theItemInWorldManager.getGameType()
-                .getID() == 3;
+                .getID() == FaithfulFollowTuning.MIN_RADIUS_THRESHOLD;
         }
 
         public boolean isDeadOrDying() {

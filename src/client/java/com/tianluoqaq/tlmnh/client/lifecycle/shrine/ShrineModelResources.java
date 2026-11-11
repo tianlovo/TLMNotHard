@@ -27,7 +27,8 @@ public final class ShrineModelResources implements IResourceManagerReloadListene
 
     public SimpleBedrockModel<Entity> get() throws IOException {
         if (model == null) {
-            if (manager == null) throw new IOException(ClientShrineDiagnostics.MSG_SHRINE_RESOURCES_ARE_NOT_INITIALIZED);
+            if (manager == null)
+                throw new IOException(ClientShrineDiagnostics.MSG_SHRINE_RESOURCES_ARE_NOT_INITIALIZED);
             var location = new ResourceLocation(ClientShrineIds.MODEL_JSON_SHRINE);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {

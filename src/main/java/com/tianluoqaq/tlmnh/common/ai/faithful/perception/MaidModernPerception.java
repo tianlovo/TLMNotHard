@@ -32,8 +32,6 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 现代组件的附近/可见/危险/受伤/拾取记忆，不与原型危险缓存混用 */
 public final class MaidModernPerception {
 
-    private static final int SCAN_RATE = 20;
-    private static final int OBSERVATION_TTL = 60;
     // Sensor使用独立的线程安全随机源，不消耗世界/女仆Behavior的随机流
     private static final Random RANDOM = new Random();
     private final EntityMaid maid;
@@ -44,8 +42,10 @@ public final class MaidModernPerception {
     private final MaidHurtBySensor hurt = new MaidHurtBySensor();
     private final MaidHostilesSensor hostile = new MaidHostilesSensor();
     private final MaidPickupEntitiesSensor pickup = new MaidPickupEntitiesSensor();
-    private int livingDelay = RANDOM.nextInt(SCAN_RATE), hurtDelay = RANDOM.nextInt(SCAN_RATE),
-        hostileDelay = RANDOM.nextInt(SCAN_RATE), pickupDelay = RANDOM.nextInt(30);
+    private int livingDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE),
+        hurtDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE),
+        hostileDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE),
+        pickupDelay = RANDOM.nextInt(FaithfulPerceptionTuning.MODERN_PERCEPTION_NEXT_INT_FIRST_PARAM);
     private boolean active;
     private long epoch, scans, hostileScans, hurtScans, pickupScans;
     private List<EntityLivingBase> nearby = Collections.emptyList();
@@ -61,15 +61,15 @@ public final class MaidModernPerception {
     }
 
     public MaidModernPerception(EntityMaid maid, BooleanSupplier current, Predicate<Kind> admission) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.current = Objects.requireNonNull(current, "current");
+        this.maid = Objects.requireNonNull(maid, FaithfulPerceptionIds.ID_MAID);
+        this.current = Objects.requireNonNull(current, FaithfulPerceptionIds.ID_CURRENT);
         this.admission = admission;
     }
 
     public void bindCombatObservation(CombatObservation observation) {
         if (combatObservation != null && combatObservation != observation)
-            throw new IllegalStateException("Combat observation already bound");
-        combatObservation = Objects.requireNonNull(observation, "observation");
+            throw new IllegalStateException(FaithfulPerceptionDiagnostics.MSG_COMBAT_OBSERVATION_ALREADY_BOUND);
+        combatObservation = Objects.requireNonNull(observation, FaithfulPerceptionIds.ID_OBSERVATION);
     }
 
     private boolean unifiedCombatObservation() {
@@ -91,7 +91,8 @@ public final class MaidModernPerception {
     }
 
     public void tick() {
-        if (!current.getAsBoolean()) throw new IllegalStateException("Expired perception frame");
+        if (!current.getAsBoolean())
+            throw new IllegalStateException(FaithfulPerceptionDiagnostics.MSG_EXPIRED_PERCEPTION_FRAME);
         active = true;
         if (admission != null) {
             if (!livingObservationFresh() && visible != null) {
@@ -116,26 +117,26 @@ public final class MaidModernPerception {
             } finally {
                 if (trial != null) trial.accountObservation(quota);
             }
-            livingDelay = SCAN_RATE;
+            livingDelay = FaithfulPerceptionTuning.SCAN_RATE;
             scans++;
         } else if (livingDelay <= 0 && (admission == null || admission.test(Kind.LIVING))) {
-            livingDelay = SCAN_RATE;
+            livingDelay = FaithfulPerceptionTuning.SCAN_RATE;
             living.doTick(maid, this);
             scans++;
         }
         if (--hurtDelay <= 0) {
-            hurtDelay = SCAN_RATE;
+            hurtDelay = FaithfulPerceptionTuning.SCAN_RATE;
             hurt.doTick(maid, this);
             hurtScans++;
         }
         if (--hostileDelay <= 0) {
-            hostileDelay = SCAN_RATE;
+            hostileDelay = FaithfulPerceptionTuning.SCAN_RATE;
             hostile.doTick(maid, this);
             hostileScans++;
         }
         if (pickupDelay > 0) pickupDelay--;
         if (pickupDelay <= 0 && (admission == null || admission.test(Kind.PICKUP))) {
-            pickupDelay = 30;
+            pickupDelay = FaithfulPerceptionTuning.MODERN_PERCEPTION_NEXT_INT_FIRST_PARAM;
             pickup.doTick(maid, this);
             pickupScans++;
         }
@@ -154,7 +155,7 @@ public final class MaidModernPerception {
         var held = maid.getHeldItem();
         double vertical = bowTask && (unifiedCombatObservation() || held != null && held.getItem() instanceof ItemBow)
             ? radius
-            : 4;
+            : FaithfulPerceptionTuning.MODERN_PERCEPTION_DOMAIN_PARAM;
         if (area.enabled()) {
             var p = area.restrictionCenter();
             return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
@@ -170,7 +171,8 @@ public final class MaidModernPerception {
         long snapshotEpoch = ++epoch;
         visible = new MaidVisibleLivingEntities(nearby, this::targetable, () -> {
             guard();
-            if (epoch != snapshotEpoch) throw new IllegalStateException("Retired visible entity memory");
+            if (epoch != snapshotEpoch)
+                throw new IllegalStateException(FaithfulPerceptionDiagnostics.MSG_RETIRED_VISIBLE_ENTITY_MEMORY);
         });
     }
 
@@ -180,9 +182,15 @@ public final class MaidModernPerception {
         if (area.enabled()) {
             var p = area.restrictionCenter();
             return AxisAlignedBB.getBoundingBox(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1)
-                .expand(area.restrictionRadius(), 4, area.restrictionRadius());
+                .expand(
+                    area.restrictionRadius(),
+                    FaithfulPerceptionTuning.MODERN_PERCEPTION_DOMAIN_PARAM,
+                    area.restrictionRadius());
         }
-        return maid.boundingBox.expand(area.restrictionRadius(), 4, area.restrictionRadius());
+        return maid.boundingBox.expand(
+            area.restrictionRadius(),
+            FaithfulPerceptionTuning.MODERN_PERCEPTION_DOMAIN_PARAM,
+            area.restrictionRadius());
     }
 
     public List<Entity> pickupEntities() {
@@ -261,31 +269,35 @@ public final class MaidModernPerception {
         if (unifiedCombatObservation()) return combatObservation.visibleLiving(entity.getUniqueID());
         if (entity == maid || !entity.isEntityAlive()
             || entity instanceof EntityPlayerMP player && player.theItemInWorldManager.getGameType()
-                .getID() == 3)
+                .getID() == FaithfulPerceptionTuning.TARGET_GET_ID_THRESHOLD)
             return false;
-        double visibility = 1;
+        double visibility = FaithfulPerceptionTuning.MODERN_PERCEPTION_VISIBILITY;
         if (entity != attackTarget) {
-            if (entity.isSneaking()) visibility *= .8;
+            if (entity.isSneaking()) visibility *= FaithfulPerceptionTuning.MODERN_PERCEPTION_TARGETABLE_FACTOR;
             if (entity.isInvisible()) {
                 int armor = 0;
-                for (int slot = 1; slot <= 4; slot++) {
+                for (int slot = 1; slot <= FaithfulPerceptionTuning.MODERN_PERCEPTION_DOMAIN_PARAM; slot++) {
                     var item = entity.getEquipmentInSlot(slot);
                     if (item != null && item.stackSize > 0) armor++;
                 }
-                visibility *= .7 * Math.max(.1F, armor / 4F);
+                visibility *= FaithfulPerceptionTuning.MODERN_PERCEPTION_TARGETABLE_FACTOR_2 * Math.max(
+                    FaithfulPerceptionTuning.MODERN_PERCEPTION_MAX_FIRST_FACTOR,
+                    armor / FaithfulPerceptionTuning.MODERN_PERCEPTION_MAX_SECOND_FACTOR);
             }
         }
-        double range = Math.max(2, 16 * visibility);
+        double range = Math.max(
+            FaithfulPerceptionTuning.MODERN_PERCEPTION_MAX_FIRST_PARAM,
+            FaithfulPerceptionTuning.MODERN_PERCEPTION_MAX_SECOND_PARAM * visibility);
         return maid.getDistanceSqToEntity(entity) <= range * range && maid.getEntitySenses()
             .canSee(entity);
     }
 
     /** Brain.copyWithoutBehaviors保留记忆对象，但重新构造Sensor并抽取初始延迟 */
     public void refreshSensors() {
-        livingDelay = RANDOM.nextInt(SCAN_RATE);
-        hurtDelay = RANDOM.nextInt(SCAN_RATE);
-        hostileDelay = RANDOM.nextInt(SCAN_RATE);
-        pickupDelay = RANDOM.nextInt(30);
+        livingDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        hurtDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        hostileDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        pickupDelay = RANDOM.nextInt(FaithfulPerceptionTuning.MODERN_PERCEPTION_NEXT_INT_FIRST_PARAM);
     }
 
     public void clear() {
@@ -299,14 +311,15 @@ public final class MaidModernPerception {
         hurtBy = null;
         hurtByEntity = null;
         pickupEntities = Collections.emptyList();
-        livingDelay = RANDOM.nextInt(SCAN_RATE);
-        hurtDelay = RANDOM.nextInt(SCAN_RATE);
-        hostileDelay = RANDOM.nextInt(SCAN_RATE);
-        pickupDelay = RANDOM.nextInt(30);
+        livingDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        hurtDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        hostileDelay = RANDOM.nextInt(FaithfulPerceptionTuning.SCAN_RATE);
+        pickupDelay = RANDOM.nextInt(FaithfulPerceptionTuning.MODERN_PERCEPTION_NEXT_INT_FIRST_PARAM);
     }
 
     private void guard() {
-        if (!active || !current.getAsBoolean()) throw new IllegalStateException("Expired perception memory");
+        if (!active || !current.getAsBoolean())
+            throw new IllegalStateException(FaithfulPerceptionDiagnostics.MSG_EXPIRED_PERCEPTION_MEMORY);
     }
 
     public long livingScanCount() {
@@ -335,6 +348,6 @@ public final class MaidModernPerception {
 
     private boolean fresh(long observedAt) {
         long age = maid.worldObj.getTotalWorldTime() - observedAt;
-        return observedAt != Long.MIN_VALUE && age >= 0 && age <= OBSERVATION_TTL;
+        return observedAt != Long.MIN_VALUE && age >= 0 && age <= FaithfulPerceptionTuning.OBSERVATION_TTL;
     }
 }

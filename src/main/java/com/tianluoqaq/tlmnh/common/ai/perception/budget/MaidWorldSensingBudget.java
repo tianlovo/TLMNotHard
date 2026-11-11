@@ -15,7 +15,8 @@ public final class MaidWorldSensingBudget {
     private MaidWorldSensingBudget() {}
 
     public static MaidSensingBudget forWorld(World world) {
-        if (world == null || world.isRemote) throw new IllegalArgumentException("Server world required");
+        if (world == null || world.isRemote)
+            throw new IllegalArgumentException(PerceptionBudgetDiagnostics.MSG_SERVER_WORLD_REQUIRED);
         return WORLDS.computeIfAbsent(world, ignored -> new MaidSensingBudget(MaidPerceptionConfig.scansPerTick));
     }
 

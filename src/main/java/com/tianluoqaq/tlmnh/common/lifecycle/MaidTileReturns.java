@@ -35,34 +35,35 @@ public final class MaidTileReturns {
 
     public static void prepare(TileEntity tile, List<ItemStack> stacks) {
         if (PENDING.containsKey(tile)) return;
-        if (!PREPARING.add(tile)) throw new IllegalStateException("Reentrant source tile transfer refused");
+        if (!PREPARING.add(tile))
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_REENTRANT_SOURCE_TILE_TRANSFER_REFUSED);
         Prepared prepared = null;
         try {
             prepared = new Prepared(tile);
             for (var stack : stacks) {
-                if (stack == null || stack.stackSize <= 0)
-                    throw new IllegalArgumentException("Complete source stack required");
+                if (stack == null || stack.stackSize <= 0) throw new IllegalArgumentException(
+                    MaidLifecyclePart3Diagnostics.MSG_COMPLETE_SOURCE_STACK_REQUIRED);
                 prepared.ids.add(
                     prepared.ledger.prepareReturnedFilm(
                         ProtectedItemCodec.encode(stack),
                         prepared.world.provider.dimensionId,
-                        tile.xCoord + .5,
-                        tile.yCoord + .5,
-                        tile.zCoord + .5,
+                        tile.xCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                        tile.yCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                        tile.zCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
                         prepared.context));
             }
             if (!prepared.ids.isEmpty()) MaidLifecycleDurability.ledger(prepared.world, prepared.ledger);
             prepared.checkBefore();
             if (prepared.world.getBlock(prepared.x, prepared.y, prepared.z) != prepared.block
                 || prepared.world.getBlockMetadata(prepared.x, prepared.y, prepared.z) != prepared.metadata)
-                throw new IllegalStateException("Original tile block changed while preparing source escrow");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_TILE_BLOCK_CHANGED_WHILE);
             PENDING.put(tile, prepared);
         } catch (Exception | LinkageError | AssertionError failure) {
             if (prepared != null) prepared.retain(failure);
             else report(tile, failure);
             // This stops our own clear. It is not a cancellation API for arbitrary external block removal.
             throw new IllegalStateException(
-                "Cannot confirm original tile escrow; source must remain retained",
+                MaidLifecyclePart3Diagnostics.MSG_CANNOT_CONFIRM_ORIGINAL_TILE_ESCROW,
                 failure);
         } finally {
             PREPARING.remove(tile);
@@ -71,7 +72,8 @@ public final class MaidTileReturns {
 
     public static void beforeClear(TileEntity tile) {
         var prepared = PENDING.get(tile);
-        if (prepared == null) throw new IllegalStateException("Missing original tile escrow");
+        if (prepared == null)
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_MISSING_ORIGINAL_TILE_ESCROW);
         try {
             prepared.checkBefore();
         } catch (Exception | LinkageError | AssertionError failure) {
@@ -83,17 +85,19 @@ public final class MaidTileReturns {
 
     public static UUID firstId(TileEntity tile) {
         var prepared = PENDING.get(tile);
-        if (prepared == null || prepared.ids.isEmpty()) throw new IllegalStateException("No escrowed tile material");
-        return prepared.ids.get(0);
+        if (prepared == null || prepared.ids.isEmpty())
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_NO_ESCROWED_TILE_MATERIAL);
+        return prepared.ids.get(MaidLifecycleTuning.CORE_INITIAL_VALUE);
     }
 
     public static void cleared(TileEntity tile, NBTTagCompound planned) {
         var prepared = PENDING.get(tile);
-        if (prepared == null) throw new IllegalStateException("Missing original cleared tile escrow");
+        if (prepared == null)
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_MISSING_ORIGINAL_CLEARED_TILE_ESCROW);
         try {
             prepared.checkIdentity();
             if (!planned.equals(MaidShrineTransfer.snapshot(tile)))
-                throw new IllegalStateException("Unknown tile contents after removal callback retained");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_TILE_CONTENTS_AFTER_REMOVAL);
             prepared.after = (NBTTagCompound) planned.copy();
         } catch (Exception | LinkageError | AssertionError failure) {
             prepared.retain(failure);
@@ -109,15 +113,19 @@ public final class MaidTileReturns {
             prepared.finalizing = true;
             try {
                 if (!world.getChunkProvider()
-                    .chunkExists(prepared.x >> 4, prepared.z >> 4)) continue;
+                    .chunkExists(
+                        prepared.x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        prepared.z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT))
+                    continue;
                 if (world.getTileEntity(prepared.x, prepared.y, prepared.z) == prepared.tile
                     && world.getBlock(prepared.x, prepared.y, prepared.z) == prepared.block) {
                     if (prepared.after != null && !prepared.after.equals(MaidShrineTransfer.snapshot(prepared.tile)))
-                        throw new IllegalStateException("Held source tile changed before its removal");
+                        throw new IllegalStateException(
+                            MaidLifecyclePart3Diagnostics.MSG_HELD_SOURCE_TILE_CHANGED_BEFORE);
                     continue;
                 }
-                if (prepared.after == null)
-                    throw new IllegalStateException("Source disappeared before owned clear was confirmed");
+                if (prepared.after == null) throw new IllegalStateException(
+                    MaidLifecyclePart3Diagnostics.MSG_SOURCE_DISAPPEARED_BEFORE_OWNED_CLEAR);
                 MaidLifecycleDurability.absentTile(world, prepared.x, prepared.y, prepared.z, prepared.block);
                 for (var id : prepared.ids) prepared.ledger.readyPreparedReturn(id, prepared.context);
                 if (!prepared.ids.isEmpty()) MaidLifecycleDurability.ledger(world, prepared.ledger);
@@ -140,8 +148,14 @@ public final class MaidTileReturns {
 
     private static void report(TileEntity tile, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
-        IntegrationGuard
-            .report(Side.SERVER, "tile_return/" + tile.xCoord + "/" + tile.yCoord + "/" + tile.zCoord, failure);
+        IntegrationGuard.report(
+            Side.SERVER,
+            MaidLifecycleIds.ID_TILE_RETURN + tile.xCoord
+                + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                + tile.yCoord
+                + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                + tile.zCoord,
+            failure);
     }
 
     private static final class Prepared {
@@ -160,27 +174,29 @@ public final class MaidTileReturns {
             this.tile = tile;
             if (!(tile instanceof MaidShrineTile || tile instanceof TileEntitySnackCabinet
                 || tile instanceof TileEntityMaidBed))
-                throw new IllegalArgumentException("Only owned maid content tiles can stage returns");
+                throw new IllegalArgumentException(MaidLifecyclePart3Diagnostics.MSG_ONLY_OWNED_MAID_CONTENT_TILES);
             world = tile.getWorldObj();
             x = tile.xCoord;
             y = tile.yCoord;
             z = tile.zCoord;
             if (world == null || world.isRemote
                 || !world.getChunkProvider()
-                    .chunkExists(x >> 4, z >> 4))
-                throw new IllegalStateException("Loaded original source tile required");
+                    .chunkExists(
+                        x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT))
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_LOADED_ORIGINAL_SOURCE_TILE_REQUIRED);
             MaidLifecycleDurability.requireEntities(world);
             block = world.getBlock(x, y, z);
             metadata = world.getBlockMetadata(x, y, z);
             before = MaidShrineTransfer.snapshot(tile);
             ledger = MaidLifecycleData.get(world);
             var source = new NBTTagCompound();
-            source.setTag("Tile", before.copy());
-            source.setString("Block", Block.blockRegistry.getNameForObject(block));
-            source.setInteger("Metadata", metadata);
+            source.setTag(MaidLifecyclePart2NbtKeys.KEY_TILE, before.copy());
+            source.setString(MaidLifecyclePart2NbtKeys.KEY_BLOCK, Block.blockRegistry.getNameForObject(block));
+            source.setInteger(MaidLifecyclePart2NbtKeys.KEY_METADATA, metadata);
             context = new NBTTagCompound();
-            context.setString("Kind", "tile_break");
-            context.setTag("Source", source);
+            context.setString(MaidLifecyclePart2NbtKeys.KEY_KIND, MaidLifecycleIds.ID_TILE_BREAK);
+            context.setTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE, source);
             checkBefore();
         }
 
@@ -190,15 +206,18 @@ public final class MaidTileReturns {
                 || tile.zCoord != z
                 || tile.isInvalid()
                 || !world.getChunkProvider()
-                    .chunkExists(x >> 4, z >> 4)
+                    .chunkExists(
+                        x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
                 || world.getTileEntity(x, y, z) != tile)
-                throw new IllegalStateException("Original tile source identity changed");
+                throw new IllegalStateException(
+                    MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_TILE_SOURCE_IDENTITY_CHANGED);
         }
 
         void checkBefore() {
             checkIdentity();
-            if (!before.equals(MaidShrineTransfer.snapshot(tile)))
-                throw new IllegalStateException("Original tile contents changed before owned clear");
+            if (!before.equals(MaidShrineTransfer.snapshot(tile))) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_TILE_CONTENTS_CHANGED_BEFORE);
         }
 
         void retain(Throwable failure) {

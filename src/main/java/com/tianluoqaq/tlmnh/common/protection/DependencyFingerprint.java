@@ -18,28 +18,29 @@ public final class DependencyFingerprint {
         var container = Loader.instance()
             .getIndexedModList()
             .get(id);
-        if (container == null) return "absent";
+        if (container == null) return ProtectionIds.ID_ABSENT;
         var source = container.getSource();
         String fingerprint;
         if (source != null && source.isFile()) {
             try {
                 fingerprint = source(source, container.getVersion());
             } catch (Exception failure) {
-                IntegrationGuard.report("dependency/" + id, failure);
-                fingerprint = "unreadable";
+                IntegrationGuard.report(ProtectionIds.ID_DEPENDENCY + id, failure);
+                fingerprint = ProtectionIds.ID_UNREADABLE_2;
             }
-        } else fingerprint = "development-directory:" + container.getVersion();
+        } else fingerprint = ProtectionIds.ID_DEVELOPMENT_DIRECTORY + container.getVersion();
         CACHE.put(id, fingerprint);
         return fingerprint;
     }
 
     public static String source(File source, String version) throws Exception {
-        return version + ":sha256:" + Sha256Hex.ofFile(source);
+        return version + ProtectionIds.REVIEWED_ARTIFACT_REVIEWED + Sha256Hex.ofFile(source);
     }
 
     public static String item(String registryName) {
         int colon = registryName.indexOf(':');
-        String owner = colon < 0 ? "minecraft" : registryName.substring(0, colon);
-        return owner.equals("minecraft") || owner.equals("tlmnh") ? "" : mod(owner);
+        String owner = colon < 0 ? ProtectionIds.ID_MINECRAFT
+            : registryName.substring(ProtectionTuning.SUBSTRING_START_OFFSET, colon);
+        return owner.equals(ProtectionIds.ID_MINECRAFT) || owner.equals(ProtectionIds.ID_TLMNH) ? "" : mod(owner);
     }
 }

@@ -33,7 +33,7 @@ public final class MaidFoodProfile {
     private final List<Effect> effects = new ArrayList<>();
 
     private MaidFoodProfile(ItemStack stack, int hunger, float saturation) {
-        total = hunger + hunger * saturation * 2;
+        total = hunger + hunger * saturation * MaidMealTuning.FOOD_PROFILE_TOTAL;
         duration = stack.getMaxItemUseDuration();
     }
 
@@ -48,44 +48,110 @@ public final class MaidFoodProfile {
         if (action != EnumAction.eat && action != EnumAction.drink) return null;
         var values = CompatServices.nutrition()
             .foodValues(stack);
-        if (values == null || values[0] < 0 || !Float.isFinite(values[1])) return null;
-        var profile = new MaidFoodProfile(stack, (int) values[0], values[1]);
-        if (!Float.isFinite(profile.total) || profile.total < 0 || profile.duration <= 0 || profile.duration > 1200)
-            return null;
+        if (values == null || values[MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE] < 0
+            || !Float.isFinite(values[MaidMealTuning.IS_FINITE_SINGLE_UNIT])) return null;
+        var profile = new MaidFoodProfile(stack, (int) values[0], values[MaidMealTuning.IS_FINITE_SINGLE_UNIT]);
+        if (!Float.isFinite(profile.total) || profile.total < 0
+            || profile.duration <= 0
+            || profile.duration > MaidMealTuning.MAX_DURATION_THRESHOLD) return null;
         {
             if (stack.getItem() instanceof ItemFood food) {
                 String id = Item.itemRegistry.getNameForObject(food);
-                boolean vanilla = id != null && id.startsWith("minecraft:");
-                if (!vanilla && (!inherited(food.getClass(), "onEaten", "func_77654_b")
-                    || !inherited(food.getClass(), "onFoodEaten", "func_77849_c"))) return null;
+                boolean vanilla = id != null && id.startsWith(MaidMealIds.ID_MINECRAFT);
+                if (!vanilla && (!inherited(
+                    food.getClass(),
+                    MaidMealIds.ID_ONEATEN,
+                    MaidMealReflectionSpec.SRG_MEMBER_FUNC_77654_B)
+                    || !inherited(
+                        food.getClass(),
+                        MaidMealIds.ID_ONFOODEATEN,
+                        MaidMealReflectionSpec.SRG_MEMBER_FUNC_77849_C)))
+                    return null;
                 if (stack.getItem()
                     .hasContainerItem(stack))
                     profile.container = stack.getItem()
                         .getContainerItem(stack.copy());
                 if (stack.getItem() == Items.mushroom_stew) profile.container = new ItemStack(Items.bowl);
-                int idEffect = ObfuscationReflectionHelper
-                    .getPrivateValue(ItemFood.class, food, "potionId", "field_77851_ca");
-                int seconds = ObfuscationReflectionHelper
-                    .getPrivateValue(ItemFood.class, food, "potionDuration", "field_77850_cb");
-                int amplifier = ObfuscationReflectionHelper
-                    .getPrivateValue(ItemFood.class, food, "potionAmplifier", "field_77857_cc");
-                float chance = ObfuscationReflectionHelper
-                    .getPrivateValue(ItemFood.class, food, "potionEffectProbability", "field_77858_cd");
-                profile.effect(idEffect, seconds * 20, amplifier, chance, false);
+                int idEffect = ObfuscationReflectionHelper.getPrivateValue(
+                    ItemFood.class,
+                    food,
+                    MaidMealIds.ID_POTIONID,
+                    MaidMealReflectionSpec.SRG_MEMBER_FIELD_77851_CA);
+                int seconds = ObfuscationReflectionHelper.getPrivateValue(
+                    ItemFood.class,
+                    food,
+                    MaidMealIds.ID_POTIONDURATION,
+                    MaidMealReflectionSpec.SRG_MEMBER_FIELD_77850_CB);
+                int amplifier = ObfuscationReflectionHelper.getPrivateValue(
+                    ItemFood.class,
+                    food,
+                    MaidMealIds.ID_POTIONAMPLIFIER,
+                    MaidMealReflectionSpec.SRG_MEMBER_FIELD_77857_CC);
+                float chance = ObfuscationReflectionHelper.getPrivateValue(
+                    ItemFood.class,
+                    food,
+                    MaidMealIds.ID_POTIONEFFECTPROBABILITY,
+                    MaidMealReflectionSpec.SRG_MEMBER_FIELD_77858_CD);
+                profile.effect(
+                    idEffect,
+                    seconds * MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM,
+                    amplifier,
+                    chance,
+                    false);
                 if (food == Items.golden_apple) {
-                    profile.effect(Potion.field_76444_x.id, 2400, 0, 1, false);
+                    profile.effect(
+                        Potion.field_76444_x.id,
+                        MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_2,
+                        MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                        false);
                     if (stack.getItemDamage() > 0) {
                         profile.effects.clear();
-                        profile.effect(Potion.field_76444_x.id, 2400, 0, 1, false);
-                        profile.effect(Potion.regeneration.id, 600, 4, 1, false);
-                        profile.effect(Potion.resistance.id, 6000, 0, 1, false);
-                        profile.effect(Potion.fireResistance.id, 6000, 0, 1, false);
+                        profile.effect(
+                            Potion.field_76444_x.id,
+                            MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_2,
+                            MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE,
+                            MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                            false);
+                        profile.effect(
+                            Potion.regeneration.id,
+                            MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_3,
+                            MaidMealTuning.FOOD_PROFILE_EFFECT_THIRD_PARAM,
+                            MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                            false);
+                        profile.effect(
+                            Potion.resistance.id,
+                            MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_4,
+                            MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE,
+                            MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                            false);
+                        profile.effect(
+                            Potion.fireResistance.id,
+                            MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_4,
+                            MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE,
+                            MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                            false);
                     }
                 }
-                if (food == Items.fish && stack.getItemDamage() == 3) {
-                    profile.effect(Potion.poison.id, 1200, 3, 1, false);
-                    profile.effect(Potion.hunger.id, 300, 2, 1, false);
-                    profile.effect(Potion.confusion.id, 300, 1, 1, false);
+                if (food == Items.fish && stack.getItemDamage() == MaidMealTuning.TARGET_GET_ITEM_DAMAGE_THRESHOLD) {
+                    profile.effect(
+                        Potion.poison.id,
+                        MaidMealTuning.MAX_DURATION_THRESHOLD,
+                        MaidMealTuning.TARGET_GET_ITEM_DAMAGE_THRESHOLD,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                        false);
+                    profile.effect(
+                        Potion.hunger.id,
+                        MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_5,
+                        MaidMealTuning.FOOD_PROFILE_TOTAL,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                        false);
+                    profile.effect(
+                        Potion.confusion.id,
+                        MaidMealTuning.FOOD_PROFILE_EFFECT_SECOND_PARAM_5,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                        false);
                 }
                 return profile;
             }
@@ -112,11 +178,18 @@ public final class MaidFoodProfile {
         if (stack.getItem() == Items.potionitem && !ItemPotion.isSplash(stack.getItemDamage())) {
             var effects = Items.potionitem.getEffects(stack);
             if (effects == null) return null;
-            var profile = new MaidFoodProfile(stack, 0, 0);
+            var profile = new MaidFoodProfile(
+                stack,
+                MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE,
+                MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE);
             profile.requiresNutrition = false;
             profile.container = new ItemStack(Items.glass_bottle);
-            for (PotionEffect effect : effects) profile
-                .effect(effect.getPotionID(), effect.getDuration(), effect.getAmplifier(), 1, effect.getIsAmbient());
+            for (PotionEffect effect : effects) profile.effect(
+                effect.getPotionID(),
+                effect.getDuration(),
+                effect.getAmplifier(),
+                MaidMealTuning.IS_FINITE_SINGLE_UNIT,
+                effect.getIsAmbient());
             return profile.providesAir() ? profile : null;
         }
         var profile = inspect(stack);
@@ -134,10 +207,10 @@ public final class MaidFoodProfile {
                 .equals(mcp)
                 || method.getName()
                     .equals(srg))
-                && method.getParameterTypes().length == 3
-                && method.getParameterTypes()[0] == ItemStack.class
-                && method.getParameterTypes()[1] == World.class
-                && method.getParameterTypes()[2] == EntityPlayer.class) return false;
+                && method.getParameterTypes().length == MaidMealTuning.TARGET_GET_ITEM_DAMAGE_THRESHOLD
+                && method.getParameterTypes()[MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE] == ItemStack.class
+                && method.getParameterTypes()[MaidMealTuning.IS_FINITE_SINGLE_UNIT] == World.class
+                && method.getParameterTypes()[MaidMealTuning.FOOD_PROFILE_TOTAL] == EntityPlayer.class) return false;
             type = type.getSuperclass();
         }
         return type == ItemFood.class;

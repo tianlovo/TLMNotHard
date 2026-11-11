@@ -10,7 +10,7 @@ public final class NativeNavigationStopState {
 
     public static final class Event {
 
-        public final String cause = "NATIVE_NAVIGATION_WATCHDOG";
+        public final String cause = FaithfulNavigationIds.KEY_NATIVE_NAVIGATION_WATCHDOG;
         public final long installationGeneration, worldTick;
         public final int entityTick;
         private final transient Object observer, path, world;
@@ -32,14 +32,16 @@ public final class NativeNavigationStopState {
     private Event pending, event;
 
     public long arm(Object observer, Object path, Object world, MaidPolicyContext context, Token token) {
-        Objects.requireNonNull(observer, "observer");
-        Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(world, "world");
-        Objects.requireNonNull(context, "context");
-        if (!context.isCurrent(token)) throw new IllegalStateException("Stale navigation observation lease");
+        Objects.requireNonNull(observer, FaithfulNavigationIds.ID_OBSERVER);
+        Objects.requireNonNull(path, FaithfulNavigationIds.ID_PATH);
+        Objects.requireNonNull(world, FaithfulNavigationIds.ID_WORLD);
+        Objects.requireNonNull(context, FaithfulNavigationIds.ID_CONTEXT);
+        if (!context.isCurrent(token))
+            throw new IllegalStateException(FaithfulNavigationDiagnostics.MSG_STALE_NAVIGATION_OBSERVATION_LEASE);
         if (this.observer != null && this.observer != observer)
-            throw new IllegalStateException("Navigator already observed by another actor");
-        if (generation == Long.MAX_VALUE) throw new IllegalStateException("Navigation generation exhausted");
+            throw new IllegalStateException(FaithfulNavigationDiagnostics.MSG_NAVIGATOR_ALREADY_OBSERVED_BY_ANOTHER);
+        if (generation == Long.MAX_VALUE)
+            throw new IllegalStateException(FaithfulNavigationDiagnostics.MSG_NAVIGATION_GENERATION_EXHAUSTED);
         this.observer = observer;
         this.path = path;
         this.world = world;

@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.ProjectileCombatIds;
+import com.tianluoqaq.tlmnh.common.combat.projectile.ProjectileCombatNbtKeys;
 
 /** 独立于可选碰撞体形状的原生生命周期边界；停止时保留实体及原始NBT */
 @Mixin(EntityArrow.class)
@@ -27,24 +29,20 @@ public abstract class MixinArrowSource implements MaidArrowSourceState {
 
     @Inject(method = "readEntityFromNBT", at = @At("TAIL"))
     private void tlmnh$readSource(NBTTagCompound tag, CallbackInfo ci) {
-        tlmnh$sourceHandoff = tag.hasKey(MaidProjectileSource.HANDOFF_TAG)
-            ? tag.getTag(MaidProjectileSource.HANDOFF_TAG)
-                .copy()
-            : null;
-        tlmnh$source = tag.hasKey(MaidProjectileSource.TAG) ? tag.getTag(MaidProjectileSource.TAG)
+        tlmnh$sourceHandoff = tag.hasKey(ProjectileCombatIds.HANDOFF_TAG) ? tag.getTag(ProjectileCombatIds.HANDOFF_TAG)
             .copy() : null;
-        tlmnh$sourceStopped = tag.hasKey(MaidProjectileSource.STOPPED_TAG)
-            ? tag.getTag(MaidProjectileSource.STOPPED_TAG)
-                .copy()
-            : null;
+        tlmnh$source = tag.hasKey(ProjectileCombatNbtKeys.TAG) ? tag.getTag(ProjectileCombatNbtKeys.TAG)
+            .copy() : null;
+        tlmnh$sourceStopped = tag.hasKey(ProjectileCombatIds.STOPPED_TAG) ? tag.getTag(ProjectileCombatIds.STOPPED_TAG)
+            .copy() : null;
     }
 
     @Inject(method = "writeEntityToNBT", at = @At("TAIL"))
     private void tlmnh$writeSource(NBTTagCompound tag, CallbackInfo ci) {
         MaidProjectileSource.beforeSave((EntityArrow) (Object) this);
-        if (tlmnh$source != null) tag.setTag(MaidProjectileSource.TAG, tlmnh$source.copy());
-        if (tlmnh$sourceStopped != null) tag.setTag(MaidProjectileSource.STOPPED_TAG, tlmnh$sourceStopped.copy());
-        if (tlmnh$sourceHandoff != null) tag.setTag(MaidProjectileSource.HANDOFF_TAG, tlmnh$sourceHandoff.copy());
+        if (tlmnh$source != null) tag.setTag(ProjectileCombatNbtKeys.TAG, tlmnh$source.copy());
+        if (tlmnh$sourceStopped != null) tag.setTag(ProjectileCombatIds.STOPPED_TAG, tlmnh$sourceStopped.copy());
+        if (tlmnh$sourceHandoff != null) tag.setTag(ProjectileCombatIds.HANDOFF_TAG, tlmnh$sourceHandoff.copy());
     }
 
     @Inject(method = "onUpdate", at = @At("HEAD"), cancellable = true)

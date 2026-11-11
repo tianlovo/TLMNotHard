@@ -6,8 +6,6 @@ import java.util.Objects;
 /** 发现位置的短期观测，不代表床已认领或物品操作已获许可 */
 public final class MaidLifeCandidate {
 
-    public static final int MAXIMUM_AGE = 20;
-
     public enum Kind {
         BED,
         SNACK
@@ -23,16 +21,16 @@ public final class MaidLifeCandidate {
 
     public MaidLifeCandidate(Kind kind, int dimension, int x, int y, int z, long observedAt, Object world,
         MaidPolicyContext context, Object tile) {
-        this.kind = Objects.requireNonNull(kind, "kind");
+        this.kind = Objects.requireNonNull(kind, AiPolicyIds.ID_KIND);
         this.dimension = dimension;
         this.x = x;
         this.y = y;
         this.z = z;
         this.observedAt = observedAt;
-        this.world = Objects.requireNonNull(world, "world");
-        this.context = Objects.requireNonNull(context, "context");
+        this.world = Objects.requireNonNull(world, AiPolicyIds.ID_WORLD);
+        this.context = Objects.requireNonNull(context, AiPolicyIds.ID_CONTEXT);
         token = context.getToken();
-        this.tile = new WeakReference<>(Objects.requireNonNull(tile, "tile"));
+        this.tile = new WeakReference<>(Objects.requireNonNull(tile, AiPolicyIds.ID_TILE));
     }
 
     public boolean matches(Object world, MaidPolicyContext context, long gameTime, Object currentTile) {
@@ -40,7 +38,7 @@ public final class MaidLifeCandidate {
         return this.world == world && this.context == context
             && context.isCurrent(token)
             && age >= 0
-            && age <= MAXIMUM_AGE
+            && age <= AiPolicyTuning.MAXIMUM_AGE
             && currentTile != null
             && tile.get() == currentTile;
     }

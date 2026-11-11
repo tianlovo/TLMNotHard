@@ -22,26 +22,28 @@ public final class MaidPoseDimensions {
         maid.width = pose.width;
         maid.height = pose.height;
         maid.boundingBox.setBounds(
-            maid.posX - pose.width / 2.0,
+            maid.posX - pose.width / MaidEntityTuning.MIDPOINT_DIVISOR_D,
             feet,
-            maid.posZ - pose.width / 2.0,
-            maid.posX + pose.width / 2.0,
+            maid.posZ - pose.width / MaidEntityTuning.MIDPOINT_DIVISOR_D,
+            maid.posX + pose.width / MaidEntityTuning.MIDPOINT_DIVISOR_D,
             feet + pose.height,
-            maid.posZ + pose.width / 2.0);
+            maid.posZ + pose.width / MaidEntityTuning.MIDPOINT_DIVISOR_D);
         if (maid.worldObj == null || maid.worldObj.isRemote
             || maid.noClip
             || ((MaidPoseStateAccess) maid).tlmnh$isFirstUpdate()
             || pose.width <= oldWidth && pose.height <= oldHeight) return;
-        double dx = Math.max(0F, pose.width - oldWidth) + 1.0e-6;
-        double dy = Math.max(0F, pose.height - oldHeight) + 1.0e-6;
-        double cy = feet + oldHeight / 2.0;
+        double dx = Math.max(MaidEntityTuning.POSE_DIMENSIONS_MAX_FIRST_FACTOR, pose.width - oldWidth)
+            + MaidEntityTuning.POSE_DIMENSIONS_REFRESH_DX_OFFSET;
+        double dy = Math.max(MaidEntityTuning.POSE_DIMENSIONS_MAX_FIRST_FACTOR, pose.height - oldHeight)
+            + MaidEntityTuning.POSE_DIMENSIONS_REFRESH_DX_OFFSET;
+        double cy = feet + oldHeight / MaidEntityTuning.MIDPOINT_DIVISOR_D;
         var region = AxisAlignedBB.getBoundingBox(
-            maid.posX - dx / 2,
-            cy - dy / 2,
-            maid.posZ - dx / 2,
-            maid.posX + dx / 2,
-            cy + dy / 2,
-            maid.posZ + dx / 2);
+            maid.posX - dx / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM,
+            cy - dy / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM,
+            maid.posZ - dx / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM,
+            maid.posX + dx / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM,
+            cy + dy / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM,
+            maid.posZ + dx / MaidEntityTuning.POSE_BEGGING_FIRST_PARAM);
         var query = region.copy()
             .expand(pose.width, pose.height, pose.width);
         var blocks = new ArrayList<AxisAlignedBB>();
@@ -58,8 +60,10 @@ public final class MaidPoseDimensions {
             blocks,
             pose.width,
             pose.height);
-        if (free != null)
-            maid.setPosition(free.xCoord, free.yCoord - pose.height / 2.0 + maid.yOffset - maid.ySize, free.zCoord);
+        if (free != null) maid.setPosition(
+            free.xCoord,
+            free.yCoord - pose.height / MaidEntityTuning.MIDPOINT_DIVISOR_D + maid.yOffset - maid.ySize,
+            free.zCoord);
     }
 
     public static Vec3 closestCenter(AxisAlignedBB region, Vec3 origin, List<AxisAlignedBB> blocks, float width,
@@ -68,7 +72,10 @@ public final class MaidPoseDimensions {
         pieces.add(region);
         for (var block : blocks) {
             var inflated = block.copy()
-                .expand(width / 2.0, height / 2.0, width / 2.0);
+                .expand(
+                    width / MaidEntityTuning.MIDPOINT_DIVISOR_D,
+                    height / MaidEntityTuning.MIDPOINT_DIVISOR_D,
+                    width / MaidEntityTuning.MIDPOINT_DIVISOR_D);
             var next = new ArrayList<AxisAlignedBB>();
             for (var piece : pieces) subtract(piece, inflated, next);
             pieces = next;

@@ -60,31 +60,71 @@ public final class MaidDetailsPreview implements AutoCloseable {
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
         try (var filters = ClientCompatServices.renderPlatform()
             .captureFilterWindow(); var scope = new MaidItemRenderScope()) {
-            GL11.glColor4f(ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glColor4f(
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             GL11.glEnable(GL11.GL_COLOR_MATERIAL);
             GL11.glEnable(GL11.GL_DEPTH_TEST);
             GL11.glEnable(GL12.GL_RESCALE_NORMAL);
             GL11.glTranslatef(x, y, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_Z);
-            GL11.glScalef(ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.UNSET_OR_NOT_FOUND);
-            GL11.glTranslatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_Z_2);
+            GL11.glScalef(
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND);
+            GL11.glTranslatef(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_Z_2);
             GL11.glScalef(scale, scale, scale);
-            GL11.glRotatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_ANGLE_DEG, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
-            GL11.glRotatef(yaw, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glRotatef(-pitch, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glRotatef(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_ANGLE_DEG,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glRotatef(
+                yaw,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glRotatef(
+                -pitch,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
             RenderHelper.enableStandardItemLighting();
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P, ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P);
+            OpenGlHelper.setLightmapTextureCoords(
+                OpenGlHelper.lightmapTexUnit,
+                ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P,
+                ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P);
             manager.playerViewX = pitch;
             manager.playerViewY = ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X;
             // 原版详情关闭实体阴影；直接走生物本体绘制，保留其前后事件和装备层
             var renderer = manager.getEntityRenderObject(maid);
             long before = MaidHeldItemLayer.getNativeCounters().attempts;
-            renderer.doRender(maid, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, partialTick);
+            renderer.doRender(
+                maid,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                partialTick);
             if (DevelopmentFlags.isDevCommandsEnabled() && renderer instanceof MaidRenderer maidRenderer) {
                 diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
-                diagnostic.addProperty(ClientRenderIds.ID_NATIVEITEMCALLS, MaidHeldItemLayer.getNativeCounters().attempts - before);
+                diagnostic.addProperty(
+                    ClientRenderIds.ID_NATIVEITEMCALLS,
+                    MaidHeldItemLayer.getNativeCounters().attempts - before);
             }
-            GL11.glTranslatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.HALF_FACTOR_F, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glColor4f(ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glTranslatef(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.HALF_FACTOR_F,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glColor4f(
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             GL11.glDisable(GL11.GL_CULL_FACE);
             if (floor) {
                 Minecraft.getMinecraft()
@@ -120,16 +160,37 @@ public final class MaidDetailsPreview implements AutoCloseable {
         }
         GL11.glPushMatrix();
         try {
-            GL11.glTranslatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_DRAW_STOOL_OFFSET_Y, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glRotatef(ClientRenderLayout.HALF_TURN_DEGREES, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glScalef(ClientRenderLayout.UNSET_OR_NOT_FOUND, ClientRenderLayout.UNSET_OR_NOT_FOUND, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
-            GL11.glTranslatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_DRAW_STOOL_OFFSET_Y_2, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glTranslatef(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_DRAW_STOOL_OFFSET_Y,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glRotatef(
+                ClientRenderLayout.HALF_TURN_DEGREES,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glScalef(
+                ClientRenderLayout.UNSET_OR_NOT_FOUND,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glTranslatef(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_DRAW_STOOL_OFFSET_Y_2,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
             mc.getTextureManager()
                 .bindTexture(STOOL_TEXTURE);
             var consumer = TessellatorVertexConsumer.INSTANCE;
             consumer.begin();
             try {
-                stool.renderToBuffer(new LegacyPoseStack(), consumer, ClientRenderLayout.RGB_COLOR_F000F0, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+                stool.renderToBuffer(
+                    new LegacyPoseStack(),
+                    consumer,
+                    ClientRenderLayout.RGB_COLOR_F000F0,
+                    ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                    ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                    ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                    ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                    ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             } finally {
                 consumer.end();
             }
@@ -145,9 +206,20 @@ public final class MaidDetailsPreview implements AutoCloseable {
         GL11.glPushMatrix();
         try {
             GL11.glTranslatef(x, y, ClientRenderLayout.DETAILS_PREVIEW_AXES_OFFSET_Z);
-            GL11.glRotatef(-RenderManager.instance.playerViewX, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glRotatef(RenderManager.instance.playerViewY, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            GL11.glScalef(ClientRenderLayout.UNSET_OR_NOT_FOUND, ClientRenderLayout.UNSET_OR_NOT_FOUND, ClientRenderLayout.UNSET_OR_NOT_FOUND);
+            GL11.glRotatef(
+                -RenderManager.instance.playerViewX,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glRotatef(
+                RenderManager.instance.playerViewY,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glScalef(
+                ClientRenderLayout.UNSET_OR_NOT_FOUND,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND);
             GL11.glDisable(GL11.GL_TEXTURE_2D);
             GL11.glDisable(GL11.GL_LIGHTING);
             GL11.glDisable(GL11.GL_CULL_FACE);
@@ -166,11 +238,27 @@ public final class MaidDetailsPreview implements AutoCloseable {
         var tessellator = Tessellator.instance;
         tessellator.startDrawing(GL11.GL_LINES);
         for (int i = 0; i < ClientRenderLayout.MIN_I_THRESHOLD; i++) {
-            float x = i == 0 ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, y = i == ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, z = i == ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2 ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X;
-            tessellator.setColorRGBA_F(colored ? x : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, colored ? y : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, colored ? z : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            float x = i == 0 ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL
+                : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                y = i == ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL
+                    : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                z = i == ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2
+                    ? ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL
+                    : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X;
+            tessellator.setColorRGBA_F(
+                colored ? x : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                colored ? y : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                colored ? z : ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             tessellator.setNormal(x, y, z);
-            tessellator.addVertex(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-            tessellator.addVertex(x * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM, y * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM, z * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM);
+            tessellator.addVertex(
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            tessellator.addVertex(
+                x * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM,
+                y * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM,
+                z * ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM);
         }
         tessellator.draw();
     }

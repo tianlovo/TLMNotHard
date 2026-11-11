@@ -56,8 +56,11 @@ public final class MaidHomeController {
             || maid.getLeashed()
             || maid.hasPose(MaidPose.SLEEPING)) return false;
         var center = home.center();
-        double distance = maid.getDistanceSq(center.x + .5, center.y, center.z + .5);
-        return !home.containsMaid() || distance > 9 && (returning || requested);
+        double distance = maid.getDistanceSq(
+            center.x + MaidAiTuning.HOME_CONTROLLER_DISTANCE,
+            center.y,
+            center.z + MaidAiTuning.HOME_CONTROLLER_DISTANCE);
+        return !home.containsMaid() || distance > MaidAiTuning.MAX_DISTANCE_THRESHOLD && (returning || requested);
     }
 
     public void tick() {
@@ -84,8 +87,9 @@ public final class MaidHomeController {
             return;
         }
         var center = home.center();
-        double distance = maid.getDistanceSq(center.x + 0.5, center.y, center.z + 0.5);
-        if (home.containsMaid() && (distance <= 9 || !returning && !requested)) {
+        double distance = maid
+            .getDistanceSq(center.x + MaidAiTuning.CENTER_OFFSET_D, center.y, center.z + MaidAiTuning.CENTER_OFFSET_D);
+        if (home.containsMaid() && (distance <= MaidAiTuning.MAX_DISTANCE_THRESHOLD || !returning && !requested)) {
             cancel();
             return;
         }
@@ -101,20 +105,20 @@ public final class MaidHomeController {
         }
         maid.getLookHelper()
             .setLookPosition(
-                center.x + 0.5,
+                center.x + MaidAiTuning.CENTER_OFFSET_D,
                 center.y + maid.getEyeHeight(),
-                center.z + 0.5,
-                20,
+                center.z + MaidAiTuning.CENTER_OFFSET_D,
+                MaidAiTuning.HOME_CONTROLLER_TICK_PARAM,
                 maid.getVerticalFaceSpeed());
         status = Status.RETURNING;
         if (tick < nextPath) return;
-        nextPath = tick + 40;
+        nextPath = tick + MaidAiTuning.HOME_CONTROLLER_NEXT_PATH;
         double bx = (double) MathHelper.floor_double(maid.posX) - center.x;
         double by = (double) MathHelper.floor_double(maid.posY) - center.y;
         double bz = (double) MathHelper.floor_double(maid.posZ) - center.z;
-        int teleportRange = home.radius() + 4;
+        int teleportRange = home.radius() + MaidAiTuning.CHUNK_SECTION_SHIFT;
         if (tick >= nextTeleport && bx * bx + by * by + bz * bz > (double) teleportRange * teleportRange) {
-            nextTeleport = tick + 40;
+            nextTeleport = tick + MaidAiTuning.HOME_CONTROLLER_NEXT_PATH;
             var teleport = MaidHomeTeleport.tryReturn(maid, runner, run);
             if (teleport != MaidHomeTeleport.Result.NO_SAFE_DESTINATION) {
                 cancel();
@@ -126,13 +130,15 @@ public final class MaidHomeController {
             cancel();
             return;
         }
-        double factor = Math.min(1, 16 / Math.sqrt(distance));
+        double factor = Math.min(
+            MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD,
+            MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM / Math.sqrt(distance));
         var result = planner.request(
             maid,
-            maid.posX + (center.x + 0.5 - maid.posX) * factor,
+            maid.posX + (center.x + MaidAiTuning.CENTER_OFFSET_D - maid.posX) * factor,
             maid.posY + (center.y - maid.posY) * factor,
-            maid.posZ + (center.z + 0.5 - maid.posZ) * factor,
-            0.7);
+            maid.posZ + (center.z + MaidAiTuning.CENTER_OFFSET_D - maid.posZ) * factor,
+            MaidAiTuning.HOME_CONTROLLER_TICK_FACTOR);
         if (result == PathResult.STARTED) ownedPath = maid.getNavigator()
             .getPath();
         else if (result.isDeferred()) {
@@ -157,8 +163,8 @@ public final class MaidHomeController {
             ownedPath = null;
             run = null;
             requested = returning = false;
-            nextPath = 0;
-            nextTeleport = 0;
+            nextPath = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+            nextTeleport = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             status = Status.IDLE;
             runner.release(stopped);
             stopping = false;

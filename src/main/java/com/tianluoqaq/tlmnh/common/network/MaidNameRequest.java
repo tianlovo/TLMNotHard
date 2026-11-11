@@ -12,7 +12,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-import com.tianluoqaq.tlmnh.common.interaction.MaidNameRules;
+import com.tianluoqaq.tlmnh.common.interaction.MaidInteractionTuning;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -22,7 +22,6 @@ import io.netty.handler.codec.DecoderException;
 /** v1仅发送名称请求；没有客户端修改女仆数据的入口 */
 public final class MaidNameRequest implements IMessage {
 
-    private static final int MAX_ENCODED_LENGTH = MaidNameRules.MAX_LENGTH * 4;
     private int windowId, entityId;
     private long session;
     private UUID maidId;
@@ -74,8 +73,8 @@ public final class MaidNameRequest implements IMessage {
         entityId = buffer.readInt();
         maidId = new UUID(buffer.readLong(), buffer.readLong());
         int length = buffer.readUnsignedShort();
-        if (length > MAX_ENCODED_LENGTH || length > buffer.readableBytes() - 1)
-            throw new DecoderException("Invalid maid name byte length");
+        if (length > MaidNetworkProtocol.MAX_ENCODED_LENGTH || length > buffer.readableBytes() - 1)
+            throw new DecoderException(MaidNetworkProtocol.MSG_INVALID_MAID_NAME_BYTE_LENGTH);
         var bytes = new byte[length];
         buffer.readBytes(bytes);
         try {
@@ -85,17 +84,18 @@ public final class MaidNameRequest implements IMessage {
                 .decode(ByteBuffer.wrap(bytes))
                 .toString();
         } catch (CharacterCodingException error) {
-            throw new DecoderException("Invalid maid name UTF-8", error);
+            throw new DecoderException(MaidNetworkProtocol.MSG_INVALID_MAID_NAME_UTF, error);
         }
-        if (name.length() > MaidNameRules.MAX_LENGTH) throw new DecoderException("Maid name is too long");
+        if (name.length() > MaidInteractionTuning.MAX_LENGTH)
+            throw new DecoderException(MaidNetworkProtocol.MSG_MAID_NAME_IS_TOO_LONG);
         alwaysShow = buffer.readBoolean();
-        if (buffer.isReadable()) throw new DecoderException("Unexpected maid name payload");
+        if (buffer.isReadable()) throw new DecoderException(MaidNetworkProtocol.MSG_UNEXPECTED_MAID_NAME_PAYLOAD);
     }
 
     @Override
     public void toBytes(ByteBuf buffer) {
-        if (name == null || name.length() > MaidNameRules.MAX_LENGTH)
-            throw new IllegalArgumentException("Maid name is too long");
+        if (name == null || name.length() > MaidInteractionTuning.MAX_LENGTH)
+            throw new IllegalArgumentException(MaidNetworkProtocol.MSG_MAID_NAME_IS_TOO_LONG);
         var bytes = name.getBytes(StandardCharsets.UTF_8);
         buffer.writeInt(windowId)
             .writeLong(session)

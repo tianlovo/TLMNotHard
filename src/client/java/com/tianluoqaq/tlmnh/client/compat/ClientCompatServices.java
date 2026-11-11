@@ -58,7 +58,8 @@ public final class ClientCompatServices {
         private Sink() {}
 
         private static void ensureMutable() {
-            if (frozen) throw new IllegalStateException(ClientCompatDiagnostics.MSG_CLIENTCOMPATSERVICES_IS_ALREADY_FROZEN);
+            if (frozen)
+                throw new IllegalStateException(ClientCompatDiagnostics.MSG_CLIENTCOMPATSERVICES_IS_ALREADY_FROZEN);
         }
 
         public Sink renderPlatform(RenderPlatformCompat provider) {

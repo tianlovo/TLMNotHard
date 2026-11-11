@@ -5,33 +5,35 @@ import java.util.function.DoubleSupplier;
 /** 固定上游 MaidAttackStrafingTask 的方向状态，移动执行由旧引擎适配器负责 */
 public final class MaidStrafingState {
 
-    public static final float PROJECTILE_RANGE = 15;
     private boolean clockwise, backwards;
-    private int time = -1;
+    private int time = AiCombatTuning.UNSET_OR_NOT_FOUND;
     private float forward, strafe;
 
     public void tick(double distance, double searchRadius, boolean ownerBoundary, DoubleSupplier random) {
-        forward = strafe = 0;
+        forward = strafe = AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES;
         if (!Double.isFinite(distance) || distance < 0 || distance >= searchRadius) {
-            time = -1;
+            time = AiCombatTuning.UNSET_OR_NOT_FOUND;
             return;
         }
-        if (++time >= 20) {
-            if (random.getAsDouble() < .3) clockwise = !clockwise;
-            if (random.getAsDouble() < .3) backwards = !backwards;
-            time = 0;
+        if (++time >= AiCombatTuning.MELEE_ATTACK_MAX_SECOND_PARAM) {
+            if (random.getAsDouble() < AiCombatTuning.MIN_GET_AS_DOUBLE_THRESHOLD) clockwise = !clockwise;
+            if (random.getAsDouble() < AiCombatTuning.MIN_GET_AS_DOUBLE_THRESHOLD) backwards = !backwards;
+            time = AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES;
         }
-        if (distance > PROJECTILE_RANGE * .5) backwards = false;
-        else if (distance < PROJECTILE_RANGE * .2) backwards = true;
+        if (distance > AiCombatTuning.PROJECTILE_RANGE * AiCombatTuning.STRAFING_STATE_TICK_FACTOR) backwards = false;
+        else if (distance < AiCombatTuning.PROJECTILE_RANGE * AiCombatTuning.STRAFING_STATE_TICK_FACTOR_2)
+            backwards = true;
         if (!ownerBoundary) {
-            forward = backwards ? -.5F : .5F;
-            strafe = clockwise ? .5F : -.5F;
+            forward = backwards ? AiCombatTuning.STRAFING_STATE_TICK_FACTOR_3
+                : AiCombatTuning.STRAFING_STATE_TICK_FACTOR_4;
+            strafe = clockwise ? AiCombatTuning.STRAFING_STATE_TICK_FACTOR_4
+                : AiCombatTuning.STRAFING_STATE_TICK_FACTOR_3;
         }
     }
 
     public void stop() {
         // 上游 stop 不清方向与随机相位，恢复时延续同一任务实例的状态
-        forward = strafe = 0;
+        forward = strafe = AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES;
     }
 
     public float forward() {

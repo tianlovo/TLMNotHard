@@ -8,7 +8,6 @@ public final class TwilightForestCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.TWILIGHT_FOREST;
 
-
     public static final TwilightForestCompat INSTANCE = new TwilightForestCompat();
 
     private TwilightForestCompat() {}

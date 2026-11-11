@@ -18,8 +18,9 @@ public final class MaidPathCreation {
     public final Path path;
 
     public MaidPathCreation(Result result, Path path) {
-        this.result = Objects.requireNonNull(result, "result");
-        if ((result == Result.FOUND) != (path != null)) throw new IllegalArgumentException("Path result mismatch");
+        this.result = Objects.requireNonNull(result, MaidNavigationIds.ID_RESULT);
+        if ((result == Result.FOUND) != (path != null))
+            throw new IllegalArgumentException(MaidNavigationDiagnostics.MSG_PATH_RESULT_MISMATCH);
         this.path = path;
     }
 }

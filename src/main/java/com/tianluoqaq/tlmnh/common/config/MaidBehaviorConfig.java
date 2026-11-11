@@ -16,18 +16,18 @@ public final class MaidBehaviorConfig {
 
     public static void load(Configuration config) {
         // Use the raw property: Configuration.getString(...validValues) can replace an unrecognized value.
-        configuredValue = config.get(
-            "behavior",
-            "profile",
-            MaidBrainProfile.ENHANCED.getId(),
-            "服务器行为策略：legacy_prototype或enhanced；新配置默认enhanced，已有显式配置保留，修改后重启；所有存档按服务器设置加载，无每实体策略迁移 / Server behavior profile: legacy_prototype or enhanced; new configurations default to enhanced; existing explicit values are retained; restart required; applies to existing and new maids")
+        configuredValue = config
+            .get(
+                MaidConfigConfigSpec.ID_BEHAVIOR,
+                MaidConfigConfigSpec.ID_PROFILE,
+                MaidBrainProfile.ENHANCED.getId(),
+                MaidConfigConfigSpec.MSG_LEGACY_PROTOTYPE_ENHANCED_ENHANCED_SERVER)
             .getString();
         var parsed = MaidBrainProfile.fromProductionId(configuredValue);
         fallback = parsed == null;
         profile = fallback ? MaidBrainProfile.LEGACY_PROTOTYPE : parsed;
-        if (fallback) ModContext.LOG.warn(
-            "Unknown or development-only behavior.profile='{}'; original configuration retained, using legacy_prototype until restart",
-            configuredValue);
+        if (fallback)
+            ModContext.LOG.warn(MaidConfigConfigSpec.MSG_UNKNOWN_OR_DEVELOPMENT_ONLY_BEHAVIOR, configuredValue);
     }
 
     public static MaidBrainProfile profile() {

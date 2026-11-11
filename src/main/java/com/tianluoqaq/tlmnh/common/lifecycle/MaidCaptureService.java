@@ -33,15 +33,14 @@ import cpw.mods.fml.relauncher.Side;
 /** 普通主手收纳与原UUID放出；不把保管中的活体降格成剥离库存的死亡胶片 */
 public final class MaidCaptureService {
 
-    static final String RECEIPT = "TLMNHCaptureReceipt";
-    private static final String RELEASED = "TLMNHCaptureReleased";
     private static final Map<World, Map<UUID, Long>> COOLDOWNS = new WeakHashMap<>();
     private static final Set<EntityMaid> CAPTURING = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private MaidCaptureService() {}
 
     public static boolean isEmpty(ItemStack stack) {
-        return stack != null && stack.stackSize == 1 && stack.getItem() == MaidResurrectionContent.EMPTY_SLAB;
+        return stack != null && stack.stackSize == MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            && stack.getItem() == MaidResurrectionContent.EMPTY_SLAB;
     }
 
     /** 返回是否处理了空魂符请求；客户端仅确认交互，所有变更由服务端执行 */
@@ -53,7 +52,7 @@ public final class MaidCaptureService {
 
     public static MaidLifecycleService.Result capture(EntityMaid maid, EntityPlayer player, ItemStack empty) {
         if (!admitted(maid, player, empty) || empty.hasTagCompound() && empty.getTagCompound()
-            .hasKey(RECEIPT)) return MaidLifecycleService.Result.DENIED;
+            .hasKey(MaidLifecycleNbtKeys.RECEIPT_2)) return MaidLifecycleService.Result.DENIED;
         if (coolingDown(player)) return MaidLifecycleService.Result.COOLDOWN;
         if (!CAPTURING.add(maid)) return MaidLifecycleService.Result.DENIED;
         var world = maid.worldObj;
@@ -84,7 +83,7 @@ public final class MaidCaptureService {
             maid.getMealController()
                 .cancel();
             maid.getShieldController()
-                .cancelUse("maid_capture");
+                .cancelUse(MaidLifecycleIds.ID_MAID_CAPTURE);
             if (!maid.getHomeArea()
                 .setEnabled(false) || !admitted(maid, player, empty)) return MaidLifecycleService.Result.DENIED;
             var raw = MaidLifecycleDurability.maidSnapshot(maid);
@@ -95,7 +94,7 @@ public final class MaidCaptureService {
             var receipt = empty.copy();
             if (!receipt.hasTagCompound()) receipt.setTagCompound(new NBTTagCompound());
             receipt.getTagCompound()
-                .setString(RECEIPT, token.toString());
+                .setString(MaidLifecycleNbtKeys.RECEIPT_2, token.toString());
             var credential = MaidLifecycleItems
                 .credential(MaidResurrectionContent.FILLED_SLAB, token, player.getUniqueID());
             var record = record(
@@ -120,8 +119,9 @@ public final class MaidCaptureService {
             source.discard(world);
             MaidLifecycleDurability.entities(world, Collections.singletonList(source), false);
             removed = true;
-            ledger.captureStage(world, token, "REMOVED");
-            if (!frame.applied()) throw new IllegalStateException("Capture receipt changed after source removal");
+            ledger.captureStage(world, token, MaidLifecycleNbtKeys.KEY_REMOVED);
+            if (!frame.applied())
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CAPTURE_RECEIPT_CHANGED_AFTER_SOURCE);
             complete = finishDelivery(player, ledger, token);
             if (complete) cooldown(player);
             return complete ? MaidLifecycleService.Result.SUCCESS : MaidLifecycleService.Result.DENIED;
@@ -141,11 +141,12 @@ public final class MaidCaptureService {
                             if (frame.touched()) frame.retract();
                             if (!frame.originalStored() || !source.owned(world)
                                 || !MaidSpawnChecks.present(maid, world))
-                                throw new IllegalStateException("Capture cancellation source changed");
+                                throw new IllegalStateException(
+                                    MaidLifecycleDiagnostics.MSG_CAPTURE_CANCELLATION_SOURCE_CHANGED);
                             ledger.cancelCapture(world, token);
-                        } else if (!removed || !"REMOVED".equals(
+                        } else if (!removed || !MaidLifecycleNbtKeys.KEY_REMOVED.equals(
                             ledger.capture(token)
-                                .getString("Stage"))
+                                .getString(MaidLifecycleNbtKeys.KEY_STAGE))
                             || !knownDelivery(player, ledger.capture(token))) {
                                 ledger.holdCapture(world, token, observation(maid, player));
                             }
@@ -173,14 +174,17 @@ public final class MaidCaptureService {
             var token = ledger.captureHead(maid.getUniqueID());
             if (token == null) {
                 if (!maid.getEntityData()
-                    .hasKey(RELEASED)) return false;
-                report(null, maid.getUniqueID(), new IllegalStateException("Unmatched captured-maid marker retained"));
+                    .hasKey(MaidLifecycleNbtKeys.RELEASED)) return false;
+                report(
+                    null,
+                    maid.getUniqueID(),
+                    new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNMATCHED_CAPTURED_MAID_MARKER_RETAINED));
                 return true;
             }
             return !ledger.captureConsumed(token) || !token.toString()
                 .equals(
                     maid.getEntityData()
-                        .getString(RELEASED));
+                        .getString(MaidLifecycleNbtKeys.RELEASED));
         } catch (Exception | LinkageError | AssertionError failure) {
             report(null, maid.getUniqueID(), failure);
             return true;
@@ -189,7 +193,7 @@ public final class MaidCaptureService {
 
     static void markReleased(EntityMaid maid, UUID token) {
         maid.getEntityData()
-            .setString(RELEASED, token.toString());
+            .setString(MaidLifecycleNbtKeys.RELEASED, token.toString());
     }
 
     static void resume(EntityPlayer player) {
@@ -199,9 +203,9 @@ public final class MaidCaptureService {
         UUID token;
         try {
             String raw = held.getItem() == MaidResurrectionContent.FILLED_SLAB ? held.getTagCompound()
-                .getString("TLMNHToken")
+                .getString(MaidLifecycleNbtKeys.KEY_TLMNH_TOKEN)
                 : held.getTagCompound()
-                    .getString(RECEIPT);
+                    .getString(MaidLifecycleNbtKeys.RECEIPT_2);
             if (raw.isEmpty()) return;
             token = UUID.fromString(raw);
         } catch (IllegalArgumentException failure) {
@@ -212,10 +216,11 @@ public final class MaidCaptureService {
         try {
             ledger = MaidLifecycleData.get(player.worldObj);
             var record = ledger.capture(token);
-            if (record.hasNoTags() || !"REMOVED".equals(record.getString("Stage"))
+            if (record.hasNoTags()
+                || !MaidLifecycleNbtKeys.KEY_REMOVED.equals(record.getString(MaidLifecycleNbtKeys.KEY_STAGE))
                 || !player.getUniqueID()
                     .toString()
-                    .equals(record.getString("Owner")))
+                    .equals(record.getString(MaidLifecycleNbtKeys.KEY_OWNER)))
                 return;
             opened = ledger.beginCapture(token);
             if (opened && !finishDelivery(player, ledger, token))
@@ -229,40 +234,44 @@ public final class MaidCaptureService {
 
     private static boolean finishDelivery(EntityPlayer player, MaidLifecycleData ledger, UUID token) {
         var record = ledger.capture(token);
-        if (!"REMOVED".equals(record.getString("Stage")) || !knownDelivery(player, record)) return false;
+        if (!MaidLifecycleNbtKeys.KEY_REMOVED.equals(record.getString(MaidLifecycleNbtKeys.KEY_STAGE))
+            || !knownDelivery(player, record)) return false;
         var frame = new MaidPlayerTransferSnapshot(player);
-        var credential = ProtectedItemCodec.decode(record.getCompoundTag("Credential"));
-        if (record.getTagList("InventoryReceipt", Constants.NBT.TAG_COMPOUND)
+        var credential = ProtectedItemCodec.decode(record.getCompoundTag(MaidLifecycleNbtKeys.KEY_CREDENTIAL));
+        if (record.getTagList(MaidLifecycleNbtKeys.KEY_INVENTORY_RECEIPT, Constants.NBT.TAG_COMPOUND)
             .equals(frame.original)) {
             frame.apply(frame.selected, credential);
             frame.persist();
         } else {
-            MaidLifecycleDurability
-                .player(player, record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND), frame.selected);
+            MaidLifecycleDurability.player(
+                player,
+                record.getTagList(MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED, Constants.NBT.TAG_COMPOUND),
+                frame.selected);
         }
-        if (!record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND)
+        if (!record.getTagList(MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED, Constants.NBT.TAG_COMPOUND)
             .equals(player.inventory.writeToNBT(new NBTTagList()))
             || !ItemStack.areItemStacksEqual(credential, player.getCurrentEquippedItem()))
-            throw new IllegalStateException("Unknown capture delivery successor retained");
-        ledger.captureStage(player.worldObj, token, "DELIVERED");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_CAPTURE_DELIVERY_SUCCESSOR_RETAINED);
+        ledger.captureStage(player.worldObj, token, MaidLifecycleNbtKeys.KEY_DELIVERED);
         return true;
     }
 
     private static boolean knownDelivery(EntityPlayer player, NBTTagCompound record) {
         if (!MaidLifecycleService.canUse(player) || !player.getUniqueID()
             .toString()
-            .equals(record.getString("Owner"))
-            || player.worldObj.provider.dimensionId != record.getInteger("Dimension")
-            || player.inventory.currentItem != record.getInteger("Selected")
+            .equals(record.getString(MaidLifecycleNbtKeys.KEY_OWNER))
+            || player.worldObj.provider.dimensionId != record.getInteger(MaidLifecycleNbtKeys.KEY_DIMENSION)
+            || player.inventory.currentItem != record.getInteger(MaidLifecycleNbtKeys.KEY_SELECTED)
             || !ItemStack.areItemStacksEqual(
                 player.inventory.getItemStack(),
-                record.getCompoundTag("Cursor")
-                    .hasNoTags() ? null : ProtectedItemCodec.decode(record.getCompoundTag("Cursor"))))
+                record.getCompoundTag(MaidLifecycleNbtKeys.KEY_CURSOR)
+                    .hasNoTags() ? null
+                        : ProtectedItemCodec.decode(record.getCompoundTag(MaidLifecycleNbtKeys.KEY_CURSOR))))
             return false;
         var inventory = player.inventory.writeToNBT(new NBTTagList());
-        return record.getTagList("InventoryReceipt", Constants.NBT.TAG_COMPOUND)
+        return record.getTagList(MaidLifecycleNbtKeys.KEY_INVENTORY_RECEIPT, Constants.NBT.TAG_COMPOUND)
             .equals(inventory)
-            || record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND)
+            || record.getTagList(MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED, Constants.NBT.TAG_COMPOUND)
                 .equals(inventory);
     }
 
@@ -276,7 +285,7 @@ public final class MaidCaptureService {
             && maid.worldObj == player.worldObj
             && maid.isEntityAlive()
             && maid.isOwner(player)
-            && maid.getDistanceSqToEntity(player) <= 64
+            && maid.getDistanceSqToEntity(player) <= MaidLifecycleTuning.CAPTURE_SERVICE_ADMITTED_PARAM
             && MaidSpawnChecks.present(maid, player.worldObj)
             && !MaidLifecycleService.isPendingRedemption(maid);
     }
@@ -289,53 +298,55 @@ public final class MaidCaptureService {
 
     static void cooldown(EntityPlayer player) {
         COOLDOWNS.computeIfAbsent(player.worldObj, ignored -> new HashMap<>())
-            .put(player.getUniqueID(), player.worldObj.getTotalWorldTime() + 20);
+            .put(
+                player.getUniqueID(),
+                player.worldObj.getTotalWorldTime() + MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM);
     }
 
     private static NBTTagCompound record(UUID token, EntityPlayer player, EntityMaid maid, NBTTagCompound original,
         NBTTagCompound source, MaidPlayerTransferSnapshot frame, ItemStack receipt, ItemStack credential,
         int sequence) {
         var data = new NBTTagCompound();
-        data.setString("Token", token.toString());
+        data.setString(MaidLifecycleNbtKeys.KEY_TOKEN, token.toString());
         data.setString(
-            "Owner",
+            MaidLifecycleNbtKeys.KEY_OWNER,
             player.getUniqueID()
                 .toString());
         data.setString(
-            "Subject",
+            MaidLifecycleNbtKeys.KEY_SUBJECT,
             maid.getUniqueID()
                 .toString());
-        data.setString("Stage", "PREPARED");
-        data.setInteger("Sequence", sequence);
-        data.setTag("Source", source.copy());
-        data.setTag("OriginalMaid", original.copy());
+        data.setString(MaidLifecycleNbtKeys.KEY_STAGE, MaidLifecycleNbtKeys.KEY_PREPARED);
+        data.setInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE, sequence);
+        data.setTag(MaidLifecycleNbtKeys.KEY_SOURCE, source.copy());
+        data.setTag(MaidLifecycleNbtKeys.KEY_ORIGINAL_MAID, original.copy());
         data.setTag(
-            "Receipt",
+            MaidLifecycleNbtKeys.KEY_RECEIPT,
             receipt.writeToNBT(new NBTTagCompound())
                 .copy());
         data.setTag(
-            "Credential",
+            MaidLifecycleNbtKeys.KEY_CREDENTIAL,
             credential.writeToNBT(new NBTTagCompound())
                 .copy());
-        data.setTag("InventoryBefore", frame.original.copy());
-        data.setTag("InventoryReceipt", frame.plan(frame.selected, receipt));
-        data.setTag("InventoryFilled", frame.plan(frame.selected, credential));
-        data.setInteger("Selected", frame.selected);
-        data.setInteger("Dimension", player.worldObj.provider.dimensionId);
+        data.setTag(MaidLifecycleNbtKeys.KEY_INVENTORY_BEFORE, frame.original.copy());
+        data.setTag(MaidLifecycleNbtKeys.KEY_INVENTORY_RECEIPT, frame.plan(frame.selected, receipt));
+        data.setTag(MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED, frame.plan(frame.selected, credential));
+        data.setInteger(MaidLifecycleNbtKeys.KEY_SELECTED, frame.selected);
+        data.setInteger(MaidLifecycleNbtKeys.KEY_DIMENSION, player.worldObj.provider.dimensionId);
         data.setTag(
-            "Cursor",
+            MaidLifecycleNbtKeys.KEY_CURSOR,
             frame.cursor == null ? new NBTTagCompound()
                 : frame.cursor.writeToNBT(new NBTTagCompound())
                     .copy());
-        data.setTag("Observed", new NBTTagCompound());
+        data.setTag(MaidLifecycleNbtKeys.KEY_OBSERVED, new NBTTagCompound());
         return data;
     }
 
     private static NBTTagCompound observation(EntityMaid maid, EntityPlayer player) {
         var result = new NBTTagCompound();
-        if (maid != null) result.setTag("Maid", rawSnapshot(maid));
+        if (maid != null) result.setTag(MaidLifecycleNbtKeys.KEY_MAID, rawSnapshot(maid));
         if (player != null) result.setTag(
-            "Inventory",
+            MaidLifecycleNbtKeys.KEY_INVENTORY,
             player.inventory.writeToNBT(new NBTTagList())
                 .copy());
         return result;
@@ -344,14 +355,18 @@ public final class MaidCaptureService {
     private static NBTTagCompound rawSnapshot(EntityMaid maid) {
         var result = new NBTTagCompound();
         var type = EntityList.getEntityString(maid);
-        if (type == null) throw new IllegalStateException("Unregistered maid snapshot type");
-        result.setString("id", type);
+        if (type == null) throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNREGISTERED_MAID_SNAPSHOT_TYPE);
+        result.setString(MaidLifecycleIds.ID_ID, type);
         maid.writeToNBT(result);
         return (NBTTagCompound) result.copy();
     }
 
     private static void report(EntityPlayer player, UUID token, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
-        IntegrationGuard.report(Side.SERVER, "capture/" + token, failure, player == null ? null : player.getUniqueID());
+        IntegrationGuard.report(
+            Side.SERVER,
+            MaidLifecycleIds.ID_CAPTURE + token,
+            failure,
+            player == null ? null : player.getUniqueID());
     }
 }

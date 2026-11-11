@@ -7,9 +7,6 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 /** 危险观测与扫描续点；截断不是阴性证据，也不能续期旧事实 */
 public final class MaidDangerState {
 
-    public static final int SCAN_BUDGET = 32;
-    public static final int MAXIMUM_AGE = 20;
-
     public enum Result {
         VISIBLE_HOSTILE,
         CLEAR,
@@ -54,16 +51,18 @@ public final class MaidDangerState {
     }
 
     public int scanStart(int population) {
-        return population == 0 ? 0 : Math.floorMod(cursor, population);
+        return population == 0 ? MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN : Math.floorMod(cursor, population);
     }
 
     public void recordScan(int population, int inspected, UUID targetId, Object target) {
         if (population < 0 || inspected < 0
             || inspected > population
-            || inspected > SCAN_BUDGET
-            || (target == null) != (targetId == null)) throw new IllegalArgumentException("Invalid danger scan");
+            || inspected > MaidPerceptionTuning.SCAN_BUDGET
+            || (target == null) != (targetId == null))
+            throw new IllegalArgumentException(MaidPerceptionDiagnostics.MSG_INVALID_DANGER_SCAN);
         if (!isFrame(world, frameTime)) return;
-        cursor = population == 0 ? 0 : (int) (((long) scanStart(population) + inspected) % population);
+        cursor = population == 0 ? MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN
+            : (int) (((long) scanStart(population) + inspected) % population);
         if (target != null) observation = new Observation(Result.VISIBLE_HOSTILE, frameTime, targetId, target);
         else if (population == inspected) observation = new Observation(Result.CLEAR, frameTime, null, null);
     }
@@ -72,7 +71,7 @@ public final class MaidDangerState {
         if (!isFrame(world, frameTime)) observation = null;
         if (observation != null) {
             long age = frameTime - observation.observedAt;
-            if (age < 0 || age > MAXIMUM_AGE) observation = null;
+            if (age < 0 || age > MaidPerceptionTuning.MAXIMUM_AGE) observation = null;
         }
         return observation;
     }
@@ -92,8 +91,8 @@ public final class MaidDangerState {
         context = null;
         token = null;
         observation = null;
-        cursor = 0;
-        frameTime = 0;
+        cursor = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
+        frameTime = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
     }
 
     public static final class Observation {

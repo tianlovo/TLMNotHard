@@ -116,15 +116,15 @@ public final class MaidItemUseState {
     private boolean acquiring;
 
     public MaidItemUseState(Runnable changed) {
-        this.changed = Objects.requireNonNull(changed, "changed");
+        this.changed = Objects.requireNonNull(changed, MaidCombatIds.ID_CHANGED);
     }
 
     public Lease tryAcquire(Object owner, Object item, Hand hand, Kind kind, BooleanSupplier valid) {
-        Objects.requireNonNull(owner, "owner");
-        Objects.requireNonNull(item, "item");
-        Objects.requireNonNull(hand, "hand");
-        Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(valid, "valid");
+        Objects.requireNonNull(owner, MaidCombatIds.ID_OWNER);
+        Objects.requireNonNull(item, MaidCombatIds.ID_ITEM);
+        Objects.requireNonNull(hand, MaidCombatIds.ID_HAND);
+        Objects.requireNonNull(kind, MaidCombatIds.ID_KIND);
+        Objects.requireNonNull(valid, MaidCombatIds.ID_VALID);
         if (acquiring) return null;
         acquiring = true;
         try {
@@ -189,7 +189,7 @@ public final class MaidItemUseState {
 
     public int getUsedTicks() {
         var lease = current;
-        return lease != null && isCurrent(lease) ? lease.usedTicks : 0;
+        return lease != null && isCurrent(lease) ? lease.usedTicks : MaidCombatTuning.MAX_INITIAL_VALUE;
     }
 
     public void invalidate() {

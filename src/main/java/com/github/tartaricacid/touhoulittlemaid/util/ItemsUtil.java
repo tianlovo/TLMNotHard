@@ -13,7 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidRequestItemEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 public final class ItemsUtil {
 
@@ -32,7 +32,7 @@ public final class ItemsUtil {
     }
 
     private static int find(EntityMaid maid, Predicate<ItemStack> filter) {
-        for (int i = 0; i < MaidInventory.BACKPACK_SIZE; i++) if (filter.test(
+        for (int i = 0; i < MaidInventoryLayout.BACKPACK_SIZE; i++) if (filter.test(
             maid.getMaidInventory()
                 .getStackInSlot(i)))
             return i;

@@ -26,7 +26,8 @@ public final class MaidGravityFreeArrow extends EntityArrow {
         motionY += (double) CompatServices.projectilePhysics()
             .arrowGravity(this);
         if (isInWater()) {
-            double scale = (double) .6F / (double) .8F;
+            double scale = (double) BallisticsTuning.GRAVITY_FREE_ON_UPDATE_FACTOR
+                / (double) BallisticsTuning.ARROW_INTERCEPT_DOMAIN_FACTOR;
             motionX *= scale;
             motionY *= scale;
             motionZ *= scale;
@@ -41,7 +42,10 @@ public final class MaidGravityFreeArrow extends EntityArrow {
         motionZ = velocity.z;
         // 目标平台旋转字段用于原生渲染，不改变已按现代Projectile合同生成的速度
         double horizontal = Math.sqrt(motionX * motionX + motionZ * motionZ);
-        prevRotationYaw = rotationYaw = (float) (Math.atan2(motionX, motionZ) * 180 / Math.PI);
-        prevRotationPitch = rotationPitch = (float) (Math.atan2(motionY, horizontal) * 180 / Math.PI);
+        prevRotationYaw = rotationYaw = (float) (Math.atan2(motionX, motionZ) * BallisticsTuning.HALF_TURN_DEGREES
+            / Math.PI);
+        prevRotationPitch = rotationPitch = (float) (Math.atan2(motionY, horizontal)
+            * BallisticsTuning.HALF_TURN_DEGREES
+            / Math.PI);
     }
 }

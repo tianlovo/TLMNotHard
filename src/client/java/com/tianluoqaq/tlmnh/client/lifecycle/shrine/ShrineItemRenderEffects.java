@@ -29,18 +29,44 @@ public final class ShrineItemRenderEffects {
             .bindTexture(GLINT);
         GL11.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO);
-        GL11.glColor4f(ClientShrineTuning.SHRINE_ITEM_RED_LEVEL, ClientShrineTuning.SHRINE_ITEM_GREEN_LEVEL, ClientShrineTuning.SHRINE_ITEM_BLUE_LEVEL, ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL);
+        GL11.glColor4f(
+            ClientShrineTuning.SHRINE_ITEM_RED_LEVEL,
+            ClientShrineTuning.SHRINE_ITEM_GREEN_LEVEL,
+            ClientShrineTuning.SHRINE_ITEM_BLUE_LEVEL,
+            ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL);
         GL11.glMatrixMode(GL11.GL_TEXTURE);
         try {
             for (int pass = 0; pass < ClientShrineTuning.MIN_PASS_THRESHOLD; pass++) {
                 GL11.glPushMatrix();
                 try {
-                    GL11.glScalef(ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X, ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X, ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X);
-                    long period = pass == 0 ? ClientShrineTuning.SHRINE_ITEM_GLINT_PARAM : ClientShrineTuning.SHRINE_ITEM_GLINT_PARAM_2;
-                    float offset = (float) (Minecraft.getSystemTime() % period) / period * ClientShrineTuning.SHRINE_ITEM_OFFSET;
-                    GL11.glTranslatef(pass == 0 ? offset : -offset, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE);
-                    GL11.glRotatef(pass == 0 ? ClientShrineTuning.SHRINE_ITEM_GLINT_ANGLE_DEG : ClientShrineTuning.SHRINE_ITEM_GLINT_ANGLE_DEG_2, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE, ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL);
-                    ItemRenderer.renderItemIn2D(Tessellator.instance, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE, ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE, ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL, ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL, ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_SIXTH_PARAM, ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_SIXTH_PARAM, ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_ARG8_FACTOR / ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_ARG8_FACTOR_2);
+                    GL11.glScalef(
+                        ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X,
+                        ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X,
+                        ClientShrineTuning.SHRINE_ITEM_GLINT_SCALE_X);
+                    long period = pass == 0 ? ClientShrineTuning.SHRINE_ITEM_GLINT_PARAM
+                        : ClientShrineTuning.SHRINE_ITEM_GLINT_PARAM_2;
+                    float offset = (float) (Minecraft.getSystemTime() % period) / period
+                        * ClientShrineTuning.SHRINE_ITEM_OFFSET;
+                    GL11.glTranslatef(
+                        pass == 0 ? offset : -offset,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE);
+                    GL11.glRotatef(
+                        pass == 0 ? ClientShrineTuning.SHRINE_ITEM_GLINT_ANGLE_DEG
+                            : ClientShrineTuning.SHRINE_ITEM_GLINT_ANGLE_DEG_2,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE,
+                        ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL);
+                    ItemRenderer.renderItemIn2D(
+                        Tessellator.instance,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE,
+                        ClientShrineTuning.HAS_EFFECT_INITIAL_VALUE,
+                        ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL,
+                        ClientShrineTuning.SHRINE_ITEM_ALPHA_LEVEL,
+                        ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_SIXTH_PARAM,
+                        ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_SIXTH_PARAM,
+                        ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_ARG8_FACTOR
+                            / ClientShrineTuning.SHRINE_ITEM_RENDER_ITEM_IN2_D_ARG8_FACTOR_2);
                 } finally {
                     GL11.glPopMatrix();
                 }

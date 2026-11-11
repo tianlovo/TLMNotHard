@@ -26,12 +26,10 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
-import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 /** 原版主人交互的原生平台适配，客户端只判断操作是否被接收 */
 public final class MaidInteractions {
-
-    public static final int EXPERIENCE_PER_BOTTLE = 12;
 
     private MaidInteractions() {}
 
@@ -41,10 +39,11 @@ public final class MaidInteractions {
             || MaidLifecycleService.isPendingRedemption(maid)
             || !player.isEntityAlive()
             || player.worldObj != maid.worldObj
-            || maid.getDistanceSqToEntity(player) > 64.0D) return false;
+            || maid.getDistanceSqToEntity(player) > MaidInteractionTuning.INTERACTIONS_CAN_INTERACT_FACTOR)
+            return false;
         // EFR 在原生平台注册的旁观模式ID为3，不对其客户端类建立公共代码依赖
         return !(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
-            .getID() != 3;
+            .getID() != MaidInteractionTuning.TARGET_GET_ID_THRESHOLD;
     }
 
     public static boolean isMainHand(EntityPlayer player) {
@@ -71,13 +70,14 @@ public final class MaidInteractions {
                     while (session == 0);
                     player.openGui(
                         ModContext.modInstance(),
-                        CommonProxy.GUI_MAID_NAMING,
+                        CommonProxyProtocol.GUI_MAID_NAMING,
                         maid.worldObj,
                         maid.getEntityId(),
-                        (int) (session >>> 32),
+                        (int) (session >>> MaidInteractionTuning.UPPER_WORD_SHIFT),
                         (int) session);
                 } else {
-                    player.addChatMessage(new ChatComponentTranslation("gui.tlmnh.naming.put_down_item"));
+                    player.addChatMessage(
+                        new ChatComponentTranslation(MaidInteractionIds.I18N_GUI_TLMNH_NAMING_PUT_DOWN_ITEM));
                 }
             }
             return true;
@@ -88,41 +88,68 @@ public final class MaidInteractions {
         }
         if (player.isSneaking()) {
             if (held.getItem() == Items.golden_apple) {
-                if (!maid.worldObj.isRemote) consume(maid, player, held, 1, null, () -> {
-                    feedGoldenApple(maid, held.getItemDamage() > 0);
-                    maid.playSound("random.eat", 0.6F, 1.0F);
-                });
+                if (!maid.worldObj.isRemote)
+                    consume(maid, player, held, MaidInteractionTuning.CONSUME_SINGLE_UNIT, null, () -> {
+                        feedGoldenApple(maid, held.getItemDamage() > 0);
+                        maid.playSound(
+                            MaidInteractionIds.ID_RANDOM_EAT,
+                            MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_SECOND_FACTOR,
+                            MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_THIRD_FACTOR);
+                    });
                 return true;
             }
             // 1.7.10以metadata区分喷溅药水，上游的POTION仅指可饮用药水
             if (held.getItem() == Items.potionitem && !ItemPotion.isSplash(held.getItemDamage())) {
                 if (!maid.worldObj.isRemote) {
                     var effects = ((ItemPotion) held.getItem()).getEffects(held);
-                    consume(maid, player, held, 1, new ItemStack(Items.glass_bottle), () -> {
-                        if (effects != null) {
-                            for (PotionEffect effect : effects) {
-                                var potion = Potion.potionTypes[effect.getPotionID()];
-                                if (potion.isInstant()) {
-                                    potion.affectEntity(player, maid, effect.getAmplifier(), 1.0D);
-                                } else {
-                                    maid.addPotionEffect(new PotionEffect(effect));
+                    consume(
+                        maid,
+                        player,
+                        held,
+                        MaidInteractionTuning.CONSUME_SINGLE_UNIT,
+                        new ItemStack(Items.glass_bottle),
+                        () -> {
+                            if (effects != null) {
+                                for (PotionEffect effect : effects) {
+                                    var potion = Potion.potionTypes[effect.getPotionID()];
+                                    if (potion.isInstant()) {
+                                        potion.affectEntity(
+                                            player,
+                                            maid,
+                                            effect.getAmplifier(),
+                                            MaidInteractionTuning.INTERACTIONS_AFFECT_ENTITY_FOURTH_FACTOR);
+                                    } else {
+                                        maid.addPotionEffect(new PotionEffect(effect));
+                                    }
                                 }
                             }
-                        }
-                        maid.playSound("random.drink", 0.6F, 1.0F);
-                    });
+                            maid.playSound(
+                                MaidInteractionIds.ID_RANDOM_DRINK,
+                                MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_SECOND_FACTOR,
+                                MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_THIRD_FACTOR);
+                        });
                 }
                 return true;
             }
             if (held.getItem() == Items.milk_bucket) {
-                if (!maid.worldObj.isRemote) consume(maid, player, held, 1, new ItemStack(Items.bucket), () -> {
-                    maid.curePotionEffects(held);
-                    maid.playSound("random.drink", 0.6F, 1.0F);
-                });
+                if (!maid.worldObj.isRemote) consume(
+                    maid,
+                    player,
+                    held,
+                    MaidInteractionTuning.CONSUME_SINGLE_UNIT,
+                    new ItemStack(Items.bucket),
+                    () -> {
+                        maid.curePotionEffects(held);
+                        maid.playSound(
+                            MaidInteractionIds.ID_RANDOM_DRINK,
+                            MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_SECOND_FACTOR,
+                            MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_THIRD_FACTOR);
+                    });
                 return true;
             }
         }
-        if (held.getItem() == Items.glass_bottle && maid.getExperience() >= EXPERIENCE_PER_BOTTLE) {
+        if (held.getItem() == Items.glass_bottle
+            && maid.getExperience() >= MaidInteractionTuning.EXPERIENCE_PER_BOTTLE) {
             if (!maid.worldObj.isRemote) exchangeExperience(maid, player, held);
             return true;
         }
@@ -145,21 +172,41 @@ public final class MaidInteractions {
         maid.getNavigator()
             .clearPathEntity();
         maid.setAttackTarget(null);
-        maid.fallDistance = 0.0F;
+        maid.fallDistance = MaidInteractionTuning.INTERACTIONS_FALL_DISTANCE;
     }
 
     private static void feedGoldenApple(EntityMaid maid, boolean enchanted) {
         // MC1.20.1 Foods的效果，不能套用1.7.10附魔金苹果的再生V
-        maid.addPotionEffect(new PotionEffect(Potion.regeneration.id, enchanted ? 400 : 100, 1));
-        maid.addPotionEffect(new PotionEffect(Potion.field_76444_x.id, 2400, enchanted ? 3 : 0));
+        maid.addPotionEffect(
+            new PotionEffect(
+                Potion.regeneration.id,
+                enchanted ? MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM
+                    : MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM_2,
+                MaidInteractionTuning.CONSUME_SINGLE_UNIT));
+        maid.addPotionEffect(
+            new PotionEffect(
+                Potion.field_76444_x.id,
+                MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM_3,
+                enchanted ? MaidInteractionTuning.TARGET_GET_ID_THRESHOLD
+                    : MaidInteractionTuning.POTION_EFFECT_INITIAL_VALUE));
         if (enchanted) {
-            maid.addPotionEffect(new PotionEffect(Potion.resistance.id, 6000, 0));
-            maid.addPotionEffect(new PotionEffect(Potion.fireResistance.id, 6000, 0));
+            maid.addPotionEffect(
+                new PotionEffect(
+                    Potion.resistance.id,
+                    MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM_4,
+                    MaidInteractionTuning.POTION_EFFECT_INITIAL_VALUE));
+            maid.addPotionEffect(
+                new PotionEffect(
+                    Potion.fireResistance.id,
+                    MaidInteractionTuning.INTERACTIONS_POTION_EFFECT_SECOND_PARAM_4,
+                    MaidInteractionTuning.POTION_EFFECT_INITIAL_VALUE));
         }
     }
 
     private static void exchangeExperience(EntityMaid maid, EntityPlayer player, ItemStack held) {
-        int count = player.isSneaking() ? Math.min(held.stackSize, maid.getExperience() / EXPERIENCE_PER_BOTTLE) : 1;
+        int count = player.isSneaking()
+            ? Math.min(held.stackSize, maid.getExperience() / MaidInteractionTuning.EXPERIENCE_PER_BOTTLE)
+            : MaidInteractionTuning.CONSUME_SINGLE_UNIT;
         count = Math.min(count, Items.experience_bottle.getItemStackLimit());
         if (MaidInteractionTransfer.publish(
             maid,
@@ -167,8 +214,12 @@ public final class MaidInteractions {
             held,
             count,
             new ItemStack(Items.experience_bottle, count),
-            count * EXPERIENCE_PER_BOTTLE,
-            () -> maid.playSound("random.pop", 0.2F, 2.0F))) player.inventoryContainer.detectAndSendChanges();
+            count * MaidInteractionTuning.EXPERIENCE_PER_BOTTLE,
+            () -> maid.playSound(
+                MaidInteractionIds.ID_RANDOM_POP,
+                MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_SECOND_FACTOR_2,
+                MaidInteractionTuning.INTERACTIONS_PLAY_SOUND_THIRD_FACTOR_2)))
+            player.inventoryContainer.detectAndSendChanges();
     }
 
     private static boolean consume(EntityMaid maid, EntityPlayer player, ItemStack held, int count, ItemStack container,
@@ -179,7 +230,14 @@ public final class MaidInteractions {
         }
         int remaining = held.stackSize - count;
         if (remaining > 0 && container != null && !player.inventory.addItemStackToInventory(container)) {
-            boolean delivered = MaidInteractionTransfer.publish(maid, player, held, count, container, 0, effect);
+            boolean delivered = MaidInteractionTransfer.publish(
+                maid,
+                player,
+                held,
+                count,
+                container,
+                MaidInteractionTuning.POTION_EFFECT_INITIAL_VALUE,
+                effect);
             if (delivered) player.inventoryContainer.detectAndSendChanges();
             return delivered;
         }

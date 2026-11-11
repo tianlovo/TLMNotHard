@@ -107,7 +107,8 @@ public final class MaidHeldItemLayer {
             genericMirrored = hand.attachment.side == Side.LEFT && profile != Profile.SHIELD_LEFT;
             sourceMatrix = source.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
             bridgeMatrix = bridge.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
-            var actual = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
+            var actual = BufferUtils
+                .createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
             GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actual);
             nativeEntryMatrix = new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM];
             actual.get(nativeEntryMatrix);
@@ -127,7 +128,8 @@ public final class MaidHeldItemLayer {
     private static volatile Observer observer;
     private static volatile DevelopmentDrawGate developmentDrawGate;
     private static long nativeSequence, nativeAttempts, nativeCompleted;
-    private final FloatBuffer matrixBuffer = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
+    private final FloatBuffer matrixBuffer = BufferUtils
+        .createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
     private boolean rendering;
 
     /** 单次客户端开发事务的精确手部故障，不替换任何物品renderer注册 */
@@ -152,7 +154,8 @@ public final class MaidHeldItemLayer {
 
     public static synchronized DevelopmentDrawGate installDevelopmentDrawGate(String actor, Side side,
         String transaction) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_DISABLED);
+        if (!DevelopmentFlags.isDevCommandsEnabled())
+            throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_DISABLED);
         if (developmentDrawGate != null || actor == null
             || side == null
             || transaction == null
@@ -165,7 +168,8 @@ public final class MaidHeldItemLayer {
     public static synchronized void setDevelopmentDrawSkip(DevelopmentDrawGate expected, boolean skipping) {
         if (!DevelopmentFlags.isDevCommandsEnabled() || expected == null
             || developmentDrawGate != expected
-            || expected.owner != Thread.currentThread()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_UNOWNED_HELD_ITEM_GATE);
+            || expected.owner != Thread.currentThread())
+            throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_UNOWNED_HELD_ITEM_GATE);
         expected.skipping = skipping;
     }
 
@@ -177,7 +181,8 @@ public final class MaidHeldItemLayer {
     }
 
     public static synchronized void setObserverForDevelopment(Observer next) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_OBSERVER_DISABLED);
+        if (!DevelopmentFlags.isDevCommandsEnabled())
+            throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_OBSERVER_DISABLED);
         if (next == null) throw new IllegalArgumentException(AttachmentRenderDiagnostics.MSG_OBSERVER_MUST_NOT_BE_NULL);
         if (observer != null && observer != next)
             throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_OBSERVER_ALREADY_INSTALLED);
@@ -247,11 +252,18 @@ public final class MaidHeldItemLayer {
             }
             GL11.glEnable(GL11.GL_NORMALIZE);
             var item = stack.getItem();
-            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage()) : AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y;
+            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage())
+                : AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y;
             for (int pass = 0; pass < passes; pass++) {
                 if ((side == Side.LEFT ? maid.getOffhandItem() : maid.getHeldItem()) != stack) return;
                 int color = item.getColorFromItemStack(stack, pass);
-                GL11.glColor4f((color >> AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color >> AttachmentRenderLayout.SECOND_BYTE_SHIFT & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+                GL11.glColor4f(
+                    (color >> AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM
+                        & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    (color >> AttachmentRenderLayout.SECOND_BYTE_SHIFT & AttachmentRenderLayout.UNSIGNED_BYTE_MASK)
+                        / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    (color & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F,
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
                 NativeCall call = observing == null && developmentDrawGate == null ? null
                     : new NativeCall(++nativeSequence, hand, profile, pass, stack, selectedRenderer, source, bridge);
                 invokeNative(renderer, maid, stack, pass, observing, call);
@@ -288,7 +300,8 @@ public final class MaidHeldItemLayer {
                 && gate.owner == Thread.currentThread()
                 && gate.actor.equals(call.hand.actor)
                 && gate.side == call.hand.attachment.side) {
-                if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_REVOKED);
+                if (!DevelopmentFlags.isDevCommandsEnabled())
+                    throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_REVOKED);
                 gate.suppressed++;
                 if (observing != null) observing.skippedByDevelopmentGate(call, gate.transaction);
                 return;

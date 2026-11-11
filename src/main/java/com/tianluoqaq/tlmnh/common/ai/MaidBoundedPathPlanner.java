@@ -26,7 +26,6 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 /** 限制单次原版路径查询范围，不改变实体属性或原导航器的路径执行 */
 public final class MaidBoundedPathPlanner {
 
-    private static final float MAX_SEARCH_RANGE = 16;
     private static final NativeAccess NATIVE = NativeAccess.resolve(PathNavigate.class);
     private Attempt lastAttempt;
     private final boolean budgeted;
@@ -45,7 +44,12 @@ public final class MaidBoundedPathPlanner {
         var result = install(maid, create(maid, x, y, z, speed), budgeted).result;
         maid.getBrainCoordinator()
             .getTelemetry()
-            .navigation(Kind.NAV_PROCESSED, "navigation", "", "planner_adapter_finalized:" + result, 0);
+            .navigation(
+                Kind.NAV_PROCESSED,
+                MaidAiIds.ID_NAVIGATION,
+                "",
+                MaidAiIds.ID_PLANNER_ADAPTER_FINALIZED + result,
+                MaidAiTuning.NAVIGATION_INITIAL_VALUE);
         return result;
     }
 
@@ -56,7 +60,7 @@ public final class MaidBoundedPathPlanner {
         var queryTarget = new Point(MathHelper.floor_double(x), (int) y, MathHelper.floor_double(z));
         var nativeTarget = Point.nativeTarget(queryTarget, maid.width);
         float nativeRange = navigator.getPathSearchRange();
-        float searchRange = Math.min(nativeRange, MAX_SEARCH_RANGE);
+        float searchRange = Math.min(nativeRange, MaidAiTuning.MAX_SEARCH_RANGE);
         var options = NATIVE.options(navigator);
         boolean breakDoors = navigator.getCanBreakDoors(), avoidWater = navigator.getAvoidsWater();
         if (!options.supported) return creation(
@@ -94,13 +98,15 @@ public final class MaidBoundedPathPlanner {
                 null,
                 breakDoors,
                 avoidWater,
-                "invalid_search_parameters");
+                MaidAiIds.ID_INVALID_SEARCH_PARAMETERS);
         }
-        int padding = (int) (searchRange + 8.0F);
+        int padding = (int) (searchRange + MaidAiTuning.BOUNDED_PATH_PADDING);
         int originX = MathHelper.floor_double(maid.posX), originZ = MathHelper.floor_double(maid.posZ);
         var chunks = maid.worldObj.getChunkProvider();
-        for (int chunkX = (originX - padding) >> 4; chunkX <= (originX + padding) >> 4; chunkX++) {
-            for (int chunkZ = (originZ - padding) >> 4; chunkZ <= (originZ + padding) >> 4; chunkZ++) {
+        for (int chunkX = (originX - padding) >> MaidAiTuning.CHUNK_SECTION_SHIFT; chunkX
+            <= (originX + padding) >> MaidAiTuning.CHUNK_SECTION_SHIFT; chunkX++) {
+            for (int chunkZ = (originZ - padding) >> MaidAiTuning.CHUNK_SECTION_SHIFT; chunkZ
+                <= (originZ + padding) >> MaidAiTuning.CHUNK_SECTION_SHIFT; chunkZ++) {
                 if (!chunks.chunkExists(chunkX, chunkZ)) return creation(
                     context,
                     queryTarget,
@@ -115,7 +121,7 @@ public final class MaidBoundedPathPlanner {
                     null,
                     breakDoors,
                     avoidWater,
-                    "cache_chunk_unloaded:" + chunkX + "," + chunkZ);
+                    MaidAiIds.ID_CACHE_CHUNK_UNLOADED + chunkX + MaidAiIds.COMMA_DELIMITER + chunkZ);
             }
         }
         if (!maid.worldObj
@@ -134,7 +140,7 @@ public final class MaidBoundedPathPlanner {
                 null,
                 breakDoors,
                 avoidWater,
-                "destination_unloaded");
+                MaidAiIds.ID_DESTINATION_UNLOADED);
         }
         final boolean canNavigate;
         try {
@@ -171,7 +177,7 @@ public final class MaidBoundedPathPlanner {
             false,
             breakDoors,
             avoidWater,
-            "native_canNavigate=false");
+            MaidAiIds.ID_NATIVE_CANNAVIGATE_FALSE);
         if (budgeted && !MaidWorldNavigationBudget.acquire(maid)) return creation(
             context,
             queryTarget,
@@ -186,14 +192,19 @@ public final class MaidBoundedPathPlanner {
             true,
             breakDoors,
             avoidWater,
-            "waiting_world_navigation_budget");
+            MaidAiIds.ID_WAITING_WORLD_NAVIGATION_BUDGET);
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
         long elapsed;
         PathEntity path;
-        telemetry.navigation(Kind.NAV_SUBMITTED, "navigation", "", "native_world_path_query", 0);
-        long startedAt = recording ? System.nanoTime() : 0;
+        telemetry.navigation(
+            Kind.NAV_SUBMITTED,
+            MaidAiIds.ID_NAVIGATION,
+            "",
+            MaidAiIds.ID_NATIVE_WORLD_PATH_QUERY,
+            MaidAiTuning.NAVIGATION_INITIAL_VALUE);
+        long startedAt = recording ? System.nanoTime() : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
         try {
             path = MaidPathQuery.create(
                 maid,
@@ -207,16 +218,21 @@ public final class MaidBoundedPathPlanner {
                 options.canSwim);
         } catch (RuntimeException | Error failure) {
             telemetry.state(
-                "navigation",
+                MaidAiIds.ID_NAVIGATION,
                 "",
-                "native_path_threw:" + failure.getClass()
+                MaidAiIds.ID_NATIVE_PATH_THREW + failure.getClass()
                     .getSimpleName());
             throw failure;
         } finally {
-            elapsed = recording ? System.nanoTime() - startedAt : 0;
-            if (recording) telemetry.work("native_path", WorkComponent.NATIVE_PATH, elapsed);
+            elapsed = recording ? System.nanoTime() - startedAt : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+            if (recording) telemetry.work(MaidAiIds.ID_NATIVE_PATH, WorkComponent.NATIVE_PATH, elapsed);
         }
-        telemetry.navigation(Kind.NAV_RETURNED, "navigation", "", "path_null=" + (path == null), elapsed);
+        telemetry.navigation(
+            Kind.NAV_RETURNED,
+            MaidAiIds.ID_NAVIGATION,
+            "",
+            MaidAiIds.ID_PATH_NULL + (path == null),
+            elapsed);
         return creation(
             context,
             queryTarget,
@@ -231,7 +247,8 @@ public final class MaidBoundedPathPlanner {
             true,
             breakDoors,
             avoidWater,
-            path == null ? "native_path=null" : "native_path_created;length=" + path.getCurrentPathLength());
+            path == null ? MaidAiIds.ID_NATIVE_PATH_NULL
+                : MaidAiIds.ID_NATIVE_PATH_CREATED_LENGTH + path.getCurrentPathLength());
     }
 
     /**
@@ -244,8 +261,8 @@ public final class MaidBoundedPathPlanner {
     }
 
     private Installation install(EntityMaid maid, Creation created, boolean guardContext) {
-        Objects.requireNonNull(maid, "maid");
-        Objects.requireNonNull(created, "created");
+        Objects.requireNonNull(maid, MaidAiIds.ID_MAID);
+        Objects.requireNonNull(created, MaidAiIds.ID_CREATED);
         if (guardContext && !created.context.matches(maid)) return installation(
             created,
             PathResult.STALE_REQUEST,
@@ -254,7 +271,7 @@ public final class MaidBoundedPathPlanner {
             null,
             false,
             true,
-            "native_query_context_changed");
+            MaidAiIds.ID_NATIVE_QUERY_CONTEXT_CHANGED);
         if (!created.queryExecuted) return installation(
             created,
             created.preflightFailure,
@@ -279,9 +296,11 @@ public final class MaidBoundedPathPlanner {
             actual,
             reused,
             changed,
-            changed ? "native_query_context_changed_after_install"
-                : created.path == null ? "native_path=null"
-                    : "native_setPath=" + started + ";length=" + created.path.getCurrentPathLength());
+            changed ? MaidAiIds.ID_NATIVE_QUERY_CONTEXT_CHANGED_AFTER_INSTALL
+                : created.path == null ? MaidAiIds.ID_NATIVE_PATH_NULL
+                    : MaidAiIds.ID_NATIVE_SETPATH + started
+                        + MaidAiIds.ID_LENGTH
+                        + created.path.getCurrentPathLength());
     }
 
     private Creation creation(QueryContext context, Point queryTarget, Point nativeTarget, double speed,
@@ -354,9 +373,13 @@ public final class MaidBoundedPathPlanner {
         static Point nativeTarget(Point query, float width) {
             if (!Float.isFinite(width) || width <= 0) return null;
             return new Point(
-                MathHelper.floor_double((double) ((float) query.x + 0.5F) - (double) (width / 2.0F)),
-                MathHelper.floor_double((double) ((float) query.y + 0.5F)),
-                MathHelper.floor_double((double) ((float) query.z + 0.5F) - (double) (width / 2.0F)));
+                MathHelper.floor_double(
+                    (double) ((float) query.x + MaidAiTuning.CENTER_OFFSET_F)
+                        - (double) (width / MaidAiTuning.MIDPOINT_DIVISOR_F)),
+                MathHelper.floor_double((double) ((float) query.y + MaidAiTuning.CENTER_OFFSET_F)),
+                MathHelper.floor_double(
+                    (double) ((float) query.z + MaidAiTuning.CENTER_OFFSET_F)
+                        - (double) (width / MaidAiTuning.MIDPOINT_DIVISOR_F)));
         }
     }
 
@@ -396,7 +419,7 @@ public final class MaidBoundedPathPlanner {
             var facts = queryExecuted ? PathFacts.inspect(path, nativeTarget) : null;
             endpoint = facts == null ? null : facts.endpoint;
             endpointRelation = facts == null ? EndpointRelation.NOT_QUERIED : facts.relation;
-            pathLength = facts == null ? 0 : facts.length;
+            pathLength = facts == null ? MaidAiTuning.NAVIGATION_INITIAL_VALUE : facts.length;
             this.diagnostic = diagnostic;
         }
     }
@@ -436,7 +459,8 @@ public final class MaidBoundedPathPlanner {
         }
 
         static PathFacts inspect(PathEntity path, Point nativeTarget) {
-            if (path == null) return new PathFacts(EndpointRelation.NULL_PATH, null, 0);
+            if (path == null)
+                return new PathFacts(EndpointRelation.NULL_PATH, null, MaidAiTuning.NAVIGATION_INITIAL_VALUE);
             int length = path.getCurrentPathLength();
             if (length <= 0) return new PathFacts(EndpointRelation.EMPTY_PATH, null, length);
             var last = path.getFinalPathPoint();
@@ -470,11 +494,12 @@ public final class MaidBoundedPathPlanner {
             identity = maid.getUniqueID();
             world = maid.worldObj;
             this.navigator = navigator;
-            navigationGeneration = navigator instanceof MaidPathNavigator modern ? modern.generation() : 0;
+            navigationGeneration = navigator instanceof MaidPathNavigator modern ? modern.generation()
+                : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             owner = maid.func_152113_b();
             command = maid.getTask();
             entityTick = maid.ticksExisted;
-            worldTick = world == null ? 0 : world.getTotalWorldTime();
+            worldTick = world == null ? MaidAiTuning.NAVIGATION_INITIAL_VALUE : world.getTotalWorldTime();
             runtime = maid.getBrainCoordinator()
                 .peekPolicyRuntime();
             token = runtime == null ? null
@@ -558,16 +583,22 @@ public final class MaidBoundedPathPlanner {
 
         static NativeAccess resolve(Class<?> definition) {
             try {
-                var swim = ReflectionHelper.findField(definition, "canSwim", "field_75517_m");
-                var doors = ReflectionHelper.findField(definition, "canPassOpenWoodenDoors", "field_75518_j");
-                var navigate = ReflectionHelper
-                    .findMethod(definition, null, new String[] { "canNavigate", "func_75485_k" });
+                var swim = ReflectionHelper
+                    .findField(definition, MaidAiIds.ID_CANSWIM, MaidAiReflectionSpec.SRG_MEMBER_FIELD_75517_M);
+                var doors = ReflectionHelper.findField(
+                    definition,
+                    MaidAiIds.ID_CANPASSOPENWOODENDOORS,
+                    MaidAiReflectionSpec.SRG_MEMBER_FIELD_75518_J);
+                var navigate = ReflectionHelper.findMethod(
+                    definition,
+                    null,
+                    new String[] { MaidAiIds.ID_CANNAVIGATE, MaidAiReflectionSpec.SRG_MEMBER_FUNC_75485_K });
                 if (swim.getType() != boolean.class || doors.getType() != boolean.class
                     || navigate.getReturnType() != boolean.class)
-                    return new NativeAccess(null, null, null, "native_navigation_member_type_mismatch");
+                    return new NativeAccess(null, null, null, MaidAiIds.ID_NATIVE_NAVIGATION_MEMBER_TYPE_MISMATCH);
                 return new NativeAccess(swim, doors, navigate, null);
             } catch (RuntimeException | LinkageError failure) {
-                return new NativeAccess(null, null, null, "native_navigation_members_unavailable:" + failure);
+                return new NativeAccess(null, null, null, MaidAiIds.ID_NATIVE_NAVIGATION_MEMBERS_UNAVAILABLE + failure);
             }
         }
 
@@ -578,9 +609,9 @@ public final class MaidBoundedPathPlanner {
                     true,
                     canSwim.getBoolean(navigator),
                     enterDoors.getBoolean(navigator),
-                    "native_flags_read");
+                    MaidAiIds.ID_NATIVE_FLAGS_READ);
             } catch (IllegalAccessException | RuntimeException failure) {
-                return new Options(false, false, false, "native_navigation_flags_unreadable:" + failure);
+                return new Options(false, false, false, MaidAiIds.ID_NATIVE_NAVIGATION_FLAGS_UNREADABLE + failure);
             }
         }
 
@@ -589,7 +620,7 @@ public final class MaidBoundedPathPlanner {
             try {
                 return (Boolean) canNavigate.invoke(navigator);
             } catch (ReflectiveOperationException | RuntimeException failure) {
-                throw new IllegalStateException("native_canNavigate_unavailable", failure);
+                throw new IllegalStateException(MaidAiIds.ID_NATIVE_CANNAVIGATE_UNAVAILABLE, failure);
             }
         }
     }

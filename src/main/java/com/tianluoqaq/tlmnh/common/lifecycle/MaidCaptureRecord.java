@@ -14,83 +14,100 @@ final class MaidCaptureRecord {
 
     private static final Set<String> FIELDS = new HashSet<>(
         Arrays.asList(
-            "Token",
-            "Owner",
-            "Subject",
-            "Stage",
-            "Sequence",
-            "Source",
-            "OriginalMaid",
-            "Receipt",
-            "Credential",
-            "InventoryBefore",
-            "InventoryReceipt",
-            "InventoryFilled",
-            "Selected",
-            "Dimension",
-            "Cursor",
-            "Observed"));
+            MaidLifecycleNbtKeys.KEY_TOKEN,
+            MaidLifecycleNbtKeys.KEY_OWNER,
+            MaidLifecycleNbtKeys.KEY_SUBJECT,
+            MaidLifecycleNbtKeys.KEY_STAGE,
+            MaidLifecycleNbtKeys.KEY_SEQUENCE,
+            MaidLifecycleNbtKeys.KEY_SOURCE,
+            MaidLifecycleNbtKeys.KEY_ORIGINAL_MAID,
+            MaidLifecycleNbtKeys.KEY_RECEIPT,
+            MaidLifecycleNbtKeys.KEY_CREDENTIAL,
+            MaidLifecycleNbtKeys.KEY_INVENTORY_BEFORE,
+            MaidLifecycleNbtKeys.KEY_INVENTORY_RECEIPT,
+            MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED,
+            MaidLifecycleNbtKeys.KEY_SELECTED,
+            MaidLifecycleNbtKeys.KEY_DIMENSION,
+            MaidLifecycleNbtKeys.KEY_CURSOR,
+            MaidLifecycleNbtKeys.KEY_OBSERVED));
 
     private MaidCaptureRecord() {}
 
     static void validate(NBTTagCompound data, UUID token, UUID owner, UUID subject) {
         if (!data.func_150296_c()
-            .equals(FIELDS)) throw new IllegalStateException("Unknown capture record retained");
-        for (String key : new String[] { "Token", "Owner", "Subject", "Stage" })
+            .equals(FIELDS))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_CAPTURE_RECORD_RETAINED);
+        for (String key : new String[] { MaidLifecycleNbtKeys.KEY_TOKEN, MaidLifecycleNbtKeys.KEY_OWNER,
+            MaidLifecycleNbtKeys.KEY_SUBJECT, MaidLifecycleNbtKeys.KEY_STAGE })
             if (!data.hasKey(key, Constants.NBT.TAG_STRING))
-                throw new IllegalStateException("Invalid capture identity encoding");
-        for (String key : new String[] { "Sequence", "Selected", "Dimension" })
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_IDENTITY_ENCODING);
+        for (String key : new String[] { MaidLifecycleNbtKeys.KEY_SEQUENCE, MaidLifecycleNbtKeys.KEY_SELECTED,
+            MaidLifecycleNbtKeys.KEY_DIMENSION })
             if (!data.hasKey(key, Constants.NBT.TAG_INT))
-                throw new IllegalStateException("Invalid capture position encoding");
-        for (String key : new String[] { "Source", "OriginalMaid", "Receipt", "Credential", "Cursor", "Observed" })
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_POSITION_ENCODING);
+        for (String key : new String[] { MaidLifecycleNbtKeys.KEY_SOURCE, MaidLifecycleNbtKeys.KEY_ORIGINAL_MAID,
+            MaidLifecycleNbtKeys.KEY_RECEIPT, MaidLifecycleNbtKeys.KEY_CREDENTIAL, MaidLifecycleNbtKeys.KEY_CURSOR,
+            MaidLifecycleNbtKeys.KEY_OBSERVED })
             if (!data.hasKey(key, Constants.NBT.TAG_COMPOUND))
-                throw new IllegalStateException("Invalid capture payload encoding");
-        for (String key : new String[] { "InventoryBefore", "InventoryReceipt", "InventoryFilled" }) {
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_PAYLOAD_ENCODING);
+        for (String key : new String[] { MaidLifecycleNbtKeys.KEY_INVENTORY_BEFORE,
+            MaidLifecycleNbtKeys.KEY_INVENTORY_RECEIPT, MaidLifecycleNbtKeys.KEY_INVENTORY_FILLED }) {
             if (!data.hasKey(key, Constants.NBT.TAG_LIST)
                 || ((NBTTagList) data.getTag(key)).tagCount() != data.getTagList(key, Constants.NBT.TAG_COMPOUND)
                     .tagCount())
-                throw new IllegalStateException("Invalid capture inventory encoding");
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_INVENTORY_ENCODING);
         }
         if (!token.toString()
-            .equals(data.getString("Token"))
+            .equals(data.getString(MaidLifecycleNbtKeys.KEY_TOKEN))
             || !owner.toString()
-                .equals(data.getString("Owner"))
+                .equals(data.getString(MaidLifecycleNbtKeys.KEY_OWNER))
             || !subject.toString()
-                .equals(data.getString("Subject"))
-            || data.getInteger("Sequence") < 1
-            || data.getInteger("Selected") < 0
-            || data.getInteger("Selected") > 8
-            || !Arrays.asList("PREPARED", "REMOVED", "DELIVERED", "HELD")
-                .contains(data.getString("Stage")))
-            throw new IllegalStateException("Invalid capture identity or state");
-        for (String key : new String[] { "Source", "OriginalMaid" }) {
+                .equals(data.getString(MaidLifecycleNbtKeys.KEY_SUBJECT))
+            || data.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE) < MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            || data.getInteger(MaidLifecycleNbtKeys.KEY_SELECTED) < 0
+            || data.getInteger(MaidLifecycleNbtKeys.KEY_SELECTED) > MaidLifecycleTuning.CAPTURE_RECORD_VALIDATE_PARAM
+            || !Arrays
+                .asList(
+                    MaidLifecycleNbtKeys.KEY_PREPARED,
+                    MaidLifecycleNbtKeys.KEY_REMOVED,
+                    MaidLifecycleNbtKeys.KEY_DELIVERED,
+                    MaidLifecycleNbtKeys.KEY_HELD)
+                .contains(data.getString(MaidLifecycleNbtKeys.KEY_STAGE)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_IDENTITY_OR_STATE);
+        for (String key : new String[] { MaidLifecycleNbtKeys.KEY_SOURCE, MaidLifecycleNbtKeys.KEY_ORIGINAL_MAID }) {
             var maid = data.getCompoundTag(key);
-            if (!maid.hasKey("UUIDMost", Constants.NBT.TAG_LONG) || !maid.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
-                || !maid.hasKey("OwnerUUID", Constants.NBT.TAG_STRING)
-                || !subject.equals(new UUID(maid.getLong("UUIDMost"), maid.getLong("UUIDLeast")))
+            if (!maid.hasKey(MaidLifecycleNbtKeys.KEY_UUID_MOST, Constants.NBT.TAG_LONG)
+                || !maid.hasKey(MaidLifecycleNbtKeys.KEY_UUID_LEAST, Constants.NBT.TAG_LONG)
+                || !maid.hasKey(MaidLifecycleNbtKeys.KEY_OWNER_UUID, Constants.NBT.TAG_STRING)
+                || !subject.equals(
+                    new UUID(
+                        maid.getLong(MaidLifecycleNbtKeys.KEY_UUID_MOST),
+                        maid.getLong(MaidLifecycleNbtKeys.KEY_UUID_LEAST)))
                 || !owner.toString()
-                    .equals(maid.getString("OwnerUUID")))
-                throw new IllegalStateException("Capture source identity mismatch");
+                    .equals(maid.getString(MaidLifecycleNbtKeys.KEY_OWNER_UUID)))
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CAPTURE_SOURCE_IDENTITY_MISMATCH);
         }
-        if (data.getCompoundTag("Source")
-            .hasKey("Riding")
+        if (data.getCompoundTag(MaidLifecycleNbtKeys.KEY_SOURCE)
+            .hasKey(MaidLifecycleNbtKeys.KEY_RIDING)
             || !token.toString()
                 .equals(
-                    data.getCompoundTag("Receipt")
-                        .getCompoundTag("tag")
-                        .getString(MaidCaptureService.RECEIPT))
+                    data.getCompoundTag(MaidLifecycleNbtKeys.KEY_RECEIPT)
+                        .getCompoundTag(MaidLifecycleIds.ID_TAG)
+                        .getString(MaidLifecycleNbtKeys.RECEIPT_2))
             || !token.toString()
                 .equals(
-                    data.getCompoundTag("Credential")
-                        .getCompoundTag("tag")
-                        .getString("TLMNHToken"))
+                    data.getCompoundTag(MaidLifecycleNbtKeys.KEY_CREDENTIAL)
+                        .getCompoundTag(MaidLifecycleIds.ID_TAG)
+                        .getString(MaidLifecycleNbtKeys.KEY_TLMNH_TOKEN))
             || !owner.toString()
                 .equals(
-                    data.getCompoundTag("Credential")
-                        .getCompoundTag("tag")
-                        .getString("InitMaidOwner")))
-            throw new IllegalStateException("Capture credential mismatch");
-        if (!"HELD".equals(data.getString("Stage")) && !data.getCompoundTag("Observed")
-            .hasNoTags()) throw new IllegalStateException("Unexpected capture successor record");
+                    data.getCompoundTag(MaidLifecycleNbtKeys.KEY_CREDENTIAL)
+                        .getCompoundTag(MaidLifecycleIds.ID_TAG)
+                        .getString(MaidLifecycleNbtKeys.KEY_INIT_MAID_OWNER)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CAPTURE_CREDENTIAL_MISMATCH);
+        if (!MaidLifecycleNbtKeys.KEY_HELD.equals(data.getString(MaidLifecycleNbtKeys.KEY_STAGE))
+            && !data.getCompoundTag(MaidLifecycleNbtKeys.KEY_OBSERVED)
+                .hasNoTags())
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNEXPECTED_CAPTURE_SUCCESSOR_RECORD);
     }
 }

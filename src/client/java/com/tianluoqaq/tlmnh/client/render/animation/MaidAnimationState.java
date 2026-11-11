@@ -1,7 +1,5 @@
 package com.tianluoqaq.tlmnh.client.render.animation;
 
-import com.tianluoqaq.tlmnh.common.entity.MaidEntityTuning;
-
 import java.util.Objects;
 import java.util.UUID;
 
@@ -14,8 +12,8 @@ import net.minecraft.init.Items;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.preview.MaidPreviewSeat;
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityTuning;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.relauncher.Side;
@@ -33,7 +31,8 @@ public final class MaidAnimationState {
     public int swingTick;
     public boolean pickingUpSnowball, snowballAnimationExpired;
     public double verticalSpeed;
-    public float attackAnim, health = AnimationLayout.GECKO_PLAYER_LIFETIME, maxHealth = AnimationLayout.GECKO_PLAYER_LIFETIME;
+    public float attackAnim, health = AnimationLayout.GECKO_PLAYER_LIFETIME,
+        maxHealth = AnimationLayout.GECKO_PLAYER_LIFETIME;
     public int dimension;
     public long dayTime;
     public String task = AnimationIds.ID_IDLE;
@@ -62,7 +61,8 @@ public final class MaidAnimationState {
         state.attackAnim = maid.getSwingProgress(partialTick);
         state.mainHandPresent = maid.getHeldItem() != null;
         state.helmet = maid.getEquipmentInSlot(AnimationLayout.BEDROCK_ANIMATIONS_POW_SECOND_PARAM) != null;
-        state.chestPlate = maid.getEquipmentInSlot(AnimationLayout.ANIMATION_STATE_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM) != null;
+        state.chestPlate = maid.getEquipmentInSlot(AnimationLayout.ANIMATION_STATE_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM)
+            != null;
         state.leggings = maid.getEquipmentInSlot(AnimationLayout.GECKO_PLAYER_ADD_SECOND_PARAM) != null;
         state.boots = maid.getEquipmentInSlot(AnimationLayout.BEDROCK_ANIMATIONS_LAYOUT_F1_OFFSET) != null;
         state.hurt = maid.hurtTime > 0;
@@ -79,7 +79,8 @@ public final class MaidAnimationState {
         state.health = maid.getHealth();
         state.maxHealth = maid.getMaxHealth();
         state.dimension = maid.dimension;
-        state.dayTime = Math.floorMod(maid.worldObj.getWorldTime(), AnimationLayout.ANIMATION_STATE_FLOOR_MOD_SECOND_LIMIT);
+        state.dayTime = Math
+            .floorMod(maid.worldObj.getWorldTime(), AnimationLayout.ANIMATION_STATE_FLOOR_MOD_SECOND_LIMIT);
         var animationTask = maid.getTask();
         if (maid.isUnifiedCombat() && animationTask == MaidTask.ATTACK
             && maid.getHeldItem() != null

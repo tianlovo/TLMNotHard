@@ -23,8 +23,8 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 /** 增强呼吸独立处理离座与移动，手部被其他动作持有不阻止安全找空气 */
 public final class EnhancedBreathingController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("breathing");
-    private static final int NEARBY_RETRY_TICKS = 10, EXHAUSTED_RETRY_TICKS = 20;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedLocomotionIds.ID_BREATHING);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidSensingSession sensing;
@@ -45,11 +45,13 @@ public final class EnhancedBreathingController {
         this.actor = actor;
         this.sensing = sensing;
         this.navigation = navigation;
-        this.airRecoveryFallback = Objects.requireNonNull(airRecoveryFallback, "airRecoveryFallback");
+        this.airRecoveryFallback = Objects
+            .requireNonNull(airRecoveryFallback, EnhancedLocomotionIds.ID_AIRRECOVERYFALLBACK);
     }
 
     public boolean lowAir() {
-        return actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
+        return actor.airSupply() < EnhancedLocomotionTuning.MIN_AIR_SUPPLY_THRESHOLD && !actor.hasBreathingEffect()
+            && !actor.hasDrownBauble();
     }
 
     public void stopIfRecovered() {
@@ -59,16 +61,23 @@ public final class EnhancedBreathingController {
     public void offer(MaidIntentFrame frame, boolean lowAirNow) {
         stopIfRecovered();
         if (lowAirNow || actor.isGoingToBreath() || actor.isEatBreatheItem()) {
-            frame.offerTyped(ID, Group.EMERGENCY, Kind.BREATHE, "air", 1, null, ignored -> execute());
+            frame.offerTyped(
+                ID,
+                Group.EMERGENCY,
+                Kind.BREATHE,
+                EnhancedLocomotionIds.ID_AIR,
+                EnhancedLocomotionTuning.OFFER_TYPED_SINGLE_UNIT,
+                null,
+                ignored -> execute());
         }
     }
 
     public void execute() {
         if (actor.hasBreathingEffect() || actor.hasDrownBauble() || actor.isEatBreatheItem()) return;
-        if (actor.airSupply() >= 100 && !actor.isGoingToBreath()) return;
+        if (actor.airSupply() >= EnhancedLocomotionTuning.MIN_AIR_SUPPLY_THRESHOLD && !actor.isGoingToBreath()) return;
         if (!actor.isUsingItem() && actor.tryEatBreatheItem()) return;
         if (!actor.isCurrent()) return;
-        if (actor.airSupply() < 100) {
+        if (actor.airSupply() < EnhancedLocomotionTuning.MIN_AIR_SUPPLY_THRESHOLD) {
             actor.clearSleepingIfPresent();
             if (!actor.isCurrent()) return;
             if (EnhancedRideController.stationary(maid)) {
@@ -76,7 +85,7 @@ public final class EnhancedBreathingController {
                 if (now >= nextRelease || attemptedMount != maid.ridingEntity || attemptedSit != maid.isSitting()) {
                     attemptedMount = maid.ridingEntity;
                     attemptedSit = maid.isSitting();
-                    nextRelease = now + 20;
+                    nextRelease = now + EnhancedLocomotionTuning.ENHANCED_BREATHING_NEXT_RELEASE;
                     actor.leaveMountOrSitForDanger();
                     if (!actor.isCurrent()) return;
                     if (attemptedMount != maid.ridingEntity || attemptedSit != maid.isSitting()) releases++;
@@ -96,13 +105,13 @@ public final class EnhancedBreathingController {
         var origin = actor.airSearchPosition();
         if (now < lastTick || searchOrigin != null && distanceSquared(searchOrigin, origin) > 0) {
             candidates.clear();
-            candidateIndex = 0;
-            nextSearch = nextNearbySearch = 0;
+            candidateIndex = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
+            nextSearch = nextNearbySearch = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         }
         lastTick = now;
         if (candidates.isEmpty() || now >= nextNearbySearch) {
             if (now < nextSearch || !actor.canScanForAir()) return;
-            var found = actor.findAirWithBfs(16);
+            var found = actor.findAirWithBfs(EnhancedLocomotionTuning.ENHANCED_BREATHING_FIND_AIR_WITH_BFS_FIRST_PARAM);
             if (!actor.isCurrent()) return;
             var next = new ArrayList<Point>();
             if (found.isPresent()) add(next, found.get());
@@ -110,18 +119,21 @@ public final class EnhancedBreathingController {
                 int sea = actor.seaLevel() + 1;
                 var center = new Point(origin.x, sea, origin.z);
                 if (actor.givesAir(center)) add(next, center);
-                for (int z = origin.z - 2; z <= origin.z + 2; z++) for (int x = origin.x - 2; x <= origin.x + 2; x++) {
-                    var p = new Point(x, sea, z);
-                    if (actor.givesAir(p)) add(next, p);
-                }
+                for (int z = origin.z - EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET; z
+                    <= origin.z + EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET; z++)
+                    for (int x = origin.x - EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET; x
+                        <= origin.x + EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET; x++) {
+                            var p = new Point(x, sea, z);
+                            if (actor.givesAir(p)) add(next, p);
+                        }
             } else {
                 // 重试附近空气时保留尚未检查的回退点，不能每帧从海平面第一个点重来
                 for (int i = candidateIndex; i < candidates.size(); i++) add(next, candidates.get(i));
             }
             candidates = next;
-            candidateIndex = 0;
+            candidateIndex = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
             searchOrigin = origin;
-            nextNearbySearch = now + NEARBY_RETRY_TICKS;
+            nextNearbySearch = now + EnhancedLocomotionTuning.NEARBY_RETRY_TICKS;
         }
         while (candidateIndex < candidates.size()) {
             var p = candidates.get(candidateIndex);
@@ -141,15 +153,18 @@ public final class EnhancedBreathingController {
                     candidateIndex++;
                     if (!result.path.canReach()) continue;
                     actor.setGoingToBreath(true);
-                    actor.setAirWalkAndLook(p, .5F, 1);
+                    actor.setAirWalkAndLook(
+                        p,
+                        EnhancedLocomotionTuning.ENHANCED_BREATHING_SET_AIR_WALK_AND_LOOK_SECOND_FACT,
+                        EnhancedLocomotionTuning.OFFER_TYPED_SINGLE_UNIT);
                     navigation.acceptPreflight(position, result, now);
                     return;
                 }
             }
         }
         candidates.clear();
-        candidateIndex = 0;
-        nextSearch = now + EXHAUSTED_RETRY_TICKS;
+        candidateIndex = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
+        nextSearch = now + EnhancedLocomotionTuning.EXHAUSTED_RETRY_TICKS;
         if (airRecoveryFallback.getAsBoolean() && actor.isCurrent()) {
             actor.setGoingToBreath(false);
             actor.eraseTargetPos();
@@ -173,11 +188,11 @@ public final class EnhancedBreathingController {
     public void cancel() {
         attemptedMount = null;
         attemptedSit = false;
-        nextRelease = 0;
+        nextRelease = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         candidates.clear();
-        candidateIndex = 0;
+        candidateIndex = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         searchOrigin = null;
-        nextSearch = nextNearbySearch = 0;
+        nextSearch = nextNearbySearch = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         lastTick = Long.MIN_VALUE;
         if (sensing != null) sensing.cancel(MaidSensingBudget.Kind.AIR);
     }

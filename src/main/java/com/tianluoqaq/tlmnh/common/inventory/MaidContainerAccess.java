@@ -24,6 +24,6 @@ public final class MaidContainerAccess {
     public static boolean canModify(EntityPlayer viewer, EntityPlayer player, EntityMaid maid) {
         return canInteract(viewer, player, maid)
             && (!(player instanceof EntityPlayerMP serverPlayer) || serverPlayer.theItemInWorldManager.getGameType()
-                .getID() != 3);
+                .getID() != MaidInventoryLayout.TARGET_GET_ID_THRESHOLD);
     }
 }

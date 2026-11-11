@@ -3,14 +3,14 @@ package com.tianluoqaq.tlmnh.common.entity;
 /** 由服务端行为设置的短时动作，不写入存档，不代替任务和作息 */
 public enum MaidPose {
 
-    SLEEPING(1),
-    BEGGING(2),
-    USING_ITEM(4),
-    USING_OFFHAND(8),
-    SWING_OFFHAND(16),
-    AIMING_BOW(32),
-    SWIMMING(64),
-    SWINGING_ARMS(128);
+    SLEEPING(MaidEntityTuning.SLEEPING_SINGLE_UNIT),
+    BEGGING(MaidEntityTuning.POSE_BEGGING_FIRST_PARAM),
+    USING_ITEM(MaidEntityTuning.POSE_USING_ITEM_FIRST_PARAM),
+    USING_OFFHAND(MaidEntityTuning.POSE_USING_OFFHAND_FIRST_PARAM),
+    SWING_OFFHAND(MaidEntityTuning.POSE_SWING_OFFHAND_FIRST_PARAM),
+    AIMING_BOW(MaidEntityTuning.POSE_AIMING_BOW_FIRST_PARAM),
+    SWIMMING(MaidEntityTuning.POSE_SWIMMING_FIRST_PARAM),
+    SWINGING_ARMS(MaidEntityTuning.POSE_SWINGING_ARMS_FIRST_PARAM);
 
     private final int mask;
 

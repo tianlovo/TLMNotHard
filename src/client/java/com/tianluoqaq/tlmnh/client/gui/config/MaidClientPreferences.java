@@ -25,17 +25,34 @@ public final class MaidClientPreferences {
     private MaidClientPreferences() {}
 
     public static void load() {
-        configuration = new Configuration(new File(Minecraft.getMinecraft().mcDataDir, ClientConfigGuiConfigSpec.ID_CONFIG_TLMNH_CLIENT_CFG));
+        configuration = new Configuration(
+            new File(Minecraft.getMinecraft().mcDataDir, ClientConfigGuiConfigSpec.ID_CONFIG_TLMNH_CLIENT_CFG));
         configuration.load();
-        modelIconCache = configuration.getBoolean(ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE, ClientConfigGuiConfigSpec.ID_MODEL, false, ClientConfigGuiConfigSpec.MSG_CACHE_BUILTIN_MODEL_ICONS);
-        globalMaidSoundFrequency = configuration
-            .getInt(ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY, ClientConfigGuiConfigSpec.ID_SOUND, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM, ClientConfigGuiConfigSpec.MSG_GLOBAL_MAID_SOUND_FREQUENCY_PERCENT);
-        showChatBubbles = configuration
-            .getBoolean(ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE, ClientConfigGuiConfigSpec.ID_RENDER, true, ClientConfigGuiConfigSpec.MSG_SHOW_ORDINARY_MAID_CHAT_BUBBLES);
+        modelIconCache = configuration.getBoolean(
+            ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE,
+            ClientConfigGuiConfigSpec.ID_MODEL,
+            false,
+            ClientConfigGuiConfigSpec.MSG_CACHE_BUILTIN_MODEL_ICONS);
+        globalMaidSoundFrequency = configuration.getInt(
+            ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY,
+            ClientConfigGuiConfigSpec.ID_SOUND,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM,
+            ClientConfigGuiConfigSpec.MSG_GLOBAL_MAID_SOUND_FREQUENCY_PERCENT);
+        showChatBubbles = configuration.getBoolean(
+            ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE,
+            ClientConfigGuiConfigSpec.ID_RENDER,
+            true,
+            ClientConfigGuiConfigSpec.MSG_SHOW_ORDINARY_MAID_CHAT_BUBBLES);
         interactionTips.clear();
         for (var tip : MaidInteractionTipsRules.Tip.values()) interactionTips.put(
             tip.configKey,
-            configuration.getBoolean(tip.configKey, ClientConfigGuiConfigSpec.ID_RENDER, true, ClientConfigGuiConfigSpec.MSG_SHOW_THE_MAID_INTERACTION_HINT));
+            configuration.getBoolean(
+                tip.configKey,
+                ClientConfigGuiConfigSpec.ID_RENDER,
+                true,
+                ClientConfigGuiConfigSpec.MSG_SHOW_THE_MAID_INTERACTION_HINT));
         if (configuration.hasChanged()) configuration.save();
     }
 
@@ -59,16 +76,23 @@ public final class MaidClientPreferences {
     public static void apply(int percent, boolean bubbles, boolean cache) {
         if (percent < 0 || percent > ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM)
             throw new IllegalArgumentException(ClientConfigGuiConfigSpec.MSG_MAID_SOUND_FREQUENCY_PERCENT_OUT);
-        if (configuration == null) throw new IllegalStateException(ClientConfigGuiConfigSpec.MSG_CLIENT_PREFERENCES_ARE_NOT_INITIALIZED);
+        if (configuration == null)
+            throw new IllegalStateException(ClientConfigGuiConfigSpec.MSG_CLIENT_PREFERENCES_ARE_NOT_INITIALIZED);
         if (percent == globalMaidSoundFrequency && bubbles == showChatBubbles && cache == modelIconCache) return;
         globalMaidSoundFrequency = percent;
         showChatBubbles = bubbles;
         modelIconCache = cache;
-        configuration.get(ClientConfigGuiConfigSpec.ID_SOUND, ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM)
+        configuration
+            .get(
+                ClientConfigGuiConfigSpec.ID_SOUND,
+                ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY,
+                ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM)
             .set(percent);
-        configuration.get(ClientConfigGuiConfigSpec.ID_RENDER, ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE, true)
+        configuration
+            .get(ClientConfigGuiConfigSpec.ID_RENDER, ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE, true)
             .set(bubbles);
-        configuration.get(ClientConfigGuiConfigSpec.ID_MODEL, ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE, false)
+        configuration
+            .get(ClientConfigGuiConfigSpec.ID_MODEL, ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE, false)
             .set(cache);
         configuration.save();
     }

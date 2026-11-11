@@ -33,6 +33,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowInterceptSolver;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.ArrowPhysics;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticVector;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticsIds;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.MaidGravityFreeArrow;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.NativeArrowMedium;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.ObservedTargetMotion;
@@ -42,17 +43,13 @@ import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
 
 /** 原生弓箭执行器：观察、拉弓、真实弹道安全检查和成功生成后的资源结算 */
 public final class MaidBowAttack {
-
-    public static final int DRAW_TICKS = 20;
-    public static final int MAX_FLIGHT_TICKS = 60;
-    public static final double RANGE_SQ = 144;
 
     public enum ModernFlightProfile {
         NATIVE_STATIC_COMPENSATION,
@@ -98,8 +95,8 @@ public final class MaidBowAttack {
     }
 
     public MaidBowAttack(EntityMaid maid, ModernFlightProfile profile) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        modernFlightProfile = Objects.requireNonNull(profile, "profile");
+        this.maid = Objects.requireNonNull(maid, MaidCombatIds.ID_MAID);
+        modernFlightProfile = Objects.requireNonNull(profile, MaidCombatIds.ID_PROFILE);
     }
 
     public ModernFlightProfile flightProfile() {
@@ -157,13 +154,13 @@ public final class MaidBowAttack {
                     && maid.getHeldItem() == expectedBow
                     && canHoldBowUse());
         if (useLease == null) {
-            drawTicks = 0;
+            drawTicks = MaidCombatTuning.MAX_INITIAL_VALUE;
             status = Status.BLOCKED;
             return false;
         }
         drawTicks++;
-        status = drawTicks >= DRAW_TICKS ? Status.READY : Status.DRAWING;
-        return drawTicks >= DRAW_TICKS;
+        status = drawTicks >= MaidCombatTuning.DRAW_TICKS ? Status.READY : Status.DRAWING;
+        return drawTicks >= MaidCombatTuning.DRAW_TICKS;
     }
 
     public boolean fire(EntityLivingBase target) {
@@ -187,7 +184,7 @@ public final class MaidBowAttack {
             return false;
         }
         if (!canFire(target) || target != observed
-            || drawTicks < DRAW_TICKS
+            || drawTicks < MaidCombatTuning.DRAW_TICKS
             || drawingBow != maid.getHeldItem()
             || !maid.getItemUseState()
                 .isCurrent(useLease)
@@ -202,7 +199,7 @@ public final class MaidBowAttack {
                 && maid.getItemUseState()
                     .isCurrent(useLease),
             true,
-            1F);
+            MaidCombatTuning.BOW_ATTACK_DOMAIN_FACTOR);
     }
 
     /** 原行为已stopUsingItem后调用，不要求原型draw20/MAIN租约/12格/禁止骑乘等准入 */
@@ -235,9 +232,9 @@ public final class MaidBowAttack {
     /** 只供显式开发对照，不改变默认玩法的箭物理，也不代表完整忠实策略已经准入 */
     public void setFlightProfileForDevelopment(ModernFlightProfile profile) {
         if (!DevelopmentFlags.isDevCommandsEnabled() || firing)
-            throw new IllegalStateException("Development flight profile cannot change in this context");
+            throw new IllegalStateException(MaidCombatDiagnostics.MSG_DEVELOPMENT_FLIGHT_PROFILE_CANNOT_CHANGE);
         interrupt();
-        modernFlightProfile = Objects.requireNonNull(profile, "profile");
+        modernFlightProfile = Objects.requireNonNull(profile, MaidCombatIds.ID_PROFILE);
     }
 
     private boolean release(EntityLivingBase target, ItemStack bow, int slot, BooleanSupplier admitted,
@@ -247,7 +244,8 @@ public final class MaidBowAttack {
             var quota = CombatWorldBudget
                 .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
             var work = CombatWorkQuota.Work.FINAL_CHECK;
-            if (!quota.spend(work, 3) || !quota.spend(CombatWorkQuota.Work.RAY, 6)
+            if (!quota.spend(work, MaidCombatTuning.BOW_ATTACK_SPEND_SECOND_PARAM)
+                || !quota.spend(CombatWorkQuota.Work.RAY, MaidCombatTuning.EQUIPMENT_EPOCH_EQUIPMENT_PARAM)
                 || !quota.spend(CombatWorkQuota.Work.BALLISTIC)) return reject(Status.SPAWN_REJECTED);
             var profile = maid.getCombatWeaponProfile();
             if (!profile.bow() || maid.getCombatHitReceipt()
@@ -287,7 +285,12 @@ public final class MaidBowAttack {
             && ItemStack.areItemStacksEqual(ammunition, ammunitionBefore);
         lastPhysics = null;
         boolean original = !prototype && modernFlightProfile == ModernFlightProfile.SOURCE_ORIGINAL;
-        var origin = new BallisticVector(launchX, launchY + launchEyeHeight - (original ? (double) .1F : .1), launchZ);
+        var origin = new BallisticVector(
+            launchX,
+            launchY + launchEyeHeight
+                - (original ? (double) MaidCombatTuning.BOW_ATTACK_BALLISTIC_VECTOR_SECOND_FACTOR
+                    : MaidCombatTuning.BOW_ATTACK_BALLISTIC_VECTOR_SECOND_FACTOR_2),
+            launchZ);
         var telemetry = maid.getBrainCoordinator()
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
@@ -319,7 +322,7 @@ public final class MaidBowAttack {
                 status = Status.PHYSICS_UNAVAILABLE;
                 return false;
             }
-            long startedAt = recording ? System.nanoTime() : 0;
+            long startedAt = recording ? System.nanoTime() : MaidCombatTuning.MAX_INITIAL_VALUE;
             try {
                 nativeAim = nativeAim(
                     arrow,
@@ -330,7 +333,8 @@ public final class MaidBowAttack {
                 lastSolution = nativeAim.solution;
                 lastPhysics = nativeAim.physics;
             } finally {
-                if (recording) telemetry.work("bow_solver", WorkComponent.SOLVER, System.nanoTime() - startedAt);
+                if (recording)
+                    telemetry.work(MaidCombatIds.ID_BOW_SOLVER, WorkComponent.SOLVER, System.nanoTime() - startedAt);
             }
             if (nativeAim.status != Status.READY) {
                 var refusal = (nativeAim.status == Status.BLOCKED || nativeAim.status == Status.NO_SOLUTION)
@@ -352,16 +356,20 @@ public final class MaidBowAttack {
         arrow.shootingEntity = maid;
 
         boolean infinite = EnchantmentHelper.getEnchantmentLevel(Enchantment.infinity.effectId, bow) > 0;
-        arrow.canBePickedUp = infinite ? original ? 0 : 2 : 1;
+        arrow.canBePickedUp = infinite
+            ? original ? MaidCombatTuning.MAX_INITIAL_VALUE : MaidCombatTuning.TARGET_SIZE_THRESHOLD
+            : MaidCombatTuning.MAX_SINGLE_UNIT;
         arrow.setIsCritical(prototype);
         int power = EnchantmentHelper.getEnchantmentLevel(Enchantment.power.effectId, bow);
-        if (power > 0) arrow.setDamage(arrow.getDamage() + power * 0.5 + 0.5);
+        if (power > 0) arrow
+            .setDamage(arrow.getDamage() + power * MaidCombatTuning.HALF_FACTOR_D + MaidCombatTuning.HALF_FACTOR_D);
         int punch = EnchantmentHelper.getEnchantmentLevel(Enchantment.punch.effectId, bow);
         if (punch > 0) arrow.setKnockbackStrength(punch);
-        if (EnchantmentHelper.getEnchantmentLevel(Enchantment.flame.effectId, bow) > 0) arrow.setFire(100);
+        if (EnchantmentHelper.getEnchantmentLevel(Enchantment.flame.effectId, bow) > 0)
+            arrow.setFire(MaidCombatTuning.BOW_ATTACK_SET_FIRE_FIRST_PARAM);
         if (!prototype) arrow.setDamage(
             arrow.getDamage() * (float) (maid.getEntityAttribute(SharedMonsterAttributes.attackDamage)
-                .getBaseValue() / 2.0));
+                .getBaseValue() / MaidCombatTuning.MIDPOINT_DIVISOR_D));
         var arrowBefore = snapshot(arrow);
         boolean criticalBefore = arrow.getIsCritical();
         var boundsBefore = new double[] { arrow.boundingBox.minX, arrow.boundingBox.minY, arrow.boundingBox.minZ,
@@ -372,7 +380,7 @@ public final class MaidBowAttack {
             || !maid.getCombatCadence()
                 .commit(
                     Math.max(
-                        1,
+                        MaidCombatTuning.MAX_SINGLE_UNIT,
                         (long) maid.getEntityAttribute(MaidCombatAttributes.SHOOT_COOLDOWN)
                             .getAttributeValue())))) {
             arrow.setDead();
@@ -397,15 +405,16 @@ public final class MaidBowAttack {
             return reject(Status.SPAWN_REJECTED);
         }
         if (!infinite) maid.getMaidInventory()
-            .decrStackSize(slot, 1);
-        bow.damageItem(1, maid);
-        if (bow.stackSize <= 0) maid.setCurrentItemOrArmor(0, null);
+            .decrStackSize(slot, MaidCombatTuning.MAX_SINGLE_UNIT);
+        bow.damageItem(MaidCombatTuning.MAX_SINGLE_UNIT, maid);
+        if (bow.stackSize <= 0) maid.setCurrentItemOrArmor(MaidCombatTuning.MAX_INITIAL_VALUE, null);
         maid.worldObj.playSoundAtEntity(
             maid,
-            "random.bow",
-            1,
-            original ? 1F / (maid.getRNG()
-                .nextFloat() * .4F + .8F) : 1F);
+            MaidCombatIds.ID_RANDOM_BOW,
+            MaidCombatTuning.MAX_SINGLE_UNIT,
+            original ? MaidCombatTuning.BOW_ATTACK_DOMAIN_FACTOR / (maid.getRNG()
+                .nextFloat() * MaidCombatTuning.BOW_ATTACK_DOMAIN_FACTOR_2
+                + MaidCombatTuning.BOW_ATTACK_DOMAIN_FACTOR_3) : MaidCombatTuning.BOW_ATTACK_DOMAIN_FACTOR);
         shots++;
         lastArrow = arrow;
         telemetry.releaseConfirmed(arrow, target);
@@ -429,16 +438,17 @@ public final class MaidBowAttack {
         for (int step = 0; step < Math.ceil(flightTicks); step++) {
             var sample = physics.mediumAt(state.position);
             var moving = state.velocity.add(sample.push);
-            var end = state.position.add(moving.scale(Math.min(1, flightTicks - step)));
-            int minX = MathHelper.floor_double(Math.min(state.position.x, end.x) - .3);
-            int maxX = MathHelper.floor_double(Math.max(state.position.x, end.x) + .3);
-            int minY = MathHelper.floor_double(Math.min(state.position.y, end.y) - .5);
+            var end = state.position.add(moving.scale(Math.min(MaidCombatTuning.MAX_SINGLE_UNIT, flightTicks - step)));
+            int minX = MathHelper.floor_double(Math.min(state.position.x, end.x) - MaidCombatTuning.BOW_ATTACK_MIN_X);
+            int maxX = MathHelper.floor_double(Math.max(state.position.x, end.x) + MaidCombatTuning.BOW_ATTACK_MIN_X);
+            int minY = MathHelper.floor_double(Math.min(state.position.y, end.y) - MaidCombatTuning.BOW_ATTACK_MIN_Y);
             int maxY = MathHelper.floor_double(Math.max(state.position.y, end.y) + 1);
-            int minZ = MathHelper.floor_double(Math.min(state.position.z, end.z) - .3);
-            int maxZ = MathHelper.floor_double(Math.max(state.position.z, end.z) + .3);
+            int minZ = MathHelper.floor_double(Math.min(state.position.z, end.z) - MaidCombatTuning.BOW_ATTACK_MIN_X);
+            int maxZ = MathHelper.floor_double(Math.max(state.position.z, end.z) + MaidCombatTuning.BOW_ATTACK_MIN_X);
             for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
                 if (!maid.worldObj.getChunkProvider()
-                    .chunkExists(x >> 4, z >> 4)) return Status.UNLOADED;
+                    .chunkExists(x >> MaidCombatTuning.CHUNK_SECTION_SHIFT, z >> MaidCombatTuning.CHUNK_SECTION_SHIFT))
+                    return Status.UNLOADED;
                 for (int y = minY; y <= maxY; y++) {
                     if (!maid.worldObj.blockExists(x, y, z)) return Status.UNLOADED;
                     var block = medium.getBlock(x, y, z);
@@ -460,12 +470,18 @@ public final class MaidBowAttack {
                     Math.max(from.xCoord, to.xCoord),
                     Math.max(from.yCoord, to.yCoord),
                     Math.max(from.zCoord, to.zCoord))
-                .expand(1, 1, 1);
+                .expand(
+                    MaidCombatTuning.MAX_SINGLE_UNIT,
+                    MaidCombatTuning.MAX_SINGLE_UNIT,
+                    MaidCombatTuning.MAX_SINGLE_UNIT);
             for (Object value : maid.worldObj.getEntitiesWithinAABBExcludingEntity(maid, bounds)) {
                 if (!(value instanceof Entity entity) || entity == target
                     || entity == arrow
                     || !entity.canBeCollidedWith()) continue;
-                var collision = entity.boundingBox.expand(.3, .3, .3);
+                var collision = entity.boundingBox.expand(
+                    MaidCombatTuning.BOW_ATTACK_MIN_X,
+                    MaidCombatTuning.BOW_ATTACK_MIN_X,
+                    MaidCombatTuning.BOW_ATTACK_MIN_X);
                 if (collision.isVecInside(from) || collision.calculateIntercept(from, to) != null) {
                     result.blocker = entity;
                     return Status.BLOCKED;
@@ -478,7 +494,7 @@ public final class MaidBowAttack {
 
     private boolean reject(Status reason) {
         rejectedShots++;
-        retryAt = tick + 20;
+        retryAt = tick + MaidCombatTuning.BOW_ATTACK_RETRY_AT;
         interrupt();
         status = reason;
         return false;
@@ -542,7 +558,7 @@ public final class MaidBowAttack {
     private NativeAim nativeAim(EntityArrow arrow, EntityLivingBase target,
         ProjectilePhysicsProvider.ArrowLaunchSample launch, BooleanSupplier current, boolean prototype) {
         var result = new NativeAim();
-        if (!IntegrationGuard.available(Side.SERVER, NativeArrowMedium.GUARD)) return result;
+        if (!IntegrationGuard.available(Side.SERVER, BallisticsIds.GUARD)) return result;
         try {
             result.medium = new NativeArrowMedium(arrow, current);
             result.physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity())
@@ -558,15 +574,20 @@ public final class MaidBowAttack {
                 new BallisticVector(arrow.posX, arrow.posY, arrow.posZ),
                 result.targetPoint,
                 velocity,
-                3,
-                MAX_FLIGHT_TICKS,
+                MaidCombatTuning.BOW_ATTACK_SPEND_SECOND_PARAM,
+                MaidCombatTuning.MAX_FLIGHT_TICKS,
                 result.physics);
             if (!result.solution.isSolved()) {
                 result.status = Status.NO_SOLUTION;
                 return result;
             }
             var initial = result.solution.initialVelocity;
-            arrow.setThrowableHeading(initial.x, initial.y, initial.z, 3F, 0F);
+            arrow.setThrowableHeading(
+                initial.x,
+                initial.y,
+                initial.z,
+                MaidCombatTuning.BOW_ATTACK_SET_THROWABLE_HEADING_FOURTH_FACTOR,
+                MaidCombatTuning.BOW_ATTACK_SET_THROWABLE_HEADING_FIFTH_FACTOR);
             var safety = safePath(arrow, target, result.solution.flightTicks, result.physics, result.medium, result);
             result.status = safety == null && result.medium.isCurrent() ? Status.READY
                 : safety == null ? Status.PHYSICS_UNAVAILABLE : safety;
@@ -595,8 +616,7 @@ public final class MaidBowAttack {
     private void mediumFault(Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
         var owner = maid.getOwner();
-        IntegrationGuard
-            .report(Side.SERVER, NativeArrowMedium.GUARD, failure, owner == null ? null : owner.getUniqueID());
+        IntegrationGuard.report(Side.SERVER, BallisticsIds.GUARD, failure, owner == null ? null : owner.getUniqueID());
     }
 
     public Refusal lastRefusal() {
@@ -704,7 +724,7 @@ public final class MaidBowAttack {
             && !maid.getLeashed()
             && !maid.hasPose(MaidPose.SLEEPING)
             && MaidCombatTargeting.canAttack(maid, maid.getOwner(), target)
-            && maid.getDistanceSqToEntity(target) <= RANGE_SQ
+            && maid.getDistanceSqToEntity(target) <= MaidCombatTuning.RANGE_SQ
             && maid.getEntitySenses()
                 .canSee(target);
     }
@@ -728,7 +748,7 @@ public final class MaidBowAttack {
 
     public void interrupt() {
         generation++;
-        drawTicks = 0;
+        drawTicks = MaidCombatTuning.MAX_INITIAL_VALUE;
         drawingBow = null;
         maid.getItemUseState()
             .release(useLease);
@@ -774,25 +794,31 @@ public final class MaidBowAttack {
     /** 原availableInv(true)按主手、副手、背包顺序查找基础箭 */
     public static int modernArrowSlot(EntityMaid maid) {
         var inventory = maid.getMaidInventory();
-        int[] slots = { MaidInventory.MAIN_HAND, MaidInventory.OFF_HAND, 0, 1, 2, 3, 4, 5 };
+        int[] slots = { MaidInventoryLayout.MAIN_HAND, MaidInventoryLayout.OFF_HAND, MaidCombatTuning.MAX_INITIAL_VALUE,
+            MaidCombatTuning.MAX_SINGLE_UNIT, MaidCombatTuning.TARGET_SIZE_THRESHOLD,
+            MaidCombatTuning.BOW_ATTACK_SPEND_SECOND_PARAM, MaidCombatTuning.CHUNK_SECTION_SHIFT,
+            MaidCombatTuning.MIN_SLOT_THRESHOLD };
         for (int slot : slots) {
             var stack = inventory.getStackInSlot(slot);
             if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.arrow) return slot;
         }
-        return -1;
+        return MaidCombatTuning.MISSING_AMMUNITION_SLOT;
     }
 
     private int arrowSlot() {
         var inventory = maid.getMaidInventory();
-        for (int slot = 0; slot <= MaidInventory.OFF_HAND; slot++) {
+        for (int slot = 0; slot <= MaidInventoryLayout.OFF_HAND; slot++) {
             var stack = inventory.getStackInSlot(slot);
             if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.arrow) return slot;
         }
-        return -1;
+        return MaidCombatTuning.MISSING_AMMUNITION_SLOT;
     }
 
     private static BallisticVector aimPoint(EntityLivingBase target) {
-        return new BallisticVector(target.posX, target.boundingBox.minY + target.height * .5, target.posZ);
+        return new BallisticVector(
+            target.posX,
+            target.boundingBox.minY + target.height * MaidCombatTuning.BOW_ATTACK_MIN_Y,
+            target.posZ);
     }
 
     private static Vec3 vec(BallisticVector point) {

@@ -50,12 +50,14 @@ public final class MaidNativePathRegion implements MaidPathRegion {
         if (block.isAir(world, x, y, z)) return OPEN;
         MaidPathType type;
         if (block instanceof BlockFenceGate)
-            type = (world.getBlockMetadata(x, y, z) & 4) != 0 ? DOOR_OPEN : DOOR_WOOD_CLOSED;
+            type = (world.getBlockMetadata(x, y, z) & NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2)
+                != 0 ? DOOR_OPEN : DOOR_WOOD_CLOSED;
         else if (climbable(x, y, z)) type = WALKABLE;
         else {
             type = rawType(x, y, z);
-            if (type != DOOR_OPEN && type != DOOR_WOOD_CLOSED && type != BLOCKED && floor(x, y + 1, z) - y > .5)
-                type = BLOCKED;
+            if (type != DOOR_OPEN && type != DOOR_WOOD_CLOSED
+                && type != BLOCKED
+                && floor(x, y + 1, z) - y > NavigationEvalTuning.MAX_Y_THRESHOLD) type = BLOCKED;
         }
         if (type == DOOR_WOOD_CLOSED && maid != null
             && (block instanceof BlockDoor ? !maid.getConfigManager()
@@ -99,7 +101,9 @@ public final class MaidNativePathRegion implements MaidPathRegion {
     private boolean loaded(int x, int y, int z) {
         return y >= minY() && y < maxY()
             && world.getChunkProvider()
-                .chunkExists(x >> 4, z >> 4);
+                .chunkExists(
+                    x >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2,
+                    z >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2);
     }
 
     @Override
@@ -123,7 +127,10 @@ public final class MaidNativePathRegion implements MaidPathRegion {
         if (block instanceof BlockRailBase) return RAIL;
         if (block instanceof BlockLeavesBase) return LEAVES;
         if (block instanceof BlockFence || block instanceof BlockWall
-            || block instanceof BlockFenceGate && (world.getBlockMetadata(x, y, z) & 4) == 0) return FENCE;
+            || block instanceof BlockFenceGate
+                && (world.getBlockMetadata(x, y, z) & NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2)
+                    == 0)
+            return FENCE;
         if (!block.getBlocksMovement(world, x, y, z)) return BLOCKED;
         return material == Material.water ? WATER : OPEN;
     }
@@ -167,8 +174,10 @@ public final class MaidNativePathRegion implements MaidPathRegion {
 
     @Override
     public boolean collides(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
-        int firstX = (int) Math.floor(minX) >> 4, lastX = (int) Math.floor(maxX) >> 4;
-        int firstZ = (int) Math.floor(minZ) >> 4, lastZ = (int) Math.floor(maxZ) >> 4;
+        int firstX = (int) Math.floor(minX) >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2,
+            lastX = (int) Math.floor(maxX) >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2;
+        int firstZ = (int) Math.floor(minZ) >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2,
+            lastZ = (int) Math.floor(maxZ) >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_COST_SECOND_PARAM_2;
         for (int x = firstX; x <= lastX; x++) for (int z = firstZ; z <= lastZ; z++) if (!world.getChunkProvider()
             .chunkExists(x, z)) return true;
         return !world.func_147461_a(AxisAlignedBB.getBoundingBox(minX, minY, minZ, maxX, maxY, maxZ))
@@ -177,7 +186,7 @@ public final class MaidNativePathRegion implements MaidPathRegion {
 
     @Override
     public int minY() {
-        return 0;
+        return NavigationEvalTuning.COST_INITIAL_VALUE;
     }
 
     @Override
@@ -188,6 +197,6 @@ public final class MaidNativePathRegion implements MaidPathRegion {
     @Override
     public int seaLevel() {
         // 旧World没有现代生成器海平面API，当前主世界映射为63；自定义维度另适配
-        return 63;
+        return NavigationEvalTuning.NATIVE_PATH_SEA_LEVEL_PARAM;
     }
 }

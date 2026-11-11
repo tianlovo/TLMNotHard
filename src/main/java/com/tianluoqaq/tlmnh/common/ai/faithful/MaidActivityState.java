@@ -25,7 +25,7 @@ public final class MaidActivityState {
     private final MaidModernPerception perception;
     private final EnumMap<Activity, MaidLifeRules.Activity> scheduleCaches = new EnumMap<>(Activity.class);
     private Activity active = Activity.IDLE;
-    private long lastScheduleUpdate = -9999, transitions;
+    private long lastScheduleUpdate = FaithfulAiTuning.ACTIVITY_STATE_LAST_SCHEDULE_UPDATE, transitions;
     private boolean initialized;
 
     public MaidActivityState(EntityMaid maid, ModernFollowCoreActor actor, MaidModernPerception perception) {
@@ -71,14 +71,17 @@ public final class MaidActivityState {
     public void startScheduleTask() {
         guard();
         long time = actor.worldGameTime();
-        if (time - lastScheduleUpdate > 20) {
+        if (time - lastScheduleUpdate > FaithfulAiTuning.MAX_LAST_SCHEDULE_UPDATE_THRESHOLD) {
             var scheduled = MaidLifeRules.activity(maid.getSchedule(), maid.worldObj.getWorldTime());
             var cached = scheduleCaches.get(active);
             if (cached == null) scheduleCaches.put(active, scheduled);
             if (cached != null && cached != scheduled && actor.isHomeModeEnable() && actor.canBrainMoving()) {
                 scheduleCaches.put(active, scheduled);
                 actor.applyScheduleRestriction();
-                actor.setPositionWalkAndLook(actor.restrictionCenter(), .7F, 3);
+                actor.setPositionWalkAndLook(
+                    actor.restrictionCenter(),
+                    FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_SECOND_FAC,
+                    FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA);
             }
         }
         updateFromSchedule();
@@ -87,7 +90,7 @@ public final class MaidActivityState {
     public void updateFromSchedule() {
         guard();
         long time = actor.worldGameTime();
-        if (time - lastScheduleUpdate <= 20) return;
+        if (time - lastScheduleUpdate <= FaithfulAiTuning.MAX_LAST_SCHEDULE_UPDATE_THRESHOLD) return;
         lastScheduleUpdate = time;
         var scheduled = MaidLifeRules.activity(maid.getSchedule(), maid.worldObj.getWorldTime());
         boolean riding = maid.isSitting() || maid.ridingEntity != null;
@@ -127,12 +130,12 @@ public final class MaidActivityState {
 
     public void reset() {
         active = Activity.IDLE;
-        lastScheduleUpdate = -9999;
+        lastScheduleUpdate = FaithfulAiTuning.ACTIVITY_STATE_LAST_SCHEDULE_UPDATE;
         initialized = false;
         scheduleCaches.clear();
     }
 
     private void guard() {
-        if (!actor.isCurrent()) throw new IllegalStateException("Expired activity frame");
+        if (!actor.isCurrent()) throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_ACTIVITY_FRAME);
     }
 }

@@ -26,7 +26,7 @@ public final class MaidBrainLifecycle {
     private static boolean registered;
 
     public static void register() {
-        if (registered) throw new IllegalStateException("Maid brain lifecycle already registered");
+        if (registered) throw new IllegalStateException(MaidAiDiagnostics.MSG_MAID_BRAIN_LIFECYCLE_ALREADY_REGISTERED);
         registered = true;
         MinecraftForge.EVENT_BUS.register(new MaidBrainLifecycle());
     }
@@ -42,7 +42,7 @@ public final class MaidBrainLifecycle {
         for (var entities : event.getChunk().entityLists) visit(
             new ArrayList<>(entities),
             visited,
-            "chunk_unload",
+            MaidAiIds.ID_CHUNK_UNLOAD,
             maid -> maid.getBrainCoordinator()
                 .onUnload());
     }
@@ -54,7 +54,7 @@ public final class MaidBrainLifecycle {
         for (var entities : event.getChunk().entityLists) visit(
             new ArrayList<>(entities),
             visited,
-            "chunk_load",
+            MaidAiIds.ID_CHUNK_LOAD,
             maid -> maid.getBrainCoordinator()
                 .onRegistered());
     }
@@ -68,7 +68,7 @@ public final class MaidBrainLifecycle {
         visit(
             new ArrayList<>(event.world.loadedEntityList),
             Collections.newSetFromMap(new IdentityHashMap<EntityMaid, Boolean>()),
-            "world_unload",
+            MaidAiIds.ID_WORLD_UNLOAD,
             maid -> maid.getBrainCoordinator()
                 .onUnload());
     }
@@ -86,7 +86,7 @@ public final class MaidBrainLifecycle {
                 action.accept(maid);
             } catch (RuntimeException | LinkageError | AssertionError failure) {
                 ModContext.LOG.error(
-                    "Maid policy lifecycle failed; actor remains blocked: operation={} maid={}",
+                    MaidAiDiagnostics.MSG_MAID_POLICY_LIFECYCLE_FAILED_ACTOR,
                     operation,
                     maid.getUniqueID(),
                     failure);

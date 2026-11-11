@@ -19,7 +19,6 @@ import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 /** 读取星系（Galacticraft）的维度箭矢重力；未安装该模组时沿用原版 EntityArrow 的默认重力 0.05F */
 public final class NativeArrowGravity {
 
-
     private static final MethodHandle GALACTICRAFT = IntegrationGuard
         .call(ExternalFeature.ARROW_GRAVITY, NativeArrowGravity::resolve, () -> null);
     private static final ThreadLocal<Boolean> LAUNCH_QUERY = new ThreadLocal<>();
@@ -37,8 +36,8 @@ public final class NativeArrowGravity {
     /** 发射前采样一次当前箭矢重力，同时校验外部查询回调没有篡改箭实体或所在世界 */
     public static LaunchSample sampleForLaunch(EntityArrow arrow) {
         return IntegrationGuard.call(ExternalFeature.ARROW_GRAVITY, () -> {
-            if (Boolean.TRUE.equals(LAUNCH_QUERY.get()))
-                throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_REENTRANT_ARROW_LAUNCH_GRAVITY_QUERY);
+            if (Boolean.TRUE.equals(LAUNCH_QUERY.get())) throw new IllegalStateException(
+                GalacticraftPhysicsDiagnostics.MSG_REENTRANT_ARROW_LAUNCH_GRAVITY_QUERY);
             LAUNCH_QUERY.set(Boolean.TRUE);
             try {
                 return new LaunchSample(arrow);
@@ -66,7 +65,8 @@ public final class NativeArrowGravity {
             dimension = arrow.dimension;
             entityId = arrow.getEntityId();
             identity = arrow.getUniqueID();
-            if (!isCurrent(arrow)) throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_ARROW_LAUNCH_IDENTITY_OR_PROVIDER);
+            if (!isCurrent(arrow))
+                throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_ARROW_LAUNCH_IDENTITY_OR_PROVIDER);
             var shooter = arrow.shootingEntity;
             var raw = snapshot(arrow);
             var bounds = bounds(arrow);
@@ -132,7 +132,9 @@ public final class NativeArrowGravity {
         } catch (RuntimeException | Error direct) {
             throw direct;
         } catch (Throwable failure) {
-            throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_INSTALLED_ARROW_GRAVITY_QUERY_FAILED, failure);
+            throw new IllegalStateException(
+                GalacticraftPhysicsDiagnostics.MSG_INSTALLED_ARROW_GRAVITY_QUERY_FAILED,
+                failure);
         }
     }
 

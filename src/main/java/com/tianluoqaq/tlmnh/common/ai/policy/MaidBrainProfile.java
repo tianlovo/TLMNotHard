@@ -5,11 +5,11 @@ import java.util.Locale;
 /** 正常配置只开放旧策略和完整N；F参照与窄组件仍限定开发用途 */
 public enum MaidBrainProfile {
 
-    LEGACY_PROTOTYPE("legacy_prototype", true),
-    FOLLOW_CORE_COMPONENT("follow_core_component", true, true),
-    FAITHFUL_TLM("faithful_tlm", true, true),
-    ENHANCED_CORE_COMPONENT("enhanced_core_component", true, true),
-    ENHANCED("enhanced", true);
+    LEGACY_PROTOTYPE(AiPolicyIds.ID_LEGACY_PROTOTYPE, true),
+    FOLLOW_CORE_COMPONENT(AiPolicyIds.ID_FOLLOW_CORE_COMPONENT, true, true),
+    FAITHFUL_TLM(AiPolicyIds.ID_FAITHFUL_TLM, true, true),
+    ENHANCED_CORE_COMPONENT(AiPolicyIds.ID_ENHANCED_CORE_COMPONENT, true, true),
+    ENHANCED(AiPolicyIds.ID_ENHANCED, true);
 
     private final String id;
     private final boolean available;

@@ -36,8 +36,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidBannerRenderer {
 
-    private static final ResourceLocation TEXTURE = new ResourceLocation(
-        AttachmentRenderIds.TEXTURE_MAID_BANNER);
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AttachmentRenderIds.TEXTURE_MAID_BANNER);
     private static final Map<EntityMaid, Integer> LAST_DRAWN = new WeakHashMap<>();
 
     private MaidBannerRenderer() {}
@@ -74,7 +73,11 @@ public final class MaidBannerRenderer {
                 GL11.glEnable(GL11.GL_ALPHA_TEST);
                 GL11.glAlphaFunc(GL11.GL_GREATER, AttachmentRenderLayout.BANNER_GL_ALPHA_FUNC_SECOND_FACTOR);
                 GL11.glDepthFunc(GL11.GL_LEQUAL);
-                GL11.glColor4f(AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+                GL11.glColor4f(
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                    AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
                 Minecraft.getMinecraft()
                     .getTextureManager()
                     .bindTexture(TEXTURE);
@@ -83,7 +86,8 @@ public final class MaidBannerRenderer {
                     .getTextureManager()
                     .bindTexture(pattern);
                 draw(banner, banner.getPart(AttachmentRenderIds.ID_BANNER), poses, light);
-                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+                if (DevelopmentFlags.isDevCommandsEnabled())
+                    LAST_DRAWN.put(maid, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
             }
             return true;
         }, () -> false);
@@ -94,20 +98,39 @@ public final class MaidBannerRenderer {
         if (model.getGecko() == null) {
             model.getBedrockPose()
                 .applyTransform(poses);
-            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_2, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z);
-            poses.scale(AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X);
+            poses.translate(
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_2,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z);
+            poses.scale(
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X);
         } else {
             var bones = model.getGecko()
                 .backpackBones();
             if (bones.isEmpty()) return null;
-            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.PUT_INITIAL_VALUE);
-            poses.scale(AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+            poses.translate(
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.PUT_INITIAL_VALUE);
+            poses.scale(
+                AttachmentRenderLayout.UNSET_OR_NOT_FOUND,
+                AttachmentRenderLayout.UNSET_OR_NOT_FOUND,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
             if (RenderUtils.prepMatrixForLocator(poses, bones)) return null;
-            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y_2, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z_2);
-            poses.scale(AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X_2, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y);
+            poses.translate(
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y_2,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z_2);
+            poses.scale(
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X_2,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y,
+                AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y);
             poses.mulPose(new Quaternionf().rotationY((float) -Math.PI));
         }
-        poses.mulPose(new Quaternionf().rotationX((float) Math.toRadians(AttachmentRenderLayout.BANNER_TO_RADIANS_FIRST_PARAM)));
+        poses.mulPose(
+            new Quaternionf().rotationX((float) Math.toRadians(AttachmentRenderLayout.BANNER_TO_RADIANS_FIRST_PARAM)));
         var matrix = poses.last()
             .pose();
         return MaidHeldItemTransforms.finite(matrix) && matrix.determinant() != 0 ? poses : null;
@@ -117,8 +140,24 @@ public final class MaidBannerRenderer {
         var consumer = TessellatorVertexConsumer.INSTANCE;
         consumer.begin();
         try {
-            if (part == null) model.renderToBuffer(poses, consumer, light, AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
-            else part.render(poses, consumer, light, AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+            if (part == null) model.renderToBuffer(
+                poses,
+                consumer,
+                light,
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+            else part.render(
+                poses,
+                consumer,
+                light,
+                AttachmentRenderLayout.PUT_INITIAL_VALUE,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y,
+                AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
         } finally {
             consumer.end();
         }

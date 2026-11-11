@@ -1,7 +1,5 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
-import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +15,7 @@ import net.minecraft.util.StatCollector;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 
 import cpw.mods.fml.relauncher.Side;
@@ -25,8 +24,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 /** 分页和筛选只改变可见列表，发给服务端的仍是固定全局索引 */
 @SideOnly(Side.CLIENT)
 public final class GuiMaidModels extends GuiContainer {
-
-
 
     private final ContainerMaidModels container;
     private final BuiltinModelNames names = BuiltinModelNames.INSTANCE;
@@ -47,7 +44,12 @@ public final class GuiMaidModels extends GuiContainer {
     public void initGui() {
         String previousSearch = search == null ? "" : search.getText();
         super.initGui();
-        search = new GuiTextField(fontRendererObj, guiLeft + ClientGuiLayout.GUI_MODELS_SEARCH, guiTop + ClientGuiLayout.IDLE_BTN_Y, ClientGuiLayout.GUI_MODELS_GUI_TEXT_FIELD_FOURTH_PARAM, ClientGuiLayout.GUI_TEXT_Y_2);
+        search = new GuiTextField(
+            fontRendererObj,
+            guiLeft + ClientGuiLayout.GUI_MODELS_SEARCH,
+            guiTop + ClientGuiLayout.IDLE_BTN_Y,
+            ClientGuiLayout.GUI_MODELS_GUI_TEXT_FIELD_FOURTH_PARAM,
+            ClientGuiLayout.GUI_TEXT_Y_2);
         search.setMaxStringLength(ClientGuiLayout.DAY_BTN_Y);
         search.setText(previousSearch);
         search.setFocused(true);
@@ -73,12 +75,14 @@ public final class GuiMaidModels extends GuiContainer {
     public List<Integer> getVisibleModelIndices() {
         if (matches == null) return Collections.emptyList();
         int from = page * ClientGuiLayout.PAGE_SIZE;
-        return Collections
-            .unmodifiableList(new ArrayList<>(matches.subList(from, Math.min(from + ClientGuiLayout.PAGE_SIZE, matches.size()))));
+        return Collections.unmodifiableList(
+            new ArrayList<>(matches.subList(from, Math.min(from + ClientGuiLayout.PAGE_SIZE, matches.size()))));
     }
 
     public boolean changePage(int delta) {
-        if (delta != ClientGuiLayout.UNSET_OR_NOT_FOUND && delta != ClientGuiLayout.SUBSTRING_START_OFFSET || page + delta < 0 || page + delta >= pages()) return false;
+        if (delta != ClientGuiLayout.UNSET_OR_NOT_FOUND && delta != ClientGuiLayout.SUBSTRING_START_OFFSET
+            || page + delta < 0
+            || page + delta >= pages()) return false;
         page += delta;
         rebuildButtons();
         return true;
@@ -120,16 +124,31 @@ public final class GuiMaidModels extends GuiContainer {
     }
 
     private int pages() {
-        return Math.max(ClientGuiLayout.SUBSTRING_START_OFFSET, (matches.size() + ClientGuiLayout.PAGE_SIZE - 1) / ClientGuiLayout.PAGE_SIZE);
+        return Math.max(
+            ClientGuiLayout.SUBSTRING_START_OFFSET,
+            (matches.size() + ClientGuiLayout.PAGE_SIZE - 1) / ClientGuiLayout.PAGE_SIZE);
     }
 
     private void rebuildButtons() {
         buttonList.clear();
         ownButtons.clear();
-        addButton(new GuiButton(ClientGuiLayout.FILTER, guiLeft + ClientGuiLayout.FILTER_BTN_X, guiTop + ClientGuiLayout.FILTER_BTN_Y, ClientGuiLayout.PICKUP_ITEMS_BTN_Y, ClientGuiLayout.ACTION_BTN_HEIGHT, ""));
+        addButton(
+            new GuiButton(
+                ClientGuiLayout.FILTER,
+                guiLeft + ClientGuiLayout.FILTER_BTN_X,
+                guiTop + ClientGuiLayout.FILTER_BTN_Y,
+                ClientGuiLayout.PICKUP_ITEMS_BTN_Y,
+                ClientGuiLayout.ACTION_BTN_HEIGHT,
+                ""));
         int from = page * ClientGuiLayout.PAGE_SIZE;
-        for (int row = 0; row < ClientGuiLayout.PAGE_SIZE && from + row < matches.size(); row++)
-            addButton(new GuiButton(matches.get(from + row), guiLeft + ClientGuiLayout.GUI_TEXT_X, guiTop + ClientGuiLayout.GUI_MODELS_BTN_Y + row * ClientGuiLayout.GUI_MODELS_BTN_Y_2, ClientGuiLayout.GUI_MODELS_BTN_WIDTH, ClientGuiLayout.ACTION_BTN_HEIGHT, ""));
+        for (int row = 0; row < ClientGuiLayout.PAGE_SIZE && from + row < matches.size(); row++) addButton(
+            new GuiButton(
+                matches.get(from + row),
+                guiLeft + ClientGuiLayout.GUI_TEXT_X,
+                guiTop + ClientGuiLayout.GUI_MODELS_BTN_Y + row * ClientGuiLayout.GUI_MODELS_BTN_Y_2,
+                ClientGuiLayout.GUI_MODELS_BTN_WIDTH,
+                ClientGuiLayout.ACTION_BTN_HEIGHT,
+                ""));
         addButton(
             new GuiButton(
                 BuiltinModelDataTuning.BACK,
@@ -138,8 +157,22 @@ public final class GuiMaidModels extends GuiContainer {
                 ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM_2,
                 ClientGuiLayout.ACTION_BTN_HEIGHT,
                 text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_BACK)));
-        addButton(new GuiButton(ClientGuiLayout.PREVIOUS, guiLeft + ClientGuiLayout.HOME_REST_BTN_Y, guiTop + ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM, ClientGuiLayout.PREVIOUS_BTN_WIDTH, ClientGuiLayout.ACTION_BTN_HEIGHT, ClientGuiIds.GUI_MODELS_GUI_BUTTON_MESSAGE));
-        addButton(new GuiButton(ClientGuiLayout.NEXT, guiLeft + ClientGuiLayout.NEXT_BTN_X, guiTop + ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM, ClientGuiLayout.PREVIOUS_BTN_WIDTH, ClientGuiLayout.ACTION_BTN_HEIGHT, ClientGuiIds.GUI_MODELS_GUI_BUTTON_MESSAGE_2));
+        addButton(
+            new GuiButton(
+                ClientGuiLayout.PREVIOUS,
+                guiLeft + ClientGuiLayout.HOME_REST_BTN_Y,
+                guiTop + ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM,
+                ClientGuiLayout.PREVIOUS_BTN_WIDTH,
+                ClientGuiLayout.ACTION_BTN_HEIGHT,
+                ClientGuiIds.GUI_MODELS_GUI_BUTTON_MESSAGE));
+        addButton(
+            new GuiButton(
+                ClientGuiLayout.NEXT,
+                guiLeft + ClientGuiLayout.NEXT_BTN_X,
+                guiTop + ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM,
+                ClientGuiLayout.PREVIOUS_BTN_WIDTH,
+                ClientGuiLayout.ACTION_BTN_HEIGHT,
+                ClientGuiIds.GUI_MODELS_GUI_BUTTON_MESSAGE_2));
         refreshLabels();
     }
 
@@ -151,14 +184,17 @@ public final class GuiMaidModels extends GuiContainer {
     private String label(BuiltinModelCatalog.Choice choice) {
         int variant = BuiltinModelSelection.extraTextureNumber(choice);
         return names.name(choice) + (variant == 0 ? ""
-            : ClientGuiDiagnostics.GUI_MODELS_LABEL_MESSAGE + StatCollector.translateToLocalFormatted(ClientGuiIds.I18N_GUI_TLMNH_MODELS_EXTRA_TEXTURE, variant));
+            : ClientGuiDiagnostics.GUI_MODELS_LABEL_MESSAGE
+                + StatCollector.translateToLocalFormatted(ClientGuiIds.I18N_GUI_TLMNH_MODELS_EXTRA_TEXTURE, variant));
     }
 
     private void refreshLabels() {
         for (var button : buttonList) {
             if (!ownButtons.contains(button)) continue;
             if (button.id == ClientGuiLayout.FILTER) {
-                button.displayString = text(winefoxOnly ? ClientGuiIds.I18N_GUI_TLMNH_MODELS_WINEFOX_ONLY : ClientGuiIds.I18N_GUI_TLMNH_MODELS_ALL);
+                button.displayString = text(
+                    winefoxOnly ? ClientGuiIds.I18N_GUI_TLMNH_MODELS_WINEFOX_ONLY
+                        : ClientGuiIds.I18N_GUI_TLMNH_MODELS_ALL);
             } else if (button.id == ClientGuiLayout.PREVIOUS) button.enabled = page > 0;
             else if (button.id == ClientGuiLayout.NEXT) button.enabled = page + 1 < pages();
             else if (button.id < BuiltinModelDataTuning.BACK) {
@@ -169,8 +205,12 @@ public final class GuiMaidModels extends GuiContainer {
                         container.getMaid()
                             .getModelId());
                 button.enabled = !selected;
-                String prefix = selected ? text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_SELECTED) + ClientGuiDiagnostics.SINGLE_SPACE : "";
-                button.displayString = fontRendererObj.trimStringToWidth(prefix + label(choice), ClientGuiLayout.GUI_MODELS_TRIM_STRING_TO_WIDTH_SECOND_PARAM);
+                String prefix = selected
+                    ? text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_SELECTED) + ClientGuiDiagnostics.SINGLE_SPACE
+                    : "";
+                button.displayString = fontRendererObj.trimStringToWidth(
+                    prefix + label(choice),
+                    ClientGuiLayout.GUI_MODELS_TRIM_STRING_TO_WIDTH_SECOND_PARAM);
             }
         }
     }
@@ -213,7 +253,11 @@ public final class GuiMaidModels extends GuiContainer {
         search.drawTextBox();
         if (search.getText()
             .isEmpty())
-            fontRendererObj.drawString(text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_SEARCH), guiLeft + ClientGuiLayout.GUI_RECT_TOP, guiTop + ClientGuiLayout.GUI_MODELS_TEXT_Y, ClientGuiLayout.RGB_GRAY);
+            fontRendererObj.drawString(
+                text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_SEARCH),
+                guiLeft + ClientGuiLayout.GUI_RECT_TOP,
+                guiTop + ClientGuiLayout.GUI_MODELS_TEXT_Y,
+                ClientGuiLayout.RGB_GRAY);
         for (var button : buttonList) {
             if (!ownButtons.contains(button) || button.id >= BuiltinModelDataTuning.BACK
                 || mouseX < button.xPosition
@@ -229,11 +273,24 @@ public final class GuiMaidModels extends GuiContainer {
 
     @Override
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
-        fontRendererObj.drawString(text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_TITLE), ClientGuiLayout.GUI_TEXT_X, ClientGuiLayout.GUI_MODELS_TEXT_Y_2, ClientGuiLayout.RGB_COLOR_F4F1E9);
-        if (matches.isEmpty()) fontRendererObj.drawString(text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_EMPTY), ClientGuiLayout.GUI_MODELS_SEARCH, ClientGuiLayout.GUI_MODELS_TEXT_Y_3, ClientGuiLayout.RGB_COLOR_D2D8DD);
+        fontRendererObj.drawString(
+            text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_TITLE),
+            ClientGuiLayout.GUI_TEXT_X,
+            ClientGuiLayout.GUI_MODELS_TEXT_Y_2,
+            ClientGuiLayout.RGB_COLOR_F4F1E9);
+        if (matches.isEmpty()) fontRendererObj.drawString(
+            text(ClientGuiIds.I18N_GUI_TLMNH_MODELS_EMPTY),
+            ClientGuiLayout.GUI_MODELS_SEARCH,
+            ClientGuiLayout.GUI_MODELS_TEXT_Y_3,
+            ClientGuiLayout.RGB_COLOR_D2D8DD);
         String count = StatCollector
             .translateToLocalFormatted(ClientGuiIds.I18N_GUI_TLMNH_MODELS_PAGE, page + 1, pages(), matches.size());
-        fontRendererObj.drawString(count, ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM - fontRendererObj.getStringWidth(count) / ClientGuiLayout.MIDPOINT_DIVISOR, ClientGuiLayout.GUI_MODELS_TEXT_Y_4, ClientGuiLayout.RGB_COLOR_D2D8DD);
+        fontRendererObj.drawString(
+            count,
+            ClientGuiLayout.GUI_MODELS_DOMAIN_PARAM
+                - fontRendererObj.getStringWidth(count) / ClientGuiLayout.MIDPOINT_DIVISOR,
+            ClientGuiLayout.GUI_MODELS_TEXT_Y_4,
+            ClientGuiLayout.RGB_COLOR_D2D8DD);
     }
 
     @Override

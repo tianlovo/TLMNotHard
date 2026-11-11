@@ -29,8 +29,8 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 增强雪仗独立决定目标与动作；捡球和无攻击者弹射仍走已移植的平台原语 */
 public final class EnhancedSnowballController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("snowball");
-    private static final int MAX_PLAY_TICKS = 1200, RETRY_TICKS = 40, PICKUP_DELAY = 25;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_SNOWBALL);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
@@ -40,20 +40,20 @@ public final class EnhancedSnowballController {
     private Object run;
     private Lease handLease;
     private long nextPlay, nextThrow, nextPickup = Long.MAX_VALUE, until, lastTick = Long.MIN_VALUE;
-    private int animationSequence = -1;
+    private int animationSequence = EnhancedAiTuning.UNSET_OR_NOT_FOUND;
 
     public EnhancedSnowballController(EntityMaid maid, ModernFollowCoreActor actor, MaidModernPerception perception,
         MaidPlatformHandLease handLeaseIssuer) {
         this.maid = maid;
         this.actor = actor;
         this.perception = perception;
-        this.handLeaseIssuer = Objects.requireNonNull(handLeaseIssuer, "handLeaseIssuer");
+        this.handLeaseIssuer = Objects.requireNonNull(handLeaseIssuer, EnhancedAiIds.ID_HANDLEASEISSUER);
         world = maid.worldObj;
     }
 
     public void offer(MaidIntentFrame frame) {
         long now = actor.worldGameTime();
-        if (now < lastTick) nextPlay = 0;
+        if (now < lastTick) nextPlay = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         lastTick = now;
         if (frame.hasOffers() || !permitted()
             || now < nextPlay
@@ -62,7 +62,9 @@ public final class EnhancedSnowballController {
         if (proposed != null) {
             if (now >= until || !legalTarget(proposed)
                 || maid.getRNG()
-                    .nextFloat() <= 1 / 32F)
+                    .nextFloat()
+                    <= EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
+                        / EnhancedAiTuning.ENHANCED_SNOWBALL_OFFER_FACTOR)
                 return;
         } else {
             var visible = perception.visible();
@@ -74,7 +76,7 @@ public final class EnhancedSnowballController {
             Kind.SNOWBALL,
             proposed.getUniqueID()
                 .toString(),
-            .5,
+            EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
             proposed,
             this::execute);
     }
@@ -98,7 +100,7 @@ public final class EnhancedSnowballController {
     private boolean legalTarget(EntityLivingBase value) {
         if (value == maid || value.worldObj != world
             || !value.isEntityAlive()
-            || maid.getDistanceSqToEntity(value) >= 256
+            || maid.getDistanceSqToEntity(value) >= EnhancedAiTuning.ENHANCED_SNOWBALL_LEGAL_TARGET_PARAM
             || !maid.getHomeArea()
                 .withinRestriction(
                     MathHelper.floor_double(value.posX),
@@ -109,7 +111,7 @@ public final class EnhancedSnowballController {
         boolean friendly = value instanceof EntityPlayer player && maid.isOwner(player)
             && world.playerEntities.contains(player)
             && (!(player instanceof EntityPlayerMP mp) || mp.theItemInWorldManager.getGameType()
-                .getID() != 3)
+                .getID() != EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM)
             || value instanceof EntityMaid other && owner != null
                 && owner.equals(other.func_152113_b())
                 && world.getEntityByID(other.getEntityId()) == other;
@@ -121,7 +123,7 @@ public final class EnhancedSnowballController {
         if (target != proposed || run == null) {
             target = proposed;
             run = new Object();
-            until = actor.worldGameTime() + MAX_PLAY_TICKS;
+            until = actor.worldGameTime() + EnhancedAiTuning.MAX_PLAY_TICKS;
             var view = actor.combatTargetView(proposed);
             actor.rememberSnowballTarget(view);
             int previousAnimation = maid.getSnowballAnimation()
@@ -132,7 +134,7 @@ public final class EnhancedSnowballController {
                 animationSequence = maid.getSnowballAnimation()
                     .sequence();
             if (!actor.isCurrent()) return;
-            nextThrow = actor.worldGameTime() + 2;
+            nextThrow = actor.worldGameTime() + EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM;
         }
         if (!acquireHand()) {
             cancel();
@@ -147,10 +149,10 @@ public final class EnhancedSnowballController {
             actor.swingSnowballHand();
             actor.throwSnowballAt(view, () -> authorized(currentRun, proposed));
             if (!actor.isCurrent() || currentRun != run) return;
-            nextThrow = now + 50
+            nextThrow = now + EnhancedAiTuning.ENHANCED_SNOWBALL_NEXT_THROW
                 + maid.getRNG()
-                    .nextInt(50);
-            nextPickup = now + PICKUP_DELAY;
+                    .nextInt(EnhancedAiTuning.ENHANCED_SNOWBALL_NEXT_THROW);
+            nextPickup = now + EnhancedAiTuning.PICKUP_DELAY;
         }
         if (now >= nextPickup) {
             actor.playPickUpSnowball();
@@ -158,8 +160,8 @@ public final class EnhancedSnowballController {
                 .sequence();
             nextPickup = Long.MAX_VALUE;
         }
-        if (actor.isPickingUpSnowball() && actor.nowMillis() - actor.snowballAnimationStartedAt() > 1750)
-            actor.expireSnowballAnimation();
+        if (actor.isPickingUpSnowball() && actor.nowMillis() - actor.snowballAnimationStartedAt()
+            > EnhancedAiTuning.MAX_SNOWBALL_ANIMATION_STARTED_AT_THRESHOLD) actor.expireSnowballAnimation();
     }
 
     private boolean acquireHand() {
@@ -210,7 +212,9 @@ public final class EnhancedSnowballController {
         target = null;
         var oldLease = handLease;
         handLease = null;
-        if (applyCooldown && wasActive) nextPlay = lastTick == Long.MIN_VALUE ? 0 : lastTick + RETRY_TICKS;
+        if (applyCooldown && wasActive)
+            nextPlay = lastTick == Long.MIN_VALUE ? EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE
+                : lastTick + EnhancedAiTuning.RETRY_TICKS_3;
         nextPickup = Long.MAX_VALUE;
         try {
             handLeaseIssuer.release(oldLease);
@@ -221,7 +225,7 @@ public final class EnhancedSnowballController {
             if (animationSequence >= 0 && maid.getSnowballAnimation()
                 .sequence() == animationSequence) maid.getSnowballAnimation()
                     .clear();
-            animationSequence = -1;
+            animationSequence = EnhancedAiTuning.UNSET_OR_NOT_FOUND;
         }
     }
 

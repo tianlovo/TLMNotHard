@@ -5,17 +5,15 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 /** 原拾取雪球动画的非存档状态；原1750毫秒时长，实体状态包只同步触发 */
 public final class MaidSnowballAnimation {
 
-    public static final byte STATUS = 47;
-    public static final long DURATION_MILLIS = 1750;
     private boolean pickingUp;
-    private long startedAt = -1;
+    private long startedAt = MaidEntityTuning.UNSET_OR_NOT_FOUND;
     private int sequence;
 
     public void start(EntityMaid maid) {
         pickingUp = true;
         startedAt = System.currentTimeMillis();
         sequence++;
-        if (!maid.worldObj.isRemote) maid.worldObj.setEntityState(maid, STATUS);
+        if (!maid.worldObj.isRemote) maid.worldObj.setEntityState(maid, MaidEntityTuning.STATUS);
     }
 
     public boolean pickingUp() {
@@ -32,6 +30,6 @@ public final class MaidSnowballAnimation {
 
     public void clear() {
         pickingUp = false;
-        startedAt = -1;
+        startedAt = MaidEntityTuning.UNSET_OR_NOT_FOUND;
     }
 }

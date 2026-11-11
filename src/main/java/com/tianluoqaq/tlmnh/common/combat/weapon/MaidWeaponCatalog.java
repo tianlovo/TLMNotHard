@@ -21,9 +21,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 只接纳经过执行核查的精确物品；攻击属性本身不代表外部武器已受支持 */
 public final class MaidWeaponCatalog {
 
-    private static final String VANILLA_GUARD = "combat/weapon/vanilla";
-    private static final String VANILLA_DEPENDENCY = "minecraft:1.7.10";
-
     private static final MaidWeaponStrike.HitEffects VANILLA_EFFECTS = new MaidWeaponStrike.HitEffects() {
 
         @Override
@@ -42,38 +39,41 @@ public final class MaidWeaponCatalog {
 
     /** 只在复制栈上提取能力，返回值可以交给不接触世界的规划器 */
     public static MaidWeaponProfile inspect(ItemStack stack) {
-        if (stack == null || stack.getItem() == null || stack.stackSize != 1)
-            return MaidWeaponProfile.unknown("missing_or_invalid_stack");
+        if (stack == null || stack.getItem() == null
+            || stack.stackSize != WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD)
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_MISSING_OR_INVALID_STACK);
         Item item = stack.getItem();
         if (CompatServices.weapons()
             .handles(item))
             return CompatServices.weapons()
                 .inspect(stack);
-        if (!vanillaSword(item) && item != Items.bow) return MaidWeaponProfile.unknown("weapon_not_admitted");
-        if (!IntegrationGuard.available(Side.SERVER, VANILLA_GUARD))
-            return MaidWeaponProfile.unknown("vanilla_capability_disabled");
+        if (!vanillaSword(item) && item != Items.bow)
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_WEAPON_NOT_ADMITTED);
+        if (!IntegrationGuard.available(Side.SERVER, WeaponCombatIds.VANILLA_GUARD))
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_VANILLA_CAPABILITY_DISABLED);
         try {
             if (item == Items.bow ? item.getClass() != ItemBow.class : item.getClass() != ItemSword.class)
-                return MaidWeaponProfile.unknown("replaced_vanilla_item_class");
+                return MaidWeaponProfile.unknown(WeaponCombatIds.ID_REPLACED_VANILLA_ITEM_CLASS);
             var before = stack.copy();
             var copy = stack.copy();
             int damage = copy.getItemDamage(), maximum = copy.getMaxDamage();
-            if (damage < 0 || damage > maximum) return MaidWeaponProfile.unknown("invalid_vanilla_durability");
+            if (damage < 0 || damage > maximum)
+                return MaidWeaponProfile.unknown(WeaponCombatIds.ID_INVALID_VANILLA_DURABILITY);
             var profile = describe(
                 item == Items.bow ? MaidWeaponProfile.Kind.BOW : MaidWeaponProfile.Kind.MELEE,
                 item == Items.bow ? MaidWeaponProfile.Family.VANILLA_BOW : MaidWeaponProfile.Family.VANILLA_SWORD,
-                VANILLA_DEPENDENCY,
+                WeaponCombatIds.VANILLA_DEPENDENCY,
                 copy,
-                0,
-                1,
-                Math.max(0L, (long) maximum + 1 - damage),
-                1);
+                WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+                WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD,
+                Math.max(WeaponCombatTuning.WEAPON_CATALOG_MAX_FIRST_LIMIT, (long) maximum + 1 - damage),
+                WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD);
             if (!ItemStack.areItemStacksEqual(stack, before))
-                throw new IllegalStateException("Weapon inspection changed original stack");
+                throw new IllegalStateException(WeaponCombatDiagnostics.MSG_WEAPON_INSPECTION_CHANGED_ORIGINAL_STACK);
             return profile;
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report(Side.SERVER, VANILLA_GUARD, failure);
-            return MaidWeaponProfile.unknown("vanilla_capability_failure");
+            IntegrationGuard.report(Side.SERVER, WeaponCombatIds.VANILLA_GUARD, failure);
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_VANILLA_CAPABILITY_FAILURE);
         }
     }
 
@@ -98,14 +98,16 @@ public final class MaidWeaponCatalog {
     public static MaidWeaponProfile describe(MaidWeaponProfile.Kind kind, MaidWeaponProfile.Family family,
         String dependency, ItemStack normalizedCopy, float physicalBonus, long durabilityCost, long remainingDurability,
         int hurtResistanceMultiplier) {
-        float estimate = kind == MaidWeaponProfile.Kind.MELEE ? estimatePhysical(normalizedCopy, physicalBonus) : 0;
+        float estimate = kind == MaidWeaponProfile.Kind.MELEE ? estimatePhysical(normalizedCopy, physicalBonus)
+            : WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE;
         return new MaidWeaponProfile(
             kind,
             family,
-            "supported",
+            WeaponCombatIds.ID_SUPPORTED,
             dependency,
             physicalBonus,
-            kind == MaidWeaponProfile.Kind.MELEE ? MaidWeaponProfile.FALLING_CRITICAL_MULTIPLIER : 1,
+            kind == MaidWeaponProfile.Kind.MELEE ? WeaponCombatTuning.FALLING_CRITICAL_MULTIPLIER
+                : WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD,
             estimate,
             durabilityCost,
             remainingDurability,
@@ -135,7 +137,7 @@ public final class MaidWeaponCatalog {
     private static float estimatePhysical(ItemStack copy, float bonus) {
         var modifiers = copy.getAttributeModifiers()
             .get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName());
-        double base = MaidWeaponProfile.MAID_BASE_ATTACK_DAMAGE;
+        double base = WeaponCombatTuning.MAID_BASE_ATTACK_DAMAGE;
         for (Object entry : modifiers) {
             var modifier = (AttributeModifier) entry;
             if (modifier.getOperation() == 0) base += modifier.getAmount();
@@ -143,15 +145,17 @@ public final class MaidWeaponCatalog {
         double result = base;
         for (Object entry : modifiers) {
             var modifier = (AttributeModifier) entry;
-            if (modifier.getOperation() == 1) result += base * modifier.getAmount();
+            if (modifier.getOperation() == WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD)
+                result += base * modifier.getAmount();
         }
         for (Object entry : modifiers) {
             var modifier = (AttributeModifier) entry;
-            if (modifier.getOperation() == 2) result *= 1.0D + modifier.getAmount();
+            if (modifier.getOperation() == WeaponCombatTuning.TARGET_GET_OPERATION_THRESHOLD)
+                result *= WeaponCombatTuning.WEAPON_CATALOG_ESTIMATE_PHYSICAL_FACTOR + modifier.getAmount();
         }
         result += bonus;
         if (!Double.isFinite(result) || result < 0 || result > Float.MAX_VALUE)
-            throw new IllegalStateException("Invalid weapon physical estimate");
+            throw new IllegalStateException(WeaponCombatDiagnostics.MSG_INVALID_WEAPON_PHYSICAL_ESTIMATE);
         return (float) result;
     }
 }

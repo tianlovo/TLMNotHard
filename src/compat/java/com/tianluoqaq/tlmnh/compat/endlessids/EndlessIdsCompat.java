@@ -8,7 +8,6 @@ public final class EndlessIdsCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ENDLESS_IDS;
 
-
     public static final EndlessIdsCompat INSTANCE = new EndlessIdsCompat();
 
     private EndlessIdsCompat() {}

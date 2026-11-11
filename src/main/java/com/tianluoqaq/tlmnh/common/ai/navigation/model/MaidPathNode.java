@@ -6,7 +6,7 @@ public final class MaidPathNode {
     public final int x, y, z;
     public float g, h, f, walked, cost;
     public boolean closed;
-    public int heapIndex = -1;
+    public int heapIndex = NavigationModelTuning.UNSET_OR_NOT_FOUND;
     public MaidPathNode parent;
     public MaidPathType type = MaidPathType.BLOCKED;
 
@@ -26,6 +26,10 @@ public final class MaidPathNode {
     }
 
     public static int key(int x, int y, int z) {
-        return y & 255 | (x & 32767) << 8 | (z & 32767) << 24 | (x < 0 ? Integer.MIN_VALUE : 0) | (z < 0 ? 32768 : 0);
+        return y & NavigationModelTuning.UNSIGNED_BYTE_MASK
+            | (x & NavigationModelTuning.PATH_NODE_BIT_MASK_32767) << NavigationModelTuning.SECOND_BYTE_SHIFT
+            | (z & NavigationModelTuning.PATH_NODE_BIT_MASK_32767) << NavigationModelTuning.ALPHA_CHANNEL_SHIFT
+            | (x < 0 ? Integer.MIN_VALUE : NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE)
+            | (z < 0 ? NavigationModelTuning.PATH_NODE_KEY_PARAM : NavigationModelTuning.PATH_NODE_KEY_ZERO_BASE);
     }
 }

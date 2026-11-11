@@ -59,7 +59,8 @@ public final class ProtectionEvents {
 
     @SubscribeEvent
     public void tick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && event.player.ticksExisted % 20 == 0) warn(event.player);
+        if (event.phase == TickEvent.Phase.END
+            && event.player.ticksExisted % ProtectionRuntimeTuning.PROTECTION_TICK_PARAM == 0) warn(event.player);
     }
 
     public static void warn(EntityPlayer player) {
@@ -69,8 +70,10 @@ public final class ProtectionEvents {
             .values())
             if ((fault.owner == null || fault.owner.equals(player.getUniqueID())) && notified.add(fault.code)) {
                 var message = MaidAcquisitionDiagnostics.message(fault);
-                if (message == null)
-                    message = new ChatComponentTranslation("chat.tlmnh.protection.fallback", fault.code, fault.key);
+                if (message == null) message = new ChatComponentTranslation(
+                    ProtectionRuntimeIds.I18N_CHAT_TLMNH_PROTECTION_FALLBACK,
+                    fault.code,
+                    fault.key);
                 message.getChatStyle()
                     .setColor(EnumChatFormatting.GOLD);
                 player.addChatMessage(message);

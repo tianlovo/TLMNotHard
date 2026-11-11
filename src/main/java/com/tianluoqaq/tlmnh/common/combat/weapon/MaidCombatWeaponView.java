@@ -18,12 +18,12 @@ public final class MaidCombatWeaponView {
     private MaidWeaponProfile profile;
 
     public MaidCombatWeaponView(EntityMaid maid) {
-        this.maid = Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, WeaponCombatIds.ID_MAID);
     }
 
     public MaidWeaponProfile current() {
         if (maid.worldObj == null || maid.worldObj.isRemote)
-            return MaidWeaponProfile.unknown("server_weapon_view_required");
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_SERVER_WEAPON_VIEW_REQUIRED);
         var actual = maid.getHeldItem();
         long now = maid.worldObj.getTotalWorldTime();
         if (profile != null && world == maid.worldObj
@@ -31,12 +31,12 @@ public final class MaidCombatWeaponView {
             && reference == actual
             && ItemStack.areItemStacksEqual(actual, contents)) return profile;
         var quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, false);
-        if (!quota.spend(Work.ITEM)) return MaidWeaponProfile.unknown("item_budget_pending");
+        if (!quota.spend(Work.ITEM)) return MaidWeaponProfile.unknown(WeaponCombatIds.ID_ITEM_BUDGET_PENDING);
         var before = ItemStack.copyItemStack(actual);
         var observed = MaidWeaponCatalog.inspect(actual);
         if (actual != maid.getHeldItem() || !ItemStack.areItemStacksEqual(actual, before)) {
             invalidate();
-            return MaidWeaponProfile.unknown("weapon_changed_during_observation");
+            return MaidWeaponProfile.unknown(WeaponCombatIds.ID_WEAPON_CHANGED_DURING_OBSERVATION);
         }
         world = maid.worldObj;
         tick = now;

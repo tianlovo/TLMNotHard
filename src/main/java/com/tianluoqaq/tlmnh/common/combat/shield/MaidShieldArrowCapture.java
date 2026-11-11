@@ -39,8 +39,7 @@ public final class MaidShieldArrowCapture {
             IntegrationGuard.report(
                 Side.SERVER,
                 key(maid),
-                new IllegalStateException(
-                    "Native arrow shield capture hook unavailable; arrow and shield count retained"),
+                new IllegalStateException(ShieldCombatDiagnostics.MSG_NATIVE_ARROW_SHIELD_CAPTURE_HOOK),
                 owner);
             return null;
         }
@@ -94,6 +93,6 @@ public final class MaidShieldArrowCapture {
     }
 
     private static String key(EntityMaid maid) {
-        return "shield_arrow_capture/" + maid.getUniqueID();
+        return ShieldCombatIds.ID_SHIELD_ARROW_CAPTURE + maid.getUniqueID();
     }
 }

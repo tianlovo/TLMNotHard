@@ -51,16 +51,18 @@ public final class MaidHomeTeleport {
             && maid.height == height;
         BooleanSupplier current = () -> lease.getAsBoolean() && maid.posX == ox && maid.posY == oy && maid.posZ == oz;
         if (world.isRemote || !current.getAsBoolean()) return Result.STALE;
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < MaidAiTuning.MIN_ATTEMPT_THRESHOLD; attempt++) {
             if (!current.getAsBoolean()) return Result.STALE;
             // 上游家园分支为 x±3、y向上0..3、z±3；不同于跟随主人的7/3/7序列
             int x = center.x + maid.getRNG()
-                .nextInt(7) - 3;
+                .nextInt(MaidAiTuning.BRAIN_COORDINATOR_SET_MUTEX_BITS_FIRST_PARAM)
+                - MaidAiTuning.HOME_TELEPORT_TRY_RETURN_PARAM;
             int y = center.y + maid.getRNG()
-                .nextInt(4);
+                .nextInt(MaidAiTuning.CHUNK_SECTION_SHIFT);
             int z = center.z + maid.getRNG()
-                .nextInt(7) - 3;
-            if (y < 1 || y + height > world.getHeight()) continue;
+                .nextInt(MaidAiTuning.BRAIN_COORDINATOR_SET_MUTEX_BITS_FIRST_PARAM)
+                - MaidAiTuning.HOME_TELEPORT_TRY_RETURN_PARAM;
+            if (y < MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD || y + height > world.getHeight()) continue;
             var candidate = originalBox.getOffsetBoundingBox(x - ox, y - oy, z - oz);
             if (!loaded(world, candidate)) continue;
             while (y > 0 && !world.getBlock(x, y - 1, z)
@@ -82,10 +84,19 @@ public final class MaidHomeTeleport {
             if (!current.getAsBoolean()) return Result.STALE;
             maid.setPositionAndUpdate(x, y, z);
             if (!lease.getAsBoolean() || maid.posX != x || maid.posY != y || maid.posZ != z) return Result.STALE;
-            maid.motionX = maid.motionY = maid.motionZ = 0;
+            maid.motionX = maid.motionY = maid.motionZ = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             maid.setJumping(false);
-            world.playSoundEffect(ox, oy, oz, "mob.endermen.portal", 1, 1);
-            maid.playSound("mob.endermen.portal", 1, 1);
+            world.playSoundEffect(
+                ox,
+                oy,
+                oz,
+                MaidAiIds.ID_MOB_ENDERMEN_PORTAL,
+                MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD,
+                MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD);
+            maid.playSound(
+                MaidAiIds.ID_MOB_ENDERMEN_PORTAL,
+                MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD,
+                MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD);
             return Result.SUCCESS;
         }
         return current.getAsBoolean() ? Result.NO_SAFE_DESTINATION : Result.STALE;
@@ -93,10 +104,10 @@ public final class MaidHomeTeleport {
 
     private static boolean loaded(World world, AxisAlignedBB box) {
         // 原生碰撞查询会访问边缘邻格，先核其完整水平包围，不调用provideChunk
-        for (int x = MathHelper.floor_double(box.minX - 1) >> 4, maxX = MathHelper.floor_double(box.maxX + 1) >> 4; x
-            <= maxX; x++)
-            for (int z = MathHelper.floor_double(box.minZ - 1) >> 4,
-                maxZ = MathHelper.floor_double(box.maxZ + 1) >> 4; z <= maxZ; z++)
+        for (int x = MathHelper.floor_double(box.minX - 1) >> MaidAiTuning.CHUNK_SECTION_SHIFT,
+            maxX = MathHelper.floor_double(box.maxX + 1) >> MaidAiTuning.CHUNK_SECTION_SHIFT; x <= maxX; x++)
+            for (int z = MathHelper.floor_double(box.minZ - 1) >> MaidAiTuning.CHUNK_SECTION_SHIFT,
+                maxZ = MathHelper.floor_double(box.maxZ + 1) >> MaidAiTuning.CHUNK_SECTION_SHIFT; z <= maxZ; z++)
                 if (!world.getChunkProvider()
                     .chunkExists(x, z)) return false;
         return true;

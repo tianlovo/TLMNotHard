@@ -100,10 +100,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
 
     public EnhancedCoreBrain(EntityMaid maid, ModernFlightProfile flightProfile, NBTTagCompound initialTlmnhExtension,
         MaidBehaviorRegistry registry) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        Objects.requireNonNull(registry, "registry");
+        this.maid = Objects.requireNonNull(maid, EnhancedAiIds.ID_MAID);
+        Objects.requireNonNull(registry, EnhancedAiIds.ID_REGISTRY);
         if (!supportsFlightProfile(flightProfile))
-            throw new IllegalArgumentException("Unsupported enhanced flight profile");
+            throw new IllegalArgumentException(EnhancedAiDiagnostics.MSG_UNSUPPORTED_ENHANCED_FLIGHT_PROFILE);
         this.flightProfile = flightProfile;
         // 新增强实例不继承其他策略的攻击执行记忆或冷却
         maid.getModernCombatMemory()
@@ -147,7 +147,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             var byId = new HashMap<MaidBehaviorId, MaidExternalBehaviorSlot>(providers.size());
             var byStage = new EnumMap<MaidBehaviorStage, List<MaidExternalBehaviorSlot>>(MaidBehaviorStage.class);
             for (var provider : providers) {
-                var slotRef = new MaidExternalBehaviorSlot[1];
+                var slotRef = new MaidExternalBehaviorSlot[EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP];
                 var context = new MaidPlatformBehaviorContext(
                     provider.id(),
                     maid,
@@ -157,10 +157,12 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                     combat,
                     handLeaseIssuer,
                     callbackScope,
-                    () -> slotRef[0] != null && slotRef[0].isHealthy(),
+                    () -> slotRef[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE] != null
+                        && slotRef[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE].isHealthy(),
                     failure -> {
-                        if (slotRef[0] != null) {
-                            slotRef[0].onAsyncCallbackFault("handLeaseKeepAlive", failure);
+                        if (slotRef[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE] != null) {
+                            slotRef[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE]
+                                .onAsyncCallbackFault(EnhancedAiIds.ID_HANDLEASEKEEPALIVE, failure);
                         }
                     });
                 var slot = new MaidExternalBehaviorSlot(
@@ -170,7 +172,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                     callbackScope,
                     context,
                     context::releaseOwnedResources);
-                slotRef[0] = slot;
+                slotRef[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE] = slot;
                 slots.add(slot);
                 byId.put(slot.id(), slot);
                 byStage.computeIfAbsent(slot.stage(), ignored -> new ArrayList<>())
@@ -232,7 +234,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
 
     @Override
     public void tick(Token token) {
-        if (ticking) throw new IllegalStateException("Reentrant enhanced core decision");
+        if (ticking) throw new IllegalStateException(EnhancedAiDiagnostics.MSG_REENTRANT_ENHANCED_CORE_DECISION);
         ticking = true;
         try {
             var runtime = maid.getBrainCoordinator()

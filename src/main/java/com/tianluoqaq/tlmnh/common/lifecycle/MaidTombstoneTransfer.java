@@ -24,7 +24,7 @@ public final class MaidTombstoneTransfer {
 
     public static boolean collect(MaidTombstoneEntity tombstone, EntityPlayer player) {
         if (tombstone == null || player == null || player.worldObj == null || player.worldObj.isRemote) return false;
-        String key = "player_inventory/tombstone/" + tombstone.getToken();
+        String key = MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE + tombstone.getToken();
         if (!IntegrationGuard.available(Side.SERVER, key)) return false;
         try {
             return collectOwned(tombstone, player);
@@ -39,7 +39,7 @@ public final class MaidTombstoneTransfer {
         if (!MaidLifecycleService.canUse(player) || tombstone == null
             || tombstone.isDead
             || player.worldObj != tombstone.worldObj
-            || player.getDistanceSqToEntity(tombstone) > 64.0D
+            || player.getDistanceSqToEntity(tombstone) > MaidLifecycleTuning.LIFECYCLE_SERVICE_DOMAIN_FACTOR
             || !MaidSpawnChecks.present(tombstone, player.worldObj)) return false;
         var world = player.worldObj;
         var ledger = MaidLifecycleData.get(world);
@@ -52,8 +52,8 @@ public final class MaidTombstoneTransfer {
         if (ledger.isTombstoneHeld(token)) {
             IntegrationGuard.report(
                 Side.SERVER,
-                "player_inventory/tombstone/" + token,
-                new IllegalStateException("Tombstone claim remains held after an unconfirmed overflow cleanup"),
+                MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE + token,
+                new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_TOMBSTONE_CLAIM_REMAINS_HELD_AFTER),
                 owner);
             return false;
         }
@@ -82,26 +82,37 @@ public final class MaidTombstoneTransfer {
                 planning = new InventoryPlayer(player);
                 if (planning.getClass() != player.inventory.getClass()
                     || planning.mainInventory.length != planned.length)
-                    throw new IllegalStateException("Unsupported player inventory planning layout");
+                    throw new IllegalStateException(
+                        MaidLifecyclePart3Diagnostics.MSG_UNSUPPORTED_PLAYER_INVENTORY_PLANNING_LAYOUT);
                 planning.mainInventory = planned;
                 planning.currentItem = originalSelected;
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone", failure, player.getUniqueID());
+                IntegrationGuard.report(
+                    Side.SERVER,
+                    MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE_2,
+                    failure,
+                    player.getUniqueID());
                 return false;
             }
             for (int i = 0; i < source.tagCount(); i++) {
                 var stack = ProtectedItemCodec.decode(source.getCompoundTagAt(i));
-                if (stack == null) throw new IllegalStateException("Invalid tombstone stack");
+                if (stack == null)
+                    throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_TOMBSTONE_STACK);
                 try {
                     insert(planning, stack, player.inventory.getInventoryStackLimit());
                 } catch (RuntimeException | LinkageError | AssertionError failure) {
-                    IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone", failure, player.getUniqueID());
+                    IntegrationGuard.report(
+                        Side.SERVER,
+                        MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE_2,
+                        failure,
+                        player.getUniqueID());
                     return false;
                 }
                 if (stack.stackSize > 0) overflow.add(stack);
             }
             if (!overflow.isEmpty() && !player.isSneaking()) {
-                player.addChatMessage(new ChatComponentTranslation("message.tlmnh.lifecycle.inventory_full"));
+                player.addChatMessage(
+                    new ChatComponentTranslation(MaidLifecycleIds.I18N_MESSAGE_TLMNH_LIFECYCLE_INVENTORY_FULL));
                 return false;
             }
             MaidLifecycleDurability.requirePlayer(player);
@@ -112,8 +123,13 @@ public final class MaidTombstoneTransfer {
                 if (!requestCurrent(tombstone, player, world, ledger, token, owner, tombstoneIdentity, tombstoneId))
                     return false;
                 var expected = stack.copy();
-                var drop = new EntityItem(world, player.posX, player.posY + 0.5D, player.posZ, expected.copy());
-                drop.delayBeforeCanPickup = 10;
+                var drop = new EntityItem(
+                    world,
+                    player.posX,
+                    player.posY + MaidLifecycleTuning.CENTER_OFFSET_D,
+                    player.posZ,
+                    expected.copy());
+                drop.delayBeforeCanPickup = MaidLifecycleTuning.FILM_RECOVERY_DELAY_BEFORE_CAN_PICKUP;
                 publications.add(new MaidLifecycleDurability.Publication(drop, expected));
                 if (!world.spawnEntityInWorld(drop)) {
                     MaidLifecycleService.tell(player, MaidLifecycleService.Result.SPAWN_REJECTED);
@@ -129,7 +145,12 @@ public final class MaidTombstoneTransfer {
                 || !ItemStack.areItemStacksEqual(originalCursor, inventory.getItemStack())
                 || originalSelected != inventory.currentItem) return false;
             // 写前屏障已持久；复制后任何保存事件的不明状态都不能再覆写旧库存或重领原保管
-            System.arraycopy(planned, 0, originalMain, 0, planned.length);
+            System.arraycopy(
+                planned,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                originalMain,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                planned.length);
             inventoryApplied = true;
             var delivered = (NBTTagList) inventory.writeToNBT(new NBTTagList())
                 .copy();
@@ -142,7 +163,8 @@ public final class MaidTombstoneTransfer {
                 || !delivered.equals(inventory.writeToNBT(new NBTTagList()))
                 || !ItemStack.areItemStacksEqual(originalCursor, inventory.getItemStack())
                 || inventory.currentItem != originalSelected)
-                throw new IllegalStateException("Native persistence callbacks changed the delivered claim");
+                throw new IllegalStateException(
+                    MaidLifecyclePart3Diagnostics.MSG_NATIVE_PERSISTENCE_CALLBACKS_CHANGED_THE);
             ledger.finishTombstoneAttempt(world, token, source);
             committed = true;
             world.removeEntity(tombstone);
@@ -162,7 +184,7 @@ public final class MaidTombstoneTransfer {
         MaidLifecycleData ledger, UUID token, UUID owner, UUID tombstoneIdentity, int tombstoneId) {
         return MaidLifecycleService.canUse(player) && player.worldObj == world
             && owner.equals(player.getUniqueID())
-            && player.getDistanceSqToEntity(tombstone) <= 64.0D
+            && player.getDistanceSqToEntity(tombstone) <= MaidLifecycleTuning.LIFECYCLE_SERVICE_DOMAIN_FACTOR
             && MaidSpawnChecks.present(tombstone, world)
             && tombstone.getEntityId() == tombstoneId
             && tombstoneIdentity.equals(tombstone.getUniqueID())
@@ -180,9 +202,13 @@ public final class MaidTombstoneTransfer {
             } catch (Exception | LinkageError | AssertionError failure) {
                 IntegrationGuard.throwIfFatal(failure);
                 safe = false;
-                IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone/" + token, failure, owner);
                 IntegrationGuard
-                    .report(Side.SERVER, "player_inventory/tombstone_cleanup/" + publication.identity, failure, owner);
+                    .report(Side.SERVER, MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE + token, failure, owner);
+                IntegrationGuard.report(
+                    Side.SERVER,
+                    MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE_CLEANUP + publication.identity,
+                    failure,
+                    owner);
             }
         }
         if (safe) {
@@ -191,7 +217,8 @@ public final class MaidTombstoneTransfer {
                 ledger.cancelAttempt(world, token, false);
             } catch (Exception | LinkageError | AssertionError failure) {
                 IntegrationGuard.throwIfFatal(failure);
-                IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone/" + token, failure, owner);
+                IntegrationGuard
+                    .report(Side.SERVER, MaidLifecycleIds.ID_PLAYER_INVENTORY_TOMBSTONE + token, failure, owner);
             }
         }
     }
@@ -209,7 +236,9 @@ public final class MaidTombstoneTransfer {
                 continue;
             int moved = Math.min(
                 stack.stackSize,
-                Math.max(0, Math.min(current.getMaxStackSize(), inventoryLimit) - current.stackSize));
+                Math.max(
+                    MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                    Math.min(current.getMaxStackSize(), inventoryLimit) - current.stackSize));
             current.stackSize += moved;
             stack.stackSize -= moved;
         }
@@ -217,7 +246,7 @@ public final class MaidTombstoneTransfer {
             int slot = inventory.getFirstEmptyStack();
             if (slot < 0) return;
             if (slot >= slots.length || slots[slot] != null)
-                throw new IllegalStateException("Native empty slot query returned an occupied or unknown slot");
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_NATIVE_EMPTY_SLOT_QUERY_RETURNED);
             int moved = Math.min(stack.stackSize, Math.min(stack.getMaxStackSize(), inventoryLimit));
             slots[slot] = stack.copy();
             slots[slot].stackSize = moved;

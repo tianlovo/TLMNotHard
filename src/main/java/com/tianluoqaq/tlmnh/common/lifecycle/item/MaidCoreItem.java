@@ -13,15 +13,15 @@ import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 public final class MaidCoreItem extends Item {
 
     public MaidCoreItem() {
-        setMaxStackSize(1);
-        setUnlocalizedName("tlmnh.maid_core");
-        setTextureName("touhou_little_maid:smart_slab_has_maid");
+        setMaxStackSize(LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT);
+        setUnlocalizedName(LifecycleItemIds.ID_TLMNH_MAID_CORE);
+        setTextureName(LifecycleItemIds.ID_TOUHOU_LITTLE_MAID_SMART_SLAB_HAS_MAID);
     }
 
     @Override
     public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
         float hitX, float hitY, float hitZ) {
-        if (side != 1) return false;
+        if (side != LifecycleItemTuning.SET_MAX_STACK_SIZE_SINGLE_UNIT) return false;
         if (world.isRemote) return true;
         var result = IntegrationGuard.call(
             ExternalFeature.ITEM_DELIVERY,

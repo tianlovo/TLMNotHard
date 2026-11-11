@@ -8,7 +8,6 @@ public final class TConstructCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.TCONSTRUCT;
 
-
     public static final TConstructCompat INSTANCE = new TConstructCompat();
 
     private TConstructCompat() {}

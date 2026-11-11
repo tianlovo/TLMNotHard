@@ -100,8 +100,8 @@ public final class MaidShieldItems {
         return IntegrationGuard.call(ExternalFeature.SHIELDS, () -> {
             float value = CompatServices.shields()
                 .blockAngle(stack.copy());
-            if (!Float.isFinite(value) || value < 0 || value > 360)
-                throw new IllegalStateException("Invalid shield block angle");
+            if (!Float.isFinite(value) || value < 0 || value > ShieldCombatTuning.FULL_TURN_DEGREES)
+                throw new IllegalStateException(ShieldCombatDiagnostics.MSG_INVALID_SHIELD_BLOCK_ANGLE);
             return value;
         }, () -> 0F);
     }
@@ -110,7 +110,8 @@ public final class MaidShieldItems {
         return IntegrationGuard.call(ExternalFeature.SHIELDS, () -> {
             float value = CompatServices.shields()
                 .damageReduction(stack.copy(), source);
-            if (!Float.isFinite(value) || value < 0) throw new IllegalStateException("Invalid shield damage reduction");
+            if (!Float.isFinite(value) || value < 0)
+                throw new IllegalStateException(ShieldCombatDiagnostics.MSG_INVALID_SHIELD_DAMAGE_REDUCTION);
             return value;
         }, () -> 0F);
     }
@@ -150,7 +151,7 @@ public final class MaidShieldItems {
         var copy = weapon.copy();
         var classes = copy.getItem()
             .getToolClasses(copy);
-        if (classes == null || !classes.contains("axe")) return false;
+        if (classes == null || !classes.contains(ShieldCombatIds.ID_AXE)) return false;
         // 原生匠魂查询会拒绝 Broken；额外拒绝只有空父tag的伪工具
         if (CompatServices.shields()
             .isModularTool(itemId(copy)))

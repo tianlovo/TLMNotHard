@@ -5,8 +5,6 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity;
 
-import com.tianluoqaq.tlmnh.common.life.cabinet.SnackCabinetLayout;
-
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
@@ -20,6 +18,7 @@ import com.tianluoqaq.tlmnh.client.render.buffer.TessellatorVertexConsumer;
 import com.tianluoqaq.tlmnh.client.render.scope.MaidItemRenderScope;
 import com.tianluoqaq.tlmnh.client.render.scope.MaidRenderProtection;
 import com.tianluoqaq.tlmnh.common.life.cabinet.BlockSnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.SnackCabinetLayout;
 import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;

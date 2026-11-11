@@ -18,6 +18,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackListPayload;
 import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
 
@@ -134,8 +135,9 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
         boolean accepted = super.enchantItem(player, action);
-        if (accepted && action >= ACTION_IDLE && action <= ACTION_RANGED && player.openContainer == this)
-            openTaskConfiguration(player);
+        if (accepted && action >= MaidContainerProtocol.ACTION_IDLE
+            && action <= MaidContainerProtocol.ACTION_RANGED
+            && player.openContainer == this) openTaskConfiguration(player);
         return accepted;
     }
 

@@ -11,7 +11,6 @@ public final class MalisisDoorsCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.MALISIS_DOORS;
 
-
     public static final MalisisDoorsCompat INSTANCE = new MalisisDoorsCompat();
 
     private MalisisDoorsCompat() {}

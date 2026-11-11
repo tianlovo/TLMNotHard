@@ -5,14 +5,41 @@ import net.minecraftforge.common.config.Configuration;
 /** 范围默认值及上下限沿用固定上游，修改后重启 */
 public final class MaidHomeConfig {
 
-    public static int workRange = 12, idleRange = 6, sleepRange = 6, nonHomeRange = 8;
+    public static int workRange = MaidConfigConfigSpec.HOME_CONFIG_WORK_RANGE,
+        idleRange = MaidConfigConfigSpec.HOME_CONFIG_IDLE_RANGE,
+        sleepRange = MaidConfigConfigSpec.HOME_CONFIG_IDLE_RANGE,
+        nonHomeRange = MaidConfigConfigSpec.COMBAT_CONFIG_LOAD_PARAM;
 
     private MaidHomeConfig() {}
 
     public static void load(Configuration config) {
-        workRange = config.getInt("workRange", "home", 12, 3, 64, "家园工作半径 / Home work radius");
-        idleRange = config.getInt("idleRange", "home", 6, 3, 32, "家园休闲半径 / Home idle radius");
-        sleepRange = config.getInt("sleepRange", "home", 6, 3, 32, "家园睡眠半径 / Home sleep radius");
-        nonHomeRange = config.getInt("nonHomeRange", "home", 8, 3, 32, "非家园初始活动半径 / Initial non-home radius");
+        workRange = config.getInt(
+            MaidConfigConfigSpec.ID_WORKRANGE,
+            MaidConfigConfigSpec.ID_HOME,
+            MaidConfigConfigSpec.HOME_CONFIG_WORK_RANGE,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FOURTH_PARAM,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FIFTH_PARAM,
+            MaidConfigConfigSpec.MSG_HOME_WORK_RADIUS);
+        idleRange = config.getInt(
+            MaidConfigConfigSpec.ID_IDLERANGE,
+            MaidConfigConfigSpec.ID_HOME,
+            MaidConfigConfigSpec.HOME_CONFIG_IDLE_RANGE,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FOURTH_PARAM,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FIFTH_PARAM_2,
+            MaidConfigConfigSpec.MSG_HOME_IDLE_RADIUS);
+        sleepRange = config.getInt(
+            MaidConfigConfigSpec.ID_SLEEPRANGE,
+            MaidConfigConfigSpec.ID_HOME,
+            MaidConfigConfigSpec.HOME_CONFIG_IDLE_RANGE,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FOURTH_PARAM,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FIFTH_PARAM_2,
+            MaidConfigConfigSpec.MSG_HOME_SLEEP_RADIUS);
+        nonHomeRange = config.getInt(
+            MaidConfigConfigSpec.ID_NONHOMERANGE,
+            MaidConfigConfigSpec.ID_HOME,
+            MaidConfigConfigSpec.COMBAT_CONFIG_LOAD_PARAM,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FOURTH_PARAM,
+            MaidConfigConfigSpec.HOME_CONFIG_GET_INT_FIFTH_PARAM_2,
+            MaidConfigConfigSpec.MSG_INITIAL_NON_HOME_RADIUS);
     }
 }

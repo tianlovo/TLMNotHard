@@ -1,7 +1,5 @@
 package com.tianluoqaq.tlmnh.compat;
 
-import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldIds;
-
 import java.util.UUID;
 
 import net.minecraft.block.Block;
@@ -34,6 +32,7 @@ import com.tianluoqaq.tlmnh.compat.applecore.AppleCoreCompat;
 import com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition;
 import com.tianluoqaq.tlmnh.compat.battlegear2.Battlegear2Compat;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldIds;
 import com.tianluoqaq.tlmnh.compat.endlessids.common.storage.EndlessIdsSectionData;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities;
@@ -55,8 +54,6 @@ import com.tianluoqaq.tlmnh.compat.witchery.common.entity.WitcheryInitialSize;
 
 /** 双端共享适配实现装配入口；仅向 main 暴露窄接口，不在初始化阶段提前加载可选模组类型 */
 public final class CompatBootstrap implements CompatRegistrar {
-
-
 
     @Override
     public void register(CompatServices.Sink sink) {
@@ -130,13 +127,15 @@ public final class CompatBootstrap implements CompatRegistrar {
 
         @Override
         public float blockAngle(ItemStack stackCopy) {
-            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
+            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID))
+                return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
             return BattlegearShieldAccess.blockAngle(stackCopy);
         }
 
         @Override
         public float damageReduction(ItemStack stackCopy, DamageSource source) {
-            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
+            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID))
+                return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
             return BattlegearShieldAccess.reduction(stackCopy, source);
         }
 

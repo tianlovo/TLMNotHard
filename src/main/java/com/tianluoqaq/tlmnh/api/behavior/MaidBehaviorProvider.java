@@ -8,7 +8,7 @@ public interface MaidBehaviorProvider {
     MaidBehaviorStage stage();
 
     default int order() {
-        return 1000;
+        return BehaviorApiTuning.BEHAVIOR_PROVIDER_ORDER_PARAM;
     }
 
     MaidBehaviorModule create(MaidBehaviorInitContext init);

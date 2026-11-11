@@ -8,7 +8,6 @@ public final class AppleCoreCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.APPLE_CORE;
 
-
     public static final AppleCoreCompat INSTANCE = new AppleCoreCompat();
 
     private AppleCoreCompat() {}

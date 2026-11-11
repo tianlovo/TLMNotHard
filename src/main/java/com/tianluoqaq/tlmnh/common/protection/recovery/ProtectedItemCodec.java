@@ -14,7 +14,6 @@ import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 /** 在本模组持有物品的存档边界使用；无法确认身份时原样封存，不返回空槽 */
 public final class ProtectedItemCodec {
 
-    private static final String META = "TLMNHProtection";
     private static final Map<Integer, String> MISSING = new HashMap<>();
 
     private ProtectedItemCodec() {}
@@ -33,19 +32,21 @@ public final class ProtectedItemCodec {
                 .copy();
             written = true;
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report("item_snapshot/write", failure);
+            IntegrationGuard.report(ProtectionRecoveryIds.ID_ITEM_SNAPSHOT_WRITE, failure);
             data = (NBTTagCompound) snapshot.fallback.copy();
         }
         var meta = new NBTTagCompound();
         String name = Item.itemRegistry.getNameForObject(stack.getItem());
-        if (!written) data.setShort("id", (short) Item.getIdFromItem(stack.getItem()));
-        meta.setInteger("Schema", 2);
-        meta.setString("Registry", name == null ? "" : name);
-        meta.setString("Dependency", DependencyFingerprint.item(name == null ? "" : name));
-        meta.setInteger("ExactCount", snapshot.count);
-        meta.setInteger("ExactDamage", snapshot.damage);
-        meta.setBoolean("Complete", snapshot.complete && written);
-        data.setTag(META, meta);
+        if (!written) data.setShort(ProtectionRecoveryIds.ID_ID, (short) Item.getIdFromItem(stack.getItem()));
+        meta.setInteger(
+            ProtectionRecoveryIds.KEY_SCHEMA,
+            ProtectionRecoveryTuning.PROTECTED_ITEM_SET_INTEGER_SECOND_PARAM);
+        meta.setString(ProtectionRecoveryIds.KEY_REGISTRY, name == null ? "" : name);
+        meta.setString(ProtectionRecoveryIds.KEY_DEPENDENCY, DependencyFingerprint.item(name == null ? "" : name));
+        meta.setInteger(ProtectionRecoveryIds.KEY_EXACT_COUNT, snapshot.count);
+        meta.setInteger(ProtectionRecoveryIds.KEY_EXACT_DAMAGE, snapshot.damage);
+        meta.setBoolean(ProtectionRecoveryIds.KEY_COMPLETE, snapshot.complete && written);
+        data.setTag(ProtectionRecoveryIds.META, meta);
         return data;
     }
 
@@ -56,8 +57,8 @@ public final class ProtectedItemCodec {
         var decoded = decode(raw);
         if (decoded == null
             || decoded.getItem() == RecoveryParcel.ITEM && !ItemStack.areItemStacksEqual(stack, decoded))
-            return decoded == null ? seal(raw, "admission") : decoded;
-        if (stack.stackSize > limit) return seal(raw, "inventory_limit");
+            return decoded == null ? seal(raw, ProtectionRecoveryIds.ID_ADMISSION) : decoded;
+        if (stack.stackSize > limit) return seal(raw, ProtectionRecoveryIds.ID_INVENTORY_LIMIT);
         return stack;
     }
 
@@ -66,8 +67,8 @@ public final class ProtectedItemCodec {
         try {
             return resolve(source);
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report("item_decode", failure);
-            return seal(source, "decode");
+            IntegrationGuard.report(ProtectionRecoveryIds.ID_ITEM_DECODE, failure);
+            return seal(source, ProtectionRecoveryIds.ID_DECODE);
         }
     }
 
@@ -79,79 +80,97 @@ public final class ProtectedItemCodec {
             key,
             parent.getTag(key)
                 .copy());
-        return seal(raw, "field_type");
+        return seal(raw, ProtectionRecoveryReflectionSpec.SRG_MEMBER_FIELD_TYPE);
     }
 
     /** 只读预检同样用于玩家显式拆包；不把新模组同数值ID当作原物品 */
     private static ItemStack resolve(NBTTagCompound source) {
         var data = (NBTTagCompound) source.copy();
-        if (!data.hasKey("id", Constants.NBT.TAG_SHORT) || !data.hasKey("Count", Constants.NBT.TAG_BYTE)
-            || !data.hasKey("Damage", Constants.NBT.TAG_SHORT)
-            || data.hasKey("tag") && !data.hasKey("tag", Constants.NBT.TAG_COMPOUND)) return seal(source, "item_type");
-        if (data.hasKey(META) && !data.hasKey(META, Constants.NBT.TAG_COMPOUND)) return seal(source, "schema");
-        var meta = data.getCompoundTag(META);
-        String name = meta.getString("Registry");
-        int schema = meta.getInteger("Schema");
-        if (data.hasKey(META) && (!meta.hasKey("Schema", Constants.NBT.TAG_INT) || schema < 1
-            || schema > 2
-            || !meta.hasKey("Registry", Constants.NBT.TAG_STRING)
-            || name.isEmpty()
-            || !meta.hasKey("Dependency", Constants.NBT.TAG_STRING))) return seal(source, "schema");
-        int count = data.getByte("Count"), damage = data.getShort("Damage");
-        if (schema == 2) {
-            if (!meta.hasKey("ExactCount", Constants.NBT.TAG_INT) || !meta.hasKey("ExactDamage", Constants.NBT.TAG_INT)
-                || !meta.hasKey("Complete", Constants.NBT.TAG_BYTE)
-                || !meta.getBoolean("Complete")) return seal(source, "incomplete_snapshot");
-            count = meta.getInteger("ExactCount");
-            damage = meta.getInteger("ExactDamage");
-            if (data.getByte("Count") != (byte) count || data.getShort("Damage") != (short) damage)
-                return seal(source, "numeric_mismatch");
+        if (!data.hasKey(ProtectionRecoveryIds.ID_ID, Constants.NBT.TAG_SHORT)
+            || !data.hasKey(ProtectionRecoveryIds.KEY_COUNT, Constants.NBT.TAG_BYTE)
+            || !data.hasKey(ProtectionRecoveryIds.KEY_DAMAGE, Constants.NBT.TAG_SHORT)
+            || data.hasKey(ProtectionRecoveryIds.ID_TAG)
+                && !data.hasKey(ProtectionRecoveryIds.ID_TAG, Constants.NBT.TAG_COMPOUND))
+            return seal(source, ProtectionRecoveryIds.ID_ITEM_TYPE);
+        if (data.hasKey(ProtectionRecoveryIds.META)
+            && !data.hasKey(ProtectionRecoveryIds.META, Constants.NBT.TAG_COMPOUND))
+            return seal(source, ProtectionRecoveryIds.ID_SCHEMA);
+        var meta = data.getCompoundTag(ProtectionRecoveryIds.META);
+        String name = meta.getString(ProtectionRecoveryIds.KEY_REGISTRY);
+        int schema = meta.getInteger(ProtectionRecoveryIds.KEY_SCHEMA);
+        if (data.hasKey(ProtectionRecoveryIds.META)
+            && (!meta.hasKey(ProtectionRecoveryIds.KEY_SCHEMA, Constants.NBT.TAG_INT)
+                || schema < ProtectionRecoveryTuning.MIN_SCHEMA_THRESHOLD
+                || schema > ProtectionRecoveryTuning.PROTECTED_ITEM_SET_INTEGER_SECOND_PARAM
+                || !meta.hasKey(ProtectionRecoveryIds.KEY_REGISTRY, Constants.NBT.TAG_STRING)
+                || name.isEmpty()
+                || !meta.hasKey(ProtectionRecoveryIds.KEY_DEPENDENCY, Constants.NBT.TAG_STRING)))
+            return seal(source, ProtectionRecoveryIds.ID_SCHEMA);
+        int count = data.getByte(ProtectionRecoveryIds.KEY_COUNT),
+            damage = data.getShort(ProtectionRecoveryIds.KEY_DAMAGE);
+        if (schema == ProtectionRecoveryTuning.PROTECTED_ITEM_SET_INTEGER_SECOND_PARAM) {
+            if (!meta.hasKey(ProtectionRecoveryIds.KEY_EXACT_COUNT, Constants.NBT.TAG_INT)
+                || !meta.hasKey(ProtectionRecoveryIds.KEY_EXACT_DAMAGE, Constants.NBT.TAG_INT)
+                || !meta.hasKey(ProtectionRecoveryIds.KEY_COMPLETE, Constants.NBT.TAG_BYTE)
+                || !meta.getBoolean(ProtectionRecoveryIds.KEY_COMPLETE))
+                return seal(source, ProtectionRecoveryIds.ID_INCOMPLETE_SNAPSHOT);
+            count = meta.getInteger(ProtectionRecoveryIds.KEY_EXACT_COUNT);
+            damage = meta.getInteger(ProtectionRecoveryIds.KEY_EXACT_DAMAGE);
+            if (data.getByte(ProtectionRecoveryIds.KEY_COUNT) != (byte) count
+                || data.getShort(ProtectionRecoveryIds.KEY_DAMAGE) != (short) damage)
+                return seal(source, ProtectionRecoveryIds.ID_NUMERIC_MISMATCH);
         }
-        if (count <= 0 || count > 64) return seal(source, "count");
-        if (damage < 0 || damage > Short.MAX_VALUE) return seal(source, "damage");
+        if (count <= 0 || count > ProtectionRecoveryTuning.MAX_COUNT_THRESHOLD)
+            return seal(source, ProtectionRecoveryIds.ID_COUNT);
+        if (damage < 0 || damage > Short.MAX_VALUE) return seal(source, ProtectionRecoveryIds.ID_DAMAGE);
         if (name.isEmpty()) {
-            String missing = MISSING.get(data.getShort("id") & 65535);
-            if (missing != null) return seal(source, "missing:" + missing);
+            String missing = MISSING.get(
+                data.getShort(ProtectionRecoveryIds.ID_ID) & ProtectionRecoveryTuning.PROTECTED_ITEM_BIT_MASK_65535);
+            if (missing != null) return seal(source, ProtectionRecoveryIds.ID_MISSING + missing);
         } else {
             Object item = Item.itemRegistry.getObject(name);
             if (!(item instanceof Item registered) || !name.equals(Item.itemRegistry.getNameForObject(registered)))
-                return seal(source, "missing:" + name);
-            String expected = meta.getString("Dependency");
+                return seal(source, ProtectionRecoveryIds.ID_MISSING + name);
+            String expected = meta.getString(ProtectionRecoveryIds.KEY_DEPENDENCY);
             String current = DependencyFingerprint.item(name);
-            if (!expected.equals(current) || current.equals("absent") || current.equals("unreadable"))
-                return seal(source, "dependency:" + name);
-            data.setShort("id", (short) Item.getIdFromItem(registered));
+            if (!expected.equals(current) || current.equals(ProtectionRecoveryIds.ID_ABSENT)
+                || current.equals(ProtectionRecoveryIds.ID_UNREADABLE))
+                return seal(source, ProtectionRecoveryIds.ID_DEPENDENCY + name);
+            data.setShort(ProtectionRecoveryIds.ID_ID, (short) Item.getIdFromItem(registered));
         }
         ItemStack result = ItemStack.loadItemStackFromNBT(data);
-        if (result == null || result.getItem() == null) return seal(source, "missing");
-        if (result.stackSize != count || result.stackSize > Math.min(64, result.getMaxStackSize()))
-            return seal(source, "count");
+        if (result == null || result.getItem() == null) return seal(source, ProtectionRecoveryIds.ID_MISSING_2);
+        if (result.stackSize != count
+            || result.stackSize > Math.min(ProtectionRecoveryTuning.MAX_COUNT_THRESHOLD, result.getMaxStackSize()))
+            return seal(source, ProtectionRecoveryIds.ID_COUNT);
         Integer actualDamage = ItemStackSnapshot.readDamage(result);
-        if (actualDamage == null || actualDamage != damage) return seal(source, "damage");
+        if (actualDamage == null || actualDamage != damage) return seal(source, ProtectionRecoveryIds.ID_DAMAGE);
         return result;
     }
 
     public static ItemStack seal(NBTTagCompound raw, String reason) {
-        IntegrationGuard
-            .report("item/" + reason, new IllegalStateException("Item retained in recovery parcel: " + reason));
+        IntegrationGuard.report(
+            ProtectionRecoveryIds.ID_ITEM + reason,
+            new IllegalStateException(ProtectionRecoveryDiagnostics.MSG_ITEM_RETAINED_IN_RECOVERY_PARCEL + reason));
         var stack = new ItemStack(RecoveryParcel.ITEM);
         var payload = new NBTTagCompound();
-        payload.setInteger("Schema", 1);
-        payload.setTag("Original", raw.copy());
-        payload.setString("Reason", reason);
+        payload.setInteger(ProtectionRecoveryIds.KEY_SCHEMA, ProtectionRecoveryTuning.MIN_SCHEMA_THRESHOLD);
+        payload.setTag(ProtectionRecoveryIds.KEY_ORIGINAL, raw.copy());
+        payload.setString(ProtectionRecoveryIds.KEY_REASON, reason);
         stack.setTagCompound(payload);
         return stack;
     }
 
     public static ItemStack restore(ItemStack parcel) {
         if (parcel == null || parcel.getItem() != RecoveryParcel.ITEM
-            || parcel.stackSize != 1
+            || parcel.stackSize != ProtectionRecoveryTuning.MIN_SCHEMA_THRESHOLD
             || !parcel.hasTagCompound()) return null;
         var payload = parcel.getTagCompound();
-        if (payload.getInteger("Schema") != 1 || !payload.hasKey("Original", Constants.NBT.TAG_COMPOUND)) return null;
-        var original = payload.getCompoundTag("Original");
+        if (payload.getInteger(ProtectionRecoveryIds.KEY_SCHEMA) != ProtectionRecoveryTuning.MIN_SCHEMA_THRESHOLD
+            || !payload.hasKey(ProtectionRecoveryIds.KEY_ORIGINAL, Constants.NBT.TAG_COMPOUND)) return null;
+        var original = payload.getCompoundTag(ProtectionRecoveryIds.KEY_ORIGINAL);
         // 封存的旧数值ID在新环境可能被另一物品重用，缺少持久注册名时不自动拆包
-        if (!original.hasKey(META, Constants.NBT.TAG_COMPOUND)) return null;
+        if (!original.hasKey(ProtectionRecoveryIds.META, Constants.NBT.TAG_COMPOUND)) return null;
         var resolved = decode(original);
         return resolved == null || resolved.getItem() == RecoveryParcel.ITEM ? null : resolved;
     }

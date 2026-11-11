@@ -21,11 +21,12 @@ public final class MaidSessionCallbackScope {
     private long generation;
 
     public long enter(Phase nextPhase, MaidBehaviorId moduleId, BooleanSupplier frameGuard) {
-        Objects.requireNonNull(nextPhase, "nextPhase");
-        if (nextPhase == Phase.INACTIVE) throw new IllegalArgumentException("Cannot enter INACTIVE phase");
+        Objects.requireNonNull(nextPhase, EnhancedSessionIds.ID_NEXTPHASE);
+        if (nextPhase == Phase.INACTIVE)
+            throw new IllegalArgumentException(EnhancedSessionDiagnostics.MSG_CANNOT_ENTER_INACTIVE_PHASE);
         this.phase = nextPhase;
-        this.activeModule = Objects.requireNonNull(moduleId, "moduleId");
-        this.liveFrameGuard = Objects.requireNonNull(frameGuard, "frameGuard");
+        this.activeModule = Objects.requireNonNull(moduleId, EnhancedSessionIds.ID_MODULEID);
+        this.liveFrameGuard = Objects.requireNonNull(frameGuard, EnhancedSessionIds.ID_FRAMEGUARD);
         return ++generation;
     }
 
@@ -57,17 +58,16 @@ public final class MaidSessionCallbackScope {
 
     public void requireObservation(MaidBehaviorId moduleId) {
         if (!isObservationCurrent(moduleId))
-            throw new IllegalStateException("Observation view is not active for module " + moduleId);
+            throw new IllegalStateException(EnhancedSessionDiagnostics.MSG_OBSERVATION_VIEW_IS_NOT_ACTIVE + moduleId);
     }
 
     public void requireOffer(MaidBehaviorId moduleId) {
         if (phase != Phase.OFFER || !Objects.equals(activeModule, moduleId) || !liveFrameGuard.getAsBoolean())
-            throw new IllegalStateException("Offer sink is only valid during active offer callback for " + moduleId);
+            throw new IllegalStateException(EnhancedSessionDiagnostics.MSG_OFFER_SINK_IS_ONLY_VALID + moduleId);
     }
 
     public void requireExecute(MaidBehaviorId moduleId) {
         if (phase != Phase.EXECUTE || !Objects.equals(activeModule, moduleId) || !liveFrameGuard.getAsBoolean())
-            throw new IllegalStateException(
-                "Action and hand access are only permitted during active execute callback for " + moduleId);
+            throw new IllegalStateException(EnhancedSessionDiagnostics.MSG_ACTION_AND_HAND_ACCESS_ARE + moduleId);
     }
 }

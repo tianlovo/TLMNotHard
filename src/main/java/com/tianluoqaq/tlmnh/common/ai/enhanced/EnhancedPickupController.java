@@ -19,14 +19,14 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 /** 拾取先确认完整可达路线，失败只暂避当前实体位置，不改动掉落物或库存 */
 public final class EnhancedPickupController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("pickup");
-    private static final int MAX_CANDIDATES = 64, MAX_FAILED_TARGETS = 32, FAILED_RETRY_TICKS = 100;
-    private static final double RECONSIDER_DISTANCE_SQUARED = 1;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_PICKUP);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
     private final EnhancedNavigationController navigation;
-    private final MaidTargetCooldowns<Entity> failed = MaidTargetCooldowns.forIdentityClearOnFull(MAX_FAILED_TARGETS);
+    private final MaidTargetCooldowns<Entity> failed = MaidTargetCooldowns
+        .forIdentityClearOnFull(EnhancedAiTuning.MAX_FAILED_TARGETS);
     private Entity target;
     private boolean routeStarted;
     private long rejectedRoutes;
@@ -48,18 +48,20 @@ public final class EnhancedPickupController {
             (entity, entry) -> !entity.isEntityAlive() || entity.worldObj != entry.contextRef()
                 || !(entry.contextRef() instanceof World world)
                 || world.getEntityByID(entity.getEntityId()) != entity
-                || entity.getDistanceSq(entry.x(), entry.y(), entry.z()) > RECONSIDER_DISTANCE_SQUARED);
+                || entity.getDistanceSq(entry.x(), entry.y(), entry.z())
+                    > EnhancedAiTuning.RECONSIDER_DISTANCE_SQUARED);
         if (target != null && routeStarted && failedNavigation()) reject(target, now);
         int inspected = 0;
         for (var candidate : perception.pickupEntities()) {
-            if (++inspected > MAX_CANDIDATES) break;
+            if (++inspected > EnhancedAiTuning.MAX_CANDIDATES) break;
             if (!failed.contains(candidate) && legal(candidate)) frame.offerTyped(
                 ID,
                 Group.AUTONOMOUS,
                 Kind.PICKUP,
                 candidate.getUniqueID()
                     .toString(),
-                1 / (1 + Math.sqrt(maid.getDistanceSqToEntity(candidate))),
+                EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP / (EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
+                    + Math.sqrt(maid.getDistanceSqToEntity(candidate))),
                 candidate,
                 this::execute);
         }
@@ -84,7 +86,7 @@ public final class EnhancedPickupController {
             && maid.getDistanceSqToEntity(candidate) <= Math.pow(
                 maid.getHomeArea()
                     .restrictionRadius() + 1,
-                2)
+                EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM)
             && maid.getHomeArea()
                 .withinRestriction(
                     MathHelper.floor_double(candidate.posX),
@@ -136,19 +138,30 @@ public final class EnhancedPickupController {
                         reject(selected, actor.worldGameTime());
                         return;
                     }
-                    actor.setEntityWalkAndLook(selected, .6F, 0);
+                    actor.setEntityWalkAndLook(
+                        selected,
+                        EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                        EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
                     navigation.acceptPreflight(point, created, actor.worldGameTime());
                     routeStarted = true;
                     return;
                 }
             }
         }
-        actor.setEntityWalkAndLook(selected, .6F, 0);
+        actor.setEntityWalkAndLook(
+            selected,
+            EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+            EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
     }
 
     private void reject(Entity selected, long now) {
-        failed
-            .record(selected, now + FAILED_RETRY_TICKS, selected.posX, selected.posY, selected.posZ, selected.worldObj);
+        failed.record(
+            selected,
+            now + EnhancedAiTuning.FAILED_RETRY_TICKS,
+            selected.posX,
+            selected.posY,
+            selected.posZ,
+            selected.worldObj);
         rejectedRoutes++;
         target = null;
         routeStarted = false;

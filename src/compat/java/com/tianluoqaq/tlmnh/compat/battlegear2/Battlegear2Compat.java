@@ -8,7 +8,6 @@ public final class Battlegear2Compat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.BATTLEGEAR2;
 
-
     public static final Battlegear2Compat INSTANCE = new Battlegear2Compat();
 
     private Battlegear2Compat() {}

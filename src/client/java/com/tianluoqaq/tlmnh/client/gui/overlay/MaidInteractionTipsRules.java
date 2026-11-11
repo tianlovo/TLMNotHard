@@ -19,7 +19,8 @@ public final class MaidInteractionTipsRules {
         public final String configKey;
 
         Tip(String name, String configKey) {
-            this.translationKey = name.startsWith(ClientOverlayIds.I18N_OVERLAY) ? name : ClientOverlayIds.I18N_OVERLAY_TOUHOU_LITTLE_MAID + name + ClientOverlayIds.ID_TIPS;
+            this.translationKey = name.startsWith(ClientOverlayIds.I18N_OVERLAY) ? name
+                : ClientOverlayIds.I18N_OVERLAY_TOUHOU_LITTLE_MAID + name + ClientOverlayIds.ID_TIPS;
             this.configKey = configKey;
         }
     }

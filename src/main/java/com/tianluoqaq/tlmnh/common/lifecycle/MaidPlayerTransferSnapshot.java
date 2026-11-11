@@ -21,7 +21,7 @@ final class MaidPlayerTransferSnapshot {
     final ItemStack cursor;
     final NBTTagList original;
     private NBTTagList expected;
-    private int slot = -1;
+    private int slot = MaidLifecycleTuning.UNSET_OR_NOT_FOUND;
     private ItemStack before, placed, placedSnapshot;
 
     MaidPlayerTransferSnapshot(EntityPlayer player) {
@@ -38,7 +38,7 @@ final class MaidPlayerTransferSnapshot {
             .copy();
         MaidLifecycleDurability.requirePlayer(player);
         if (selected < 0 || selected >= main.length || !authorized())
-            throw new IllegalStateException("Unknown authoritative player inventory");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_AUTHORITATIVE_PLAYER_INVENTORY);
     }
 
     boolean storage() {
@@ -65,12 +65,13 @@ final class MaidPlayerTransferSnapshot {
     }
 
     NBTTagList plan(int target, ItemStack value) {
-        if (target < 0 || target >= main.length || target > 255)
-            throw new IllegalArgumentException("Unknown native transfer slot");
+        if (target < 0 || target >= main.length || target > MaidLifecycleTuning.UNSIGNED_BYTE_MASK)
+            throw new IllegalArgumentException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_NATIVE_TRANSFER_SLOT);
         var planning = new InventoryPlayer(player);
         if (planning.getClass() != inventory.getClass() || planning.mainInventory.length != main.length
             || planning.armorInventory.length != armor.length)
-            throw new IllegalStateException("Unsupported native transfer inventory layout");
+            throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_UNSUPPORTED_NATIVE_TRANSFER_INVENTORY_LAYOUT);
         planning.mainInventory = copy(main);
         planning.armorInventory = copy(armor);
         planning.currentItem = selected;
@@ -84,11 +85,13 @@ final class MaidPlayerTransferSnapshot {
         before = ItemStack.copyItemStack(main[target]);
         placed = ItemStack.copyItemStack(value);
         placedSnapshot = ItemStack.copyItemStack(placed);
-        if (!unchanged()) throw new IllegalStateException("Player source changed before transfer");
+        if (!unchanged())
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_PLAYER_SOURCE_CHANGED_BEFORE_TRANSFER);
         slot = target;
         inventory.setInventorySlotContents(target, placed);
         inventory.markDirty();
-        if (!applied()) throw new IllegalStateException("Unknown player transfer successor retained");
+        if (!applied()) throw new IllegalStateException(
+            MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_PLAYER_TRANSFER_SUCCESSOR_RETAINED);
     }
 
     boolean applied() {
@@ -103,19 +106,21 @@ final class MaidPlayerTransferSnapshot {
     }
 
     void persist() {
-        if (!applied()) throw new IllegalStateException("Player delivery changed before native save");
+        if (!applied())
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_PLAYER_DELIVERY_CHANGED_BEFORE_NATIVE);
         MaidLifecycleDurability.player(player, expected, selected);
-        if (!applied()) throw new IllegalStateException("Player delivery changed after native save");
+        if (!applied())
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_PLAYER_DELIVERY_CHANGED_AFTER_NATIVE);
     }
 
     void retract() {
         if (slot < 0) return;
         if (!storage() || main[slot] != placed || !ItemStack.areItemStacksEqual(placed, placedSnapshot))
-            throw new IllegalStateException("Unknown player successor cannot be overwritten during retraction");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_PLAYER_SUCCESSOR_CANNOT_BE);
         inventory.setInventorySlotContents(slot, ItemStack.copyItemStack(before));
         inventory.markDirty();
         if (!ItemStack.areItemStacksEqual(main[slot], before))
-            throw new IllegalStateException("Original transfer slot was rewritten during retraction");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_TRANSFER_SLOT_WAS_REWRITTEN);
         MaidLifecycleDurability.player(
             player,
             (NBTTagList) inventory.writeToNBT(new NBTTagList())

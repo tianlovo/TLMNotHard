@@ -43,15 +43,8 @@ public final class ArchitectureBoundaryChecks {
     private static final Set<String> ALLOWED_COMPAT_EDGES = new HashSet<>(
         Arrays.asList("tinkersdefense->tconstruct", "tinkersdefense->battlegear2"));
 
-    private static final List<String> DEFINITION_SUFFIXES = Arrays.asList(
-        "NbtKeys",
-        "Tuning",
-        "Layout",
-        "Protocol",
-        "Ids",
-        "ConfigSpec",
-        "ReflectionSpec",
-        "Diagnostics");
+    private static final List<String> DEFINITION_SUFFIXES = Arrays
+        .asList("NbtKeys", "Tuning", "Layout", "Protocol", "Ids", "ConfigSpec", "ReflectionSpec", "Diagnostics");
 
     private static final Set<String> EXPLICIT_DEFINITION_CLASSES = new HashSet<>(
         Arrays.asList("KnownModIds", "ModIds"));
@@ -76,33 +69,12 @@ public final class ArchitectureBoundaryChecks {
             "Tags#VERSION"));
 
     private static final Set<String> EXACT_ZERO_TOKENS = new HashSet<>(
-        Arrays.asList(
-            "0",
-            "0L",
-            "0l",
-            "0.0",
-            "0.0F",
-            "0.0f",
-            "0.0D",
-            "0.0d",
-            "0F",
-            "0f",
-            "0D",
-            "0d",
-            "0x0",
-            "0X0"));
+        Arrays.asList("0", "0L", "0l", "0.0", "0.0F", "0.0f", "0.0D", "0.0d", "0F", "0f", "0D", "0d", "0x0", "0X0"));
 
     private static final Set<String> EXACT_INT_ONE_TOKENS = new HashSet<>(Arrays.asList("1", "1L", "1l"));
 
-    private static final List<String> UNARY_KEYWORDS = Arrays.asList(
-        "return",
-        "case",
-        "yield",
-        "throw",
-        "else",
-        "assert",
-        "instanceof",
-        "new");
+    private static final List<String> UNARY_KEYWORDS = Arrays
+        .asList("return", "case", "yield", "throw", "else", "assert", "instanceof", "new");
 
     private static final int MAX_CONSTANTS_PER_DEFINITION_FILE = 120;
     private static final int DEFAULT_MAX_BUSINESS_CLASSES_PER_PACKAGE = 12;
@@ -146,22 +118,10 @@ public final class ArchitectureBoundaryChecks {
         verifyPackageCapacity(mainJava, "main", violations);
         verifyPackageCapacity(clientJava, "client", violations);
 
-        verifyDomainDefinitionsAndLiterals(
-            new File(mainJava, "com/tianluoqaq/tlmnh"),
-            projectDir,
-            violations);
-        verifyDomainDefinitionsAndLiterals(
-            new File(clientJava, "com/tianluoqaq/tlmnh"),
-            projectDir,
-            violations);
-        verifyDomainDefinitionsAndLiterals(
-            new File(compatJava, "com/tianluoqaq/tlmnh"),
-            projectDir,
-            violations);
-        verifyDomainDefinitionsAndLiterals(
-            new File(compatClientJava, "com/tianluoqaq/tlmnh"),
-            projectDir,
-            violations);
+        verifyDomainDefinitionsAndLiterals(new File(mainJava, "com/tianluoqaq/tlmnh"), projectDir, violations);
+        verifyDomainDefinitionsAndLiterals(new File(clientJava, "com/tianluoqaq/tlmnh"), projectDir, violations);
+        verifyDomainDefinitionsAndLiterals(new File(compatJava, "com/tianluoqaq/tlmnh"), projectDir, violations);
+        verifyDomainDefinitionsAndLiterals(new File(compatClientJava, "com/tianluoqaq/tlmnh"), projectDir, violations);
 
         if (!violations.isEmpty()) {
             StringBuilder report = new StringBuilder("Architecture boundary check failed (").append(violations.size())
@@ -191,10 +151,7 @@ public final class ArchitectureBoundaryChecks {
         return false;
     }
 
-    private static void verifyFoundationZeroInternalDeps(
-        File foundationDir,
-        File projectDir,
-        List<String> violations) {
+    private static void verifyFoundationZeroInternalDeps(File foundationDir, File projectDir, List<String> violations) {
         for (Path file : walkJavaFiles(foundationDir)) {
             String rel = relPath(projectDir, file);
             String source = stripCommentsAndStrings(readUtf8(file));
@@ -245,8 +202,9 @@ public final class ArchitectureBoundaryChecks {
             String rel = relPath(projectDir, file);
             if (rel.endsWith("/TLMNotHard.java")) continue;
             String source = stripCommentsAndStrings(readUtf8(file));
-            if (source.contains("com.tianluoqaq.tlmnh.TLMNotHard")
-                || Pattern.compile("\\bTLMNotHard\\b").matcher(source).find()) {
+            if (source.contains("com.tianluoqaq.tlmnh.TLMNotHard") || Pattern.compile("\\bTLMNotHard\\b")
+                .matcher(source)
+                .find()) {
                 violations.add(
                     "[Package->TLMNotHard] " + rel + " references TLMNotHard entry class; use ModIds or ModContext");
             }
@@ -403,10 +361,7 @@ public final class ArchitectureBoundaryChecks {
         return n;
     }
 
-    private static void scanDisallowedLiterals(
-        String masked,
-        String codeNoStrings,
-        String rel,
+    private static void scanDisallowedLiterals(String masked, String codeNoStrings, String rel,
         List<String> violations) {
         String[] maskedLines = masked.split("\n", -1);
         String[] noStrLines = codeNoStrings.split("\n", -1);
@@ -449,7 +404,8 @@ public final class ArchitectureBoundaryChecks {
             while (i < nc.length) {
                 char ch = nc[i];
                 boolean prevIdent = i > 0 && Character.isJavaIdentifierPart(nc[i - 1]);
-                if (!prevIdent && (Character.isDigit(ch) || (ch == '.' && i + 1 < nc.length && Character.isDigit(nc[i + 1])))) {
+                if (!prevIdent
+                    && (Character.isDigit(ch) || (ch == '.' && i + 1 < nc.length && Character.isDigit(nc[i + 1])))) {
                     int start = i;
                     if (ch == '0' && i + 1 < nc.length
                         && (nc[i + 1] == 'x' || nc[i + 1] == 'X' || nc[i + 1] == 'b' || nc[i + 1] == 'B')) {
@@ -478,12 +434,8 @@ public final class ArchitectureBoundaryChecks {
         }
     }
 
-    private static boolean isStructuralZeroOrOne(
-        String lineNoStrings,
-        String prevNonEmptyLine,
-        int colStart,
-        int colEnd,
-        String numToken) {
+    private static boolean isStructuralZeroOrOne(String lineNoStrings, String prevNonEmptyLine, int colStart,
+        int colEnd, String numToken) {
         String trimmed = lineNoStrings.trim();
         String before = rtrim(lineNoStrings.substring(0, colStart));
         String after = lineNoStrings.substring(colEnd)
@@ -537,11 +489,11 @@ public final class ArchitectureBoundaryChecks {
             if ("0".equals(numToken) && before.endsWith("[") && after.startsWith("]") && before.contains("new ")) {
                 return true;
             }
-            if ("return".equals(before) && after.startsWith(";")) {
+            if ("return".equals(before.trim()) && after.startsWith(";")) {
                 return true;
             }
-            if (LOCAL_ZERO_INIT_PATTERN.matcher(lineNoStrings.substring(0, colStart)).matches()
-                && (after.startsWith(";") || after.startsWith(","))) {
+            if (LOCAL_ZERO_INIT_PATTERN.matcher(lineNoStrings.substring(0, colStart))
+                .matches() && (after.startsWith(";") || after.startsWith(","))) {
                 return true;
             }
             return false;
@@ -573,19 +525,13 @@ public final class ArchitectureBoundaryChecks {
     }
 
     private static boolean endsWithRelOp(String s) {
-        return s.endsWith("==") || s.endsWith("!=")
-            || s.endsWith("<=")
-            || s.endsWith(">=")
-            || s.endsWith("<")
-            || s.endsWith(">");
+        return s.endsWith("==") || s
+            .endsWith("!=") || s.endsWith("<=") || s.endsWith(">=") || s.endsWith("<") || s.endsWith(">");
     }
 
     private static boolean startsWithRelOp(String s) {
-        return s.startsWith("==") || s.startsWith("!=")
-            || s.startsWith("<=")
-            || s.startsWith(">=")
-            || s.startsWith("<")
-            || s.startsWith(">");
+        return s.startsWith("==") || s
+            .startsWith("!=") || s.startsWith("<=") || s.startsWith(">=") || s.startsWith("<") || s.startsWith(">");
     }
 
     private static String stripTrailingCr(String s) {

@@ -32,21 +32,22 @@ final class MaidRedemptionDelivery {
             var pending = MaidLifecycleData.get(maid.worldObj)
                 .pendingMaid(maid.getUniqueID());
             if (pending.hasNoTags()) return false;
-            if (maid.dimension != pending.getInteger("Dimension")
-                || maid.worldObj.provider.dimensionId != pending.getInteger("Dimension")
-                || !pending.getCompoundTag("Maid")
+            if (maid.dimension != pending.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION)
+                || maid.worldObj.provider.dimensionId != pending.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION)
+                || !pending.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_MAID)
                     .equals(MaidLifecycleDurability.maidSnapshot(maid)))
                 IntegrationGuard.report(
                     Side.SERVER,
-                    "redemption/candidate/" + maid.getUniqueID(),
+                    MaidLifecycleIds.ID_REDEMPTION_CANDIDATE + maid.getUniqueID(),
                     new IllegalStateException(
-                        "Unsettled maid successor remains unavailable; its unknown NBT is not rewritten"),
-                    UUID.fromString(pending.getString("Actor")));
+                        MaidLifecyclePart3Diagnostics.MSG_UNSETTLED_MAID_SUCCESSOR_REMAINS_UNAVAILABLE),
+                    UUID.fromString(pending.getString(MaidLifecyclePart2NbtKeys.KEY_ACTOR)));
             // 拒绝使用不等于取得删除/扣费授权；后者仍须完整快照一致
             return true;
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
-            IntegrationGuard.report(Side.SERVER, "redemption/candidate/" + maid.getUniqueID(), failure);
+            IntegrationGuard
+                .report(Side.SERVER, MaidLifecycleIds.ID_REDEMPTION_CANDIDATE + maid.getUniqueID(), failure);
             return true;
         }
     }
@@ -82,7 +83,7 @@ final class MaidRedemptionDelivery {
             publication.check(world, true);
             ledger.finishRedemption(world, token, true);
             complete = true;
-            world.setEntityState(maid, (byte) 7);
+            world.setEntityState(maid, (byte) MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD_2);
             return MaidLifecycleService.Result.SUCCESS;
         } catch (Exception | LinkageError | AssertionError failure) {
             report(player, token, failure);
@@ -124,27 +125,34 @@ final class MaidRedemptionDelivery {
             MaidRedemptionRecord.validate(intent);
             if (!player.getUniqueID()
                 .toString()
-                .equals(intent.getString("Actor"))
-                || player.worldObj.provider.dimensionId != intent.getInteger("Dimension")) return false;
+                .equals(intent.getString(MaidLifecyclePart2NbtKeys.KEY_ACTOR))
+                || player.worldObj.provider.dimensionId != intent.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION))
+                return false;
             var world = player.worldObj;
             EntityMaid candidate = null;
-            var identity = UUID.fromString(intent.getString("Candidate"));
+            var identity = UUID.fromString(intent.getString(MaidLifecyclePart2NbtKeys.KEY_CANDIDATE));
             // 只读当前世界已经加载的实体，不以未发现推断世界中不存在该候选
             for (Object entity : world.loadedEntityList.toArray())
                 if (entity instanceof EntityMaid maid && identity.equals(maid.getUniqueID())) {
-                    if (candidate != null) throw new IllegalStateException("Duplicate pending maid identity");
+                    if (candidate != null) throw new IllegalStateException(
+                        MaidLifecyclePart3Diagnostics.MSG_DUPLICATE_PENDING_MAID_IDENTITY);
                     candidate = maid;
                 }
             if (candidate == null || !MaidSpawnChecks.present(candidate, world)) return false;
-            var publication = new MaidLifecycleDurability.Publication(candidate, intent.getCompoundTag("Maid"));
+            var publication = new MaidLifecycleDurability.Publication(
+                candidate,
+                intent.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_MAID));
             publication.check(world, true);
             MaidShrineTile shrine = null;
-            if (intent.getBoolean("Shrine")) {
-                int x = (int) Math.floor(intent.getDouble("X")), y = (int) Math.floor(intent.getDouble("Y")),
-                    z = (int) Math.floor(intent.getDouble("Z"));
+            if (intent.getBoolean(MaidLifecyclePart2NbtKeys.KEY_SHRINE)) {
+                int x = (int) Math.floor(intent.getDouble(MaidLifecyclePart2NbtKeys.KEY_X)),
+                    y = (int) Math.floor(intent.getDouble(MaidLifecyclePart2NbtKeys.KEY_Y)),
+                    z = (int) Math.floor(intent.getDouble(MaidLifecyclePart2NbtKeys.KEY_Z));
                 if (!world.getChunkProvider()
-                    .chunkExists(x >> 4, z >> 4) || !(world.getTileEntity(x, y, z) instanceof MaidShrineTile actual))
-                    return false;
+                    .chunkExists(
+                        x >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        z >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
+                    || !(world.getTileEntity(x, y, z) instanceof MaidShrineTile actual)) return false;
                 shrine = actual;
                 if (!shrine.beginRedemptionUse(shrine.getFilm())) return false;
                 claimed = shrine;
@@ -171,7 +179,7 @@ final class MaidRedemptionDelivery {
         IntegrationGuard.throwIfFatal(failure);
         IntegrationGuard.report(
             Side.SERVER,
-            "redemption/" + (token == null ? player.getUniqueID() : token),
+            MaidLifecycleIds.ID_REDEMPTION + (token == null ? player.getUniqueID() : token),
             failure,
             player.getUniqueID());
     }
@@ -197,62 +205,70 @@ final class MaidRedemptionDelivery {
             inventory = player.inventory;
             main = inventory.mainInventory;
             armor = inventory.armorInventory;
-            cursor = data.getCompoundTag("Cursor")
-                .hasNoTags() ? null : ProtectedItemCodec.decode(data.getCompoundTag("Cursor"));
+            cursor = data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_CURSOR)
+                .hasNoTags() ? null
+                    : ProtectedItemCodec.decode(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_CURSOR));
             credential = shrine == null ? player.getCurrentEquippedItem() : null;
         }
 
         static Source capture(EntityPlayer player, ItemStack source, MaidShrineTile shrine, int x, int y, int z) {
             var data = new NBTTagCompound();
-            data.setInteger("Version", 1);
-            data.setString("Stage", "PREPARED");
+            data.setInteger(MaidLifecyclePart2NbtKeys.KEY_VERSION, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_PREPARED);
             data.setString(
-                "Actor",
+                MaidLifecyclePart2NbtKeys.KEY_ACTOR,
                 player.getUniqueID()
                     .toString());
-            data.setInteger("Dimension", player.worldObj.provider.dimensionId);
-            data.setDouble("X", x);
-            data.setDouble("Y", y);
-            data.setDouble("Z", z);
-            data.setBoolean("Shrine", shrine != null);
-            data.setInteger("Metadata", shrine == null ? 0 : player.worldObj.getBlockMetadata(x, y, z));
-            data.setTag("Source", ProtectedItemCodec.encode(source));
+            data.setInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION, player.worldObj.provider.dimensionId);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_X, x);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_Y, y);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_Z, z);
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_SHRINE, shrine != null);
+            data.setInteger(
+                MaidLifecyclePart2NbtKeys.KEY_METADATA,
+                shrine == null ? MaidLifecycleTuning.CORE_INITIAL_VALUE : player.worldObj.getBlockMetadata(x, y, z));
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE, ProtectedItemCodec.encode(source));
             data.setTag(
-                "Cursor",
+                MaidLifecyclePart2NbtKeys.KEY_CURSOR,
                 player.inventory.getItemStack() == null ? new NBTTagCompound()
                     : ProtectedItemCodec.encode(player.inventory.getItemStack()));
             var original = (NBTTagList) player.inventory.writeToNBT(new NBTTagList())
                 .copy();
-            data.setTag("Inventory", original);
-            data.setInteger("Selected", player.inventory.currentItem);
-            data.setFloat("Health", player.getHealth());
-            data.setFloat("Maximum", player.getMaxHealth());
-            data.setBoolean("Creative", player.capabilities.isCreativeMode);
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, original);
+            data.setInteger(MaidLifecyclePart2NbtKeys.KEY_SELECTED, player.inventory.currentItem);
+            data.setFloat(MaidLifecyclePart2NbtKeys.KEY_HEALTH, player.getHealth());
+            data.setFloat(MaidLifecyclePart2NbtKeys.KEY_MAXIMUM, player.getMaxHealth());
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_CREATIVE, player.capabilities.isCreativeMode);
             var tile = new NBTTagCompound();
             if (shrine != null) shrine.writeToNBT(tile);
-            data.setTag("Tile", tile.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_TILE, tile.copy());
             var resultTile = (NBTTagCompound) tile.copy();
-            resultTile.removeTag("StorageItem");
-            data.setTag("ResultTile", resultTile);
+            resultTile.removeTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM);
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE, resultTile);
             var delivered = new NBTTagList();
             for (int i = 0; i < original.tagCount(); i++) {
                 var item = (NBTTagCompound) original.getCompoundTagAt(i)
                     .copy();
-                if (shrine == null && item.getByte("Slot") == player.inventory.currentItem) {
+                if (shrine == null
+                    && item.getByte(MaidLifecyclePart2NbtKeys.KEY_SLOT) == player.inventory.currentItem) {
                     var empty = new ItemStack(MaidResurrectionContent.EMPTY_SLAB).writeToNBT(new NBTTagCompound());
-                    empty.setByte("Slot", item.getByte("Slot"));
+                    empty.setByte(MaidLifecyclePart2NbtKeys.KEY_SLOT, item.getByte(MaidLifecyclePart2NbtKeys.KEY_SLOT));
                     item = empty;
                 }
                 delivered.appendTag(item);
             }
-            data.setTag("ResultInventory", delivered);
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY, delivered);
             return new Source(player, data, shrine);
         }
 
         NBTTagCompound intent(NBTTagCompound maid) {
             var result = (NBTTagCompound) data.copy();
-            result.setString("Candidate", new UUID(maid.getLong("UUIDMost"), maid.getLong("UUIDLeast")).toString());
-            result.setTag("Maid", maid.copy());
+            result.setString(
+                MaidLifecyclePart2NbtKeys.KEY_CANDIDATE,
+                new UUID(
+                    maid.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_MOST),
+                    maid.getLong(MaidLifecyclePart2NbtKeys.KEY_UUID_LEAST)).toString());
+            result.setTag(MaidLifecyclePart2NbtKeys.KEY_MAID, maid.copy());
             MaidRedemptionRecord.validate(result);
             return result;
         }
@@ -260,106 +276,128 @@ final class MaidRedemptionDelivery {
         boolean context() {
             return MaidLifecycleService.canUse(player) && player.worldObj == world
                 && world.provider == provider
-                && player.dimension == data.getInteger("Dimension")
-                && data.getString("Actor")
+                && player.dimension == data.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION)
+                && data.getString(MaidLifecyclePart2NbtKeys.KEY_ACTOR)
                     .equals(
                         player.getUniqueID()
                             .toString())
-                && world.provider.dimensionId == data.getInteger("Dimension")
+                && world.provider.dimensionId == data.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION)
                 && player.inventory == inventory
                 && inventory.mainInventory == main
                 && inventory.armorInventory == armor
-                && inventory.currentItem == data.getInteger("Selected")
+                && inventory.currentItem == data.getInteger(MaidLifecyclePart2NbtKeys.KEY_SELECTED)
                 && ItemStack.areItemStacksEqual(cursor, inventory.getItemStack())
-                && player.capabilities.isCreativeMode == data.getBoolean("Creative")
-                && player.getMaxHealth() == data.getFloat("Maximum")
+                && player.capabilities.isCreativeMode == data.getBoolean(MaidLifecyclePart2NbtKeys.KEY_CREATIVE)
+                && player.getMaxHealth() == data.getFloat(MaidLifecyclePart2NbtKeys.KEY_MAXIMUM)
                 && player.getDistanceSq(
-                    data.getDouble("X") + .5,
-                    data.getDouble("Y") + (shrine == null ? 1 : .5),
-                    data.getDouble("Z") + .5) <= 64;
+                    data.getDouble(MaidLifecyclePart2NbtKeys.KEY_X) + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                    data.getDouble(MaidLifecyclePart2NbtKeys.KEY_Y)
+                        + (shrine == null ? MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+                            : MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR),
+                    data.getDouble(MaidLifecyclePart2NbtKeys.KEY_Z) + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR)
+                    <= MaidLifecycleTuning.CAPTURE_SERVICE_ADMITTED_PARAM;
         }
 
         boolean original() {
-            if (!context() || player.getHealth() != data.getFloat("Health")
-                || !data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
+            if (!context() || player.getHealth() != data.getFloat(MaidLifecyclePart2NbtKeys.KEY_HEALTH)
+                || !data.getTagList(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList())))
                 return false;
             if (shrine != null) {
-                MaidLifecycleDurability.checkShrine(shrine, data.getCompoundTag("Tile"), data.getInteger("Metadata"));
+                MaidLifecycleDurability.checkShrine(
+                    shrine,
+                    data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TILE),
+                    data.getInteger(MaidLifecyclePart2NbtKeys.KEY_METADATA));
                 return true;
             }
             var actual = player.getCurrentEquippedItem();
             return actual != null && actual == credential
-                && ItemStack.areItemStacksEqual(actual, ProtectedItemCodec.decode(data.getCompoundTag("Source")))
+                && ItemStack.areItemStacksEqual(
+                    actual,
+                    ProtectedItemCodec.decode(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE)))
                 && MaidLifecycleService.releaseRequestAllowed(
                     player,
                     actual,
                     actual.copy(),
                     world,
                     inventory.currentItem,
-                    (int) data.getDouble("X"),
-                    (int) data.getDouble("Y"),
-                    (int) data.getDouble("Z"))
+                    (int) data.getDouble(MaidLifecyclePart2NbtKeys.KEY_X),
+                    (int) data.getDouble(MaidLifecyclePart2NbtKeys.KEY_Y),
+                    (int) data.getDouble(MaidLifecyclePart2NbtKeys.KEY_Z))
                 && context()
-                && data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
+                && data.getTagList(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()));
         }
 
         boolean payable() {
             if (!context()) return false;
             var current = inventory.writeToNBT(new NBTTagList());
-            if (!current.equals(data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND))
-                && !current.equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND))) return false;
+            if (!current.equals(data.getTagList(MaidLifecyclePart2NbtKeys.KEY_INVENTORY, Constants.NBT.TAG_COMPOUND))
+                && !current.equals(
+                    data.getTagList(MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY, Constants.NBT.TAG_COMPOUND)))
+                return false;
             float health = player.getHealth();
-            if (health != data.getFloat("Health") && health != paidHealth()) return false;
+            if (health != data.getFloat(MaidLifecyclePart2NbtKeys.KEY_HEALTH) && health != paidHealth()) return false;
             if (shrine != null) {
                 var actual = tile();
-                if (!actual.equals(data.getCompoundTag("Tile")) && !actual.equals(data.getCompoundTag("ResultTile")))
-                    return false;
-                MaidLifecycleDurability.checkShrine(shrine, actual, data.getInteger("Metadata"));
+                if (!actual.equals(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TILE))
+                    && !actual.equals(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE))) return false;
+                MaidLifecycleDurability
+                    .checkShrine(shrine, actual, data.getInteger(MaidLifecyclePart2NbtKeys.KEY_METADATA));
             }
             return true;
         }
 
         float paidHealth() {
-            return shrine != null && !data.getBoolean("Creative") ? .25F : data.getFloat("Health");
+            return shrine != null && !data.getBoolean(MaidLifecyclePart2NbtKeys.KEY_CREATIVE)
+                ? MaidLifecycleTuning.REDEMPTION_DELIVERY_PAID_HEALTH_FACTOR
+                : data.getFloat(MaidLifecyclePart2NbtKeys.KEY_HEALTH);
         }
 
         void pay() {
-            if (!payable()) throw new IllegalStateException("Redemption source changed before costs");
+            if (!payable()) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_REDEMPTION_SOURCE_CHANGED_BEFORE_COSTS);
             if (shrine == null) {
-                if (!data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)
+                if (!data.getTagList(MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY, Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()))) {
                     var actual = player.getCurrentEquippedItem();
-                    if (actual != credential || !ItemStack
-                        .areItemStacksEqual(actual, ProtectedItemCodec.decode(data.getCompoundTag("Source"))))
-                        throw new IllegalStateException("Unknown credential successor must remain intact");
+                    if (actual != credential || !ItemStack.areItemStacksEqual(
+                        actual,
+                        ProtectedItemCodec.decode(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE))))
+                        throw new IllegalStateException(
+                            MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_CREDENTIAL_SUCCESSOR_MUST_REMAIN);
                     inventory.setInventorySlotContents(
                         inventory.currentItem,
                         new ItemStack(MaidResurrectionContent.EMPTY_SLAB));
                 }
             } else {
-                if (data.getCompoundTag("Tile")
-                    .equals(tile())) shrine.consumeUse(ProtectedItemCodec.decode(data.getCompoundTag("Source")));
+                if (data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TILE)
+                    .equals(tile()))
+                    shrine.consumeUse(
+                        ProtectedItemCodec.decode(data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE)));
                 if (player.getHealth() != paidHealth()) player.setHealth(paidHealth());
             }
             inventory.markDirty();
-            if (!settled()) throw new IllegalStateException("Redemption cost callback changed its exact destination");
+            if (!settled())
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_REDEMPTION_COST_CALLBACK_CHANGED_ITS);
             MaidLifecycleDurability.player(
                 player,
-                data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND),
+                data.getTagList(MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY, Constants.NBT.TAG_COMPOUND),
                 inventory.currentItem,
                 shrine == null ? null : paidHealth());
-            if (shrine != null)
-                MaidLifecycleDurability.shrine(shrine, data.getCompoundTag("ResultTile"), data.getInteger("Metadata"));
-            if (!settled()) throw new IllegalStateException("Redemption changed during native cost save");
+            if (shrine != null) MaidLifecycleDurability.shrine(
+                shrine,
+                data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE),
+                data.getInteger(MaidLifecyclePart2NbtKeys.KEY_METADATA));
+            if (!settled()) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_REDEMPTION_CHANGED_DURING_NATIVE_COST);
         }
 
         boolean settled() {
             return context() && player.getHealth() == paidHealth()
-                && data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)
+                && data.getTagList(MaidLifecyclePart2NbtKeys.KEY_RESULT_INVENTORY, Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()))
-                && (shrine == null || data.getCompoundTag("ResultTile")
+                && (shrine == null || data.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_RESULT_TILE)
                     .equals(tile()));
         }
 

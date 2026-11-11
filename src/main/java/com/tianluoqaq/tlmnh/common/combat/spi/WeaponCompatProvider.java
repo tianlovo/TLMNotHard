@@ -17,7 +17,7 @@ public interface WeaponCompatProvider {
     }
 
     default MaidWeaponProfile inspect(ItemStack stack) {
-        return MaidWeaponProfile.unknown("weapon_not_admitted");
+        return MaidWeaponProfile.unknown(CombatSpiIds.ID_WEAPON_NOT_ADMITTED);
     }
 
     default MaidWeaponStrike prepareMelee(EntityMaid maid, ItemStack stack) {

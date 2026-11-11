@@ -20,13 +20,13 @@ public final class DevelopmentAccess {
     }
 
     public static synchronized void install(DevelopmentHooks implementation) {
-        Objects.requireNonNull(implementation, "implementation");
+        Objects.requireNonNull(implementation, CombatDiagnosticIds.ID_IMPLEMENTATION);
         if (implementation == DevelopmentHooks.NONE) {
-            throw new IllegalArgumentException("Cannot install NONE as an active development hook");
+            throw new IllegalArgumentException(CombatDiagnosticDiagnostics.MSG_CANNOT_INSTALL_NONE_AS_AN);
         }
         if (hooks != DevelopmentHooks.NONE && hooks != implementation) {
             throw new IllegalStateException(
-                "DevelopmentHooks already installed: " + hooks.getClass()
+                CombatDiagnosticDiagnostics.MSG_DEVELOPMENTHOOKS_ALREADY_INSTALLED + hooks.getClass()
                     .getName());
         }
         hooks = implementation;

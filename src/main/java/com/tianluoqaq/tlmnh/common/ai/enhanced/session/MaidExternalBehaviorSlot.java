@@ -40,14 +40,14 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
 
     public MaidExternalBehaviorSlot(UUID maidId, int dimensionId, MaidBehaviorProvider provider,
         MaidSessionCallbackScope scope, MaidBehaviorContext context, ResourceCleanup resourceCleanup) {
-        this.maidId = Objects.requireNonNull(maidId, "maidId");
-        this.provider = Objects.requireNonNull(provider, "provider");
-        this.id = Objects.requireNonNull(provider.id(), "provider.id");
-        this.stage = Objects.requireNonNull(provider.stage(), "provider.stage");
-        this.scope = Objects.requireNonNull(scope, "scope");
+        this.maidId = Objects.requireNonNull(maidId, EnhancedSessionIds.ID_MAIDID);
+        this.provider = Objects.requireNonNull(provider, EnhancedSessionIds.ID_PROVIDER);
+        this.id = Objects.requireNonNull(provider.id(), EnhancedSessionIds.ID_PROVIDER_ID);
+        this.stage = Objects.requireNonNull(provider.stage(), EnhancedSessionIds.ID_PROVIDER_STAGE);
+        this.scope = Objects.requireNonNull(scope, EnhancedSessionIds.ID_SCOPE);
         this.offerSink = new MaidExternalOfferSink(id, scope);
-        this.context = Objects.requireNonNull(context, "context");
-        this.resourceCleanup = Objects.requireNonNull(resourceCleanup, "resourceCleanup");
+        this.context = Objects.requireNonNull(context, EnhancedSessionIds.ID_CONTEXT);
+        this.resourceCleanup = Objects.requireNonNull(resourceCleanup, EnhancedSessionIds.ID_RESOURCECLEANUP);
         initializeInstance(dimensionId);
     }
 
@@ -66,12 +66,15 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
                 }
             });
             if (created == null || !id.equals(created.id()) || stage != created.stage()) {
-                fault("create", new IllegalStateException("External module metadata mismatch for provider " + id));
+                fault(
+                    EnhancedSessionIds.ID_CREATE,
+                    new IllegalStateException(
+                        EnhancedSessionDiagnostics.MSG_EXTERNAL_MODULE_METADATA_MISMATCH_FOR + id));
                 return;
             }
             instance = created;
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            fault("create", failure);
+            fault(EnhancedSessionIds.ID_CREATE, failure);
         }
     }
 
@@ -107,14 +110,15 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
         var slice = MaidBehaviorExtensionData.extractModuleTag(tlmnhExtension, id);
         if (slice.blocked) {
             persistenceBlocked = true;
-            ModContext.LOG.warn("Behavior module {} persistent read paused on maid {}: {}", id, maidId, slice.reason);
+            ModContext.LOG
+                .warn(EnhancedSessionDiagnostics.MSG_BEHAVIOR_MODULE_PERSISTENT_READ_PAUSED, id, maidId, slice.reason);
             return;
         }
         persistenceBlocked = false;
         try {
             instance.readPersistentData(slice.tag);
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            fault("readPersistentData", failure);
+            fault(EnhancedSessionIds.ID_READPERSISTENTDATA, failure);
         }
     }
 
@@ -126,7 +130,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
 
     @Override
     public void onPersistenceFault(Throwable cause) {
-        fault("writePersistentData", cause);
+        fault(EnhancedSessionIds.ID_WRITEPERSISTENTDATA, cause);
     }
 
     public void onAsyncCallbackFault(String phaseName, Throwable cause) {
@@ -141,7 +145,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
             instance.offer(context, offerSink);
         } catch (RuntimeException | LinkageError | AssertionError failure) {
             frame.revokeModuleOffers(id);
-            fault("offer", failure);
+            fault(EnhancedSessionIds.ID_OFFER, failure);
         } finally {
             offerSink.clearFrame();
             scope.exit(ticket);
@@ -154,7 +158,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
         try {
             instance.onTargetChanged(context, previousTarget, nextTarget);
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            fault("onTargetChanged", failure);
+            fault(EnhancedSessionIds.ID_ONTARGETCHANGED, failure);
         } finally {
             scope.exit(ticket);
         }
@@ -167,7 +171,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
             try {
                 instance.onDeselected(context, reason);
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                fault("onDeselected", failure);
+                fault(EnhancedSessionIds.ID_ONDESELECTED, failure);
             } finally {
                 scope.exit(ticket);
             }
@@ -182,7 +186,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
         try {
             boundAction.run();
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            fault("execute", failure);
+            fault(EnhancedSessionIds.ID_EXECUTE, failure);
         } finally {
             scope.exit(ticket);
         }
@@ -194,7 +198,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
             try {
                 instance.cancel();
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                fault("cancel", failure);
+                fault(EnhancedSessionIds.ID_CANCEL, failure);
             }
         } finally {
             resourceCleanup.releaseResources();
@@ -213,7 +217,7 @@ public final class MaidExternalBehaviorSlot implements MaidBehaviorExtensionData
         }
         if (firstFault) {
             ModContext.LOG.error(
-                "External maid behavior module {} faulted during {} on maid {} and was isolated",
+                EnhancedSessionDiagnostics.MSG_EXTERNAL_MAID_BEHAVIOR_MODULE_FAULTED,
                 id,
                 phaseName,
                 maidId,

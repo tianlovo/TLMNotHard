@@ -15,7 +15,9 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
     private final DryPlatformFollowActor actor;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
-    private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(0.5F, 2);
+    private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(
+        FaithfulFollowTuning.HALF_FACTOR_F,
+        FaithfulFollowTuning.FOLLOW_CORE_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
     private FollowMoveState moveState = new FollowMoveState();
     private boolean followRunning, ticking, hasTick;
@@ -23,18 +25,19 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
     private int lastEntityTick;
 
     public FollowCoreComponent(EntityMaid maid, DryPlatformFollowActor.Contract contract) {
-        this.maid = Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, FaithfulFollowIds.ID_MAID);
         actor = new DryPlatformFollowActor(maid, contract);
     }
 
     @Override
     public void tick(Token token) {
-        if (ticking) throw new DryPlatformFollowActor.OutsideContractException("component_reentry");
-        if (maid.worldObj == null) throw new DryPlatformFollowActor.OutsideContractException("world_missing");
+        if (ticking) throw new DryPlatformFollowActor.OutsideContractException(FaithfulFollowIds.ID_COMPONENT_REENTRY);
+        if (maid.worldObj == null)
+            throw new DryPlatformFollowActor.OutsideContractException(FaithfulFollowIds.ID_WORLD_MISSING);
         var runtime = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         if (hasTick && lastWorldTick == maid.worldObj.getTotalWorldTime() && lastEntityTick == maid.ticksExisted)
-            throw new DryPlatformFollowActor.OutsideContractException("duplicate_component_tick");
+            throw new DryPlatformFollowActor.OutsideContractException(FaithfulFollowIds.ID_DUPLICATE_COMPONENT_TICK);
         ticking = true;
         try {
             actor.beginFrame(runtime, token);
@@ -47,7 +50,8 @@ public final class FollowCoreComponent implements MaidPolicyRuntime.AfterNavigat
             if (moveState.getStatus() == Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
-                followEndTimestamp = time + 60 + actor.nextWorldInt(1);
+                followEndTimestamp = time + FaithfulFollowTuning.FOLLOW_CORE_FOLLOW_END_TIMESTAMP
+                    + actor.nextWorldInt(FaithfulFollowTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }

@@ -20,8 +20,6 @@ public final class CombatWorldBudget {
         FULL
     }
 
-    public static final int PREPARATIONS_PER_TICK = 8, PREPARATION_TICKS = 6;
-    private static final int REQUEST_TTL = 2, FULL_PER_TICK = 2;
     private static final Map<Object, State> WORLDS = new WeakHashMap<>();
 
     private CombatWorldBudget() {}
@@ -48,11 +46,12 @@ public final class CombatWorldBudget {
         }
         if (r.quota == null || r.quota.tick != now) r.quota = new CombatWorkQuota(now, false, state.ledger);
         if (r.preparing) r.quota.prepare(r.round);
-        int preparationAhead = -1, preparationBefore = -1;
+        int preparationAhead = CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            preparationBefore = CombatBudgetTuning.UNSET_OR_NOT_FOUND;
         if (r.waiting && !r.ready
             && !r.preparing
             && !state.preparations.contains(id)
-            && (preparationBefore = state.preparations.size()) < PREPARATIONS_PER_TICK) {
+            && (preparationBefore = state.preparations.size()) < CombatBudgetTuning.PREPARATIONS_PER_TICK) {
             int ahead = 0;
             for (Request other : state.requests.values()) if (other != r && other.waiting
                 && !other.ready
@@ -60,21 +59,23 @@ public final class CombatWorldBudget {
                 && !state.preparations.contains(other.id)
                 && before(other, r)) ahead++;
             preparationAhead = ahead;
-            if (ahead < PREPARATIONS_PER_TICK - state.preparations.size()) {
+            if (ahead < CombatBudgetTuning.PREPARATIONS_PER_TICK - state.preparations.size()) {
                 r.preparing = true;
                 r.started = now;
-                r.expires = now + PREPARATION_TICKS;
-                r.samples = 0;
+                r.expires = now + CombatBudgetTuning.PREPARATION_TICKS;
+                r.samples = CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED;
                 r.round = ++state.nextRound;
                 state.preparations.add(id);
                 r.quota.prepare(r.round);
             }
         }
-        int affordability = -1, fullAhead = -1, fullBefore = state.full;
+        int affordability = CombatBudgetTuning.UNSET_OR_NOT_FOUND, fullAhead = CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            fullBefore = state.full;
         if (wantsFull && r.ready
-            && (affordability = affordable(r, now, state.ledger) ? 1 : 0) == 1
+            && (affordability = affordable(r, now, state.ledger) ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED) == CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
             && !r.granted(now)
-            && state.full < FULL_PER_TICK) {
+            && state.full < CombatBudgetTuning.FULL_PER_TICK) {
             int ahead = 0;
             for (Request other : state.requests.values()) if (other != r && other.waiting
                 && other.ready
@@ -82,7 +83,7 @@ public final class CombatWorldBudget {
                 && !other.granted(now)
                 && beforeFull(other, r)) ahead++;
             fullAhead = ahead;
-            if (ahead < FULL_PER_TICK - state.full) {
+            if (ahead < CombatBudgetTuning.FULL_PER_TICK - state.full) {
                 state.full++;
                 r.quota.upgrade();
                 state.previousFull.add(r);
@@ -93,21 +94,29 @@ public final class CombatWorldBudget {
             state,
             r,
             now,
-            "HEARTBEAT",
-            wantsFull ? 1 : 0,
-            -1,
+            CombatBudgetIds.KEY_HEARTBEAT,
+            wantsFull ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
             affordability,
             fullAhead,
             fullBefore,
             preparationAhead,
             preparationBefore,
-            -1);
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND);
         return r.quota;
     }
 
     /** 只接收观测方已经计算的覆盖状态，不续期或查询世界 */
     public static void prepared(Object world, UUID id, long now, boolean ready, long oldestCoverage) {
-        prepared(world, id, now, ready, oldestCoverage, 0, 0);
+        prepared(
+            world,
+            id,
+            now,
+            ready,
+            oldestCoverage,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED);
     }
 
     public static void prepared(Object world, UUID id, long now, boolean ready, long oldestCoverage, int friendDebt,
@@ -124,7 +133,20 @@ public final class CombatWorldBudget {
             r.preparing = false;
             state.rotatePreparation(r);
         }
-        trace(world, state, r, now, "PREPARED", -1, ready ? 1 : 0, -1, -1, state.full, -1, -1, -1);
+        trace(
+            world,
+            state,
+            r,
+            now,
+            CombatBudgetIds.KEY_PREPARED,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            ready ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            state.full,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND);
     }
 
     /** 同tick的档位升级只算一个真实采样tick */
@@ -135,7 +157,20 @@ public final class CombatWorldBudget {
             r.sampledAt = now;
             r.samples++;
         }
-        if (r != null) trace(world, state, r, now, "SAMPLED", -1, -1, -1, -1, state.full, -1, -1, round);
+        if (r != null) trace(
+            world,
+            state,
+            r,
+            now,
+            CombatBudgetIds.KEY_SAMPLED,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            state.full,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            round);
     }
 
     public static void completed(Object world, UUID id, long now) {
@@ -149,7 +184,20 @@ public final class CombatWorldBudget {
                 state.rotatePreparation(r);
             }
         }
-        if (r != null) trace(world, state, r, now, "COMPLETED", -1, -1, -1, -1, state.full, -1, -1, -1);
+        if (r != null) trace(
+            world,
+            state,
+            r,
+            now,
+            CombatBudgetIds.KEY_COMPLETED,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            state.full,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND,
+            CombatBudgetTuning.UNSET_OR_NOT_FOUND);
     }
 
     private static void trace(Object world, State state, Request r, long now, String method, int wants, int readyInput,
@@ -157,25 +205,41 @@ public final class CombatWorldBudget {
         long sampledRoundInput) {
         CombatDiagnosticScope scope = CombatDiagnosticScope.current(world);
         if (scope == null) return;
-        var log = scope.log(r, 24);
+        var log = scope.log(r, CombatBudgetTuning.COMBAT_WORK_DOMAIN_PARAM_5);
         if (!log.shouldCapture(now, method)) return;
         int width = CombatWorkQuota.Work.values().length;
-        long[] v = new long[31 + width * 3];
+        long[] v = new long[CombatBudgetTuning.COMBAT_WORLD_DOMAIN_PARAM
+            + width * CombatBudgetTuning.COMBAT_WORLD_LAYOUT_V_OFFSET];
         long[] head = { r.serial, wants, readyInput, affordability, ahead, fullBefore, state.full, r.since, r.order,
             r.fullOrder, r.round, r.started, r.expires, r.sampledAt, r.samples, r.oldestCoverage, r.friendDebt,
-            r.knownFriends, r.debtAt, r.waiting ? 1 : 0, r.ready ? 1 : 0, r.preparing ? 1 : 0,
-            r.quota != null && r.quota.full ? 1 : 0, r.completedAt, r.quota != null && r.quota.preparing ? 1 : 0,
+            r.knownFriends, r.debtAt,
+            r.waiting ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            r.ready ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            r.preparing ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            r.quota != null && r.quota.full ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            r.completedAt,
+            r.quota != null && r.quota.preparing ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
             preparationAhead, preparationBefore, sampledRoundInput, r.quota == null ? Long.MIN_VALUE : r.quota.tick,
             r.fullRequested, r.heartbeat };
-        System.arraycopy(head, 0, v, 0, head.length);
+        System.arraycopy(
+            head,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            v,
+            CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED,
+            head.length);
         int[] used = r.quota == null ? new int[width] : r.quota.counts();
         int[] denied = r.quota == null ? new int[width] : r.quota.denials();
         for (int i = 0; i < width; i++) {
-            v[31 + i] = used[i];
-            v[31 + width + i] = state.ledger.used[i];
-            v[31 + width * 2 + i] = denied[i];
+            v[CombatBudgetTuning.COMBAT_WORLD_DOMAIN_PARAM + i] = used[i];
+            v[CombatBudgetTuning.COMBAT_WORLD_DOMAIN_PARAM + width + i] = state.ledger.used[i];
+            v[CombatBudgetTuning.COMBAT_WORLD_DOMAIN_PARAM + width * CombatBudgetTuning.COMBAT_RANGE_URGENCY_PARAM
+                + i] = denied[i];
         }
-        log.addCaptured(now, method, "-1=NOT_EVALUATED; head31/localUsed15/worldUsed15/localDenied15", v);
+        log.addCaptured(now, method, CombatBudgetDiagnostics.MSG_NOT_EVALUATED_HEAD31_LOCALUSED15_WORLDUSED15, v);
     }
 
     /** 只读取显式QA作用域的缓存，不启动tick或续租 */
@@ -273,8 +337,8 @@ public final class CombatWorldBudget {
         private Diagnostics(State state, long now) {
             boolean active = state != null && state.tick == now;
             tick = now;
-            fullGrants = active ? state.full : 0;
-            requests = state == null ? 0 : state.requests.size();
+            fullGrants = active ? state.full : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED;
+            requests = state == null ? CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED : state.requests.size();
             used = active ? state.ledger.used.clone() : new int[CombatWorkQuota.Work.values().length];
             List<UUID> g = new ArrayList<>(), q = new ArrayList<>(), h = new ArrayList<>(), p = new ArrayList<>(),
                 rd = new ArrayList<>();
@@ -331,19 +395,22 @@ public final class CombatWorldBudget {
             previousFull.clear();
             previousPreparation.clear();
             requests.values()
-                .removeIf(r -> now - r.heartbeat > REQUEST_TTL);
+                .removeIf(r -> now - r.heartbeat > CombatBudgetTuning.REQUEST_TTL);
             tick = now;
-            full = 0;
+            full = CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED;
             ledger = new CombatWorkQuota.Ledger();
             preparations.clear();
             List<Request> ordered = new ArrayList<>(requests.values());
-            ordered.sort((a, b) -> before(a, b) ? -1 : before(b, a) ? 1 : 0);
+            ordered.sort(
+                (a, b) -> before(a, b) ? CombatBudgetTuning.UNSET_OR_NOT_FOUND
+                    : before(b, a) ? CombatBudgetTuning.COMBAT_RANGE_URGENCY_UNIT_STEP
+                        : CombatBudgetTuning.COMBAT_DIAGNOSTIC_DROPPED);
             for (Request r : ordered) {
                 if (r.ready && (!fresh(now, r.oldestCoverage))) {
                     r.ready = false;
                     // READY离开准备档时已轮转；未服务的覆盖过期不能再次把同一请求移到队尾
                 }
-                if (r.preparing && (now >= r.expires || r.samples >= PREPARATION_TICKS)) {
+                if (r.preparing && (now >= r.expires || r.samples >= CombatBudgetTuning.PREPARATION_TICKS)) {
                     r.preparing = false;
                     r.order = nextOrder++;
                 }

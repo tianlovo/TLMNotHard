@@ -21,7 +21,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.OriginalMaidTransfers;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
-import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 public abstract class AbstractMaidContainer extends ContainerMaid {
 
@@ -44,7 +44,7 @@ public abstract class AbstractMaidContainer extends ContainerMaid {
 
     @Override
     protected int modelGuiId() {
-        return CommonProxy.GUI_MAID_ORIGINAL_MODELS;
+        return CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS;
     }
 
     @Override

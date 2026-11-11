@@ -8,7 +8,6 @@ public final class WitcheryCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.WITCHERY;
 
-
     public static final WitcheryCompat INSTANCE = new WitcheryCompat();
 
     private WitcheryCompat() {}

@@ -14,8 +14,8 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 /** 增强返家自行选择步行或有限恢复，不调用原型runner或F日程任务 */
 public final class EnhancedHomeController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("home_return");
-    private static final int RECOVERY_RETRY_TICKS = 40;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_HOME_RETURN);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private long nextRecovery, lastTick = Long.MIN_VALUE, attempts, successes;
@@ -34,8 +34,8 @@ public final class EnhancedHomeController {
                 ID,
                 Group.COMMAND,
                 Kind.HOME,
-                "home:" + home.settings().dimension + ":" + center,
-                1,
+                EnhancedAiIds.ID_HOME + home.settings().dimension + EnhancedAiIds.COLON_DELIMITER + center,
+                EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP,
                 target,
                 this::execute);
         }
@@ -61,12 +61,12 @@ public final class EnhancedHomeController {
         int radius = home.radius();
         var feet = actor.scheduleFeet();
         double dx = (double) target.x - feet.x, dy = (double) target.y - feet.y, dz = (double) target.z - feet.z;
-        int recoveryDistance = radius + 4;
+        int recoveryDistance = radius + EnhancedAiTuning.ENHANCED_HOME_RECOVERY_DISTANCE;
         long now = actor.worldGameTime();
-        if (now < lastTick) nextRecovery = 0;
+        if (now < lastTick) nextRecovery = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         lastTick = now;
         if (dx * dx + dy * dy + dz * dz > (double) recoveryDistance * recoveryDistance && now >= nextRecovery) {
-            nextRecovery = now + RECOVERY_RETRY_TICKS;
+            nextRecovery = now + EnhancedAiTuning.RECOVERY_RETRY_TICKS;
             attempts++;
             double mx = maid.posX, my = maid.posY, mz = maid.posZ;
             float width = maid.width, height = maid.height;
@@ -90,7 +90,10 @@ public final class EnhancedHomeController {
                 return;
             }
         }
-        if (eligible(target)) actor.setPositionWalkAndLook(target, .7F, 1);
+        if (eligible(target)) actor.setPositionWalkAndLook(
+            target,
+            EnhancedAiTuning.ENHANCED_HOME_SET_POSITION_WALK_AND_LOOK_SECOND_FACT,
+            EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP);
     }
 
     public long attempts() {

@@ -22,7 +22,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidEffectDisplay {
 
     public static final MaidEffectDisplay INSTANCE = new MaidEffectDisplay();
-    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(ClientWidgetLayout.EFFECT_DISPLAY_DOMAIN_PARAM);
+    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(
+        ClientWidgetLayout.EFFECT_DISPLAY_DOMAIN_PARAM);
     private final AtomicInteger generation = new AtomicInteger();
 
     private MaidEffectDisplay() {}
@@ -91,7 +92,9 @@ public final class MaidEffectDisplay {
                 if (effect.potionId >= 0 && effect.potionId < Potion.potionTypes.length) {
                     var potion = Potion.potionTypes[effect.potionId];
                     if (potion != null && potion.getName()
-                        .equals(effect.descriptionId)) category = potion.isBadEffect() ? ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL : ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE;
+                        .equals(effect.descriptionId))
+                        category = potion.isBadEffect() ? ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL
+                            : ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE;
                 }
                 resolved.add(
                     new SendEffectMessage.EffectData(

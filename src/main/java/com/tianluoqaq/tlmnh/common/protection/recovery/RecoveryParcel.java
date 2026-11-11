@@ -19,13 +19,13 @@ public final class RecoveryParcel extends Item {
     public static final RecoveryParcel ITEM = new RecoveryParcel();
 
     private RecoveryParcel() {
-        setUnlocalizedName("tlmnh.recovery_parcel");
-        setTextureName("minecraft:paper");
-        setMaxStackSize(1);
+        setUnlocalizedName(ProtectionRecoveryIds.ID_TLMNH_RECOVERY_PARCEL);
+        setTextureName(ProtectionRecoveryIds.ID_MINECRAFT_PAPER);
+        setMaxStackSize(ProtectionRecoveryTuning.MIN_SCHEMA_THRESHOLD);
     }
 
     public static void register() {
-        GameRegistry.registerItem(ITEM, "recovery_parcel");
+        GameRegistry.registerItem(ITEM, ProtectionRecoveryIds.ID_RECOVERY_PARCEL);
     }
 
     @Override
@@ -33,7 +33,8 @@ public final class RecoveryParcel extends Item {
         if (world.isRemote) return stack;
         ItemStack restored = ProtectedItemCodec.restore(stack);
         if (restored == null) {
-            player.addChatMessage(new ChatComponentTranslation("chat.tlmnh.protection.sealed"));
+            player
+                .addChatMessage(new ChatComponentTranslation(ProtectionRecoveryIds.I18N_CHAT_TLMNH_PROTECTION_SEALED));
             return stack;
         }
         return restored;
@@ -42,9 +43,9 @@ public final class RecoveryParcel extends Item {
     @Override
     @SideOnly(Side.CLIENT)
     public void addInformation(ItemStack stack, EntityPlayer player, List lines, boolean advanced) {
-        lines.add(StatCollector.translateToLocal("tooltip.tlmnh.protection.parcel"));
+        lines.add(StatCollector.translateToLocal(ProtectionRecoveryIds.I18N_TOOLTIP_TLMNH_PROTECTION_PARCEL));
         if (stack.hasTagCompound()) lines.add(
             stack.getTagCompound()
-                .getString("Reason"));
+                .getString(ProtectionRecoveryIds.KEY_REASON));
     }
 }

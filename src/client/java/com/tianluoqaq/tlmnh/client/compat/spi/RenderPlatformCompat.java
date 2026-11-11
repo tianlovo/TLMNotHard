@@ -27,7 +27,8 @@ public interface RenderPlatformCompat {
 
     default int matrixDepth(int compatibilityName) {
         int depth = GL11.glGetInteger(compatibilityName);
-        if (depth < ClientCompatSpiTuning.MIN_DEPTH_THRESHOLD || depth > ClientCompatSpiTuning.MAX_DEPTH_THRESHOLD) throw new IllegalStateException(ClientCompatSpiDiagnostics.MSG_INVALID_NATIVE_MATRIX_STACK_DEPTH + depth);
+        if (depth < ClientCompatSpiTuning.MIN_DEPTH_THRESHOLD || depth > ClientCompatSpiTuning.MAX_DEPTH_THRESHOLD)
+            throw new IllegalStateException(ClientCompatSpiDiagnostics.MSG_INVALID_NATIVE_MATRIX_STACK_DEPTH + depth);
         return depth;
     }
 

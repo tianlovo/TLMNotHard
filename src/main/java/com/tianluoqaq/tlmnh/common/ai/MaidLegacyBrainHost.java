@@ -16,6 +16,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.aquatic.MaidBreathController;
 import com.tianluoqaq.tlmnh.common.ai.budget.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.combat.AiCombatTuning;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidStrafingState;
@@ -35,6 +36,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
@@ -60,7 +62,7 @@ final class MaidLegacyBrainHost {
     final MaidBreathController breath;
     final MaidBoundedPathPlanner planner = new MaidBoundedPathPlanner(true);
     final MaidBoundedPathPlanner combatPlanner = new MaidBoundedPathPlanner(true);
-    private final MaidTargetMemory targetMemory = new MaidTargetMemory(MaidCombatController.HIDDEN_TIMEOUT);
+    private final MaidTargetMemory targetMemory = new MaidTargetMemory(AiCombatTuning.HIDDEN_TIMEOUT);
     private final MaidIntentArbiter ordinaryArbiter = new MaidIntentArbiter();
     private Kind ordinaryIntent;
     private int ordinaryOffers;
@@ -128,7 +130,7 @@ final class MaidLegacyBrainHost {
     }
 
     boolean offeredOrdinaryIntent(Kind kind) {
-        return (ordinaryOffers & 1 << kind.ordinal()) != 0;
+        return (ordinaryOffers & MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD << kind.ordinal()) != 0;
     }
 
     boolean applyCombatMovement() {
@@ -201,7 +203,8 @@ final class MaidLegacyBrainHost {
 
     void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
         var frame = new MaidIntentFrame(context, token, maid.worldObj.getTotalWorldTime());
-        if (home.wantsReturn()) frame.offer(Group.COMMAND, Kind.HOME, "home", 1, null);
+        if (home.wantsReturn()) frame
+            .offer(Group.COMMAND, Kind.HOME, MaidAiIds.ID_HOME, MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD, null);
         var owner = ownerSensor.findOwner();
         var lifeOptions = permitted ? life.prepareIntents(context, token) : Collections.<MaidLifeIntent>emptyList();
         // 合法生活保留现有委托范围，不用5格跟随起距截断8格食物活动
@@ -217,14 +220,14 @@ final class MaidLegacyBrainHost {
             && !maid.hasPose(MaidPose.SLEEPING)
             && maid.getAttackTarget() == null) {
             double distance = maid.getDistanceSqToEntity(owner);
-            double threshold = actionRunner.getOwner() == Owner.FOLLOW ? MaidFollowController.STOP_DISTANCE_SQ
-                : MaidFollowController.START_DISTANCE_SQ;
-            if (distance > threshold && distance <= MaidFollowController.MAX_DISTANCE_SQ) frame.offer(
+            double threshold = actionRunner.getOwner() == Owner.FOLLOW ? MaidAiTuning.STOP_DISTANCE_SQ
+                : MaidAiTuning.START_DISTANCE_SQ;
+            if (distance > threshold && distance <= MaidAiTuning.MAX_DISTANCE_SQ) frame.offer(
                 Group.COMMAND,
                 Kind.FOLLOW,
                 owner.getUniqueID()
                     .toString(),
-                1,
+                MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD,
                 null);
         }
         if (permitted) {
@@ -234,13 +237,13 @@ final class MaidLegacyBrainHost {
                 frame.offer(
                     bed ? Group.CARE : Group.AUTONOMOUS,
                     bed ? Kind.SLEEP : Kind.SNACK,
-                    candidate.getDimension() + ":"
+                    candidate.getDimension() + MaidAiIds.COLON_DELIMITER
                         + candidate.getX()
-                        + ":"
+                        + MaidAiIds.COLON_DELIMITER
                         + candidate.getY()
-                        + ":"
+                        + MaidAiIds.COLON_DELIMITER
                         + candidate.getZ()
-                        + ":"
+                        + MaidAiIds.COLON_DELIMITER
                         + intent.getAction(),
                     proximity(intent.getDistanceSq()),
                     intent);
@@ -256,10 +259,13 @@ final class MaidLegacyBrainHost {
         ordinaryOffers = frame.kindMask();
         var selected = ordinaryArbiter.choose(frame);
         ordinaryIntent = selected == null ? null : selected.kind;
-        String state = selected == null ? "none"
-            : selected.kind + ":" + selected.target + ":" + ordinaryArbiter.reason();
+        String state = selected == null ? MaidAiIds.ID_NONE
+            : selected.kind + MaidAiIds.COLON_DELIMITER
+                + selected.target
+                + MaidAiIds.COLON_DELIMITER
+                + ordinaryArbiter.reason();
         if (!state.equals(lastIntentState)) {
-            telemetry.state("ordinary_intent", selected == null ? "" : selected.target, state);
+            telemetry.state(MaidAiIds.ID_ORDINARY_INTENT, selected == null ? "" : selected.target, state);
             lastIntentState = state;
         }
         boolean living = selected != null && (selected.kind == Kind.SLEEP || selected.kind == Kind.SNACK);
@@ -279,7 +285,8 @@ final class MaidLegacyBrainHost {
     }
 
     private static double proximity(double distanceSq) {
-        return 1 / (1 + Math.sqrt(Math.max(0, distanceSq)));
+        return MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD / (MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD
+            + Math.sqrt(Math.max(MaidAiTuning.NAVIGATION_INITIAL_VALUE, distanceSq)));
     }
 
     private final class CombatActor implements MaidCombatController.Actor {
@@ -302,7 +309,7 @@ final class MaidLegacyBrainHost {
                 && maid.getDistanceSqToEntity(owner) >= area.radius() * area.radius();
             strafing.tick(
                 Math.sqrt(distanceSq()),
-                16,
+                MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM,
                 boundary,
                 () -> maid.getRNG()
                     .nextFloat());
@@ -332,12 +339,15 @@ final class MaidLegacyBrainHost {
             float forward = strafing.forward(), strafe = strafing.strafe();
             if (!safeStep(forward, strafe)) {
                 // 现代 MoveControl 对不可走侧向退回正前方；前方也不可走时保留原地
-                forward = safeStep(1, 0) ? 1 : 0;
-                strafe = 0;
+                forward = safeStep(
+                    MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD,
+                    MaidAiTuning.NAVIGATION_INITIAL_VALUE) ? MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD
+                        : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+                strafe = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             }
             maid.setAIMoveSpeed(
                 (float) maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
-                    .getAttributeValue() * .25F);
+                    .getAttributeValue() * MaidAiTuning.LEGACY_BRAIN_APPLY_MOVEMENT_FACTOR);
             maid.moveForward = forward;
             maid.moveStrafing = strafe;
             return true;
@@ -345,11 +355,11 @@ final class MaidLegacyBrainHost {
 
         private boolean safeStep(float forward, float strafe) {
             if (forward == 0 && strafe == 0) return true;
-            double yaw = maid.rotationYaw * Math.PI / 180;
-            double dx = (strafe * Math.cos(yaw) - forward * Math.sin(yaw)) * .5;
-            double dz = (forward * Math.cos(yaw) + strafe * Math.sin(yaw)) * .5;
+            double yaw = maid.rotationYaw * Math.PI / MaidAiTuning.HALF_TURN_DEGREES;
+            double dx = (strafe * Math.cos(yaw) - forward * Math.sin(yaw)) * MaidAiTuning.HOME_CONTROLLER_DISTANCE;
+            double dz = (forward * Math.cos(yaw) + strafe * Math.sin(yaw)) * MaidAiTuning.HOME_CONTROLLER_DISTANCE;
             var box = maid.boundingBox.copy()
-                .offset(dx, 0, dz);
+                .offset(dx, MaidAiTuning.NAVIGATION_INITIAL_VALUE, dz);
             if (!maid.getHomeArea()
                 .contains(maid.posX + dx, maid.posY, maid.posZ + dz)) return false;
             for (int x = MathHelper.floor_double(box.minX); x <= MathHelper.floor_double(box.maxX); x++)
@@ -366,13 +376,16 @@ final class MaidLegacyBrainHost {
                 && !maid.worldObj.getCollidingBoundingBoxes(
                     maid,
                     box.copy()
-                        .offset(0, -.6, 0))
+                        .offset(
+                            MaidAiTuning.NAVIGATION_INITIAL_VALUE,
+                            MaidAiTuning.LEGACY_BRAIN_OFFSET_SECOND_FACTOR,
+                            MaidAiTuning.NAVIGATION_INITIAL_VALUE))
                     .isEmpty();
         }
 
         private void forgetOwner() {
             owner = null;
-            nextOwnerScan = 0;
+            nextOwnerScan = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
         }
 
         @Override
@@ -392,12 +405,12 @@ final class MaidLegacyBrainHost {
             if (maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? !MaidBowAttack.hasBow(maid) || !bow.hasAmmunition()
                 : !MaidCombatTargeting.hasMeleeWeapon(maid)) return MaidCombatController.Status.NO_WEAPON;
             if (coordinator.decisionTick() >= nextOwnerScan) {
-                nextOwnerScan = coordinator.decisionTick() + MaidCombatController.SCAN_INTERVAL;
+                nextOwnerScan = coordinator.decisionTick() + AiCombatTuning.SCAN_INTERVAL;
                 owner = ownerSensor.findOwner();
             }
             if (!area.enabled() && !MaidCombatTargeting.validOwner(maid, owner))
                 return MaidCombatController.Status.NO_OWNER;
-            if (!area.enabled() && maid.getDistanceSqToEntity(owner) > MaidCombatTargeting.OWNER_RADIUS_SQ)
+            if (!area.enabled() && maid.getDistanceSqToEntity(owner) > AiCombatTuning.OWNER_RADIUS_SQ)
                 return MaidCombatController.Status.HARD_STOP;
             return null;
         }
@@ -414,12 +427,16 @@ final class MaidLegacyBrainHost {
             EntityLivingBase closest = null;
             double distance = Double.MAX_VALUE;
             boolean recording = telemetry.isEnabled();
-            long started = recording ? System.nanoTime() : 0;
-            var candidates = maid.worldObj
-                .getEntitiesWithinAABB(EntityLivingBase.class, maid.boundingBox.expand(16, 8, 16));
+            long started = recording ? System.nanoTime() : MaidAiTuning.NAVIGATION_INITIAL_VALUE;
+            var candidates = maid.worldObj.getEntitiesWithinAABB(
+                EntityLivingBase.class,
+                maid.boundingBox.expand(
+                    MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM,
+                    MaidAiTuning.LEGACY_BRAIN_EXPAND_SECOND_PARAM,
+                    MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM));
             int inspected = 0;
             for (Object value : candidates) {
-                if (++inspected > 64) break;
+                if (++inspected > MaidAiTuning.MAX_INSPECTED_THRESHOLD) break;
                 if (value instanceof EntityLivingBase candidate && usable(candidate)) {
                     double candidateDistance = maid.getDistanceSqToEntity(candidate);
                     if (candidateDistance < distance) {
@@ -429,11 +446,13 @@ final class MaidLegacyBrainHost {
                 }
             }
             telemetry.scan(
-                "combat_targets",
+                MaidAiIds.ID_COMBAT_TARGETS,
                 candidates.size(),
-                Math.min(inspected, 64),
-                "native_aabb_returned_list;partial=" + (candidates.size() > Math.min(inspected, 64)));
-            if (recording) telemetry.work("combat_targets", WorkComponent.SENSOR, System.nanoTime() - started);
+                Math.min(inspected, MaidAiTuning.MAX_INSPECTED_THRESHOLD),
+                MaidAiIds.ID_NATIVE_AABB_RETURNED_LIST_PARTIAL
+                    + (candidates.size() > Math.min(inspected, MaidAiTuning.MAX_INSPECTED_THRESHOLD)));
+            if (recording)
+                telemetry.work(MaidAiIds.ID_COMBAT_TARGETS, WorkComponent.SENSOR, System.nanoTime() - started);
             return closest != null && adopt(closest);
         }
 
@@ -441,16 +460,20 @@ final class MaidLegacyBrainHost {
             if (candidate == null) return false;
             if (candidate.getUniqueID()
                 .equals(ignoredTarget) && coordinator.decisionTick() < ignoreUntil) {
-                telemetry.candidate("combat", candidate, false, "temporarily_ignored");
+                telemetry.candidate(MaidAiIds.ID_COMBAT, candidate, false, MaidAiIds.ID_TEMPORARILY_IGNORED);
                 return false;
             }
             if (!MaidCombatTargeting.canAttack(maid, owner, candidate)) {
-                telemetry.candidate("combat", candidate, false, "target_filter");
+                telemetry.candidate(MaidAiIds.ID_COMBAT, candidate, false, MaidAiIds.ID_TARGET_FILTER);
                 return false;
             }
             boolean visible = maid.getEntitySenses()
                 .canSee(candidate);
-            telemetry.candidate("combat", candidate, visible, visible ? "visible" : "unseen");
+            telemetry.candidate(
+                MaidAiIds.ID_COMBAT,
+                candidate,
+                visible,
+                visible ? MaidAiIds.ID_VISIBLE : MaidAiIds.ID_UNSEEN);
             return visible;
         }
 
@@ -459,8 +482,10 @@ final class MaidLegacyBrainHost {
             target = candidate;
             selectedTask = maid.getTask();
             maid.setAttackTarget(candidate);
-            telemetry
-                .state("combat_target_selected", MaidTelemetryChannel.id(candidate), "task=" + selectedTask.getId());
+            telemetry.state(
+                MaidAiIds.ID_COMBAT_TARGET_SELECTED,
+                MaidTelemetryChannel.id(candidate),
+                MaidAiIds.ID_TASK + selectedTask.getId());
             return true;
         }
 
@@ -503,7 +528,7 @@ final class MaidLegacyBrainHost {
 
         @Override
         public double reachSq() {
-            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? MaidBowAttack.RANGE_SQ
+            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? MaidCombatTuning.RANGE_SQ
                 : MaidCombatTargeting.meleeReachSq(maid, target);
         }
 
@@ -542,7 +567,7 @@ final class MaidLegacyBrainHost {
                     observation.getX(),
                     observation.getEyeY(),
                     observation.getZ(),
-                    30,
+                    MaidAiTuning.LEGACY_BRAIN_LOOK_AT_TARGET_PARAM,
                     maid.getVerticalFaceSpeed());
         }
 
@@ -564,7 +589,9 @@ final class MaidLegacyBrainHost {
             double dx = observation.getX() - maid.posX, dy = observation.getFootY() - maid.posY,
                 dz = observation.getZ() - maid.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            double fraction = distance > 16 ? 16 / distance : 1;
+            double fraction = distance > MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM
+                ? MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM / distance
+                : MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD;
             var result = combatPlanner.request(
                 maid,
                 maid.posX + dx * fraction,
@@ -607,7 +634,8 @@ final class MaidLegacyBrainHost {
 
         @Override
         public int attackInterval() {
-            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? 2 : MaidCombatController.ATTACK_INTERVAL;
+            return maid.getCombatModeTask() == MaidTask.RANGED_ATTACK ? MaidAiTuning.LEGACY_BRAIN_ATTACK_INTERVAL_PARAM
+                : AiCombatTuning.ATTACK_INTERVAL;
         }
 
         @Override
@@ -616,7 +644,7 @@ final class MaidLegacyBrainHost {
             if (target != null) {
                 if (suppressTarget) {
                     ignoredTarget = target.getUniqueID();
-                    ignoreUntil = coordinator.decisionTick() + 100;
+                    ignoreUntil = coordinator.decisionTick() + MaidAiTuning.LEGACY_BRAIN_IGNORE_UNTIL;
                 }
                 if (maid.getAttackTarget() == target) maid.setAttackTarget(null);
             }
@@ -744,7 +772,10 @@ final class MaidLegacyBrainHost {
         public void lookAtOwner() {
             if (!controlValid()) return;
             maid.getLookHelper()
-                .setLookPositionWithEntity(owner, 10.0F, maid.getVerticalFaceSpeed());
+                .setLookPositionWithEntity(
+                    owner,
+                    MaidAiTuning.LEGACY_BRAIN_SET_LOOK_POSITION_WITH_ENTITY_SECOND_FA,
+                    maid.getVerticalFaceSpeed());
         }
 
         @Override
@@ -758,7 +789,9 @@ final class MaidLegacyBrainHost {
             if (!controlValid() || !ownerValid()) return PathResult.UNREACHABLE;
             double dx = ownerX() - maid.posX, dy = ownerY() - maid.posY, dz = ownerZ() - maid.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            double fraction = distance > 16 ? 16 / distance : 1;
+            double fraction = distance > MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM
+                ? MaidAiTuning.HOME_CONTROLLER_MIN_SECOND_PARAM / distance
+                : MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD;
             double x = maid.posX + dx * fraction, y = maid.posY + dy * fraction, z = maid.posZ + dz * fraction;
             var result = planner.request(maid, x, y, z, LegacyBrainTuning.FOLLOW_MOVE_SPEED_MODIFIER);
             if (result != PathResult.STARTED) return result;

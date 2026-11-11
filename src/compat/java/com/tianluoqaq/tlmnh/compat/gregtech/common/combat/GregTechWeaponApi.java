@@ -42,17 +42,56 @@ final class GregTechWeaponApi {
         nullMaterial = publicField(materials, GregTechCombatIds.ID_NULL, materials, true);
         var id = publicField(metadata, GregTechCombatIds.KEY_ID, int.class, false);
         knifeMetadata = id.getInt(publicField(metadata, GregTechCombatIds.KEY_KNIFE, metadata, true).get(null));
-        butcheryMetadata = id.getInt(publicField(metadata, GregTechCombatIds.KEY_BUTCHERYKNIFE, metadata, true).get(null));
+        butcheryMetadata = id
+            .getInt(publicField(metadata, GregTechCombatIds.KEY_BUTCHERYKNIFE, metadata, true).get(null));
         toolStats = publicMethod(generated, GregTechCombatIds.ID_GETTOOLSTATS, statsType, false, ItemStack.class);
-        electricStats = publicMethod(generated, GregTechCombatIds.ID_GETELECTRICSTATS, Long[].class, false, ItemStack.class);
-        combatDamage = publicMethod(generated, GregTechCombatIds.ID_GETTOOLCOMBATDAMAGE, float.class, false, ItemStack.class);
-        maximumDamage = publicMethod(generated, GregTechCombatIds.ID_GETTOOLMAXDAMAGE, long.class, true, ItemStack.class);
+        electricStats = publicMethod(
+            generated,
+            GregTechCombatIds.ID_GETELECTRICSTATS,
+            Long[].class,
+            false,
+            ItemStack.class);
+        combatDamage = publicMethod(
+            generated,
+            GregTechCombatIds.ID_GETTOOLCOMBATDAMAGE,
+            float.class,
+            false,
+            ItemStack.class);
+        maximumDamage = publicMethod(
+            generated,
+            GregTechCombatIds.ID_GETTOOLMAXDAMAGE,
+            long.class,
+            true,
+            ItemStack.class);
         currentDamage = publicMethod(generated, GregTechCombatIds.ID_GETTOOLDAMAGE, long.class, true, ItemStack.class);
-        primaryMaterial = publicMethod(generated, GregTechCombatIds.ID_GETPRIMARYMATERIAL, materials, true, ItemStack.class);
-        damageTool = publicMethod(generated, GregTechCombatIds.ID_DODAMAGE, boolean.class, false, ItemStack.class, long.class);
-        forEachBehavior = publicMethod(base, GregTechCombatIds.ID_FOREACHBEHAVIOR, boolean.class, false, ItemStack.class, Predicate.class);
+        primaryMaterial = publicMethod(
+            generated,
+            GregTechCombatIds.ID_GETPRIMARYMATERIAL,
+            materials,
+            true,
+            ItemStack.class);
+        damageTool = publicMethod(
+            generated,
+            GregTechCombatIds.ID_DODAMAGE,
+            boolean.class,
+            false,
+            ItemStack.class,
+            long.class);
+        forEachBehavior = publicMethod(
+            base,
+            GregTechCombatIds.ID_FOREACHBEHAVIOR,
+            boolean.class,
+            false,
+            ItemStack.class,
+            Predicate.class);
         entityAttackCost = publicMethod(statsType, GregTechCombatIds.ID_GETTOOLDAMAGEPERENTITYATTACK, int.class, false);
-        hurtResistance = publicMethod(statsType, GregTechCombatIds.ID_GETHURTRESISTANCETIME, int.class, false, int.class, Entity.class);
+        hurtResistance = publicMethod(
+            statsType,
+            GregTechCombatIds.ID_GETHURTRESISTANCETIME,
+            int.class,
+            false,
+            int.class,
+            Entity.class);
         damageSource = publicMethod(
             statsType,
             GregTechCombatIds.ID_GETDAMAGESOURCE,
@@ -139,7 +178,8 @@ final class GregTechWeaponApi {
         throws NoSuchFieldException {
         var field = owner.getField(name);
         if (!Modifier.isPublic(field.getModifiers()) || Modifier.isStatic(field.getModifiers()) != isStatic
-            || field.getType() != expected) throw new NoSuchFieldException(GregTechCombatDiagnostics.MSG_UNEXPECTED_GREGTECH_PUBLIC_FIELD + name);
+            || field.getType() != expected)
+            throw new NoSuchFieldException(GregTechCombatDiagnostics.MSG_UNEXPECTED_GREGTECH_PUBLIC_FIELD + name);
         return field;
     }
 
@@ -156,7 +196,9 @@ final class GregTechWeaponApi {
         try {
             return field.get(receiver);
         } catch (IllegalAccessException failure) {
-            throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_PUBLIC_FIELD_BECAME_INACCESSIBLE, failure);
+            throw new IllegalStateException(
+                GregTechCombatDiagnostics.MSG_GREGTECH_PUBLIC_FIELD_BECAME_INACCESSIBLE,
+                failure);
         }
     }
 
@@ -170,7 +212,9 @@ final class GregTechWeaponApi {
             if (cause instanceof Error error) throw error;
             throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_PUBLIC_API_INVOCATION_FAILED, cause);
         } catch (IllegalAccessException failure) {
-            throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_PUBLIC_METHOD_BECAME_INACCESSIBLE, failure);
+            throw new IllegalStateException(
+                GregTechCombatDiagnostics.MSG_GREGTECH_PUBLIC_METHOD_BECAME_INACCESSIBLE,
+                failure);
         }
     }
 
@@ -182,7 +226,9 @@ final class GregTechWeaponApi {
             try {
                 return new GregTechWeaponApi();
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(GregTechCombatDiagnostics.MSG_SUPPORTED_GREGTECH_PUBLIC_WEAPON_API, failure);
+                throw new IllegalStateException(
+                    GregTechCombatDiagnostics.MSG_SUPPORTED_GREGTECH_PUBLIC_WEAPON_API,
+                    failure);
             }
         }
     }

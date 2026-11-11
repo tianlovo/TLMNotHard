@@ -16,8 +16,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 已核提供方会保留失败旧快照；先沿其公开flush完成失败重排，之后才能原子写新账本 */
 public final class HodgepodgeWorldDataBarrier {
 
-
-
     private static volatile Bridge bridge;
 
     private HodgepodgeWorldDataBarrier() {}
@@ -53,13 +51,15 @@ public final class HodgepodgeWorldDataBarrier {
         synchronized (HodgepodgeWorldDataBarrier.class) {
             if (bridge != null) return bridge;
             try {
-                if (!HodgepodgeStorageIds.FINGERPRINT.equals(DependencyFingerprint.mod(HodgepodgeStorageIds.ID_HODGEPODGE)))
-                    throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_UNVERIFIED_NATIVE_WORLD_DATA_SAVER);
+                if (!HodgepodgeStorageIds.FINGERPRINT
+                    .equals(DependencyFingerprint.mod(HodgepodgeStorageIds.ID_HODGEPODGE)))
+                    throw new IllegalStateException(
+                        HodgepodgeStorageDiagnostics.MSG_UNVERIFIED_NATIVE_WORLD_DATA_SAVER);
                 var type = Class.forName(HodgepodgeStorageIds.TARGET_CLASS_WORLD_DATA_SAVER);
                 var source = type.getProtectionDomain()
                     .getCodeSource();
-                if (source == null
-                    || !HodgepodgeStorageIds.FINGERPRINT.equals(DependencyFingerprint.source(sourceFile(source.getLocation()), HodgepodgeStorageIds.ID_2_7_221)))
+                if (source == null || !HodgepodgeStorageIds.FINGERPRINT.equals(
+                    DependencyFingerprint.source(sourceFile(source.getLocation()), HodgepodgeStorageIds.ID_2_7_221)))
                     throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_WORLD_DATA_SAVER_CLASS_DOES);
                 var instance = type.getField(HodgepodgeStorageNbtKeys.KEY_INSTANCE);
                 var flush = type.getMethod(HodgepodgeStorageIds.ID_FLUSH);
@@ -76,7 +76,9 @@ public final class HodgepodgeWorldDataBarrier {
             } catch (Exception | LinkageError | AssertionError failure) {
                 IntegrationGuard.throwIfFatal(failure);
                 IntegrationGuard.report(Side.SERVER, HodgepodgeStorageIds.KEY, failure);
-                throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_CANNOT_COORDINATE_NATIVE_LIFECYCLE_PERSISTENCE, failure);
+                throw new IllegalStateException(
+                    HodgepodgeStorageDiagnostics.MSG_CANNOT_COORDINATE_NATIVE_LIFECYCLE_PERSISTENCE,
+                    failure);
             }
         }
     }
@@ -92,7 +94,8 @@ public final class HodgepodgeWorldDataBarrier {
         if (!HodgepodgeStorageIds.ID_FILE.equals(location.getProtocol()))
             throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_WORLD_DATA_SAVER_CODESOURCE_MUST);
         var file = new File(location.toURI()).getCanonicalFile();
-        if (!file.isFile()) throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_WORLD_DATA_SAVER_CODESOURCE_IS);
+        if (!file.isFile())
+            throw new IllegalStateException(HodgepodgeStorageDiagnostics.MSG_WORLD_DATA_SAVER_CODESOURCE_IS);
         return file;
     }
 

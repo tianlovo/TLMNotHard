@@ -57,12 +57,14 @@ import com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatNbtKeys;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityTuning;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions;
 import com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation;
@@ -72,6 +74,7 @@ import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.MaidPickupService;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidMealController;
@@ -83,9 +86,9 @@ import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.runtime.MaidBehaviorProtection;
-import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 import com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState;
 
@@ -394,7 +397,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     public void handleHealthUpdate(byte state) {
         if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);
         else if (state == 46) MaidTeleportParticles.show(this);
-        else if (state == MaidSnowballAnimation.STATUS) snowballAnimation.start(this);
+        else if (state == MaidEntityTuning.STATUS) snowballAnimation.start(this);
         else super.handleHealthUpdate(state);
     }
 
@@ -731,7 +734,13 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
                 getNavigator().clearPathEntity();
                 setAttackTarget(null);
             } else {
-                player.openGui(ModContext.modInstance(), CommonProxy.GUI_MAID_ORIGINAL, worldObj, getEntityId(), 0, 0);
+                player.openGui(
+                    ModContext.modInstance(),
+                    CommonProxyProtocol.GUI_MAID_ORIGINAL,
+                    worldObj,
+                    getEntityId(),
+                    0,
+                    0);
             }
         }
         return true;
@@ -969,12 +978,12 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     /** 原版背包第六格的显示副本，随实体元数据同步给全部追踪玩家 */
     public ItemStack getBackpackShowItem() {
         return worldObj.isRemote ? dataWatcher.getWatchableObjectItemStack(DATA_BACK_ITEM)
-            : inventory.getStackInSlot(MaidInventory.BACKPACK_SHOW_SLOT);
+            : inventory.getStackInSlot(MaidInventoryLayout.BACKPACK_SHOW_SLOT);
     }
 
     public void syncBackpackShowItem() {
         if (worldObj == null || worldObj.isRemote || inventory == null) return;
-        var actual = inventory.getStackInSlot(MaidInventory.BACKPACK_SHOW_SLOT);
+        var actual = inventory.getStackInSlot(MaidInventoryLayout.BACKPACK_SHOW_SLOT);
         if (!ItemStack.areItemStacksEqual(actual, dataWatcher.getWatchableObjectItemStack(DATA_BACK_ITEM)))
             dataWatcher.updateObject(DATA_BACK_ITEM, actual == null ? null : actual.copy());
     }
@@ -1057,7 +1066,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         attackSettings.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
         tag.setTag(
-            RecoveryStore.TAG,
+            ProtectionRecoveryNbtKeys.TAG,
             inventory.recovery()
                 .write());
         var equipment = new NBTTagList();
@@ -1103,13 +1112,13 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             sanitized.removeTag("Equipment");
             super.readEntityFromNBT(sanitized);
             inventory.recovery()
-                .read(tag.getTagList(RecoveryStore.TAG, Constants.NBT.TAG_COMPOUND));
+                .read(tag.getTagList(ProtectionRecoveryNbtKeys.TAG, Constants.NBT.TAG_COMPOUND));
             inventory.recovery()
                 .retainInvalidList(tag, "Equipment");
             inventory.recovery()
                 .retainInvalidList(tag, MAID_INVENTORY_TAG);
             inventory.recovery()
-                .retainInvalidList(tag, RecoveryStore.TAG);
+                .retainInvalidList(tag, ProtectionRecoveryNbtKeys.TAG);
             var equipment = tag.getTagList("Equipment", Constants.NBT.TAG_COMPOUND);
             for (int slot = 0; slot < 5; slot++) setCurrentItemOrArmor(
                 slot,
@@ -1131,8 +1140,8 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             setSilent(tag.getBoolean("Silent"));
             configManager.readAdditionalSaveData(tag);
             dataWatcher.updateObject(DATA_TASK, combatTaskState.load(tag));
-            hadCombatCadenceData = tag.hasKey(CombatCadence.TAG);
-            hadCombatReceiptData = tag.hasKey(CombatHitReceipt.TAG);
+            hadCombatCadenceData = tag.hasKey(MaidCombatNbtKeys.TAG);
+            hadCombatReceiptData = tag.hasKey(MaidCombatNbtKeys.TAG_2);
             combatCadence.load(tag);
             combatHitReceipt.load(tag);
             equipmentEpoch.invalidate();

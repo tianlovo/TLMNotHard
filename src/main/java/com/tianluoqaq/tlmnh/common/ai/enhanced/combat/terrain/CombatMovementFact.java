@@ -9,9 +9,6 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec
 /** 本战斗会话的原生导航事实；只传值，不向规划器泄露路径或世界对象 */
 public final class CombatMovementFact {
 
-    private static final double NODE_IDENTITY_EPSILON = .0001, STANDING_EPSILON = .001;
-    private static final long FEEDBACK_MAX_AGE = 1;
-
     public enum Role {
         ORDINARY,
         SAME_CELL_ALIGNMENT,
@@ -43,7 +40,7 @@ public final class CombatMovementFact {
                 index,
                 snapshot,
                 snapshot.selectedTarget,
-                snapshot.target(snapshot.selectedTarget) == null ? -1
+                snapshot.target(snapshot.selectedTarget) == null ? CombatTerrainTuning.UNSET_OR_NOT_FOUND
                     : snapshot.target(snapshot.selectedTarget).entityId,
                 foot);
         }
@@ -76,8 +73,8 @@ public final class CombatMovementFact {
                 targetEntityId,
                 foot,
                 Role.ORDINARY,
-                0,
-                0,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
                 null,
                 null);
         }
@@ -85,8 +82,8 @@ public final class CombatMovementFact {
         public static Node alignment(long auxiliaryId, long parentStage, long parentCursor, CombatSnapshot snapshot,
             UUID target, int targetEntityId, Vec anchor, Vec parentNext) {
             return new Node(
-                auxiliaryId * 2,
-                1,
+                auxiliaryId * CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP,
                 snapshot.entityEpoch,
                 snapshot.observationEpoch,
                 snapshot.tick,
@@ -127,8 +124,8 @@ public final class CombatMovementFact {
         public static Node conditionalEntry(long id, long parent, long cursor, CombatSnapshot s, UUID target,
             int targetEntityId, Vec k, Vec b, CombatConditionalEntryProof.DoorEdge edge) {
             return new Node(
-                id * 2,
-                1,
+                id * CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP,
                 s.entityEpoch,
                 s.observationEpoch,
                 s.tick,
@@ -182,11 +179,11 @@ public final class CombatMovementFact {
                 && targetEntityId == other.targetEntityId
                 && foot != null
                 && other.foot != null
-                && foot.distance(other.foot) < NODE_IDENTITY_EPSILON;
+                && foot.distance(other.foot) < CombatTerrainTuning.NODE_IDENTITY_EPSILON;
         }
 
         private static boolean samePoint(Vec a, Vec b) {
-            return a == null ? b == null : b != null && a.distance(b) < NODE_IDENTITY_EPSILON;
+            return a == null ? b == null : b != null && a.distance(b) < CombatTerrainTuning.NODE_IDENTITY_EPSILON;
         }
 
         public boolean current(long now) {
@@ -196,13 +193,15 @@ public final class CombatMovementFact {
                 && target != null
                 && foot != null
                 && (role == Role.ORDINARY || parentStage > 0
-                    && (role == Role.SAME_CELL_ALIGNMENT && parentCursor > 1
-                        || role == Role.CONDITIONAL_ENTRY && parentCursor >= 1
+                    && (role == Role.SAME_CELL_ALIGNMENT
+                        && parentCursor > CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
+                        || role == Role.CONDITIONAL_ENTRY
+                            && parentCursor >= CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
                             && doorEdge != null
                             && doorEdge.entry(anchor, parentNext))
                     && anchor != null
                     && parentNext != null
-                    && foot.distance(anchor) < NODE_IDENTITY_EPSILON
+                    && foot.distance(anchor) < CombatTerrainTuning.NODE_IDENTITY_EPSILON
                     && Double.isFinite(anchor.x + anchor.y + anchor.z + parentNext.x + parentNext.y + parentNext.z))
                 && Double.isFinite(foot.x + foot.y + foot.z)
                 && submittedAt <= now
@@ -235,8 +234,8 @@ public final class CombatMovementFact {
             inArea,
             nativeTailMatches,
             outcome.name(),
-            -1,
-            -1,
+            CombatTerrainTuning.UNSET_OR_NOT_FOUND,
+            CombatTerrainTuning.UNSET_OR_NOT_FOUND,
             null);
     }
 
@@ -330,7 +329,7 @@ public final class CombatMovementFact {
         return node != null && node.same(expected)
             && tick >= node.submittedAt
             && tick <= now
-            && now - tick <= FEEDBACK_MAX_AGE
+            && now - tick <= CombatTerrainTuning.FEEDBACK_MAX_AGE
             && node.current(tick);
     }
 
@@ -354,7 +353,7 @@ public final class CombatMovementFact {
             && nativeTailMatches
             && junction != null
             && junction.geometryAt <= now
-            && now - junction.geometryAt <= CombatSnapshot.GEOMETRY_TTL
+            && now - junction.geometryAt <= CombatTerrainTuning.GEOMETRY_TTL
             && junction.matches(node, actualFoot, tick)
             && sameStandingCell(actualFoot, node.anchor);
     }
@@ -367,8 +366,8 @@ public final class CombatMovementFact {
             && grounded
             && inArea
             && entryArrival != null
-            && nativePathLength >= 1
-            && nativePathLength <= 2
+            && nativePathLength >= CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
+            && nativePathLength <= CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM
             && nativePathIndex == nativePathLength - 1
             && entryArrival.matches(node, actualFoot, tick);
     }
@@ -379,8 +378,8 @@ public final class CombatMovementFact {
             && nativeTailMatches
             && grounded
             && inArea
-            && nativePathLength >= 1
-            && nativePathLength <= 2
+            && nativePathLength >= CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
+            && nativePathLength <= CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM
             && nativePathIndex == nativePathLength - 1
             && passiveDoorExitArrival != null
             && passiveDoorExitArrival.matches(expected, actualFoot, tick, serial);
@@ -399,6 +398,6 @@ public final class CombatMovementFact {
             && Double.isFinite(actual.x + actual.y + actual.z)
             && Math.floor(actual.x) == Math.floor(desired.x)
             && Math.floor(actual.z) == Math.floor(desired.z)
-            && Math.abs(actual.y - desired.y) <= STANDING_EPSILON;
+            && Math.abs(actual.y - desired.y) <= CombatTerrainTuning.STANDING_EPSILON;
     }
 }

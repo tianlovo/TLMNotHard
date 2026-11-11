@@ -66,8 +66,15 @@ public final class MaidNamedModelOverride {
             var digest = MessageDigest.getInstance(BuiltinModelIds.KEY_SHA_1)
                 .digest(name.getBytes(StandardCharsets.UTF_8));
             var result = new StringBuilder(BuiltinModelLayout.NAMED_MODEL_STRING_BUILDER_FIRST_PARAM);
-            for (byte value : digest) result.append(Character.forDigit((value >>> BuiltinModelLayout.CHUNK_SECTION_SHIFT) & BuiltinModelLayout.CHUNK_LOCAL_MASK, BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM))
-                .append(Character.forDigit(value & BuiltinModelLayout.CHUNK_LOCAL_MASK, BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM));
+            for (byte value : digest) result
+                .append(
+                    Character.forDigit(
+                        (value >>> BuiltinModelLayout.CHUNK_SECTION_SHIFT) & BuiltinModelLayout.CHUNK_LOCAL_MASK,
+                        BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM))
+                .append(
+                    Character.forDigit(
+                        value & BuiltinModelLayout.CHUNK_LOCAL_MASK,
+                        BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM));
             return result.toString();
         } catch (NoSuchAlgorithmException failure) {
             throw new IllegalStateException(BuiltinModelDiagnostics.MSG_REQUIRED_PLATFORM_SHA_IS_UNAVAILABLE, failure);

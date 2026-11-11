@@ -56,7 +56,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidRenderer extends RenderLiving {
 
-    private static final float[] SLEEP_ROTATIONS = { ClientRenderLayout.MAID_DOMAIN_PARAM, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.MAID_DOMAIN_PARAM_2, ClientRenderLayout.HALF_TURN_DEGREES };
+    private static final float[] SLEEP_ROTATIONS = { ClientRenderLayout.MAID_DOMAIN_PARAM,
+        ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.MAID_DOMAIN_PARAM_2,
+        ClientRenderLayout.HALF_TURN_DEGREES };
 
     private final BuiltinMaidModels models;
     private final MaidHeldItemLayer heldItems = new MaidHeldItemLayer();
@@ -135,12 +137,15 @@ public final class MaidRenderer extends RenderLiving {
         try {
             model = models.create(choice);
         } catch (IOException error) {
-            if (failures.add(requested)) ModContext.LOG.error(ClientRenderDiagnostics.MSG_CANNOT_RENDER_BUILTIN_MODEL, requested, error);
+            if (failures.add(requested))
+                ModContext.LOG.error(ClientRenderDiagnostics.MSG_CANNOT_RENDER_BUILTIN_MODEL, requested, error);
             try {
                 model = models.create(BuiltinModelCatalog.get(ClientRenderIds.DEFAULT_MODEL));
             } catch (IOException fallbackError) {
                 fallbackError.addSuppressed(error);
-                throw new IllegalStateException(ClientRenderDiagnostics.MSG_CANNOT_LOAD_THE_DEFAULT_MAID, fallbackError);
+                throw new IllegalStateException(
+                    ClientRenderDiagnostics.MSG_CANNOT_LOAD_THE_DEFAULT_MAID,
+                    fallbackError);
             }
         }
         entities.put(maid, new CachedModel(requested, model));
@@ -181,14 +186,32 @@ public final class MaidRenderer extends RenderLiving {
         float rotation = yaw;
         if (direction >= 0) {
             var step = BlockBed.field_149981_a[direction];
-            float eyeOffset = MaidEntityPose.STANDING.height * (maid.isSitting() ? ClientRenderLayout.MAID_ROTATE_CORPSE_FACTOR : ClientRenderLayout.MAID_ROTATE_CORPSE_FACTOR_2) - ClientRenderLayout.MAID_EYE_OFFSET;
-            GL11.glTranslatef(-step[ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X] * eyeOffset, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, -step[ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL] * eyeOffset);
+            float eyeOffset = MaidEntityPose.STANDING.height
+                * (maid.isSitting() ? ClientRenderLayout.MAID_ROTATE_CORPSE_FACTOR
+                    : ClientRenderLayout.MAID_ROTATE_CORPSE_FACTOR_2)
+                - ClientRenderLayout.MAID_EYE_OFFSET;
+            GL11.glTranslatef(
+                -step[ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X] * eyeOffset,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                -step[ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL] * eyeOffset);
             // 原LivingEntityRenderer：SOUTH90/WEST0/NORTH270/EAST180
             rotation = SLEEP_ROTATIONS[direction];
         }
-        GL11.glRotatef(rotation, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
-        GL11.glRotatef(getDeathMaxRotation(entity), ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
-        GL11.glRotatef(ClientRenderLayout.MAID_DOMAIN_PARAM_2, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+        GL11.glRotatef(
+            rotation,
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+            ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+        GL11.glRotatef(
+            getDeathMaxRotation(entity),
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+            ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+        GL11.glRotatef(
+            ClientRenderLayout.MAID_DOMAIN_PARAM_2,
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+            ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL,
+            ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
         rotateCarriedMaid(maid);
         MaidSwimRenderPose.apply(maid, (BuiltinMaidModel) mainModel, partialTick);
         if (ClientDevelopmentAccess.isActive()) {
@@ -202,9 +225,20 @@ public final class MaidRenderer extends RenderLiving {
             && !model.getChoice()
                 .isGecko()) {
             // 固定上游EntityMaidRenderer.setupRotations：父级旋转后、实体缩放前，附件共用该矩阵
-            GL11.glTranslatef(ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_X, ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_Y, ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_Z);
-            GL11.glRotatef(ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_ANGLE_DEG, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.UNSET_OR_NOT_FOUND);
-            GL11.glRotatef(ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_ANGLE_DEG_2, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.UNSET_OR_NOT_FOUND, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
+            GL11.glTranslatef(
+                ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_X,
+                ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_Y,
+                ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_OFFSET_Z);
+            GL11.glRotatef(
+                ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_ANGLE_DEG,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND);
+            GL11.glRotatef(
+                ClientRenderLayout.MAID_ROTATE_CARRIED_MAID_ANGLE_DEG_2,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X,
+                ClientRenderLayout.UNSET_OR_NOT_FOUND,
+                ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X);
         }
     }
 
@@ -236,7 +270,8 @@ public final class MaidRenderer extends RenderLiving {
     }
 
     public JsonObject inspectPreviewForDevelopment(EntityMaid maid) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(ClientRenderDiagnostics.MSG_PREVIEW_DIAGNOSTIC_DISABLED);
+        if (!DevelopmentFlags.isDevCommandsEnabled())
+            throw new IllegalStateException(ClientRenderDiagnostics.MSG_PREVIEW_DIAGNOSTIC_DISABLED);
         var result = new JsonObject();
         result.addProperty(
             ClientRenderIds.ID_UUID,
@@ -260,19 +295,31 @@ public final class MaidRenderer extends RenderLiving {
         if (cached.model.getGecko() != null) {
             var roots = new JsonArray();
             var gecko = cached.model.getGecko();
-            for (String name : new String[] { ClientRenderIds.KEY_M_ROOT, ClientRenderIds.KEY_ROOT, ClientRenderIds.KEY_ALL_BODY }) {
+            for (String name : new String[] { ClientRenderIds.KEY_M_ROOT, ClientRenderIds.KEY_ROOT,
+                ClientRenderIds.KEY_ALL_BODY }) {
                 var bone = gecko.bones()
                     .get(name);
                 if (bone == null) continue;
                 var row = new JsonObject();
                 row.addProperty(ClientRenderIds.ID_NAME, name);
-                row.addProperty(ClientRenderIds.ID_PIVOT, bone.getPivotX() + ClientRenderIds.COMMA_DELIMITER + bone.getPivotY() + ClientRenderIds.COMMA_DELIMITER + bone.getPivotZ());
+                row.addProperty(
+                    ClientRenderIds.ID_PIVOT,
+                    bone.getPivotX() + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getPivotY()
+                        + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getPivotZ());
                 row.addProperty(
                     ClientRenderIds.ID_TRANSLATION,
-                    bone.getPositionX() + ClientRenderIds.COMMA_DELIMITER + bone.getPositionY() + ClientRenderIds.COMMA_DELIMITER + bone.getPositionZ());
+                    bone.getPositionX() + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getPositionY()
+                        + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getPositionZ());
                 row.addProperty(
                     ClientRenderIds.ID_ROTATIONRADIANS,
-                    bone.getRotationX() + ClientRenderIds.COMMA_DELIMITER + bone.getRotationY() + ClientRenderIds.COMMA_DELIMITER + bone.getRotationZ());
+                    bone.getRotationX() + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getRotationY()
+                        + ClientRenderIds.COMMA_DELIMITER
+                        + bone.getRotationZ());
                 var chain = new ArrayList<AnimatedGeoBone>();
                 for (var current = bone; current != null;) {
                     chain.add(current);
@@ -335,7 +382,9 @@ public final class MaidRenderer extends RenderLiving {
         result.addProperty(ClientRenderIds.ID_CARRIERYOFFSET, carrier.yOffset);
         result.addProperty(ClientRenderIds.ID_CARRIERYSIZE, carrier.ySize);
         result.addProperty(ClientRenderIds.ID_CARRIERVISUALFEETY, carrier.posY - carrier.yOffset);
-        result.addProperty(ClientRenderIds.ID_CARRIERNATIVEFEETDIFFERENCE, carrier.boundingBox.minY - (carrier.posY - carrier.yOffset));
+        result.addProperty(
+            ClientRenderIds.ID_CARRIERNATIVEFEETDIFFERENCE,
+            carrier.boundingBox.minY - (carrier.posY - carrier.yOffset));
         result.addProperty(ClientRenderIds.ID_CARRIERBOUNDINGBOXMINY, carrier.boundingBox.minY);
         result.addProperty(ClientRenderIds.ID_CARRIERMOUNTEDYOFFSET, carrier.getMountedYOffset());
         double nativeY = carrier.posY + carrier.getMountedYOffset() + maid.getYOffset();
@@ -371,7 +420,8 @@ public final class MaidRenderer extends RenderLiving {
         for (Object entity : minecraft.theWorld.loadedEntityList) {
             if (!(entity instanceof EntityMaid maid) || !maid.isEntityAlive()
                 || maid.worldObj != minecraft.theWorld
-                || maid.getDistanceSqToEntity(minecraft.thePlayer) > ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD) continue;
+                || maid.getDistanceSqToEntity(minecraft.thePlayer) > ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD)
+                continue;
             var renderer = RenderManager.instance.getEntityRenderObject(maid);
             if (renderer instanceof MaidRenderer maidRenderer)
                 result.add(maidRenderer.inspectPreviewForDevelopment(maid));
@@ -381,7 +431,8 @@ public final class MaidRenderer extends RenderLiving {
     }
 
     public AutoCloseable openDevelopmentItemStateScope() {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(ClientRenderDiagnostics.MSG_HELD_ITEM_PROBE_DISABLED);
+        if (!DevelopmentFlags.isDevCommandsEnabled())
+            throw new IllegalStateException(ClientRenderDiagnostics.MSG_HELD_ITEM_PROBE_DISABLED);
         return new MaidItemRenderScope();
     }
 
@@ -390,7 +441,9 @@ public final class MaidRenderer extends RenderLiving {
         private final String requested;
         private final BuiltinMaidModel model;
         private ResourceLocation texture;
-        private int textureId = ClientRenderLayout.UNSET_OR_NOT_FOUND, textureGeneration = ClientRenderLayout.UNSET_OR_NOT_FOUND, textureTick = ClientRenderLayout.UNSET_OR_NOT_FOUND, lastRenderTick = ClientRenderLayout.UNSET_OR_NOT_FOUND;
+        private int textureId = ClientRenderLayout.UNSET_OR_NOT_FOUND,
+            textureGeneration = ClientRenderLayout.UNSET_OR_NOT_FOUND,
+            textureTick = ClientRenderLayout.UNSET_OR_NOT_FOUND, lastRenderTick = ClientRenderLayout.UNSET_OR_NOT_FOUND;
         private long poseSerial;
 
         private CachedModel(String requested, BuiltinMaidModel model) {

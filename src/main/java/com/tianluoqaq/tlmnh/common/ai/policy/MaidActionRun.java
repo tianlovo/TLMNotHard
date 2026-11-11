@@ -19,10 +19,10 @@ public final class MaidActionRun {
     private Phase phase = Phase.ACTIVE;
 
     public MaidActionRun(MaidPolicyContext context, MaidPolicyContext.Token token, Object world, Object command) {
-        this.context = Objects.requireNonNull(context, "context");
-        this.token = Objects.requireNonNull(token, "token");
-        this.world = Objects.requireNonNull(world, "world");
-        this.command = Objects.requireNonNull(command, "command");
+        this.context = Objects.requireNonNull(context, AiPolicyIds.ID_CONTEXT);
+        this.token = Objects.requireNonNull(token, AiPolicyIds.ID_TOKEN);
+        this.world = Objects.requireNonNull(world, AiPolicyIds.ID_WORLD);
+        this.command = Objects.requireNonNull(command, AiPolicyIds.ID_COMMAND);
     }
 
     public boolean matches(MaidPolicyContext context, MaidPolicyContext.Token token) {

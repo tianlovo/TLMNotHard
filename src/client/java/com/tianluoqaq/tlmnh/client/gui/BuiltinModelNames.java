@@ -67,7 +67,9 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
 
     public String text(String raw) {
         ensureLanguage();
-        String fallback = raw.startsWith(ClientGuiIds.OPEN_BRACE_TOKEN) && raw.endsWith(ClientGuiIds.CLOSE_BRACE_TOKEN) ? raw.substring(ClientGuiLayout.SUBSTRING_START_OFFSET, raw.length() - 1) : raw;
+        String fallback = raw.startsWith(ClientGuiIds.OPEN_BRACE_TOKEN) && raw.endsWith(ClientGuiIds.CLOSE_BRACE_TOKEN)
+            ? raw.substring(ClientGuiLayout.SUBSTRING_START_OFFSET, raw.length() - 1)
+            : raw;
         if (StatCollector.canTranslate(fallback)) return StatCollector.translateToLocal(fallback);
         return resolve(raw, translations, fallback);
     }
@@ -110,7 +112,8 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
             } catch (IOException missingLanguage) {
                 // 模型包不必提供所有语言，缺少时沿用英文或模型ID
             } catch (RuntimeException invalidLanguage) {
-                ModContext.LOG.warn(ClientGuiDiagnostics.MSG_CANNOT_READ_BUILTIN_MODEL_NAMES, location, invalidLanguage);
+                ModContext.LOG
+                    .warn(ClientGuiDiagnostics.MSG_CANNOT_READ_BUILTIN_MODEL_NAMES, location, invalidLanguage);
             }
         }
     }

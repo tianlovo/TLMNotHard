@@ -26,9 +26,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 真实原生装备相位与已准入主手属性共同确认，不读写previousEquipment */
 public final class EquipmentEpoch {
 
-    public static final int MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS = 16;
-    private static final int MAX_RETIRED_ATTRIBUTE_MODIFIERS = 32;
-    private static final String ATTACK_ATTRIBUTE = SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName();
     private final EntityMaid maid;
     private ItemStack[] entering, enteringValues, acknowledged, acknowledgedValues;
     private ItemStack describedMain, describedContents;
@@ -38,7 +35,7 @@ public final class EquipmentEpoch {
     private boolean phaseOpen, confirmed;
 
     public EquipmentEpoch(EntityMaid maid) {
-        this.maid = Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, MaidCombatIds.ID_MAID);
     }
 
     /** 原生更新提前退出时不能沿用上一轮确认 */
@@ -83,32 +80,33 @@ public final class EquipmentEpoch {
             var copy = mainHand.copy();
             // 原生ItemStack会先遍历整份自定义列表，必须在查询前限制输入规模
             if (copy.hasTagCompound() && copy.getTagCompound()
-                .hasKey("AttributeModifiers")) {
+                .hasKey(MaidCombatIds.KEY_ATTRIBUTE_MODIFIERS)) {
                 if (!copy.getTagCompound()
-                    .hasKey("AttributeModifiers", Constants.NBT.TAG_LIST)
+                    .hasKey(MaidCombatIds.KEY_ATTRIBUTE_MODIFIERS, Constants.NBT.TAG_LIST)
                     || copy.getTagCompound()
-                        .getTagList("AttributeModifiers", Constants.NBT.TAG_COMPOUND)
-                        .tagCount() > MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS)
-                    return refuse("main_hand_modifier_input_limit");
+                        .getTagList(MaidCombatIds.KEY_ATTRIBUTE_MODIFIERS, Constants.NBT.TAG_COMPOUND)
+                        .tagCount() > MaidCombatTuning.MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS)
+                    return refuse(MaidCombatIds.ID_MAIN_HAND_MODIFIER_INPUT_LIMIT);
             }
             var modifiers = copy.getAttributeModifiers()
-                .get(ATTACK_ATTRIBUTE);
-            if (modifiers.size() > MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS) return refuse("main_hand_modifier_output_limit");
+                .get(MaidCombatAttributeIds.ATTACK_ATTRIBUTE);
+            if (modifiers.size() > MaidCombatTuning.MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS)
+                return refuse(MaidCombatIds.ID_MAIN_HAND_MODIFIER_OUTPUT_LIMIT);
             var expected = new HashMap<UUID, AttributeModifier>();
             for (Object raw : modifiers) {
                 if (!(raw instanceof AttributeModifier modifier) || modifier.getID() == null
                     || !Double.isFinite(modifier.getAmount())
                     || modifier.getOperation() < 0
-                    || modifier.getOperation() > 2
+                    || modifier.getOperation() > MaidCombatTuning.TARGET_SIZE_THRESHOLD
                     || expected.put(modifier.getID(), modifier) != null)
-                    return refuse("ambiguous_main_hand_modifier_definition");
+                    return refuse(MaidCombatIds.ID_AMBIGUOUS_MAIN_HAND_MODIFIER_DEFINITION);
             }
             if (!phaseCurrent(mainHand)) return false;
             var retiring = new HashSet<>(retiredModifiers);
             if (expectedModifiers != null) retiring.addAll(expectedModifiers.keySet());
             retiring.removeAll(expected.keySet());
-            if (retiring.size() > MAX_RETIRED_ATTRIBUTE_MODIFIERS)
-                return refuse("unresolved_main_hand_modifier_history_limit");
+            if (retiring.size() > MaidCombatTuning.MAX_RETIRED_ATTRIBUTE_MODIFIERS)
+                return refuse(MaidCombatIds.ID_UNRESOLVED_MAIN_HAND_MODIFIER_HISTORY_LIMIT);
             describedMain = mainHand;
             describedContents = mainHand.copy();
             expectedModifiers = expected;
@@ -116,7 +114,8 @@ public final class EquipmentEpoch {
             return attributesCurrent();
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
-            IntegrationGuard.report(Side.SERVER, "combat_equipment/modifier_query/" + maid.getUniqueID(), failure);
+            IntegrationGuard
+                .report(Side.SERVER, MaidCombatIds.ID_COMBAT_EQUIPMENT_MODIFIER_QUERY + maid.getUniqueID(), failure);
             return false;
         }
     }
@@ -145,17 +144,17 @@ public final class EquipmentEpoch {
     private boolean attributesCurrent() {
         if (expectedModifiers == null) return false;
         var attribute = maid.getEntityAttribute(SharedMonsterAttributes.attackDamage);
-        if (attribute == null) return refuse("missing_native_attack_attribute");
+        if (attribute == null) return refuse(MaidCombatIds.ID_MISSING_NATIVE_ATTACK_ATTRIBUTE);
         for (var entry : expectedModifiers.entrySet()) {
             var actual = attribute.getModifier(entry.getKey());
             var expected = entry.getValue();
             if (actual == null || actual.getOperation() != expected.getOperation()
                 || Double.doubleToLongBits(actual.getAmount()) != Double.doubleToLongBits(expected.getAmount()))
-                return refuse("native_main_hand_modifier_not_confirmed");
+                return refuse(MaidCombatIds.ID_NATIVE_MAIN_HAND_MODIFIER_NOT_CONFIRMED);
         }
         for (var identity : retiredModifiers) if (attribute.getModifier(identity) != null)
             // 其它装备或外部来源同UUID时归因不明，不能删除它来伪造主手确认
-            return refuse("old_main_hand_modifier_still_present_or_ambiguous");
+            return refuse(MaidCombatIds.ID_OLD_MAIN_HAND_MODIFIER_STILL_PRESENT_OR_AMBIGUOUS);
         retiredModifiers.clear();
         return true;
     }
@@ -163,8 +162,8 @@ public final class EquipmentEpoch {
     private boolean refuse(String reason) {
         IntegrationGuard.report(
             Side.SERVER,
-            "combat_equipment/" + reason + "/" + maid.getUniqueID(),
-            new IllegalStateException("Native equipment capability withheld: " + reason));
+            MaidCombatIds.ID_COMBAT_EQUIPMENT + reason + MaidCombatIds.PATH_SLASH_SEPARATOR + maid.getUniqueID(),
+            new IllegalStateException(MaidCombatDiagnostics.MSG_NATIVE_EQUIPMENT_CAPABILITY_WITHHELD + reason));
         return false;
     }
 
@@ -180,15 +179,16 @@ public final class EquipmentEpoch {
                     || item == Items.diamond_sword);
             case GREGTECH_KNIFE, GREGTECH_BUTCHERY_KNIFE -> item.getClass()
                 .getName()
-                .equals("gregtech.common.items.MetaGeneratedTool01");
+                .equals(MaidCombatReflectionSpec.TARGET_CLASS_META_GENERATED_TOOL01);
             default -> false;
         };
     }
 
     private ItemStack[] equipment() {
-        var result = new ItemStack[6];
-        for (int slot = 0; slot < 5; slot++) result[slot] = maid.getEquipmentInSlot(slot);
-        result[5] = maid.getOffhandItem();
+        var result = new ItemStack[MaidCombatTuning.EQUIPMENT_EPOCH_EQUIPMENT_PARAM];
+        for (int slot = 0; slot < MaidCombatTuning.MIN_SLOT_THRESHOLD; slot++)
+            result[slot] = maid.getEquipmentInSlot(slot);
+        result[MaidCombatTuning.MIN_SLOT_THRESHOLD] = maid.getOffhandItem();
         return result;
     }
 

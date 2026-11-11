@@ -45,7 +45,8 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
     }
 
     public BuiltinMaidModel create(BuiltinModelCatalog.Choice choice) throws IOException {
-        if (choice == null) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_MODEL_CHOICE);
+        if (choice == null)
+            throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_MODEL_CHOICE);
         var location = choice.getGeometry();
         try {
             if (choice.isGecko()) {

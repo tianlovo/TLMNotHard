@@ -35,29 +35,32 @@ public final class MaidModernLife {
         double bestDistance = Double.MAX_VALUE;
         int mx = MathHelper.floor_double(maid.posX), my = MathHelper.floor_double(maid.posY),
             mz = MathHelper.floor_double(maid.posZ);
-        for (int cx = (center.x - radius) >> 4; cx <= (center.x + radius) >> 4; cx++)
-            for (int cz = (center.z - radius) >> 4; cz <= (center.z + radius) >> 4; cz++) {
-                var raw = server.theChunkProviderServer.loadedChunkHashMap
-                    .getValueByKey(ChunkCoordIntPair.chunkXZ2Int(cx, cz));
-                if (!(raw instanceof Chunk chunk)) continue;
-                for (Object value : chunk.chunkTileEntityMap.values()) {
-                    if (!(value instanceof TileEntityMaidBed bed) || bed.getWorldObj() != world
-                        || bed.isInvalid()
-                        || !bed.complete()) continue;
-                    // 原MaidPoiManager只注册未占用床头，Occupancy.ANY也不会含占用床
-                    if ((world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 4) != 0) continue;
-                    double dx = bed.xCoord - center.x, dy = bed.yCoord - center.y, dz = bed.zCoord - center.z;
-                    if (dx * dx + dy * dy + dz * dz > (double) radius * radius) continue;
-                    dx = bed.xCoord - mx;
-                    dy = bed.yCoord - my;
-                    dz = bed.zCoord - mz;
-                    double distance = dx * dx + dy * dy + dz * dz;
-                    if (distance < bestDistance) {
-                        bestDistance = distance;
-                        best = new Point(bed.xCoord, bed.yCoord, bed.zCoord);
+        for (int cx = (center.x - radius) >> FaithfulLifeTuning.CHUNK_SECTION_SHIFT; cx
+            <= (center.x + radius) >> FaithfulLifeTuning.CHUNK_SECTION_SHIFT; cx++)
+            for (int cz = (center.z - radius) >> FaithfulLifeTuning.CHUNK_SECTION_SHIFT; cz
+                <= (center.z + radius) >> FaithfulLifeTuning.CHUNK_SECTION_SHIFT; cz++) {
+                    var raw = server.theChunkProviderServer.loadedChunkHashMap
+                        .getValueByKey(ChunkCoordIntPair.chunkXZ2Int(cx, cz));
+                    if (!(raw instanceof Chunk chunk)) continue;
+                    for (Object value : chunk.chunkTileEntityMap.values()) {
+                        if (!(value instanceof TileEntityMaidBed bed) || bed.getWorldObj() != world
+                            || bed.isInvalid()
+                            || !bed.complete()) continue;
+                        // 原MaidPoiManager只注册未占用床头，Occupancy.ANY也不会含占用床
+                        if ((world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord)
+                            & FaithfulLifeTuning.CHUNK_SECTION_SHIFT) != 0) continue;
+                        double dx = bed.xCoord - center.x, dy = bed.yCoord - center.y, dz = bed.zCoord - center.z;
+                        if (dx * dx + dy * dy + dz * dz > (double) radius * radius) continue;
+                        dx = bed.xCoord - mx;
+                        dy = bed.yCoord - my;
+                        dz = bed.zCoord - mz;
+                        double distance = dx * dx + dy * dy + dz * dz;
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            best = new Point(bed.xCoord, bed.yCoord, bed.zCoord);
+                        }
                     }
                 }
-            }
         return best;
     }
 
@@ -65,7 +68,9 @@ public final class MaidModernLife {
         if (sleepingBed != null || !world.blockExists(point.x, point.y, point.z)) return;
         var raw = world.getTileEntity(point.x, point.y, point.z);
         if (!(raw instanceof TileEntityMaidBed bed) || !bed.complete()
-            || (world.getBlockMetadata(point.x, point.y, point.z) & 4) != 0 && !bed.isOwnedBy(maid)) return;
+            || (world.getBlockMetadata(point.x, point.y, point.z) & FaithfulLifeTuning.CHUNK_SECTION_SHIFT) != 0
+                && !bed.isOwnedBy(maid))
+            return;
         sleepingBed = bed;
         if (!bed.claim(maid) || sleepingBed != bed || !current.getAsBoolean()) {
             if (sleepingBed == bed) wake();
@@ -74,11 +79,15 @@ public final class MaidModernLife {
         }
         maid.getMealController()
             .cancel();
-        maid.setSleepingBedDirection(world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
+        maid.setSleepingBedDirection(
+            world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & FaithfulLifeTuning.LOW_TWO_BITS_MASK);
         maid.setPose(MaidPose.SLEEPING, true);
         // 原MaidBedTask在LivingEntity.startSleeping之后覆盖为床头+.8
-        maid.setPositionAndUpdate(point.x + .5, point.y + .8, point.z + .5);
-        maid.motionX = maid.motionY = maid.motionZ = 0;
+        maid.setPositionAndUpdate(
+            point.x + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR,
+            point.y + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_SECOND_FACTOR,
+            point.z + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR);
+        maid.motionX = maid.motionY = maid.motionZ = FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE;
         maid.setJumping(false);
         maid.onMaidStartSleeping();
         sleepEntries++;
@@ -93,15 +102,23 @@ public final class MaidModernLife {
             || !world.blockExists(bed.xCoord, bed.yCoord, bed.zCoord)
             || world.getTileEntity(bed.xCoord, bed.yCoord, bed.zCoord) != bed
             || !bed.complete()
-            || maid.getDistanceSq(bed.xCoord + .5, bed.yCoord + .8, bed.zCoord + .5) > 16
+            || maid.getDistanceSq(
+                bed.xCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR,
+                bed.yCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_SECOND_FACTOR,
+                bed.zCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR)
+                > FaithfulLifeTuning.MODERN_LIFE_MAINTAIN_PARAM
             || !bed.claim(maid)
             || !current.getAsBoolean()) {
             wake();
             return;
         }
         // 原EntityMaid.onMaidSleep在后续实体tick固定床头+.5625；入睡当帧仍由sleepAt保留+.8
-        maid.setSleepingBedDirection(world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
-        maid.setPosition(bed.xCoord + .5, bed.yCoord + .5625, bed.zCoord + .5);
+        maid.setSleepingBedDirection(
+            world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & FaithfulLifeTuning.LOW_TWO_BITS_MASK);
+        maid.setPosition(
+            bed.xCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR,
+            bed.yCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_SECOND_FACTOR,
+            bed.zCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR);
     }
 
     public void wake() {
@@ -113,21 +130,30 @@ public final class MaidModernLife {
         // 低版本床出口使用实际站立碰撞；外部抱走/传送时不能拉回旧床
         if (maid.worldObj != world || maid.ridingEntity != null
             || maid.riddenByEntity != null
-            || maid.getDistanceSq(bed.xCoord + .5, bed.yCoord + .8, bed.zCoord + .5) > 16) return;
+            || maid.getDistanceSq(
+                bed.xCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR,
+                bed.yCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_SECOND_FACTOR,
+                bed.zCoord + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR)
+                > FaithfulLifeTuning.MODERN_LIFE_MAINTAIN_PARAM)
+            return;
         // Modern LivingEntity only resolves ordered bed exits while the actual bed still exists
         if (!world.blockExists(bed.xCoord, bed.yCoord, bed.zCoord)
             || world.getTileEntity(bed.xCoord, bed.yCoord, bed.zCoord) != bed
             || !bed.complete()
             || !Float.isFinite(maid.rotationYaw)) return;
-        int facing = world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3;
-        float angle = maid.rotationYaw * 0.017453292F;
+        int facing = world.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & FaithfulLifeTuning.LOW_TWO_BITS_MASK;
+        float angle = maid.rotationYaw * FaithfulLifeTuning.MODERN_LIFE_ANGLE;
         var offsets = MaidBedExitOffsets.ordered(facing, -MathHelper.sin(angle), MathHelper.cos(angle));
         for (int[] offset : offsets) {
-            double x = bed.xCoord + offset[0] + .5, y = bed.yCoord, z = bed.zCoord + offset[1] + .5;
+            double x = bed.xCoord + offset[FaithfulLifeTuning.BED_EXIT_DEFAULT_ZERO_BASE]
+                + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR, y = bed.yCoord,
+                z = bed.zCoord + offset[FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP]
+                    + FaithfulLifeTuning.MODERN_LIFE_SET_POSITION_AND_UPDATE_FIRST_FACTOR;
             int ix = MathHelper.floor_double(x), iz = MathHelper.floor_double(z);
-            if (!world.blockExists(ix, bed.yCoord - 1, iz) || !world.blockExists(ix, bed.yCoord + 2, iz)
+            if (!world.blockExists(ix, bed.yCoord - 1, iz)
+                || !world.blockExists(ix, bed.yCoord + FaithfulLifeTuning.BED_EXIT_SIDE, iz)
                 || !World.doesBlockHaveSolidTopSurface(world, ix, bed.yCoord - 1, iz)) continue;
-            double radius = maid.width / 2;
+            double radius = maid.width / FaithfulLifeTuning.BED_EXIT_SIDE;
             var box = AxisAlignedBB.getBoundingBox(x - radius, y, z - radius, x + radius, y + maid.height, z + radius);
             if (world.getCollidingBoundingBoxes(maid, box)
                 .isEmpty() && !world.isAnyLiquid(box)) {

@@ -25,9 +25,6 @@ public final class EnhancedNavigationController {
         RECOVERY_WAIT
     }
 
-    private static final int FAILURE_RETRY_TICKS = 20;
-    private static final int NO_PROGRESS_TICKS = 40;
-    private static final double REPLAN_DISTANCE_SQUARED = 4;
     private final FollowMoveActor actor;
     private final Function<BlockPos, MaidPathCreation> requests;
     private final Runnable cancelQueue;
@@ -44,9 +41,9 @@ public final class EnhancedNavigationController {
 
     public EnhancedNavigationController(FollowMoveActor actor, Function<BlockPos, MaidPathCreation> requests,
         Runnable cancelQueue) {
-        this.actor = Objects.requireNonNull(actor, "actor");
-        this.requests = Objects.requireNonNull(requests, "requests");
-        this.cancelQueue = Objects.requireNonNull(cancelQueue, "cancelQueue");
+        this.actor = Objects.requireNonNull(actor, EnhancedLocomotionIds.ID_ACTOR);
+        this.requests = Objects.requireNonNull(requests, EnhancedLocomotionIds.ID_REQUESTS);
+        this.cancelQueue = Objects.requireNonNull(cancelQueue, EnhancedLocomotionIds.ID_CANCELQUEUE);
     }
 
     public Outcome tick() {
@@ -57,7 +54,7 @@ public final class EnhancedNavigationController {
         preflight = null;
         preflightTarget = null;
         if (now < lastTick) {
-            retryAt = 0;
+            retryAt = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
             progressAnchor = null;
             partialOrigin = null;
             clearObstacleRecovery();
@@ -69,9 +66,10 @@ public final class EnhancedNavigationController {
             return outcome = Outcome.IDLE;
         }
         var position = target.currentBlockPosition();
-        if (failedTarget != null && position.distanceSquared(failedTarget) > REPLAN_DISTANCE_SQUARED) {
+        if (failedTarget != null
+            && position.distanceSquared(failedTarget) > EnhancedLocomotionTuning.REPLAN_DISTANCE_SQUARED) {
             failedTarget = null;
-            retryAt = 0;
+            retryAt = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
             clearObstacleRecovery();
         }
         CombatNavigationObserver combat = actor instanceof CombatNavigationObserver observer
@@ -79,25 +77,32 @@ public final class EnhancedNavigationController {
         var combatPath = combat == null ? null : actor.navigationPath();
         if (combat == null ? position.manhattanDistance(actor.blockPosition()) <= target.getCloseEnoughDistance()
             : combat.combatNodeArrived(target, combatPath)) {
-            if (combat != null) combat.combatNavigationOutcome(target, combatPath, Outcome.ARRIVED, 0);
+            if (combat != null) combat.combatNavigationOutcome(
+                target,
+                combatPath,
+                Outcome.ARRIVED,
+                EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX);
             stopRoute();
             actor.eraseCantReachSince();
             return outcome = Outcome.ARRIVED;
         }
         var installed = combat == null ? actor.navigationPath() : combatPath;
-        boolean changed = plannedTarget == null || position.distanceSquared(plannedTarget) > REPLAN_DISTANCE_SQUARED;
+        boolean changed = plannedTarget == null
+            || position.distanceSquared(plannedTarget) > EnhancedLocomotionTuning.REPLAN_DISTANCE_SQUARED;
         var current = actor.blockPosition();
         if (supplied != null && suppliedTick == now && position.distanceSquared(suppliedTarget) == 0)
             return applyCreation(supplied, target, position, current, now);
-        if (changed || progressAnchor == null || current.distanceSquared(progressAnchor) >= 1) {
+        if (changed || progressAnchor == null
+            || current.distanceSquared(progressAnchor) >= EnhancedLocomotionTuning.OFFER_TYPED_SINGLE_UNIT) {
             progressAnchor = current;
             lastProgressAt = now;
         }
         if (!changed && installed != null
-            && (actor.navigationIsStuck() || !actor.navigationIsDone() && now - lastProgressAt >= NO_PROGRESS_TICKS
+            && (actor.navigationIsStuck()
+                || !actor.navigationIsDone() && now - lastProgressAt >= EnhancedLocomotionTuning.NO_PROGRESS_TICKS
                 || actor.navigationIsDone() && !installed.canReach()
                     && partialOrigin != null
-                    && current.distanceSquared(partialOrigin) < 1)) {
+                    && current.distanceSquared(partialOrigin) < EnhancedLocomotionTuning.OFFER_TYPED_SINGLE_UNIT)) {
             recover(now, position);
             return outcome;
         }
@@ -119,8 +124,8 @@ public final class EnhancedNavigationController {
     /** 只接同帧、同坐标的成功预检；实际安装仍由actor验证创建身份与授权 */
     public void acceptPreflight(BlockPos target, MaidPathCreation created, long tick) {
         if (created.result != MaidPathCreation.Result.FOUND || !created.path.canReach())
-            throw new IllegalArgumentException("Reachable preflight required");
-        preflightTarget = Objects.requireNonNull(target, "target");
+            throw new IllegalArgumentException(EnhancedLocomotionDiagnostics.MSG_REACHABLE_PREFLIGHT_REQUIRED);
+        preflightTarget = Objects.requireNonNull(target, EnhancedLocomotionIds.ID_TARGET);
         preflight = created;
         preflightTick = tick;
     }
@@ -151,16 +156,21 @@ public final class EnhancedNavigationController {
                     return outcome;
                 }
                 var actual = actor.navigationPath();
-                if (actual == null) throw new IllegalStateException("Navigation accepted no actual route");
+                if (actual == null) throw new IllegalStateException(
+                    EnhancedLocomotionDiagnostics.MSG_NAVIGATION_ACCEPTED_NO_ACTUAL_ROUTE);
                 actor.setPathMemory(actual);
                 plannedTarget = position;
                 progressAnchor = current;
                 lastProgressAt = now;
                 partialOrigin = actual.canReach() ? null : current;
                 failedTarget = null;
-                retryAt = 0;
+                retryAt = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
                 clearObstacleRecovery();
-                combatFact(target, actual, actual.canReach() ? Outcome.RUNNING : Outcome.PARTIAL_PATH, 0);
+                combatFact(
+                    target,
+                    actual,
+                    actual.canReach() ? Outcome.RUNNING : Outcome.PARTIAL_PATH,
+                    EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX);
                 if (actual.canReach()) {
                     actor.eraseCantReachSince();
                     return outcome = Outcome.RUNNING;
@@ -170,17 +180,21 @@ public final class EnhancedNavigationController {
                 return outcome = Outcome.PARTIAL_PATH;
             }
         }
-        throw new IllegalStateException("Unknown navigation creation result");
+        throw new IllegalStateException(EnhancedLocomotionDiagnostics.MSG_UNKNOWN_NAVIGATION_CREATION_RESULT);
     }
 
     private void failed(long now, BlockPos target) {
         clearObstacleRecovery();
-        combatFact(actor.getWalkTarget(), actor.navigationPath(), Outcome.UNREACHABLE, now + FAILURE_RETRY_TICKS);
+        combatFact(
+            actor.getWalkTarget(),
+            actor.navigationPath(),
+            Outcome.UNREACHABLE,
+            now + EnhancedLocomotionTuning.FAILURE_RETRY_TICKS);
         actor.stopNavigation();
         actor.setPathMemory(null);
         failures++;
         failedTarget = target;
-        retryAt = now + FAILURE_RETRY_TICKS;
+        retryAt = now + EnhancedLocomotionTuning.FAILURE_RETRY_TICKS;
         if (actor.getCantReachSince() == null) actor.setCantReachSince(now);
         outcome = Outcome.UNREACHABLE;
     }
@@ -188,13 +202,17 @@ public final class EnhancedNavigationController {
     private void recover(long now, BlockPos target) {
         clearObstacleRecovery();
         if (actor instanceof EnhancedRouteObstacleActor observer) blockedRoute = observer.observeBlockedRoute();
-        combatFact(actor.getWalkTarget(), actor.navigationPath(), Outcome.RECOVERY_WAIT, now + FAILURE_RETRY_TICKS);
+        combatFact(
+            actor.getWalkTarget(),
+            actor.navigationPath(),
+            Outcome.RECOVERY_WAIT,
+            now + EnhancedLocomotionTuning.FAILURE_RETRY_TICKS);
         actor.stopNavigation();
         actor.setPathMemory(null);
         failedTarget = target;
         partialOrigin = null;
         progressAnchor = null;
-        retryAt = now + FAILURE_RETRY_TICKS;
+        retryAt = now + EnhancedLocomotionTuning.FAILURE_RETRY_TICKS;
         if (actor.getCantReachSince() == null) actor.setCantReachSince(now);
         recoveries++;
         outcome = Outcome.RECOVERY_WAIT;
@@ -212,7 +230,7 @@ public final class EnhancedNavigationController {
         actor.setPathMemory(null);
         plannedTarget = null;
         failedTarget = null;
-        retryAt = 0;
+        retryAt = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         progressAnchor = partialOrigin = null;
         preflight = null;
         preflightTarget = null;
@@ -224,7 +242,7 @@ public final class EnhancedNavigationController {
         cancelQueue.run();
         plannedTarget = null;
         failedTarget = null;
-        retryAt = 0;
+        retryAt = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         progressAnchor = partialOrigin = null;
         lastTick = Long.MIN_VALUE;
         preflight = null;

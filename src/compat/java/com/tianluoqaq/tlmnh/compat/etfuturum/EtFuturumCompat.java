@@ -8,7 +8,6 @@ public final class EtFuturumCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ET_FUTURUM;
 
-
     public static final EtFuturumCompat INSTANCE = new EtFuturumCompat();
 
     private EtFuturumCompat() {}

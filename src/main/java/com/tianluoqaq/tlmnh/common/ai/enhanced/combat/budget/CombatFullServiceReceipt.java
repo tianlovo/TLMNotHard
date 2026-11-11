@@ -30,7 +30,7 @@ public final class CombatFullServiceReceipt {
 
     public void captured(long now, boolean body, boolean combat) {
         if (tick != now || status == Status.GRANTED_NOT_CAPTURED || status == Status.NOT_GRANTED)
-            throw new IllegalStateException("No real capture attempt");
+            throw new IllegalStateException(CombatBudgetDiagnostics.MSG_NO_REAL_CAPTURE_ATTEMPT);
         status = combat || status == Status.COMBAT_FORECAST_COMPLETE ? Status.COMBAT_FORECAST_COMPLETE
             : body ? Status.BODY_READY : Status.BODY_CAPTURE_ATTEMPTED_INCOMPLETE;
     }

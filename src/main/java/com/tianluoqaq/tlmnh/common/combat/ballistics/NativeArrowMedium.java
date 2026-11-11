@@ -31,8 +31,6 @@ import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 /** 一次预瞄的有界、只读水域快照；不移动箭、不推进世界、不加载区块 */
 public final class NativeArrowMedium implements IBlockAccess {
 
-    public static final String GUARD = "arrow_medium";
-    private static final int MAX_CELLS = 4096;
     private final World world;
     private final WorldProvider provider;
     private final EntityArrow arrow;
@@ -74,17 +72,30 @@ public final class NativeArrowMedium implements IBlockAccess {
         requireCurrent();
         // 精确保留Entity.handleWaterMovement的expand(0,-float(.4),0).contract(.001)
         // 箭高.5时Y盒可能反向，不能擅自排序成另一种水判定
-        int x0 = MathHelper.floor_double(position.x + minX + .001);
-        int x1 = MathHelper.floor_double(position.x + maxX - .001 + 1);
-        int y0 = MathHelper.floor_double(position.y + minY + (double) .4F + .001);
-        int y1 = MathHelper.floor_double(position.y + maxY - (double) .4F - .001 + 1);
-        int z0 = MathHelper.floor_double(position.z + minZ + .001);
-        int z1 = MathHelper.floor_double(position.z + maxZ - .001 + 1);
-        for (int cx = x0 >> 4; cx <= x1 >> 4; cx++)
-            for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) if (!world.getChunkProvider()
-                .chunkExists(cx, cz)) throw new Unavailable(MaidBowAttack.Status.UNLOADED);
+        int x0 = MathHelper.floor_double(position.x + minX + BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET);
+        int x1 = MathHelper.floor_double(position.x + maxX - BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET + 1);
+        int y0 = MathHelper.floor_double(
+            position.y + minY
+                + (double) BallisticsTuning.ARROW_MEDIUM_FLOOR_DOUBLE_FIRST_FACTOR
+                + BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET);
+        int y1 = MathHelper.floor_double(
+            position.y + maxY
+                - (double) BallisticsTuning.ARROW_MEDIUM_FLOOR_DOUBLE_FIRST_FACTOR
+                - BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET
+                + 1);
+        int z0 = MathHelper.floor_double(position.z + minZ + BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET);
+        int z1 = MathHelper.floor_double(position.z + maxZ - BallisticsTuning.ARROW_MEDIUM_AT_X0_OFFSET + 1);
+        for (int cx = x0 >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT; cx
+            <= x1 >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT; cx++)
+            for (int cz = z0 >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT; cz
+                <= z1 >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT; cz++)
+                if (!world.getChunkProvider()
+                    .chunkExists(cx, cz)) throw new Unavailable(MaidBowAttack.Status.UNLOADED);
         boolean water = false;
-        var flow = Vec3.createVectorHelper(0, 0, 0);
+        var flow = Vec3.createVectorHelper(
+            BallisticsTuning.REJECTED_INITIAL_VALUE,
+            BallisticsTuning.REJECTED_INITIAL_VALUE,
+            BallisticsTuning.REJECTED_INITIAL_VALUE);
         for (int x = x0; x < x1; x++) for (int y = y0; y < y1; y++) for (int z = z0; z < z1; z++) {
             var block = getBlock(x, y, z);
             if (block.getMaterial() != Material.water) continue;
@@ -101,18 +112,26 @@ public final class NativeArrowMedium implements IBlockAccess {
                 flow.zCoord += velocity.zCoord;
             } catch (InvocationTargetException failure) {
                 if (failure.getCause() instanceof Unavailable unavailable) throw unavailable;
-                throw new IllegalStateException("Native water flow query failed", failure.getCause());
+                throw new IllegalStateException(
+                    BallisticsDiagnostics.MSG_NATIVE_WATER_FLOW_QUERY_FAILED,
+                    failure.getCause());
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException("Native water flow query is unavailable", failure);
+                throw new IllegalStateException(BallisticsDiagnostics.MSG_NATIVE_WATER_FLOW_QUERY_IS, failure);
             }
         }
         requireCurrent();
         var push = BallisticVector.ZERO;
         if (flow.lengthVector() > 0 && arrow.isPushedByWater()) {
             flow = liquidPhysics.normalizeTotal(flow);
-            push = new BallisticVector(flow.xCoord * .014, flow.yCoord * .014, flow.zCoord * .014);
+            push = new BallisticVector(
+                flow.xCoord * BallisticsTuning.ARROW_MEDIUM_PUSH,
+                flow.yCoord * BallisticsTuning.ARROW_MEDIUM_PUSH,
+                flow.zCoord * BallisticsTuning.ARROW_MEDIUM_PUSH);
         }
-        return new ArrowPhysics.Medium(water ? (double) .8F : (double) .99F, push);
+        return new ArrowPhysics.Medium(
+            water ? (double) BallisticsTuning.ARROW_INTERCEPT_DOMAIN_FACTOR
+                : (double) BallisticsTuning.ARROW_MEDIUM_MEDIUM_FIRST_FACTOR,
+            push);
     }
 
     public boolean isCurrent() {
@@ -152,7 +171,9 @@ public final class NativeArrowMedium implements IBlockAccess {
 
     private boolean loaded(int x, int z) {
         return world.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4);
+            .chunkExists(
+                x >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT,
+                z >> BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT);
     }
 
     private Cell cell(int x, int y, int z) {
@@ -163,7 +184,7 @@ public final class NativeArrowMedium implements IBlockAccess {
         var p = new Point(x, y, z);
         var cell = cells.get(p);
         if (cell != null) return cell;
-        if (cells.size() >= MAX_CELLS) throw new Unavailable(MaidBowAttack.Status.QUERY_LIMIT);
+        if (cells.size() >= BallisticsTuning.MAX_CELLS) throw new Unavailable(MaidBowAttack.Status.QUERY_LIMIT);
         cell = new Cell(world.getBlock(x, y, z), world.getBlockMetadata(x, y, z));
         cells.put(p, cell);
         return cell;
@@ -182,19 +203,19 @@ public final class NativeArrowMedium implements IBlockAccess {
     }
 
     public TileEntity getTileEntity(int x, int y, int z) {
-        throw new IllegalStateException("Unexpected native water tile query");
+        throw new IllegalStateException(BallisticsDiagnostics.MSG_UNEXPECTED_NATIVE_WATER_TILE_QUERY);
     }
 
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int minimum) {
-        throw new IllegalStateException("Unexpected native water light query");
+        throw new IllegalStateException(BallisticsDiagnostics.MSG_UNEXPECTED_NATIVE_WATER_LIGHT_QUERY);
     }
 
     public int isBlockProvidingPowerTo(int x, int y, int z, int side) {
-        throw new IllegalStateException("Unexpected native water power query");
+        throw new IllegalStateException(BallisticsDiagnostics.MSG_UNEXPECTED_NATIVE_WATER_POWER_QUERY);
     }
 
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        throw new IllegalStateException("Unexpected native water biome query");
+        throw new IllegalStateException(BallisticsDiagnostics.MSG_UNEXPECTED_NATIVE_WATER_BIOME_QUERY);
     }
 
     public int getHeight() {
@@ -206,7 +227,7 @@ public final class NativeArrowMedium implements IBlockAccess {
     }
 
     public boolean isSideSolid(int x, int y, int z, ForgeDirection side, boolean fallback) {
-        throw new IllegalStateException("Unexpected native water side query");
+        throw new IllegalStateException(BallisticsDiagnostics.MSG_UNEXPECTED_NATIVE_WATER_SIDE_QUERY);
     }
 
     private static final class Cell {
@@ -225,7 +246,7 @@ public final class NativeArrowMedium implements IBlockAccess {
         public final MaidBowAttack.Status reason;
 
         public Unavailable(MaidBowAttack.Status reason) {
-            super("Arrow medium: " + reason);
+            super(BallisticsDiagnostics.MSG_ARROW_MEDIUM + reason);
             this.reason = reason;
         }
     }
@@ -242,10 +263,12 @@ public final class NativeArrowMedium implements IBlockAccess {
                         method.getParameterTypes(),
                         new Class<?>[] { IBlockAccess.class, int.class, int.class, int.class }))
                     continue;
-                if (found != null) throw new IllegalStateException("Ambiguous native liquid flow signature");
+                if (found != null)
+                    throw new IllegalStateException(BallisticsDiagnostics.MSG_AMBIGUOUS_NATIVE_LIQUID_FLOW_SIGNATURE);
                 found = method;
             }
-            if (found == null) throw new IllegalStateException("Native liquid flow signature unavailable");
+            if (found == null)
+                throw new IllegalStateException(BallisticsDiagnostics.MSG_NATIVE_LIQUID_FLOW_SIGNATURE_UNAVAILABLE);
             found.setAccessible(true);
             return found;
         }

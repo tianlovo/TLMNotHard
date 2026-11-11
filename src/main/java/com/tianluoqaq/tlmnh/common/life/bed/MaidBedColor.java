@@ -6,13 +6,13 @@ import net.minecraft.item.ItemStack;
 /** 固定上游七种床色；保存现代DyeColor ID，染料入口映射旧版ItemDye的反向编号 */
 public enum MaidBedColor {
 
-    WHITE(0, "white"),
-    BLACK(15, "black"),
-    YELLOW(4, "yellow"),
-    BLUE(11, "blue"),
-    GREEN(13, "green"),
-    PURPLE(10, "purple"),
-    PINK(6, "pink");
+    WHITE(MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE, MaidBedIds.ID_WHITE),
+    BLACK(MaidBedLayout.BED_COLOR_BLACK_FIRST_PARAM, MaidBedIds.ID_BLACK),
+    YELLOW(MaidBedLayout.BED_COLOR_YELLOW_FIRST_PARAM, MaidBedIds.ID_YELLOW),
+    BLUE(MaidBedLayout.BED_COLOR_BLUE_FIRST_PARAM, MaidBedIds.ID_BLUE),
+    GREEN(MaidBedLayout.BED_COLOR_GREEN_FIRST_PARAM, MaidBedIds.ID_GREEN),
+    PURPLE(MaidBedLayout.BED_COLOR_PURPLE_FIRST_PARAM, MaidBedIds.ID_PURPLE),
+    PINK(MaidBedLayout.BED_COLOR_PINK_FIRST_PARAM, MaidBedIds.ID_PINK);
 
     public final int id;
     public final String resourceName;
@@ -30,6 +30,8 @@ public enum MaidBedColor {
     public static MaidBedColor fromDye(ItemStack stack) {
         if (stack == null || stack.stackSize <= 0 || !(stack.getItem() instanceof ItemDye)) return null;
         int damage = stack.getItemDamage();
-        return damage >= 0 && damage < 16 ? byId(15 - damage) : null;
+        return damage >= 0 && damage < MaidBedLayout.MIN_DAMAGE_THRESHOLD
+            ? byId(MaidBedLayout.BED_COLOR_BLACK_FIRST_PARAM - damage)
+            : null;
     }
 }

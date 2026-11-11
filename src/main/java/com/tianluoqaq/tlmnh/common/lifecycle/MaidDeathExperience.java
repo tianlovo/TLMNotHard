@@ -13,8 +13,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 一批原生经验球共用写前屏障与实际区块读回；大int余额仍按每轮64球有界投放 */
 public final class MaidDeathExperience {
 
-    private static final int MAX_ORBS_PER_PASS = 64;
-
     private MaidDeathExperience() {}
 
     public static void retryPending(World world) {
@@ -23,24 +21,30 @@ public final class MaidDeathExperience {
         int attempts = 0;
         for (var token : ledger.pendingDeathExperience(world.provider.dimensionId, world.getTotalWorldTime())) {
             var position = ledger.tombstonePosition(token);
-            if (!IntegrationGuard.available(Side.SERVER, "death_experience/" + token) || position == null
-                || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord)))
+            if (!IntegrationGuard.available(Side.SERVER, MaidLifecycleIds.ID_DEATH_EXPERIENCE + token)
+                || position == null
+                || !world.blockExists(
+                    (int) Math.floor(position.xCoord),
+                    MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM,
+                    (int) Math.floor(position.zCoord)))
                 continue;
-            attempts += releaseBatch(world, ledger, token, MAX_ORBS_PER_PASS - attempts);
-            if (attempts >= MAX_ORBS_PER_PASS) return;
+            attempts += releaseBatch(world, ledger, token, MaidLifecycleTuning.MAX_ORBS_PER_PASS - attempts);
+            if (attempts >= MaidLifecycleTuning.MAX_ORBS_PER_PASS) return;
         }
     }
 
     private static int releaseBatch(World world, MaidLifecycleData ledger, UUID token, int limit) {
-        String key = "death_experience/" + token;
-        if (!IntegrationGuard.available(Side.SERVER, key) || limit <= 0) return 0;
+        String key = MaidLifecycleIds.ID_DEATH_EXPERIENCE + token;
+        if (!IntegrationGuard.available(Side.SERVER, key) || limit <= 0) return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         var position = ledger.tombstonePosition(token);
-        if (position == null
-            || !world.blockExists((int) Math.floor(position.xCoord), 5, (int) Math.floor(position.zCoord))) return 0;
+        if (position == null || !world.blockExists(
+            (int) Math.floor(position.xCoord),
+            MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM,
+            (int) Math.floor(position.zCoord))) return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         int remaining = ledger.reserveDeathExperience(token);
-        if (remaining <= 0) return 0;
+        if (remaining <= 0) return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         var publications = new ArrayList<MaidLifecycleDurability.Publication>();
-        int attempts = 0, released = 0;
+        int attempts = 0, released = MaidLifecycleTuning.CORE_INITIAL_VALUE;
         boolean begun = false, settling = false, committed = false;
         try {
             MaidLifecycleDurability.requireEntities(world);
@@ -49,7 +53,7 @@ public final class MaidDeathExperience {
             while (attempts < limit && released < remaining) {
                 int amount = EntityXPOrb.getXPSplit(remaining - released);
                 if (amount <= 0 || amount > remaining - released)
-                    throw new IllegalStateException("Invalid native XP split: " + amount);
+                    throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_NATIVE_XP_SPLIT + amount);
                 var orb = new EntityXPOrb(world, position.xCoord, position.yCoord, position.zCoord, amount);
                 var publication = new MaidLifecycleDurability.Publication(orb, amount);
                 publications.add(publication);
@@ -67,7 +71,7 @@ public final class MaidDeathExperience {
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
             IntegrationGuard.report(Side.SERVER, key, failure, ledger.owner(token, MaidLifecycleData.Kind.FILM));
-            return Math.max(attempts, 1);
+            return Math.max(attempts, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
         } finally {
             try {
                 if (begun && !committed && !settling) retract(world, ledger, token, publications);
@@ -104,12 +108,12 @@ public final class MaidDeathExperience {
     private static void reportCleanup(MaidLifecycleData ledger, UUID token, Throwable failure) {
         IntegrationGuard.report(
             Side.SERVER,
-            "death_experience/" + token,
+            MaidLifecycleIds.ID_DEATH_EXPERIENCE + token,
             failure,
             ledger.owner(token, MaidLifecycleData.Kind.FILM));
         IntegrationGuard.report(
             Side.SERVER,
-            "death_experience/" + token + "/cleanup",
+            MaidLifecycleIds.ID_DEATH_EXPERIENCE + token + MaidLifecycleIds.ID_CLEANUP,
             failure,
             ledger.owner(token, MaidLifecycleData.Kind.FILM));
     }

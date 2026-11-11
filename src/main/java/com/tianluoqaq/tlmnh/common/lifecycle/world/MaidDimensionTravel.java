@@ -25,7 +25,7 @@ public final class MaidDimensionTravel {
     private boolean transferring;
 
     public MaidDimensionTravel(EntityMaid maid) {
-        this.maid = Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, LifecycleWorldIds.ID_MAID);
     }
 
     public boolean travel(int requestedDimension) {
@@ -35,12 +35,14 @@ public final class MaidDimensionTravel {
             || maid.getCombatHitReceipt()
                 .blocksTransfer())
             return false;
-        String key = "dimension_travel/" + maid.getUniqueID() + "/" + requestedDimension;
+        String key = LifecycleWorldIds.ID_DIMENSION_TRAVEL + maid.getUniqueID()
+            + LifecycleWorldIds.PATH_SLASH_SEPARATOR
+            + requestedDimension;
         if (!IntegrationGuard.available(Side.SERVER, key)) return false;
         EntityMaid candidate = null;
         WorldServer destination = null;
         UUID identity = maid.getUniqueID();
-        int candidateId = -1;
+        int candidateId = LifecycleWorldTuning.UNSET_OR_NOT_FOUND;
         boolean committed = false, retiringSource = false;
         transferring = true;
         try {
@@ -49,19 +51,23 @@ public final class MaidDimensionTravel {
             int origin = maid.dimension;
             var sourceProvider = source.provider;
             if (sourceProvider.dimensionId != origin || DimensionManager.getWorld(origin) != source)
-                throw new IllegalStateException("Maid source dimension is not the registered native world");
-            int target = origin == 1 && requestedDimension == 1 ? 0 : requestedDimension;
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_SOURCE_DIMENSION_IS_NOT);
+            int target = origin == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD
+                && requestedDimension == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD
+                    ? LifecycleWorldTuning.DIMENSION_TRAVEL_TRAVEL_ZERO_BASE
+                    : requestedDimension;
             if (target == origin) return false;
-            if (!DimensionManager.isDimensionRegistered(target))
-                throw new IllegalStateException("Maid destination dimension is not registered: " + target);
+            if (!DimensionManager.isDimensionRegistered(target)) throw new IllegalStateException(
+                LifecycleWorldDiagnostics.MSG_MAID_DESTINATION_DIMENSION_IS_NOT + target);
             destination = MinecraftServer.getServer()
                 .worldServerForDimension(target);
             if (destination == null || destination.provider.dimensionId != target
                 || MaidBrainLifecycle.isWorldUnloading(destination))
-                throw new IllegalStateException("Maid destination world is unavailable: " + target);
+                throw new IllegalStateException(
+                    LifecycleWorldDiagnostics.MSG_MAID_DESTINATION_WORLD_IS_UNAVAILABLE + target);
             var destinationProvider = destination.provider;
             if (hasIdentity(destination, identity, null))
-                throw new IllegalStateException("Maid identity already exists in the destination");
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_IDENTITY_ALREADY_EXISTS_IN);
             var original = snapshot(maid);
             int sourceId = maid.getEntityId();
             var vehicle = maid.ridingEntity;
@@ -72,7 +78,7 @@ public final class MaidDimensionTravel {
                 && maid.riddenByEntity == passenger;
             var created = EntityList.createEntityByName(EntityList.getEntityString(maid), destination);
             if (!(created instanceof EntityMaid fresh) || created.getClass() != maid.getClass())
-                throw new IllegalStateException("Native entity factory did not recreate the same maid type");
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_NATIVE_ENTITY_FACTORY_DID_NOT);
             candidate = fresh;
             candidateId = candidate.getEntityId();
             candidate.copyDataFrom(maid, true);
@@ -82,7 +88,7 @@ public final class MaidDimensionTravel {
             var staged = snapshot(candidate);
             if (!sourceCurrent.getAsBoolean() || !destinationCurrent(destination, destinationProvider, target)
                 || !candidateCurrent(candidate, destination, target, identity, candidateId))
-                throw new IllegalStateException("Maid dimension context changed during native placement");
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_DIMENSION_CONTEXT_CHANGED_DURING);
             // 这里只进行一次目标登记；原生SCM的临时源区块登记与忽略spawn返回值的路径不用于女仆
             if (!destination.spawnEntityInWorld(candidate)) return false;
             if (!present(candidate, destination)
@@ -91,11 +97,12 @@ public final class MaidDimensionTravel {
                 || hasIdentity(destination, identity, candidate)
                 || !sourceCurrent.getAsBoolean()
                 || !destinationCurrent(destination, destinationProvider, target))
-                throw new IllegalStateException("Maid destination spawn callback revoked the staged transfer");
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_DESTINATION_SPAWN_CALLBACK_REVOKED);
             retiringSource = true;
             source.removeEntity(maid);
             committed = maid.isDead;
-            if (!committed) throw new IllegalStateException("Maid source remained active after native removal");
+            if (!committed)
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_SOURCE_REMAINED_ACTIVE_AFTER);
             source.resetUpdateEntityTick();
             destination.resetUpdateEntityTick();
             return true;
@@ -110,7 +117,7 @@ public final class MaidDimensionTravel {
                 if (!committed && candidate != null) discardOwned(candidate, destination, identity, candidateId);
             } catch (Exception | LinkageError | AssertionError cleanup) {
                 IntegrationGuard.throwIfFatal(cleanup);
-                IntegrationGuard.report(Side.SERVER, key + "/cleanup", cleanup, owner());
+                IntegrationGuard.report(Side.SERVER, key + LifecycleWorldIds.ID_CLEANUP, cleanup, owner());
             } finally {
                 transferring = false;
             }
@@ -124,26 +131,40 @@ public final class MaidDimensionTravel {
     private static void place(EntityMaid candidate, int origin, int requested, WorldProvider sourceProvider,
         WorldServer destination) {
         double factor = sourceProvider.getMovementFactor() / destination.provider.getMovementFactor();
-        if (!Double.isFinite(factor) || factor <= 0)
-            throw new IllegalStateException("Invalid native dimension movement factor: " + factor);
+        if (!Double.isFinite(factor) || factor <= 0) throw new IllegalStateException(
+            LifecycleWorldDiagnostics.MSG_INVALID_NATIVE_DIMENSION_MOVEMENT_FACTOR + factor);
         double x = candidate.posX * factor, z = candidate.posZ * factor;
         double oldX = candidate.posX, oldY = candidate.posY, oldZ = candidate.posZ;
         if (!Double.isFinite(x) || !Double.isFinite(z) || !Double.isFinite(oldY))
-            throw new IllegalStateException("Native dimension placement coordinates are not finite");
+            throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_NATIVE_DIMENSION_PLACEMENT_COORDINATES_ARE);
         float yaw = candidate.rotationYaw;
-        if (candidate.dimension == 1) {
-            var entrance = origin == 1 ? destination.getSpawnPoint() : destination.getEntrancePortalLocation();
-            if (entrance == null) throw new IllegalStateException("Native End entrance is unavailable");
+        if (candidate.dimension == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD) {
+            var entrance = origin == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD ? destination.getSpawnPoint()
+                : destination.getEntrancePortalLocation();
+            if (entrance == null)
+                throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_NATIVE_END_ENTRANCE_IS_UNAVAILABLE);
             x = entrance.posX;
             z = entrance.posZ;
-            candidate.setLocationAndAngles(x, entrance.posY, z, 90, 0);
+            candidate.setLocationAndAngles(
+                x,
+                entrance.posY,
+                z,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_SET_LOCATION_AND_ANGLES_FOURTH_PARA,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_TRAVEL_ZERO_BASE);
         }
-        if (origin != 1) {
-            x = MathHelper.clamp_int((int) x, -29999872, 29999872);
-            z = MathHelper.clamp_int((int) z, -29999872, 29999872);
+        if (origin != LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD) {
+            x = MathHelper.clamp_int(
+                (int) x,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_CLAMP_INT_SECOND_PARAM,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_CLAMP_INT_THIRD_PARAM);
+            z = MathHelper.clamp_int(
+                (int) z,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_CLAMP_INT_SECOND_PARAM,
+                LifecycleWorldTuning.DIMENSION_TRAVEL_CLAMP_INT_THIRD_PARAM);
             candidate.setLocationAndAngles(x, candidate.posY, z, candidate.rotationYaw, candidate.rotationPitch);
             var teleporter = destination.getDefaultTeleporter();
-            if (teleporter == null) throw new IllegalStateException("Native destination teleporter is unavailable");
+            if (teleporter == null) throw new IllegalStateException(
+                LifecycleWorldDiagnostics.MSG_NATIVE_DESTINATION_TELEPORTER_IS_UNAVAILABLE);
             boolean finding = destination.findingSpawnPoint;
             destination.findingSpawnPoint = true;
             try {
@@ -152,7 +173,8 @@ public final class MaidDimensionTravel {
                 destination.findingSpawnPoint = finding;
             }
         }
-        if (origin == 1 && requested == 1) {
+        if (origin == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD
+            && requested == LifecycleWorldTuning.TARGET_ORIGIN_THRESHOLD) {
             var spawn = destination.getSpawnPoint();
             candidate.setLocationAndAngles(
                 spawn.posX,
@@ -214,10 +236,10 @@ public final class MaidDimensionTravel {
     private static void discardOwned(EntityMaid candidate, WorldServer destination, UUID identity, int entityId) {
         if (candidate.worldObj != destination || candidate.getEntityId() != entityId
             || !identity.equals(candidate.getUniqueID()))
-            throw new IllegalStateException("Maid transfer candidate changed ownership; leaving external state intact");
+            throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_TRANSFER_CANDIDATE_CHANGED_OWNERSHIP);
         var indexed = destination.getEntityByID(entityId);
         if (indexed != null && indexed != candidate)
-            throw new IllegalStateException("Maid transfer candidate ID belongs to a successor; leaving it intact");
+            throw new IllegalStateException(LifecycleWorldDiagnostics.MSG_MAID_TRANSFER_CANDIDATE_ID_BELONGS);
         // removeEntity只撤销本候选，不按UUID查找或删除回调另建的实体
         destination.removeEntity(candidate);
     }

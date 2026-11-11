@@ -27,26 +27,30 @@ public final class MaidModernRanged {
         var target = maid.attackTarget();
         if (target != null) {
             Long since = maid.getCantReachSince();
-            if (!maid.canAttack(target) || since != null && maid.worldGameTime() - since > 200
+            if (!maid.canAttack(target)
+                || since != null && maid.worldGameTime() - since > FaithfulCombatTuning.MAX_SINCE_THRESHOLD
                 || !maid.targetAlive(target)
                 || !maid.targetInSameWorld(target)
                 || !maid.hasBowAndArrow()
                 || maid.rangedTargetTooFar(target)) maid.eraseAttackTarget();
         }
         if (!riding) {
-            MaidRangedWalkToTarget.trigger(maid, .6F);
+            MaidRangedWalkToTarget
+                .trigger(maid, FaithfulCombatTuning.MODERN_COMBAT_WALK_TO_ATTACK_TARGET_SECOND_FACTOR);
             // WALK_TARGET准入必须读取上面OneShot写完后的实际记忆
             if (!strafeRunning && !maid.hasRangedWalkTarget()
                 && visibleMemoryPresent
                 && strafe.checkExtraStartConditions(maid)) {
                 strafeRunning = true;
-                strafeDeadline = maid.worldGameTime() + 1200 + maid.nextRangedWorldInt(1);
+                strafeDeadline = maid.worldGameTime() + FaithfulCombatTuning.MODERN_RANGED_STRAFE_DEADLINE
+                    + maid.nextRangedWorldInt(FaithfulCombatTuning.NEXT_RANGED_WORLD_INT_SINGLE_UNIT);
                 strafe.start(maid);
             }
         }
         if (!shootRunning && visibleMemoryPresent && shoot.checkExtraStartConditions(maid)) {
             shootRunning = true;
-            shootDeadline = maid.worldGameTime() + 1200 + maid.nextRangedWorldInt(1);
+            shootDeadline = maid.worldGameTime() + FaithfulCombatTuning.MODERN_RANGED_STRAFE_DEADLINE
+                + maid.nextRangedWorldInt(FaithfulCombatTuning.NEXT_RANGED_WORLD_INT_SINGLE_UNIT);
             shoot.start(maid);
         }
     }

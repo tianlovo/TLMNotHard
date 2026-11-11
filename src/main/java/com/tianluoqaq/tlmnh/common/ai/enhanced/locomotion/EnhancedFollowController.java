@@ -13,7 +13,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 /** 正常跟随继续走路，达到原版掉队范围才尝试有限安全落点；失败退回导航并限频重试 */
 public final class EnhancedFollowController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("follow_owner");
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedLocomotionIds.ID_FOLLOW_OWNER);
 
     private enum Recovery {
         DEFERRED,
@@ -22,7 +22,6 @@ public final class EnhancedFollowController {
         SUCCEEDED
     }
 
-    private static final int RECOVERY_RETRY_TICKS = 20;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private long nextRecovery, lastTick = Long.MIN_VALUE, attempts, successes;
@@ -41,9 +40,17 @@ public final class EnhancedFollowController {
             && !owner.isSpectator()
             && !owner.isDeadOrDying()
             && owner.getWorldIdentity() == actor.getWorldIdentity()) {
-            double start = selectedKind == Kind.FOLLOW ? 2 : 6;
+            double start = selectedKind == Kind.FOLLOW ? EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET
+                : EnhancedLocomotionTuning.ENHANCED_FOLLOW_OFFER_PARAM;
             if (!actor.closerThan(owner, start)) {
-                frame.offerTyped(ID, Group.COMMAND, Kind.FOLLOW, "owner", 1, owner, this::execute);
+                frame.offerTyped(
+                    ID,
+                    Group.COMMAND,
+                    Kind.FOLLOW,
+                    EnhancedLocomotionIds.ID_OWNER,
+                    EnhancedLocomotionTuning.OFFER_TYPED_SINGLE_UNIT,
+                    owner,
+                    this::execute);
             }
         }
     }
@@ -61,12 +68,16 @@ public final class EnhancedFollowController {
 
     public void execute(Owner owner) {
         if (!eligible(owner)) return;
-        int recoveryDistance = (int) actor.getRestrictRadius() + 2;
+        int recoveryDistance = (int) actor.getRestrictRadius()
+            + EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET;
         if (!actor.closerThan(owner, recoveryDistance)) {
             var result = recover(owner, false);
             if (result == Recovery.SUCCEEDED || result == Recovery.REVOKED) return;
         }
-        if (eligible(owner)) actor.setWalkAndLookTargetMemories(owner, .5F, 2);
+        if (eligible(owner)) actor.setWalkAndLookTargetMemories(
+            owner,
+            EnhancedLocomotionTuning.ENHANCED_BREATHING_SET_AIR_WALK_AND_LOOK_SECOND_FACT,
+            EnhancedLocomotionTuning.ENHANCED_BREATHING_EXECUTE_Z_OFFSET);
     }
 
     /** 仅由呼吸动作在空气候选真正耗尽后调用，不以距离或预算等待代替失败 */
@@ -77,7 +88,7 @@ public final class EnhancedFollowController {
 
     private boolean airEmergency(Owner owner) {
         return eligible(owner) && !owner.isUnderWater()
-            && actor.airSupply() < 100
+            && actor.airSupply() < EnhancedLocomotionTuning.MIN_AIR_SUPPLY_THRESHOLD
             && !actor.hasBreathingEffect()
             && !actor.hasDrownBauble()
             && !actor.isEatBreatheItem();
@@ -85,10 +96,10 @@ public final class EnhancedFollowController {
 
     private Recovery recover(Owner owner, boolean requireAir) {
         long now = actor.worldGameTime();
-        if (now < lastTick) nextRecovery = 0;
+        if (now < lastTick) nextRecovery = EnhancedLocomotionTuning.ENHANCED_BREATHING_CANDIDATE_INDEX;
         lastTick = now;
         if (now >= nextRecovery) {
-            nextRecovery = now + RECOVERY_RETRY_TICKS;
+            nextRecovery = now + EnhancedLocomotionTuning.RECOVERY_RETRY_TICKS;
             attempts++;
             var player = maid.getOwner();
             double px = player.posX, py = player.posY, pz = player.posZ;

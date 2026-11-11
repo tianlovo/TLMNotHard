@@ -3,11 +3,11 @@ package com.tianluoqaq.tlmnh.common.ai.navigation.model;
 /** 现代移动控制所用查表角度，保留Mth.atan2的有限精度规则 */
 public final class MaidMovementAngles {
 
-    private static final double BIAS = Double.longBitsToDouble(4805340802404319232L);
-    private static final double[] ASIN = new double[257], COS = new double[257];
+    private static final double[] ASIN = new double[NavigationModelTuning.MOVEMENT_ANGLES_DOMAIN_PARAM],
+        COS = new double[NavigationModelTuning.MOVEMENT_ANGLES_DOMAIN_PARAM];
     static {
-        for (int i = 0; i < 257; i++) {
-            ASIN[i] = Math.asin(i / 256.0);
+        for (int i = 0; i < NavigationModelTuning.MOVEMENT_ANGLES_DOMAIN_PARAM; i++) {
+            ASIN[i] = Math.asin(i / NavigationModelTuning.MOVEMENT_ANGLES_ASIN_FIRST_FACTOR);
             COS[i] = Math.cos(ASIN[i]);
         }
     }
@@ -26,16 +26,19 @@ public final class MaidMovementAngles {
             x = y;
             y = old;
         }
-        double half = .5 * squared;
-        double inverse = Double.longBitsToDouble(6910469410427058090L - (Double.doubleToRawLongBits(squared) >> 1));
-        inverse *= 1.5 - half * inverse * inverse;
+        double half = NavigationModelTuning.MOVEMENT_ANGLES_HALF * squared;
+        double inverse = Double.longBitsToDouble(
+            NavigationModelTuning.MOVEMENT_ANGLES_LONG_BITS_TO_DOUBLE_FIRST_LIMIT
+                - (Double.doubleToRawLongBits(squared) >> NavigationModelTuning.MOVEMENT_ANGLES_BIT_SHIFT_1));
+        inverse *= NavigationModelTuning.MOVEMENT_ANGLES_ATAN2_FACTOR - half * inverse * inverse;
         x *= inverse;
         y *= inverse;
-        double biased = BIAS + y;
+        double biased = NavigationModelDerivedTuning.BIAS + y;
         int index = (int) Double.doubleToRawLongBits(biased);
-        double error = y * COS[index] - x * (biased - BIAS);
-        double angle = ASIN[index] + (6 + error * error) * error * .16666666666666666;
-        if (swap) angle = Math.PI / 2 - angle;
+        double error = y * COS[index] - x * (biased - NavigationModelDerivedTuning.BIAS);
+        double angle = ASIN[index] + (NavigationModelTuning.MOVEMENT_ANGLES_ATAN2_PARAM + error * error) * error
+            * NavigationModelTuning.MOVEMENT_ANGLES_ANGLE;
+        if (swap) angle = Math.PI / NavigationModelTuning.MIDPOINT_DIVISOR - angle;
         if (negativeX) angle = Math.PI - angle;
         if (negativeY) angle = -angle;
         return angle;

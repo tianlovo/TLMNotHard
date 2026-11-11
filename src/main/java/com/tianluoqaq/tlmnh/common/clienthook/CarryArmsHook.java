@@ -19,7 +19,7 @@ public final class CarryArmsHook {
     private CarryArmsHook() {}
 
     public static void install(BiConsumer<ModelBiped, Entity> value) {
-        handler = Objects.requireNonNull(value, "value");
+        handler = Objects.requireNonNull(value, ClientHookIds.ID_VALUE);
     }
 
     public static void apply(ModelBiped model, Entity entity) {

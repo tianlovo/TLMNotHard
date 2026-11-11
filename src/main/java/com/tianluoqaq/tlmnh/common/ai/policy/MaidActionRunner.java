@@ -37,8 +37,8 @@ public final class MaidActionRunner {
     }
 
     public boolean claim(Owner requested, MaidActionRun proposed, Runnable onCancel) {
-        Objects.requireNonNull(requested, "requested");
-        Objects.requireNonNull(onCancel, "onCancel");
+        Objects.requireNonNull(requested, AiPolicyIds.ID_REQUESTED);
+        Objects.requireNonNull(onCancel, AiPolicyIds.ID_ONCANCEL);
         if (changing) {
             transitionRefused = true;
             return false;

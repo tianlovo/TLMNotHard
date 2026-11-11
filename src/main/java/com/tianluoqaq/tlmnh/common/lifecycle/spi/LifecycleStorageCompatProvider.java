@@ -16,37 +16,46 @@ public interface LifecycleStorageCompatProvider {
 
     default int sectionBlockId(NBTTagCompound section, int index) {
         validateVanillaSection(section, index);
-        int value = section.getByteArray("Blocks")[index] & 255;
-        if (section.hasKey("Add")) {
-            byte[] add = section.getByteArray("Add");
-            value |= ((add[index >> 1] >> ((index & 1) * 4)) & 15) << 8;
+        int value = section.getByteArray(LifecycleSpiNbtKeys.KEY_BLOCKS)[index] & LifecycleSpiTuning.UNSIGNED_BYTE_MASK;
+        if (section.hasKey(LifecycleSpiNbtKeys.KEY_ADD)) {
+            byte[] add = section.getByteArray(LifecycleSpiNbtKeys.KEY_ADD);
+            value |= ((add[index >> LifecycleSpiTuning.LIFECYCLE_STORAGE_BIT_SHIFT_1]
+                >> ((index & LifecycleSpiTuning.LIFECYCLE_STORAGE_BIT_SHIFT_1)
+                    * LifecycleSpiTuning.LIFECYCLE_STORAGE_SECTION_BLOCK_ID_PARAM))
+                & LifecycleSpiTuning.CHUNK_LOCAL_MASK) << LifecycleSpiTuning.SECOND_BYTE_SHIFT;
         }
         return value;
     }
 
     default int sectionMetadata(NBTTagCompound section, int index) {
         validateVanillaSection(section, index);
-        byte[] data = section.getByteArray("Data");
-        return (data[index >> 1] >> ((index & 1) * 4)) & 15;
+        byte[] data = section.getByteArray(LifecycleSpiNbtKeys.KEY_DATA);
+        return (data[index >> LifecycleSpiTuning.LIFECYCLE_STORAGE_BIT_SHIFT_1]
+            >> ((index & LifecycleSpiTuning.LIFECYCLE_STORAGE_BIT_SHIFT_1)
+                * LifecycleSpiTuning.LIFECYCLE_STORAGE_SECTION_BLOCK_ID_PARAM))
+            & LifecycleSpiTuning.CHUNK_LOCAL_MASK;
     }
 
     default void prepareInitialSize(EntityMaid maid, UUID actor) {}
 
     static void validateVanillaSection(NBTTagCompound section, int index) {
-        if (section == null || index < 0 || index >= 4096)
-            throw new IllegalArgumentException("Native section and index 0..4095 required");
-        if (!section.hasKey("Blocks", Constants.NBT.TAG_BYTE_ARRAY) || section.getByteArray("Blocks").length != 4096
-            || !section.hasKey("Data", Constants.NBT.TAG_BYTE_ARRAY)
-            || section.getByteArray("Data").length != 2048)
-            throw new IllegalStateException("Invalid native section array");
-        if (section.hasKey("Add")
-            && (!section.hasKey("Add", Constants.NBT.TAG_BYTE_ARRAY) || section.getByteArray("Add").length != 2048))
-            throw new IllegalStateException("Invalid native Add section array");
-        if (section.hasKey("BlocksB2Hi") || section.hasKey("BlocksB3")
-            || section.hasKey("Data1High")
-            || section.hasKey("Data2")
-            || section.hasKey("Palette")
-            || section.hasKey("BlockStates"))
-            throw new IllegalStateException("Extended section data has no audited provider");
+        if (section == null || index < 0 || index >= LifecycleSpiTuning.MAX_INDEX_THRESHOLD)
+            throw new IllegalArgumentException(LifecycleSpiDiagnostics.MSG_NATIVE_SECTION_AND_INDEX_4095);
+        if (!section.hasKey(LifecycleSpiNbtKeys.KEY_BLOCKS, Constants.NBT.TAG_BYTE_ARRAY)
+            || section.getByteArray(LifecycleSpiNbtKeys.KEY_BLOCKS).length != LifecycleSpiTuning.MAX_INDEX_THRESHOLD
+            || !section.hasKey(LifecycleSpiNbtKeys.KEY_DATA, Constants.NBT.TAG_BYTE_ARRAY)
+            || section.getByteArray(LifecycleSpiNbtKeys.KEY_DATA).length != LifecycleSpiTuning.TARGET_LENGTH_THRESHOLD)
+            throw new IllegalStateException(LifecycleSpiDiagnostics.MSG_INVALID_NATIVE_SECTION_ARRAY);
+        if (section.hasKey(LifecycleSpiNbtKeys.KEY_ADD)
+            && (!section.hasKey(LifecycleSpiNbtKeys.KEY_ADD, Constants.NBT.TAG_BYTE_ARRAY)
+                || section.getByteArray(LifecycleSpiNbtKeys.KEY_ADD).length
+                    != LifecycleSpiTuning.TARGET_LENGTH_THRESHOLD))
+            throw new IllegalStateException(LifecycleSpiDiagnostics.MSG_INVALID_NATIVE_ADD_SECTION_ARRAY);
+        if (section.hasKey(LifecycleSpiNbtKeys.KEY_BLOCKS_B2_HI) || section.hasKey(LifecycleSpiNbtKeys.KEY_BLOCKS_B3)
+            || section.hasKey(LifecycleSpiNbtKeys.KEY_DATA1_HIGH)
+            || section.hasKey(LifecycleSpiNbtKeys.KEY_DATA2)
+            || section.hasKey(LifecycleSpiNbtKeys.KEY_PALETTE)
+            || section.hasKey(LifecycleSpiNbtKeys.KEY_BLOCK_STATES))
+            throw new IllegalStateException(LifecycleSpiDiagnostics.MSG_EXTENDED_SECTION_DATA_HAS_NO);
     }
 }

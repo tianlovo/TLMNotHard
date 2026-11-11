@@ -24,14 +24,14 @@ public final class MaidCombatFeedback {
         var held = maid.getHeldItem();
         if (held == null) return;
         var profile = maid.getCombatWeaponProfile();
-        if (profile.supported() || profile.reason.equals("item_budget_pending")) return;
+        if (profile.supported() || profile.reason.equals(MaidCombatIds.ID_ITEM_BUDGET_PENDING)) return;
         var previous = NOTICES.get(maid);
         if (previous != null && previous.item == held.getItem()
             && previous.metadata == held.getItemDamage()
             && previous.owner.equals(owner.getUniqueID())) return;
         NOTICES.put(maid, new Notice(held.getItem(), held.getItemDamage(), owner.getUniqueID()));
         owner.addChatMessage(
-            new ChatComponentTranslation(MaidCombatText.UNSUPPORTED_WEAPON, maid.getCommandSenderName()));
+            new ChatComponentTranslation(MaidCombatIds.UNSUPPORTED_WEAPON, maid.getCommandSenderName()));
     }
 
     public static void supported(EntityMaid maid) {

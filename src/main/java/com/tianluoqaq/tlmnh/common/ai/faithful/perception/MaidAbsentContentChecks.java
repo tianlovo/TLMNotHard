@@ -10,7 +10,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidCheckRa
  */
 public final class MaidAbsentContentChecks {
 
-    private final Rate findHomeMeal = new Rate(10), joy = new Rate(10), homeMeal = new Rate(50);
+    private final Rate findHomeMeal = new Rate(FaithfulPerceptionTuning.ABSENT_CONTENT_RATE_FIRST_PARAM),
+        joy = new Rate(FaithfulPerceptionTuning.ABSENT_CONTENT_RATE_FIRST_PARAM),
+        homeMeal = new Rate(FaithfulPerceptionTuning.ABSENT_CONTENT_RATE_FIRST_PARAM_2);
 
     public void visitFindHomeMeal(boolean memoriesAbsent, IntUnaryOperator random) {
         if (memoriesAbsent) findHomeMeal.visit(random);

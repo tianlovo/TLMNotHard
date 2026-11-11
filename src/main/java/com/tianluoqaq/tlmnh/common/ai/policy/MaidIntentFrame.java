@@ -53,7 +53,7 @@ public final class MaidIntentFrame {
     private int groupMask;
 
     public MaidIntentFrame(MaidPolicyContext context, MaidPolicyContext.Token token, long tick) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, AiPolicyIds.ID_CONTEXT);
         this.token = token;
         this.tick = tick;
         identity = context.beginDecisionFrame(token);
@@ -73,9 +73,9 @@ public final class MaidIntentFrame {
 
     public <P> Intent offerTyped(MaidBehaviorId moduleId, Group group, Kind kind, String arbiterTarget,
         String rawTarget, double utility, P payload, Consumer<? super P> action) {
-        Objects.requireNonNull(moduleId, "moduleId");
-        Objects.requireNonNull(action, "action");
-        if (!isCurrent()) throw new IllegalStateException("Decision frame is no longer current");
+        Objects.requireNonNull(moduleId, AiPolicyIds.ID_MODULEID);
+        Objects.requireNonNull(action, AiPolicyIds.ID_ACTION);
+        if (!isCurrent()) throw new IllegalStateException(AiPolicyDiagnostics.MSG_DECISION_FRAME_IS_NO_LONGER);
         validateUtility(utility);
         Runnable bound = () -> action.accept(payload);
         var intent = new Intent(this, moduleId, group, kind, arbiterTarget, rawTarget, utility, payload, bound);
@@ -84,14 +84,14 @@ public final class MaidIntentFrame {
     }
 
     private static void validateUtility(double utility) {
-        if (!Double.isFinite(utility) || utility < 0 || utility > 1)
-            throw new IllegalArgumentException("Utility must be finite and normalized");
+        if (!Double.isFinite(utility) || utility < 0 || utility > AiPolicyTuning.MAX_UTILITY_THRESHOLD)
+            throw new IllegalArgumentException(AiPolicyDiagnostics.MSG_UTILITY_MUST_BE_FINITE_AND);
     }
 
     private void record(Intent intent) {
         options.add(intent);
-        kindMask |= 1 << intent.kind.ordinal();
-        groupMask |= 1 << intent.group.ordinal();
+        kindMask |= AiPolicyTuning.MAX_UTILITY_THRESHOLD << intent.kind.ordinal();
+        groupMask |= AiPolicyTuning.MAX_UTILITY_THRESHOLD << intent.group.ordinal();
     }
 
     public int kindMask() {
@@ -107,11 +107,11 @@ public final class MaidIntentFrame {
     }
 
     public boolean hasGroupOffer(Group group) {
-        return (groupMask & (1 << group.ordinal())) != 0;
+        return (groupMask & (AiPolicyTuning.MAX_UTILITY_THRESHOLD << group.ordinal())) != 0;
     }
 
     public boolean hasNonAmbientOffer() {
-        return (groupMask & ~(1 << Group.AMBIENT.ordinal())) != 0;
+        return (groupMask & ~(AiPolicyTuning.MAX_UTILITY_THRESHOLD << Group.AMBIENT.ordinal())) != 0;
     }
 
     public boolean hasModuleOffer(MaidBehaviorId moduleId) {
@@ -129,8 +129,8 @@ public final class MaidIntentFrame {
         int recomputedKinds = 0;
         int recomputedGroups = 0;
         for (var option : options) {
-            recomputedKinds |= 1 << option.kind.ordinal();
-            recomputedGroups |= 1 << option.group.ordinal();
+            recomputedKinds |= AiPolicyTuning.MAX_UTILITY_THRESHOLD << option.kind.ordinal();
+            recomputedGroups |= AiPolicyTuning.MAX_UTILITY_THRESHOLD << option.group.ordinal();
         }
         kindMask = recomputedKinds;
         groupMask = recomputedGroups;
@@ -172,10 +172,10 @@ public final class MaidIntentFrame {
             String rawTarget, double utility, Object payload, Runnable boundAction) {
             this.frame = frame;
             this.moduleId = moduleId;
-            this.group = Objects.requireNonNull(group, "group");
-            this.kind = Objects.requireNonNull(kind, "kind");
-            this.target = Objects.requireNonNull(target, "target");
-            this.rawTarget = Objects.requireNonNull(rawTarget, "rawTarget");
+            this.group = Objects.requireNonNull(group, AiPolicyIds.ID_GROUP);
+            this.kind = Objects.requireNonNull(kind, AiPolicyIds.ID_KIND);
+            this.target = Objects.requireNonNull(target, AiPolicyIds.ID_TARGET);
+            this.rawTarget = Objects.requireNonNull(rawTarget, AiPolicyIds.ID_RAWTARGET);
             this.utility = utility;
             this.payload = payload;
             this.boundAction = boundAction;
@@ -194,8 +194,10 @@ public final class MaidIntentFrame {
         }
 
         public void execute() {
-            if (!frame.accepts(this)) throw new IllegalStateException("Intent is no longer accepted by active frame");
-            if (boundAction == null) throw new IllegalStateException("Intent has no typed execution action bound");
+            if (!frame.accepts(this))
+                throw new IllegalStateException(AiPolicyDiagnostics.MSG_INTENT_IS_NO_LONGER_ACCEPTED);
+            if (boundAction == null)
+                throw new IllegalStateException(AiPolicyDiagnostics.MSG_INTENT_HAS_NO_TYPED_EXECUTION);
             boundAction.run();
         }
 

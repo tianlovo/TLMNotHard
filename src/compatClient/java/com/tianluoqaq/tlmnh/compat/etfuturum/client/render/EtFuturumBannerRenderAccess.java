@@ -27,7 +27,8 @@ public final class EtFuturumBannerRenderAccess {
     /** 路由只认目标实际注册物品；显示熔断后也不能落入不带图案NBT的通用头饰路径 */
     public static boolean isBanner(ItemStack stack) {
         return stack != null && stack.getItem() != null
-            && stack.getItem() == GameRegistry.findItem(EtFuturumClientRenderIds.ID_ETFUTURUM, EtFuturumClientRenderIds.ID_BANNER);
+            && stack.getItem()
+                == GameRegistry.findItem(EtFuturumClientRenderIds.ID_ETFUTURUM, EtFuturumClientRenderIds.ID_BANNER);
     }
 
     /** null也可能是提供方256项缓存暂满；此时沿其原规则跳过本帧，不重建或清空外部缓存 */
@@ -61,16 +62,21 @@ public final class EtFuturumBannerRenderAccess {
                     || GET_COLORS.getReturnType() != List.class
                     || PATTERN_ID.getReturnType() != String.class
                     || COLOR_DAMAGE.getReturnType() != int.class)
-                    throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_TEXTURE_RETURN_CONTRACT);
+                    throw new IllegalStateException(
+                        EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_TEXTURE_RETURN_CONTRACT);
                 TEXTURE.setAccessible(true);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_TEXTURE_ENTRY_IS, failure);
+                throw new IllegalStateException(
+                    EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_TEXTURE_ENTRY_IS,
+                    failure);
             }
         }
 
         static ResourceLocation texture(ItemStack original) throws ReflectiveOperationException {
             if (!isBanner(original) || original.getItem()
-                .getClass() != ITEM) throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_ITEM_IDENTITY_CHANGED);
+                .getClass() != ITEM)
+                throw new IllegalStateException(
+                    EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_ITEM_IDENTITY_CHANGED);
             var display = original.copy();
             var banner = NEW_TILE.newInstance();
             // 完整物品副本先交给真实Tile API，Base、Patterns、颜色和未知输入继续由提供方解释
@@ -84,8 +90,12 @@ public final class EtFuturumBannerRenderAccess {
                 var visible = new NBTTagList();
                 for (int index = 1; index < EtFuturumClientRenderLayout.MAX_SIZE_THRESHOLD; index++) {
                     var entry = new NBTTagCompound();
-                    entry.setString(EtFuturumClientRenderIds.KEY_PATTERN, (String) PATTERN_ID.invoke(patterns.get(index)));
-                    entry.setInteger(EtFuturumClientRenderIds.KEY_COLOR, (Integer) COLOR_DAMAGE.invoke(colors.get(index)));
+                    entry.setString(
+                        EtFuturumClientRenderIds.KEY_PATTERN,
+                        (String) PATTERN_ID.invoke(patterns.get(index)));
+                    entry.setInteger(
+                        EtFuturumClientRenderIds.KEY_COLOR,
+                        (Integer) COLOR_DAMAGE.invoke(colors.get(index)));
                     visible.appendTag(entry);
                 }
                 var tag = display.hasTagCompound() ? (NBTTagCompound) display.getTagCompound()
@@ -98,8 +108,8 @@ public final class EtFuturumBannerRenderAccess {
                 SET_ITEM.invoke(banner, display);
             }
             var renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(banner);
-            if (renderer == null || renderer.getClass() != RENDERER)
-                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_RENDERER_IDENTITY_CHANGED);
+            if (renderer == null || renderer.getClass() != RENDERER) throw new IllegalStateException(
+                EtFuturumClientRenderDiagnostics.MSG_NATIVE_BANNER_RENDERER_IDENTITY_CHANGED);
             return (ResourceLocation) TEXTURE.invoke(renderer, banner);
         }
     }

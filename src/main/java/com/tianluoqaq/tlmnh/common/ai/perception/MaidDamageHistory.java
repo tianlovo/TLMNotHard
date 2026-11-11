@@ -17,7 +17,7 @@ public final class MaidDamageHistory {
 
     public DamageSource source(Object world, long gameTime) {
         long age = gameTime - acceptedAt;
-        if (this.world != world || age < 0 || age > 40) clear();
+        if (this.world != world || age < 0 || age > MaidPerceptionTuning.MAX_AGE_THRESHOLD) clear();
         return source;
     }
 

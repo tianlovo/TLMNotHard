@@ -3,10 +3,6 @@ package com.tianluoqaq.tlmnh.common.combat.ballistics;
 /** 在每段真实tick内解截击二次式，支持当前介质快照，不读取目标未来状态 */
 public final class ArrowInterceptSolver {
 
-    public static final int MAX_FLIGHT_TICKS = 160;
-    private static final double MIN_DISTANCE = 0.25;
-    private static final double SPEED_RESIDUAL = 1.0E-9;
-
     public enum Status {
         SOLVED,
         INVALID_INPUT,
@@ -30,12 +26,15 @@ public final class ArrowInterceptSolver {
             || physics == null
             || !Double.isFinite(speed)
             || speed <= 0
-            || speed > 16
-            || maxTicks < 1
-            || maxTicks > MAX_FLIGHT_TICKS) return Solution.rejected(Status.INVALID_INPUT, 0);
+            || speed > BallisticsTuning.MAX_SPEED_THRESHOLD
+            || maxTicks < BallisticsTuning.MIN_MAX_TICKS_THRESHOLD
+            || maxTicks > BallisticsTuning.MAX_FLIGHT_TICKS)
+            return Solution.rejected(Status.INVALID_INPUT, BallisticsTuning.REJECTED_INITIAL_VALUE);
         var relative = target.subtract(origin);
-        if (relative.length() < MIN_DISTANCE) return Solution.rejected(Status.TOO_CLOSE, 0);
-        double distanceScale = 0, gravityScale = 0, power = 1;
+        if (relative.length() < BallisticsTuning.MIN_DISTANCE)
+            return Solution.rejected(Status.TOO_CLOSE, BallisticsTuning.REJECTED_INITIAL_VALUE);
+        double distanceScale = 0, gravityScale = BallisticsTuning.REJECTED_INITIAL_VALUE,
+            power = BallisticsTuning.MIN_MAX_TICKS_THRESHOLD;
         for (int tick = 0; tick < maxTicks; tick++) {
             // 对分段时间t=n+f：A=A_n+f*d^n，B=B_n+f*A_n，位置=origin+A*v0-g*B
             var p = new BallisticVector(
@@ -47,16 +46,21 @@ public final class ArrowInterceptSolver {
                 targetVelocity.y + physics.gravity * distanceScale,
                 targetVelocity.z);
             double a = q.dot(q) - speed * speed * power * power;
-            double b = 2 * (p.dot(q) - speed * speed * distanceScale * power);
+            double b = BallisticsTuning.ARROW_INTERCEPT_LAYOUT_B_OFFSET
+                * (p.dot(q) - speed * speed * distanceScale * power);
             double c = p.dot(p) - speed * speed * distanceScale * distanceScale;
             double[] roots = roots(a, b, c);
             for (double fraction : roots) {
-                if (!Double.isFinite(fraction) || fraction < 0 || fraction > 1 || tick + fraction <= 0) continue;
+                if (!Double.isFinite(fraction) || fraction < 0
+                    || fraction > BallisticsTuning.MIN_MAX_TICKS_THRESHOLD
+                    || tick + fraction <= 0) continue;
                 double scale = distanceScale + fraction * power;
                 if (!(scale > 0)) continue;
                 var velocity = p.add(q.scale(fraction))
-                    .scale(1 / scale);
-                if (Math.abs(velocity.length() - speed) > SPEED_RESIDUAL * Math.max(1, speed)) continue;
+                    .scale(BallisticsTuning.MIN_MAX_TICKS_THRESHOLD / scale);
+                if (Math.abs(velocity.length() - speed)
+                    > BallisticsTuning.SPEED_RESIDUAL * Math.max(BallisticsTuning.MIN_MAX_TICKS_THRESHOLD, speed))
+                    continue;
                 double time = tick + fraction;
                 return new Solution(Status.SOLVED, velocity, time, target.add(targetVelocity.scale(time)), tick + 1);
             }
@@ -78,7 +82,7 @@ public final class ArrowInterceptSolver {
             maxTicks,
             new ArrowPhysics(physics.drag, physics.gravity));
         if (first.status == Status.INVALID_INPUT || first.status == Status.TOO_CLOSE) return first;
-        for (double seedDrag : new double[] { physics.drag, (double) .8F }) {
+        for (double seedDrag : new double[] { physics.drag, (double) BallisticsTuning.ARROW_INTERCEPT_DOMAIN_FACTOR }) {
             var seed = solveConstant(
                 origin,
                 target,
@@ -87,7 +91,7 @@ public final class ArrowInterceptSolver {
                 maxTicks,
                 new ArrowPhysics(seedDrag, physics.gravity));
             if (!seed.isSolved()) continue;
-            for (int iteration = 0; iteration < 8; iteration++) {
+            for (int iteration = 0; iteration < BallisticsTuning.MIN_ITERATION_THRESHOLD; iteration++) {
                 var candidate = alongSeed(
                     origin,
                     target,
@@ -100,7 +104,7 @@ public final class ArrowInterceptSolver {
                 var actual = physics
                     .positionAt(new ArrowPhysics.State(origin, candidate.initialVelocity), candidate.flightTicks);
                 if (actual.subtract(candidate.predictedTarget)
-                    .length() <= 1E-6) return candidate;
+                    .length() <= BallisticsTuning.MIN_LENGTH_THRESHOLD) return candidate;
                 seed = candidate;
             }
         }
@@ -109,7 +113,7 @@ public final class ArrowInterceptSolver {
 
     private static Solution alongSeed(BallisticVector origin, BallisticVector target, BallisticVector targetVelocity,
         double speed, int maxTicks, ArrowPhysics physics, BallisticVector seedVelocity) {
-        double distanceScale = 0, velocityScale = 1;
+        double distanceScale = 0, velocityScale = BallisticsTuning.MIN_MAX_TICKS_THRESHOLD;
         var positionBias = BallisticVector.ZERO;
         var velocityBias = BallisticVector.ZERO;
         var seed = new ArrowPhysics.State(origin, seedVelocity);
@@ -121,15 +125,20 @@ public final class ArrowInterceptSolver {
                 .subtract(positionBias);
             var q = targetVelocity.subtract(pushedBias);
             double a = q.dot(q) - speed * speed * velocityScale * velocityScale;
-            double b = 2 * (p.dot(q) - speed * speed * distanceScale * velocityScale);
+            double b = BallisticsTuning.ARROW_INTERCEPT_LAYOUT_B_OFFSET
+                * (p.dot(q) - speed * speed * distanceScale * velocityScale);
             double c = p.dot(p) - speed * speed * distanceScale * distanceScale;
             for (double fraction : roots(a, b, c)) {
-                if (!Double.isFinite(fraction) || fraction < 0 || fraction > 1 || tick + fraction <= 0) continue;
+                if (!Double.isFinite(fraction) || fraction < 0
+                    || fraction > BallisticsTuning.MIN_MAX_TICKS_THRESHOLD
+                    || tick + fraction <= 0) continue;
                 double scale = distanceScale + fraction * velocityScale;
                 if (!(scale > 0)) continue;
                 var velocity = p.add(q.scale(fraction))
-                    .scale(1 / scale);
-                if (Math.abs(velocity.length() - speed) > SPEED_RESIDUAL * Math.max(1, speed)) continue;
+                    .scale(BallisticsTuning.MIN_MAX_TICKS_THRESHOLD / scale);
+                if (Math.abs(velocity.length() - speed)
+                    > BallisticsTuning.SPEED_RESIDUAL * Math.max(BallisticsTuning.MIN_MAX_TICKS_THRESHOLD, speed))
+                    continue;
                 double time = tick + fraction;
                 return new Solution(Status.SOLVED, velocity, time, target.add(targetVelocity.scale(time)), tick + 1);
             }
@@ -147,15 +156,16 @@ public final class ArrowInterceptSolver {
 
     private static double[] roots(double a, double b, double c) {
         if (a == 0) return b == 0 ? new double[0] : new double[] { -c / b };
-        double discriminant = b * b - 4 * a * c;
+        double discriminant = b * b - BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT * a * c;
         if (!Double.isFinite(discriminant)) return new double[0];
         if (discriminant < 0) {
-            double rounding = 8 * Math.ulp(Math.abs(b * b) + Math.abs(4 * a * c));
+            double rounding = BallisticsTuning.MIN_ITERATION_THRESHOLD
+                * Math.ulp(Math.abs(b * b) + Math.abs(BallisticsTuning.ARROW_INTERCEPT_DISCRIMINANT * a * c));
             if (discriminant < -rounding) return new double[0];
-            discriminant = 0;
+            discriminant = BallisticsTuning.REJECTED_INITIAL_VALUE;
         }
-        double q = -0.5 * (b + Math.copySign(Math.sqrt(discriminant), b));
-        if (q == 0) return new double[] { -b / (2 * a) };
+        double q = BallisticsTuning.ARROW_INTERCEPT_ROOTS_Q_OFFSET * (b + Math.copySign(Math.sqrt(discriminant), b));
+        if (q == 0) return new double[] { -b / (BallisticsTuning.ARROW_INTERCEPT_LAYOUT_B_OFFSET * a) };
         double first = q / a, second = c / q;
         return first <= second ? new double[] { first, second } : new double[] { second, first };
     }

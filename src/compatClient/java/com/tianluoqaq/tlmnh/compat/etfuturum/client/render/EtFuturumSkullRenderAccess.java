@@ -21,11 +21,21 @@ public final class EtFuturumSkullRenderAccess {
             .equals(EtFuturumClientRenderReflectionSpec.TARGET_CLASS_TILE_ENTITY_FANCY_SKULL_RENDERER))
             throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_UNKNOWN_ACTIVE_SKULL_RENDERER_NATIVE);
         try {
-            if (renderer.getClass() != Api.TYPE)
-                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERER_IDENTITY_CHANGED);
-            Api.RENDER.invoke(renderer, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_THIRD_FACTOR, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR, EtFuturumClientRenderLayout.INVOKE_SINGLE_UNIT, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SIXTH_FACTOR, type, profile);
+            if (renderer.getClass() != Api.TYPE) throw new IllegalStateException(
+                EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERER_IDENTITY_CHANGED);
+            Api.RENDER.invoke(
+                renderer,
+                EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR,
+                EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_THIRD_FACTOR,
+                EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR,
+                EtFuturumClientRenderLayout.INVOKE_SINGLE_UNIT,
+                EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SIXTH_FACTOR,
+                type,
+                profile);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_FAILED, failure);
+            throw new IllegalStateException(
+                EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_FAILED,
+                failure);
         }
     }
 
@@ -46,10 +56,12 @@ public final class EtFuturumSkullRenderAccess {
                     float.class,
                     int.class,
                     GameProfile.class);
-                if (RENDER.getReturnType() != void.class)
-                    throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RETURN_CONTRACT_CHANGED);
+                if (RENDER.getReturnType() != void.class) throw new IllegalStateException(
+                    EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RETURN_CONTRACT_CHANGED);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_UNAVAILABLE, failure);
+                throw new IllegalStateException(
+                    EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_UNAVAILABLE,
+                    failure);
             }
         }
     }

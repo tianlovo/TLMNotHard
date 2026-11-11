@@ -17,6 +17,7 @@ import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 
 import cpw.mods.fml.relauncher.Side;
@@ -57,8 +58,8 @@ public final class MaidRecoveryTransfer {
             frame = new MaidPlayerTransferSnapshot(player);
             int slot = player.inventory.getFirstEmptyStack();
             if (slot < 0) return false;
-            if (slot >= frame.main.length || frame.main[slot] != null) throw new IllegalStateException(
-                "Native recovery empty-slot query returned an occupied or unknown slot");
+            if (slot >= frame.main.length || frame.main[slot] != null)
+                throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_NATIVE_RECOVERY_EMPTY_SLOT_QUERY);
             if (!source.matches(before) || !frame.unchanged()
                 || store.firstForTransfer() != actual
                 || !ItemStack.areItemStacksEqual(actual, item)) return false;
@@ -68,16 +69,16 @@ public final class MaidRecoveryTransfer {
                 rows.getCompoundTagAt(i)
                     .copy());
             after = (NBTTagCompound) before.copy();
-            after.setTag(RecoveryStore.TAG, remaining.copy());
+            after.setTag(ProtectionRecoveryNbtKeys.TAG, remaining.copy());
             var rawSource = new NBTTagCompound();
-            rawSource.setTag("Owner", before.copy());
+            rawSource.setTag(MaidLifecyclePart2NbtKeys.KEY_OWNER, before.copy());
             var rawPlayer = new NBTTagCompound();
             player.writeToNBT(rawPlayer);
-            rawSource.setTag("Player", rawPlayer.copy());
-            rawSource.setInteger("DestinationSlot", slot);
+            rawSource.setTag(MaidLifecyclePart2NbtKeys.KEY_PLAYER, rawPlayer.copy());
+            rawSource.setInteger(MaidLifecyclePart2NbtKeys.KEY_DESTINATION_SLOT, slot);
             context = new NBTTagCompound();
-            context.setString("Kind", "recovery_player");
-            context.setTag("Source", rawSource);
+            context.setString(MaidLifecyclePart2NbtKeys.KEY_KIND, MaidLifecycleIds.ID_RECOVERY_PLAYER);
+            context.setTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE, rawSource);
             ledger = MaidLifecycleData.get(source.world);
             id = ledger.prepareReturnedFilm(
                 ProtectedItemCodec.encode(item),
@@ -92,8 +93,8 @@ public final class MaidRecoveryTransfer {
                 || store.firstForTransfer() != actual
                 || !ItemStack.areItemStacksEqual(actual, item)) return false;
             removed = true;
-            if (!store.takeFirstForTransfer(actual))
-                throw new IllegalStateException("Recovery source changed during removal");
+            if (!store.takeFirstForTransfer(actual)) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_RECOVERY_SOURCE_CHANGED_DURING_REMOVAL);
             source.markDirty();
             source.persist(after);
             if (!source.authorized() || !frame.unchanged()) return false;
@@ -114,13 +115,13 @@ public final class MaidRecoveryTransfer {
                 try {
                     if (playerChanged) frame.retract();
                     if (removed) {
-                        if (!source.matches(after))
-                            throw new IllegalStateException("Unknown recovery source successor retained");
+                        if (!source.matches(after)) throw new IllegalStateException(
+                            MaidLifecyclePart3Diagnostics.MSG_UNKNOWN_RECOVERY_SOURCE_SUCCESSOR_RETAINED);
                         store.restoreFirstForTransfer(item, remaining);
                         source.markDirty();
                         source.persist(before);
-                    } else if (!source.matches(before))
-                        throw new IllegalStateException("Original recovery source changed");
+                    } else if (!source.matches(before)) throw new IllegalStateException(
+                        MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_RECOVERY_SOURCE_CHANGED);
                     ledger.finishPreparedReturn(id, context);
                     MaidLifecycleDurability.ledger(source.world, ledger);
                 } catch (Exception | LinkageError | AssertionError failure) {
@@ -139,8 +140,11 @@ public final class MaidRecoveryTransfer {
 
     private static void report(EntityPlayer player, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
-        IntegrationGuard
-            .report(Side.SERVER, "player_inventory/recovery/" + player.getUniqueID(), failure, player.getUniqueID());
+        IntegrationGuard.report(
+            Side.SERVER,
+            MaidLifecycleIds.ID_PLAYER_INVENTORY_RECOVERY + player.getUniqueID(),
+            failure,
+            player.getUniqueID());
     }
 
     private static final class Source {
@@ -163,19 +167,23 @@ public final class MaidRecoveryTransfer {
             this.cabinet = cabinet;
             world = maid == null ? cabinet.getWorldObj() : maid.worldObj;
             identity = maid == null ? null : maid.getUniqueID();
-            entityId = maid == null ? -1 : maid.getEntityId();
-            blockX = maid == null ? cabinet.xCoord : 0;
-            blockY = maid == null ? cabinet.yCoord : 0;
-            blockZ = maid == null ? cabinet.zCoord : 0;
+            entityId = maid == null ? MaidLifecycleTuning.UNSET_OR_NOT_FOUND : maid.getEntityId();
+            blockX = maid == null ? cabinet.xCoord : MaidLifecycleTuning.CORE_INITIAL_VALUE;
+            blockY = maid == null ? cabinet.yCoord : MaidLifecycleTuning.CORE_INITIAL_VALUE;
+            blockZ = maid == null ? cabinet.zCoord : MaidLifecycleTuning.CORE_INITIAL_VALUE;
             if (world == null || world.isRemote
                 || maid == null && !world.getChunkProvider()
-                    .chunkExists(blockX >> 4, blockZ >> 4))
-                throw new IllegalStateException("Loaded original recovery source required");
+                    .chunkExists(
+                        blockX >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        blockZ >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT))
+                throw new IllegalStateException(
+                    MaidLifecyclePart3Diagnostics.MSG_LOADED_ORIGINAL_RECOVERY_SOURCE_REQUIRED);
             block = maid == null ? world.getBlock(blockX, blockY, blockZ) : null;
-            metadata = maid == null ? world.getBlockMetadata(blockX, blockY, blockZ) : 0;
-            x = maid == null ? cabinet.xCoord + .5 : maid.posX;
-            y = maid == null ? cabinet.yCoord + .5 : maid.posY;
-            z = maid == null ? cabinet.zCoord + .5 : maid.posZ;
+            metadata = maid == null ? world.getBlockMetadata(blockX, blockY, blockZ)
+                : MaidLifecycleTuning.CORE_INITIAL_VALUE;
+            x = maid == null ? cabinet.xCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR : maid.posX;
+            y = maid == null ? cabinet.yCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR : maid.posY;
+            z = maid == null ? cabinet.zCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR : maid.posZ;
         }
 
         boolean owns() {
@@ -192,7 +200,9 @@ public final class MaidRecoveryTransfer {
                 && cabinet.yCoord == blockY
                 && cabinet.zCoord == blockZ
                 && world.getChunkProvider()
-                    .chunkExists(blockX >> 4, blockZ >> 4)
+                    .chunkExists(
+                        blockX >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                        blockZ >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
                 && world.getBlock(blockX, blockY, blockZ) == block
                 && world.getBlockMetadata(blockX, blockY, blockZ) == metadata
                 && world.getTileEntity(blockX, blockY, blockZ) == cabinet
@@ -221,15 +231,15 @@ public final class MaidRecoveryTransfer {
         }
 
         void persist(NBTTagCompound expected) {
-            if (!matches(expected))
-                throw new IllegalStateException("Original recovery source changed before native save");
+            if (!matches(expected)) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_RECOVERY_SOURCE_CHANGED_BEFORE);
             if (maid == null) MaidLifecycleDurability.tile(cabinet, expected);
             else MaidLifecycleDurability.entities(
                 world,
                 Collections.singletonList(new MaidLifecycleDurability.Publication(maid, expected)),
                 true);
-            if (!matches(expected))
-                throw new IllegalStateException("Original recovery source changed after native save");
+            if (!matches(expected)) throw new IllegalStateException(
+                MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_RECOVERY_SOURCE_CHANGED_AFTER);
         }
     }
 }

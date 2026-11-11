@@ -9,8 +9,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
-import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 /** 独立无物品槽窗口，避免模型索引与主界面动作混用 */
 public final class ContainerMaidModels extends Container {
@@ -49,15 +50,15 @@ public final class ContainerMaidModels extends Container {
             || player.inventory.getItemStack() != null
             || lastActionTick == maid.ticksExisted) return false;
         int index = BuiltinModelSelection.decodeAction(action);
-        if (index == BuiltinModelSelection.BACK) {
+        if (index == BuiltinModelDataTuning.BACK) {
             lastActionTick = maid.ticksExisted;
             player.openGui(
                 ModContext.modInstance(),
-                originalView ? CommonProxy.GUI_MAID_ORIGINAL : CommonProxy.GUI_MAID,
+                originalView ? CommonProxyProtocol.GUI_MAID_ORIGINAL : CommonProxyProtocol.GUI_MAID,
                 maid.worldObj,
                 maid.getEntityId(),
-                0,
-                0);
+                MaidContainerLayout.OPEN_GUI_INITIAL_VALUE,
+                MaidContainerLayout.OPEN_GUI_INITIAL_VALUE);
             return true;
         }
         var choice = BuiltinModelSelection.choiceForAction(action);

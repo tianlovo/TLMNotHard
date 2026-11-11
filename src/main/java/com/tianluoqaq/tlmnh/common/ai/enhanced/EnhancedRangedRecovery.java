@@ -16,9 +16,16 @@ import com.tianluoqaq.tlmnh.common.combat.ballistics.BallisticVector;
 /** 已确认拒发后的短期让位与局部换位；导航仍由完整N原有预算入口执行 */
 final class EnhancedRangedRecovery {
 
-    private static final int RETRY_TICKS = 100, PROBE_TICKS = 10, POINT_TICKS = 20, ROUTE_TICKS = 40;
-    private static final int[][] OFFSETS = { { 2, 0 }, { -2, 0 }, { 0, 2 }, { 0, -2 }, { 2, 2 }, { -2, 2 }, { 2, -2 },
-        { -2, -2 } };
+    private static final int[][] OFFSETS = {
+        { EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM, EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE },
+        { EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM, EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE },
+        { EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE, EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM },
+        { EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE, EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM },
+        { EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM,
+            EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM },
+        { EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM, EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM },
+        { EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM, EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM },
+        { EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM, EnhancedAiTuning.ENHANCED_RANGED_DOMAIN_PARAM } };
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final Map<EntityLivingBase, MaidBowAttack.Refusal> failures = new IdentityHashMap<>();
@@ -42,7 +49,7 @@ final class EnhancedRangedRecovery {
         lastTick = now;
         failures.entrySet()
             .removeIf(
-                e -> now < e.getValue().at || now - e.getValue().at >= RETRY_TICKS
+                e -> now < e.getValue().at || now - e.getValue().at >= EnhancedAiTuning.RETRY_TICKS
                     || !e.getValue()
                         .matches(maid, e.getKey())
                     || !e.getValue()
@@ -58,7 +65,7 @@ final class EnhancedRangedRecovery {
         var refusal = actor.rangedBow()
             .lastRefusal();
         if (refusal == null || !refusal.matches(maid, target)) return;
-        if (failures.size() >= 32) failures.clear();
+        if (failures.size() >= EnhancedAiTuning.MAX_SIZE_THRESHOLD) failures.clear();
         failures.put(target, refusal);
         refusals++;
         outcome = refusal.reason;
@@ -66,7 +73,7 @@ final class EnhancedRangedRecovery {
             cancel();
             recovering = target;
         }
-        nextProbe = actor.worldGameTime() + PROBE_TICKS;
+        nextProbe = actor.worldGameTime() + EnhancedAiTuning.PROBE_TICKS;
     }
 
     /** true表示本tick只恢复/等待，不能继续拉弓；false表示回到正常攻击入口 */
@@ -81,7 +88,7 @@ final class EnhancedRangedRecovery {
         }
         long now = actor.worldGameTime();
         if (now >= nextProbe) {
-            nextProbe = now + PROBE_TICKS;
+            nextProbe = now + EnhancedAiTuning.PROBE_TICKS;
             outcome = preview(target, maid.posX, maid.posY, maid.posZ, permitted);
             if (!actor.isCurrent() || !permitted.getAsBoolean()) {
                 cancel();
@@ -111,27 +118,44 @@ final class EnhancedRangedRecovery {
             return true;
         }
         if (point != null) {
-            if (!actor.isEnhancedLandDestination(point) || maid.getDistanceSq(point.x + .5, point.y, point.z + .5) < .75
-                || now - routeAt >= ROUTE_TICKS) {
+            if (!actor.isEnhancedLandDestination(point)
+                || maid.getDistanceSq(
+                    point.x + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+                    point.y,
+                    point.z + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE) < EnhancedAiTuning.ENHANCED_RANGED_EXECUTE_FACTOR
+                || now - routeAt >= EnhancedAiTuning.ROUTE_TICKS) {
                 actor.eraseWalkTarget();
                 point = null;
             } else {
-                actor.setPositionWalkAndLook(point, .6F, 0);
+                actor.setPositionWalkAndLook(
+                    point,
+                    EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                    EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
                 return true;
             }
         }
         if (now < nextPoint) return true;
-        nextPoint = now + POINT_TICKS;
+        nextPoint = now + EnhancedAiTuning.POINT_TICKS;
         // 每次最多两个当前落点，不扫描整个区域；实际A*仍由原navigation.tick统一预算
-        for (int checked = 0; checked < 2 && candidate < OFFSETS.length * 3; checked++, candidate++) {
+        for (int checked = 0; checked < EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM
+            && candidate < OFFSETS.length
+                * EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM; checked++, candidate++) {
             int[] offset = OFFSETS[candidate % OFFSETS.length];
-            int dy = candidate / OFFSETS.length == 0 ? 0 : candidate / OFFSETS.length == 1 ? 1 : -1;
+            int dy = candidate / OFFSETS.length == 0 ? EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE
+                : candidate / OFFSETS.length == EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
+                    ? EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
+                    : EnhancedAiTuning.UNSET_OR_NOT_FOUND;
             var proposed = new Point(
-                MathHelper.floor_double(maid.posX) + offset[0],
+                MathHelper.floor_double(maid.posX) + offset[EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE],
                 MathHelper.floor_double(maid.boundingBox.minY) + dy,
-                MathHelper.floor_double(maid.posZ) + offset[1]);
+                MathHelper.floor_double(maid.posZ) + offset[EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP]);
             if (!actor.isEnhancedLandDestination(proposed)) continue;
-            outcome = preview(target, proposed.x + .5, proposed.y, proposed.z + .5, permitted);
+            outcome = preview(
+                target,
+                proposed.x + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+                proposed.y,
+                proposed.z + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+                permitted);
             if (!actor.isCurrent() || !permitted.getAsBoolean()) {
                 cancel();
                 return true;
@@ -141,7 +165,10 @@ final class EnhancedRangedRecovery {
                 point = proposed;
                 routeAt = now;
                 moves++;
-                actor.setPositionWalkAndLook(point, .6F, 0);
+                actor.setPositionWalkAndLook(
+                    point,
+                    EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                    EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE);
                 return true;
             }
             if (outcome != MaidBowAttack.Status.BLOCKED && outcome != MaidBowAttack.Status.NO_SOLUTION) return true;
@@ -153,14 +180,20 @@ final class EnhancedRangedRecovery {
         BooleanSupplier permitted) {
         probes++;
         return actor.rangedBow()
-            .preview(target, new BallisticVector(x, y + maid.getEyeHeight() - .1, z), permitted);
+            .preview(
+                target,
+                new BallisticVector(
+                    x,
+                    y + maid.getEyeHeight() - EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_WALK_FACTOR,
+                    z),
+                permitted);
     }
 
     void cancel() {
         recovering = null;
         point = null;
-        candidate = 0;
-        nextProbe = nextPoint = routeAt = 0;
+        candidate = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
+        nextProbe = nextPoint = routeAt = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
     }
 
     long refusals() {

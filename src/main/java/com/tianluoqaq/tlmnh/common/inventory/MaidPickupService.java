@@ -27,8 +27,12 @@ public final class MaidPickupService {
 
     public void tick() {
         if (!available()) return;
-        for (Object value : maid.worldObj
-            .getEntitiesWithinAABBExcludingEntity(maid, maid.boundingBox.expand(0.5, 0.5, 0.5))) {
+        for (Object value : maid.worldObj.getEntitiesWithinAABBExcludingEntity(
+            maid,
+            maid.boundingBox.expand(
+                MaidInventoryLayout.HALF_FACTOR_D,
+                MaidInventoryLayout.HALF_FACTOR_D,
+                MaidInventoryLayout.HALF_FACTOR_D))) {
             if (value instanceof EntityItem item && maid.canPickupItems()) pickupItem(item, false);
             else if (value instanceof EntityXPOrb orb && maid.canPickupExperience()) pickupExperience(orb);
             else if (value instanceof EntityArrow arrow && maid.canPickupItems()) pickupArrow(arrow, false);
@@ -59,7 +63,8 @@ public final class MaidPickupService {
         if (input == null || input.stackSize <= 0) return false;
         var remaining = maid.getMaidInventory()
             .insertAvailable(input, simulate);
-        int count = input.stackSize - (remaining == null ? 0 : remaining.stackSize);
+        int count = input.stackSize
+            - (remaining == null ? MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE : remaining.stackSize);
         if (count <= 0) return false;
         if (!simulate) {
             var taken = input.copy();
@@ -74,7 +79,9 @@ public final class MaidPickupService {
     }
 
     public void pickupExperience(EntityXPOrb orb) {
-        if (!valid(orb) || !maid.canPickupExperience() || orb.ticksExisted <= 2 || orb.xpValue <= 0) return;
+        if (!valid(orb) || !maid.canPickupExperience()
+            || orb.ticksExisted <= MaidInventoryLayout.MIN_PASS_THRESHOLD
+            || orb.xpValue <= 0) return;
         if (MinecraftForge.EVENT_BUS.post(new MaidPickupEvent.ExperienceResult(maid, orb, false)) || !valid(orb))
             return;
         int original = orb.xpValue;
@@ -82,7 +89,7 @@ public final class MaidPickupService {
         int added = (int) Math.min((long) Integer.MAX_VALUE - maid.getExperience(), remaining);
         if (added > 0) maid.setExperience(maid.getExperience() + added);
         if (remaining != original || added > 0) {
-            maid.onItemPickup(orb, 1);
+            maid.onItemPickup(orb, MaidInventoryLayout.TARGET_PASS_THRESHOLD);
             maid.tryPlayMaidPickupSound();
         }
         orb.xpValue = remaining - added;
@@ -93,14 +100,14 @@ public final class MaidPickupService {
     private int repairWithMending(int xp) {
         Enchantment mending = null;
         for (var enchantment : Enchantment.enchantmentsList)
-            if (enchantment != null && "enchantment.mending".equals(enchantment.getName())) {
+            if (enchantment != null && MaidInventoryIds.ID_ENCHANTMENT_MENDING.equals(enchantment.getName())) {
                 mending = enchantment;
                 break;
             }
         if (mending == null) return xp;
         var candidates = new ArrayList<ItemStack>();
         var inventory = maid.getMaidInventory();
-        for (int slot = MaidInventory.MAIN_HAND; slot < MaidInventory.TOTAL_SIZE; slot++) {
+        for (int slot = MaidInventoryLayout.MAIN_HAND; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
             var stack = inventory.getStackInSlot(slot);
             if (stack != null && stack.isItemDamaged()
                 && stack.getItem()
@@ -111,10 +118,10 @@ public final class MaidPickupService {
         var selected = candidates.get(
             maid.getRNG()
                 .nextInt(candidates.size()));
-        int repaired = (int) Math.min((long) xp * 2, selected.getItemDamage());
+        int repaired = (int) Math.min((long) xp * MaidInventoryLayout.MIN_PASS_THRESHOLD, selected.getItemDamage());
         selected.setItemDamage(selected.getItemDamage() - repaired);
         inventory.markDirty();
-        return xp - repaired / 2;
+        return xp - repaired / MaidInventoryLayout.MIN_PASS_THRESHOLD;
     }
 
     public boolean pickupArrow(EntityArrow arrow, boolean simulate) {
@@ -122,10 +129,10 @@ public final class MaidPickupService {
         if (!valid(arrow) || !maid.canPickupItems()
             || arrow.getClass() != EntityArrow.class
             || arrow.arrowShake > 0
-            || arrow.canBePickedUp != 1) return false;
+            || arrow.canBePickedUp != MaidInventoryLayout.TARGET_PASS_THRESHOLD) return false;
         var state = new NBTTagCompound();
         arrow.writeToNBT(state);
-        if (!state.getBoolean("inGround")) return false;
+        if (!state.getBoolean(MaidInventoryIds.ID_INGROUND)) return false;
         var event = new MaidPickupEvent.ArrowResult(maid, arrow, simulate);
         if (MinecraftForge.EVENT_BUS.post(event)) return event.isCanPickup();
         if (!valid(arrow) || maid.getMaidInventory()
@@ -133,7 +140,7 @@ public final class MaidPickupService {
         if (!simulate) {
             maid.getMaidInventory()
                 .insertAvailable(new ItemStack(Items.arrow), false);
-            maid.onItemPickup(arrow, 1);
+            maid.onItemPickup(arrow, MaidInventoryLayout.TARGET_PASS_THRESHOLD);
             arrow.setDead();
             maid.tryPlayMaidPickupSound();
         }

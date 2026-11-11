@@ -15,7 +15,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
 /** 原版回血/日常进食时序，临时换手用背包原槽交换，不另藏一份物品 */
@@ -25,7 +25,7 @@ public final class MaidMealController {
     private MaidItemUseState.Lease lease;
     private MaidFoodProfile profile;
     private ItemStack food, expected, displaced, displacedExpected;
-    private int handSlot, sourceSlot = -1, remaining, nextCheck;
+    private int handSlot, sourceSlot = MaidMealTuning.UNSET_OR_NOT_FOUND, remaining, nextCheck;
     private boolean breathing, modernMeal;
 
     public MaidMealController(EntityMaid maid) {
@@ -60,14 +60,14 @@ public final class MaidMealController {
             .isActive()) return;
         if (nextCheck-- > 0 || maid.getItemUseState()
             .peek() != null) return;
-        nextCheck = 50 + maid.getRNG()
-            .nextInt(50);
-        boolean healing = maid.getMaxHealth() - maid.getHealth() >= 2;
+        nextCheck = MaidMealTuning.MEAL_CONTROLLER_NEXT_CHECK + maid.getRNG()
+            .nextInt(MaidMealTuning.MEAL_CONTROLLER_NEXT_CHECK);
+        boolean healing = maid.getMaxHealth() - maid.getHealth() >= MaidMealTuning.FOOD_PROFILE_TOTAL;
         if (!healing && !maid.getFavorabilityManager()
             .canAdd(Type.WORK_MEAL.getTypeName())) return;
-        for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
+        for (int slot = MaidInventoryLayout.MAIN_HAND; slot <= MaidInventoryLayout.OFF_HAND; slot++)
             if (start(slot, healing)) return;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) if (start(slot, healing)) return;
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) if (start(slot, healing)) return;
     }
 
     private boolean start(int slot, boolean healing) {
@@ -89,12 +89,15 @@ public final class MaidMealController {
         if (isEating()) return breathing;
         if (maid.getItemUseState()
             .peek() != null) return false;
-        for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
+        for (int slot = MaidInventoryLayout.MAIN_HAND; slot <= MaidInventoryLayout.OFF_HAND; slot++)
             if (start(slot, true, true, current)) return true;
-        if (request)
-            ItemsUtil.findStackSlot(maid, stack -> MaidFoodProfile.inspectBreathing(stack) != null, -1, current);
+        if (request) ItemsUtil.findStackSlot(
+            maid,
+            stack -> MaidFoodProfile.inspectBreathing(stack) != null,
+            MaidMealTuning.UNSET_OR_NOT_FOUND,
+            current);
         if (!current.getAsBoolean()) return false;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++)
             if (start(slot, true, true, current)) return true;
         return false;
     }
@@ -106,11 +109,15 @@ public final class MaidMealController {
         var active = maid.getItemUseState()
             .peek();
         if (active != null && (active != lease || breathing)) return false;
-        for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
+        for (int slot = MaidInventoryLayout.MAIN_HAND; slot <= MaidInventoryLayout.OFF_HAND; slot++)
             if (startModernMeal(slot, healing, current)) return true;
-        ItemsUtil.findStackSlot(maid, stack -> mealProfile(stack, healing) != null, -1, current);
+        ItemsUtil.findStackSlot(
+            maid,
+            stack -> mealProfile(stack, healing) != null,
+            MaidMealTuning.UNSET_OR_NOT_FOUND,
+            current);
         if (!current.getAsBoolean()) return false;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++)
             if (startModernMeal(slot, healing, current)) return true;
         return false;
     }
@@ -127,7 +134,7 @@ public final class MaidMealController {
         if (selected == null || !current.getAsBoolean()) return false;
         if (lease != null) {
             // 原startUsingItem在已使用时不重置期限，meal回调仍独立施加开始效果
-            if (slot < MaidInventory.BACKPACK_SIZE) return false;
+            if (slot < MaidInventoryLayout.BACKPACK_SIZE) return false;
             applyStartEffect(selected, healing);
             return true;
         }
@@ -148,11 +155,11 @@ public final class MaidMealController {
         var selected = forBreathing ? MaidFoodProfile.inspectBreathing(stack) : MaidFoodProfile.inspect(stack);
         if (selected == null || !current.getAsBoolean() || inventory.getStackInSlot(slot) != stack) return false;
         handSlot = slot;
-        sourceSlot = -1;
-        if (slot < MaidInventory.BACKPACK_SIZE) {
+        sourceSlot = MaidMealTuning.UNSET_OR_NOT_FOUND;
+        if (slot < MaidInventoryLayout.BACKPACK_SIZE) {
             sourceSlot = slot;
-            handSlot = inventory.getStackInSlot(MaidInventory.MAIN_HAND) == null ? MaidInventory.MAIN_HAND
-                : MaidInventory.OFF_HAND;
+            handSlot = inventory.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == null ? MaidInventoryLayout.MAIN_HAND
+                : MaidInventoryLayout.OFF_HAND;
             displaced = inventory.getStackInSlot(handSlot);
             displacedExpected = displaced == null ? null : displaced.copy();
             inventory.setInventorySlotContents(sourceSlot, displaced);
@@ -167,7 +174,7 @@ public final class MaidMealController {
             .tryAcquire(
                 this,
                 food,
-                handSlot == MaidInventory.OFF_HAND ? MaidItemUseState.Hand.OFF : MaidItemUseState.Hand.MAIN,
+                handSlot == MaidInventoryLayout.OFF_HAND ? MaidItemUseState.Hand.OFF : MaidItemUseState.Hand.MAIN,
                 MaidItemUseState.Kind.FOOD,
                 this::valid);
         if (lease == null) {
@@ -182,10 +189,16 @@ public final class MaidMealController {
     private void applyStartEffect(MaidFoodProfile selected, boolean healing) {
         if (healing) {
             if (maid.getRNG()
-                .nextInt(5) < selected.total) maid.heal(Math.max(selected.total / 5, 1));
+                .nextInt(MaidMealTuning.MEAL_CONTROLLER_NEXT_INT_FIRST_PARAM) < selected.total)
+                maid.heal(
+                    Math.max(
+                        selected.total / MaidMealTuning.MEAL_CONTROLLER_NEXT_INT_FIRST_PARAM,
+                        MaidMealTuning.IS_FINITE_SINGLE_UNIT));
         } else {
             int point = maid.getRNG()
-                .nextInt(100) < selected.total ? 0 : 1;
+                .nextInt(MaidMealTuning.MEAL_CONTROLLER_NEXT_INT_FIRST_PARAM_2) < selected.total
+                    ? MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE
+                    : MaidMealTuning.IS_FINITE_SINGLE_UNIT;
             maid.getFavorabilityManager()
                 .apply(Type.WORK_MEAL, point);
         }
@@ -218,14 +231,15 @@ public final class MaidMealController {
         var container = completed.container();
         if (container != null) {
             var leftover = inventory.insertAvailable(container, false);
-            if (leftover != null) maid.entityDropItem(leftover, 0);
+            if (leftover != null) maid.entityDropItem(leftover, MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE);
         }
         completed.applyEffects(maid);
         maid.playSound(
-            "random.burp",
-            .5F,
+            MaidMealIds.ID_RANDOM_BURP,
+            MaidMealTuning.MEAL_CONTROLLER_FINISH_FACTOR,
             maid.getRNG()
-                .nextFloat() * .1F + .9F);
+                .nextFloat() * MaidMealTuning.MEAL_CONTROLLER_FINISH_FACTOR_2
+                + MaidMealTuning.MEAL_CONTROLLER_FINISH_FACTOR_3);
     }
 
     /** 双端菜单改过任何交换槽时不覆盖新物品；所有物品始终在真实库存内 */
@@ -243,10 +257,10 @@ public final class MaidMealController {
                 inventory.setInventorySlotContents(handSlot, displaced);
             }
         }
-        sourceSlot = -1;
+        sourceSlot = MaidMealTuning.UNSET_OR_NOT_FOUND;
         food = expected = displaced = displacedExpected = null;
         profile = null;
-        remaining = 0;
+        remaining = MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE;
         breathing = false;
         modernMeal = false;
         inventory.markDirty();
@@ -269,29 +283,33 @@ public final class MaidMealController {
         if (!ownsExchange(capturedLease, capturedFood, capturedDisplaced, source, hand)) return;
 
         // 原生NBT既用于持久保存，也用于外部只读查询；只归位输出副本，不终止活体使用
-        var backpack = tag.getTagList("MaidInventory", Constants.NBT.TAG_COMPOUND);
-        if (!tag.hasKey("MaidInventory", Constants.NBT.TAG_LIST)
-            || backpack.tagCount() != ((NBTTagList) tag.getTag("MaidInventory")).tagCount()
-            || backpack.func_150303_d() != 0 && backpack.func_150303_d() != 10) return;
+        var backpack = tag.getTagList(MaidMealIds.KEY_MAID_INVENTORY, Constants.NBT.TAG_COMPOUND);
+        if (!tag.hasKey(MaidMealIds.KEY_MAID_INVENTORY, Constants.NBT.TAG_LIST)
+            || backpack.tagCount() != ((NBTTagList) tag.getTag(MaidMealIds.KEY_MAID_INVENTORY)).tagCount()
+            || backpack.func_150303_d() != 0
+                && backpack.func_150303_d() != MaidMealTuning.TARGET_FUNC_150303_D_THRESHOLD)
+            return;
         var sourceTag = new NBTTagCompound();
-        int previous = -1;
+        int previous = MaidMealTuning.UNSET_OR_NOT_FOUND;
         for (int i = 0; i < backpack.tagCount(); i++) {
             var entry = backpack.getCompoundTagAt(i);
-            if (!entry.hasKey("Slot", Constants.NBT.TAG_BYTE)) return;
-            int slot = entry.getByte("Slot") & 255;
-            if (slot <= previous || slot >= MaidInventory.BACKPACK_SIZE) return;
+            if (!entry.hasKey(MaidMealIds.KEY_SLOT, Constants.NBT.TAG_BYTE)) return;
+            int slot = entry.getByte(MaidMealIds.KEY_SLOT) & MaidMealTuning.UNSIGNED_BYTE_MASK;
+            if (slot <= previous || slot >= MaidInventoryLayout.BACKPACK_SIZE) return;
             previous = slot;
             if (slot == source) {
                 sourceTag = (NBTTagCompound) entry.copy();
-                sourceTag.removeTag("Slot");
+                sourceTag.removeTag(MaidMealIds.KEY_SLOT);
             }
         }
-        var equipment = tag.getTagList("Equipment", Constants.NBT.TAG_COMPOUND);
-        if (!tag.hasKey("Equipment", Constants.NBT.TAG_LIST) || equipment.tagCount() < 1
-            || equipment.func_150303_d() != 10
-            || equipment.tagCount() != ((NBTTagList) tag.getTag("Equipment")).tagCount()) return;
-        var handTag = hand == MaidInventory.MAIN_HAND ? equipment.getCompoundTagAt(0)
-            : tag.getCompoundTag("TLMNHOffhand");
+        var equipment = tag.getTagList(MaidMealIds.KEY_EQUIPMENT, Constants.NBT.TAG_COMPOUND);
+        if (!tag.hasKey(MaidMealIds.KEY_EQUIPMENT, Constants.NBT.TAG_LIST)
+            || equipment.tagCount() < MaidMealTuning.IS_FINITE_SINGLE_UNIT
+            || equipment.func_150303_d() != MaidMealTuning.TARGET_FUNC_150303_D_THRESHOLD
+            || equipment.tagCount() != ((NBTTagList) tag.getTag(MaidMealIds.KEY_EQUIPMENT)).tagCount()) return;
+        var handTag = hand == MaidInventoryLayout.MAIN_HAND
+            ? equipment.getCompoundTagAt(MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE)
+            : tag.getCompoundTag(MaidMealIds.KEY_TLMNH_OFFHAND);
         var foodTag = ProtectedItemCodec.encode(expected);
         var displacedTag = capturedDisplaced == null ? new NBTTagCompound()
             : ProtectedItemCodec.encode(displacedExpected);
@@ -299,12 +317,12 @@ public final class MaidMealController {
             || !ownsExchange(capturedLease, capturedFood, capturedDisplaced, source, hand)) return;
 
         var restoredFood = (NBTTagCompound) handTag.copy();
-        restoredFood.setByte("Slot", (byte) source);
+        restoredFood.setByte(MaidMealIds.KEY_SLOT, (byte) source);
         var restoredBackpack = new NBTTagList();
         boolean inserted = false;
         for (int i = 0; i < backpack.tagCount(); i++) {
             var entry = backpack.getCompoundTagAt(i);
-            int slot = entry.getByte("Slot") & 255;
+            int slot = entry.getByte(MaidMealIds.KEY_SLOT) & MaidMealTuning.UNSIGNED_BYTE_MASK;
             if (!inserted && slot >= source) {
                 restoredBackpack.appendTag(restoredFood);
                 inserted = true;
@@ -312,16 +330,16 @@ public final class MaidMealController {
             if (slot != source) restoredBackpack.appendTag(entry.copy());
         }
         if (!inserted) restoredBackpack.appendTag(restoredFood);
-        tag.setTag("MaidInventory", restoredBackpack);
-        if (hand == MaidInventory.MAIN_HAND) {
+        tag.setTag(MaidMealIds.KEY_MAID_INVENTORY, restoredBackpack);
+        if (hand == MaidInventoryLayout.MAIN_HAND) {
             var restoredEquipment = new NBTTagList();
             for (int i = 0; i < equipment.tagCount(); i++) restoredEquipment.appendTag(
                 i == 0 ? sourceTag.copy()
                     : equipment.getCompoundTagAt(i)
                         .copy());
-            tag.setTag("Equipment", restoredEquipment);
-        } else if (sourceTag.hasNoTags()) tag.removeTag("TLMNHOffhand");
-        else tag.setTag("TLMNHOffhand", sourceTag.copy());
+            tag.setTag(MaidMealIds.KEY_EQUIPMENT, restoredEquipment);
+        } else if (sourceTag.hasNoTags()) tag.removeTag(MaidMealIds.KEY_TLMNH_OFFHAND);
+        else tag.setTag(MaidMealIds.KEY_TLMNH_OFFHAND, sourceTag.copy());
     }
 
     private boolean ownsExchange(MaidItemUseState.Lease capturedLease, ItemStack capturedFood,
@@ -336,8 +354,8 @@ public final class MaidMealController {
             && sourceSlot == source
             && handSlot == hand
             && source >= 0
-            && source < MaidInventory.BACKPACK_SIZE
-            && (hand == MaidInventory.MAIN_HAND || hand == MaidInventory.OFF_HAND)
+            && source < MaidInventoryLayout.BACKPACK_SIZE
+            && (hand == MaidInventoryLayout.MAIN_HAND || hand == MaidInventoryLayout.OFF_HAND)
             && maid.getItemUseState()
                 .peek() == capturedLease
             && inventory.getStackInSlot(hand) == capturedFood
@@ -347,6 +365,6 @@ public final class MaidMealController {
     }
 
     public void load(NBTTagCompound tag) {
-        nextCheck = 0;
+        nextCheck = MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE;
     }
 }

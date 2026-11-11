@@ -23,7 +23,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -31,14 +31,12 @@ import cpw.mods.fml.relauncher.SideOnly;
 /** 供蛋糕摆放与偷吃的最小27格柜体，原模型与玻璃罩由TESR显示 */
 public final class BlockSnackCabinet extends BlockContainer {
 
-    public static final int TYPE_NONE = 0, TYPE_FULL = 1, TYPE_HALF = 2;
-
     public BlockSnackCabinet() {
         super(Material.wood);
-        setBlockName("tlmnh.snack_cabinet");
-        setBlockTextureName("planks_oak");
-        setHardness(2.0F);
-        setResistance(3.0F);
+        setBlockName(SnackCabinetIds.ID_TLMNH_SNACK_CABINET);
+        setBlockTextureName(SnackCabinetIds.ID_PLANKS_OAK);
+        setHardness(SnackCabinetLayout.BLOCK_SNACK_SET_HARDNESS_FIRST_FACTOR);
+        setResistance(SnackCabinetLayout.BLOCK_SNACK_SET_RESISTANCE_FIRST_FACTOR);
         setStepSound(soundTypeWood);
         setCreativeTab(CreativeTabs.tabDecorations);
     }
@@ -50,7 +48,7 @@ public final class BlockSnackCabinet extends BlockContainer {
 
     @Override
     public int getRenderType() {
-        return -1;
+        return SnackCabinetIds.CUSTOM_BLOCK_RENDER_TYPE;
     }
 
     @Override
@@ -72,16 +70,18 @@ public final class BlockSnackCabinet extends BlockContainer {
     @Override
     @SideOnly(Side.CLIENT)
     public String getItemIconName() {
-        return "touhou_little_maid:snack_cabinet";
+        return SnackCabinetIds.ID_TOUHOU_LITTLE_MAID_SNACK_CABINET;
     }
 
     /** 旧柜metadata0没有外观方向，沿原默认北向；低两位记录玩家放置yaw */
     public static int facingDirection(int metadata) {
-        return ((metadata & 3) + 2) & 3;
+        return ((metadata & SnackCabinetLayout.LOW_TWO_BITS_MASK)
+            + SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM) & SnackCabinetLayout.LOW_TWO_BITS_MASK;
     }
 
     public static int cabinetType(int metadata) {
-        return (metadata >>> 2) & 3;
+        return (metadata >>> SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM)
+            & SnackCabinetLayout.LOW_TWO_BITS_MASK;
     }
 
     @Override
@@ -90,10 +90,18 @@ public final class BlockSnackCabinet extends BlockContainer {
             || !(world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet)
             || cabinet.isInvalid()) return;
         int previous = world.getBlockMetadata(x, y, z);
-        if (cabinetType(previous) > TYPE_HALF) return;
+        if (cabinetType(previous) > SnackCabinetLayout.TYPE_HALF) return;
         if (placer != null) {
-            int facing = MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
-            world.setBlockMetadataWithNotify(x, y, z, (previous & 12) | facing, 2);
+            int facing = MathHelper.floor_double(
+                placer.rotationYaw * SnackCabinetLayout.BLOCK_SNACK_FACING / SnackCabinetLayout.FULL_TURN_DEGREES_F
+                    + SnackCabinetLayout.BLOCK_SNACK_FACING_2)
+                & SnackCabinetLayout.LOW_TWO_BITS_MASK;
+            world.setBlockMetadataWithNotify(
+                x,
+                y,
+                z,
+                (previous & SnackCabinetLayout.BLOCK_SNACK_BIT_MASK_12) | facing,
+                SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM);
         }
         if (stack != null && stack.hasDisplayName() && world.getTileEntity(x, y, z) == cabinet)
             cabinet.setCustomInventoryName(stack.getDisplayName());
@@ -109,7 +117,7 @@ public final class BlockSnackCabinet extends BlockContainer {
     public int getComparatorInputOverride(World world, int x, int y, int z, int side) {
         return world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet && !cabinet.isInvalid()
             ? Container.calcRedstoneFromInventory(cabinet)
-            : 0;
+            : SnackCabinetLayout.BLOCK_SNACK_GET_COMPARATOR_INPUT_OVERRIDE_ZERO_BASE;
     }
 
     @Override
@@ -125,17 +133,26 @@ public final class BlockSnackCabinet extends BlockContainer {
             || cabinet.isInvalid()) return;
         int metadata = world.getBlockMetadata(x, y, z);
         // 原updateShape仅在命中食物标签时切换罩型，移走蛋糕后保留原罩型
-        if (cabinetType(metadata) <= TYPE_HALF && cabinetType(metadata) != TYPE_FULL)
-            world.setBlockMetadataWithNotify(x, y, z, (metadata & 3) | (TYPE_FULL << 2), 2);
+        if (cabinetType(metadata) <= SnackCabinetLayout.TYPE_HALF
+            && cabinetType(metadata) != SnackCabinetLayout.TYPE_FULL)
+            world.setBlockMetadataWithNotify(
+                x,
+                y,
+                z,
+                (metadata & SnackCabinetLayout.LOW_TWO_BITS_MASK)
+                    | (SnackCabinetLayout.TYPE_FULL << SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM),
+                SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM);
     }
 
     @Override
     public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int side, float hitX,
         float hitY, float hitZ) {
         var held = player.getCurrentEquippedItem();
-        if (side == 1 && held != null && held.getItem() instanceof ItemBlock) return false;
+        if (side == SnackCabinetLayout.TARGET_SIDE_THRESHOLD && held != null && held.getItem() instanceof ItemBlock)
+            return false;
         // 原生蛋糕物品不是 ItemBlock，也要把柜面点击交给其放置逻辑
-        if (side == 1 && held != null && held.getItem() == Items.cake) return false;
+        if (side == SnackCabinetLayout.TARGET_SIDE_THRESHOLD && held != null && held.getItem() == Items.cake)
+            return false;
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet
             && cabinet.isUseableByPlayer(player)) {
             if (player.isSneaking() && cabinet.recovery()
@@ -165,7 +182,8 @@ public final class BlockSnackCabinet extends BlockContainer {
             .write();
         for (int i = 0; i < recovery.tagCount(); i++) {
             var stack = ProtectedItemCodec.decode(recovery.getCompoundTagAt(i));
-            if (stack == null) throw new IllegalStateException("Empty recovery contents retained");
+            if (stack == null)
+                throw new IllegalStateException(SnackCabinetDiagnostics.MSG_EMPTY_RECOVERY_CONTENTS_RETAINED);
             items.add(stack);
         }
         MaidTileReturns.prepare(cabinet, items);
@@ -177,8 +195,8 @@ public final class BlockSnackCabinet extends BlockContainer {
             prepareReturn(cabinet);
             MaidTileReturns.beforeClear(cabinet);
             var planned = MaidShrineTransfer.snapshot(cabinet);
-            planned.setTag("Items", new NBTTagList());
-            planned.setTag(RecoveryStore.TAG, new NBTTagList());
+            planned.setTag(SnackCabinetNbtKeys.KEY_ITEMS, new NBTTagList());
+            planned.setTag(ProtectionRecoveryNbtKeys.TAG, new NBTTagList());
             cabinet.clearForReturn();
             MaidTileReturns.cleared(cabinet, planned);
         }

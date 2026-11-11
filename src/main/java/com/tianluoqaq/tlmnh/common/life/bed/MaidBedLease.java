@@ -11,7 +11,7 @@ public final class MaidBedLease {
     public boolean claim(UUID maid, long tick) {
         if (!available(maid, tick)) return false;
         owner = maid;
-        expires = tick + 60;
+        expires = tick + MaidBedLayout.BED_LEASE_EXPIRES;
         return true;
     }
 
@@ -35,6 +35,6 @@ public final class MaidBedLease {
 
     public void clear() {
         owner = null;
-        expires = 0;
+        expires = MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE;
     }
 }

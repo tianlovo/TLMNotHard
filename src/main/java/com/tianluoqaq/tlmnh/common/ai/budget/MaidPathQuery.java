@@ -24,14 +24,23 @@ public final class MaidPathQuery {
 
     public static PathEntity create(EntityMaid maid, int x, int y, int z, float range, boolean enterDoors,
         boolean closedDoors, boolean avoidWater, boolean swim) {
-        if (maid.getNavigator() instanceof MaidPathNavigator navigator) return navigator.createPath(x, y, z, range, 0);
+        if (maid.getNavigator() instanceof MaidPathNavigator navigator)
+            return navigator.createPath(x, y, z, range, AiBudgetTuning.NAVIGATION_BUDGET_USED);
         var vertical = ladderPath(maid, x, y, z, range);
         if (vertical != null) return vertical;
         int ox = MathHelper.floor_double(maid.posX), oy = MathHelper.floor_double(maid.posY),
             oz = MathHelper.floor_double(maid.posZ);
-        int pad = (int) (range + 8);
-        var cache = new ChunkCache(maid.worldObj, ox - pad, oy - pad, oz - pad, ox + pad, oy + pad, oz + pad, 0);
-        maid.worldObj.theProfiler.startSection("pathfind");
+        int pad = (int) (range + AiBudgetTuning.PATH_QUERY_PAD);
+        var cache = new ChunkCache(
+            maid.worldObj,
+            ox - pad,
+            oy - pad,
+            oz - pad,
+            ox + pad,
+            oy + pad,
+            oz + pad,
+            AiBudgetTuning.NAVIGATION_BUDGET_USED);
+        maid.worldObj.theProfiler.startSection(AiBudgetIds.ID_PATHFIND);
         try {
             return new PathFinder(cache, enterDoors, closedDoors, avoidWater, swim) {
 
@@ -44,16 +53,19 @@ public final class MaidPathQuery {
                     if (!adapted) return super.getVerticalOffset(actor, bx, by, bz, size);
                     // 旧版静态判定直接读 entity.worldObj，替换 ChunkCache 不能改变门的判定
                     boolean special = false;
-                    var unit = new PathPoint(1, 1, 1);
+                    var unit = new PathPoint(
+                        AiBudgetTuning.MIN_LIMIT_THRESHOLD,
+                        AiBudgetTuning.MIN_LIMIT_THRESHOLD,
+                        AiBudgetTuning.MIN_LIMIT_THRESHOLD);
                     for (int dx = 0; dx < size.xCoord; dx++)
                         for (int dy = 0; dy < size.yCoord; dy++) for (int dz = 0; dz < size.zCoord; dz++) {
                             int px = bx + dx, py = by + dy, pz = bz + dz;
                             if (passable(actor.worldObj.getBlock(px, py, pz))) continue;
                             int result = super.getVerticalOffset(actor, px, py, pz, unit);
                             if (result <= 0) return result;
-                            special |= result == 2;
+                            special |= result == AiBudgetTuning.TARGET_RESULT_THRESHOLD;
                         }
-                    return special ? 2 : 1;
+                    return special ? AiBudgetTuning.TARGET_RESULT_THRESHOLD : AiBudgetTuning.MIN_LIMIT_THRESHOLD;
                 }
 
                 private boolean passable(Block block) {
@@ -77,15 +89,24 @@ public final class MaidPathQuery {
             .isActiveClimbing() || !maid.isOnLadder()) return null;
         int cx = MathHelper.floor_double(maid.posX), cy = MathHelper.floor_double(maid.boundingBox.minY),
             cz = MathHelper.floor_double(maid.posZ);
-        int tx = MathHelper.floor_double(x + 0.5 - maid.width / 2),
-            tz = MathHelper.floor_double(z + 0.5 - maid.width / 2);
-        if (targetY == cy || Math.abs(targetY - cy) > range || Math.abs(tx - cx) + Math.abs(tz - cz) > 1) return null;
+        int tx = MathHelper
+            .floor_double(x + AiBudgetTuning.CENTER_OFFSET_D - maid.width / AiBudgetTuning.TARGET_RESULT_THRESHOLD),
+            tz = MathHelper
+                .floor_double(z + AiBudgetTuning.CENTER_OFFSET_D - maid.width / AiBudgetTuning.TARGET_RESULT_THRESHOLD);
+        if (targetY == cy || Math.abs(targetY - cy) > range
+            || Math.abs(tx - cx) + Math.abs(tz - cz) > AiBudgetTuning.MIN_LIMIT_THRESHOLD) return null;
         var points = new ArrayList<PathPoint>();
-        int step = targetY > cy ? 1 : -1;
+        int step = targetY > cy ? AiBudgetTuning.MIN_LIMIT_THRESHOLD : AiBudgetTuning.UNSET_OR_NOT_FOUND;
         for (int py = cy;; py += step) {
             var block = maid.worldObj.getBlock(cx, py, cz);
             if (!block.isLadder(maid.worldObj, cx, py, cz, maid)) return null;
-            var box = AxisAlignedBB.getBoundingBox(cx + 0.2, py, cz + 0.2, cx + 0.8, py + maid.height, cz + 0.8);
+            var box = AxisAlignedBB.getBoundingBox(
+                cx + AiBudgetTuning.PATH_QUERY_BOX,
+                py,
+                cz + AiBudgetTuning.PATH_QUERY_BOX,
+                cx + AiBudgetTuning.PATH_QUERY_BOX_2,
+                py + maid.height,
+                cz + AiBudgetTuning.PATH_QUERY_BOX_2);
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, box)
                 .isEmpty()) return null;
             points.add(new PathPoint(cx, py, cz));
@@ -95,8 +116,13 @@ public final class MaidPathQuery {
             if (!maid.worldObj.getBlock(tx, targetY - 1, tz)
                 .getMaterial()
                 .blocksMovement()) return null;
-            var exit = AxisAlignedBB
-                .getBoundingBox(tx + 0.2, targetY, tz + 0.2, tx + 0.8, targetY + maid.height, tz + 0.8);
+            var exit = AxisAlignedBB.getBoundingBox(
+                tx + AiBudgetTuning.PATH_QUERY_BOX,
+                targetY,
+                tz + AiBudgetTuning.PATH_QUERY_BOX,
+                tx + AiBudgetTuning.PATH_QUERY_BOX_2,
+                targetY + maid.height,
+                tz + AiBudgetTuning.PATH_QUERY_BOX_2);
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, exit)
                 .isEmpty()) return null;
             points.add(new PathPoint(tx, targetY, tz));

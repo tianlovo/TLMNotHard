@@ -9,6 +9,7 @@ import net.minecraft.entity.DataWatcher;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.network.MaidBubbleCodec;
+import com.tianluoqaq.tlmnh.common.network.MaidNetworkProtocol;
 
 public final class ChatBubbleManager {
 
@@ -23,7 +24,7 @@ public final class ChatBubbleManager {
     }
 
     public static void defineSynchedData(DataWatcher watcher) {
-        watcher.addObject(DATA_BUBBLES, MaidBubbleCodec.EMPTY);
+        watcher.addObject(DATA_BUBBLES, MaidNetworkProtocol.EMPTY);
     }
 
     public ChatBubbleDataCollection getChatBubbleDataCollection() {

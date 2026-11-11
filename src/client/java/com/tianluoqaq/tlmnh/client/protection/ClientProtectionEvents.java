@@ -49,7 +49,10 @@ public final class ClientProtectionEvents {
             ledger.check(Side.CLIENT);
             if (ledger.isDirty() && IntegrationGuard.available(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE)) {
                 Files.createDirectories(path.getParent());
-                var temporary = Files.createTempFile(path.getParent(), ClientProtectionIds.ID_TLMNH_CLIENT_COMPATIBILITY, ClientProtectionIds.ID_TMP);
+                var temporary = Files.createTempFile(
+                    path.getParent(),
+                    ClientProtectionIds.ID_TLMNH_CLIENT_COMPATIBILITY,
+                    ClientProtectionIds.ID_TMP);
                 try {
                     var data = new NBTTagCompound();
                     ledger.writeToNBT(data);

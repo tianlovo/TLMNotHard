@@ -54,19 +54,27 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     private final MaidActivityState activities;
     private final FollowCoreLookDriver look = new FollowCoreLookDriver();
     private final FollowCoreMoveDriver move = new FollowCoreMoveDriver();
-    private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(.5F, 2);
-    private final MaidFollowOwnerVehicleTask vehicle = new MaidFollowOwnerVehicleTask(.5F, 2);
+    private final MaidFollowOwnerTask follow = new MaidFollowOwnerTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_FIRST_FACTOR,
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
+    private final MaidFollowOwnerVehicleTask vehicle = new MaidFollowOwnerVehicleTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_FIRST_FACTOR,
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
     private final MaidHealSelfTask heal = new MaidHealSelfTask();
     private final MaidWorkMealTask workMeal = new MaidWorkMealTask(), rideWorkMeal = new MaidWorkMealTask();
     private final MaidBreathAirTask breath = new MaidBreathAirTask();
     private final MaidBreathAirStopTask breathStop = new MaidBreathAirStopTask();
-    private final MaidSwimJumpTask swimJump = new MaidSwimJumpTask(.8F);
+    private final MaidSwimJumpTask swimJump = new MaidSwimJumpTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_SWIM_JUMP_TASK_FIRST_FACTOR);
     private final MaidClimbTask climb = new MaidClimbTask();
-    private final MaidPickupEntitiesTask pickup = new MaidPickupEntitiesTask(.6F);
+    private final MaidPickupEntitiesTask pickup = new MaidPickupEntitiesTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_PICKUP_ENTITIES_TASK_FIRST_FACTO);
     private final MaidPanicTask panic = new MaidPanicTask();
     private final MaidAwaitTask await = new MaidAwaitTask();
     private final MaidClearHurtTask clearHurt = new MaidClearHurtTask();
-    private final MaidRunAwayTask runAway = new MaidRunAwayTask(.7F, false);
+    private final MaidRunAwayTask runAway = new MaidRunAwayTask(
+        FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_SECOND_FAC,
+        false);
     private final MaidUpdateActivityFromSchedule schedule = new MaidUpdateActivityFromSchedule();
     private final MaidClearSleepTask clearSleep = new MaidClearSleepTask();
     private final MaidModernCombat combat = new MaidModernCombat();
@@ -76,19 +84,25 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     private MaidRunOne idleRandom = new MaidRunOne(true), workRandom = new MaidRunOne(true),
         restRandom = new MaidRunOne(true), rideWorkRandom = new MaidRunOne(false), rideIdleLook = new MaidRunOne(false);
     private final MaidStartSnowballAttacking snowFind = new MaidStartSnowballAttacking();
-    private MaidSnowballTargetTask snowThrow = new MaidSnowballTargetTask(50);
+    private MaidSnowballTargetTask snowThrow = new MaidSnowballTargetTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_SNOWBALL_TARGET_TASK_FIRST_PARAM);
     private boolean snowRunning;
     private long snowDeadline;
     private boolean refreshing;
     private long refreshes;
-    private final MaidBedTask bed = new MaidBedTask(.6F, 2);
+    private final MaidBedTask bed = new MaidBedTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_PICKUP_ENTITIES_TASK_FIRST_FACTO,
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
     private final MaidBegTask idleBeg = new MaidBegTask(), workBeg = new MaidBegTask();
     private final MaidRideBegTask rideIdleBeg = new MaidRideBegTask(), rideWorkBeg = new MaidRideBegTask();
     private boolean idleBegRunning, workBegRunning, rideIdleBegRunning, rideWorkBegRunning;
-    private final MaidStealEdibleMoveBlockTask idleStealMove = new MaidStealEdibleMoveBlockTask(.6F),
-        workStealMove = new MaidStealEdibleMoveBlockTask(.6F);
-    private final MaidStealEdibleUseTask idleStealUse = new MaidStealEdibleUseTask(2),
-        workStealUse = new MaidStealEdibleUseTask(2);
+    private final MaidStealEdibleMoveBlockTask idleStealMove = new MaidStealEdibleMoveBlockTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_PICKUP_ENTITIES_TASK_FIRST_FACTO),
+        workStealMove = new MaidStealEdibleMoveBlockTask(
+            FaithfulAiTuning.FAITHFUL_BRAIN_MAID_PICKUP_ENTITIES_TASK_FIRST_FACTO);
+    private final MaidStealEdibleUseTask idleStealUse = new MaidStealEdibleUseTask(
+        FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM),
+        workStealUse = new MaidStealEdibleUseTask(FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
     private final SchedulePos schedulePos = new SchedulePos();
     private final Map<String, MaidActivityState.Activity> priority99 = new HashMap<>();
     private final Map<String, MaidActivityState.Activity> priority5 = new HashMap<>();
@@ -106,37 +120,37 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     }
 
     public MaidFaithfulBrain(EntityMaid maid, MaidFaithfulFlightProfile flightProfile) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.flightProfile = Objects.requireNonNull(flightProfile, "flightProfile");
+        this.maid = Objects.requireNonNull(maid, FaithfulAiIds.ID_MAID);
+        this.flightProfile = Objects.requireNonNull(flightProfile, FaithfulAiIds.ID_FLIGHTPROFILE);
         actor = new ModernFollowCoreActor(maid, flightProfile.bowProfile());
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
         activities = new MaidActivityState(maid, actor, perception);
         // 原Activity.hashCode为name.hashCode；保持原HashMap组顺序与注册顺序
-        priority99.put("core", null);
-        priority99.put("tlm_ride_idle", MaidActivityState.Activity.RIDE_IDLE);
-        priority99.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
-        priority99.put("tlm_ride_rest", MaidActivityState.Activity.RIDE_REST);
-        priority99.put("idle", MaidActivityState.Activity.IDLE);
-        priority99.put("work", MaidActivityState.Activity.WORK);
-        priority99.put("rest", MaidActivityState.Activity.REST);
-        priority5.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
-        priority5.put("tlm_ride_idle", MaidActivityState.Activity.RIDE_IDLE);
-        priority5.put("idle", MaidActivityState.Activity.IDLE);
-        priority5.put("work", MaidActivityState.Activity.WORK);
-        priority5.put("rest", MaidActivityState.Activity.REST);
-        priority5.put("panic", MaidActivityState.Activity.PANIC);
-        priority20.put("tlm_ride_work", MaidActivityState.Activity.RIDE_WORK);
-        priority20.put("idle", MaidActivityState.Activity.IDLE);
-        priority20.put("work", MaidActivityState.Activity.WORK);
-        priority20.put("rest", MaidActivityState.Activity.REST);
+        priority99.put(FaithfulAiIds.ID_CORE, null);
+        priority99.put(FaithfulAiIds.ID_TLM_RIDE_IDLE, MaidActivityState.Activity.RIDE_IDLE);
+        priority99.put(FaithfulAiIds.ID_TLM_RIDE_WORK, MaidActivityState.Activity.RIDE_WORK);
+        priority99.put(FaithfulAiIds.ID_TLM_RIDE_REST, MaidActivityState.Activity.RIDE_REST);
+        priority99.put(FaithfulAiIds.ID_IDLE, MaidActivityState.Activity.IDLE);
+        priority99.put(FaithfulAiIds.ID_WORK, MaidActivityState.Activity.WORK);
+        priority99.put(FaithfulAiIds.ID_REST, MaidActivityState.Activity.REST);
+        priority5.put(FaithfulAiIds.ID_TLM_RIDE_WORK, MaidActivityState.Activity.RIDE_WORK);
+        priority5.put(FaithfulAiIds.ID_TLM_RIDE_IDLE, MaidActivityState.Activity.RIDE_IDLE);
+        priority5.put(FaithfulAiIds.ID_IDLE, MaidActivityState.Activity.IDLE);
+        priority5.put(FaithfulAiIds.ID_WORK, MaidActivityState.Activity.WORK);
+        priority5.put(FaithfulAiIds.ID_REST, MaidActivityState.Activity.REST);
+        priority5.put(FaithfulAiIds.ID_PANIC, MaidActivityState.Activity.PANIC);
+        priority20.put(FaithfulAiIds.ID_TLM_RIDE_WORK, MaidActivityState.Activity.RIDE_WORK);
+        priority20.put(FaithfulAiIds.ID_IDLE, MaidActivityState.Activity.IDLE);
+        priority20.put(FaithfulAiIds.ID_WORK, MaidActivityState.Activity.WORK);
+        priority20.put(FaithfulAiIds.ID_REST, MaidActivityState.Activity.REST);
     }
 
     @Override
     public void tick(Token token) {
         if (ticking
             || hasTick && lastWorldTick == maid.worldObj.getTotalWorldTime() && lastEntityTick == maid.ticksExisted)
-            throw new IllegalStateException("Duplicate or reentrant modern core tick");
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_DUPLICATE_OR_REENTRANT_MODERN_CORE);
         ticking = true;
         try {
             actor.beginFrame(
@@ -160,40 +174,42 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             swimJump.tryStart(maid.getAquaticController(), time);
             if (!climbRunning && climb.checkExtraStartConditions(actor)) {
                 climbRunning = true;
-                climbDeadline = time + 60 + actor.nextWorldInt(1);
+                climbDeadline = time + FaithfulAiTuning.FAITHFUL_BRAIN_CLIMB_DEADLINE
+                    + actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 climb.start(actor);
             }
             if (breath.checkExtraStartConditions(actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 breath.start(actor);
                 if (!actor.isCurrent()) return;
             }
             if (breathStop.checkExtraStartConditions(actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 breathStop.start(actor);
             }
             if (lookState.getStatus() == FollowCoreLookDriver.Status.STOPPED) look.tryStart(actor, lookState, time);
-            actor.nextWorldInt(1);
+            actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
             panic.start(activities);
-            actor.nextWorldInt(1);
+            actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
             await.start(actor);
             doors.trigger(actor);
             if (!actor.isCurrent()) return;
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
             if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
-                actor.nextWorldInt(1); // 默认Behavior 60 + nextInt(1)，本任务canStillUse=false
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT); // 默认Behavior 60 +
+                                                                                 // nextInt(1)，本任务canStillUse=false
                 follow.start(actor);
                 if (actor.consumeFollowStop()) followRunning = false;
             }
             if (vehicle.checkExtraStartConditions(actor)) {
                 vehicleRunning = true;
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 vehicle.start(actor);
                 if (!actor.isCurrent()) return;
             }
             if (heal.checkExtraStartConditions(actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 heal.start(actor);
                 if (!actor.isCurrent()) return;
             }
@@ -201,21 +217,21 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             if (activities.active() == MaidActivityState.Activity.RIDE_IDLE && !rideIdleBegRunning
                 && rideIdleBeg.checkExtraStartConditions(actor)) {
                 rideIdleBegRunning = true;
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
             }
             for (var group : priority5.values()) {
                 if (activities.active() != group) continue;
                 if (group == MaidActivityState.Activity.IDLE) {
                     if (!idleBegRunning && idleBeg.checkExtraStartConditions(actor)) {
                         idleBegRunning = true;
-                        actor.nextWorldInt(1);
+                        actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     }
                 } else if (group == MaidActivityState.Activity.RIDE_IDLE) {
                     absentContent.visitHomeMeal(actor::nextWorldInt);
                 } else if (group == MaidActivityState.Activity.REST) {
                     if (!actor.hasLifeWalkTarget() && actor.workTarget() == null
                         && bed.checkExtraStartConditions(actor)) {
-                        actor.nextWorldInt(1);
+                        actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                         bed.start(actor);
                         if (!actor.isCurrent()) return;
                     }
@@ -229,11 +245,11 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                         if (!actor.isCurrent()) return;
                     }
                 } else {
-                    actor.nextWorldInt(1);
+                    actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     clearHurt.start(activities);
                     var danger = actor.dangerPosition();
                     if (runAway.checkExtraStartConditions(actor, danger)) {
-                        actor.nextWorldInt(1);
+                        actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                         runAway.start(actor, actor.dangerPosition());
                     }
                 }
@@ -244,24 +260,25 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             if (activities.active() == MaidActivityState.Activity.WORK && maid.getTask() == MaidTask.IDLE
                 && actor.attackTarget() == null
                 && snowFind.checkExtraStartConditions(actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 snowFind.start(actor);
             }
             if (activities.active() == MaidActivityState.Activity.WORK && !workBegRunning
                 && workBeg.checkExtraStartConditions(actor)) {
                 workBegRunning = true;
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
             }
             if (activities.active() == MaidActivityState.Activity.RIDE_WORK && !rideWorkBegRunning
                 && rideWorkBeg.checkExtraStartConditions(actor)) {
                 rideWorkBegRunning = true;
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
             }
             if (activities.active() == MaidActivityState.Activity.WORK && maid.getTask() == MaidTask.IDLE
                 && !snowRunning
                 && snowThrow.checkExtraStartConditions(actor)) {
                 snowRunning = true;
-                snowDeadline = time + 1200 + actor.nextWorldInt(1);
+                snowDeadline = time + FaithfulAiTuning.FAITHFUL_BRAIN_SNOW_DEADLINE
+                    + actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 snowThrow.start(actor);
                 if (!actor.isCurrent()) return;
             }
@@ -270,7 +287,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             var meal = activities.active() == MaidActivityState.Activity.WORK ? workMeal
                 : activities.active() == MaidActivityState.Activity.RIDE_WORK ? rideWorkMeal : null;
             if (meal != null && meal.checkExtraStartConditions(actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 meal.start(actor);
                 if (!actor.isCurrent()) return;
             }
@@ -279,21 +296,21 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             if (stealMove != null) {
                 if (!actor.hasLifeWalkTarget() && actor.workTarget() == null
                     && stealMove.checkExtraStartConditions(actor)) {
-                    actor.nextWorldInt(1);
+                    actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     stealMove.start(actor);
                     if (!actor.isCurrent()) return;
                 }
                 var use = stealMove == idleStealMove ? idleStealUse : workStealUse;
                 if (actor.workTarget() != null && actor.edibleAction() != null
                     && use.checkExtraStartConditions(actor)) {
-                    actor.nextWorldInt(1);
+                    actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     use.start(actor);
                     if (!actor.isCurrent()) return;
                 }
             }
             if (!perception.pickupEntities()
                 .isEmpty() && actor.getWalkTarget() == null && pickup.checkExtraStartConditions(maid, actor)) {
-                actor.nextWorldInt(1);
+                actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 pickup.start(maid, perception, actor);
             }
             for (var group : priority20.values()) {
@@ -304,10 +321,10 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             }
             for (var entry : priority99.entrySet()) {
                 if (entry.getValue() == null) {
-                    actor.nextWorldInt(1);
+                    actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     clearSleep.start(activities, actor);
                 } else if (activities.active() == entry.getValue()) {
-                    actor.nextWorldInt(1);
+                    actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     schedule.start(activities);
                 }
             }
@@ -392,7 +409,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
 
     /** 对应stopAll + copyWithoutBehaviors；停止副作用决定擦哪些记忆，其余对象原样保留 */
     public void refreshBrain(MaidPolicyRuntime runtime, Token token) {
-        if (refreshing) throw new IllegalStateException("Reentrant modern Brain refresh");
+        if (refreshing) throw new IllegalStateException(FaithfulAiDiagnostics.MSG_REENTRANT_MODERN_BRAIN_REFRESH);
         refreshing = true;
         try {
             actor.beginEntityFrame(runtime, token);
@@ -426,7 +443,8 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             rideIdleLook = new MaidRunOne(false);
             rangedWork = new MaidModernRanged(false);
             rangedRide = new MaidModernRanged(true);
-            snowThrow = new MaidSnowballTargetTask(50);
+            snowThrow = new MaidSnowballTargetTask(
+                FaithfulAiTuning.FAITHFUL_BRAIN_MAID_SNOWBALL_TARGET_TASK_FIRST_PARAM);
             snowRunning = climbRunning = followRunning = vehicleRunning = false;
             idleBegRunning = workBegRunning = rideIdleBegRunning = rideWorkBegRunning = false;
             lookState = new FollowCoreLookDriver.State();
@@ -507,7 +525,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             case WORK -> workRandom;
             case REST -> restRandom;
             case RIDE_WORK -> rideWorkRandom;
-            default -> throw new IllegalArgumentException("No random activity " + activity);
+            default -> throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_NO_RANDOM_ACTIVITY + activity);
         };
     }
 

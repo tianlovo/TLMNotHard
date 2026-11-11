@@ -5,16 +5,6 @@ import java.util.Objects;
 /** 单只女仆的跟随决策，执行端负责验证主人和使用实际导航器 */
 public final class MaidFollowController {
 
-    public static final int OWNER_SCAN_INTERVAL = 10;
-    public static final int PATH_INTERVAL = 10;
-    public static final int FAILURE_RETRY_INTERVAL = 40;
-    public static final int STUCK_INTERVAL = 40;
-    public static final double START_DISTANCE_SQ = 25;
-    public static final double STOP_DISTANCE_SQ = 9;
-    public static final double MAX_DISTANCE_SQ = 4096;
-    private static final double PROGRESS_DISTANCE_SQ = 0.0625;
-    private static final double MOVED_TARGET_DISTANCE_SQ = 4;
-
     public enum Status {
         IDLE,
         FOLLOWING,
@@ -111,8 +101,8 @@ public final class MaidFollowController {
     private PathResult lastPathResult;
 
     public MaidFollowController(Actor actor, int phase) {
-        this.actor = Objects.requireNonNull(actor, "actor");
-        nextOwnerScan = Math.floorMod(phase, OWNER_SCAN_INTERVAL) + 1L;
+        this.actor = Objects.requireNonNull(actor, MaidAiIds.ID_ACTOR);
+        nextOwnerScan = Math.floorMod(phase, MaidAiTuning.OWNER_SCAN_INTERVAL) + 1L;
     }
 
     public void tick() {
@@ -126,18 +116,18 @@ public final class MaidFollowController {
         if (tick >= nextOwnerScan) {
             ownerScans++;
             actor.refreshOwner();
-            nextOwnerScan = tick + OWNER_SCAN_INTERVAL;
+            nextOwnerScan = tick + MaidAiTuning.OWNER_SCAN_INTERVAL;
         }
         if (!actor.ownerValid()) {
             stop(Status.OWNER_UNAVAILABLE);
             return;
         }
         double distance = actor.distanceToOwnerSq();
-        if (!Double.isFinite(distance) || distance > MAX_DISTANCE_SQ) {
+        if (!Double.isFinite(distance) || distance > MaidAiTuning.MAX_DISTANCE_SQ) {
             stop(Status.OWNER_TOO_FAR);
             return;
         }
-        if (distance <= STOP_DISTANCE_SQ || !following && distance < START_DISTANCE_SQ) {
+        if (distance <= MaidAiTuning.STOP_DISTANCE_SQ || !following && distance < MaidAiTuning.START_DISTANCE_SQ) {
             stop(Status.CLOSE_TO_OWNER);
             return;
         }
@@ -154,10 +144,10 @@ public final class MaidFollowController {
             return;
         }
         actor.lookAtOwner();
-        if (tick - progressTick >= STUCK_INTERVAL) {
+        if (tick - progressTick >= MaidAiTuning.STUCK_INTERVAL) {
             double moved = square(actor.x() - progressX) + square(actor.y() - progressY)
                 + square(actor.z() - progressZ);
-            if (moved < PROGRESS_DISTANCE_SQ && actor.hasPath()) {
+            if (moved < MaidAiTuning.PROGRESS_DISTANCE_SQ && actor.hasPath()) {
                 actor.stopNavigation();
                 stuckRecoveries++;
                 rememberFailure();
@@ -171,7 +161,7 @@ public final class MaidFollowController {
             status = actor.hasPath() ? Status.FOLLOWING : Status.PATH_COOLDOWN;
             return;
         }
-        nextPathRequest = tick + PATH_INTERVAL;
+        nextPathRequest = tick + MaidAiTuning.PATH_INTERVAL;
         var result = actor.requestPath();
         lastPathResult = result;
         if (result.isDeferred()) {
@@ -182,7 +172,7 @@ public final class MaidFollowController {
         }
         pathRequests++;
         if (result == PathResult.STARTED) {
-            failureUntil = 0;
+            failureUntil = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             status = Status.FOLLOWING;
         } else {
             pathFailures++;
@@ -199,7 +189,7 @@ public final class MaidFollowController {
     public void cancel() {
         stop(Status.CANCELLED);
         actor.forgetOwner();
-        failureUntil = 0;
+        failureUntil = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
     }
 
     private void stop(Status reason) {
@@ -214,7 +204,7 @@ public final class MaidFollowController {
         } finally {
             actor.releaseControl();
             following = false;
-            failureUntil = 0;
+            failureUntil = MaidAiTuning.NAVIGATION_INITIAL_VALUE;
             status = reason;
             stopping = false;
         }
@@ -228,7 +218,7 @@ public final class MaidFollowController {
     }
 
     private void rememberFailure() {
-        failureUntil = tick + FAILURE_RETRY_INTERVAL;
+        failureUntil = tick + MaidAiTuning.FAILURE_RETRY_INTERVAL;
         failedX = actor.ownerX();
         failedY = actor.ownerY();
         failedZ = actor.ownerZ();
@@ -236,7 +226,7 @@ public final class MaidFollowController {
 
     private boolean failedTargetMoved() {
         return square(actor.ownerX() - failedX) + square(actor.ownerY() - failedY) + square(actor.ownerZ() - failedZ)
-            >= MOVED_TARGET_DISTANCE_SQ;
+            >= MaidAiTuning.MOVED_TARGET_DISTANCE_SQ;
     }
 
     private static double square(double value) {

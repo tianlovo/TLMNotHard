@@ -21,7 +21,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 超出槽位、重复槽位保留到独立保管区，不覆盖另一件物品 */
 public final class RecoveryStore {
 
-    public static final String TAG = "TLMNHRecovery";
     private final List<ItemStack> items = new ArrayList<>();
     private final EntityMaid maid;
     private final TileEntitySnackCabinet cabinet;
@@ -42,7 +41,7 @@ public final class RecoveryStore {
     }
 
     public void retain(NBTTagCompound raw) {
-        items.add(ProtectedItemCodec.seal(raw, "inventory_slot"));
+        items.add(ProtectedItemCodec.seal(raw, ProtectionRecoveryIds.ID_INVENTORY_SLOT));
     }
 
     public void read(NBTTagList source) {
@@ -50,7 +49,7 @@ public final class RecoveryStore {
         for (int index = 0; index < source.tagCount(); index++) {
             var raw = source.getCompoundTagAt(index);
             ItemStack stack = ProtectedItemCodec.decode(raw);
-            items.add(stack == null ? ProtectedItemCodec.seal(raw, "empty_entry") : stack);
+            items.add(stack == null ? ProtectedItemCodec.seal(raw, ProtectionRecoveryIds.ID_EMPTY_ENTRY) : stack);
         }
     }
 
@@ -74,7 +73,7 @@ public final class RecoveryStore {
     }
 
     public void depositAll(World world, double x, double y, double z) {
-        throw new IllegalStateException("Source tile removal must use its owned staged return boundary");
+        throw new IllegalStateException(ProtectionRecoveryDiagnostics.MSG_SOURCE_TILE_REMOVAL_MUST_USE);
     }
 
     public int size() {
@@ -92,24 +91,27 @@ public final class RecoveryStore {
         if (cabinet != null) return MaidRecoveryTransfer.recover(this, player, cabinet);
         IntegrationGuard.report(
             Side.SERVER,
-            "player_inventory/recovery",
-            new IllegalStateException("Authoritative recovery inventory owner required"),
+            ProtectionRecoveryIds.ID_PLAYER_INVENTORY_RECOVERY,
+            new IllegalStateException(
+                ProtectionRecoveryDiagnostics.MSG_AUTHORITATIVE_RECOVERY_INVENTORY_OWNER_REQUIRED),
             player.getUniqueID());
         return false;
     }
 
     public ItemStack firstForTransfer() {
-        return items.isEmpty() ? null : items.get(0);
+        return items.isEmpty() ? null : items.get(ProtectionRecoveryTuning.ITEM_STACK_ITEM_STACK_SNAPSHOT_ZERO_BASE);
     }
 
     public boolean takeFirstForTransfer(ItemStack expected) {
-        if (items.isEmpty() || items.get(0) != expected) return false;
-        items.remove(0);
+        if (items.isEmpty() || items.get(ProtectionRecoveryTuning.ITEM_STACK_ITEM_STACK_SNAPSHOT_ZERO_BASE) != expected)
+            return false;
+        items.remove(ProtectionRecoveryTuning.ITEM_STACK_ITEM_STACK_SNAPSHOT_ZERO_BASE);
         return true;
     }
 
     public void restoreFirstForTransfer(ItemStack stack, NBTTagList remaining) {
-        if (!write().equals(remaining)) throw new IllegalStateException("Unknown recovery contents retained");
-        items.add(0, stack.copy());
+        if (!write().equals(remaining))
+            throw new IllegalStateException(ProtectionRecoveryDiagnostics.MSG_UNKNOWN_RECOVERY_CONTENTS_RETAINED);
+        items.add(ProtectionRecoveryTuning.ITEM_STACK_ITEM_STACK_SNAPSHOT_ZERO_BASE, stack.copy());
     }
 }

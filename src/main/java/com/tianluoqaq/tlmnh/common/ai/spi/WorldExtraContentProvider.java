@@ -51,7 +51,7 @@ public interface WorldExtraContentProvider {
     }
 
     default String barrelSound(boolean opening) {
-        return opening ? "random.chestopen" : "random.chestclosed";
+        return opening ? AiSpiIds.ID_RANDOM_CHESTOPEN : AiSpiIds.ID_RANDOM_CHESTCLOSED;
     }
 
     default void playShrineFrameSound(World world, int x, int y, int z, boolean inserted) {}

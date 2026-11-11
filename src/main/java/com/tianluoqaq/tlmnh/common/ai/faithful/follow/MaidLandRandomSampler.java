@@ -22,8 +22,13 @@ public final class MaidLandRandomSampler {
         return sample(
             actor,
             radius,
-            () -> FollowFallbackSampler
-                .direction(actor, radius, vertical, origin.x - avoid.x, origin.z - avoid.z, 1.5707963705062866D));
+            () -> FollowFallbackSampler.direction(
+                actor,
+                radius,
+                vertical,
+                origin.x - avoid.x,
+                origin.z - avoid.z,
+                FaithfulFollowTuning.TARGET_ANGLE_THRESHOLD));
     }
 
     public static Vec3 getPos(Actor actor, int radius, int vertical) {
@@ -31,16 +36,19 @@ public final class MaidLandRandomSampler {
             actor,
             radius,
             () -> new BlockPos(
-                actor.nextEntityInt(2 * radius + 1) - radius,
-                actor.nextEntityInt(2 * vertical + 1) - vertical,
-                actor.nextEntityInt(2 * radius + 1) - radius));
+                actor.nextEntityInt(FaithfulFollowTuning.FOLLOW_CORE_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM * radius + 1)
+                    - radius,
+                actor.nextEntityInt(FaithfulFollowTuning.FOLLOW_CORE_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM * vertical + 1)
+                    - vertical,
+                actor.nextEntityInt(FaithfulFollowTuning.FOLLOW_CORE_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM * radius + 1)
+                    - radius));
     }
 
     private static Vec3 sample(Actor actor, int radius, Supplier<BlockPos> direction) {
         boolean restricted = FollowFallbackSampler.mobRestricted(actor, radius);
         BlockPos best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < FaithfulFollowTuning.TARGET_HORIZONTAL_RANGE_THRESHOLD; attempt++) {
             var offset = direction.get();
             if (offset == null) continue;
             var pos = FollowFallbackSampler.absolutePosition(actor, radius, offset);
@@ -58,6 +66,10 @@ public final class MaidLandRandomSampler {
                 bestScore = score;
             }
         }
-        return best == null ? null : new Vec3(best.x + .5, best.y, best.z + .5);
+        return best == null ? null
+            : new Vec3(
+                best.x + FaithfulFollowTuning.FOLLOW_MOVE_VEC3_FIRST_FACTOR,
+                best.y,
+                best.z + FaithfulFollowTuning.FOLLOW_MOVE_VEC3_FIRST_FACTOR);
     }
 }

@@ -19,15 +19,24 @@ public final class MaidSoundNetwork {
 
     public static void init() {
         if (channel != null) return;
-        channel = NetworkRegistry.INSTANCE.newSimpleChannel("tlmnh_sound1");
-        channel.registerMessage(Handler.class, PlayMaidSoundMessage.class, 0, Side.CLIENT);
+        channel = NetworkRegistry.INSTANCE.newSimpleChannel(MaidNetworkProtocol.ID_TLMNH_SOUND1);
+        channel.registerMessage(
+            Handler.class,
+            PlayMaidSoundMessage.class,
+            MaidNetworkProtocol.GET_INITIAL_VALUE,
+            Side.CLIENT);
     }
 
     public static void send(EntityMaid maid, PlayMaidSoundMessage message) {
         if (channel == null || maid.worldObj == null || maid.worldObj.isRemote) return;
         channel.sendToAllAround(
             message,
-            new NetworkRegistry.TargetPoint(maid.worldObj.provider.dimensionId, maid.posX, maid.posY, maid.posZ, 16));
+            new NetworkRegistry.TargetPoint(
+                maid.worldObj.provider.dimensionId,
+                maid.posX,
+                maid.posY,
+                maid.posZ,
+                MaidNetworkProtocol.SOUND_NETWORK_TARGET_POINT_FIFTH_PARAM));
     }
 
     public static final class Handler implements IMessageHandler<PlayMaidSoundMessage, IMessage> {

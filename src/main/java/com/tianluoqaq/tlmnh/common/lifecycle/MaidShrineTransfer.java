@@ -51,24 +51,26 @@ public final class MaidShrineTransfer {
             before = snapshot(shrine);
             metadata = player.worldObj.getBlockMetadata(shrine.xCoord, shrine.yCoord, shrine.zCoord);
             after = (NBTTagCompound) before.copy();
-            if (insert) after.setTag("StorageItem", ProtectedItemCodec.encode(film));
-            else after.removeTag("StorageItem");
+            if (insert) after.setTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM, ProtectedItemCodec.encode(film));
+            else after.removeTag(MaidLifecyclePart2NbtKeys.KEY_STORAGE_ITEM);
             var source = new NBTTagCompound();
             var playerSource = new NBTTagCompound();
             player.writeToNBT(playerSource);
-            source.setTag("Player", playerSource.copy());
-            source.setTag("Tile", before.copy());
-            source.setInteger("Metadata", metadata);
+            source.setTag(MaidLifecyclePart2NbtKeys.KEY_PLAYER, playerSource.copy());
+            source.setTag(MaidLifecyclePart2NbtKeys.KEY_TILE, before.copy());
+            source.setInteger(MaidLifecyclePart2NbtKeys.KEY_METADATA, metadata);
             context = new NBTTagCompound();
-            context.setString("Kind", insert ? "shrine_insert" : "shrine_extract");
-            context.setTag("Source", source);
+            context.setString(
+                MaidLifecyclePart2NbtKeys.KEY_KIND,
+                insert ? MaidLifecycleIds.ID_SHRINE_INSERT : MaidLifecycleIds.ID_SHRINE_EXTRACT);
+            context.setTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE, source);
             ledger = MaidLifecycleData.get(player.worldObj);
             id = ledger.prepareReturnedFilm(
                 ProtectedItemCodec.encode(film),
                 player.dimension,
-                shrine.xCoord + .5,
-                shrine.yCoord + .5,
-                shrine.zCoord + .5,
+                shrine.xCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                shrine.yCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                shrine.zCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
                 context);
             MaidLifecycleDurability.ledger(player.worldObj, ledger);
             if (!request(player, shrine) || !frame.unchanged()) return false;
@@ -105,8 +107,8 @@ public final class MaidShrineTransfer {
             if (id != null && !complete) {
                 try {
                     // First retract the destination; never refund over a callback-owned successor.
-                    if (insert && !frame.touched() && !frame.originalStored())
-                        throw new IllegalStateException("Original player film changed before owned source removal");
+                    if (insert && !frame.touched() && !frame.originalStored()) throw new IllegalStateException(
+                        MaidLifecyclePart3Diagnostics.MSG_ORIGINAL_PLAYER_FILM_CHANGED_BEFORE);
                     if (insert && tileChanged) {
                         MaidLifecycleDurability.checkShrine(shrine, after, metadata);
                         shrine.replaceUse(film, null);
@@ -146,10 +148,16 @@ public final class MaidShrineTransfer {
             && !shrine.isInvalid()
             && !MaidTileReturns.isPrepared(shrine)
             && world.getChunkProvider()
-                .chunkExists(shrine.xCoord >> 4, shrine.zCoord >> 4)
+                .chunkExists(
+                    shrine.xCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT,
+                    shrine.zCoord >> MaidLifecycleTuning.CHUNK_SECTION_SHIFT)
             && world.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) == shrine
             && world.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord) == MaidResurrectionContent.SHRINE
-            && player.getDistanceSq(shrine.xCoord + .5, shrine.yCoord + .5, shrine.zCoord + .5) <= 64;
+            && player.getDistanceSq(
+                shrine.xCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                shrine.yCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                shrine.zCoord + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR)
+                <= MaidLifecycleTuning.CAPTURE_SERVICE_ADMITTED_PARAM;
     }
 
     public static NBTTagCompound snapshot(TileEntity tile) {
@@ -162,7 +170,13 @@ public final class MaidShrineTransfer {
         IntegrationGuard.throwIfFatal(failure);
         IntegrationGuard.report(
             Side.SERVER,
-            "shrine_transfer/" + player.getUniqueID() + "/" + shrine.xCoord + "/" + shrine.yCoord + "/" + shrine.zCoord,
+            MaidLifecycleIds.ID_SHRINE_TRANSFER + player.getUniqueID()
+                + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                + shrine.xCoord
+                + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                + shrine.yCoord
+                + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                + shrine.zCoord,
             failure,
             player.getUniqueID());
     }

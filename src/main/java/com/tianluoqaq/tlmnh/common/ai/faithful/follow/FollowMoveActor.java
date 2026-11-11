@@ -62,7 +62,10 @@ public interface FollowMoveActor {
 
         default Vec3 currentPosition() {
             var pos = currentBlockPosition();
-            return new Vec3(pos.x + .5, pos.y + .5, pos.z + .5);
+            return new Vec3(
+                pos.x + FaithfulFollowTuning.FOLLOW_MOVE_VEC3_FIRST_FACTOR,
+                pos.y + FaithfulFollowTuning.FOLLOW_MOVE_VEC3_FIRST_FACTOR,
+                pos.z + FaithfulFollowTuning.FOLLOW_MOVE_VEC3_FIRST_FACTOR);
         }
 
         float getSpeedModifier();
@@ -114,7 +117,7 @@ public interface FollowMoveActor {
 
         public Vec3(double x, double y, double z) {
             if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
-                throw new IllegalArgumentException("Non-finite fallback position");
+                throw new IllegalArgumentException(FaithfulFollowDiagnostics.MSG_NON_FINITE_FALLBACK_POSITION);
             }
             this.x = x;
             this.y = y;

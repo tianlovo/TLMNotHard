@@ -9,6 +9,7 @@ import net.minecraft.tileentity.TileEntity;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedSupportTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -24,14 +25,14 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeIntent.Action;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeTuning;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 
 /** 增强策略只读候选与实际生活动作；动作共享平台物品提交，不借用旧root */
 public final class EnhancedLifeController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("life_care");
-    private static final int SCAN_INTERVAL = 20, MAX_BED_APPROACH_TICKS = 200, MAX_SNACK_APPROACH_TICKS = 160,
-        CANDIDATE_RETRY_TICKS = 100, MAX_FAILED_CANDIDATES = 32;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_LIFE_CARE);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidLifeSensor sensor;
@@ -41,7 +42,7 @@ public final class EnhancedLifeController {
     private boolean observedRest;
     private long nextScan, nextSnack, approachStartedAt, abandonedCandidates;
     private final MaidTargetCooldowns<TileEntity> failedCandidates = MaidTargetCooldowns
-        .forIdentityClearOnFull(MAX_FAILED_CANDIDATES);
+        .forIdentityClearOnFull(EnhancedAiTuning.MAX_FAILED_CANDIDATES);
     private TileEntity approachedCandidate;
     private TileEntityMaidBed reservedBed;
     private int bites, placements, sleepEntries;
@@ -61,15 +62,15 @@ public final class EnhancedLifeController {
         }
         long now = maid.worldObj.getTotalWorldTime();
         if (failedCandidates.advanceTick(now)) {
-            nextScan = nextSnack = 0;
+            nextScan = nextSnack = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
             approachStartedAt = now;
         }
         failedCandidates.purgeExpired(now, (tile, entry) -> tile.isInvalid() || tile.getWorldObj() != maid.worldObj);
         boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
-        int approachLimit = approachedCandidate instanceof TileEntityMaidBed ? MAX_BED_APPROACH_TICKS
-            : MAX_SNACK_APPROACH_TICKS;
+        int approachLimit = approachedCandidate instanceof TileEntityMaidBed ? EnhancedAiTuning.MAX_BED_APPROACH_TICKS
+            : EnhancedAiTuning.MAX_SNACK_APPROACH_TICKS;
         if (approachedCandidate != null && !actor.isSleeping() && now - approachStartedAt > approachLimit) {
-            failedCandidates.record(approachedCandidate, now + CANDIDATE_RETRY_TICKS);
+            failedCandidates.record(approachedCandidate, now + EnhancedAiTuning.CANDIDATE_RETRY_TICKS);
             abandonedCandidates++;
             cancel();
         }
@@ -82,7 +83,7 @@ public final class EnhancedLifeController {
             sensor.clear();
             observedToken = context.getToken();
             observedRest = rest;
-            nextScan = 0;
+            nextScan = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         }
         if (reservedBed != null && rest && legalBed(reservedBed)) {
             sensing.cancel(MaidSensingBudget.Kind.LIFE);
@@ -92,7 +93,7 @@ public final class EnhancedLifeController {
         if (now >= nextScan && sensing.acquire(MaidSensingBudget.Kind.LIFE)) {
             observations = sensor.scan(context, rest);
             scans++;
-            nextScan = now + SCAN_INTERVAL;
+            nextScan = now + EnhancedAiTuning.SCAN_INTERVAL;
         }
         // 接近中的合法柜保留到完成或本次期限，失败候选冷却过期不会抢走正在走的路线
         if (!rest && approachedCandidate != null) for (var observation : observations) {
@@ -121,21 +122,25 @@ public final class EnhancedLifeController {
     }
 
     private void offer(MaidIntentFrame frame, MaidLifeCandidate observation, Action action, MaidPolicyContext context) {
-        double distance = maid.getDistanceSq(observation.getX() + .5, observation.getY() + .5, observation.getZ() + .5);
+        double distance = maid.getDistanceSq(
+            observation.getX() + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+            observation.getY() + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE,
+            observation.getZ() + EnhancedAiTuning.ENHANCED_LIFE_DISTANCE);
         var intent = new MaidLifeIntent(action, observation, distance);
         frame.offerTyped(
             ID,
             action == Action.BED ? Group.CARE : Group.AUTONOMOUS,
             action == Action.BED ? Kind.SLEEP : Kind.SNACK,
-            observation.getDimension() + ":"
+            observation.getDimension() + EnhancedAiIds.COLON_DELIMITER
                 + observation.getX()
-                + ":"
+                + EnhancedAiIds.COLON_DELIMITER
                 + observation.getY()
-                + ":"
+                + EnhancedAiIds.COLON_DELIMITER
                 + observation.getZ()
-                + ":"
+                + EnhancedAiIds.COLON_DELIMITER
                 + action,
-            1 / (1 + Math.sqrt(distance)),
+            EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP
+                / (EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP + Math.sqrt(distance)),
             intent,
             selected -> execute(selected, context));
     }
@@ -172,13 +177,16 @@ public final class EnhancedLifeController {
             }
             if (actor.isSleeping()) return;
             var point = new Point(bed.xCoord, bed.yCoord, bed.zCoord);
-            if (actor.distanceToBlockCenterSquared(point) < 4) {
+            if (actor.distanceToBlockCenterSquared(point) < EnhancedAiTuning.ENHANCED_HOME_RECOVERY_DISTANCE) {
                 actor.stopNavigation();
                 actor.eraseWalkTarget();
                 actor.setPathMemory(null);
                 actor.sleepAt(point);
                 if (actor.isCurrent() && actor.isSleeping()) sleepEntries++;
-            } else actor.setPositionWalkAndLook(point, .6F, 1);
+            } else actor.setPositionWalkAndLook(
+                point,
+                EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP);
             return;
         }
         long now = maid.worldObj.getTotalWorldTime();
@@ -187,9 +195,12 @@ public final class EnhancedLifeController {
         if (!actor.withinLifeRestriction(point) || !actor.workPointNearOwner(point)) return;
         boolean stealing = intent.getAction() == Action.STEAL;
         if (!(stealing ? actor.shouldStealCake(point) : actor.shouldPlaceCake(point, actor.firstCakeStack()))) return;
-        if (actor.distanceToBlockCenterSquared(point) > 4) {
+        if (actor.distanceToBlockCenterSquared(point) > EnhancedAiTuning.ENHANCED_HOME_RECOVERY_DISTANCE) {
             beginApproach(tile);
-            actor.setPositionWalkAndLook(point, .6F, 1);
+            actor.setPositionWalkAndLook(
+                point,
+                EnhancedAiTuning.ENHANCED_AMBIENT_SET_WALK_AND_LOOK_TARGET_MEMORIES_S,
+                EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP);
             return;
         }
         actor.stopNavigation();
@@ -198,7 +209,7 @@ public final class EnhancedLifeController {
         boolean used = stealing ? actor.consumeCake(point) : actor.placeCake(point);
         if (!actor.isCurrent() || !used) return;
         approachedCandidate = null;
-        nextSnack = now + MaidLifeRules.SNACK_INTERVAL;
+        nextSnack = now + MaidLifeTuning.SNACK_INTERVAL;
         if (stealing) {
             bites++;
             actor.rewardSteal();
@@ -225,7 +236,7 @@ public final class EnhancedLifeController {
             || maid.getItemUseState()
                 .peek() != null)
             return false;
-        return MaidDomainGuard.isMaidWithinDomain(maid, actor, MaidDomainGuard.LIFE_OWNER_DOMAIN_RADIUS);
+        return MaidDomainGuard.isMaidWithinDomain(maid, actor, EnhancedSupportTuning.LIFE_OWNER_DOMAIN_RADIUS);
     }
 
     private boolean legalBed(TileEntityMaidBed bed) {
@@ -236,12 +247,16 @@ public final class EnhancedLifeController {
             || !bed.complete()
             || !bed.available(maid)
             || !actor.withinLifeRestriction(new Point(bed.xCoord, bed.yCoord, bed.zCoord))) return false;
-        int direction = maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3;
-        for (int part = 0; part < 2; part++) {
-            int x = bed.xCoord - BlockBed.field_149981_a[direction][0] * part;
-            int z = bed.zCoord - BlockBed.field_149981_a[direction][1] * part;
-            for (int dy = 1; dy <= 2; dy++) if (!maid.worldObj.blockExists(x, bed.yCoord + dy, z)
-                || !maid.worldObj.isAirBlock(x, bed.yCoord + dy, z)) return false;
+        int direction = maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord)
+            & EnhancedAiTuning.ENHANCED_AMBIENT_SAMPLE_ENHANCED_LAND_SECOND_PARAM;
+        for (int part = 0; part < EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM; part++) {
+            int x = bed.xCoord
+                - BlockBed.field_149981_a[direction][EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE] * part;
+            int z = bed.zCoord
+                - BlockBed.field_149981_a[direction][EnhancedAiTuning.ENHANCED_AMBIENT_OFFER_UNIT_STEP] * part;
+            for (int dy = 1; dy <= EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM; dy++)
+                if (!maid.worldObj.blockExists(x, bed.yCoord + dy, z)
+                    || !maid.worldObj.isAirBlock(x, bed.yCoord + dy, z)) return false;
         }
         return true;
     }
@@ -268,7 +283,7 @@ public final class EnhancedLifeController {
         approachedCandidate = null;
         observations = Collections.emptyList();
         observedToken = null;
-        nextScan = 0;
+        nextScan = EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE;
         sensor.clear();
         sensing.cancel(MaidSensingBudget.Kind.LIFE);
         if (bed != null) bed.release(maid);

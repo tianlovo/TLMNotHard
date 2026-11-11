@@ -43,7 +43,7 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
     private final int eventCapacity, candidateCapacity;
     private final List<MaidTelemetryEvent> events = new ArrayList<>();
     private String sessionId, maidId;
-    private long epoch, startWorldTick, lastWorldTick, lastSequence = -1;
+    private long epoch, startWorldTick, lastWorldTick, lastSequence = AiTelemetryTuning.UNSET_OR_NOT_FOUND;
     private long acceptedEvents, droppedEvents, droppedCandidates, rejectedEvents;
     private int retainedCandidates;
     private boolean enabled = true;
@@ -52,7 +52,7 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
     public MaidTelemetryLedger(String sessionId, String maidId, long epoch, long startWorldTick, int eventCapacity,
         int candidateCapacity) {
         if (eventCapacity < 0 || candidateCapacity < 0 || candidateCapacity > eventCapacity)
-            throw new IllegalArgumentException("Invalid telemetry capacities");
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_INVALID_TELEMETRY_CAPACITIES);
         this.eventCapacity = eventCapacity;
         this.candidateCapacity = candidateCapacity;
         metadata(sessionId, maidId, epoch, startWorldTick);
@@ -66,7 +66,7 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
     @Override
     public Acceptance record(MaidTelemetryEvent event) {
         if (!enabled) return Acceptance.DISABLED;
-        Objects.requireNonNull(event, "event");
+        Objects.requireNonNull(event, AiTelemetryIds.ID_EVENT);
         if (event.epoch != epoch) return reject(Acceptance.STALE_EPOCH);
         if (event.sequence <= lastSequence) return reject(Acceptance.REPLAYED_SEQUENCE);
         if (event.worldTick < lastWorldTick) return reject(Acceptance.STALE_TICK);
@@ -75,7 +75,7 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
         try {
             next = new Stats(stats);
             next.apply(event);
-            nextAccepted = Math.addExact(acceptedEvents, 1);
+            nextAccepted = Math.addExact(acceptedEvents, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
         } catch (ArithmeticException overflow) {
             return reject(Acceptance.COUNTER_OVERFLOW);
         }
@@ -101,13 +101,14 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
 
     /** epoch是记录会话版本；策略runtime token失效不应调用reset抹去指标 */
     public void reset(String sessionId, String maidId, long newEpoch, long startWorldTick) {
-        if (newEpoch <= epoch) throw new IllegalArgumentException("Recording epoch must increase");
+        if (newEpoch <= epoch)
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_RECORDING_EPOCH_MUST_INCREASE);
         metadata(sessionId, maidId, newEpoch, startWorldTick);
         events.clear();
         stats = new Stats();
-        acceptedEvents = droppedEvents = droppedCandidates = rejectedEvents = 0;
-        retainedCandidates = 0;
-        lastSequence = -1;
+        acceptedEvents = droppedEvents = droppedCandidates = rejectedEvents = AiTelemetryTuning.SUBSTRING_START_OFFSET;
+        retainedCandidates = AiTelemetryTuning.SUBSTRING_START_OFFSET;
+        lastSequence = AiTelemetryTuning.UNSET_OR_NOT_FOUND;
         enabled = true;
     }
 
@@ -126,7 +127,8 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
             || maid.trim()
                 .isEmpty()
             || epoch < 0
-            || tick < 0) throw new IllegalArgumentException("Invalid telemetry session metadata");
+            || tick < 0)
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_INVALID_TELEMETRY_SESSION_METADATA);
         this.sessionId = session;
         this.maidId = maid;
         this.epoch = epoch;
@@ -135,7 +137,7 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
 
     public static final class Snapshot {
 
-        public final String schema = "maid-telemetry-v1";
+        public final String schema = AiTelemetryIds.ID_MAID_TELEMETRY_V1;
         public final String sessionId, maidId;
         public final long epoch, startWorldTick, lastWorldTick, lastSequence;
         public final long acceptedEvents, droppedEvents, droppedCandidates, rejectedEvents;
@@ -224,38 +226,39 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
                 case STATE:
                     break;
                 case NAV_SUBMITTED:
-                    add(Counter.NAV_SUBMITTED, 1);
+                    add(Counter.NAV_SUBMITTED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     break;
                 case NAV_RETURNED:
-                    add(Counter.NAV_RETURNED, 1);
+                    add(Counter.NAV_RETURNED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     add(Counter.NAV_DURATION_NANOS, event.navigation.durationNanos);
                     break;
                 case NAV_PROCESSED:
-                    add(Counter.NAV_PROCESSED, 1);
+                    add(Counter.NAV_PROCESSED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     break;
                 case CANDIDATE_SCAN:
-                    add(Counter.CANDIDATE_SCANS, 1);
+                    add(Counter.CANDIDATE_SCANS, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     add(Counter.CANDIDATES_RETURNED, event.candidateScan.returned);
                     add(Counter.CANDIDATES_PROCESSED, event.candidateScan.processed);
                     break;
                 case CANDIDATE:
-                    add(Counter.CANDIDATES_OBSERVED, 1);
-                    if (event.candidate.eligible) add(Counter.CANDIDATES_ELIGIBLE, 1);
+                    add(Counter.CANDIDATES_OBSERVED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
+                    if (event.candidate.eligible)
+                        add(Counter.CANDIDATES_ELIGIBLE, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     break;
                 case RELEASE_ATTEMPT:
-                    add(Counter.RELEASE_ATTEMPTS, 1);
+                    add(Counter.RELEASE_ATTEMPTS, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     break;
                 case RELEASE_CONFIRMED:
-                    add(Counter.RELEASE_CONFIRMED, 1);
+                    add(Counter.RELEASE_CONFIRMED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     break;
                 case DAMAGE_PROVISIONAL:
-                    add(Counter.DAMAGE_PROVISIONAL, 1);
+                    add(Counter.DAMAGE_PROVISIONAL, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     provisionalRequestedDamageAmount = sum(
                         provisionalRequestedDamageAmount,
                         event.provisionalDamage.requestedAmount);
                     break;
                 case NATIVE_DAMAGE_RECORD:
-                    add(Counter.NATIVE_DAMAGE_RECORDS, 1);
+                    add(Counter.NATIVE_DAMAGE_RECORDS, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     nativeRecordedDamageAmount = sum(
                         nativeRecordedDamageAmount,
                         event.nativeDamage.nativeRecordedDamage);
@@ -266,50 +269,54 @@ public final class MaidTelemetryLedger implements MaidTelemetrySink {
                 case ACTION_TERMINAL:
                     switch (event.terminal.outcome) {
                         case COMPLETED:
-                            add(Counter.ACTION_COMPLETED, 1);
+                            add(Counter.ACTION_COMPLETED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                             break;
                         case CANCELLED:
-                            add(Counter.ACTION_CANCELLED, 1);
+                            add(Counter.ACTION_CANCELLED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                             break;
                         case FAILED:
-                            add(Counter.ACTION_FAILED, 1);
+                            add(Counter.ACTION_FAILED, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                             break;
                         case TIMED_OUT:
-                            add(Counter.ACTION_TIMED_OUT, 1);
+                            add(Counter.ACTION_TIMED_OUT, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                             break;
                     }
                     break;
                 case WORK_SAMPLE:
-                    add(Counter.WORK_SAMPLES, 1);
+                    add(Counter.WORK_SAMPLES, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     int component = event.work.component.ordinal();
-                    workCounts[component] = Math.addExact(workCounts[component], 1);
+                    workCounts[component] = Math
+                        .addExact(workCounts[component], AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                     workNanos[component] = Math.addExact(workNanos[component], event.work.durationNanos);
                     break;
             }
         }
 
         private void damage(MaidTelemetryEvent.DamageEvidence event) {
-            add(Counter.DAMAGE_EVIDENCE, 1);
+            add(Counter.DAMAGE_EVIDENCE, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
             observedHealthDelta = sum(observedHealthDelta, event.healthDelta);
             if (event.absorptionKnown) observedAbsorptionDelta = sum(observedAbsorptionDelta, event.absorptionDelta);
-            double healthLoss = Math.max(0, -event.healthDelta);
-            double absorptionLoss = event.absorptionKnown ? Math.max(0, -event.absorptionDelta) : 0;
+            double healthLoss = Math.max(AiTelemetryTuning.SUBSTRING_START_OFFSET, -event.healthDelta);
+            double absorptionLoss = event.absorptionKnown
+                ? Math.max(AiTelemetryTuning.SUBSTRING_START_OFFSET, -event.absorptionDelta)
+                : AiTelemetryTuning.SUBSTRING_START_OFFSET;
             if (event.grade == EvidenceGrade.CONFIRMED_NATIVE_COMMIT) {
-                add(Counter.EVIDENCE_NATIVE_COMMIT, 1);
+                add(Counter.EVIDENCE_NATIVE_COMMIT, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                 nativeCommittedHealthLoss = sum(nativeCommittedHealthLoss, healthLoss);
                 nativeCommittedAbsorptionLoss = sum(nativeCommittedAbsorptionLoss, absorptionLoss);
             } else if (event.grade == EvidenceGrade.CONTROLLED_CALL_DELTA) {
-                add(Counter.EVIDENCE_CONTROLLED_CALL, 1);
+                add(Counter.EVIDENCE_CONTROLLED_CALL, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
                 controlledCallHealthLoss = sum(controlledCallHealthLoss, healthLoss);
                 controlledCallAbsorptionLoss = sum(controlledCallAbsorptionLoss, absorptionLoss);
-            } else
-                if (event.grade == EvidenceGrade.UNATTRIBUTED_INTERVAL) add(Counter.EVIDENCE_UNATTRIBUTED_INTERVAL, 1);
-                else add(Counter.EVIDENCE_AMBIGUOUS, 1);
+            } else if (event.grade == EvidenceGrade.UNATTRIBUTED_INTERVAL)
+                add(Counter.EVIDENCE_UNATTRIBUTED_INTERVAL, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
+            else add(Counter.EVIDENCE_AMBIGUOUS, AiTelemetryTuning.ADD_EXACT_SINGLE_UNIT);
         }
 
         private static double sum(double previous, double value) {
             double result = previous + value;
-            if (!Double.isFinite(result)) throw new ArithmeticException("Telemetry scalar overflow");
+            if (!Double.isFinite(result))
+                throw new ArithmeticException(AiTelemetryDiagnostics.MSG_TELEMETRY_SCALAR_OVERFLOW);
             return result;
         }
     }

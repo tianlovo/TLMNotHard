@@ -17,9 +17,6 @@ import cpw.mods.fml.relauncher.Side;
 /** GT普通刀的明确能力子集，不调用玩家左键、玩家伤害分量回调或假玩家 */
 public final class GregTechWeaponAdapter {
 
-
-
-
     private GregTechWeaponAdapter() {}
 
     public static MaidWeaponProfile inspect(ItemStack original) {
@@ -29,8 +26,8 @@ public final class GregTechWeaponAdapter {
             if (original == null) return MaidWeaponProfile.unknown(GregTechCombatIds.ID_MISSING_GREGTECH_STACK);
             var before = original.copy();
             var admitted = admission(original.copy());
-            if (!ItemStack.areItemStacksEqual(original, before))
-                throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_INSPECTION_CHANGED_ORIGINAL_STACK);
+            if (!ItemStack.areItemStacksEqual(original, before)) throw new IllegalStateException(
+                GregTechCombatDiagnostics.MSG_GREGTECH_INSPECTION_CHANGED_ORIGINAL_STACK);
             return admitted.profile;
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.report(Side.SERVER, GregTechCombatIds.GUARD, failure);
@@ -68,7 +65,9 @@ public final class GregTechWeaponAdapter {
         if (!GregTechCombatIds.SUPPORTED_DEPENDENCY.equals(DependencyFingerprint.mod(GregTechCombatIds.ID_GREGTECH)))
             return Admission.unknown(GregTechCombatIds.ID_GREGTECH_DEPENDENCY_NOT_ADMITTED);
         var api = GregTechWeaponApi.get();
-        if (copy == null || copy.stackSize != GregTechCombatTuning.TARGET_STACK_SIZE_THRESHOLD || copy.getItem() == null || !api.exactTool(copy.getItem()))
+        if (copy == null || copy.stackSize != GregTechCombatTuning.TARGET_STACK_SIZE_THRESHOLD
+            || copy.getItem() == null
+            || !api.exactTool(copy.getItem()))
             return Admission.unknown(GregTechCombatIds.ID_GREGTECH_ITEM_FAMILY_NOT_ADMITTED);
         var tool = copy.getItem();
         int metadata = copy.getItemDamage();
@@ -85,15 +84,20 @@ public final class GregTechWeaponAdapter {
             resistance = GregTechCombatTuning.GREG_TECH_RESISTANCE_2;
         } else return Admission.unknown(GregTechCombatIds.ID_GREGTECH_STATS_FAMILY_NOT_ADMITTED);
         var stats = api.registeredStats(tool, metadata);
-        if (!api.exactStats(stats, butchery)) return Admission.unknown(GregTechCombatIds.ID_GREGTECH_STATS_REGISTRATION_CHANGED);
+        if (!api.exactStats(stats, butchery))
+            return Admission.unknown(GregTechCombatIds.ID_GREGTECH_STATS_REGISTRATION_CHANGED);
         // 该公开方法仅枚举行为并执行我们自己的恒true谓词，不执行行为的玩家回调
-        if (api.hasBehavior(tool, copy)) return Admission.unknown(GregTechCombatIds.ID_GREGTECH_PLAYER_BEHAVIOR_REGISTERED);
-        if (api.electric(tool, copy)) return Admission.unknown(GregTechCombatIds.ID_GREGTECH_ELECTRIC_TOOL_NOT_ADMITTED);
-        if (api.missingPrimaryMaterial(copy)) return Admission.unknown(GregTechCombatIds.ID_GREGTECH_PRIMARY_MATERIAL_MISSING);
+        if (api.hasBehavior(tool, copy))
+            return Admission.unknown(GregTechCombatIds.ID_GREGTECH_PLAYER_BEHAVIOR_REGISTERED);
+        if (api.electric(tool, copy))
+            return Admission.unknown(GregTechCombatIds.ID_GREGTECH_ELECTRIC_TOOL_NOT_ADMITTED);
+        if (api.missingPrimaryMaterial(copy))
+            return Admission.unknown(GregTechCombatIds.ID_GREGTECH_PRIMARY_MATERIAL_MISSING);
         long maximum = api.maximumDamage(copy), damage = api.currentDamage(copy);
         if (maximum <= 0 || damage < 0 || damage >= maximum)
             return Admission.unknown(GregTechCombatIds.ID_GREGTECH_INVALID_OR_EXHAUSTED_DURABILITY);
-        if (api.toolStats(tool, copy) != stats) return Admission.unknown(GregTechCombatIds.ID_GREGTECH_STATS_CHANGED_DURING_QUERY);
+        if (api.toolStats(tool, copy) != stats)
+            return Admission.unknown(GregTechCombatIds.ID_GREGTECH_STATS_CHANGED_DURING_QUERY);
         float physicalBonus = api.combatDamage(tool, copy);
         int cost = api.entityAttackCost(stats);
         if (!Float.isFinite(physicalBonus) || cost <= 0 || damage > Long.MAX_VALUE - cost)
@@ -148,8 +152,8 @@ public final class GregTechWeaponAdapter {
         @Override
         public DamageSource damageSource(EntityMaid maid, EntityLivingBase target) {
             try {
-                if (!IntegrationGuard.available(Side.SERVER, GregTechCombatIds.GUARD))
-                    throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_WEAPON_CAPABILITY_DISABLED_BEFORE);
+                if (!IntegrationGuard.available(Side.SERVER, GregTechCombatIds.GUARD)) throw new IllegalStateException(
+                    GregTechCombatDiagnostics.MSG_GREGTECH_WEAPON_CAPABILITY_DISABLED_BEFORE);
                 checkRegistration();
                 return api.damageSource(stats, maid, target);
             } catch (RuntimeException | LinkageError | AssertionError failure) {
@@ -164,11 +168,14 @@ public final class GregTechWeaponAdapter {
                 // 已接受的命中不因别处熔断或会话取消而免除原武器消耗
                 checkRegistration();
                 if (original.getItem() != tool || original.getItemDamage() != metadata || api.electric(tool, original))
-                    throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_ORIGINAL_WEAPON_IDENTITY_CHANGED);
-                target.hurtResistantTime = Math.max(GregTechCombatTuning.TARGET_STACK_SIZE_THRESHOLD, api.hurtResistance(stats, target.hurtResistantTime, target));
+                    throw new IllegalStateException(
+                        GregTechCombatDiagnostics.MSG_GREGTECH_ORIGINAL_WEAPON_IDENTITY_CHANGED);
+                target.hurtResistantTime = Math.max(
+                    GregTechCombatTuning.TARGET_STACK_SIZE_THRESHOLD,
+                    api.hurtResistance(stats, target.hurtResistantTime, target));
                 // GT左键不经hitEntity耗损，避免在此之后再走一次普通物品消耗
-                if (!api.damageTool(tool, original, api.entityAttackCost(stats)))
-                    throw new IllegalStateException(GregTechCombatDiagnostics.MSG_GREGTECH_REJECTED_ACCEPTED_HIT_RESOURCE);
+                if (!api.damageTool(tool, original, api.entityAttackCost(stats))) throw new IllegalStateException(
+                    GregTechCombatDiagnostics.MSG_GREGTECH_REJECTED_ACCEPTED_HIT_RESOURCE);
             } catch (RuntimeException | LinkageError | AssertionError failure) {
                 IntegrationGuard.report(Side.SERVER, GregTechCombatIds.GUARD, failure);
                 throw failure;

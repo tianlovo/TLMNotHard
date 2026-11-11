@@ -62,10 +62,11 @@ public final class MaidTargetCooldowns<K> {
     private long lastTick = Long.MIN_VALUE;
 
     private MaidTargetCooldowns(Map<K, Entry> entries, int maxEntries, EvictionPolicy evictionPolicy) {
-        if (maxEntries <= 0) throw new IllegalArgumentException("maxEntries must be positive");
+        if (maxEntries <= 0)
+            throw new IllegalArgumentException(EnhancedSupportDiagnostics.MSG_MAXENTRIES_MUST_BE_POSITIVE);
         this.entries = entries;
         this.maxEntries = maxEntries;
-        this.evictionPolicy = Objects.requireNonNull(evictionPolicy, "evictionPolicy");
+        this.evictionPolicy = Objects.requireNonNull(evictionPolicy, EnhancedSupportIds.ID_EVICTIONPOLICY);
     }
 
     public static <K> MaidTargetCooldowns<K> forUuidFifo(int maxEntries) {
@@ -92,11 +93,17 @@ public final class MaidTargetCooldowns<K> {
     }
 
     public void record(K key, long retryAt) {
-        record(key, retryAt, 0, 0, 0, null);
+        record(
+            key,
+            retryAt,
+            EnhancedSupportTuning.ENHANCED_MEAL_NEXT_MEAL,
+            EnhancedSupportTuning.ENHANCED_MEAL_NEXT_MEAL,
+            EnhancedSupportTuning.ENHANCED_MEAL_NEXT_MEAL,
+            null);
     }
 
     public void record(K key, long retryAt, double x, double y, double z, Object contextRef) {
-        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(key, EnhancedSupportIds.ID_KEY);
         if (!entries.containsKey(key) && entries.size() >= maxEntries) {
             if (evictionPolicy == EvictionPolicy.FIFO_OLDEST) {
                 var iterator = entries.keySet()

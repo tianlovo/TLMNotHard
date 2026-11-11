@@ -14,7 +14,8 @@ public final class MaidModernBlockRules {
         var box = block.getCollisionBoundingBoxFromPool(world, x, y, z);
         if (box == null) return false;
         double sx = box.maxX - box.minX, sy = box.maxY - box.minY, sz = box.maxZ - box.minZ;
-        return (sx + sy + sz) / 3 >= .7291666666666666D || sy >= 1;
+        return (sx + sy + sz) / FaithfulLifeTuning.LOW_TWO_BITS_MASK >= FaithfulLifeTuning.MODERN_BLOCK_SOLID_FACTOR
+            || sy >= FaithfulLifeTuning.BED_EXIT_DEFAULT_UNIT_STEP;
     }
 
     public static boolean blocksMotion(World world, int x, int y, int z) {

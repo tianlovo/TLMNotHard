@@ -124,13 +124,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final MaidBowAttack rangedBow;
     private final CombatObservation unifiedCombatObservation = new CombatObservation();
     private final MaidUnifiedCombatActionRunner unifiedCombat;
-    private long unifiedCombatEpoch = 1;
+    private long unifiedCombatEpoch = FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT;
     private CombatMovementFact.Node combatNode;
     private CombatMovementFact combatMovementFact;
     private PathEntity combatInstalledPath;
     private RestrictedCombatMove restrictedCombatMove;
     private PathEntity ordinaryCombatDispatchRaw;
-    private long ordinaryCombatDispatchRevision = -1;
+    private long ordinaryCombatDispatchRevision = FaithfulAiTuning.UNSET_OR_NOT_FOUND;
     private long combatDiagnosticTickOverride = Long.MIN_VALUE;
     private long combatMovementLeaseGeneration;
     private boolean reobservationReproofRequired;
@@ -162,7 +162,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private boolean frameActive;
     private int teleportAttempts;
     private int homeTeleportAttempts, homeTeleportSuccesses, homeTeleportLiquidRejects;
-    private int lastScheduleEntityTick = -1;
+    private int lastScheduleEntityTick = FaithfulAiTuning.UNSET_OR_NOT_FOUND;
     private Object behaviorIdentity = new Object();
     private Object frameBehaviors;
     private Set<MaidDoorActor.Position> doorsToClose;
@@ -173,10 +173,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public ModernFollowCoreActor(EntityMaid maid, MaidBowAttack.ModernFlightProfile flightProfile) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        world = Objects.requireNonNull(maid.worldObj, "world");
+        this.maid = Objects.requireNonNull(maid, FaithfulAiIds.ID_MAID);
+        world = Objects.requireNonNull(maid.worldObj, FaithfulAiIds.ID_WORLD);
         if (!(maid.getNavigator() instanceof MaidPathNavigator modern))
-            throw new IllegalArgumentException("Modern maid navigation required");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_MODERN_MAID_NAVIGATION_REQUIRED);
         navigation = modern;
         life = new MaidModernLife(maid, this::isCurrent);
         cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
@@ -196,7 +196,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         followStop = false;
         guard();
         if (!navigation.claimBrainTarget(this, token, this))
-            throw new IllegalStateException("Foreign WALK_TARGET driver");
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_FOREIGN_WALK_TARGET_DRIVER);
     }
 
     public void beginFrame(MaidPolicyRuntime runtime, Token token) {
@@ -213,7 +213,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             || combatNode.role != CombatMovementFact.Role.ORDINARY) return;
         Path currentPath = navigationPath();
         if (!combatNodeArrived(walk, currentPath)) return;
-        combatNavigationOutcome(walk, currentPath, EnhancedNavigationController.Outcome.ARRIVED, 0);
+        combatNavigationOutcome(
+            walk,
+            currentPath,
+            EnhancedNavigationController.Outcome.ARRIVED,
+            FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         stopNavigation();
         eraseWalkTarget();
         setPathMemory(null);
@@ -227,14 +231,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void bindPerception(MaidModernPerception memory) {
-        if (perception != null) throw new IllegalStateException("Perception already bound");
-        perception = Objects.requireNonNull(memory, "memory");
+        if (perception != null) throw new IllegalStateException(FaithfulAiDiagnostics.MSG_PERCEPTION_ALREADY_BOUND);
+        perception = Objects.requireNonNull(memory, FaithfulAiIds.ID_MEMORY);
         memory.bindCombatObservation(unifiedCombatObservation);
     }
 
     public void bindSensing(MaidSensingSession session) {
-        if (sensing != null) throw new IllegalStateException("Sensing session already bound");
-        sensing = Objects.requireNonNull(session, "session");
+        if (sensing != null) throw new IllegalStateException(FaithfulAiDiagnostics.MSG_SENSING_SESSION_ALREADY_BOUND);
+        sensing = Objects.requireNonNull(session, FaithfulAiIds.ID_SESSION);
     }
 
     public boolean canScanForAir() {
@@ -271,7 +275,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     private void guard() {
         if (!isCurrent() || maid.getNavigator() != navigation)
-            throw new IllegalStateException("Expired modern core actor frame");
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_MODERN_CORE_ACTOR_FRAME);
     }
 
     private void navigationLease() {
@@ -290,7 +294,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return;
         }
         throw new IllegalStateException(
-            actual == null ? "Unexplained modern path disappearance" : "Foreign modern path");
+            actual == null ? FaithfulAiDiagnostics.MSG_UNEXPLAINED_MODERN_PATH_DISAPPEARANCE
+                : FaithfulAiDiagnostics.MSG_FOREIGN_MODERN_PATH);
     }
 
     @Override
@@ -315,7 +320,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         EntityPlayerMP found = null;
         for (Object value : server.getConfigurationManager().playerEntityList) {
             if (value instanceof EntityPlayerMP player && uuid.equals(player.getUniqueID())) {
-                if (found != null) throw new IllegalStateException("Duplicate online owner UUID");
+                if (found != null)
+                    throw new IllegalStateException(FaithfulAiDiagnostics.MSG_DUPLICATE_ONLINE_OWNER_UUID);
                 found = player;
             }
         }
@@ -420,7 +426,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public double distanceToBlockCenterSquared(Point point) {
         guard();
-        return maid.getDistanceSq(point.x + .5, point.y + .5, point.z + .5);
+        return maid.getDistanceSq(
+            point.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            point.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            point.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR);
     }
 
     public void sleepAt(Point point) {
@@ -446,7 +455,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 .toString()
                 .equals(maid.func_152113_b()));
         if (!(entity instanceof EntityPlayerMP player) || !player.isEntityAlive()
-            || maid.getDistanceSqToEntity(player) >= 36
+            || maid.getDistanceSqToEntity(player) >= FaithfulAiTuning.MODERN_FOLLOW_TEMPTING_VISIBLE_OWNER_PARAM
             || !maid.getHomeArea()
                 .withinRestriction(
                     MathHelper.floor_double(player.posX),
@@ -468,7 +477,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             || player.isDead
             || !player.isEntityAlive()
             || player.theItemInWorldManager.getGameType()
-                .getID() == 3
+                .getID() == FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA
             || maid.getDistanceSqToEntity(player) >= distance * distance
             || !maid.canEntityBeSeen(player)) return null;
         return new OwnerView(player);
@@ -502,7 +511,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (isHomeModeEnable()) return true;
         var owner = resolveOwner();
         return owner != null && owner.worldObj == world
-            && owner.getDistanceSq(point.x + .5, point.y + .5, point.z + .5) < 64;
+            && owner.getDistanceSq(
+                point.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                point.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                point.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR)
+                < FaithfulAiTuning.MODERN_FOLLOW_WORK_POINT_NEAR_OWNER_PARAM;
     }
 
     public ItemStack firstCakeStack() {
@@ -533,7 +546,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void rewardSteal() {
         guard();
         maid.getFavorabilityManager()
-            .apply(Type.STEAL_EDIBLE_BLOCK, 1);
+            .apply(Type.STEAL_EDIBLE_BLOCK, FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
     }
 
     public void swingMainHand() {
@@ -545,7 +558,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         if (walk == null || workTarget == null) return false;
         var pos = walk.currentPosition();
-        return pos.x == workTarget.x + .5 && pos.y == workTarget.y + .5 && pos.z == workTarget.z + .5;
+        return pos.x == workTarget.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+            && pos.y == workTarget.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+            && pos.z == workTarget.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR;
     }
 
     public int cakeBites() {
@@ -599,7 +614,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void eraseWalkTarget() {
         guard();
-        if (restrictedCombatMove != null) stopRestrictedCombatMove("REOBSERVATION_WALK_CANCELLED");
+        if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_WALK_CANCELLED);
         walk = null;
     }
 
@@ -648,11 +663,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public MaidPathCreation requestEnhancedPath(BlockPos target) {
         guard();
         if (!runtime.getProfile()
-            .isEnhanced()) throw new IllegalStateException("Enhanced query requires its actual policy profile");
+            .isEnhanced())
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_ENHANCED_QUERY_REQUIRES_ITS_ACTUAL);
         var result = MaidPathCreation.Result.NOT_NAVIGABLE;
         if (!navigation.canUpdatePath()) return new MaidPathCreation(result, null);
         long before = navigation.budgetDeferrals();
-        var path = createPath(target, 0);
+        var path = createPath(target, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         result = path != null ? MaidPathCreation.Result.FOUND
             : navigation.budgetDeferrals() > before ? MaidPathCreation.Result.WAITING_BUDGET
                 : MaidPathCreation.Result.UNREACHABLE;
@@ -663,7 +679,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public BooleanSupplier observeBlockedRoute() {
         navigationLease();
         if (!runtime.getProfile()
-            .isEnhanced()) throw new IllegalStateException("Enhanced obstacle observer requires its actual policy");
+            .isEnhanced())
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_ENHANCED_OBSTACLE_OBSERVER_REQUIRES_ITS);
         if (restrictedCombatMove != null) return null;
         var identity = behaviorIdentity;
         long movementLease = combatMovementLeaseGeneration;
@@ -708,20 +725,25 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean moveTo(Path value, double speed) {
         navigationLease();
         var requested = path(value);
-        if (requested.created == null) throw new IllegalStateException("Path was not created for this installation");
+        if (requested.created == null)
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_PATH_WAS_NOT_CREATED_FOR);
         if (restrictedCombatMove != null && !restrictedCombatMove.accepts(requested.raw, worldTick)) {
             if (CombatDiagnosticScope.current(world) != null) traceCombatNative(
-                "REJECT",
-                "PRE_INSTALL:" + restrictedCombatMove.diagnosticReason,
+                FaithfulAiIds.KEY_REJECT,
+                FaithfulAiIds.KEY_PRE_INSTALL + restrictedCombatMove.diagnosticReason,
                 requested.raw,
                 null);
-            stopRestrictedCombatMove("REOBSERVATION_NATIVE_PATH_UNPROVED");
+            stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_NATIVE_PATH_UNPROVED);
             return false;
         }
-        traceCombatNative("PRE_INSTALL", "requested", requested.raw, null);
+        traceCombatNative(FaithfulAiIds.KEY_PRE_INSTALL_2, FaithfulAiIds.ID_REQUESTED, requested.raw, null);
         boolean result = navigation.installBrainPath(this, requested.created, speed);
         var actual = navigation.getPath();
-        traceCombatNative("POST_INSTALL", result ? "INSTALL_TRUE" : "INSTALL_FALSE", requested.raw, actual);
+        traceCombatNative(
+            FaithfulAiIds.KEY_POST_INSTALL,
+            result ? FaithfulAiIds.KEY_INSTALL_TRUE : FaithfulAiIds.KEY_INSTALL_FALSE,
+            requested.raw,
+            actual);
         if (actual == requested.raw || actual == ownedPath) {
             ownedPath = actual;
             navigationView = actual == null ? null : new ModernPath((MaidModernPath) actual, null);
@@ -738,18 +760,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             restrictedCombatMove.raw = actual == ownedPath ? actual : null;
             if (!accepted) {
                 if (CombatDiagnosticScope.current(world) != null) {
-                    if (!postAcceptsEvaluated) restrictedCombatMove.diagnosticReason = "NOT_EVALUATED/result=" + result
-                        + "/actualPresent="
-                        + (actual != null)
-                        + "/actualOwned="
-                        + (actual == ownedPath);
+                    if (!postAcceptsEvaluated)
+                        restrictedCombatMove.diagnosticReason = FaithfulAiIds.KEY_NOT_EVALUATED_RESULT + result
+                            + FaithfulAiIds.ID_ACTUALPRESENT
+                            + (actual != null)
+                            + FaithfulAiIds.ID_ACTUALOWNED
+                            + (actual == ownedPath);
                     traceCombatNative(
-                        "REJECT",
-                        "POST_INSTALL:" + restrictedCombatMove.diagnosticReason,
+                        FaithfulAiIds.KEY_REJECT,
+                        FaithfulAiIds.KEY_POST_INSTALL_2 + restrictedCombatMove.diagnosticReason,
                         requested.raw,
                         actual);
                 }
-                stopRestrictedCombatMove("REOBSERVATION_INSTALLED_PATH_UNPROVED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_INSTALLED_PATH_UNPROVED);
                 result = false;
             }
         }
@@ -760,7 +783,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void stopNavigation() {
         navigationLease();
         // 先持原raw身份撤销queued move，再清导航字段；ARRIVED/失败回执由原调用顺序保留
-        if (restrictedCombatMove != null) stopRestrictedCombatMove("REOBSERVATION_NAVIGATION_STOPPED_REPROOF_REQUIRED");
+        if (restrictedCombatMove != null)
+            stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_NAVIGATION_STOPPED_REPROOF_REQUIRE);
         if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
         ownedPath = null;
         navigationView = null;
@@ -806,8 +830,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             mealItemLease = null;
             if (ownsTarget) {
                 maid.setPose(MaidPose.SWINGING_ARMS, false);
-                maid.moveStrafing = 0;
-                maid.moveForward = 0;
+                maid.moveStrafing = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
+                maid.moveForward = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
                 maid.setPose(MaidPose.BEGGING, false);
                 maid.setCanClimb(false);
                 maid.getAquaticController()
@@ -851,29 +875,36 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private boolean teleportToOwner(Owner value, BooleanSupplier authorized, boolean enhanced, boolean requireAir) {
         var player = owner(value).player;
         navigationLease();
-        teleportAttempts = 0;
+        teleportAttempts = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
         var region = new MaidNativePathRegion(world);
         var evaluator = new MaidWalkEvaluator(navigation.context(region));
         int ownerX = MathHelper.floor_double(player.posX), ownerY = MathHelper.floor_double(player.posY),
             ownerZ = MathHelper.floor_double(player.posZ);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < FaithfulAiTuning.MIN_I_THRESHOLD; i++) {
             if (!authorized.getAsBoolean()) return false;
             int x = ownerX + maid.getRNG()
-                .nextInt(7) - 3;
+                .nextInt(FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM)
+                - FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
             int y = ownerY + maid.getRNG()
-                .nextInt(3) - 1;
+                .nextInt(FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA) - 1;
             int z = ownerZ + maid.getRNG()
-                .nextInt(7) - 3;
+                .nextInt(FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM)
+                - FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
             teleportAttempts++;
             guard();
-            if (Math.abs(x - player.posX) < 2 && Math.abs(z - player.posZ) < 2) continue;
+            if (Math.abs(x - player.posX) < FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM
+                && Math.abs(z - player.posZ) < FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM)
+                continue;
             if (!world.blockExists(x, y - 1, z)
                 || !world.blockExists(x, y + MathHelper.ceiling_float_int(maid.height), z)
                 || world.getBlock(x, y - 1, z) == MaidLifeContent.snackCabinet) continue;
             var kind = evaluator.cellType(x, y, z);
             if (kind != MaidPathType.WALKABLE && kind != MaidPathType.WATER) continue;
             var translated = enhanced
-                ? maid.boundingBox.getOffsetBoundingBox(x + .5 - maid.posX, y - maid.posY, z + .5 - maid.posZ)
+                ? maid.boundingBox.getOffsetBoundingBox(
+                    x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posX,
+                    y - maid.posY,
+                    z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posZ)
                 : maid.boundingBox.getOffsetBoundingBox(
                     x - MathHelper.floor_double(maid.posX),
                     y - MathHelper.floor_double(maid.posY),
@@ -883,30 +914,40 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             if (requireAir && !safeAirLanding(x, y, z)) continue;
             if (enhanced) {
                 if (!authorized.getAsBoolean()) return false;
-                var event = new EnderTeleportEvent(maid, x + .5, y, z + .5, 0);
+                var event = new EnderTeleportEvent(
+                    maid,
+                    x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    y,
+                    z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
                 if (MinecraftForge.EVENT_BUS.post(event) || !authorized.getAsBoolean()
-                    || event.targetX != x + .5
+                    || event.targetX != x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                     || event.targetY != y
-                    || event.targetZ != z + .5
+                    || event.targetZ != z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                     || event.attackDamage != 0) return false;
                 if (!world.blockExists(x, y - 1, z)
                     || !world.blockExists(x, y + MathHelper.ceiling_float_int(maid.height), z)
                     || world.getBlock(x, y - 1, z) == MaidLifeContent.snackCabinet) return false;
                 var fresh = new MaidWalkEvaluator(navigation.context(new MaidNativePathRegion(world)));
                 var freshKind = fresh.cellType(x, y, z);
-                if (freshKind != MaidPathType.WALKABLE && freshKind != MaidPathType.WATER
-                    || !world
-                        .getCollidingBoundingBoxes(
-                            maid,
-                            maid.boundingBox
-                                .getOffsetBoundingBox(x + .5 - maid.posX, y - maid.posY, z + .5 - maid.posZ))
-                        .isEmpty())
-                    return false;
+                if (freshKind != MaidPathType.WALKABLE && freshKind != MaidPathType.WATER || !world
+                    .getCollidingBoundingBoxes(
+                        maid,
+                        maid.boundingBox.getOffsetBoundingBox(
+                            x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posX,
+                            y - maid.posY,
+                            z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posZ))
+                    .isEmpty()) return false;
                 if (requireAir && !safeAirLanding(x, y, z)) return false;
             }
             if (!authorized.getAsBoolean()) return false;
             navigationLease();
-            maid.setLocationAndAngles(x + .5, y, z + .5, maid.rotationYaw, maid.rotationPitch);
+            maid.setLocationAndAngles(
+                x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                y,
+                z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                maid.rotationYaw,
+                maid.rotationPitch);
             stopNavigation();
             walk = null;
             look = null;
@@ -925,12 +966,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .getCollidingBoundingBoxes(
                 maid,
                 AxisAlignedBB.getBoundingBox(
-                    x + .5 - width / 2,
+                    x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                        - width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
                     y,
-                    z + .5 - width / 2,
-                    x + .5 + width / 2,
+                    z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                        - width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
+                    x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                        + width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
                     y + height,
-                    z + .5 + width / 2))
+                    z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                        + width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM))
             .isEmpty();
     }
 
@@ -938,17 +983,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean teleportEnhancedToHome(Point center, BooleanSupplier authorized) {
         navigationLease();
         int minimumY = Math.max(
-            1,
+            FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT,
             center.y - maid.getHomeArea()
                 .radius());
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < FaithfulAiTuning.MIN_I_THRESHOLD; attempt++) {
             if (!authorized.getAsBoolean()) return false;
             int x = center.x + maid.getRNG()
-                .nextInt(7) - 3;
+                .nextInt(FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM)
+                - FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
             int y = center.y + maid.getRNG()
-                .nextInt(4);
+                .nextInt(FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2);
             int z = center.z + maid.getRNG()
-                .nextInt(7) - 3;
+                .nextInt(FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM)
+                - FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
             homeTeleportAttempts++;
             if (y < minimumY || y + Math.max(maid.height, MaidEntityPose.STANDING.height) > world.getHeight()) continue;
             var body = enhancedHomeBody(x, y, z);
@@ -961,15 +1008,25 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             }
             if (y < minimumY || !safeHomeLanding(x, y, z)) continue;
             if (!authorized.getAsBoolean()) return false;
-            var event = new EnderTeleportEvent(maid, x + .5, y, z + .5, 0);
+            var event = new EnderTeleportEvent(
+                maid,
+                x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                y,
+                z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
             if (MinecraftForge.EVENT_BUS.post(event) || !authorized.getAsBoolean()
-                || event.targetX != x + .5
+                || event.targetX != x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                 || event.targetY != y
-                || event.targetZ != z + .5
+                || event.targetZ != z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                 || event.attackDamage != 0) return false;
             if (!safeHomeLanding(x, y, z) || !authorized.getAsBoolean()) return false;
             navigationLease();
-            maid.setLocationAndAngles(x + .5, y, z + .5, maid.rotationYaw, maid.rotationPitch);
+            maid.setLocationAndAngles(
+                x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                y,
+                z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                maid.rotationYaw,
+                maid.rotationPitch);
             stopNavigation();
             walk = null;
             look = null;
@@ -984,20 +1041,27 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         double width = Math.max(maid.width, MaidEntityPose.STANDING.width);
         double height = Math.max(maid.height, MaidEntityPose.STANDING.height);
         return AxisAlignedBB.getBoundingBox(
-            x + .5 - width / 2,
+            x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                - width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
             y,
-            z + .5 - width / 2,
-            x + .5 + width / 2,
+            z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                - width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
+            x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                + width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM,
             y + height,
-            z + .5 + width / 2);
+            z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
+                + width / FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM);
     }
 
     private boolean recoveryAreaLoaded(AxisAlignedBB body) {
         // 原生碰撞查询会读取水平边缘邻格，先核其完整区块包围
-        for (int x = MathHelper.floor_double(body.minX - 1) >> 4, maxX = MathHelper.floor_double(body.maxX + 1) >> 4; x
-            <= maxX; x++)
-            for (int z = MathHelper.floor_double(body.minZ - 1) >> 4,
-                maxZ = MathHelper.floor_double(body.maxZ + 1) >> 4; z <= maxZ; z++)
+        for (int x = MathHelper.floor_double(body.minX - 1) >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2,
+            maxX = MathHelper.floor_double(body.maxX + 1) >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2; x
+                <= maxX; x++)
+            for (int z = MathHelper.floor_double(body.minZ - 1)
+                >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2,
+                maxZ = MathHelper.floor_double(body.maxZ + 1)
+                    >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2; z <= maxZ; z++)
                 if (!world.getChunkProvider()
                     .chunkExists(x, z)) return false;
         return true;
@@ -1006,7 +1070,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private boolean safeHomeLanding(int x, int y, int z) {
         var body = enhancedHomeBody(x, y, z);
         if (!maid.getHomeArea()
-            .contains(x + .5, y, z + .5) || !recoveryAreaLoaded(body)
+            .contains(
+                x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                y,
+                z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR)
+            || !recoveryAreaLoaded(body)
             || !world.blockExists(x, y - 1, z)
             || !world.blockExists(x, MathHelper.ceiling_double_int(body.maxY), z)) return false;
         var ground = world.getBlock(x, y - 1, z);
@@ -1059,18 +1127,28 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 target.player.posX,
                 target.player.posY + target.player.getEyeHeight(),
                 target.player.posZ,
-                10,
+                FaithfulAiTuning.MIN_I_THRESHOLD,
                 maid.getVerticalFaceSpeed());
         else if (look instanceof Point target) maid.getLookHelper()
-            .setLookPosition(target.x + .5, target.y + .5, target.z + .5, 10, maid.getVerticalFaceSpeed());
+            .setLookPosition(
+                target.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                target.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                target.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                FaithfulAiTuning.MIN_I_THRESHOLD,
+                maid.getVerticalFaceSpeed());
         else if (look instanceof Vec3 target) maid.getLookHelper()
-            .setLookPosition(target.x, target.y, target.z, 10, maid.getVerticalFaceSpeed());
+            .setLookPosition(
+                target.x,
+                target.y,
+                target.z,
+                FaithfulAiTuning.MIN_I_THRESHOLD,
+                maid.getVerticalFaceSpeed());
         else if (look instanceof EntityLook target) maid.getLookHelper()
             .setLookPosition(
                 target.entity.posX,
                 target.entity.posY + target.entity.getEyeHeight(),
                 target.entity.posZ,
-                10,
+                FaithfulAiTuning.MIN_I_THRESHOLD,
                 maid.getVerticalFaceSpeed());
     }
 
@@ -1078,7 +1156,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigationLease();
         var area = maid.getHomeArea();
         var center = area.enabled() ? restrictionCenter() : airSearchPosition();
-        return navigation.createArrivalMap(center, perception.taskSearchRadius(), 7);
+        return navigation.createArrivalMap(
+            center,
+            perception.taskSearchRadius(),
+            FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM);
     }
 
     public void setEntityWalkAndLook(Entity entity, float speed, int closeDistance) {
@@ -1190,7 +1271,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && !player.isDead
             && player.isEntityAlive()
             && player.theItemInWorldManager.getGameType()
-                .getID() != 3;
+                .getID() != FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
     }
 
     public Vehicle ownerControlledVehicle() {
@@ -1279,7 +1360,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private VehicleView vehicle(Vehicle value) {
         guard();
         if (!(value instanceof VehicleView view) || view.actor() != this)
-            throw new IllegalArgumentException("Foreign vehicle view");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_FOREIGN_VEHICLE_VIEW);
         view.check();
         return view;
     }
@@ -1305,7 +1386,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             if (lease != token || behaviors != behaviorIdentity
                 || tick != worldTick
                 || age != entityTick
-                || entity.worldObj != world) throw new IllegalStateException("Expired vehicle frame");
+                || entity.worldObj != world)
+                throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_VEHICLE_FRAME);
         }
     }
 
@@ -1330,7 +1412,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean canPathReach(Point pos) {
         navigationLease();
-        var created = navigation.createBrainPath(this, pos.x, pos.y, pos.z, 0);
+        var created = navigation
+            .createBrainPath(this, pos.x, pos.y, pos.z, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         return created != null && created.path.canReach();
     }
 
@@ -1399,7 +1482,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void walkToRestrictionCenter() {
-        setPositionWalkAndLook(restrictionCenter(), .7F, 3);
+        setPositionWalkAndLook(
+            restrictionCenter(),
+            FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_SECOND_FAC,
+            FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA);
     }
 
     public int nextTeleportInt(int bound) {
@@ -1418,7 +1504,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (!MaidModernBlockRules.blocksMotion(world, ix, support, iz) || world.getBlock(ix, support, iz)
             .getMaterial() == Material.water) return false;
         if (!world.getChunkProvider()
-            .chunkExists(ix >> 4, iz >> 4)) return false;
+            .chunkExists(
+                ix >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2,
+                iz >> FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2))
+            return false;
         double destinationY = y;
         boolean found = false;
         while (iy > 0) {
@@ -1443,12 +1532,21 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 clear = !liquid;
             }
             if (clear) {
-                world.setEntityState(maid, (byte) 46);
+                world.setEntityState(maid, (byte) FaithfulAiTuning.MODERN_FOLLOW_SET_ENTITY_STATE_SECOND_PARAM);
                 stopNavigation();
                 homeTeleportSuccesses++;
                 if (!maid.isSilent()) {
-                    world.playSoundEffect(maid.prevPosX, maid.prevPosY, maid.prevPosZ, "mob.endermen.portal", 1, 1);
-                    maid.playSound("mob.endermen.portal", 1, 1);
+                    world.playSoundEffect(
+                        maid.prevPosX,
+                        maid.prevPosY,
+                        maid.prevPosZ,
+                        FaithfulAiIds.ID_MOB_ENDERMEN_PORTAL,
+                        FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT,
+                        FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
+                    maid.playSound(
+                        FaithfulAiIds.ID_MOB_ENDERMEN_PORTAL,
+                        FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT,
+                        FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                 }
                 return true;
             }
@@ -1461,7 +1559,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void afterLivingFrame(Token expectedToken) {
         beginEntityFrame(runtime, expectedToken);
         if (token != expectedToken || lastScheduleEntityTick == maid.ticksExisted)
-            throw new IllegalStateException("Duplicate or stale schedule entity phase");
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_DUPLICATE_OR_STALE_SCHEDULE_ENTITY);
         lastScheduleEntityTick = maid.ticksExisted;
     }
 
@@ -1507,7 +1605,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void lookAtAmbientEntity(EntityLivingBase entity) {
         guard();
         if (entity.worldObj != world || !entity.isEntityAlive())
-            throw new IllegalArgumentException("Live same-world ambient target required");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_LIVE_SAME_WORLD_AMBIENT_TARGET);
         look = new EntityLook(entity);
     }
 
@@ -1515,16 +1613,30 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean isEnhancedLandDestination(Point point) {
         guard();
         var region = new MaidNativePathRegion(world, maid);
-        if (point.y < 1 || point.y + Math.ceil(maid.height) >= region.maxY()
+        if (point.y < FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT || point.y + Math.ceil(maid.height) >= region.maxY()
             || !world.blockExists(point.x, point.y, point.z)
             || !world.blockExists(point.x, point.y - 1, point.z)
             || !region.fluidEmpty(point.x, point.y, point.z)
             || !isWithinHome(new BlockPos(point.x, point.y, point.z))) return false;
         double floor = region.floor(point.x, point.y, point.z);
-        double half = maid.width * .5, x = point.x + .5, z = point.z + .5;
+        double half = maid.width * FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            x = point.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            z = point.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR;
         boolean clear = floor > point.y - 1 && floor <= point.y
-            && !region.collides(x - half, floor + .001, z - half, x + half, floor + maid.height, z + half)
-            && region.collides(x - half, floor - .0625, z - half, x + half, floor, z + half)
+            && !region.collides(
+                x - half,
+                floor + FaithfulAiTuning.MODERN_FOLLOW_COLLIDES_SECOND_FACTOR,
+                z - half,
+                x + half,
+                floor + maid.height,
+                z + half)
+            && region.collides(
+                x - half,
+                floor - FaithfulAiTuning.MODERN_FOLLOW_COLLIDES_SECOND_FACTOR_2,
+                z - half,
+                x + half,
+                floor,
+                z + half)
             && navigation.pathfindingCost(
                 new MaidNodeEvaluator(navigation.context(region)).cellType(point.x, point.y, point.z)) == 0;
         guard();
@@ -1586,7 +1698,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void centerOnBlock(Point pos) {
         navigationLease();
-        maid.setLocationAndAngles(pos.x + .5, pos.y, pos.z + .5, maid.rotationYaw, maid.rotationPitch);
+        maid.setLocationAndAngles(
+            pos.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            pos.y,
+            pos.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            maid.rotationYaw,
+            maid.rotationPitch);
     }
 
     public void setCanClimb(boolean value) {
@@ -1645,7 +1762,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             if (token != lease || behaviors != behaviorIdentity
                 || worldTick != createdWorldTick
                 || entityTick != createdEntityTick
-                || navigation.getPath() != raw) throw new IllegalStateException("Expired climbing path view");
+                || navigation.getPath() != raw)
+                throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_CLIMBING_PATH_VIEW);
         }
 
         public boolean done() {
@@ -1726,7 +1844,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public MaidCombatActor.Target combatTargetView(EntityLivingBase entity) {
         guard();
         if (entity == null || entity.worldObj != world || world.getEntityByID(entity.getEntityId()) != entity)
-            throw new IllegalArgumentException("Foreign combat observation");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_FOREIGN_COMBAT_OBSERVATION);
         return new AttackTargetView(entity);
     }
 
@@ -1816,7 +1934,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         var observed = selected == null ? null : unifiedCombatObservation.lastSeen(selected.getUniqueID());
         boolean mayShield = canUseShield() && observed != null
             && unifiedCombatObservation.visible(selected.getUniqueID())
-            && maid.getDistanceSq(observed.x, observed.y, observed.z) < 64;
+            && maid.getDistanceSq(observed.x, observed.y, observed.z)
+                < FaithfulAiTuning.MODERN_FOLLOW_WORK_POINT_NEAR_OWNER_PARAM;
         return unifiedCombatObservation.capture(
             maid,
             selected,
@@ -1830,7 +1949,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 .ready(),
             mayShield,
             ownsRangedUse(),
-            ownsRangedUse() ? rangedUsedTicks() : 0,
+            ownsRangedUse() ? rangedUsedTicks() : FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE,
             EnhancedRideController.stationary(maid),
             preferences.preferredTask() == MaidTask.RANGED_ATTACK,
             preferences.preferencePending(),
@@ -1847,25 +1966,27 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void setReobservationNodeWalk(CombatMovementFact.Node node, CombatMovementSegment segment, float speed) {
-        if (segment == null || !node.same(segment.node)) throw new IllegalArgumentException("Body segment required");
+        if (segment == null || !node.same(segment.node))
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_BODY_SEGMENT_REQUIRED);
         setCombatNodeWalk(node, speed, segment, null);
     }
 
     public void setAlignmentNodeWalk(CombatMovementFact.Node node, CombatAlignmentProof proof, float speed) {
         if (proof == null || !node.same(proof.node) || node.role != CombatMovementFact.Role.SAME_CELL_ALIGNMENT)
-            throw new IllegalArgumentException("Admitted alignment proof required");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_ADMITTED_ALIGNMENT_PROOF_REQUIRED);
         setCombatNodeWalk(node, speed, proof.segment, proof);
     }
 
     public void setConditionalEntryNodeWalk(CombatMovementFact.Node node, CombatConditionalEntryProof proof,
         float speed) {
         if (proof == null || !node.same(proof.node) || node.role != CombatMovementFact.Role.CONDITIONAL_ENTRY)
-            throw new IllegalArgumentException("Admitted conditional entry proof required");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_ADMITTED_CONDITIONAL_ENTRY_PROOF_REQUIRED);
         setCombatNodeWalk(node, speed, proof.segment, null, proof);
     }
 
     public void setPassiveDoorExitWalk(CombatMovementFact.Node node, CombatPassiveDoorExitProof proof, float speed) {
-        if (proof == null || !node.same(proof.node)) throw new IllegalArgumentException("Passive exit proof required");
+        if (proof == null || !node.same(proof.node))
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_PASSIVE_EXIT_PROOF_REQUIRED);
         setCombatNodeWalk(node, speed, proof.segment, null, null, proof);
     }
 
@@ -1874,7 +1995,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (restrictedCombatMove != null && restrictedCombatMove.alignment != null
             && (plan.alignmentProof == null || plan.movementNode == null
                 || !plan.movementNode.same(restrictedCombatMove.segment.node)))
-            stopRestrictedCombatMove("ALIGNMENT_ADMISSION_REVOKED");
+            stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_ADMISSION_REVOKED);
         else if (restrictedCombatMove != null && restrictedCombatMove.alignment != null) {
             restrictedCombatMove.updateAlignment(plan.alignmentProof);
             restrictedCombatMove.segment = plan.alignmentProof.segment;
@@ -1882,7 +2003,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (restrictedCombatMove != null && restrictedCombatMove.entry != null) {
             if (plan.conditionalEntryProof == null || plan.movementNode == null
                 || !plan.movementNode.same(restrictedCombatMove.segment.node))
-                stopRestrictedCombatMove("CONDITIONAL_ENTRY_ADMISSION_REVOKED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_CONDITIONAL_ENTRY_ADMISSION_REVOKED);
             else {
                 restrictedCombatMove.updateEntry(plan.conditionalEntryProof);
                 restrictedCombatMove.segment = plan.conditionalEntryProof.segment;
@@ -1891,7 +2012,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (restrictedCombatMove != null && restrictedCombatMove.passiveExit != null) {
             if (plan.passiveDoorExitProof == null || plan.movementNode == null
                 || !plan.movementNode.same(restrictedCombatMove.segment.node))
-                stopRestrictedCombatMove("PASSIVE_DOOR_EXIT_ADMISSION_REVOKED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_PASSIVE_DOOR_EXIT_ADMISSION_REVOKED);
             else {
                 restrictedCombatMove.updatePassiveExit(plan.passiveDoorExitProof);
                 restrictedCombatMove.segment = plan.passiveDoorExitProof.segment;
@@ -1915,7 +2036,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (node == null || !node.current(worldTick)
             || node.entityEpoch != unifiedCombatEpoch
             || node.observationEpoch != unifiedCombatObservation.epoch()
-            || !node.self.equals(maid.getUniqueID())) throw new IllegalStateException("Expired combat movement node");
+            || !node.self.equals(maid.getUniqueID()))
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_COMBAT_MOVEMENT_NODE);
         EntityLivingBase target = maid.getModernCombatMemory()
             .target();
         if (target == null || target.isDead
@@ -1924,17 +2046,17 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             || !target.getUniqueID()
                 .equals(node.target)
             || node.same(combatNode) && combatNodeTarget != target)
-            throw new IllegalStateException("Changed combat movement target instance");
+            throw new IllegalStateException(FaithfulAiDiagnostics.MSG_CHANGED_COMBAT_MOVEMENT_TARGET_INSTANCE);
         boolean changed = !node.same(combatNode);
         if ((alignment != null || entry != null || passiveExit != null)
             && (restrictedCombatMove == null || !restrictedCombatMove.ownedWaypoint())) cancelOrdinaryCombatDispatch();
         if (restrictedCombatMove != null && (segment == null || changed)) stopRestrictedCombatMove(
-            "REOBSERVATION_NODE_REPLACED",
+            FaithfulAiIds.KEY_REOBSERVATION_NODE_REPLACED,
             alignment != null || entry != null || passiveExit != null);
         if (changed || segment == null && restrictedCombatMove != null) combatMovementLeaseGeneration++;
         if (changed) {
             combatInstalledPath = null;
-            combatPathIdentity = 0;
+            combatPathIdentity = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
         }
         combatNode = node;
         combatNodeTarget = target;
@@ -1945,7 +2067,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     stopNavigation();
                     pathMemory = null;
                     if (alignment == null && entry == null && passiveExit == null) maid.getMoveHelper()
-                        .setMoveTo(maid.posX, Math.floor(maid.boundingBox.minY + .5), maid.posZ, 0);
+                        .setMoveTo(
+                            maid.posX,
+                            Math.floor(
+                                maid.boundingBox.minY + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR),
+                            maid.posZ,
+                            FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
                 }
                 combatMovementLeaseGeneration++;
                 restrictedCombatMove = new RestrictedCombatMove(segment, target);
@@ -1957,20 +2084,20 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         } else reobservationReproofRequired = false;
         Point point = new Point(
             MathHelper.floor_double(node.foot.x),
-            MathHelper.floor_double(node.foot.y + .5),
+            MathHelper.floor_double(node.foot.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR),
             MathHelper.floor_double(node.foot.z));
         look = point;
-        walk = new PositionWalk(point, speed, 0);
+        walk = new PositionWalk(point, speed, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         if (restrictedCombatMove != null) {
             restrictedCombatMove.walkIdentity = walk;
             if (alignment != null && restrictedCombatMove.alignmentMovement(worldTick) == null)
-                stopRestrictedCombatMove("ALIGNMENT_CURRENT_BODY_UNPROVED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_CURRENT_BODY_UNPROVED);
             if (entry != null && restrictedCombatMove != null
                 && restrictedCombatMove.entryMovement(worldTick, null) == null)
-                stopRestrictedCombatMove("CONDITIONAL_ENTRY_CURRENT_BODY_UNPROVED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_CONDITIONAL_ENTRY_CURRENT_BODY_UNPROVED);
             if (passiveExit != null && restrictedCombatMove != null
                 && restrictedCombatMove.passiveExitMovement(worldTick, null) == null)
-                stopRestrictedCombatMove("PASSIVE_DOOR_EXIT_CURRENT_BODY_UNPROVED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_PASSIVE_DOOR_EXIT_CURRENT_BODY_UNPROVED);
         }
     }
 
@@ -1979,7 +2106,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (restrictedCombatMove != null && restrictedCombatMove.ownedWaypoint()
             && combatInstalledPath != null
             && combatInstalledPath.isFinished()) {
-            stopRestrictedCombatMove("ALIGNMENT_INSTALLED_RAW_FINISHED");
+            stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_INSTALLED_RAW_FINISHED);
             return false;
         }
         return (restrictedCombatMove == null || restrictedCombatMove.valid(worldTick)) && node != null
@@ -1992,13 +2119,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void clearCombatMovement() {
-        if (restrictedCombatMove != null) stopRestrictedCombatMove("REOBSERVATION_CANCELLED");
+        if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_CANCELLED);
         combatMovementLeaseGeneration++;
         combatNode = null;
         combatNodeTarget = null;
         combatMovementFact = null;
         combatInstalledPath = null;
-        combatPathIdentity = 0;
+        combatPathIdentity = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
     }
 
     @Override
@@ -2034,7 +2161,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (actual != combatInstalledPath && !(actual == null && combatInstalledPath.isFinished())) return false;
         var end = combatInstalledPath.getFinalPathPoint();
         return end != null && end.xCoord == MathHelper.floor_double(combatNode.foot.x)
-            && end.yCoord == MathHelper.floor_double(combatNode.foot.y + .5)
+            && end.yCoord == MathHelper
+                .floor_double(combatNode.foot.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR)
             && end.zCoord == MathHelper.floor_double(combatNode.foot.z);
     }
 
@@ -2057,7 +2185,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return false;
         var home = maid.getHomeArea();
         boolean area = home.enabled() ? home.sameDimension() && home.containsMaid()
-            : maid.getOwner() != null && maid.getDistanceSqToEntity(maid.getOwner()) <= 256;
+            : maid.getOwner() != null && maid.getDistanceSqToEntity(maid.getOwner())
+                <= FaithfulAiTuning.MODERN_FOLLOW_COMBAT_NODE_ARRIVED_PARAM;
         if (restrictedCombatMove != null && restrictedCombatMove.passiveExit != null)
             return area && restrictedCombatMove.raw == combatInstalledPath
                 && navigation.getPath() == combatInstalledPath
@@ -2107,7 +2236,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         else fact = CombatMovementFact.Outcome.WAIT_SERVICE;
         var home = maid.getHomeArea();
         boolean area = home.enabled() ? home.sameDimension() && home.containsMaid()
-            : maid.getOwner() != null && maid.getDistanceSqToEntity(maid.getOwner()) <= 256;
+            : maid.getOwner() != null && maid.getDistanceSqToEntity(maid.getOwner())
+                <= FaithfulAiTuning.MODERN_FOLLOW_COMBAT_NODE_ARRIVED_PARAM;
         combatMovementFact = new CombatMovementFact(
             combatNode,
             fact,
@@ -2119,8 +2249,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             area,
             combatTailMatches(),
             outcome.name(),
-            combatInstalledPath == null ? -1 : combatInstalledPath.getCurrentPathIndex(),
-            combatInstalledPath == null ? -1 : combatInstalledPath.getCurrentPathLength(),
+            combatInstalledPath == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND
+                : combatInstalledPath.getCurrentPathIndex(),
+            combatInstalledPath == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND
+                : combatInstalledPath.getCurrentPathLength(),
             combatInstalledPath == null || combatInstalledPath.getFinalPathPoint() == null ? null
                 : new CombatSnapshot.Vec(
                     combatInstalledPath.getFinalPathPoint().xCoord,
@@ -2143,16 +2275,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         combatDiagnosticTickOverride = now;
         try {
             if (actual != lease.raw || actual != ownedPath) {
-                stopRestrictedCombatMove("REOBSERVATION_PATH_OWNER_CHANGED");
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_PATH_OWNER_CHANGED);
                 return true; // a successor path is never cleared or stopped by this lease
             }
             if (!lease.valid(now) || !lease.accepts(actual, now)
                 || lease.alignment != null && lease.alignmentMovement(now) == null
                 || lease.entry != null && lease.entryMovement(now, null) == null
                 || lease.passiveExit != null && lease.passiveExitMovement(now, null) == null) {
-                if (CombatDiagnosticScope.current(world) != null)
-                    traceCombatNative("REJECT", "PRE_NATIVE:" + lease.diagnosticReason, actual, null);
-                stopRestrictedCombatMove("REOBSERVATION_PRE_NATIVE_REPROOF_REQUIRED");
+                if (CombatDiagnosticScope.current(world) != null) traceCombatNative(
+                    FaithfulAiIds.KEY_REJECT,
+                    FaithfulAiIds.KEY_PRE_NATIVE + lease.diagnosticReason,
+                    actual,
+                    null);
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_PRE_NATIVE_REPROOF_REQUIRED);
                 return false;
             }
             return true;
@@ -2178,7 +2313,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (ordinaryCombatDispatchRaw != null && maid.getMoveHelper() instanceof MaidMoveControl control)
             control.cancelOrdinaryCombatCommand(ordinaryCombatDispatchRevision);
         ordinaryCombatDispatchRaw = null;
-        ordinaryCombatDispatchRevision = -1;
+        ordinaryCombatDispatchRevision = FaithfulAiTuning.UNSET_OR_NOT_FOUND;
     }
 
     @Override
@@ -2203,10 +2338,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 || !lease.accepts(raw, now)
                 || (lease.passiveExit != null ? lease.passiveExitMovement(now, new CombatSnapshot.Vec(x, y, z)) == null
                     : lease.entry != null ? lease.entryMovement(now, new CombatSnapshot.Vec(x, y, z)) == null
-                        : lease.alignmentMovement(now) == null || Math.abs(x - center.x) > .0001
-                            || Math.abs(y - center.y) > .0001
-                            || Math.abs(z - center.z) > .0001)) {
-                stopRestrictedCombatMove("ALIGNMENT_ACTUAL_DISPATCH_UNPROVED");
+                        : lease.alignmentMovement(now) == null
+                            || Math.abs(x - center.x) > FaithfulAiTuning.MODERN_FOLLOW_NATIVE_MOVE_DISPATCH_FACTOR
+                            || Math.abs(y - center.y) > FaithfulAiTuning.MODERN_FOLLOW_NATIVE_MOVE_DISPATCH_FACTOR
+                            || Math.abs(z - center.z) > FaithfulAiTuning.MODERN_FOLLOW_NATIVE_MOVE_DISPATCH_FACTOR)) {
+                stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_ACTUAL_DISPATCH_UNPROVED);
                 return MaidCombatMoveDispatch.REJECT;
             }
             final long version = lease.proofVersion, generation = combatMovementLeaseGeneration;
@@ -2241,27 +2377,27 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                         && lease.raw == raw
                         && raw.getCurrentPathIndex() == index
                         && raw.getCurrentPathLength() == length)
-                        stopRestrictedCombatMove("ALIGNMENT_QUEUED_COMMAND_STALE");
+                        stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_QUEUED_COMMAND_STALE);
                 });
             lease.queuedCommand = command;
             var scope = CombatDiagnosticScope.current(world);
             if (scope != null) {
-                var log = scope.log(this, 12);
+                var log = scope.log(this, FaithfulAiTuning.MODERN_FOLLOW_LOG_SECOND_PARAM);
                 if (log.hasCapacity(now)) traceCombatNative(
-                    "DISPATCH_CHECKED",
-                    "ALIGNMENT_C=" + x
-                        + ","
+                    FaithfulAiIds.KEY_DISPATCH_CHECKED,
+                    FaithfulAiIds.KEY_ALIGNMENT_C + x
+                        + FaithfulAiIds.COMMA_DELIMITER
                         + y
-                        + ","
+                        + FaithfulAiIds.COMMA_DELIMITER
                         + z
-                        + ";proofVersion="
+                        + FaithfulAiIds.ID_PROOFVERSION
                         + version
-                        + ";paid="
+                        + FaithfulAiIds.ID_PAID
                         + (lease.passiveExit != null ? lease.passiveExitMovementReceipt.work
                             : lease.entry != null ? lease.entryMovementReceipt.work : lease.movementReceipt.work),
                     raw,
                     raw);
-                else log.shouldCapture(now, "DISPATCH_CHECKED");
+                else log.shouldCapture(now, FaithfulAiIds.KEY_DISPATCH_CHECKED);
             }
             return MaidCombatMoveDispatch.owned(command);
         } finally {
@@ -2272,7 +2408,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     @Override
     public void ownedMoveDispatchRejected(PathEntity raw) {
         if (restrictedCombatMove != null && restrictedCombatMove.ownedWaypoint())
-            stopRestrictedCombatMove("ALIGNMENT_HELPER_OPERATION_UNAVAILABLE");
+            stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_HELPER_OPERATION_UNAVAILABLE);
     }
 
     @Override
@@ -2284,9 +2420,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             || lease.queuedCommand != command) return;
         var scope = CombatDiagnosticScope.current(world);
         if (scope == null) return;
-        var log = scope.log(this, 12);
+        var log = scope.log(this, FaithfulAiTuning.MODERN_FOLLOW_LOG_SECOND_PARAM);
         if (!log.hasCapacity(lease.dispatchTick)) {
-            log.shouldCapture(lease.dispatchTick, "DISPATCH_ACCEPTED");
+            log.shouldCapture(lease.dispatchTick, FaithfulAiIds.KEY_DISPATCH_ACCEPTED);
             return;
         }
         if (!(maid.getMoveHelper() instanceof MaidMoveControl control)
@@ -2295,8 +2431,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         combatDiagnosticTickOverride = lease.dispatchTick;
         try {
             traceCombatNative(
-                "DISPATCH_ACCEPTED",
-                "slotRevision=" + slotRevision + ";proofVersion=" + lease.proofVersion,
+                FaithfulAiIds.KEY_DISPATCH_ACCEPTED,
+                FaithfulAiIds.ID_SLOTREVISION + slotRevision + FaithfulAiIds.ID_PROOFVERSION + lease.proofVersion,
                 raw,
                 raw);
         } finally {
@@ -2315,8 +2451,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private void stopRestrictedCombatMove(String reason, boolean alignmentHandoff) {
         RestrictedCombatMove lease = restrictedCombatMove;
         if (lease == null) return;
-        if (CombatDiagnosticScope.current(world) != null)
-            traceCombatNative("STOP", reason + ":" + lease.diagnosticReason, lease.raw, null);
+        if (CombatDiagnosticScope.current(world) != null) traceCombatNative(
+            FaithfulAiIds.KEY_STOP,
+            reason + FaithfulAiIds.COLON_DELIMITER + lease.diagnosticReason,
+            lease.raw,
+            null);
         if (lease.ownedWaypoint() && maid.getMoveHelper() instanceof MaidMoveControl control)
             control.cancelOwnedCommand(lease.queuedCommand);
         boolean ownPath = lease.raw != null && navigation.getPath() == lease.raw && ownedPath == lease.raw;
@@ -2326,7 +2465,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             navigationView = null;
             // clearPathEntity does not clear the queued native move helper command
             if (!lease.ownedWaypoint() && !alignmentHandoff) maid.getMoveHelper()
-                .setMoveTo(maid.posX, Math.floor(maid.boundingBox.minY + .5), maid.posZ, 0);
+                .setMoveTo(
+                    maid.posX,
+                    Math.floor(maid.boundingBox.minY + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR),
+                    maid.posZ,
+                    FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         }
         if (pathMemory != null && (pathMemory.raw == lease.raw || pathMemory.raw == lease.previousRaw))
             pathMemory = null;
@@ -2338,14 +2481,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     CombatMovementFact.Outcome.WAIT_SERVICE,
                     world.getTotalWorldTime(),
                     combatPathIdentity,
-                    0,
+                    FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE,
                     new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ),
                     maid.onGround,
                     false,
                     false,
                     reason,
-                    -1,
-                    -1,
+                    FaithfulAiTuning.UNSET_OR_NOT_FOUND,
+                    FaithfulAiTuning.UNSET_OR_NOT_FOUND,
                     null);
         }
         restrictedCombatMove = null;
@@ -2354,29 +2497,30 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     private static String diagnosticRaw(PathEntity path) {
-        if (path == null) return "null";
-        if (!(path instanceof MaidModernPath)) return "NOT_MODERN_NOT_EVALUATED";
+        if (path == null) return FaithfulAiIds.ID_NULL;
+        if (!(path instanceof MaidModernPath)) return FaithfulAiIds.KEY_NOT_MODERN_NOT_EVALUATED;
         int count = path.getCurrentPathLength(), index = path.getCurrentPathIndex();
-        StringBuilder out = new StringBuilder("raw#").append(System.identityHashCode(path))
+        StringBuilder out = new StringBuilder(FaithfulAiIds.ID_RAW).append(System.identityHashCode(path))
             .append('/')
             .append(count)
             .append('/')
             .append(index)
-            .append("/finished=")
+            .append(FaithfulAiIds.ID_FINISHED)
             .append(path.isFinished())
-            .append("/canReach=")
+            .append(FaithfulAiIds.ID_CANREACH)
             .append(((MaidModernPath) path).canReach());
-        if (count >= 0 && count <= 2) for (int i = 0; i < count; i++) {
-            var p = path.getPathPointFromIndex(i);
-            out.append('[')
-                .append(p.xCoord)
-                .append(',')
-                .append(p.yCoord)
-                .append(',')
-                .append(p.zCoord)
-                .append(']');
-        }
-        else out.append("/POINTS_NOT_EVALUATED_TOO_LONG");
+        if (count >= 0 && count <= FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM)
+            for (int i = 0; i < count; i++) {
+                var p = path.getPathPointFromIndex(i);
+                out.append('[')
+                    .append(p.xCoord)
+                    .append(',')
+                    .append(p.yCoord)
+                    .append(',')
+                    .append(p.zCoord)
+                    .append(']');
+            }
+        else out.append(FaithfulAiIds.ID_POINTS_NOT_EVALUATED_TOO_LONG);
         return out.toString();
     }
 
@@ -2385,85 +2529,93 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         RestrictedCombatMove lease = restrictedCombatMove;
         if (scope == null || lease == null) return;
         long at = combatDiagnosticTickOverride == Long.MIN_VALUE ? worldTick : combatDiagnosticTickOverride;
-        var log = scope.log(this, 12);
+        var log = scope.log(this, FaithfulAiTuning.MODERN_FOLLOW_LOG_SECOND_PARAM);
         if (!log.shouldCapture(at, kind)) return;
         var n = lease.segment.node;
-        String detail = reason + ";role="
+        String detail = reason + FaithfulAiIds.ID_ROLE
             + n.role
-            + ";parent="
+            + FaithfulAiIds.ID_PARENT
             + n.parentStage
-            + "/"
+            + FaithfulAiIds.PATH_SLASH_SEPARATOR
             + n.parentCursor
-            + ";C="
-            + (n.anchor == null ? "NONE" : n.anchor.x + "," + n.anchor.y + "," + n.anchor.z)
-            + ";B="
-            + (n.parentNext == null ? "NONE" : n.parentNext.x + "," + n.parentNext.y + "," + n.parentNext.z)
-            + ";lastEvaluatedFootAt="
+            + FaithfulAiIds.ID_C
+            + (n.anchor == null ? FaithfulAiIds.KEY_NONE
+                : n.anchor.x + FaithfulAiIds.COMMA_DELIMITER + n.anchor.y + FaithfulAiIds.COMMA_DELIMITER + n.anchor.z)
+            + FaithfulAiIds.ID_B
+            + (n.parentNext == null ? FaithfulAiIds.KEY_NONE
+                : n.parentNext.x + FaithfulAiIds.COMMA_DELIMITER
+                    + n.parentNext.y
+                    + FaithfulAiIds.COMMA_DELIMITER
+                    + n.parentNext.z)
+            + FaithfulAiIds.ID_LASTEVALUATEDFOOTAT
             + lease.diagnosticFootAt
-            + ";lastEvaluatedFoot="
-            + (lease.diagnosticFoot == null ? "NOT_EVALUATED"
-                : lease.diagnosticFoot.x + "," + lease.diagnosticFoot.y + "," + lease.diagnosticFoot.z)
-            + ";segment="
+            + FaithfulAiIds.ID_LASTEVALUATEDFOOT
+            + (lease.diagnosticFoot == null ? FaithfulAiIds.KEY_NOT_EVALUATED
+                : lease.diagnosticFoot.x + FaithfulAiIds.COMMA_DELIMITER
+                    + lease.diagnosticFoot.y
+                    + FaithfulAiIds.COMMA_DELIMITER
+                    + lease.diagnosticFoot.z)
+            + FaithfulAiIds.ID_SEGMENT
             + lease.segment.from.x
-            + ","
+            + FaithfulAiIds.COMMA_DELIMITER
             + lease.segment.from.y
-            + ","
+            + FaithfulAiIds.COMMA_DELIMITER
             + lease.segment.from.z
-            + "->"
+            + FaithfulAiIds.MODERN_FOLLOW_TRACE_COMBAT_NATIVE_MESSAGE
             + lease.segment.to.x
-            + ","
+            + FaithfulAiIds.COMMA_DELIMITER
             + lease.segment.to.y
-            + ","
+            + FaithfulAiIds.COMMA_DELIMITER
             + lease.segment.to.z
-            + ";requested="
+            + FaithfulAiIds.ID_REQUESTED_2
             + diagnosticRaw(requested)
-            + ";actual="
+            + FaithfulAiIds.ID_ACTUAL
             + diagnosticRaw(actual)
-            + ";lease="
+            + FaithfulAiIds.ID_LEASE
             + diagnosticRaw(lease.raw)
-            + ";previous="
+            + FaithfulAiIds.ID_PREVIOUS
             + diagnosticRaw(lease.previousRaw)
-            + ";owned="
+            + FaithfulAiIds.ID_OWNED
             + diagnosticRaw(ownedPath)
-            + ";requestedOwned="
+            + FaithfulAiIds.ID_REQUESTEDOWNED
             + (requested != null && requested == ownedPath)
-            + ";actualPrevious="
+            + FaithfulAiIds.ID_ACTUALPREVIOUS
             + (actual != null && actual == lease.previousRaw)
-            + ";sameRequestedActual="
+            + FaithfulAiIds.ID_SAMEREQUESTEDACTUAL
             + (requested == actual)
-            + ";actualOwned="
+            + FaithfulAiIds.ID_ACTUALOWNED_2
             + (actual != null && actual == ownedPath)
-            + ";actualLease="
+            + FaithfulAiIds.ID_ACTUALLEASE
             + (actual != null && actual == lease.raw)
-            + ";walkOwned="
+            + FaithfulAiIds.ID_WALKOWNED
             + (walk == lease.walkIdentity)
-            + ";install="
+            + FaithfulAiIds.ID_INSTALL
             + navigation.combatInstallDiagnostic();
         if (lease.passiveExit != null) {
             var proof = lease.passiveExit;
             var d = proof.source.door;
-            detail += ";passiveExitD=" + d.x
-                + ","
+            detail += FaithfulAiIds.ID_PASSIVEEXITD + d.x
+                + FaithfulAiIds.COMMA_DELIMITER
                 + d.y
-                + ","
+                + FaithfulAiIds.COMMA_DELIMITER
                 + d.z
-                + ";stableOpened="
+                + FaithfulAiIds.ID_STABLEOPENED
                 + d.stableOpened
-                + ";metadata="
+                + FaithfulAiIds.ID_METADATA
                 + d.metadata
-                + "/"
+                + FaithfulAiIds.PATH_SLASH_SEPARATOR
                 + d.lowerMetadata
-                + "/"
+                + FaithfulAiIds.PATH_SLASH_SEPARATOR
                 + d.upperMetadata
-                + ";passiveSerial="
+                + FaithfulAiIds.ID_PASSIVESERIAL
                 + proof.serial
-                + ";geometryAt="
+                + FaithfulAiIds.ID_GEOMETRYAT
                 + proof.geometry.observedAt
-                + ";exitK="
+                + FaithfulAiIds.ID_EXITK
                 + proof.source.k.x
-                + ","
+                + FaithfulAiIds.COMMA_DELIMITER
                 + proof.source.k.y
-                + ","
+                + FaithfulAiIds.COMMA_DELIMITER
                 + proof.source.k.z;
         }
         log.addCaptured(
@@ -2500,7 +2652,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         CombatMovementSegment segment;
         PathEntity raw, previousRaw;
         WalkTarget walkIdentity;
-        String diagnosticReason = "NOT_EVALUATED";
+        String diagnosticReason = FaithfulAiIds.KEY_NOT_EVALUATED;
         CombatSnapshot.Vec diagnosticFoot;
         long diagnosticFootAt = Long.MIN_VALUE;
         CombatAlignmentProof alignment;
@@ -2569,7 +2721,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && !navigation.usesWaterNavigation()
                 && navigation.canUpdatePath()
                 && walk == walkIdentity
-                && passiveExit.halfWidth == maid.width * .5
+                && passiveExit.halfWidth == maid.width * FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                 && passiveExit.height == maid.height
                 && passiveExit.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
@@ -2586,8 +2738,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         CombatPassiveDoorExitProof.Movement passiveExitMovement(long now, CombatSnapshot.Vec dispatch) {
             if (passiveExit == null || !valid(now)) return null;
             var foot = alignmentFoot();
-            int index = raw == null ? -1 : raw.getCurrentPathIndex(),
-                length = raw == null ? -1 : raw.getCurrentPathLength();
+            int index = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathIndex(),
+                length = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathLength();
             if (passiveExitMovementReceipt != null && passiveExitMovementReceipt.matches(foot, dispatch, now)
                 && passiveExitBodyRaw == raw
                 && passiveExitBodyIndex == index
@@ -2624,7 +2776,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && !navigation.usesWaterNavigation()
                 && navigation.canUpdatePath()
                 && walk == walkIdentity
-                && entry.halfWidth == maid.width * .5
+                && entry.halfWidth == maid.width * FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                 && entry.height == maid.height
                 && entry.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
@@ -2641,8 +2793,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         CombatConditionalEntryProof.Movement entryMovement(long now, CombatSnapshot.Vec dispatch) {
             if (entry == null || !valid(now)) return null;
             var foot = alignmentFoot();
-            int index = raw == null ? -1 : raw.getCurrentPathIndex(),
-                length = raw == null ? -1 : raw.getCurrentPathLength();
+            int index = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathIndex(),
+                length = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathLength();
             if (entryMovementReceipt != null && entryMovementReceipt.matches(foot, dispatch, now)
                 && entryBodyRaw == raw
                 && entryBodyIndex == index
@@ -2672,7 +2824,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && !navigation.usesWaterNavigation()
                 && navigation.canUpdatePath()
                 && walk == walkIdentity
-                && alignment.halfWidth == maid.width * .5
+                && alignment.halfWidth == maid.width * FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR
                 && alignment.height == maid.height
                 && alignment.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
@@ -2689,8 +2841,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         CombatAlignmentProof.Movement alignmentMovement(long now) {
             if (alignment == null || !valid(now)) return null;
             var foot = alignmentFoot();
-            int index = raw == null ? -1 : raw.getCurrentPathIndex(),
-                length = raw == null ? -1 : raw.getCurrentPathLength();
+            int index = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathIndex(),
+                length = raw == null ? FaithfulAiTuning.UNSET_OR_NOT_FOUND : raw.getCurrentPathLength();
             if (movementReceipt != null && movementReceipt.matches(foot, now)
                 && bodyRaw == raw
                 && bodyIndex == index
@@ -2720,63 +2872,70 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 : owner != null && owner.worldObj == world
                     && !owner.isDead
                     && owner.isEntityAlive()
-                    && owner.getDistanceSq(maid.posX, maid.posY, maid.posZ) <= 256;
+                    && owner.getDistanceSq(maid.posX, maid.posY, maid.posZ)
+                        <= FaithfulAiTuning.MODERN_FOLLOW_COMBAT_NODE_ARRIVED_PARAM;
             boolean diagnose = CombatDiagnosticScope.current(world) != null;
             if (diagnose) {
-                diagnosticReason = "VALID_NOT_EVALUATED";
+                diagnosticReason = FaithfulAiIds.KEY_VALID_NOT_EVALUATED;
                 diagnosticFoot = null;
                 diagnosticFootAt = now;
             }
-            return diagnosticGate(alignmentIdentity(now), "ALIGNMENT_IDENTITY", diagnose)
-                && diagnosticGate(entryIdentity(now), "CONDITIONAL_ENTRY_IDENTITY", diagnose)
-                && diagnosticGate(passiveExitIdentity(now), "PASSIVE_EXIT_IDENTITY", diagnose)
-                && diagnosticGate(inArea, "AREA", diagnose)
-                && diagnosticGate(Objects.equals(ownerIdentity, maid.func_152113_b()), "OWNER_IDENTITY", diagnose)
-                && diagnosticGate(task == maid.getTask(), "TASK", diagnose)
-                && diagnosticGate(home.activity() == MaidLifeRules.Activity.WORK, "ACTIVITY", diagnose)
-                && diagnosticGate(ownerToken == token, "ACTOR_TOKEN", diagnose)
-                && diagnosticGate(behaviors == behaviorIdentity, "BEHAVIOR", diagnose)
-                && diagnosticGate(epoch == unifiedCombatEpoch, "ENTITY_EPOCH", diagnose)
-                && diagnosticGate(observation == unifiedCombatObservation.epoch(), "OBSERVATION_EPOCH", diagnose)
-                && diagnosticGate(segment.fresh(now), "SEGMENT_FRESH", diagnose)
-                && diagnosticGate(runtime != null, "RUNTIME_PRESENT", diagnose)
+            return diagnosticGate(alignmentIdentity(now), FaithfulAiIds.KEY_ALIGNMENT_IDENTITY, diagnose)
+                && diagnosticGate(entryIdentity(now), FaithfulAiIds.KEY_CONDITIONAL_ENTRY_IDENTITY, diagnose)
+                && diagnosticGate(passiveExitIdentity(now), FaithfulAiIds.KEY_PASSIVE_EXIT_IDENTITY, diagnose)
+                && diagnosticGate(inArea, FaithfulAiIds.KEY_AREA, diagnose)
+                && diagnosticGate(
+                    Objects.equals(ownerIdentity, maid.func_152113_b()),
+                    FaithfulAiIds.KEY_OWNER_IDENTITY,
+                    diagnose)
+                && diagnosticGate(task == maid.getTask(), FaithfulAiIds.KEY_TASK, diagnose)
+                && diagnosticGate(home.activity() == MaidLifeRules.Activity.WORK, FaithfulAiIds.KEY_ACTIVITY, diagnose)
+                && diagnosticGate(ownerToken == token, FaithfulAiIds.KEY_ACTOR_TOKEN, diagnose)
+                && diagnosticGate(behaviors == behaviorIdentity, FaithfulAiIds.KEY_BEHAVIOR, diagnose)
+                && diagnosticGate(epoch == unifiedCombatEpoch, FaithfulAiIds.KEY_ENTITY_EPOCH, diagnose)
+                && diagnosticGate(
+                    observation == unifiedCombatObservation.epoch(),
+                    FaithfulAiIds.KEY_OBSERVATION_EPOCH,
+                    diagnose)
+                && diagnosticGate(segment.fresh(now), FaithfulAiPart2Ids.KEY_SEGMENT_FRESH, diagnose)
+                && diagnosticGate(runtime != null, FaithfulAiPart2Ids.KEY_RUNTIME_PRESENT, diagnose)
                 && diagnosticGate(
                     runtime.getContext()
                         .isCurrent(ownerToken),
-                    "RUNTIME_CURRENT",
+                    FaithfulAiPart2Ids.KEY_RUNTIME_CURRENT,
                     diagnose)
                 && diagnosticGate(
                     maid.getBrainCoordinator()
                         .peekPolicyRuntime() == runtime,
-                    "RUNTIME_OWNER",
+                    FaithfulAiPart2Ids.KEY_RUNTIME_OWNER,
                     diagnose)
-                && diagnosticGate(maid.worldObj == world, "WORLD", diagnose)
-                && diagnosticGate(maid.isEntityAlive(), "MAID_ALIVE", diagnose)
-                && diagnosticGate(!maid.isDead, "MAID_NOT_DEAD", diagnose)
-                && diagnosticGate(!maid.guiOpening, "GUI", diagnose)
-                && diagnosticGate(!maid.getLeashed(), "LEASH", diagnose)
-                && diagnosticGate(maid.isUnifiedCombat(), "MODE", diagnose)
+                && diagnosticGate(maid.worldObj == world, FaithfulAiPart2Ids.KEY_WORLD, diagnose)
+                && diagnosticGate(maid.isEntityAlive(), FaithfulAiPart2Ids.KEY_MAID_ALIVE, diagnose)
+                && diagnosticGate(!maid.isDead, FaithfulAiPart2Ids.KEY_MAID_NOT_DEAD, diagnose)
+                && diagnosticGate(!maid.guiOpening, FaithfulAiPart2Ids.KEY_GUI, diagnose)
+                && diagnosticGate(!maid.getLeashed(), FaithfulAiPart2Ids.KEY_LEASH, diagnose)
+                && diagnosticGate(maid.isUnifiedCombat(), FaithfulAiPart2Ids.KEY_MODE, diagnose)
                 && diagnosticGate(
                     maid.getModernCombatMemory()
                         .target() == target,
-                    "TARGET_INSTANCE",
+                    FaithfulAiPart2Ids.KEY_TARGET_INSTANCE,
                     diagnose)
-                && diagnosticGate(!target.isDead, "TARGET_NOT_DEAD", diagnose)
-                && diagnosticGate(target.isEntityAlive(), "TARGET_ALIVE", diagnose)
-                && diagnosticGate(target.worldObj == world, "TARGET_WORLD", diagnose)
-                && diagnosticGate(target.dimension == maid.dimension, "TARGET_DIMENSION", diagnose)
-                && diagnosticGate(segment.node.same(combatNode), "MOVEMENT_NODE", diagnose)
-                && diagnosticGate(combatNodeTarget == target, "MOVEMENT_TARGET", diagnose)
+                && diagnosticGate(!target.isDead, FaithfulAiPart2Ids.KEY_TARGET_NOT_DEAD, diagnose)
+                && diagnosticGate(target.isEntityAlive(), FaithfulAiPart2Ids.KEY_TARGET_ALIVE, diagnose)
+                && diagnosticGate(target.worldObj == world, FaithfulAiPart2Ids.KEY_TARGET_WORLD, diagnose)
+                && diagnosticGate(target.dimension == maid.dimension, FaithfulAiPart2Ids.KEY_TARGET_DIMENSION, diagnose)
+                && diagnosticGate(segment.node.same(combatNode), FaithfulAiPart2Ids.KEY_MOVEMENT_NODE, diagnose)
+                && diagnosticGate(combatNodeTarget == target, FaithfulAiPart2Ids.KEY_MOVEMENT_TARGET, diagnose)
                 && diagnosticPosition(new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ), diagnose);
         }
 
         boolean diagnosticPosition(CombatSnapshot.Vec actual, boolean diagnose) {
             if (diagnose) diagnosticFoot = actual;
-            return diagnosticGate(segment.currentPosition(actual), "CURRENT_POSITION", diagnose);
+            return diagnosticGate(segment.currentPosition(actual), FaithfulAiPart2Ids.KEY_CURRENT_POSITION, diagnose);
         }
 
         boolean diagnosticGate(boolean accepted, String reason, boolean diagnose) {
-            if (diagnose && !accepted) diagnosticReason = "VALID_" + reason;
+            if (diagnose && !accepted) diagnosticReason = FaithfulAiPart2Ids.KEY_VALID + reason;
             return accepted;
         }
 
@@ -2791,31 +2950,36 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         private boolean acceptsNativePath(PathEntity path, long now, boolean installedAlignment) {
             if (!valid(now)) return false;
             if (path == null) {
-                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_NULL";
+                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = FaithfulAiPart2Ids.KEY_NATIVE_NULL;
                 return false;
             }
             if (ownedWaypoint()
                 && (!(path instanceof MaidModernPath modern) || !modern.canReach() || path.isFinished())) {
-                diagnosticReason = "ALIGNMENT_NATIVE_FINISHED_OR_UNREACHABLE";
+                diagnosticReason = FaithfulAiPart2Ids.KEY_ALIGNMENT_NATIVE_FINISHED_OR_UNREACHABLE;
                 return false;
             }
             int count = path.getCurrentPathLength();
-            if (count < 1 || count > 2) {
-                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_COUNT_" + count;
+            if (count < FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT
+                || count > FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM) {
+                if (CombatDiagnosticScope.current(world) != null)
+                    diagnosticReason = FaithfulAiPart2Ids.KEY_NATIVE_COUNT + count;
                 return false;
             }
             var q = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             int index = path.getCurrentPathIndex();
             if (index < 0 || index > count) {
-                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_INDEX_" + index;
+                if (CombatDiagnosticScope.current(world) != null)
+                    diagnosticReason = FaithfulAiPart2Ids.KEY_NATIVE_INDEX + index;
                 return false;
             }
-            int[] coordinates = new int[count * 3];
+            int[] coordinates = new int[count * FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA];
             for (int i = 0; i < count; i++) {
                 var point = path.getPathPointFromIndex(i);
-                coordinates[i * 3] = point.xCoord;
-                coordinates[i * 3 + 1] = point.yCoord;
-                coordinates[i * 3 + 2] = point.zCoord;
+                coordinates[i * FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA] = point.xCoord;
+                coordinates[i * FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA
+                    + 1] = point.yCoord;
+                coordinates[i * FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA
+                    + FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_SECOND_PARAM] = point.zCoord;
             }
             // 只有本租约先前完整认证过的同一raw可跳过已消费前缀；新candidate/安装变换后新raw从0核
             var diagnosticScope = CombatDiagnosticScope.current(world);
@@ -2832,29 +2996,34 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 passiveSuffix = Arrays.equals(coordinates, passiveCertifiedCoordinates);
             }
             boolean suffix = path == raw && (!installedAlignment || passiveSuffix);
-            boolean accepted = segment.acceptsNative(coordinates, count, suffix ? index : 0, q, nativeCheck);
+            boolean accepted = segment.acceptsNative(
+                coordinates,
+                count,
+                suffix ? index : FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE,
+                q,
+                nativeCheck);
             if (accepted && passiveExit != null && installedAlignment) {
                 passiveCertifiedRaw = path;
                 passiveCertifiedCoordinates = coordinates;
             }
-            if (diagnose) diagnosticReason = "NATIVE_" + nativeCheck.result
-                + "/failedAt="
+            if (diagnose) diagnosticReason = FaithfulAiPart2Ids.KEY_NATIVE + nativeCheck.result
+                + FaithfulAiPart2Ids.ID_FAILEDAT
                 + nativeCheck.failedAt
-                + "/spent="
+                + FaithfulAiPart2Ids.ID_SPENT
                 + nativeCheck.spent
-                + "/count="
+                + FaithfulAiPart2Ids.ID_COUNT
                 + count
-                + "/index="
+                + FaithfulAiPart2Ids.ID_INDEX
                 + index
-                + "/suffix="
+                + FaithfulAiPart2Ids.ID_SUFFIX
                 + suffix
-                + "/points="
+                + FaithfulAiPart2Ids.ID_POINTS
                 + Arrays.toString(coordinates)
-                + "/used="
+                + FaithfulAiPart2Ids.ID_USED
                 + Arrays.toString(q.counts())
-                + "/denied="
+                + FaithfulAiPart2Ids.ID_DENIED
                 + Arrays.toString(q.denials());
-            else if (diagnosticScope != null) diagnosticReason = "NOT_EVALUATED_LOG_FULL";
+            else if (diagnosticScope != null) diagnosticReason = FaithfulAiPart2Ids.KEY_NOT_EVALUATED_LOG_FULL;
             return accepted;
         }
     }
@@ -2873,9 +3042,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void lookAtCombatPoint(CombatSnapshot.Vec point) {
         guard();
         look = new Vec3(point.x, point.y + maid.getEyeHeight(), point.z);
-        double yaw = Math.atan2(point.z - maid.posZ, point.x - maid.posX) * 180 / Math.PI - 90;
-        maid.rotationYaw += MathHelper
-            .clamp_float(MathHelper.wrapAngleTo180_float((float) yaw - maid.rotationYaw), -10, 10);
+        double yaw = Math.atan2(point.z - maid.posZ, point.x - maid.posX) * FaithfulAiTuning.HALF_TURN_DEGREES / Math.PI
+            - FaithfulAiTuning.MODERN_FOLLOW_YAW;
+        maid.rotationYaw += MathHelper.clamp_float(
+            MathHelper.wrapAngleTo180_float((float) yaw - maid.rotationYaw),
+            FaithfulAiTuning.MODERN_FOLLOW_CLAMP_FLOAT_SECOND_PARAM,
+            FaithfulAiTuning.MIN_I_THRESHOLD);
     }
 
     public void brakeForCombatJump() {
@@ -2884,9 +3056,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
         ownedPath = null;
         maid.getMoveHelper()
-            .setMoveTo(maid.posX, maid.posY, maid.posZ, 0);
-        maid.moveForward = maid.moveStrafing = 0;
-        maid.setAIMoveSpeed(0);
+            .setMoveTo(maid.posX, maid.posY, maid.posZ, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
+        maid.moveForward = maid.moveStrafing = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
+        maid.setAIMoveSpeed(FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
     }
 
     public boolean targetTooFar(MaidCombatActor.Target value) {
@@ -2923,7 +3095,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void walkToAttackTarget(MaidCombatActor.Target value, float speed) {
-        walk = new EntityWalk(attackTarget(value).entity, speed, 0);
+        walk = new EntityWalk(
+            attackTarget(value).entity,
+            speed,
+            FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
     }
 
     public boolean attackCoolingDown() {
@@ -3003,7 +3178,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         boolean started = maid.getShieldController()
             .startActiveTask(target, owner);
         if (!isCurrent()) maid.getShieldController()
-            .stopActiveTask(owner, "expired_modern_shield_start");
+            .stopActiveTask(owner, FaithfulAiPart2Ids.ID_EXPIRED_MODERN_SHIELD_START);
         if ((!started || !isCurrent()) && shieldOwner == owner) shieldOwner = null;
     }
 
@@ -3016,7 +3191,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         Object owner = shieldOwner;
         shieldOwner = null;
         maid.getShieldController()
-            .stopActiveTask(owner, "modern_behavior_stop");
+            .stopActiveTask(owner, FaithfulAiPart2Ids.ID_MODERN_BEHAVIOR_STOP);
     }
 
     public boolean shieldBehaviorRunning() {
@@ -3079,7 +3254,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     private Point nativeDoorPosition(MaidDoorActor.Position pos) {
         var p = pos.point;
-        if (world.getBlock(p.x, p.y, p.z) instanceof BlockDoor && (world.getBlockMetadata(p.x, p.y, p.z) & 8) != 0)
+        if (world.getBlock(p.x, p.y, p.z) instanceof BlockDoor
+            && (world.getBlockMetadata(p.x, p.y, p.z) & FaithfulAiTuning.MODERN_FOLLOW_BIT_MASK_8) != 0)
             return new Point(p.x, p.y - 1, p.z);
         return p;
     }
@@ -3113,10 +3289,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && lease.passiveDoorPosition(previous, previousKind)
                 && lease.passiveDoorPosition(next, nextKind)
                 && lease.passiveExitMovement(worldTick, null) != null) {
-                traceCombatNative("PASSIVE_DOOR_SKIP", "NO_REMEMBER_NO_OPEN", lease.raw, lease.raw);
+                traceCombatNative(
+                    FaithfulAiPart2Ids.KEY_PASSIVE_DOOR_SKIP,
+                    FaithfulAiPart2Ids.KEY_NO_REMEMBER_NO_OPEN,
+                    lease.raw,
+                    lease.raw);
                 return false;
             }
-            stopRestrictedCombatMove("REOBSERVATION_DOOR_OBSERVED_REPROOF_REQUIRED");
+            stopRestrictedCombatMove(FaithfulAiPart2Ids.KEY_REOBSERVATION_DOOR_OBSERVED_REPROOF_REQUIRED);
             return false;
         }
         return true;
@@ -3125,7 +3305,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean setDoorOpen(MaidDoorActor.Position pos, boolean value) {
         guard();
         if (value && restrictedCombatMove != null) {
-            stopRestrictedCombatMove("REOBSERVATION_FINAL_OPEN_REJECTED");
+            stopRestrictedCombatMove(FaithfulAiPart2Ids.KEY_REOBSERVATION_FINAL_OPEN_REJECTED);
             return false;
         }
         if (doorKind(pos) == MaidDoorActor.Kind.NONE) return false;
@@ -3139,8 +3319,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean doorTooFar(MaidDoorActor.Position pos, double distance) {
         guard();
         var p = pos.point;
-        return pos.dimension != world.provider.dimensionId
-            || maid.getDistanceSq(p.x + .5, p.y + .5, p.z + .5) >= distance * distance;
+        return pos.dimension != world.provider.dimensionId || maid.getDistanceSq(
+            p.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            p.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+            p.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR) >= distance * distance;
     }
 
     public boolean otherMaidsComingThrough(MaidDoorActor.Position pos) {
@@ -3150,7 +3332,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         var p = pos.point;
         for (var living : perception.nearby()) {
             if (!(living instanceof EntityMaid other) || !type.equals(EntityList.getEntityString(other))
-                || other.getDistanceSq(p.x + .5, p.y + .5, p.z + .5) >= 4) continue;
+                || other.getDistanceSq(
+                    p.x + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    p.y + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    p.z + FaithfulAiTuning.MODERN_FOLLOW_GET_DISTANCE_SQ_FIRST_FACTOR)
+                    >= FaithfulAiTuning.MODERN_FOLLOW_NEXT_INT_FIRST_PARAM_2)
+                continue;
             var path = other.getBrainCoordinator()
                 .peekModernBrainPath();
             if (path == null || path.isFinished() || path.getCurrentPathIndex() <= 0) continue;
@@ -3171,7 +3358,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public int rememberedDoorCount() {
-        return doorsToClose == null ? 0 : doorsToClose.size();
+        return doorsToClose == null ? FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE : doorsToClose.size();
     }
 
     private final class DoorPathView implements MaidDoorActor.DoorPath {
@@ -3208,7 +3395,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         private void check() {
             guard();
             if (lease != token || behaviors != behaviorIdentity || tick != worldTick || age != entityTick)
-                throw new IllegalStateException("Expired door path view");
+                throw new IllegalStateException(FaithfulAiDiagnostics.MSG_EXPIRED_DOOR_PATH_VIEW);
         }
 
         public boolean notStarted() {
@@ -3281,7 +3468,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void lookDirectlyAtRangedTarget(MaidCombatActor.Target value) {
         var entity = attackTarget(value).entity;
         maid.getLookHelper()
-            .setLookPosition(entity.posX, entity.posY, entity.posZ, 30, 30);
+            .setLookPosition(
+                entity.posX,
+                entity.posY,
+                entity.posZ,
+                FaithfulAiTuning.MODERN_FOLLOW_SET_LOOK_POSITION_FOURTH_PARAM,
+                FaithfulAiTuning.MODERN_FOLLOW_SET_LOOK_POSITION_FOURTH_PARAM);
     }
 
     public boolean rangedUsingItem() {
@@ -3299,7 +3491,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public int quickChargeLevel() {
         guard();
-        return 0;
+        return FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
     }
 
     public void startRangedMainUse() {
@@ -3402,7 +3594,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public int defaultProjectileRange() {
         guard();
-        return 15; // 固定1.20.1 BowItem.getDefaultProjectileRange，目标平台基础弓没有此API
+        return FaithfulAiTuning.MODERN_FOLLOW_DEFAULT_PROJECTILE_RANGE_PARAM; // 固定1.20.1
+                                                                              // BowItem.getDefaultProjectileRange，目标平台基础弓没有此API
     }
 
     public float nextRangedFloat() {
@@ -3425,8 +3618,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void stopRangedInPlace() {
         stopNavigation();
-        maid.moveStrafing = 0;
-        maid.setAIMoveSpeed(0);
+        maid.moveStrafing = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
+        maid.setAIMoveSpeed(FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
     }
 
     public void alignRangedBodyToHead() {
@@ -3453,7 +3646,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private AttackTargetView attackTarget(MaidCombatActor.Target value) {
         guard();
         if (!(value instanceof AttackTargetView view) || view.actor() != this || !view.current())
-            throw new IllegalArgumentException("Foreign or expired attack target view");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_FOREIGN_OR_EXPIRED_ATTACK_TARGET);
         return view;
     }
 
@@ -3494,7 +3687,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return !maid.hasPose(MaidPose.BEGGING) && !maid.hasPose(MaidPose.SLEEPING)
             && (maid.ridingEntity == null || !maid.ridingEntity.getClass()
                 .getName()
-                .equals("com.github.tartaricacid.touhoulittlemaid.entity.item.EntitySit"));
+                .equals(FaithfulAiPart2Ids.TARGET_CLASS_ENTITY_SIT));
     }
 
     public boolean tryRandomLook(MaidRandomActor.LookKind kind, float distance) {
@@ -3550,7 +3743,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && world.blockExists(feet.x, feet.y, feet.z)
             && world.getBlock(feet.x, feet.y, feet.z) == Blocks.snow_layer
             && world.getBiomeGenForCoords(feet.x, feet.z)
-                .getFloatTemperature(feet.x, feet.y, feet.z) < .15F;
+                .getFloatTemperature(feet.x, feet.y, feet.z) < FaithfulAiTuning.MODERN_FOLLOW_CAN_SNOWBALL_FIGHT_FACTOR;
     }
 
     public MaidCombatActor.Target findFirstValidSnowballTarget() {
@@ -3598,7 +3791,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .target();
         var main = maid.getHeldItem();
         if (main == null || main.stackSize <= 0) {
-            maid.setCurrentItemOrArmor(0, new ItemStack(Items.snowball));
+            maid.setCurrentItemOrArmor(
+                FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE,
+                new ItemStack(Items.snowball));
             playPickUpSnowball();
             return;
         }
@@ -3640,13 +3835,21 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return;
         var ball = new EntitySnowball(world, maid.posX, maid.posY, maid.posZ);
         double x = view.entity.posX - maid.posX, z = view.entity.posZ - maid.posZ;
-        double y = view.entity.boundingBox.minY + view.entity.height / 3.0F - ball.posY;
-        ball.setThrowableHeading(x, y + Math.sqrt(x * x + z * z) * .15D, z, 1.6F, 1);
+        double y = view.entity.boundingBox.minY
+            + view.entity.height / FaithfulAiTuning.MODERN_FOLLOW_THROW_SNOWBALL_AT_Y_OFFSET
+            - ball.posY;
+        ball.setThrowableHeading(
+            x,
+            y + Math.sqrt(x * x + z * z) * FaithfulAiTuning.MODERN_FOLLOW_SET_THROWABLE_HEADING_SECOND_FACTOR,
+            z,
+            FaithfulAiTuning.MODERN_FOLLOW_SET_THROWABLE_HEADING_FOURTH_FACTOR,
+            FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
         maid.playSound(
-            "random.bow",
-            .5F,
-            .4F / (maid.getRNG()
-                .nextFloat() * .4F + .8F));
+            FaithfulAiPart2Ids.ID_RANDOM_BOW,
+            FaithfulAiTuning.FAITHFUL_BRAIN_MAID_FOLLOW_OWNER_TASK_FIRST_FACTOR,
+            FaithfulAiTuning.MODERN_FOLLOW_THROW_SNOWBALL_AT_FACTOR / (maid.getRNG()
+                .nextFloat() * FaithfulAiTuning.MODERN_FOLLOW_THROW_SNOWBALL_AT_FACTOR
+                + FaithfulAiTuning.FAITHFUL_BRAIN_MAID_SWIM_JUMP_TASK_FIRST_FACTOR));
         if (!view.current() || !authorized.getAsBoolean()) {
             ball.setDead();
             return;
@@ -3691,14 +3894,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private OwnerView owner(Owner value) {
         guard();
         if (!(value instanceof OwnerView view) || view.actor() != this)
-            throw new IllegalArgumentException("Foreign owner view");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_FOREIGN_OWNER_VIEW);
         return view;
     }
 
     private ModernPath path(Path value) {
         guard();
         if (!(value instanceof ModernPath view) || view.actor() != this || view.lease != token)
-            throw new IllegalArgumentException("Foreign or expired modern path view");
+            throw new IllegalArgumentException(FaithfulAiDiagnostics.MSG_FOREIGN_OR_EXPIRED_MODERN_PATH);
         return view;
     }
 
@@ -3722,7 +3925,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean isSpectator() {
             guard();
             return player.theItemInWorldManager.getGameType()
-                .getID() == 3;
+                .getID() == FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
         }
 
         public boolean isDeadOrDying() {
@@ -3816,7 +4019,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean isEntityTrackerSpectator() {
             guard();
             return entity instanceof EntityPlayerMP player && player.theItemInWorldManager.getGameType()
-                .getID() == 3;
+                .getID() == FaithfulAiTuning.ACTIVITY_STATE_SET_POSITION_WALK_AND_LOOK_THIRD_PARA;
         }
     }
 
@@ -3957,7 +4160,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         public int minBuildHeight() {
             guard();
-            return 0;
+            return FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
         }
 
         public int maxBuildHeight() {
@@ -3980,11 +4183,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
         public float walkTargetValue(BlockPos point) {
             guard();
-            if (world.getBlock(point.x, point.y - 1, point.z) == Blocks.grass) return 10;
+            if (world.getBlock(point.x, point.y - 1, point.z) == Blocks.grass) return FaithfulAiTuning.MIN_I_THRESHOLD;
             // 将目标维度的最低亮度映射为现代ambient输入，不把整张旧亮度表当作现代公式
             return FollowFallbackSampler.lightPathfindingCost(
                 world.getBlockLightValue(point.x, point.y, point.z),
-                world.provider.lightBrightnessTable[0]);
+                world.provider.lightBrightnessTable[FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE]);
         }
     }
 }

@@ -20,7 +20,7 @@ import net.minecraftforge.common.util.Constants;
 /** 世界共享的一次性凭证账本；物品副本没有第二次兑现权 */
 public final class MaidLifecycleData extends WorldSavedData {
 
-    public static final String NAME = "TLMNH_Lifecycle";
+    public static final String NAME = MaidLifecycleNbtKeys.KEY_TLMNH_LIFECYCLE;
 
     public enum Kind {
         INITIAL,
@@ -42,44 +42,49 @@ public final class MaidLifecycleData extends WorldSavedData {
         HELD
     }
 
-    private static final Set<String> ROOT_FIELDS = fields("Schema", "Entries", "ReturnedFilms");
+    private static final Set<String> ROOT_FIELDS = fields(
+        MaidLifecycleNbtKeys.KEY_SCHEMA,
+        MaidLifecycleNbtKeys.KEY_ENTRIES,
+        MaidLifecycleNbtKeys.KEY_RETURNED_FILMS);
     private static final Set<String> ENTRY_FIELDS = fields(
-        "Token",
-        "Owner",
-        "Subject",
-        "Kind",
-        "Consumed",
-        "Delivered",
-        "Identity",
-        "TombstoneItems",
-        "Dimension",
-        "X",
-        "Y",
-        "Z",
-        "MaidName",
-        "Published",
-        "DeathExperience",
-        "ExperienceReadyAt",
-        "TombstoneHeld",
-        "ExperienceHeld",
-        "AcquisitionPhase",
-        "AcquisitionSource",
-        "AcquisitionReceipt",
-        "AcquisitionCredential",
-        "Redemption",
-        "DeathIngress",
-        "TombstonePublication",
-        "Capture");
+        MaidLifecycleNbtKeys.KEY_TOKEN,
+        MaidLifecycleNbtKeys.KEY_OWNER,
+        MaidLifecycleNbtKeys.KEY_SUBJECT,
+        MaidLifecycleNbtKeys.KEY_KIND,
+        MaidLifecycleNbtKeys.KEY_CONSUMED,
+        MaidLifecycleNbtKeys.KEY_DELIVERED_2,
+        MaidLifecycleNbtKeys.KEY_IDENTITY,
+        MaidLifecycleNbtKeys.KEY_TOMBSTONE_ITEMS,
+        MaidLifecycleNbtKeys.KEY_DIMENSION,
+        MaidLifecycleNbtKeys.KEY_X,
+        MaidLifecycleNbtKeys.KEY_Y,
+        MaidLifecycleNbtKeys.KEY_Z,
+        MaidLifecycleNbtKeys.KEY_MAID_NAME,
+        MaidLifecycleNbtKeys.KEY_PUBLISHED_2,
+        MaidLifecycleNbtKeys.KEY_DEATH_EXPERIENCE,
+        MaidLifecycleNbtKeys.KEY_EXPERIENCE_READY_AT,
+        MaidLifecycleNbtKeys.KEY_TOMBSTONE_HELD,
+        MaidLifecycleNbtKeys.KEY_EXPERIENCE_HELD,
+        MaidLifecycleNbtKeys.KEY_ACQUISITION_PHASE,
+        MaidLifecycleNbtKeys.KEY_ACQUISITION_SOURCE,
+        MaidLifecycleNbtKeys.KEY_ACQUISITION_RECEIPT,
+        MaidLifecycleNbtKeys.KEY_ACQUISITION_CREDENTIAL,
+        MaidLifecycleNbtKeys.KEY_REDEMPTION,
+        MaidLifecycleNbtKeys.KEY_DEATH_INGRESS,
+        MaidLifecycleNbtKeys.KEY_TOMBSTONE_PUBLICATION,
+        MaidLifecycleNbtKeys.KEY_CAPTURE);
     private static final Set<String> RETURNED_FIELDS = fields(
-        "Id",
-        "Stack",
-        "Dimension",
-        "X",
-        "Y",
-        "Z",
-        "Phase",
-        "Context");
-    private static final Set<String> RETURN_CONTEXT_FIELDS = fields("Kind", "Source");
+        MaidLifecycleNbtKeys.KEY_ID,
+        MaidLifecycleNbtKeys.KEY_STACK,
+        MaidLifecycleNbtKeys.KEY_DIMENSION,
+        MaidLifecycleNbtKeys.KEY_X,
+        MaidLifecycleNbtKeys.KEY_Y,
+        MaidLifecycleNbtKeys.KEY_Z,
+        MaidLifecycleNbtKeys.KEY_PHASE,
+        MaidLifecycleNbtKeys.KEY_CONTEXT);
+    private static final Set<String> RETURN_CONTEXT_FIELDS = fields(
+        MaidLifecycleNbtKeys.KEY_KIND,
+        MaidLifecycleNbtKeys.KEY_SOURCE);
 
     private final Map<UUID, Entry> entries = new HashMap<>();
     private final Map<UUID, ReturnedFilm> returnedFilms = new HashMap<>();
@@ -101,19 +106,21 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     public static MaidLifecycleData get(World world) {
-        if (world == null || world.isRemote) throw new IllegalArgumentException("Server world required");
+        if (world == null || world.isRemote)
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_SERVER_WORLD_REQUIRED);
         var data = (MaidLifecycleData) world.mapStorage.loadData(MaidLifecycleData.class, NAME);
         if (data == null) {
             // MapStorage会吞读取异常，已有文件读坏时不能当新世界再次发放
             var file = world.getSaveHandler()
                 .getMapFileFromName(NAME);
             if (file != null && file.exists())
-                throw new IllegalStateException("Cannot read existing maid lifecycle data");
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CANNOT_READ_EXISTING_MAID_LIFECYCLE);
             data = new MaidLifecycleData(NAME);
             world.mapStorage.setData(NAME, data);
             data.markDirty();
         }
-        if (!data.healthy) throw new IllegalStateException("Invalid maid lifecycle data; recovery required");
+        if (!data.healthy)
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_MAID_LIFECYCLE_DATA_RECOVERY);
         return data;
     }
 
@@ -133,21 +140,21 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     int nextCaptureSequence(UUID subject) {
         var head = captureHeads.get(subject);
-        if (head == null) return 1;
+        if (head == null) return MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD;
         var previous = entries.get(head);
-        if (!previous.consumed || previous.capture.getInteger("Sequence") == Integer.MAX_VALUE)
-            throw new IllegalStateException("Previous maid capture is still unsettled");
-        return previous.capture.getInteger("Sequence") + 1;
+        if (!previous.consumed || previous.capture.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE) == Integer.MAX_VALUE)
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_PREVIOUS_MAID_CAPTURE_IS_STILL);
+        return previous.capture.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE) + 1;
     }
 
     void prepareCapture(World world, UUID token, UUID owner, UUID subject, NBTTagCompound source,
         NBTTagCompound record) {
         MaidCaptureRecord.validate(record, token, owner, subject);
         if (entries.containsKey(token) || returnedFilms.containsKey(token)
-            || !"PREPARED".equals(record.getString("Stage"))
-            || !source.equals(record.getCompoundTag("Source"))
-            || record.getInteger("Sequence") != nextCaptureSequence(subject))
-            throw new IllegalStateException("Capture identity or generation changed");
+            || !MaidLifecycleNbtKeys.KEY_PREPARED.equals(record.getString(MaidLifecycleNbtKeys.KEY_STAGE))
+            || !source.equals(record.getCompoundTag(MaidLifecycleNbtKeys.KEY_SOURCE))
+            || record.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE) != nextCaptureSequence(subject))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CAPTURE_IDENTITY_OR_GENERATION_CHANGED);
         var entry = new Entry(Kind.CAPTURED, owner, subject, (NBTTagCompound) source.copy(), false, false);
         entry.capture = (NBTTagCompound) record.copy();
         entries.put(token, entry);
@@ -165,7 +172,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             || entry.delivered
             || !entry.redemption.hasNoTags()
             || !token.equals(captureHeads.get(entry.subject))
-            || "HELD".equals(entry.capture.getString("Stage"))
+            || MaidLifecycleNbtKeys.KEY_HELD.equals(entry.capture.getString(MaidLifecycleNbtKeys.KEY_STAGE))
             || !reservations.add(token)) return false;
         captureAttempts.add(token);
         return true;
@@ -173,17 +180,17 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     void captureStage(World world, UUID token, String stage) {
         var entry = activeCapture(token);
-        String previous = entry.capture.getString("Stage");
-        if (!("PREPARED".equals(previous) && "REMOVED".equals(stage)
-            || "REMOVED".equals(previous) && "DELIVERED".equals(stage)))
-            throw new IllegalStateException("Invalid capture transition");
-        entry.capture.setString("Stage", stage);
-        entry.delivered = "DELIVERED".equals(stage);
+        String previous = entry.capture.getString(MaidLifecycleNbtKeys.KEY_STAGE);
+        if (!(MaidLifecycleNbtKeys.KEY_PREPARED.equals(previous) && MaidLifecycleNbtKeys.KEY_REMOVED.equals(stage)
+            || MaidLifecycleNbtKeys.KEY_REMOVED.equals(previous) && MaidLifecycleNbtKeys.KEY_DELIVERED.equals(stage)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_CAPTURE_TRANSITION);
+        entry.capture.setString(MaidLifecycleNbtKeys.KEY_STAGE, stage);
+        entry.delivered = MaidLifecycleNbtKeys.KEY_DELIVERED.equals(stage);
         try {
             markDirty();
             MaidLifecycleDurability.ledger(world, this);
         } catch (RuntimeException | Error failure) {
-            entry.capture.setString("Stage", previous);
+            entry.capture.setString(MaidLifecycleNbtKeys.KEY_STAGE, previous);
             entry.delivered = false;
             markDirty();
             throw failure;
@@ -193,10 +200,10 @@ public final class MaidLifecycleData extends WorldSavedData {
     void holdCapture(World world, UUID token, NBTTagCompound observed) {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.CAPTURED || entry.consumed)
-            throw new IllegalStateException("Missing capture escrow");
-        if (!"HELD".equals(entry.capture.getString("Stage"))) {
-            entry.capture.setString("Stage", "HELD");
-            entry.capture.setTag("Observed", observed.copy());
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_MISSING_CAPTURE_ESCROW);
+        if (!MaidLifecycleNbtKeys.KEY_HELD.equals(entry.capture.getString(MaidLifecycleNbtKeys.KEY_STAGE))) {
+            entry.capture.setString(MaidLifecycleNbtKeys.KEY_STAGE, MaidLifecycleNbtKeys.KEY_HELD);
+            entry.capture.setTag(MaidLifecycleNbtKeys.KEY_OBSERVED, observed.copy());
             entry.delivered = false;
             markDirty();
         }
@@ -205,8 +212,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     void cancelCapture(World world, UUID token) {
         var entry = activeCapture(token);
-        if (!"PREPARED".equals(entry.capture.getString("Stage")))
-            throw new IllegalStateException("Only an untouched capture can be canceled");
+        if (!MaidLifecycleNbtKeys.KEY_PREPARED.equals(entry.capture.getString(MaidLifecycleNbtKeys.KEY_STAGE)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ONLY_AN_UNTOUCHED_CAPTURE_CAN);
         entries.remove(token);
         rebuildCaptureHead(entry.subject);
         try {
@@ -229,7 +236,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.CAPTURED
             || !captureAttempts.contains(token)
-            || !reservations.contains(token)) throw new IllegalStateException("Capture reservation changed");
+            || !reservations.contains(token))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CAPTURE_RESERVATION_CHANGED);
         return entry;
     }
 
@@ -238,8 +246,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         int sequence = 0;
         for (var item : entries.entrySet())
             if (item.getValue().kind == Kind.CAPTURED && item.getValue().subject.equals(subject)
-                && item.getValue().capture.getInteger("Sequence") > sequence) {
-                    sequence = item.getValue().capture.getInteger("Sequence");
+                && item.getValue().capture.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE) > sequence) {
+                    sequence = item.getValue().capture.getInteger(MaidLifecycleNbtKeys.KEY_SEQUENCE);
                     captureHeads.put(subject, item.getKey());
                 }
     }
@@ -287,10 +295,11 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = activeAcquisition(token);
         if (entry.acquisitionPhase != AcquisitionPhase.NONE || entry.delivered
             || entry.consumed
-            || credential.hasNoTags()) throw new IllegalStateException("Acquisition intent already exists");
+            || credential.hasNoTags())
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ACQUISITION_INTENT_ALREADY_EXISTS);
         if (entry.kind == Kind.INITIAL ? !source.hasNoTags() || !receipt.hasNoTags()
             : source.hasNoTags() || receipt.hasNoTags())
-            throw new IllegalStateException("Acquisition source does not match its credential kind");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ACQUISITION_SOURCE_DOES_NOT_MATCH);
         var ownedSource = (NBTTagCompound) source.copy();
         var ownedReceipt = (NBTTagCompound) receipt.copy();
         var ownedCredential = (NBTTagCompound) credential.copy();
@@ -305,7 +314,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     void issueAcquisition(World world, UUID token) {
         var entry = activeAcquisition(token);
         if (entry.delivered || entry.consumed || entry.acquisitionPhase == AcquisitionPhase.NONE)
-            throw new IllegalStateException("Acquisition intent is not pending");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ACQUISITION_INTENT_IS_NOT_PENDING);
         entry.acquisitionPhase = AcquisitionPhase.ISSUING;
         markDirty();
         MaidLifecycleDurability.ledger(world, this);
@@ -314,7 +323,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     void finishAcquisition(World world, UUID token) {
         var entry = activeAcquisition(token);
         if (entry.acquisitionPhase != AcquisitionPhase.ISSUING || entry.delivered || entry.consumed)
-            throw new IllegalStateException("Acquisition intent changed before acknowledgement");
+            throw new IllegalStateException(
+                MaidLifecycleDiagnostics.MSG_ACQUISITION_INTENT_CHANGED_BEFORE_ACKNOWLEDGEMEN);
         entry.delivered = true;
         entry.acquisitionPhase = AcquisitionPhase.NONE;
         boolean durable = false;
@@ -339,14 +349,14 @@ public final class MaidLifecycleData extends WorldSavedData {
     private Entry acquisitionEntry(UUID token) {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.INITIAL && entry.kind != Kind.ACQUIRED)
-            throw new IllegalStateException("No acquisition credential");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_NO_ACQUISITION_CREDENTIAL);
         return entry;
     }
 
     private Entry activeAcquisition(UUID token) {
         var entry = acquisitionEntry(token);
         if (!reservations.contains(token) || !acquisitionAttempts.contains(token))
-            throw new IllegalStateException("Acquisition attempt is no longer owned");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ACQUISITION_ATTEMPT_IS_NO_LONGER);
         return entry;
     }
 
@@ -358,7 +368,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     Set<UUID> pendingRedemptions(UUID actor) {
         var result = new HashSet<UUID>();
         for (var item : entries.entrySet()) if (!item.getValue().redemption.hasNoTags() && actor.toString()
-            .equals(item.getValue().redemption.getString("Actor"))) result.add(item.getKey());
+            .equals(item.getValue().redemption.getString(MaidLifecycleNbtKeys.KEY_ACTOR))) result.add(item.getKey());
         return result;
     }
 
@@ -380,11 +390,11 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !entry.redemption.hasNoTags()
             || !reservations.contains(token)
             || acquisitionAttempts.contains(token))
-            throw new IllegalStateException("No exclusive maid redemption reservation");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_NO_EXCLUSIVE_MAID_REDEMPTION_RESERVATION);
         MaidRedemptionRecord.validate(intent);
-        var candidate = UUID.fromString(intent.getString("Candidate"));
+        var candidate = UUID.fromString(intent.getString(MaidLifecycleNbtKeys.KEY_CANDIDATE));
         if (redemptionCandidates.containsKey(candidate))
-            throw new IllegalStateException("Maid candidate already reserved");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_MAID_CANDIDATE_ALREADY_RESERVED);
         entry.redemption = (NBTTagCompound) intent.copy();
         redemptionCandidates.put(candidate, token);
         redemptionAttempts.add(token);
@@ -394,7 +404,7 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     void beginRedemptionCosts(World world, UUID token) {
         var entry = activeRedemption(token);
-        entry.redemption.setString("Stage", "COSTS");
+        entry.redemption.setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_COSTS);
         markDirty();
         MaidLifecycleDurability.ledger(world, this);
     }
@@ -409,7 +419,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             markDirty();
             MaidLifecycleDurability.ledger(world, this);
             durable = true;
-            redemptionCandidates.remove(UUID.fromString(pending.getString("Candidate")));
+            redemptionCandidates.remove(UUID.fromString(pending.getString(MaidLifecyclePart2NbtKeys.KEY_CANDIDATE)));
         } finally {
             if (!durable) {
                 entry.redemption = pending;
@@ -429,7 +439,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.consumed
             || entry.redemption.hasNoTags()
             || !redemptionAttempts.contains(token)
-            || !reservations.contains(token)) throw new IllegalStateException("Maid redemption is no longer owned");
+            || !reservations.contains(token))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_MAID_REDEMPTION_IS_NO_LONGER);
         return entry;
     }
 
@@ -451,14 +462,25 @@ public final class MaidLifecycleData extends WorldSavedData {
     /** 库存单独保管，不属于复活身份；库存存入后由墓碑凭证领取 */
     public UUID depositDeath(UUID owner, UUID deadMaid, NBTTagCompound identity, NBTTagList items, int dimension,
         double x, double y, double z, String name) {
-        return depositDeath(owner, deadMaid, identity, items, dimension, x, y, z, name, 0, 0);
+        return depositDeath(
+            owner,
+            deadMaid,
+            identity,
+            items,
+            dimension,
+            x,
+            y,
+            z,
+            name,
+            MaidLifecycleTuning.CORE_INITIAL_VALUE,
+            MaidLifecycleTuning.CORE_INITIAL_VALUE);
     }
 
     /** 经验与墓碑物品分别兑现，胶片身份始终不携带这份余额 */
     public UUID depositDeath(UUID owner, UUID deadMaid, NBTTagCompound identity, NBTTagList items, int dimension,
         double x, double y, double z, String name, int experience, long experienceReadyAt) {
         if (experience < 0 || experienceReadyAt < 0)
-            throw new IllegalArgumentException("Invalid death experience escrow");
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_INVALID_DEATH_EXPERIENCE_ESCROW);
         var token = deathToken(deadMaid);
         if (token == null) token = newFilm(owner, deadMaid, identity);
         var entry = entries.get(token);
@@ -488,7 +510,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     private static boolean deathReady(Entry entry) {
-        return entry.deathIngress.hasNoTags() || "COMMITTED".equals(entry.deathIngress.getString("Stage"));
+        return entry.deathIngress.hasNoTags() || MaidLifecyclePart2NbtKeys.KEY_COMMITTED
+            .equals(entry.deathIngress.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE));
     }
 
     void prepareDeath(UUID token, UUID owner, UUID subject, NBTTagCompound identity, NBTTagList items, int dimension,
@@ -496,20 +519,21 @@ public final class MaidLifecycleData extends WorldSavedData {
         MaidDeathIngress.validate(receipt, token, owner, subject);
         var existing = deathToken(subject);
         if (existing != null && !existing.equals(token) || returnedFilms.containsKey(token))
-            throw new IllegalStateException("Conflicting death source identity retained");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_CONFLICTING_DEATH_SOURCE_IDENTITY_RETAINED);
         var entry = entries.get(token);
         if (entry == null) {
             entry = new Entry(Kind.FILM, owner, subject, (NBTTagCompound) identity.copy(), false, false);
             entries.put(token, entry);
         }
         if (entry.kind != Kind.FILM || !entry.owner.equals(owner) || !entry.subject.equals(subject))
-            throw new IllegalStateException("Death escrow belongs to a different source");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_DEATH_ESCROW_BELONGS_TO_DIFFERENT);
         if (entry.delivered) {
-            if (!entry.deathIngress.equals(receipt)) throw new IllegalStateException("Death source receipt changed");
+            if (!entry.deathIngress.equals(receipt))
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_DEATH_SOURCE_RECEIPT_CHANGED);
             return;
         }
         if (experience < 0 || readyAt < 0 || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
-            throw new IllegalArgumentException("Invalid prepared death escrow");
+            throw new IllegalArgumentException(MaidLifecycleDiagnostics.MSG_INVALID_PREPARED_DEATH_ESCROW);
         entry.tombstoneItems = (NBTTagList) items.copy();
         entry.dimension = dimension;
         entry.x = x;
@@ -527,15 +551,16 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = entries.get(token);
         if (entry == null || !entry.delivered
             || !entry.deathIngress.equals(receipt)
-            || !"PREPARED".equals(receipt.getString("Stage"))
-            || !deathAttempts.add(token)) throw new IllegalStateException("No exact owned death ingress attempt");
+            || !MaidLifecyclePart2NbtKeys.KEY_PREPARED.equals(receipt.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))
+            || !deathAttempts.add(token))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_NO_EXACT_OWNED_DEATH_INGRESS);
     }
 
     void finishDeathAttempt(World world, UUID token, NBTTagCompound receipt) {
         var entry = entries.get(token);
         if (entry == null || !deathAttempts.contains(token) || !entry.deathIngress.equals(receipt))
-            throw new IllegalStateException("Death source changed before acknowledgement");
-        entry.deathIngress.setString("Stage", "COMMITTED");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_DEATH_SOURCE_CHANGED_BEFORE_ACKNOWLEDGEMENT);
+        entry.deathIngress.setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_COMMITTED);
         boolean durable = false;
         try {
             markDirty();
@@ -543,7 +568,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             durable = true;
         } finally {
             if (!durable) {
-                entry.deathIngress.setString("Stage", "PREPARED");
+                entry.deathIngress
+                    .setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_PREPARED);
                 markDirty();
             }
         }
@@ -556,10 +582,11 @@ public final class MaidLifecycleData extends WorldSavedData {
     void holdDeathIngress(UUID token, NBTTagCompound observed) {
         var entry = entries.get(token);
         if (entry == null || entry.deathIngress.hasNoTags() || deathReady(entry))
-            throw new IllegalStateException("Missing pending death source record");
-        if (!"HELD".equals(entry.deathIngress.getString("Stage"))) {
-            entry.deathIngress.setString("Stage", "HELD");
-            entry.deathIngress.setTag("Observed", observed.copy());
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_MISSING_PENDING_DEATH_SOURCE_RECORD);
+        if (!MaidLifecyclePart2NbtKeys.KEY_HELD
+            .equals(entry.deathIngress.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))) {
+            entry.deathIngress.setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_HELD);
+            entry.deathIngress.setTag(MaidLifecyclePart2NbtKeys.KEY_OBSERVED, observed.copy());
             markDirty();
         }
     }
@@ -576,7 +603,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !reservations.contains(token)
             || !entry.tombstonePublication.hasNoTags()
             || !tombstonePublications.add(token))
-            throw new IllegalStateException("No owned tombstone publication attempt");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_NO_OWNED_TOMBSTONE_PUBLICATION_ATTEMPT);
         entry.tombstonePublication = (NBTTagCompound) receipt.copy();
         markDirty();
         MaidLifecycleDurability.ledger(world, this);
@@ -586,10 +613,11 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = deathEscrow(token);
         if (!tombstonePublications.contains(token) || !reservations.contains(token)
             || !entry.tombstonePublication.equals(receipt)
-            || !"PREPARED".equals(receipt.getString("Stage")))
-            throw new IllegalStateException("Unknown tombstone successor cannot be acknowledged");
+            || !MaidLifecyclePart2NbtKeys.KEY_PREPARED.equals(receipt.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE)))
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_TOMBSTONE_SUCCESSOR_CANNOT_BE);
         entry.published = true;
-        entry.tombstonePublication.setString("Stage", "PUBLISHED");
+        entry.tombstonePublication
+            .setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_PUBLISHED);
         boolean durable = false;
         try {
             markDirty();
@@ -598,7 +626,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         } finally {
             if (!durable) {
                 entry.published = false;
-                entry.tombstonePublication.setString("Stage", "PREPARED");
+                entry.tombstonePublication
+                    .setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_PREPARED);
                 markDirty();
             }
         }
@@ -607,7 +636,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     void cancelTombstonePublication(World world, UUID token, NBTTagCompound receipt) {
         var entry = deathEscrow(token);
         if (!tombstonePublications.contains(token) || entry.published || !entry.tombstonePublication.equals(receipt))
-            throw new IllegalStateException("No safely retracted tombstone publication");
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_NO_SAFELY_RETRACTED_TOMBSTONE_PUBLICATION);
         entry.tombstonePublication = new NBTTagCompound();
         boolean durable = false;
         try {
@@ -625,18 +655,20 @@ public final class MaidLifecycleData extends WorldSavedData {
     void resumeTombstonePublication(UUID token, NBTTagCompound receipt) {
         var entry = deathEscrow(token);
         if (!reservations.contains(token) || !entry.tombstonePublication.equals(receipt)
-            || !"PREPARED".equals(receipt.getString("Stage"))
+            || !MaidLifecyclePart2NbtKeys.KEY_PREPARED.equals(receipt.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))
             || !tombstonePublications.add(token))
-            throw new IllegalStateException("No exact pending tombstone to resume");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_EXACT_PENDING_TOMBSTONE_TO);
     }
 
     void holdTombstonePublication(UUID token, NBTTagCompound observed) {
         var entry = deathEscrow(token);
         if (entry.tombstonePublication.hasNoTags())
-            throw new IllegalStateException("Missing tombstone publication record");
-        if (!"HELD".equals(entry.tombstonePublication.getString("Stage"))) {
-            entry.tombstonePublication.setString("Stage", "HELD");
-            entry.tombstonePublication.setTag("Observed", observed.copy());
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_MISSING_TOMBSTONE_PUBLICATION_RECORD);
+        if (!MaidLifecyclePart2NbtKeys.KEY_HELD
+            .equals(entry.tombstonePublication.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))) {
+            entry.tombstonePublication
+                .setString(MaidLifecyclePart2NbtKeys.KEY_STAGE, MaidLifecyclePart2NbtKeys.KEY_HELD);
+            entry.tombstonePublication.setTag(MaidLifecyclePart2NbtKeys.KEY_OBSERVED, observed.copy());
             entry.published = false;
             markDirty();
         }
@@ -658,24 +690,27 @@ public final class MaidLifecycleData extends WorldSavedData {
                 && entry.experience > 0
                 && entry.experienceReadyAt <= now) result.add(item.getKey());
         }
-        if (result.size() > 1) {
-            int cursor = experienceCursors.getOrDefault(dimension, 0);
+        if (result.size() > MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD) {
+            int cursor = experienceCursors.getOrDefault(dimension, MaidLifecycleTuning.CORE_INITIAL_VALUE);
             Collections.rotate(result, -(cursor % result.size()));
-            experienceCursors.put(dimension, cursor == Integer.MAX_VALUE ? 0 : cursor + 1);
+            experienceCursors
+                .put(dimension, cursor == Integer.MAX_VALUE ? MaidLifecycleTuning.CORE_INITIAL_VALUE : cursor + 1);
         }
         return result;
     }
 
     public int remainingDeathExperience(UUID token) {
         var entry = entries.get(token);
-        return entry != null && entry.kind == Kind.FILM && entry.delivered ? entry.experience : 0;
+        return entry != null && entry.kind == Kind.FILM && entry.delivered ? entry.experience
+            : MaidLifecycleTuning.CORE_INITIAL_VALUE;
     }
 
     public int reserveDeathExperience(UUID token) {
         var entry = entries.get(token);
-        if (entry == null || !deathReady(entry) || isDeathExperienceHeld(token)) return 0;
+        if (entry == null || !deathReady(entry) || isDeathExperienceHeld(token))
+            return MaidLifecycleTuning.CORE_INITIAL_VALUE;
         int remaining = remainingDeathExperience(token);
-        return remaining > 0 && reservations.add(token) ? remaining : 0;
+        return remaining > 0 && reservations.add(token) ? remaining : MaidLifecycleTuning.CORE_INITIAL_VALUE;
     }
 
     public void finishDeathExperience(UUID token, int expected, int released) {
@@ -684,7 +719,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !reservations.contains(token)
             || entry.experience != expected
             || released <= 0
-            || released > expected) throw new IllegalStateException("Death experience reservation or balance changed");
+            || released > expected)
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_DEATH_EXPERIENCE_RESERVATION_OR_BALANCE);
         reservations.remove(token);
         entry.experience -= released;
         markDirty();
@@ -713,7 +749,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = deathEscrow(token);
         if (!reservations.contains(token) || entry.tombstoneHeld
             || !entry.tombstoneItems.equals(expected)
-            || !tombstoneAttempts.add(token)) throw new IllegalStateException("Tombstone attempt changed before write");
+            || !tombstoneAttempts.add(token))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_TOMBSTONE_ATTEMPT_CHANGED_BEFORE_WRITE);
         entry.tombstoneHeld = true;
         markDirty();
         boolean durable = false;
@@ -729,7 +766,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = deathEscrow(token);
         if (!reservations.contains(token) || entry.experienceHeld
             || entry.experience != expected
-            || !experienceAttempts.add(token)) throw new IllegalStateException("XP attempt changed before write");
+            || !experienceAttempts.add(token))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_XP_ATTEMPT_CHANGED_BEFORE_WRITE);
         entry.experienceHeld = true;
         markDirty();
         boolean durable = false;
@@ -743,7 +781,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     void finishTombstoneAttempt(World world, UUID token, NBTTagList expected) {
         var entry = activeAttempt(token, false);
-        if (!entry.tombstoneItems.equals(expected)) throw new IllegalStateException("Tombstone escrow changed");
+        if (!entry.tombstoneItems.equals(expected))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_TOMBSTONE_ESCROW_CHANGED);
         var original = entry.tombstoneItems;
         entry.tombstoneItems = new NBTTagList();
         entry.tombstoneHeld = false;
@@ -766,7 +805,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     void finishExperienceAttempt(World world, UUID token, int expected, int released) {
         var entry = activeAttempt(token, true);
         if (entry.experience != expected || released <= 0 || released > expected)
-            throw new IllegalStateException("XP attempt balance changed");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_XP_ATTEMPT_BALANCE_CHANGED);
         entry.experience -= released;
         entry.experienceHeld = false;
         boolean durable = false;
@@ -813,7 +852,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = deathEscrow(token);
         if (!reservations.contains(token) || !(experience ? experienceAttempts : tombstoneAttempts).contains(token)
             || !(experience ? entry.experienceHeld : entry.tombstoneHeld))
-            throw new IllegalStateException("Durable material attempt is no longer owned");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_DURABLE_MATERIAL_ATTEMPT_IS_NO);
         return entry;
     }
 
@@ -825,7 +864,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     private Entry deathEscrow(UUID token) {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.FILM || !entry.delivered)
-            throw new IllegalStateException("No delivered death escrow to hold");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_DELIVERED_DEATH_ESCROW_TO);
         return entry;
     }
 
@@ -835,7 +874,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             var entry = item.getValue();
             if (entry.kind == Kind.FILM && entry.delivered
                 && deathReady(entry)
-                && !"HELD".equals(entry.tombstonePublication.getString("Stage"))
+                && !MaidLifecyclePart2NbtKeys.KEY_HELD
+                    .equals(entry.tombstonePublication.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))
                 && !entry.tombstoneHeld
                 && !entry.published
                 && entry.dimension == dimension) result.add(item.getKey());
@@ -856,7 +896,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     public void markPublished(UUID token) {
         var entry = entries.get(token);
         if (entry == null || entry.kind != Kind.FILM || !deathReady(entry) || !entry.tombstonePublication.hasNoTags())
-            throw new IllegalStateException("Pending source or handle requires durable acknowledgement");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_PENDING_SOURCE_OR_HANDLE_REQUIRES);
         entry.published = true;
         markDirty();
     }
@@ -887,7 +927,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.tombstoneHeld
             || !reservations.contains(token)
             || expected != null && !expected.equals(entry.tombstoneItems))
-            throw new IllegalStateException("Tombstone reservation or original contents changed");
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_TOMBSTONE_RESERVATION_OR_ORIGINAL_CONTENTS);
         reservations.remove(token);
         entry.tombstoneItems = (NBTTagList) remainder.copy();
         markDirty();
@@ -895,7 +936,7 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     private UUID add(Kind kind, UUID owner, UUID subject, NBTTagCompound identity) {
         if (owner == null || subject == null || identity == null)
-            throw new IllegalArgumentException("Missing lifecycle identity");
+            throw new IllegalArgumentException(MaidLifecyclePart2Diagnostics.MSG_MISSING_LIFECYCLE_IDENTITY);
         UUID token;
         do token = UUID.randomUUID(); while (entries.containsKey(token));
         entries.put(token, new Entry(kind, owner, subject, (NBTTagCompound) identity.copy(), false, false));
@@ -915,9 +956,10 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     public void markDelivered(UUID token) {
         var entry = entries.get(token);
-        if (entry == null || initialKind(token) == null) throw new IllegalArgumentException("Unknown initial token");
-        if (entry.acquisitionPhase != AcquisitionPhase.NONE)
-            throw new IllegalStateException("Pending acquisition requires durable acknowledgement");
+        if (entry == null || initialKind(token) == null)
+            throw new IllegalArgumentException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_INITIAL_TOKEN);
+        if (entry.acquisitionPhase != AcquisitionPhase.NONE) throw new IllegalStateException(
+            MaidLifecyclePart2Diagnostics.MSG_PENDING_ACQUISITION_REQUIRES_DURABLE_ACKNOWLEDGE);
         entry.delivered = true;
         markDirty();
     }
@@ -928,7 +970,9 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.kind != kind
             || entry.consumed
             || !deathReady(entry)
-            || kind == Kind.CAPTURED && (!entry.delivered || !"DELIVERED".equals(entry.capture.getString("Stage"))
+            || kind == Kind.CAPTURED && (!entry.delivered
+                || !MaidLifecyclePart2NbtKeys.KEY_DELIVERED
+                    .equals(entry.capture.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))
                 || !token.equals(captureHeads.get(entry.subject)))
             || entry.acquisitionPhase != AcquisitionPhase.NONE
             || !entry.redemption.hasNoTags()
@@ -942,7 +986,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entry == null || entry.acquisitionPhase != AcquisitionPhase.NONE
             || acquisitionAttempts.contains(token)
             || !entry.redemption.hasNoTags()
-            || !reservations.remove(token)) throw new IllegalStateException("No lifecycle reservation");
+            || !reservations.remove(token))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_LIFECYCLE_RESERVATION);
         redemptionAttempts.remove(token);
         entry.consumed = true;
         markDirty();
@@ -962,11 +1007,12 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (entries.containsKey(id) || raw.hasNoTags()
             || !Double.isFinite(x)
             || !Double.isFinite(y)
-            || !Double.isFinite(z)) throw new IllegalStateException("Invalid opaque unowned death hold");
+            || !Double.isFinite(z))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_OPAQUE_UNOWNED_DEATH_HOLD);
         var existing = returnedFilms.get(id);
         if (existing != null) {
             if (existing.phase != ReturnedPhase.HELD || !existing.stack.equals(raw))
-                throw new IllegalStateException("Unknown opaque death hold successor preserved");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_OPAQUE_DEATH_HOLD_SUCCESSOR);
             return;
         }
         var entry = new ReturnedFilm((NBTTagCompound) raw.copy(), dimension, x, y, z);
@@ -987,7 +1033,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     private UUID addReturnedFilm(NBTTagCompound stack, int dimension, double x, double y, double z, ReturnedPhase phase,
         NBTTagCompound context) {
         if (stack == null || stack.hasNoTags() || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
-            throw new IllegalArgumentException("Complete returned material required");
+            throw new IllegalArgumentException(MaidLifecyclePart2Diagnostics.MSG_COMPLETE_RETURNED_MATERIAL_REQUIRED);
         UUID id;
         do id = UUID.randomUUID(); while (entries.containsKey(id) || returnedFilms.containsKey(id));
         var entry = new ReturnedFilm((NBTTagCompound) stack.copy(), dimension, x, y, z);
@@ -1015,7 +1061,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = returnedFilms.get(id);
         if (entry == null || entry.phase != ReturnedPhase.READY
             || !returnedAttempts.contains(id)
-            || !reservations.contains(id)) throw new IllegalStateException("No owned returned material attempt");
+            || !reservations.contains(id))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_OWNED_RETURNED_MATERIAL_ATTEMPT);
         entry.phase = ReturnedPhase.ISSUING;
         markDirty();
     }
@@ -1023,7 +1070,7 @@ public final class MaidLifecycleData extends WorldSavedData {
     void retryReturnedFilm(UUID id) {
         var entry = returnedFilms.get(id);
         if (entry == null || !returnedAttempts.contains(id) || !reservations.contains(id))
-            throw new IllegalStateException("No safely retracted returned material attempt");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_SAFELY_RETRACTED_RETURNED_MATERIAL);
         entry.phase = ReturnedPhase.READY;
         abandonReturnedFilm(id);
         markDirty();
@@ -1036,7 +1083,8 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     void holdReturnedFilm(UUID id) {
         var entry = returnedFilms.get(id);
-        if (entry == null) throw new IllegalStateException("Missing returned escrow remains unconfirmed");
+        if (entry == null) throw new IllegalStateException(
+            MaidLifecyclePart2Diagnostics.MSG_MISSING_RETURNED_ESCROW_REMAINS_UNCONFIRMED);
         entry.phase = ReturnedPhase.HELD;
         abandonReturnedFilm(id);
         markDirty();
@@ -1062,7 +1110,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !entry.context.equals(context)
             || !returnedAttempts.contains(id)
             || !reservations.contains(id))
-            throw new IllegalStateException("Unknown returned source successor remains held");
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_RETURNED_SOURCE_SUCCESSOR_REMAINS);
         return entry;
     }
 
@@ -1070,10 +1119,11 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = returnedFilms.get(id);
         if (entry == null || !(entry.phase == ReturnedPhase.PREPARED || entry.phase == ReturnedPhase.READY)
             || !entry.context.equals(context)
-            || !entry.context.hasKey("Source", Constants.NBT.TAG_COMPOUND))
-            throw new IllegalStateException("Unknown material source observation retained");
-        entry.context.getCompoundTag("Source")
-            .setTag("UnconfirmedSource", observed.copy());
+            || !entry.context.hasKey(MaidLifecyclePart2NbtKeys.KEY_SOURCE, Constants.NBT.TAG_COMPOUND))
+            throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_MATERIAL_SOURCE_OBSERVATION_RETAINED);
+        entry.context.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE)
+            .setTag(MaidLifecyclePart2NbtKeys.KEY_UNCONFIRMED_SOURCE, observed.copy());
         markDirty();
     }
 
@@ -1091,7 +1141,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = returnedFilms.get(id);
         if (entry == null || entry.phase != ReturnedPhase.ISSUING
             || !returnedAttempts.contains(id)
-            || !reservations.contains(id)) throw new IllegalStateException("No returned film reservation");
+            || !reservations.contains(id))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_NO_RETURNED_FILM_RESERVATION);
         returnedFilms.remove(id);
         abandonReturnedFilm(id);
         markDirty();
@@ -1106,14 +1157,16 @@ public final class MaidLifecycleData extends WorldSavedData {
             || !deathAttempts.isEmpty()
             || !tombstonePublications.isEmpty()
             || !captureAttempts.isEmpty())
-            throw new IllegalStateException("Cannot replace a ledger during durable material publication");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_CANNOT_REPLACE_LEDGER_DURING_DURABLE);
         healthy = false;
-        int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", Constants.NBT.TAG_INT) || schema < 1 || schema > 9)
-            throw new IllegalStateException("Unsupported maid lifecycle schema");
+        int schema = tag.getInteger(MaidLifecyclePart2NbtKeys.KEY_SCHEMA);
+        if (!tag.hasKey(MaidLifecyclePart2NbtKeys.KEY_SCHEMA, Constants.NBT.TAG_INT)
+            || schema < MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            || schema > MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD)
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNSUPPORTED_MAID_LIFECYCLE_SCHEMA);
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
-        var list = ownedList(tag, "Entries", true);
+        var list = ownedList(tag, MaidLifecyclePart2NbtKeys.KEY_ENTRIES, true);
         var initialOwners = new HashSet<UUID>();
         var deadMaids = new HashSet<UUID>();
         var acquisitions = new HashSet<UUID>();
@@ -1123,151 +1176,179 @@ public final class MaidLifecycleData extends WorldSavedData {
         for (int i = 0; i < list.tagCount(); i++) {
             var item = list.getCompoundTagAt(i);
             knownFields(item, ENTRY_FIELDS);
-            var token = UUID.fromString(item.getString("Token"));
-            var owner = UUID.fromString(item.getString("Owner"));
-            var subject = UUID.fromString(item.getString("Subject"));
-            var kind = Kind.valueOf(item.getString("Kind"));
-            if (item.hasKey("Identity") && !item.hasKey("Identity", Constants.NBT.TAG_COMPOUND))
-                throw new IllegalStateException("Invalid lifecycle identity encoding");
-            if (schema == 1 && kind == Kind.ACQUIRED)
-                throw new IllegalStateException("Acquired credential requires lifecycle schema 2");
+            var token = UUID.fromString(item.getString(MaidLifecyclePart2NbtKeys.KEY_TOKEN));
+            var owner = UUID.fromString(item.getString(MaidLifecyclePart2NbtKeys.KEY_OWNER));
+            var subject = UUID.fromString(item.getString(MaidLifecyclePart2NbtKeys.KEY_SUBJECT));
+            var kind = Kind.valueOf(item.getString(MaidLifecyclePart2NbtKeys.KEY_KIND));
+            if (item.hasKey(MaidLifecyclePart2NbtKeys.KEY_IDENTITY)
+                && !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_IDENTITY, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_LIFECYCLE_IDENTITY_ENCODING);
+            if (schema == MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD && kind == Kind.ACQUIRED)
+                throw new IllegalStateException(
+                    MaidLifecyclePart2Diagnostics.MSG_ACQUIRED_CREDENTIAL_REQUIRES_LIFECYCLE_SCHEMA);
             boolean unique = switch (kind) {
                 case INITIAL -> initialOwners.add(owner);
                 case FILM -> deadMaids.add(subject);
                 case ACQUIRED -> acquisitions.add(subject);
-                case CAPTURED -> schema >= 9;
+                case CAPTURED -> schema >= MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD;
             };
             if (restored.containsKey(token) || !unique)
-                throw new IllegalStateException("Duplicate maid lifecycle identity");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_DUPLICATE_MAID_LIFECYCLE_IDENTITY);
             var entry = new Entry(
                 kind,
                 owner,
                 subject,
-                (NBTTagCompound) item.getCompoundTag("Identity")
+                (NBTTagCompound) item.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_IDENTITY)
                     .copy(),
-                readFlag(item, "Consumed", true),
-                readFlag(item, "Delivered", true));
+                readFlag(item, MaidLifecyclePart2NbtKeys.KEY_CONSUMED, true),
+                readFlag(item, MaidLifecyclePart2NbtKeys.KEY_DELIVERED_2, true));
             entry.tombstoneItems = (NBTTagList) ownedList(
                 item,
-                "TombstoneItems",
-                schema >= 5 || kind == Kind.FILM && entry.delivered).copy();
-            entry.dimension = item.getInteger("Dimension");
-            entry.x = item.getDouble("X");
-            entry.y = item.getDouble("Y");
-            entry.z = item.getDouble("Z");
-            entry.name = item.getString("MaidName");
-            entry.published = readFlag(item, "Published", true);
-            if (schema >= 3
-                && (!item.hasKey("DeathExperience", Constants.NBT.TAG_INT)
-                    || !item.hasKey("ExperienceReadyAt", Constants.NBT.TAG_LONG))
-                || item.hasKey("DeathExperience") && !item.hasKey("DeathExperience", Constants.NBT.TAG_INT)
-                || item.hasKey("ExperienceReadyAt") && !item.hasKey("ExperienceReadyAt", Constants.NBT.TAG_LONG))
-                throw new IllegalStateException("Invalid death experience encoding");
-            entry.experience = item.getInteger("DeathExperience");
-            entry.experienceReadyAt = item.getLong("ExperienceReadyAt");
+                MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_ITEMS,
+                schema >= MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM
+                    || kind == Kind.FILM && entry.delivered).copy();
+            entry.dimension = item.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION);
+            entry.x = item.getDouble(MaidLifecyclePart2NbtKeys.KEY_X);
+            entry.y = item.getDouble(MaidLifecyclePart2NbtKeys.KEY_Y);
+            entry.z = item.getDouble(MaidLifecyclePart2NbtKeys.KEY_Z);
+            entry.name = item.getString(MaidLifecyclePart2NbtKeys.KEY_MAID_NAME);
+            entry.published = readFlag(item, MaidLifecyclePart2NbtKeys.KEY_PUBLISHED_2, true);
+            if (schema >= MaidLifecycleTuning.TARGET_SIZE_THRESHOLD
+                && (!item.hasKey(MaidLifecyclePart2NbtKeys.KEY_DEATH_EXPERIENCE, Constants.NBT.TAG_INT)
+                    || !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_READY_AT, Constants.NBT.TAG_LONG))
+                || item.hasKey(MaidLifecyclePart2NbtKeys.KEY_DEATH_EXPERIENCE)
+                    && !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_DEATH_EXPERIENCE, Constants.NBT.TAG_INT)
+                || item.hasKey(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_READY_AT)
+                    && !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_READY_AT, Constants.NBT.TAG_LONG))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_DEATH_EXPERIENCE_ENCODING);
+            entry.experience = item.getInteger(MaidLifecyclePart2NbtKeys.KEY_DEATH_EXPERIENCE);
+            entry.experienceReadyAt = item.getLong(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_READY_AT);
             if (entry.experience < 0 || entry.experienceReadyAt < 0
                 || entry.experience > 0 && (kind != Kind.FILM || !entry.delivered))
-                throw new IllegalStateException("Invalid death experience balance");
-            entry.tombstoneHeld = readHold(item, "TombstoneHeld", schema);
-            entry.experienceHeld = readHold(item, "ExperienceHeld", schema);
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_DEATH_EXPERIENCE_BALANCE);
+            entry.tombstoneHeld = readHold(item, MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_HELD, schema);
+            entry.experienceHeld = readHold(item, MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_HELD, schema);
             readAcquisition(entry, item, schema);
-            if (schema < 6 && item.hasKey("Redemption")
-                || schema >= 6 && !item.hasKey("Redemption", Constants.NBT.TAG_COMPOUND))
-                throw new IllegalStateException("Invalid maid redemption encoding");
-            entry.redemption = (NBTTagCompound) item.getCompoundTag("Redemption")
+            if (schema < MaidLifecycleTuning.MIN_SCHEMA_THRESHOLD
+                && item.hasKey(MaidLifecyclePart2NbtKeys.KEY_REDEMPTION)
+                || schema >= MaidLifecycleTuning.MIN_SCHEMA_THRESHOLD
+                    && !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_REDEMPTION, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_MAID_REDEMPTION_ENCODING);
+            entry.redemption = (NBTTagCompound) item.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_REDEMPTION)
                 .copy();
             if (!entry.redemption.hasNoTags()) {
                 MaidRedemptionRecord.validate(entry.redemption);
                 if (entry.consumed || entry.acquisitionPhase != AcquisitionPhase.NONE
-                    || (kind == Kind.FILM) != entry.redemption.getBoolean("Shrine"))
-                    throw new IllegalStateException("Invalid maid redemption state");
-                if (candidates.put(UUID.fromString(entry.redemption.getString("Candidate")), token) != null)
-                    throw new IllegalStateException("Duplicate pending maid candidate");
+                    || (kind == Kind.FILM) != entry.redemption.getBoolean(MaidLifecyclePart2NbtKeys.KEY_SHRINE))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_MAID_REDEMPTION_STATE);
+                if (candidates
+                    .put(UUID.fromString(entry.redemption.getString(MaidLifecyclePart2NbtKeys.KEY_CANDIDATE)), token)
+                    != null)
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_DUPLICATE_PENDING_MAID_CANDIDATE);
             }
-            if (schema >= 8) {
-                if (!item.hasKey("DeathIngress", Constants.NBT.TAG_COMPOUND)
-                    || !item.hasKey("TombstonePublication", Constants.NBT.TAG_COMPOUND))
-                    throw new IllegalStateException("Invalid death transfer records");
-                entry.deathIngress = (NBTTagCompound) item.getCompoundTag("DeathIngress")
+            if (schema >= MaidLifecycleTuning.CAPTURE_RECORD_VALIDATE_PARAM) {
+                if (!item.hasKey(MaidLifecyclePart2NbtKeys.KEY_DEATH_INGRESS, Constants.NBT.TAG_COMPOUND)
+                    || !item.hasKey(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_PUBLICATION, Constants.NBT.TAG_COMPOUND))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_DEATH_TRANSFER_RECORDS);
+                entry.deathIngress = (NBTTagCompound) item.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_DEATH_INGRESS)
                     .copy();
-                entry.tombstonePublication = (NBTTagCompound) item.getCompoundTag("TombstonePublication")
+                entry.tombstonePublication = (NBTTagCompound) item
+                    .getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_PUBLICATION)
                     .copy();
                 if (!entry.deathIngress.hasNoTags()) {
                     MaidDeathIngress.validate(entry.deathIngress, token, owner, subject);
                     if (kind != Kind.FILM || !entry.delivered
                         || !deathReady(entry) && (entry.consumed || entry.published))
-                        throw new IllegalStateException("Invalid pending death source");
+                        throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_PENDING_DEATH_SOURCE);
                 }
                 if (!entry.tombstonePublication.hasNoTags()) {
                     MaidDeathService.validatePublication(entry.tombstonePublication, token, owner);
                     if (kind != Kind.FILM || !entry.delivered
                         || !deathReady(entry)
-                        || entry.published != "PUBLISHED".equals(entry.tombstonePublication.getString("Stage")))
-                        throw new IllegalStateException("Invalid tombstone publication state");
+                        || entry.published != MaidLifecyclePart2NbtKeys.KEY_PUBLISHED
+                            .equals(entry.tombstonePublication.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE)))
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_INVALID_TOMBSTONE_PUBLICATION_STATE);
                 }
-            } else if (item.hasKey("DeathIngress") || item.hasKey("TombstonePublication")) {
-                throw new IllegalStateException("Death transfer records require lifecycle schema 8");
-            }
-            if (schema >= 9) {
-                if (!item.hasKey("Capture", Constants.NBT.TAG_COMPOUND))
-                    throw new IllegalStateException("Missing capture record");
-                entry.capture = (NBTTagCompound) item.getCompoundTag("Capture")
+            } else if (item.hasKey(MaidLifecyclePart2NbtKeys.KEY_DEATH_INGRESS)
+                || item.hasKey(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_PUBLICATION)) {
+                    throw new IllegalStateException(
+                        MaidLifecyclePart2Diagnostics.MSG_DEATH_TRANSFER_RECORDS_REQUIRE_LIFECYCLE);
+                }
+            if (schema >= MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD) {
+                if (!item.hasKey(MaidLifecyclePart2NbtKeys.KEY_CAPTURE, Constants.NBT.TAG_COMPOUND))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_MISSING_CAPTURE_RECORD);
+                entry.capture = (NBTTagCompound) item.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_CAPTURE)
                     .copy();
                 if (kind == Kind.CAPTURED) {
                     MaidCaptureRecord.validate(entry.capture, token, owner, subject);
-                    if (!entry.identity.equals(entry.capture.getCompoundTag("Source"))
-                        || entry.delivered != "DELIVERED".equals(entry.capture.getString("Stage"))
+                    if (!entry.identity.equals(entry.capture.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE))
+                        || entry.delivered != MaidLifecyclePart2NbtKeys.KEY_DELIVERED
+                            .equals(entry.capture.getString(MaidLifecyclePart2NbtKeys.KEY_STAGE))
                         || entry.consumed && !entry.delivered
-                        || !captureGenerations.add(subject + "/" + entry.capture.getInteger("Sequence")))
-                        throw new IllegalStateException("Invalid stored maid identity or generation");
+                        || !captureGenerations.add(
+                            subject + MaidLifecycleIds.PATH_SLASH_SEPARATOR
+                                + entry.capture.getInteger(MaidLifecyclePart2NbtKeys.KEY_SEQUENCE)))
+                        throw new IllegalStateException(
+                            MaidLifecyclePart2Diagnostics.MSG_INVALID_STORED_MAID_IDENTITY_OR);
                     var previous = restoredCaptureHeads.get(subject);
                     if (previous == null
-                        || restored.get(previous).capture.getInteger("Sequence") < entry.capture.getInteger("Sequence"))
+                        || restored.get(previous).capture.getInteger(MaidLifecyclePart2NbtKeys.KEY_SEQUENCE)
+                            < entry.capture.getInteger(MaidLifecyclePart2NbtKeys.KEY_SEQUENCE))
                         restoredCaptureHeads.put(subject, token);
-                } else if (!entry.capture.hasNoTags()) throw new IllegalStateException("Unexpected capture record");
-            } else if (item.hasKey("Capture")) throw new IllegalStateException("Capture requires lifecycle schema 9");
+                } else if (!entry.capture.hasNoTags())
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNEXPECTED_CAPTURE_RECORD);
+            } else if (item.hasKey(MaidLifecyclePart2NbtKeys.KEY_CAPTURE))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_CAPTURE_REQUIRES_LIFECYCLE_SCHEMA);
             if ((entry.tombstoneHeld || entry.experienceHeld) && (kind != Kind.FILM || !entry.delivered))
-                throw new IllegalStateException("Invalid held death escrow");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_HELD_DEATH_ESCROW);
             if (!Double.isFinite(entry.x) || !Double.isFinite(entry.y) || !Double.isFinite(entry.z))
-                throw new IllegalStateException("Invalid tombstone position");
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_TOMBSTONE_POSITION);
             restored.put(token, entry);
         }
         var restoredFilms = new HashMap<UUID, ReturnedFilm>();
-        var films = ownedList(tag, "ReturnedFilms", schema >= 5);
+        var films = ownedList(
+            tag,
+            MaidLifecyclePart2NbtKeys.KEY_RETURNED_FILMS,
+            schema >= MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM);
         for (int i = 0; i < films.tagCount(); i++) {
             var film = films.getCompoundTagAt(i);
             knownFields(film, RETURNED_FIELDS);
-            var id = UUID.fromString(film.getString("Id"));
-            double x = film.getDouble("X"), y = film.getDouble("Y"), z = film.getDouble("Z");
+            var id = UUID.fromString(film.getString(MaidLifecyclePart2NbtKeys.KEY_ID));
+            double x = film.getDouble(MaidLifecyclePart2NbtKeys.KEY_X),
+                y = film.getDouble(MaidLifecyclePart2NbtKeys.KEY_Y),
+                z = film.getDouble(MaidLifecyclePart2NbtKeys.KEY_Z);
             if (restored.containsKey(id) || restoredFilms.containsKey(id)
                 || !Double.isFinite(x)
                 || !Double.isFinite(y)
                 || !Double.isFinite(z)
-                || !film.hasKey("Stack", Constants.NBT.TAG_COMPOUND)
-                || !film.hasKey("Id", Constants.NBT.TAG_STRING)
-                || !film.hasKey("Dimension", Constants.NBT.TAG_INT)
-                || !film.hasKey("X", Constants.NBT.TAG_DOUBLE)
-                || !film.hasKey("Y", Constants.NBT.TAG_DOUBLE)
-                || !film.hasKey("Z", Constants.NBT.TAG_DOUBLE))
-                throw new IllegalStateException("Invalid returned film escrow");
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_STACK, Constants.NBT.TAG_COMPOUND)
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_ID, Constants.NBT.TAG_STRING)
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_DIMENSION, Constants.NBT.TAG_INT)
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_X, Constants.NBT.TAG_DOUBLE)
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_Y, Constants.NBT.TAG_DOUBLE)
+                || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_Z, Constants.NBT.TAG_DOUBLE))
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_RETURNED_FILM_ESCROW);
             var entry = new ReturnedFilm(
-                (NBTTagCompound) film.getCompoundTag("Stack")
+                (NBTTagCompound) film.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_STACK)
                     .copy(),
-                film.getInteger("Dimension"),
+                film.getInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION),
                 x,
                 y,
                 z);
-            if (schema >= 7) {
-                if (!film.hasKey("Phase", Constants.NBT.TAG_STRING)
-                    || !film.hasKey("Context", Constants.NBT.TAG_COMPOUND))
-                    throw new IllegalStateException("Invalid returned material state");
-                entry.phase = ReturnedPhase.valueOf(film.getString("Phase"));
-                entry.context = (NBTTagCompound) film.getCompoundTag("Context")
+            if (schema >= MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD_2) {
+                if (!film.hasKey(MaidLifecyclePart2NbtKeys.KEY_PHASE, Constants.NBT.TAG_STRING)
+                    || !film.hasKey(MaidLifecyclePart2NbtKeys.KEY_CONTEXT, Constants.NBT.TAG_COMPOUND))
+                    throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_RETURNED_MATERIAL_STATE);
+                entry.phase = ReturnedPhase.valueOf(film.getString(MaidLifecyclePart2NbtKeys.KEY_PHASE));
+                entry.context = (NBTTagCompound) film.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_CONTEXT)
                     .copy();
                 validateReturnContext(entry.context, entry.phase);
-            } else if (film.hasKey("Phase") || film.hasKey("Context")) {
-                throw new IllegalStateException("Returned material state requires lifecycle schema 7");
-            }
+            } else if (film.hasKey(MaidLifecyclePart2NbtKeys.KEY_PHASE)
+                || film.hasKey(MaidLifecyclePart2NbtKeys.KEY_CONTEXT)) {
+                    throw new IllegalStateException(
+                        MaidLifecyclePart2Diagnostics.MSG_RETURNED_MATERIAL_STATE_REQUIRES_LIFECYCLE);
+                }
             restoredFilms.put(id, entry);
         }
         entries.clear();
@@ -1289,112 +1370,126 @@ public final class MaidLifecycleData extends WorldSavedData {
         captureHeads.putAll(restoredCaptureHeads);
         for (var item : restored.entrySet()) if (item.getValue().kind == Kind.CAPTURED && !item.getKey()
             .equals(captureHeads.get(item.getValue().subject)) && !item.getValue().consumed)
-            throw new IllegalStateException("Unsettled older maid capture generation");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNSETTLED_OLDER_MAID_CAPTURE_GENERATION);
         experienceCursors.clear();
         healthy = true;
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
-        if (!healthy) throw new IllegalStateException("Refusing to overwrite invalid maid lifecycle data");
-        tag.setInteger("Schema", 9);
+        if (!healthy)
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_REFUSING_TO_OVERWRITE_INVALID_MAID);
+        tag.setInteger(MaidLifecyclePart2NbtKeys.KEY_SCHEMA, MaidLifecycleTuning.MAX_SCHEMA_THRESHOLD);
         var list = new NBTTagList();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
             var data = new NBTTagCompound();
             data.setString(
-                "Token",
+                MaidLifecyclePart2NbtKeys.KEY_TOKEN,
                 item.getKey()
                     .toString());
-            data.setString("Owner", entry.owner.toString());
-            data.setString("Subject", entry.subject.toString());
-            data.setString("Kind", entry.kind.name());
-            data.setBoolean("Consumed", entry.consumed);
-            data.setBoolean("Delivered", entry.delivered);
-            data.setTag("Identity", entry.identity.copy());
-            data.setTag("TombstoneItems", entry.tombstoneItems.copy());
-            data.setInteger("Dimension", entry.dimension);
-            data.setDouble("X", entry.x);
-            data.setDouble("Y", entry.y);
-            data.setDouble("Z", entry.z);
-            data.setString("MaidName", entry.name);
-            data.setBoolean("Published", entry.published);
-            data.setInteger("DeathExperience", entry.experience);
-            data.setLong("ExperienceReadyAt", entry.experienceReadyAt);
-            data.setBoolean("TombstoneHeld", entry.tombstoneHeld);
-            data.setBoolean("ExperienceHeld", entry.experienceHeld);
-            data.setString("AcquisitionPhase", entry.acquisitionPhase.name());
-            data.setTag("AcquisitionSource", entry.acquisitionSource.copy());
-            data.setTag("AcquisitionReceipt", entry.acquisitionReceipt.copy());
-            data.setTag("AcquisitionCredential", entry.acquisitionCredential.copy());
-            data.setTag("Redemption", entry.redemption.copy());
-            data.setTag("DeathIngress", entry.deathIngress.copy());
-            data.setTag("TombstonePublication", entry.tombstonePublication.copy());
-            data.setTag("Capture", entry.capture.copy());
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_OWNER, entry.owner.toString());
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_SUBJECT, entry.subject.toString());
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_KIND, entry.kind.name());
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_CONSUMED, entry.consumed);
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_DELIVERED_2, entry.delivered);
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_IDENTITY, entry.identity.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_ITEMS, entry.tombstoneItems.copy());
+            data.setInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION, entry.dimension);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_X, entry.x);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_Y, entry.y);
+            data.setDouble(MaidLifecyclePart2NbtKeys.KEY_Z, entry.z);
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_MAID_NAME, entry.name);
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_PUBLISHED_2, entry.published);
+            data.setInteger(MaidLifecyclePart2NbtKeys.KEY_DEATH_EXPERIENCE, entry.experience);
+            data.setLong(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_READY_AT, entry.experienceReadyAt);
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_HELD, entry.tombstoneHeld);
+            data.setBoolean(MaidLifecyclePart2NbtKeys.KEY_EXPERIENCE_HELD, entry.experienceHeld);
+            data.setString(MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_PHASE, entry.acquisitionPhase.name());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_SOURCE, entry.acquisitionSource.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_RECEIPT, entry.acquisitionReceipt.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_CREDENTIAL, entry.acquisitionCredential.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_REDEMPTION, entry.redemption.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_DEATH_INGRESS, entry.deathIngress.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_TOMBSTONE_PUBLICATION, entry.tombstonePublication.copy());
+            data.setTag(MaidLifecyclePart2NbtKeys.KEY_CAPTURE, entry.capture.copy());
             list.appendTag(data);
         }
-        tag.setTag("Entries", list);
+        tag.setTag(MaidLifecyclePart2NbtKeys.KEY_ENTRIES, list);
         var films = new NBTTagList();
         for (var item : returnedFilms.entrySet()) {
             var film = new NBTTagCompound();
             var entry = item.getValue();
             film.setString(
-                "Id",
+                MaidLifecyclePart2NbtKeys.KEY_ID,
                 item.getKey()
                     .toString());
-            film.setTag("Stack", entry.stack.copy());
-            film.setInteger("Dimension", entry.dimension);
-            film.setDouble("X", entry.x);
-            film.setDouble("Y", entry.y);
-            film.setDouble("Z", entry.z);
-            film.setString("Phase", entry.phase.name());
-            film.setTag("Context", entry.context.copy());
+            film.setTag(MaidLifecyclePart2NbtKeys.KEY_STACK, entry.stack.copy());
+            film.setInteger(MaidLifecyclePart2NbtKeys.KEY_DIMENSION, entry.dimension);
+            film.setDouble(MaidLifecyclePart2NbtKeys.KEY_X, entry.x);
+            film.setDouble(MaidLifecyclePart2NbtKeys.KEY_Y, entry.y);
+            film.setDouble(MaidLifecyclePart2NbtKeys.KEY_Z, entry.z);
+            film.setString(MaidLifecyclePart2NbtKeys.KEY_PHASE, entry.phase.name());
+            film.setTag(MaidLifecyclePart2NbtKeys.KEY_CONTEXT, entry.context.copy());
             films.appendTag(film);
         }
-        tag.setTag("ReturnedFilms", films);
+        tag.setTag(MaidLifecyclePart2NbtKeys.KEY_RETURNED_FILMS, films);
     }
 
     private static boolean readHold(NBTTagCompound entry, String key, int schema) {
-        return readFlag(entry, key, schema >= 4);
+        return readFlag(entry, key, schema >= MaidLifecycleTuning.CHUNK_SECTION_SHIFT);
     }
 
     private static void validateReturnContext(NBTTagCompound context, ReturnedPhase phase) {
         if (context.hasNoTags() && phase != ReturnedPhase.PREPARED) return;
         knownFields(context, RETURN_CONTEXT_FIELDS);
         if (context.func_150296_c()
-            .size() != RETURN_CONTEXT_FIELDS.size() || !context.hasKey("Kind", Constants.NBT.TAG_STRING)
-            || !context.hasKey("Source", Constants.NBT.TAG_COMPOUND)
-            || context.getCompoundTag("Source")
+            .size() != RETURN_CONTEXT_FIELDS.size()
+            || !context.hasKey(MaidLifecyclePart2NbtKeys.KEY_KIND, Constants.NBT.TAG_STRING)
+            || !context.hasKey(MaidLifecyclePart2NbtKeys.KEY_SOURCE, Constants.NBT.TAG_COMPOUND)
+            || context.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_SOURCE)
                 .hasNoTags()
-            || !Arrays.asList("tile_break", "shrine_insert", "shrine_extract", "recovery_player")
-                .contains(context.getString("Kind")))
-            throw new IllegalStateException("Unknown returned source context retained");
+            || !Arrays
+                .asList(
+                    MaidLifecycleIds.ID_TILE_BREAK,
+                    MaidLifecycleIds.ID_SHRINE_INSERT,
+                    MaidLifecycleIds.ID_SHRINE_EXTRACT,
+                    MaidLifecycleIds.ID_RECOVERY_PLAYER)
+                .contains(context.getString(MaidLifecyclePart2NbtKeys.KEY_KIND)))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_RETURNED_SOURCE_CONTEXT_RETAINED);
     }
 
     private static boolean readFlag(NBTTagCompound entry, String key, boolean required) {
-        if (required && !entry.hasKey(key, Constants.NBT.TAG_BYTE) || entry.hasKey(key)
-            && (!entry.hasKey(key, Constants.NBT.TAG_BYTE) || entry.getByte(key) < 0 || entry.getByte(key) > 1))
-            throw new IllegalStateException("Invalid lifecycle flag encoding: " + key);
+        if (required && !entry.hasKey(key, Constants.NBT.TAG_BYTE)
+            || entry.hasKey(key) && (!entry.hasKey(key, Constants.NBT.TAG_BYTE) || entry.getByte(key) < 0
+                || entry.getByte(key) > MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_LIFECYCLE_FLAG_ENCODING + key);
         return entry.getBoolean(key);
     }
 
     private static void readAcquisition(Entry entry, NBTTagCompound data, int schema) {
-        String[] keys = { "AcquisitionPhase", "AcquisitionSource", "AcquisitionReceipt", "AcquisitionCredential" };
-        if (schema < 5) {
-            for (String key : keys)
-                if (data.hasKey(key)) throw new IllegalStateException("Acquisition intent requires lifecycle schema 5");
+        String[] keys = { MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_PHASE,
+            MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_SOURCE, MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_RECEIPT,
+            MaidLifecyclePart2NbtKeys.KEY_ACQUISITION_CREDENTIAL };
+        if (schema < MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM) {
+            for (String key : keys) if (data.hasKey(key)) throw new IllegalStateException(
+                MaidLifecyclePart2Diagnostics.MSG_ACQUISITION_INTENT_REQUIRES_LIFECYCLE_SCHEMA);
             return;
         }
-        if (!data.hasKey(keys[0], Constants.NBT.TAG_STRING) || !data.hasKey(keys[1], Constants.NBT.TAG_COMPOUND)
-            || !data.hasKey(keys[2], Constants.NBT.TAG_COMPOUND)
-            || !data.hasKey(keys[3], Constants.NBT.TAG_COMPOUND))
-            throw new IllegalStateException("Invalid acquisition intent encoding");
-        entry.acquisitionPhase = AcquisitionPhase.valueOf(data.getString(keys[0]));
-        entry.acquisitionSource = (NBTTagCompound) data.getCompoundTag(keys[1])
+        if (!data.hasKey(keys[MaidLifecycleTuning.CORE_INITIAL_VALUE], Constants.NBT.TAG_STRING)
+            || !data.hasKey(keys[MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD], Constants.NBT.TAG_COMPOUND)
+            || !data.hasKey(keys[MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM], Constants.NBT.TAG_COMPOUND)
+            || !data.hasKey(keys[MaidLifecycleTuning.TARGET_SIZE_THRESHOLD], Constants.NBT.TAG_COMPOUND))
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_ACQUISITION_INTENT_ENCODING);
+        entry.acquisitionPhase = AcquisitionPhase.valueOf(data.getString(keys[MaidLifecycleTuning.CORE_INITIAL_VALUE]));
+        entry.acquisitionSource = (NBTTagCompound) data
+            .getCompoundTag(keys[MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD])
             .copy();
-        entry.acquisitionReceipt = (NBTTagCompound) data.getCompoundTag(keys[2])
+        entry.acquisitionReceipt = (NBTTagCompound) data
+            .getCompoundTag(keys[MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM])
             .copy();
-        entry.acquisitionCredential = (NBTTagCompound) data.getCompoundTag(keys[3])
+        entry.acquisitionCredential = (NBTTagCompound) data
+            .getCompoundTag(keys[MaidLifecycleTuning.TARGET_SIZE_THRESHOLD])
             .copy();
         boolean source = !entry.acquisitionSource.hasNoTags(), receipt = !entry.acquisitionReceipt.hasNoTags();
         boolean credential = !entry.acquisitionCredential.hasNoTags();
@@ -1407,7 +1502,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             || entry.acquisitionPhase == AcquisitionPhase.NONE && credential && !entry.delivered && !entry.consumed
             || entry.acquisitionPhase != AcquisitionPhase.NONE && (!credential || entry.delivered || entry.consumed)
             || entry.kind == Kind.ACQUIRED && entry.acquisitionPhase != AcquisitionPhase.NONE && !source)
-            throw new IllegalStateException("Invalid acquisition intent state");
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_ACQUISITION_INTENT_STATE);
     }
 
     private static Set<String> fields(String... values) {
@@ -1416,20 +1511,21 @@ public final class MaidLifecycleData extends WorldSavedData {
 
     private static NBTTagList ownedList(NBTTagCompound data, String key, boolean required) {
         if (!data.hasKey(key)) {
-            if (required) throw new IllegalStateException("Missing lifecycle list: " + key);
+            if (required)
+                throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_MISSING_LIFECYCLE_LIST + key);
             return new NBTTagList();
         }
         if (!data.hasKey(key, Constants.NBT.TAG_LIST))
-            throw new IllegalStateException("Invalid lifecycle list encoding: " + key);
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_LIFECYCLE_LIST_ENCODING + key);
         var typed = data.getTagList(key, Constants.NBT.TAG_COMPOUND);
         if (((NBTTagList) data.getTag(key)).tagCount() != typed.tagCount())
-            throw new IllegalStateException("Invalid lifecycle list entries: " + key);
+            throw new IllegalStateException(MaidLifecyclePart2Diagnostics.MSG_INVALID_LIFECYCLE_LIST_ENTRIES + key);
         return typed;
     }
 
     private static void knownFields(NBTTagCompound data, Set<String> known) {
-        for (Object key : data.func_150296_c()) if (!known.contains(key))
-            throw new IllegalStateException("Unknown lifecycle field preserved without overwrite: " + key);
+        for (Object key : data.func_150296_c()) if (!known.contains(key)) throw new IllegalStateException(
+            MaidLifecyclePart2Diagnostics.MSG_UNKNOWN_LIFECYCLE_FIELD_PRESERVED_WITHOUT + key);
     }
 
     private static final class Entry {

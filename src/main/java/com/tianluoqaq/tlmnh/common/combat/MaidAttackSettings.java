@@ -14,8 +14,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
 /** 原TaskData中的攻击分类存档，保留本实现未解析的键与其他任务数据 */
 public final class MaidAttackSettings {
 
-    private static final String ROOT = "MaidTaskDataMaps", ID = "touhou_little_maid:maid_attack_list",
-        GROUPS = "attack_groups";
     private final AttackListData data = AttackListData.empty();
     private final Set<String> parsedKeys = new HashSet<>();
     private NBTTagCompound preserved = new NBTTagCompound();
@@ -28,13 +26,13 @@ public final class MaidAttackSettings {
         data.attackGroups()
             .clear();
         parsedKeys.clear();
-        preserved = (NBTTagCompound) entityTag.getCompoundTag(ROOT)
+        preserved = (NBTTagCompound) entityTag.getCompoundTag(MaidCombatIds.ROOT)
             .copy();
-        var groups = preserved.getCompoundTag(ID)
-            .getCompoundTag(GROUPS);
+        var groups = preserved.getCompoundTag(MaidCombatIds.ID)
+            .getCompoundTag(MaidCombatIds.GROUPS);
         for (Object raw : groups.func_150296_c()) {
             String key = (String) raw;
-            if (!groups.hasKey(key, Constants.NBT.TAG_STRING) || !key.matches("[a-z0-9_.-]+:[a-z0-9/._-]+")) continue;
+            if (!groups.hasKey(key, Constants.NBT.TAG_STRING) || !key.matches(MaidCombatIds.ID_A_Z0_9_A_Z0_9)) continue;
             try {
                 var type = MonsterType.valueOf(
                     groups.getString(key)
@@ -50,9 +48,9 @@ public final class MaidAttackSettings {
 
     public void save(NBTTagCompound entityTag) {
         var root = (NBTTagCompound) preserved.copy();
-        var entry = (NBTTagCompound) root.getCompoundTag(ID)
+        var entry = (NBTTagCompound) root.getCompoundTag(MaidCombatIds.ID)
             .copy();
-        var groups = (NBTTagCompound) entry.getCompoundTag(GROUPS)
+        var groups = (NBTTagCompound) entry.getCompoundTag(MaidCombatIds.GROUPS)
             .copy();
         for (String key : parsedKeys) groups.removeTag(key);
         data.attackGroups()
@@ -60,8 +58,8 @@ public final class MaidAttackSettings {
                 (id, type) -> {
                     if (id != null && type != null) groups.setString(id.toString(), type.getSerializedName());
                 });
-        entry.setTag(GROUPS, groups);
-        root.setTag(ID, entry);
-        entityTag.setTag(ROOT, root);
+        entry.setTag(MaidCombatIds.GROUPS, groups);
+        root.setTag(MaidCombatIds.ID, entry);
+        entityTag.setTag(MaidCombatIds.ROOT, root);
     }
 }

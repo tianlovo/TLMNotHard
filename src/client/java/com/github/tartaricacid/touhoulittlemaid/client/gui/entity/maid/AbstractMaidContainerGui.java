@@ -6,8 +6,6 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid;
 
-import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +32,7 @@ import com.tianluoqaq.tlmnh.client.gui.config.MaidClientConfigGui;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
-import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -418,7 +416,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), new ItemStack(TASK_ICONS[task]), x, y);
         RenderHelper.disableStandardItemLighting();
         String title = text(
-            maid.isUnifiedCombat() && task == MaidContainerProtocol.ACTION_ATTACK ? "gui.tlmnh.task.touhou_little_maid:attack"
+            maid.isUnifiedCombat() && task == MaidContainerProtocol.ACTION_ATTACK
+                ? "gui.tlmnh.task.touhou_little_maid:attack"
                 : "task.touhou_little_maid." + TASK_KEYS[task]);
         if (wrap) fontRendererObj.drawSplitString(title, textX, textY, 42, 0x333333);
         else fontRendererObj.drawString(title, textX, textY, 0x333333);

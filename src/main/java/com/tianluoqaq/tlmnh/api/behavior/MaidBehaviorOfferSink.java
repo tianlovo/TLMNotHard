@@ -16,7 +16,7 @@ public interface MaidBehaviorOfferSink {
         Consumer<? super P> executeAction);
 
     default void offer(MaidBehaviorGroup group, String target, double utility, Runnable executeAction) {
-        Objects.requireNonNull(executeAction, "executeAction");
+        Objects.requireNonNull(executeAction, BehaviorApiIds.ID_EXECUTEACTION);
         offer(group, target, utility, null, ignored -> executeAction.run());
     }
 }

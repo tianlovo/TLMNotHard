@@ -14,8 +14,6 @@ import cpw.mods.fml.common.Loader;
 /** 实装EFR adjustedLiquidPhysics对非物品实体的水流步骤；不改世界或调用实体更新 */
 public final class NativeLiquidPhysics {
 
-
-
     private NativeLiquidPhysics() {}
 
     public static Sample sample() {
@@ -44,7 +42,12 @@ public final class NativeLiquidPhysics {
         @Override
         public Vec3 cellFlow(Vec3 original, int metadata) {
             if (!adjusted) return original;
-            double power = metadata == EtFuturumPhysicsTuning.TARGET_METADATA_THRESHOLD ? EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP : EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP - (metadata / EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_FACTOR) * (EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP - EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_FACTOR_2);
+            double power = metadata == EtFuturumPhysicsTuning.TARGET_METADATA_THRESHOLD
+                ? EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP
+                : EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP
+                    - (metadata / EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_FACTOR)
+                        * (EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_UNIT_STEP
+                            - EtFuturumPhysicsTuning.LIQUID_PHYSICS_CELL_FLOW_FACTOR_2);
             return Vec3.createVectorHelper(original.xCoord * power, original.yCoord, original.zCoord * power);
         }
 
@@ -62,7 +65,9 @@ public final class NativeLiquidPhysics {
         try {
             return Api.CONFIG != null && Api.CONFIG.getBoolean(null);
         } catch (IllegalAccessException failure) {
-            throw new IllegalStateException(EtFuturumPhysicsDiagnostics.MSG_EFR_LIQUID_PHYSICS_CONFIG_UNAVAILABLE, failure);
+            throw new IllegalStateException(
+                EtFuturumPhysicsDiagnostics.MSG_EFR_LIQUID_PHYSICS_CONFIG_UNAVAILABLE,
+                failure);
         }
     }
 
@@ -73,8 +78,10 @@ public final class NativeLiquidPhysics {
         private static Field resolve() {
             if (!Loader.isModLoaded(EtFuturumCompat.MOD_ID)) return null;
             String fingerprint = DependencyFingerprint.mod(EtFuturumCompat.MOD_ID);
-            if (!fingerprint.endsWith(EtFuturumPhysicsIds.REVIEWED_ARTIFACT_REVIEWED + EtFuturumPhysicsIds.SOURCE_SHA256))
-                throw new IllegalStateException(EtFuturumPhysicsDiagnostics.MSG_UNVERIFIED_EFR_LIQUID_PHYSICS_PROVIDER + fingerprint);
+            if (!fingerprint
+                .endsWith(EtFuturumPhysicsIds.REVIEWED_ARTIFACT_REVIEWED + EtFuturumPhysicsIds.SOURCE_SHA256))
+                throw new IllegalStateException(
+                    EtFuturumPhysicsDiagnostics.MSG_UNVERIFIED_EFR_LIQUID_PHYSICS_PROVIDER + fingerprint);
             try {
                 var type = Class.forName(
                     EtFuturumPhysicsReflectionSpec.TARGET_CLASS_CONFIG_MIXINS,
@@ -82,10 +89,13 @@ public final class NativeLiquidPhysics {
                     NativeLiquidPhysics.class.getClassLoader());
                 var field = type.getField(EtFuturumPhysicsIds.ID_ADJUSTEDLIQUIDPHYSICS);
                 if (field.getType() != boolean.class || !Modifier.isStatic(field.getModifiers()))
-                    throw new IllegalStateException(EtFuturumPhysicsDiagnostics.MSG_INSTALLED_EFR_LIQUID_PHYSICS_CONFIG);
+                    throw new IllegalStateException(
+                        EtFuturumPhysicsDiagnostics.MSG_INSTALLED_EFR_LIQUID_PHYSICS_CONFIG);
                 return field;
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(EtFuturumPhysicsDiagnostics.MSG_INSTALLED_EFR_LIQUID_PHYSICS_CONFIG_2, failure);
+                throw new IllegalStateException(
+                    EtFuturumPhysicsDiagnostics.MSG_INSTALLED_EFR_LIQUID_PHYSICS_CONFIG_2,
+                    failure);
             }
         }
     }

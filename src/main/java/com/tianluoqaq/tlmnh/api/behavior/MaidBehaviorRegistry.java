@@ -27,15 +27,16 @@ public final class MaidBehaviorRegistry {
     }
 
     public synchronized void register(MaidBehaviorProvider provider) {
-        Objects.requireNonNull(provider, "provider");
-        var capturedId = Objects.requireNonNull(provider.id(), "provider.id");
-        var capturedStage = Objects.requireNonNull(provider.stage(), "provider.stage");
+        Objects.requireNonNull(provider, BehaviorApiIds.ID_PROVIDER);
+        var capturedId = Objects.requireNonNull(provider.id(), BehaviorApiIds.ID_PROVIDER_ID);
+        var capturedStage = Objects.requireNonNull(provider.stage(), BehaviorApiIds.ID_PROVIDER_STAGE);
         int capturedOrder = provider.order();
-        if (frozen) throw new IllegalStateException("MaidBehaviorRegistry is already frozen: " + capturedId);
-        if (capturedId.isBuiltin())
-            throw new IllegalArgumentException("External provider cannot use built-in namespace: " + capturedId);
+        if (frozen) throw new IllegalStateException(
+            BehaviorApiDiagnostics.MSG_MAIDBEHAVIORREGISTRY_IS_ALREADY_FROZEN + capturedId);
+        if (capturedId.isBuiltin()) throw new IllegalArgumentException(
+            BehaviorApiDiagnostics.MSG_EXTERNAL_PROVIDER_CANNOT_USE_BUILT + capturedId);
         if (providers.containsKey(capturedId))
-            throw new IllegalArgumentException("Duplicate behavior provider id: " + capturedId);
+            throw new IllegalArgumentException(BehaviorApiDiagnostics.MSG_DUPLICATE_BEHAVIOR_PROVIDER_ID + capturedId);
         providers.put(capturedId, new RegisteredProvider(capturedId, capturedStage, capturedOrder, provider));
     }
 

@@ -25,8 +25,8 @@ public final class MaidOwnerSensor {
     private EntityPlayer owner;
 
     public MaidOwnerSensor(EntityMaid maid, MaidTelemetryChannel telemetry) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.maid = Objects.requireNonNull(maid, MaidPerceptionIds.ID_MAID);
+        this.telemetry = Objects.requireNonNull(telemetry, MaidPerceptionIds.ID_TELEMETRY);
     }
 
     public void beginFrame(MaidPolicyContext context, long frame) {
@@ -59,7 +59,11 @@ public final class MaidOwnerSensor {
                     break;
                 }
             }
-            telemetry.scan("shared_owner", world.playerEntities.size(), inspected, "world_player_list;frame=" + frame);
+            telemetry.scan(
+                MaidPerceptionIds.ID_SHARED_OWNER,
+                world.playerEntities.size(),
+                inspected,
+                MaidPerceptionIds.ID_WORLD_PLAYER_LIST_FRAME + frame);
         }
         if (!isValid(maid, owner)) owner = null;
         return owner;
@@ -74,7 +78,7 @@ public final class MaidOwnerSensor {
             && player.dimension == maid.dimension
             && maid.worldObj.playerEntities.contains(player)
             && (!(player instanceof EntityPlayerMP server) || server.theItemInWorldManager.getGameType()
-                .getID() != 3);
+                .getID() != MaidPerceptionTuning.LIFE_SENSOR_WITHIN_SEARCH_PARAM);
     }
 
     public void clear() {

@@ -110,7 +110,12 @@ public interface MaidObservationView {
 
         @Override
         public String toString() {
-            return "(" + x + ", " + y + ", " + z + ")";
+            return BehaviorApiIds.OPEN_PAREN_TOKEN + x
+                + BehaviorApiDiagnostics.COMMA_SPACE_DELIMITER
+                + y
+                + BehaviorApiDiagnostics.COMMA_SPACE_DELIMITER
+                + z
+                + BehaviorApiIds.CLOSE_PAREN_TOKEN;
         }
     }
 
@@ -133,12 +138,13 @@ public interface MaidObservationView {
 
         @Override
         public int hashCode() {
-            return (x * 31 + y) * 31 + z;
+            return (x * BehaviorApiTuning.OBSERVATION_VIEW_HASH_CODE_PARAM + y)
+                * BehaviorApiTuning.OBSERVATION_VIEW_HASH_CODE_PARAM + z;
         }
 
         @Override
         public String toString() {
-            return x + ":" + y + ":" + z;
+            return x + BehaviorApiIds.COLON_DELIMITER + y + BehaviorApiIds.COLON_DELIMITER + z;
         }
     }
 
@@ -157,10 +163,10 @@ public interface MaidObservationView {
 
         public EntitySnapshot(UUID uniqueId, int entityId, Vec3d position, Vec3d velocity, float health,
             float maxHealth, double distanceSq, boolean hostile, boolean friendly, boolean visible) {
-            this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
+            this.uniqueId = Objects.requireNonNull(uniqueId, BehaviorApiIds.ID_UNIQUEID);
             this.entityId = entityId;
-            this.position = Objects.requireNonNull(position, "position");
-            this.velocity = Objects.requireNonNull(velocity, "velocity");
+            this.position = Objects.requireNonNull(position, BehaviorApiIds.ID_POSITION);
+            this.velocity = Objects.requireNonNull(velocity, BehaviorApiIds.ID_VELOCITY);
             this.health = health;
             this.maxHealth = maxHealth;
             this.distanceSq = distanceSq;
@@ -196,9 +202,9 @@ public interface MaidObservationView {
         public final long observedAt;
 
         public ProjectileThreatSnapshot(UUID uniqueId, Vec3d position, Vec3d velocity, long observedAt) {
-            this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
-            this.position = Objects.requireNonNull(position, "position");
-            this.velocity = Objects.requireNonNull(velocity, "velocity");
+            this.uniqueId = Objects.requireNonNull(uniqueId, BehaviorApiIds.ID_UNIQUEID);
+            this.position = Objects.requireNonNull(position, BehaviorApiIds.ID_POSITION);
+            this.velocity = Objects.requireNonNull(velocity, BehaviorApiIds.ID_VELOCITY);
             this.observedAt = observedAt;
         }
     }

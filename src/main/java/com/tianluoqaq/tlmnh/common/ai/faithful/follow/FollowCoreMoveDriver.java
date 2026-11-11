@@ -11,17 +11,18 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.follow.FollowMoveState.Status;
  */
 public final class FollowCoreMoveDriver {
 
-    private static final double FALLBACK_ANGLE = 1.5707963705062866;
     private final int minDuration;
     private final int maxDuration;
 
     public FollowCoreMoveDriver() {
-        this(150, 250);
+        this(
+            FaithfulFollowTuning.FOLLOW_CORE_FOLLOW_CORE_MOVE_DRIVER_PARAM,
+            FaithfulFollowTuning.FOLLOW_CORE_FOLLOW_CORE_MOVE_DRIVER_PARAM_2);
     }
 
     public FollowCoreMoveDriver(int minDuration, int maxDuration) {
         if (minDuration < 0 || maxDuration < minDuration || (long) maxDuration - minDuration + 1 > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Invalid move behavior duration range");
+            throw new IllegalArgumentException(FaithfulFollowDiagnostics.MSG_INVALID_MOVE_BEHAVIOR_DURATION_RANGE);
         }
         this.minDuration = minDuration;
         this.maxDuration = maxDuration;
@@ -53,7 +54,7 @@ public final class FollowCoreMoveDriver {
         state.status = Status.STOPPED;
         WalkTarget target = actor.getWalkTarget();
         if (target != null && !reachedTarget(actor, target) && actor.navigationIsStuck()) {
-            state.remainingCooldown = worldInt(actor, 40);
+            state.remainingCooldown = worldInt(actor, FaithfulFollowTuning.FOLLOW_CORE_WORLD_INT_SECOND_PARAM);
         }
         actor.stopNavigation();
         actor.eraseWalkTarget();
@@ -112,7 +113,8 @@ public final class FollowCoreMoveDriver {
         }
         WalkTarget target = actor.getWalkTarget();
         if (target.currentBlockPosition()
-            .distanceSquared(state.lastTargetPos) > 4 && tryComputePath(actor, state, target, actor.worldGameTime())) {
+            .distanceSquared(state.lastTargetPos) > FaithfulFollowTuning.FOLLOW_CORE_TICK_PARAM
+            && tryComputePath(actor, state, target, actor.worldGameTime())) {
             state.lastTargetPos = target.currentBlockPosition();
             start(actor, state);
         }
@@ -120,7 +122,7 @@ public final class FollowCoreMoveDriver {
 
     private boolean tryComputePath(FollowMoveActor actor, FollowMoveState state, WalkTarget target, long gameTime) {
         var targetPos = target.currentBlockPosition();
-        state.path = actor.createPath(targetPos, 0);
+        state.path = actor.createPath(targetPos, FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE);
         state.speedModifier = target.getSpeedModifier();
         if (reachedTarget(actor, target)) {
             actor.eraseCantReachSince();
@@ -134,10 +136,16 @@ public final class FollowCoreMoveDriver {
         if (state.path != null) {
             return true;
         }
-        Vec3 fallback = actor
-            .findFallbackTowards(10, 7, new Vec3(targetPos.x + 0.5, targetPos.y, targetPos.z + 0.5), FALLBACK_ANGLE);
+        Vec3 fallback = actor.findFallbackTowards(
+            FaithfulFollowTuning.TARGET_HORIZONTAL_RANGE_THRESHOLD,
+            FaithfulFollowTuning.TARGET_VERTICAL_RANGE_THRESHOLD,
+            new Vec3(
+                targetPos.x + FaithfulFollowTuning.CENTER_OFFSET_D_2,
+                targetPos.y,
+                targetPos.z + FaithfulFollowTuning.CENTER_OFFSET_D_2),
+            FaithfulFollowTuning.FALLBACK_ANGLE);
         if (fallback != null) {
-            state.path = actor.createPath(fallback, 0);
+            state.path = actor.createPath(fallback, FaithfulFollowTuning.DRY_PLATFORM_BEGIN_FRAME_ZERO_BASE);
             return state.path != null;
         }
         return false;
@@ -155,7 +163,7 @@ public final class FollowCoreMoveDriver {
     private static int worldInt(FollowMoveActor actor, int bound) {
         int value = actor.nextWorldInt(bound);
         if (value < 0 || value >= bound) {
-            throw new IllegalArgumentException("World random result outside requested bound");
+            throw new IllegalArgumentException(FaithfulFollowDiagnostics.MSG_WORLD_RANDOM_RESULT_OUTSIDE_REQUESTED);
         }
         return value;
     }

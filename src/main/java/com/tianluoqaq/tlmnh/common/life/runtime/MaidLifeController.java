@@ -41,8 +41,9 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.TerminalOutcome;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeTuning;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.cabinet.BlockSnackCabinet;
 
@@ -64,7 +65,6 @@ public final class MaidLifeController {
         CANCELLED
     }
 
-    private static final int SCAN_INTERVAL = 20, MAX_ACTION_TICKS = 200;
     private final EntityMaid maid;
     private final Predicate<MaidActionRun> claimControl;
     private final Consumer<MaidActionRun> releaseControl;
@@ -100,7 +100,7 @@ public final class MaidLifeController {
         if (!maid.getHomeArea()
             .enabled() && tick + 1 >= nextOwnerScan) {
             owner = ownerSource.get();
-            nextOwnerScan = tick + 1 + SCAN_INTERVAL;
+            nextOwnerScan = tick + 1 + LifeRuntimeTuning.SCAN_INTERVAL;
         }
         if (!scopeAllowed()) return Collections.emptyList();
         boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
@@ -121,7 +121,10 @@ public final class MaidLifeController {
                 new MaidLifeIntent(
                     action,
                     observation,
-                    maid.getDistanceSq(target.xCoord + .5, target.yCoord + .5, target.zCoord + .5)));
+                    maid.getDistanceSq(
+                        target.xCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                        target.yCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                        target.zCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR)));
         }
         if (tick + 1 < nextScan || !rest && tick + 1 < nextSnack) return Collections.emptyList();
         preparedContext = context;
@@ -130,7 +133,7 @@ public final class MaidLifeController {
         preparedWorldTime = maid.worldObj.getTotalWorldTime();
         preparedRest = rest;
         preparedPlace = !rest && tryPlaceNext && cakeSlot() >= 0;
-        nextScan = tick + 1 + SCAN_INTERVAL;
+        nextScan = tick + 1 + LifeRuntimeTuning.SCAN_INTERVAL;
         preparedOptions = collectOptions(context, rest, preparedPlace);
         return Collections.unmodifiableList(preparedOptions);
     }
@@ -157,14 +160,15 @@ public final class MaidLifeController {
             claimControl.run();
             return true;
         }, ignored -> {}, ownerSource, selector);
-        if (claimControl == null) throw new IllegalArgumentException("Missing control callback");
+        if (claimControl == null)
+            throw new IllegalArgumentException(LifeRuntimeDiagnostics.MSG_MISSING_CONTROL_CALLBACK);
     }
 
     public MaidLifeController(EntityMaid maid, Predicate<MaidActionRun> claimControl,
         Consumer<MaidActionRun> releaseControl, Supplier<EntityPlayer> ownerSource,
         Function<List<MaidLifeIntent>, MaidLifeSelector.Selection> selector) {
         if (maid == null || claimControl == null || releaseControl == null || ownerSource == null || selector == null)
-            throw new IllegalArgumentException("Life action requires its actor, arbiter and owner observation");
+            throw new IllegalArgumentException(LifeRuntimeDiagnostics.MSG_LIFE_ACTION_REQUIRES_ITS_ACTOR);
         this.maid = maid;
         this.claimControl = claimControl;
         this.releaseControl = releaseControl;
@@ -226,7 +230,7 @@ public final class MaidLifeController {
         }
         if (!maid.getHomeArea()
             .enabled() && tick >= nextOwnerScan) {
-            nextOwnerScan = tick + SCAN_INTERVAL;
+            nextOwnerScan = tick + LifeRuntimeTuning.SCAN_INTERVAL;
             owner = ownerSource.get();
         }
         if (!scopeAllowed()) {
@@ -241,7 +245,7 @@ public final class MaidLifeController {
                 status = Status.COOLDOWN;
                 return false;
             }
-            nextScan = tick + SCAN_INTERVAL;
+            nextScan = tick + LifeRuntimeTuning.SCAN_INTERVAL;
             if (!select(rest, context, token)) {
                 return false;
             }
@@ -257,26 +261,43 @@ public final class MaidLifeController {
                 return false;
             }
             // 不推进动画钟；实体仍有原生重力和碰撞，只固定已占用床上的休息位置
-            maid.setSleepingBedDirection(maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
-            maid.setPosition(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
-            maid.motionX = maid.motionY = maid.motionZ = 0;
+            maid.setSleepingBedDirection(
+                maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord)
+                    & LifeRuntimeTuning.LOW_TWO_BITS_MASK);
+            maid.setPosition(
+                bed.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                bed.yCoord + LifeRuntimeTuning.LIFE_CONTROLLER_SET_POSITION_SECOND_FACTOR,
+                bed.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D);
+            maid.motionX = maid.motionY = maid.motionZ = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
             maid.setJumping(false);
             status = Status.SLEEPING;
             return true;
         }
-        if (tick - selectedAt > MAX_ACTION_TICKS) {
+        if (tick - selectedAt > LifeRuntimeTuning.MAX_ACTION_TICKS) {
             stop(Status.PATH_FAILED, TerminalOutcome.TIMED_OUT);
             return false;
         }
-        double targetY = target.yCoord + (action == Action.BED ? 0.5 : 1.5);
-        double distance = maid.getDistanceSq(target.xCoord + 0.5, targetY, target.zCoord + 0.5);
-        if (distance <= 4 && visible(target.xCoord + 0.5, targetY, target.zCoord + 0.5)) return useTarget();
+        double targetY = target.yCoord + (action == Action.BED ? LifeRuntimeTuning.CENTER_OFFSET_D
+            : LifeRuntimeTuning.LIFE_CONTROLLER_TICK_ACTIVE_FACTOR);
+        double distance = maid.getDistanceSq(
+            target.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+            targetY,
+            target.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D);
+        if (distance <= LifeRuntimeTuning.MIN_DISTANCE_THRESHOLD && visible(
+            target.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+            targetY,
+            target.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D)) return useTarget();
         status = action == Action.BED ? Status.APPROACH_BED : Status.APPROACH_SNACK;
         if (tick >= nextPath) {
-            nextPath = tick + 20;
+            nextPath = tick + LifeRuntimeTuning.LIFE_CONTROLLER_NEXT_PATH;
             Vec3 stand = standBeside(target);
             lastPathResult = stand == null ? PathResult.UNREACHABLE
-                : planner.request(maid, stand.xCoord, stand.yCoord, stand.zCoord, 0.6D);
+                : planner.request(
+                    maid,
+                    stand.xCoord,
+                    stand.yCoord,
+                    stand.zCoord,
+                    LifeRuntimeTuning.LIFE_CONTROLLER_REQUEST_FIFTH_FACTOR);
             if (lastPathResult.isDeferred()) {
                 nextPath = tick + 1;
                 selectedAt++;
@@ -286,8 +307,8 @@ public final class MaidLifeController {
                     ownedPath = maid.getNavigator()
                         .getPath();
                     approachPoint = stand;
-                    failures = 0;
-                } else if (++failures >= 3) {
+                    failures = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
+                } else if (++failures >= LifeRuntimeTuning.LOW_TWO_BITS_MASK) {
                     stop(Status.PATH_FAILED);
                     return false;
                 }
@@ -307,13 +328,22 @@ public final class MaidLifeController {
                 <= maid.width * maid.width
             && safeStand(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord))
             maid.getMoveHelper()
-                .setMoveTo(approachPoint.xCoord, approachPoint.yCoord, approachPoint.zCoord, 0.6D);
+                .setMoveTo(
+                    approachPoint.xCoord,
+                    approachPoint.yCoord,
+                    approachPoint.zCoord,
+                    LifeRuntimeTuning.LIFE_CONTROLLER_REQUEST_FIFTH_FACTOR);
         if (action == Action.BED && !((TileEntityMaidBed) target).claim(maid)) {
             stop(Status.TARGET_LOST);
             return false;
         }
         maid.getLookHelper()
-            .setLookPosition(target.xCoord + 0.5, targetY, target.zCoord + 0.5, 20, maid.getVerticalFaceSpeed());
+            .setLookPosition(
+                target.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                targetY,
+                target.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                LifeRuntimeTuning.LIFE_CONTROLLER_NEXT_PATH,
+                maid.getVerticalFaceSpeed());
         return true;
     }
 
@@ -324,7 +354,8 @@ public final class MaidLifeController {
     private boolean scopeAllowed() {
         var home = maid.getHomeArea();
         return home.enabled() ? home.sameDimension() && home.containsMaid()
-            : ownerValid(owner) && maid.getDistanceSqToEntity(owner) <= 144;
+            : ownerValid(owner)
+                && maid.getDistanceSqToEntity(owner) <= LifeRuntimeTuning.LIFE_CONTROLLER_SCOPE_ALLOWED_PARAM;
     }
 
     private boolean select(boolean rest, MaidPolicyContext context, MaidPolicyContext.Token token) {
@@ -344,53 +375,59 @@ public final class MaidLifeController {
             var choice = preferredIntent == null ? selector.apply(Collections.unmodifiableList(options))
                 : new MaidLifeSelector.Selection(preferredIntent, MaidLifeSelector.Reason.POLICY_CHOICE);
             if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())) {
-                return rejectIntent(Status.CANCELLED, "selection_cancelled");
+                return rejectIntent(Status.CANCELLED, LifeRuntimeIds.ID_SELECTION_CANCELLED);
             }
             if (choice == null) {
-                if (recording) telemetry
-                    .state("life_intent_yielded", "", options.isEmpty() ? "no_eligible_intents" : "policy_yield");
+                if (recording) telemetry.state(
+                    LifeRuntimeIds.ID_LIFE_INTENT_YIELDED,
+                    "",
+                    options.isEmpty() ? LifeRuntimeIds.ID_NO_ELIGIBLE_INTENTS : LifeRuntimeIds.ID_POLICY_YIELD);
                 return false;
             }
             var intent = choice.getIntent();
             if (!options.contains(intent)) {
-                return rejectIntent(Status.INTENT_REJECTED, "not_from_current_options");
+                return rejectIntent(Status.INTENT_REJECTED, LifeRuntimeIds.ID_NOT_FROM_CURRENT_OPTIONS);
             }
             var bestObservation = intent.getCandidate();
             var best = sensor.resolve(bestObservation, context);
             if (best == null || !hardAllowed()
                 || !scopeAllowed()
                 || MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime()) != rest) {
-                return rejectIntent(Status.INTENT_REJECTED, "observed_target_or_constraints_changed");
+                return rejectIntent(Status.INTENT_REJECTED, LifeRuntimeIds.ID_OBSERVED_TARGET_OR_CONSTRAINTS_CHANGED);
             }
             if (rest) {
                 var bed = (TileEntityMaidBed) best;
                 if (!bedClear(bed) || !bed.claim(maid))
-                    return rejectIntent(Status.INTENT_REJECTED, "bed_claim_refused");
+                    return rejectIntent(Status.INTENT_REJECTED, LifeRuntimeIds.ID_BED_CLAIM_REFUSED);
                 claimedBed = bed;
             } else if (!snackValid(best, intent.getAction() == Action.PLACE))
-                return rejectIntent(Status.INTENT_REJECTED, "snack_conditions_changed");
-            if (!claimControl.test(planned)) return rejectIntent(Status.CANCELLED, "control_claim_refused");
+                return rejectIntent(Status.INTENT_REJECTED, LifeRuntimeIds.ID_SNACK_CONDITIONS_CHANGED);
+            if (!claimControl.test(planned))
+                return rejectIntent(Status.CANCELLED, LifeRuntimeIds.ID_CONTROL_CLAIM_REFUSED);
             if (run != planned || !planned.isCurrent(maid.worldObj, maid.getTask())
                 || !hardAllowed()
                 || !scopeAllowed()
                 || sensor.resolve(bestObservation, context) != best) {
-                return rejectIntent(Status.CANCELLED, "adoption_cancelled");
+                return rejectIntent(Status.CANCELLED, LifeRuntimeIds.ID_ADOPTION_CANCELLED);
             }
             target = best;
             action = intent.getAction();
             selectedTask = command;
             selectedAt = tick;
             nextPath = tick;
-            failures = 0;
-            if (!rest) nextSnack = tick + MaidLifeRules.SNACK_INTERVAL;
+            failures = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
+            if (!rest) nextSnack = tick + MaidLifeTuning.SNACK_INTERVAL;
             adopted = true;
             if (recording) {
-                telemetry.state("life_selected", tileId(best), action.name());
+                telemetry.state(LifeRuntimeIds.ID_LIFE_SELECTED, tileId(best), action.name());
                 telemetry.state(
-                    "life_intent_selected",
+                    LifeRuntimeIds.ID_LIFE_INTENT_SELECTED,
                     tileId(best),
-                    "action=" + action
-                        .name() + ";reason=" + choice.getReason() + ";distance_sq=" + intent.getDistanceSq());
+                    LifeRuntimeIds.ID_ACTION + action.name()
+                        + LifeRuntimeIds.ID_REASON
+                        + choice.getReason()
+                        + LifeRuntimeIds.ID_DISTANCE_SQ
+                        + intent.getDistanceSq());
             }
             return true;
         } finally {
@@ -408,7 +445,7 @@ public final class MaidLifeController {
 
     private boolean rejectIntent(Status reason, String detail) {
         status = reason;
-        telemetry().state("life_intent_rejected", "", detail);
+        telemetry().state(LifeRuntimeIds.ID_LIFE_INTENT_REJECTED, "", detail);
         return false;
     }
 
@@ -421,16 +458,21 @@ public final class MaidLifeController {
             String reason;
             if (rest) {
                 var bed = (TileEntityMaidBed) candidate;
-                reason = !bed.available(maid) ? "bed_unavailable" : !bedClear(bed) ? "bed_obstructed" : "eligible";
-            } else reason = !snackWithinOwnerRange(candidate) ? "snack_outside_owner_range"
-                : snackValid(candidate, place) ? "eligible" : "snack_conditions_failed";
-            boolean usable = "eligible".equals(reason);
-            if (telemetry().isEnabled()) telemetry().candidate("life_tile", tileId(candidate), usable, reason);
+                reason = !bed.available(maid) ? LifeRuntimeIds.ID_BED_UNAVAILABLE
+                    : !bedClear(bed) ? LifeRuntimeIds.ID_BED_OBSTRUCTED : LifeRuntimeIds.ID_ELIGIBLE;
+            } else reason = !snackWithinOwnerRange(candidate) ? LifeRuntimeIds.ID_SNACK_OUTSIDE_OWNER_RANGE
+                : snackValid(candidate, place) ? LifeRuntimeIds.ID_ELIGIBLE : LifeRuntimeIds.ID_SNACK_CONDITIONS_FAILED;
+            boolean usable = LifeRuntimeIds.ID_ELIGIBLE.equals(reason);
+            if (telemetry().isEnabled())
+                telemetry().candidate(LifeRuntimeIds.ID_LIFE_TILE, tileId(candidate), usable, reason);
             if (usable) options.add(
                 new MaidLifeIntent(
                     rest ? Action.BED : place ? Action.PLACE : Action.STEAL,
                     observation,
-                    maid.getDistanceSq(candidate.xCoord + .5, candidate.yCoord + .5, candidate.zCoord + .5)));
+                    maid.getDistanceSq(
+                        candidate.xCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                        candidate.yCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                        candidate.zCoord + LifeRuntimeTuning.LIFE_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR)));
         }
         return options;
     }
@@ -449,7 +491,11 @@ public final class MaidLifeController {
             || !maid.worldObj.blockExists(target.xCoord, target.yCoord, target.zCoord)
             || maid.worldObj.getTileEntity(target.xCoord, target.yCoord, target.zCoord) != target
             || !maid.getHomeArea()
-                .contains(target.xCoord, target.yCoord + (action == Action.BED ? 0 : 1), target.zCoord))
+                .contains(
+                    target.xCoord,
+                    target.yCoord + (action == Action.BED ? LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z
+                        : LifeRuntimeTuning.CONTAINS_SINGLE_UNIT),
+                    target.zCoord))
             return false;
         return action == Action.BED
             ? ((TileEntityMaidBed) target).complete() && ((TileEntityMaidBed) target).isOwnedBy(maid)
@@ -467,7 +513,8 @@ public final class MaidLifeController {
                 && !(MathHelper.floor_double(maid.posX) == x && MathHelper.floor_double(maid.posY) == y
                     && MathHelper.floor_double(maid.posZ) == z)
                 && Blocks.cake.canPlaceBlockAt(maid.worldObj, x, y, z)
-            : maid.worldObj.getBlock(x, y, z) == Blocks.cake && maid.worldObj.getBlockMetadata(x, y, z) <= 5;
+            : maid.worldObj.getBlock(x, y, z) == Blocks.cake
+                && maid.worldObj.getBlockMetadata(x, y, z) <= LifeRuntimeTuning.LIFE_CONTROLLER_DOMAIN_PARAM;
     }
 
     private boolean snackWithinOwnerRange(TileEntity cabinet) {
@@ -476,17 +523,21 @@ public final class MaidLifeController {
         if (home.enabled()) return home.contains(cabinet.xCoord, cabinet.yCoord + 1, cabinet.zCoord);
         // 上游非家园模式按食物方块中心到主人的距离判断，不是女仆到主人的距离
         return cabinet != null && ownerValid(owner)
-            && owner.getDistanceSq(cabinet.xCoord + 0.5, cabinet.yCoord + 1.5, cabinet.zCoord + 0.5)
-                < MaidLifeRules.SNACK_OWNER_RANGE_SQ;
+            && owner.getDistanceSq(
+                cabinet.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                cabinet.yCoord + LifeRuntimeTuning.LIFE_CONTROLLER_TICK_ACTIVE_FACTOR,
+                cabinet.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D) < MaidLifeTuning.SNACK_OWNER_RANGE_SQ;
     }
 
     private boolean bedClear(TileEntityMaidBed bed) {
-        int direction = maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3;
-        for (int part = 0; part < 2; part++) {
-            int x = bed.xCoord - BlockBed.field_149981_a[direction][0] * part;
-            int z = bed.zCoord - BlockBed.field_149981_a[direction][1] * part;
-            for (int dy = 1; dy <= 2; dy++) if (!maid.worldObj.blockExists(x, bed.yCoord + dy, z)
-                || !maid.worldObj.isAirBlock(x, bed.yCoord + dy, z)) return false;
+        int direction = maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord)
+            & LifeRuntimeTuning.LOW_TWO_BITS_MASK;
+        for (int part = 0; part < LifeRuntimeTuning.MIN_PART_THRESHOLD; part++) {
+            int x = bed.xCoord - BlockBed.field_149981_a[direction][LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z] * part;
+            int z = bed.zCoord - BlockBed.field_149981_a[direction][LifeRuntimeTuning.CONTAINS_SINGLE_UNIT] * part;
+            for (int dy = 1; dy <= LifeRuntimeTuning.MIN_PART_THRESHOLD; dy++)
+                if (!maid.worldObj.blockExists(x, bed.yCoord + dy, z)
+                    || !maid.worldObj.isAirBlock(x, bed.yCoord + dy, z)) return false;
         }
         return true;
     }
@@ -515,10 +566,15 @@ public final class MaidLifeController {
             maid.getMealController()
                 .cancel();
             sleeping = true;
-            maid.setSleepingBedDirection(maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord) & 3);
+            maid.setSleepingBedDirection(
+                maid.worldObj.getBlockMetadata(bed.xCoord, bed.yCoord, bed.zCoord)
+                    & LifeRuntimeTuning.LOW_TWO_BITS_MASK);
             maid.setPose(MaidPose.SLEEPING, true);
-            maid.setPositionAndUpdate(bed.xCoord + 0.5, bed.yCoord + 0.5625, bed.zCoord + 0.5);
-            maid.motionX = maid.motionY = maid.motionZ = 0;
+            maid.setPositionAndUpdate(
+                bed.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                bed.yCoord + LifeRuntimeTuning.LIFE_CONTROLLER_SET_POSITION_SECOND_FACTOR,
+                bed.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D);
+            maid.motionX = maid.motionY = maid.motionZ = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
             if (!attempt.finishCommit(true)) {
                 if (run == attempt) stop(Status.CANCELLED);
                 return false;
@@ -526,9 +582,9 @@ public final class MaidLifeController {
             maid.onMaidStartSleeping();
             sleepEntries++;
             telemetry().terminal(
-                "sleep_entry",
+                LifeRuntimeIds.ID_SLEEP_ENTRY,
                 tileId(bed),
-                "bed_claimed_pose_started;not_whole_sleep_cycle",
+                LifeRuntimeIds.ID_BED_CLAIMED_POSE_STARTED_NOT_WHOLE_SLEEP_CYCLE,
                 TerminalOutcome.COMPLETED,
                 true);
             status = Status.SLEEPING;
@@ -539,17 +595,23 @@ public final class MaidLifeController {
         if (action == Action.STEAL) {
             int next = MaidLifeRules.nextCakeBites(maid.worldObj.getBlockMetadata(x, y, z));
             success = next < 0 ? maid.worldObj.setBlockToAir(x, y, z)
-                : maid.worldObj.setBlockMetadataWithNotify(x, y, z, next, 3);
+                : maid.worldObj.setBlockMetadataWithNotify(x, y, z, next, LifeRuntimeTuning.LOW_TWO_BITS_MASK);
             if (success) {
                 bites++;
-                if (executionCurrent(attempt)) maid.playSound("random.eat", 1.0F, 1.0F);
+                if (executionCurrent(attempt)) maid.playSound(
+                    LifeRuntimeIds.ID_RANDOM_EAT,
+                    LifeRuntimeTuning.LIFE_CONTROLLER_PLAY_SOUND_SECOND_FACTOR,
+                    LifeRuntimeTuning.LIFE_CONTROLLER_PLAY_SOUND_SECOND_FACTOR);
                 if (executionCurrent(attempt)) maid.getFavorabilityManager()
-                    .apply(Type.STEAL_EDIBLE_BLOCK, 1);
+                    .apply(Type.STEAL_EDIBLE_BLOCK, LifeRuntimeTuning.CONTAINS_SINGLE_UNIT);
             }
         } else success = placeCake(x, y, z, attempt);
         boolean committed = attempt.finishCommit(success);
         if (run != attempt) {
-            if (success) telemetry().state("life_effect_after_cancel", tileId(usedTarget), "world_effect_confirmed");
+            if (success) telemetry().state(
+                LifeRuntimeIds.ID_LIFE_EFFECT_AFTER_CANCEL,
+                tileId(usedTarget),
+                LifeRuntimeIds.ID_WORLD_EFFECT_CONFIRMED);
             return false;
         }
         if (committed) maid.swingItem();
@@ -577,8 +639,9 @@ public final class MaidLifeController {
             .getStackInSlot(slot);
         var expectedInventory = original.copy();
         ItemStack one = original.copy();
-        one.stackSize = 1;
-        var fake = FakePlayerFactory.get(world, new GameProfile(maid.getUniqueID(), "[TLMNH Maid]"));
+        one.stackSize = LifeRuntimeTuning.CONTAINS_SINGLE_UNIT;
+        var fake = FakePlayerFactory
+            .get(world, new GameProfile(maid.getUniqueID(), LifeRuntimeDiagnostics.MSG_TLMNH_MAID));
         int selected = fake.inventory.currentItem;
         var previous = fake.inventory.getStackInSlot(selected);
         double px = fake.posX, py = fake.posY, pz = fake.posZ;
@@ -588,7 +651,16 @@ public final class MaidLifeController {
             fake.capabilities.isCreativeMode = false;
             fake.inventory.setInventorySlotContents(selected, one);
             // Forge 原生放置入口包含可取消的 PlaceEvent；成功后才扣真正背包中的一个
-            boolean placed = one.tryPlaceItemIntoWorld(fake, world, x, y - 1, z, 1, 0.5F, 1, 0.5F);
+            boolean placed = one.tryPlaceItemIntoWorld(
+                fake,
+                world,
+                x,
+                y - 1,
+                z,
+                LifeRuntimeTuning.CONTAINS_SINGLE_UNIT,
+                LifeRuntimeTuning.HALF_FACTOR_F,
+                LifeRuntimeTuning.CONTAINS_SINGLE_UNIT,
+                LifeRuntimeTuning.HALF_FACTOR_F);
             if (!placed || one.stackSize != 0 || !world.blockExists(x, y, z) || world.getBlock(x, y, z) != Blocks.cake)
                 return false;
             if (!commitAllowedAfterPlacement(attempt) || maid.getMaidInventory()
@@ -600,7 +672,7 @@ public final class MaidLifeController {
                 return false;
             }
             maid.getMaidInventory()
-                .decrStackSize(slot, 1);
+                .decrStackSize(slot, LifeRuntimeTuning.CONTAINS_SINGLE_UNIT);
             placements++;
             return true;
         } finally {
@@ -629,35 +701,38 @@ public final class MaidLifeController {
     }
 
     private int cakeSlot() {
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = maid.getMaidInventory()
                 .getStackInSlot(slot);
             if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.cake) return slot;
         }
-        return -1;
+        return LifeRuntimeTuning.MISSING_CAKE_SLOT;
     }
 
     private boolean visible(double x, double y, double z) {
         // 原生 ray trace 会访问区块，先检查整条短线覆盖的区块矩形
         var chunks = maid.worldObj.getChunkProvider();
-        int minX = MathHelper.floor_double(Math.min(x, maid.posX)) >> 4,
-            maxX = MathHelper.floor_double(Math.max(x, maid.posX)) >> 4;
-        int minZ = MathHelper.floor_double(Math.min(z, maid.posZ)) >> 4,
-            maxZ = MathHelper.floor_double(Math.max(z, maid.posZ)) >> 4;
+        int minX = MathHelper.floor_double(Math.min(x, maid.posX)) >> LifeRuntimeTuning.MIN_DISTANCE_THRESHOLD,
+            maxX = MathHelper.floor_double(Math.max(x, maid.posX)) >> LifeRuntimeTuning.MIN_DISTANCE_THRESHOLD;
+        int minZ = MathHelper.floor_double(Math.min(z, maid.posZ)) >> LifeRuntimeTuning.MIN_DISTANCE_THRESHOLD,
+            maxZ = MathHelper.floor_double(Math.max(z, maid.posZ)) >> LifeRuntimeTuning.MIN_DISTANCE_THRESHOLD;
         for (int cx = minX; cx <= maxX; cx++)
             for (int cz = minZ; cz <= maxZ; cz++) if (!chunks.chunkExists(cx, cz)) return false;
         var hit = maid.worldObj.rayTraceBlocks(
             Vec3.createVectorHelper(maid.posX, maid.posY + maid.getEyeHeight(), maid.posZ),
             Vec3.createVectorHelper(x, y, z));
         return hit == null || hit.blockX == target.xCoord && hit.blockZ == target.zCoord
-            && hit.blockY == target.yCoord + (action == Action.BED ? 0 : 1);
+            && hit.blockY == target.yCoord + (action == Action.BED ? LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z
+                : LifeRuntimeTuning.CONTAINS_SINGLE_UNIT);
     }
 
     private Vec3 standBeside(TileEntity tile) {
         Vec3 best = null;
         double distance = Double.MAX_VALUE;
         for (int[] offset : BlockBed.field_149981_a) {
-            double x = tile.xCoord + offset[0] + 0.5, z = tile.zCoord + offset[1] + 0.5;
+            double x = tile.xCoord + offset[LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z]
+                + LifeRuntimeTuning.CENTER_OFFSET_D,
+                z = tile.zCoord + offset[LifeRuntimeTuning.CONTAINS_SINGLE_UNIT] + LifeRuntimeTuning.CENTER_OFFSET_D;
             if (!safeStand(x, tile.yCoord, z)) continue;
             double candidate = maid.getDistanceSq(x, tile.yCoord, z);
             if (candidate < distance) {
@@ -670,9 +745,10 @@ public final class MaidLifeController {
 
     private boolean safeStand(double x, double y, double z) {
         int ix = MathHelper.floor_double(x), iy = MathHelper.floor_double(y), iz = MathHelper.floor_double(z);
-        if (!maid.worldObj.blockExists(ix, iy - 1, iz) || !maid.worldObj.blockExists(ix, iy + 2, iz)
+        if (!maid.worldObj.blockExists(ix, iy - 1, iz)
+            || !maid.worldObj.blockExists(ix, iy + LifeRuntimeTuning.MIN_PART_THRESHOLD, iz)
             || !World.doesBlockHaveSolidTopSurface(maid.worldObj, ix, iy - 1, iz)) return false;
-        double radius = maid.width / 2;
+        double radius = maid.width / LifeRuntimeTuning.MIN_PART_THRESHOLD;
         return maid.worldObj
             .getCollidingBoundingBoxes(
                 maid,
@@ -687,7 +763,7 @@ public final class MaidLifeController {
         preparedOptions = null;
         sensor.clear();
         owner = null;
-        nextOwnerScan = 0;
+        nextOwnerScan = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
         stop(Status.CANCELLED);
     }
 
@@ -709,10 +785,10 @@ public final class MaidLifeController {
                             ? TerminalOutcome.FAILED
                             : TerminalOutcome.CANCELLED;
                 telemetry().terminal(
-                    "life/" + action.name()
+                    LifeRuntimeIds.ID_LIFE + action.name()
                         .toLowerCase(Locale.ROOT),
                     tileId(target),
-                    "stop_reason=" + reason,
+                    LifeRuntimeIds.ID_STOP_REASON + reason,
                     outcome,
                     confirmed);
             }
@@ -723,7 +799,11 @@ public final class MaidLifeController {
                 if (target != null && target.getWorldObj() == maid.worldObj
                     && maid.ridingEntity == null
                     && maid.riddenByEntity == null
-                    && maid.getDistanceSq(target.xCoord + 0.5, target.yCoord + 0.5, target.zCoord + 0.5) <= 16) {
+                    && maid.getDistanceSq(
+                        target.xCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                        target.yCoord + LifeRuntimeTuning.CENTER_OFFSET_D,
+                        target.zCoord + LifeRuntimeTuning.CENTER_OFFSET_D)
+                        <= LifeRuntimeTuning.LIFE_CONTROLLER_STOP_PARAM) {
                     Vec3 safe = standBeside(target);
                     if (safe != null) maid.setPositionAndUpdate(safe.xCoord, safe.yCoord, safe.zCoord);
                     else if (safeStand(wakeX, wakeY, wakeZ)) maid.setPositionAndUpdate(wakeX, wakeY, wakeZ);
@@ -731,12 +811,12 @@ public final class MaidLifeController {
                 sleeping = false;
             }
             if (target instanceof TileEntityMaidBed bed) bed.release(maid);
-            if (target != null) nextScan = Math.max(nextScan, tick + SCAN_INTERVAL);
+            if (target != null) nextScan = Math.max(nextScan, tick + LifeRuntimeTuning.SCAN_INTERVAL);
             target = null;
             run = null;
             action = null;
             selectedTask = null;
-            failures = 0;
+            failures = LifeRuntimeTuning.LIFE_CONTROLLER_MOTION_Z;
             status = reason;
         } finally {
             try {
@@ -753,12 +833,12 @@ public final class MaidLifeController {
     }
 
     private static String tileId(TileEntity tile) {
-        return (tile.getWorldObj() == null ? "unknown" : Integer.toString(tile.getWorldObj().provider.dimensionId))
-            + ":"
+        return (tile.getWorldObj() == null ? LifeRuntimeIds.ID_UNKNOWN
+            : Integer.toString(tile.getWorldObj().provider.dimensionId)) + LifeRuntimeIds.COLON_DELIMITER
             + tile.xCoord
-            + ","
+            + LifeRuntimeIds.COMMA_DELIMITER
             + tile.yCoord
-            + ","
+            + LifeRuntimeIds.COMMA_DELIMITER
             + tile.zCoord;
     }
 

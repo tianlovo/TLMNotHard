@@ -1,0 +1,87 @@
+package com.tianluoqaq.tlmnh.common.lifecycle;
+
+/** 女仆绑定、死亡、胶片与复活生命周期常量（NbtKeys 分卷 2） */
+public final class MaidLifecyclePart2NbtKeys {
+
+    public static final String KEY_STAGE = "Stage";
+    public static final String KEY_COSTS = "COSTS";
+    public static final String KEY_CANDIDATE = "Candidate";
+    public static final String KEY_COMMITTED = "COMMITTED";
+    public static final String KEY_PREPARED = "PREPARED";
+    public static final String KEY_HELD = "HELD";
+    public static final String KEY_OBSERVED = "Observed";
+    public static final String KEY_PUBLISHED = "PUBLISHED";
+    public static final String KEY_DELIVERED = "DELIVERED";
+    public static final String KEY_SOURCE = "Source";
+    public static final String KEY_UNCONFIRMED_SOURCE = "UnconfirmedSource";
+    public static final String KEY_SCHEMA = "Schema";
+    public static final String KEY_ENTRIES = "Entries";
+    public static final String KEY_TOKEN = "Token";
+    public static final String KEY_OWNER = "Owner";
+    public static final String KEY_SUBJECT = "Subject";
+    public static final String KEY_KIND = "Kind";
+    public static final String KEY_IDENTITY = "Identity";
+    public static final String KEY_CONSUMED = "Consumed";
+    public static final String KEY_DELIVERED_2 = "Delivered";
+    public static final String KEY_TOMBSTONE_ITEMS = "TombstoneItems";
+    public static final String KEY_DIMENSION = "Dimension";
+    public static final String KEY_X = "X";
+    public static final String KEY_Y = "Y";
+    public static final String KEY_Z = "Z";
+    public static final String KEY_MAID_NAME = "MaidName";
+    public static final String KEY_PUBLISHED_2 = "Published";
+    public static final String KEY_DEATH_EXPERIENCE = "DeathExperience";
+    public static final String KEY_EXPERIENCE_READY_AT = "ExperienceReadyAt";
+    public static final String KEY_TOMBSTONE_HELD = "TombstoneHeld";
+    public static final String KEY_EXPERIENCE_HELD = "ExperienceHeld";
+    public static final String KEY_REDEMPTION = "Redemption";
+    public static final String KEY_SHRINE = "Shrine";
+    public static final String KEY_DEATH_INGRESS = "DeathIngress";
+    public static final String KEY_TOMBSTONE_PUBLICATION = "TombstonePublication";
+    public static final String KEY_CAPTURE = "Capture";
+    public static final String KEY_SEQUENCE = "Sequence";
+    public static final String KEY_RETURNED_FILMS = "ReturnedFilms";
+    public static final String KEY_ID = "Id";
+    public static final String KEY_STACK = "Stack";
+    public static final String KEY_PHASE = "Phase";
+    public static final String KEY_CONTEXT = "Context";
+    public static final String KEY_ACQUISITION_PHASE = "AcquisitionPhase";
+    public static final String KEY_ACQUISITION_SOURCE = "AcquisitionSource";
+    public static final String KEY_ACQUISITION_RECEIPT = "AcquisitionReceipt";
+    public static final String KEY_ACQUISITION_CREDENTIAL = "AcquisitionCredential";
+    public static final String KEY_INVENTORY = "Inventory";
+    public static final String KEY_SELECTED_ITEM_SLOT = "SelectedItemSlot";
+    public static final String KEY_HEAL_F = "HealF";
+    public static final String KEY_HEALTH = "Health";
+    public static final String KEY_LEVEL = "Level";
+    public static final String KEY_SECTIONS = "Sections";
+    public static final String KEY_TILE_ENTITIES = "TileEntities";
+    public static final String KEY_ENTITIES = "Entities";
+    public static final String KEY_UUID_MOST = "UUIDMost";
+    public static final String KEY_UUID_LEAST = "UUIDLeast";
+    public static final String KEY_POS = "Pos";
+    public static final String KEY_VALUE = "Value";
+    public static final String KEY_ITEM = "Item";
+    public static final String KEY_CREDENTIAL = "Credential";
+    public static final String KEY_PLAYER = "Player";
+    public static final String KEY_DESTINATION_SLOT = "DestinationSlot";
+    public static final String KEY_MAID = "Maid";
+    public static final String KEY_ACTOR = "Actor";
+    public static final String KEY_CURSOR = "Cursor";
+    public static final String KEY_VERSION = "Version";
+    public static final String KEY_METADATA = "Metadata";
+    public static final String KEY_SELECTED = "Selected";
+    public static final String KEY_MAXIMUM = "Maximum";
+    public static final String KEY_CREATIVE = "Creative";
+    public static final String KEY_TILE = "Tile";
+    public static final String KEY_STORAGE_ITEM = "StorageItem";
+    public static final String KEY_RESULT_TILE = "ResultTile";
+    public static final String KEY_SLOT = "Slot";
+    public static final String KEY_RESULT_INVENTORY = "ResultInventory";
+    public static final String KEY_DISPLAY_VERSION = "DisplayVersion";
+    public static final String KEY_STORAGE_KIND = "StorageKind";
+    public static final String KEY_BLOCK = "Block";
+    public static final String KEY_OWNER_ID = "OwnerId";
+
+    private MaidLifecyclePart2NbtKeys() {}
+}

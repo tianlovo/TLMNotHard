@@ -36,10 +36,13 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.endsWith(".MixinMaidPassengerAlias")) return supportsYsmMaidPassenger(targetClassName);
-        if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) return supportsNaturalWorldGen(targetClassName);
-        if (mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return supportsShieldCapture(targetClassName);
-        if (!mixinClassName.endsWith(".MixinArrowImpact")) return true;
+        if (mixinClassName.endsWith(CorePluginIds.ID_MIXINMAIDPASSENGERALIAS))
+            return supportsYsmMaidPassenger(targetClassName);
+        if (mixinClassName.endsWith(CorePluginIds.ID_MIXINMAIDWORLDGENSPAWNING))
+            return supportsNaturalWorldGen(targetClassName);
+        if (mixinClassName.endsWith(CorePluginIds.ID_MIXINENTITYARROWSHIELDCAPTURE))
+            return supportsShieldCapture(targetClassName);
+        if (!mixinClassName.endsWith(CorePluginIds.ID_MIXINARROWIMPACT)) return true;
         if (DevelopmentFlags.isQaProjectileImpactFallback()) return false;
         try {
             var node = MixinService.getService()
@@ -47,55 +50,59 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                 .getClassNode(targetClassName);
             for (Object rawMethod : node.methods) {
                 var method = (MethodNode) rawMethod;
-                if (!(method.name.equals("onUpdate") || method.name.equals("func_70071_h_"))
-                    || !method.desc.equals("()V")) continue;
-                int raySlot = -1, entitySlot = -1, rays = 0, entities = 0;
+                if (!(method.name.equals(CorePluginIds.ID_ONUPDATE)
+                    || method.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_70071_H))
+                    || !method.desc.equals(CorePluginIds.ID_V)) continue;
+                int raySlot = CorePluginTuning.UNSET_OR_NOT_FOUND, entitySlot = CorePluginTuning.UNSET_OR_NOT_FOUND,
+                    rays = CorePluginTuning.MIXIN_COMPATIBILITY_RAYS,
+                    entities = CorePluginTuning.MIXIN_COMPATIBILITY_RAYS;
                 for (var instruction = method.instructions.getFirst(); instruction
                     != null; instruction = instruction.getNext()) {
                     if (!(instruction instanceof MethodInsnNode call)) continue;
                     var next = nextCode(instruction);
                     if (!(next instanceof VarInsnNode store) || store.getOpcode() != Opcodes.ASTORE) continue;
-                    if (call.desc.endsWith(")Lnet/minecraft/util/MovingObjectPosition;")
-                        && (call.name.equals("func_147447_a") || call.name.equals("rayTraceBlocks"))) {
+                    if (call.desc.endsWith(CorePluginIds.ID_LNET_MINECRAFT_UTIL_MOVINGOBJECTPOSITION)
+                        && (call.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_147447_A)
+                            || call.name.equals(CorePluginIds.ID_RAYTRACEBLOCKS))) {
                         raySlot = store.var;
                         rays++;
                     }
-                    if (call.owner.equals("net/minecraft/util/MovingObjectPosition") && call.name.equals("<init>")
-                        && call.desc.equals("(Lnet/minecraft/entity/Entity;)V")) {
+                    if (call.owner.equals(CorePluginIds.ID_NET_MINECRAFT_UTIL_MOVINGOBJECTPOSITION)
+                        && call.name.equals(CorePluginIds.ID_INIT)
+                        && call.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS)) {
                         entitySlot = store.var;
                         entities++;
                     }
                 }
-                if (rays == 1 && entities == 1 && raySlot == entitySlot && raySlot >= 0) return true;
+                if (rays == CorePluginTuning.TARGET_RAYS_THRESHOLD && entities == CorePluginTuning.TARGET_RAYS_THRESHOLD
+                    && raySlot == entitySlot
+                    && raySlot >= 0) return true;
             }
-            LogManager.getLogger("tlmnh")
-                .warn("Native arrow impact shape changed; pre-damage protection remains active");
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_NATIVE_ARROW_IMPACT_SHAPE_CHANGED);
         } catch (Exception | LinkageError failure) {
-            LogManager.getLogger("tlmnh")
-                .warn("Cannot inspect native arrow impact hook; using pre-damage protection", failure);
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_CANNOT_INSPECT_NATIVE_ARROW_IMPACT, failure);
         }
         return false;
     }
 
     /** 核对 YSM 乘客匹配器的 class 字节摘要与注入形态，一致时才启用可选别名钩子 */
     private static boolean supportsYsmMaidPassenger(String targetClassName) {
-        if (!"com.fox.ysmu.client.animation.condition.ConditionalEntityIdMatch".equals(targetClassName)) return false;
+        if (!CorePluginIds.TARGET_CLASS_CONDITIONAL_ENTITY_ID_MATCH.equals(targetClassName)) return false;
         try {
             var resource = Launch.classLoader
-                .getResource("com/fox/ysmu/client/animation/condition/ConditionalEntityIdMatch.class");
+                .getResource(CorePluginIds.ID_COM_FOX_YSMU_CLIENT_ANIMATION_CONDITION_CONDITION);
             if (resource == null) return false;
             String hex;
             try (var stream = resource.openStream()) {
                 hex = Sha256Hex.ofStream(stream);
             }
             // 同一个 Multi-Release JAR 内 Java 8 原始条目与 Java 21+ 命中条目的摘要分别放行
-            if (!"6736b016732daa5cb32676fc3f88f1989bda8797663e4f806295d8d43109c994".equals(hex)
-                && !"a6cef19780740b05e7babb590e32dba7c9a088d5fcb59bfe3edac1e25bcb9a3d".equals(hex)) {
-                LogManager.getLogger("tlmnh")
-                    .warn(
-                        "YSM passenger matcher differs; resource={} observedSha256={}; original matching remains active",
-                        resource,
-                        hex);
+            if (!CorePluginIds.EXPECTED_SHA256_6736B016732D.equals(hex)
+                && !CorePluginIds.EXPECTED_SHA256_A6CEF1978074.equals(hex)) {
+                LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                    .warn(CorePluginDiagnostics.MSG_YSM_PASSENGER_MATCHER_DIFFERS_RESOURCE, resource, hex);
                 return false;
             }
             var node = MixinService.getService()
@@ -105,26 +112,26 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
             boolean field = false;
             for (Object raw : node.fields) {
                 var entry = (FieldNode) raw;
-                if (entry.name.equals("ids") && entry.desc.equals("Ljava/util/Set;")
+                if (entry.name.equals(CorePluginIds.ID_IDS) && entry.desc.equals(CorePluginIds.KEY_LJAVA_UTIL_SET)
                     && (entry.access & Opcodes.ACC_FINAL) != 0) field = true;
             }
             for (Object raw : node.methods) {
                 var entry = (MethodNode) raw;
-                if (entry.name.equals("doTest")
-                    && entry.desc.equals("(Lnet/minecraft/entity/EntityLivingBase;)Ljava/lang/String;")) matching++;
+                if (entry.name.equals(CorePluginIds.ID_DOTEST)
+                    && entry.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS_2)) matching++;
             }
-            return field && matching == 1;
+            return field && matching == CorePluginTuning.TARGET_RAYS_THRESHOLD;
         } catch (Exception | LinkageError failure) {
-            LogManager.getLogger("tlmnh")
-                .warn("Cannot inspect optional YSM passenger matcher; original matching remains active", failure);
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_CANNOT_INSPECT_OPTIONAL_YSM_PASSENGER, failure);
             return false;
         }
     }
 
     private static boolean isWorldGenSpawning(MethodNode method) {
-        return (method.name.equals("performWorldGenSpawning") || method.name.equals("func_77191_a"))
-            && method.desc
-                .equals("(Lnet/minecraft/world/World;Lnet/minecraft/world/biome/BiomeGenBase;IIIILjava/util/Random;)V")
+        return (method.name.equals(CorePluginIds.ID_PERFORMWORLDGENSPAWNING)
+            || method.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_77191_A))
+            && method.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS_3)
             && (method.access & Opcodes.ACC_STATIC) != 0;
     }
 
@@ -134,7 +141,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
             var node = MixinService.getService()
                 .getBytecodeProvider()
                 .getClassNode(targetClassName);
-            int methods = 0, calls = 0;
+            int methods = 0, calls = CorePluginTuning.MIXIN_COMPATIBILITY_RAYS;
             for (Object rawMethod : node.methods) {
                 var method = (MethodNode) rawMethod;
                 if (!isWorldGenSpawning(method)) continue;
@@ -142,17 +149,19 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                 for (var instruction = method.instructions.getFirst(); instruction
                     != null; instruction = instruction.getNext()) {
                     if (instruction instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKEVIRTUAL
-                        && call.owner.equals("net/minecraft/world/World")
-                        && (call.name.equals("spawnEntityInWorld") || call.name.equals("func_72838_d"))
-                        && call.desc.equals("(Lnet/minecraft/entity/Entity;)Z")) calls++;
+                        && call.owner.equals(CorePluginIds.ID_NET_MINECRAFT_WORLD_WORLD)
+                        && (call.name.equals(CorePluginIds.ID_SPAWNENTITYINWORLD)
+                            || call.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_72838_D))
+                        && call.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS_4)) calls++;
                 }
             }
-            if (methods == 1 && calls == 1) return true;
-            LogManager.getLogger("tlmnh")
-                .warn("Native worldgen spawning shape changed; natural maid spawning disabled");
+            if (methods == CorePluginTuning.TARGET_RAYS_THRESHOLD && calls == CorePluginTuning.TARGET_RAYS_THRESHOLD)
+                return true;
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_NATIVE_WORLDGEN_SPAWNING_SHAPE_CHANGED);
         } catch (Exception | LinkageError failure) {
-            LogManager.getLogger("tlmnh")
-                .warn("Cannot inspect native worldgen spawning hook; natural maid spawning disabled", failure);
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_CANNOT_INSPECT_NATIVE_WORLDGEN_SPAWNING, failure);
         }
         return false;
     }
@@ -177,22 +186,25 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                 .getClassNode(targetClassName);
             for (Object rawMethod : node.methods) {
                 var method = (MethodNode) rawMethod;
-                if (!(method.name.equals("onUpdate") || method.name.equals("func_70071_h_"))
-                    || !method.desc.equals("()V")) continue;
-                int attacks = 0, additions = 0;
+                if (!(method.name.equals(CorePluginIds.ID_ONUPDATE)
+                    || method.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_70071_H))
+                    || !method.desc.equals(CorePluginIds.ID_V)) continue;
+                int attacks = 0, additions = CorePluginTuning.MIXIN_COMPATIBILITY_RAYS;
                 boolean afterAttack = false;
                 for (var instruction = method.instructions.getFirst(); instruction
                     != null; instruction = instruction.getNext()) {
                     if (!(instruction instanceof MethodInsnNode call)) continue;
-                    if (call.owner.equals("net/minecraft/entity/Entity")
-                        && (call.name.equals("attackEntityFrom") || call.name.equals("func_70097_a"))
-                        && call.desc.equals("(Lnet/minecraft/util/DamageSource;F)Z")) {
+                    if (call.owner.equals(CorePluginIds.ID_NET_MINECRAFT_ENTITY_ENTITY)
+                        && (call.name.equals(CorePluginIds.ID_ATTACKENTITYFROM)
+                            || call.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_70097_A))
+                        && call.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS_5)) {
                         attacks++;
                         afterAttack = true;
                     }
-                    if (call.owner.equals("net/minecraft/entity/EntityLivingBase")
-                        && (call.name.equals("setArrowCountInEntity") || call.name.equals("func_85034_r"))
-                        && call.desc.equals("(I)V")) {
+                    if (call.owner.equals(CorePluginIds.ID_NET_MINECRAFT_ENTITY_ENTITYLIVINGBASE)
+                        && (call.name.equals(CorePluginIds.ID_SETARROWCOUNTINENTITY)
+                            || call.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_85034_R))
+                        && call.desc.equals(CorePluginIds.ID_I_V)) {
                         var add = previousCode(call);
                         var one = add == null ? null : previousCode(add);
                         var get = one == null ? null : previousCode(one);
@@ -201,19 +213,21 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                             && one != null
                             && one.getOpcode() == Opcodes.ICONST_1
                             && get instanceof MethodInsnNode getter
-                            && getter.owner.equals("net/minecraft/entity/EntityLivingBase")
-                            && (getter.name.equals("getArrowCountInEntity") || getter.name.equals("func_85035_bI"))
-                            && getter.desc.equals("()I")) additions++;
+                            && getter.owner.equals(CorePluginIds.ID_NET_MINECRAFT_ENTITY_ENTITYLIVINGBASE)
+                            && (getter.name.equals(CorePluginIds.ID_GETARROWCOUNTINENTITY)
+                                || getter.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_85035_BI))
+                            && getter.desc.equals(CorePluginIds.ID_I)) additions++;
                         else return false;
                     }
                 }
-                if (attacks == 1 && additions == 1) return true;
+                if (attacks == CorePluginTuning.TARGET_RAYS_THRESHOLD
+                    && additions == CorePluginTuning.TARGET_RAYS_THRESHOLD) return true;
             }
-            LogManager.getLogger("tlmnh")
-                .warn("Native arrow shield capture shape changed; capture hook disabled");
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_NATIVE_ARROW_SHIELD_CAPTURE_SHAPE);
         } catch (Exception | LinkageError failure) {
-            LogManager.getLogger("tlmnh")
-                .warn("Cannot inspect native shield capture hook; capture disabled", failure);
+            LogManager.getLogger(CorePluginIds.ID_TLMNH)
+                .warn(CorePluginDiagnostics.MSG_CANNOT_INSPECT_NATIVE_SHIELD_CAPTURE, failure);
         }
         return false;
     }
@@ -239,7 +253,7 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        if (mixinClassName.endsWith(".MixinMaidWorldGenSpawning")) {
+        if (mixinClassName.endsWith(CorePluginIds.ID_MIXINMAIDWORLDGENSPAWNING)) {
             int calls = 0;
             for (Object rawMethod : targetClass.methods) {
                 var method = (MethodNode) rawMethod;
@@ -248,24 +262,25 @@ public final class MixinCompatibilityPlugin implements IMixinConfigPlugin {
                     != null; instruction = instruction.getNext()) {
                     if (instruction instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKESTATIC
                         && call.owner.equals(targetClass.name)
-                        && call.name.contains("tlmnh$naturalMaidWorldGen")
-                        && call.desc.equals("(Lnet/minecraft/world/World;Lnet/minecraft/entity/Entity;)Z")) calls++;
+                        && call.name.contains(CorePluginIds.ID_TLMNH_NATURALMAIDWORLDGEN)
+                        && call.desc.equals(CorePluginReflectionSpec.JVM_DESC_MIXIN_COMPATIBILITY_EQUALS_6)) calls++;
                 }
             }
-            naturalWorldGenHook = calls == 1;
+            naturalWorldGenHook = calls == CorePluginTuning.TARGET_RAYS_THRESHOLD;
             return;
         }
-        if (!mixinClassName.endsWith(".MixinEntityArrowShieldCapture")) return;
+        if (!mixinClassName.endsWith(CorePluginIds.ID_MIXINENTITYARROWSHIELDCAPTURE)) return;
         int calls = 0;
         for (Object rawMethod : targetClass.methods) {
             var method = (MethodNode) rawMethod;
-            if (!(method.name.equals("onUpdate") || method.name.equals("func_70071_h_")) || !method.desc.equals("()V"))
-                continue;
+            if (!(method.name.equals(CorePluginIds.ID_ONUPDATE)
+                || method.name.equals(CorePluginReflectionSpec.SRG_MEMBER_FUNC_70071_H))
+                || !method.desc.equals(CorePluginIds.ID_V)) continue;
             for (var instruction = method.instructions.getFirst(); instruction
                 != null; instruction = instruction.getNext())
-                if (instruction instanceof MethodInsnNode call && call.name.contains("tlmnh$shieldArrowDamage"))
-                    calls++;
+                if (instruction instanceof MethodInsnNode call
+                    && call.name.contains(CorePluginIds.ID_TLMNH_SHIELDARROWDAMAGE)) calls++;
         }
-        shieldCaptureHook = calls == 1;
+        shieldCaptureHook = calls == CorePluginTuning.TARGET_RAYS_THRESHOLD;
     }
 }

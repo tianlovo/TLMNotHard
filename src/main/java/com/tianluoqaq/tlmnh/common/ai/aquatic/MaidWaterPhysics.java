@@ -17,32 +17,47 @@ public final class MaidWaterPhysics {
         maid.motionY += input.y;
         maid.motionZ += input.z;
         maid.moveEntity(maid.motionX, maid.motionY, maid.motionZ);
-        if (maid.isCollidedHorizontally && maid.isOnLadder()) maid.motionY = .2;
-        double horizontalDrag = maid.isSprinting() ? .9F : .8F;
+        if (maid.isCollidedHorizontally && maid.isOnLadder()) maid.motionY = AquaticAiTuning.WATER_PHYSICS_MOTION_Y;
+        double horizontalDrag = maid.isSprinting() ? AquaticAiTuning.WATER_PHYSICS_TRAVEL_FACTOR
+            : AquaticAiTuning.AQUATIC_CONTROLLER_MAID_SWIM_JUMP_TASK_FIRST_FACTOR;
         maid.motionX *= horizontalDrag;
-        maid.motionY *= .8F;
+        maid.motionY *= AquaticAiTuning.AQUATIC_CONTROLLER_MAID_SWIM_JUMP_TASK_FIRST_FACTOR;
         maid.motionZ *= horizontalDrag;
-        maid.motionY = fallingVelocity(maid.motionY, .08, falling, maid.isSprinting());
-        if (maid.isCollidedHorizontally && maid
-            .isOffsetPositionInLiquid(maid.motionX, maid.motionY + .6000000238418579 - maid.posY + oldY, maid.motionZ))
-            maid.motionY = .30000001192092896;
+        maid.motionY = fallingVelocity(
+            maid.motionY,
+            AquaticAiTuning.WATER_PHYSICS_FALLING_VELOCITY_SECOND_FACTOR,
+            falling,
+            maid.isSprinting());
+        if (maid.isCollidedHorizontally && maid.isOffsetPositionInLiquid(
+            maid.motionX,
+            maid.motionY + AquaticAiTuning.WATER_PHYSICS_IS_OFFSET_POSITION_IN_LIQUID_SECOND_FA - maid.posY + oldY,
+            maid.motionZ)) maid.motionY = AquaticAiTuning.WATER_PHYSICS_MOTION_Y_2;
     }
 
     /** TLM travel.scale(1.2).add(0, lift ? 0.5 : 0.05, 0)，再以现代 moveRelative 归一化 */
     public static Acceleration acceleration(float strafe, float forward, boolean lift, float yaw) {
-        double x = strafe * 1.2, y = lift ? .5 : .05, z = forward * 1.2;
+        double x = strafe * AquaticAiTuning.WATER_PHYSICS_ACCELERATION_X_OFFSET,
+            y = lift ? AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR
+                : AquaticAiTuning.WATER_PHYSICS_ACCELERATION_FACTOR,
+            z = forward * AquaticAiTuning.WATER_PHYSICS_ACCELERATION_X_OFFSET;
         double squared = x * x + y * y + z * z;
-        double scale = (double) .02F / Math.max(1, Math.sqrt(squared));
-        float sin = MathHelper.sin(yaw * ((float) Math.PI / 180F));
-        float cos = MathHelper.cos(yaw * ((float) Math.PI / 180F));
+        double scale = (double) AquaticAiTuning.WATER_PHYSICS_ACCELERATION_FACTOR_2
+            / Math.max(AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP, Math.sqrt(squared));
+        float sin = MathHelper.sin(yaw * ((float) Math.PI / AquaticAiTuning.HALF_TURN_DEGREES_F));
+        float cos = MathHelper.cos(yaw * ((float) Math.PI / AquaticAiTuning.HALF_TURN_DEGREES_F));
         return new Acceleration((x * cos - z * sin) * scale, y * scale, (z * cos + x * sin) * scale);
     }
 
     /** 原生现代 getFluidFallingAdjustedMovement，默认重力0.08/16；奔跑分支不再减重力 */
     public static double fallingVelocity(double afterDrag, double gravity, boolean falling, boolean sprinting) {
         if (sprinting) return afterDrag;
-        return falling && Math.abs(afterDrag - .005) >= .003 && Math.abs(afterDrag - gravity / 16) < .003 ? -.003
-            : afterDrag - gravity / 16;
+        return falling
+            && Math.abs(afterDrag - AquaticAiTuning.BREATH_CONTROLLER_TRAVEL_WATER_FACTOR)
+                >= AquaticAiTuning.WATER_PHYSICS_FALLING_VELOCITY_FACTOR
+            && Math.abs(afterDrag - gravity / AquaticAiTuning.WATER_PHYSICS_ABS_FIRST_PARAM)
+                < AquaticAiTuning.WATER_PHYSICS_FALLING_VELOCITY_FACTOR
+                    ? AquaticAiTuning.WATER_PHYSICS_FALLING_VELOCITY_FACTOR_2
+                    : afterDrag - gravity / AquaticAiTuning.WATER_PHYSICS_ABS_FIRST_PARAM;
     }
 
     public static final class Acceleration {

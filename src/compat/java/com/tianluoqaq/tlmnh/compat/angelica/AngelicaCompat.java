@@ -8,7 +8,6 @@ public final class AngelicaCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ANGELICA;
 
-
     public static final AngelicaCompat INSTANCE = new AngelicaCompat();
 
     private AngelicaCompat() {}

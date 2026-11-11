@@ -28,39 +28,58 @@ public final class MaidBedPlacement {
     private MaidBedPlacement() {}
 
     public static boolean place(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side) {
-        String key = "bed_placement/" + player.getUniqueID();
+        String key = MaidBedIds.ID_BED_PLACEMENT + player.getUniqueID();
         if (!world.isRemote && !IntegrationGuard.available(Side.SERVER, key)) {
             ProtectionEvents.warn(player);
             return false;
         }
         try {
-            int direction = MathHelper.floor_double(player.rotationYaw * 4.0F / 360.0F + 0.5D) & 3;
-            int headX = x + BlockBed.field_149981_a[direction][0];
-            int headZ = z + BlockBed.field_149981_a[direction][1];
+            int direction = MathHelper.floor_double(
+                player.rotationYaw * MaidBedLayout.BED_PLACEMENT_DIRECTION / MaidBedLayout.FULL_TURN_DEGREES_F
+                    + MaidBedLayout.CENTER_OFFSET_D)
+                & MaidBedLayout.LOW_TWO_BITS_MASK;
+            int headX = x + BlockBed.field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE];
+            int headZ = z + BlockBed.field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
             if (!empty(world, x, y, z) || !empty(world, headX, y, headZ)
                 || !player.canPlayerEdit(x, y, z, side, stack)
                 || !player.canPlayerEdit(headX, y, headZ, side, stack)
                 || !World.doesBlockHaveSolidTopSurface(world, x, y - 1, z)
                 || !World.doesBlockHaveSolidTopSurface(world, headX, y - 1, headZ)) return false;
             if (world.isRemote) return true;
-            require(ACTIVE.get() == null && !world.restoringBlockSnapshots, "Nested/restoring placement refused");
+            require(
+                ACTIVE.get() == null && !world.restoringBlockSnapshots,
+                MaidBedDiagnostics.MSG_NESTED_RESTORING_PLACEMENT_REFUSED);
             var attempt = new Attempt(world, player, stack, x, y, z, headX, headZ, direction);
             ACTIVE.set(attempt);
             try {
                 var block = MaidLifeContent.maidBed;
-                require(world.setBlock(x, y, z, block, direction, 2), "Bed foot write failed");
-                require(attempt.footIntact() && empty(world, headX, y, headZ), "Bed area changed after foot write");
-                require(world.setBlock(headX, y, headZ, block, direction | 8, 2), "Bed head write failed");
+                require(
+                    world.setBlock(x, y, z, block, direction, MaidBedLayout.BLOCK_BED_SET_BLOCK_SIXTH_PARAM),
+                    MaidBedDiagnostics.MSG_BED_FOOT_WRITE_FAILED);
+                require(
+                    attempt.footIntact() && empty(world, headX, y, headZ),
+                    MaidBedDiagnostics.MSG_BED_AREA_CHANGED_AFTER_FOOT);
+                require(
+                    world.setBlock(
+                        headX,
+                        y,
+                        headZ,
+                        block,
+                        direction | MaidBedLayout.BED_PLACEMENT_SET_BLOCK_FIFTH_PARAM,
+                        MaidBedLayout.BLOCK_BED_SET_BLOCK_SIXTH_PARAM),
+                    MaidBedDiagnostics.MSG_BED_HEAD_WRITE_FAILED);
                 var bed = attempt.exactHead();
-                require(bed.initializeItemColor(stack), "Bed source initialization refused");
+                require(bed.initializeItemColor(stack), MaidBedDiagnostics.MSG_BED_SOURCE_INITIALIZATION_REFUSED);
                 // 回调期间床头仍未提交；异常、换Tile或移走来源都不能触发补物/破坏回滚
                 world.notifyBlocksOfNeighborChange(x, y, z, block);
                 world.notifyBlocksOfNeighborChange(headX, y, headZ, block);
-                require(attempt.exactHead() == bed, "Bed identity changed during callbacks");
+                require(attempt.exactHead() == bed, MaidBedDiagnostics.MSG_BED_IDENTITY_CHANGED_DURING_CALLBACKS);
                 require(
                     player.getCurrentEquippedItem() == stack && ItemStack.areItemStacksEqual(stack, attempt.source),
-                    "Placement source changed during callbacks");
-                require(IntegrationGuard.available(Side.SERVER, key), "Placement stopped by a nested failure");
+                    MaidBedDiagnostics.MSG_PLACEMENT_SOURCE_CHANGED_DURING_CALLBACKS);
+                require(
+                    IntegrationGuard.available(Side.SERVER, key),
+                    MaidBedDiagnostics.MSG_PLACEMENT_STOPPED_BY_NESTED_FAILURE);
                 // 从这里到返回不再调用世界/外部API；同线程完成标记与物品计数提交
                 bed.finishPlacement(attempt.marker);
                 if (!player.capabilities.isCreativeMode) stack.stackSize--;
@@ -89,26 +108,26 @@ public final class MaidBedPlacement {
 
     static void reportRetained(TileEntityMaidBed bed, NBTBase raw) {
         UUID owner = null;
-        if (raw instanceof NBTTagCompound tag && tag.hasKey("Schema", Constants.NBT.TAG_INT)
-            && tag.getInteger("Schema") == 1) {
+        if (raw instanceof NBTTagCompound tag && tag.hasKey(MaidBedNbtKeys.KEY_SCHEMA, Constants.NBT.TAG_INT)
+            && tag.getInteger(MaidBedNbtKeys.KEY_SCHEMA) == MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP) {
             try {
-                owner = UUID.fromString(tag.getString("Owner"));
+                owner = UUID.fromString(tag.getString(MaidBedNbtKeys.KEY_OWNER));
             } catch (IllegalArgumentException ignored) {
                 // 未知原值仍原样保留，不猜测主人或自动补物
             }
         }
-        String key = owner != null ? "bed_placement/" + owner
-            : "bed_placement_retained/" + bed.getWorldObj().provider.dimensionId
-                + "/"
+        String key = owner != null ? MaidBedIds.ID_BED_PLACEMENT + owner
+            : MaidBedIds.ID_BED_PLACEMENT_RETAINED + bed.getWorldObj().provider.dimensionId
+                + MaidBedIds.PATH_SLASH_SEPARATOR
                 + bed.xCoord
-                + "/"
+                + MaidBedIds.PATH_SLASH_SEPARATOR
                 + bed.yCoord
-                + "/"
+                + MaidBedIds.PATH_SLASH_SEPARATOR
                 + bed.zCoord;
         IntegrationGuard.report(
             Side.SERVER,
             key,
-            new IllegalStateException("Uncommitted bed source record retained; no automatic cleanup or reissue"),
+            new IllegalStateException(MaidBedDiagnostics.MSG_UNCOMMITTED_BED_SOURCE_RECORD_RETAINED),
             owner);
     }
 
@@ -139,16 +158,16 @@ public final class MaidBedPlacement {
             this.headZ = headZ;
             this.direction = direction;
             source = stack.copy();
-            marker.setInteger("Schema", 1);
+            marker.setInteger(MaidBedNbtKeys.KEY_SCHEMA, MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP);
             marker.setString(
-                "Token",
+                MaidBedNbtKeys.KEY_TOKEN,
                 UUID.randomUUID()
                     .toString());
             marker.setString(
-                "Owner",
+                MaidBedNbtKeys.KEY_OWNER,
                 player.getUniqueID()
                     .toString());
-            marker.setTag("Source", source.writeToNBT(new NBTTagCompound()));
+            marker.setTag(MaidBedNbtKeys.KEY_SOURCE, source.writeToNBT(new NBTTagCompound()));
         }
 
         boolean footIntact() {
@@ -157,16 +176,19 @@ public final class MaidBedPlacement {
         }
 
         TileEntityMaidBed exactHead() {
-            require(created.size() == 1 && footIntact(), "Ambiguous head identity or changed foot retained");
-            var bed = created.get(0);
+            require(
+                created.size() == MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP && footIntact(),
+                MaidBedDiagnostics.MSG_AMBIGUOUS_HEAD_IDENTITY_OR_CHANGED);
+            var bed = created.get(MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE);
             require(
                 world.getBlock(headX, y, headZ) == MaidLifeContent.maidBed
-                    && world.getBlockMetadata(headX, y, headZ) == (direction | 8)
+                    && world.getBlockMetadata(headX, y, headZ)
+                        == (direction | MaidBedLayout.BED_PLACEMENT_SET_BLOCK_FIFTH_PARAM)
                     && world.getTileEntity(headX, y, headZ) == bed
                     && !bed.isInvalid()
                     && bed.placementPending()
                     && !bed.dropQueued(),
-                "Changed bed head retained");
+                MaidBedDiagnostics.MSG_CHANGED_BED_HEAD_RETAINED);
             return bed;
         }
     }

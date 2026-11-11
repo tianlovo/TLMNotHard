@@ -15,7 +15,8 @@ public final class MaidShieldEvents {
     private MaidShieldEvents() {}
 
     public static void register() {
-        if (registered) throw new IllegalStateException("Maid shield events already registered");
+        if (registered)
+            throw new IllegalStateException(ShieldCombatDiagnostics.MSG_MAID_SHIELD_EVENTS_ALREADY_REGISTERED);
         MinecraftForge.EVENT_BUS.register(new MaidShieldEvents());
         registered = true;
     }

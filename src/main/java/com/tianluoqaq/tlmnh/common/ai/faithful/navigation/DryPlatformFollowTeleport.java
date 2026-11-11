@@ -17,10 +17,6 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
  */
 public final class DryPlatformFollowTeleport {
 
-    private static final int MAX_ATTEMPTS = 10;
-    private static final int DOMAIN_RADIUS = 4;
-    private static final int WORLD_LIMIT = 29_999_990;
-
     private DryPlatformFollowTeleport() {}
 
     public interface RandomInts {
@@ -86,10 +82,10 @@ public final class DryPlatformFollowTeleport {
     }
 
     public static Result tryTeleport(EntityMaid maid, EntityLivingBase owner, RandomInts rng, Access access) {
-        Objects.requireNonNull(maid, "maid");
-        Objects.requireNonNull(owner, "owner");
-        Objects.requireNonNull(rng, "rng");
-        Objects.requireNonNull(access, "access");
+        Objects.requireNonNull(maid, FaithfulNavigationIds.ID_MAID);
+        Objects.requireNonNull(owner, FaithfulNavigationIds.ID_OWNER);
+        Objects.requireNonNull(rng, FaithfulNavigationIds.ID_RNG);
+        Objects.requireNonNull(access, FaithfulNavigationIds.ID_ACCESS);
         var progress = new Progress();
         var denied = denied(access, progress);
         if (denied != null) return denied;
@@ -101,22 +97,25 @@ public final class DryPlatformFollowTeleport {
         int ownerX = MathHelper.floor_double(owner.posX);
         int ownerY = MathHelper.floor_double(owner.posY);
         int ownerZ = MathHelper.floor_double(owner.posZ);
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < FaithfulNavigationTuning.MAX_ATTEMPTS; attempt++) {
             denied = denied(access, progress);
             if (denied != null) return denied;
             progress.attempts++;
             // 原版在水平距离过滤之前依次取完 x/y/z，不跳过任何一次随机调用
-            int x = ownerX + nextInt(rng, 7, progress) - 3;
-            int y = ownerY + nextInt(rng, 3, progress) - 1;
-            int z = ownerZ + nextInt(rng, 7, progress) - 3;
+            int x = ownerX + nextInt(rng, FaithfulNavigationTuning.DRY_PLATFORM_NEXT_INT_SECOND_PARAM, progress)
+                - FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_X_OFFSET;
+            int y = ownerY + nextInt(rng, FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_X_OFFSET, progress) - 1;
+            int z = ownerZ + nextInt(rng, FaithfulNavigationTuning.DRY_PLATFORM_NEXT_INT_SECOND_PARAM, progress)
+                - FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_X_OFFSET;
             progress.hasCandidate = true;
             progress.x = x;
             progress.y = y;
             progress.z = z;
             denied = denied(access, progress);
             if (denied != null) return denied;
-            if (Math.abs(x - owner.posX) < 2 && Math.abs(z - owner.posZ) < 2) {
-                progress.lastRejection = "candidate_too_close";
+            if (Math.abs(x - owner.posX) < FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_PARAM
+                && Math.abs(z - owner.posZ) < FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_PARAM) {
+                progress.lastRejection = FaithfulNavigationIds.ID_CANDIDATE_TOO_CLOSE;
                 continue;
             }
 
@@ -124,7 +123,7 @@ public final class DryPlatformFollowTeleport {
             Block feet = maid.worldObj.getBlock(x, y, z);
             Block below = maid.worldObj.getBlock(x, y - 1, z);
             if (feet != Blocks.air || below != Blocks.stone) {
-                progress.lastRejection = "known_node_not_walkable";
+                progress.lastRejection = FaithfulNavigationIds.ID_KNOWN_NODE_NOT_WALKABLE;
                 continue;
             }
             int dx = x - MathHelper.floor_double(maid.posX);
@@ -135,12 +134,17 @@ public final class DryPlatformFollowTeleport {
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, translated)
                 .isEmpty()) {
                 progress.collisionRejections++;
-                progress.lastRejection = "native_collision";
+                progress.lastRejection = FaithfulNavigationIds.ID_NATIVE_COLLISION;
                 continue;
             }
             denied = denied(access, progress);
             if (denied != null) return denied;
-            maid.setLocationAndAngles(x + 0.5D, y, z + 0.5D, maid.rotationYaw, maid.rotationPitch);
+            maid.setLocationAndAngles(
+                x + FaithfulNavigationTuning.CENTER_OFFSET_D,
+                y,
+                z + FaithfulNavigationTuning.CENTER_OFFSET_D,
+                maid.rotationYaw,
+                maid.rotationPitch);
             progress.moved = true;
             access.stopOwnedNavigation();
             denied = denied(access, progress);
@@ -148,7 +152,7 @@ public final class DryPlatformFollowTeleport {
             access.clearSuccessfulTeleportMemories();
             denied = denied(access, progress);
             if (denied != null) return denied;
-            return result(Status.SUCCESS, progress, "stone_air_native_collision_passed");
+            return result(Status.SUCCESS, progress, FaithfulNavigationIds.ID_STONE_AIR_NATIVE_COLLISION_PASSED);
         }
         return result(Status.EXHAUSTED, progress, progress.lastRejection);
     }
@@ -156,13 +160,16 @@ public final class DryPlatformFollowTeleport {
     private static int nextInt(RandomInts rng, int bound, Progress progress) {
         progress.rngCalls++;
         int value = rng.nextInt(bound);
-        if (value < 0 || value >= bound) throw new IllegalArgumentException("RandomInts value outside bound " + bound);
+        if (value < 0 || value >= bound) throw new IllegalArgumentException(
+            FaithfulNavigationDiagnostics.MSG_RANDOMINTS_VALUE_OUTSIDE_BOUND + bound);
         return value;
     }
 
     private static Result denied(Access access, Progress progress) {
-        if (!access.isCurrent()) return result(Status.STALE, progress, "policy_token_not_current");
-        if (!access.canOwnNavigation()) return result(Status.OWNERSHIP_LOST, progress, "navigation_not_owned");
+        if (!access.isCurrent())
+            return result(Status.STALE, progress, FaithfulNavigationIds.ID_POLICY_TOKEN_NOT_CURRENT);
+        if (!access.canOwnNavigation())
+            return result(Status.OWNERSHIP_LOST, progress, FaithfulNavigationIds.ID_NAVIGATION_NOT_OWNED);
         return null;
     }
 
@@ -172,53 +179,79 @@ public final class DryPlatformFollowTeleport {
 
     private static String checkDomain(EntityMaid maid, EntityLivingBase owner) {
         if (maid.worldObj == null || maid.worldObj.isRemote || maid.worldObj != owner.worldObj)
-            return "server_same_world_required";
+            return FaithfulNavigationIds.ID_SERVER_SAME_WORLD_REQUIRED;
         if (!maid.isEntityAlive() || !owner.isEntityAlive() || maid.isDead || owner.isDead)
-            return "living_participants_required";
+            return FaithfulNavigationIds.ID_LIVING_PARTICIPANTS_REQUIRED;
         if (maid.ridingEntity != null || maid.getLeashed() || maid.isSitting() || maid.hasPose(MaidPose.SLEEPING))
-            return "maid_movement_not_permitted";
+            return FaithfulNavigationIds.ID_MAID_MOVEMENT_NOT_PERMITTED;
         if (!halfGrid(maid.posX) || !halfGrid(maid.posZ)
             || !halfGrid(owner.posX)
             || !halfGrid(owner.posZ)
             || !integerY(maid.posY)
-            || !integerY(owner.posY)) return "half_grid_integer_y_required";
-        if (maid.width != 0.6F || maid.height != 1.5F
+            || !integerY(owner.posY)) return FaithfulNavigationIds.ID_HALF_GRID_INTEGER_Y_REQUIRED;
+        if (maid.width != FaithfulNavigationTuning.TARGET_WIDTH_THRESHOLD
+            || maid.height != FaithfulNavigationTuning.TARGET_HEIGHT_THRESHOLD
             || maid.yOffset != 0
             || maid.ySize != 0
-            || maid.boundingBox.minY != maid.posY) return "original_maid_bbox_required";
+            || maid.boundingBox.minY != maid.posY) return FaithfulNavigationIds.ID_ORIGINAL_MAID_BBOX_REQUIRED;
         int x = MathHelper.floor_double(owner.posX), y = MathHelper.floor_double(owner.posY);
         int z = MathHelper.floor_double(owner.posZ);
-        if (y < 2 || y > 252 || maid.posY < 1 || maid.posY > 253) return "build_height_outside_contract";
+        if (y < FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_PARAM || y > FaithfulNavigationTuning.MAX_Y_THRESHOLD
+            || maid.posY < FaithfulNavigationTuning.MIN_POS_Y_THRESHOLD
+            || maid.posY > FaithfulNavigationTuning.MAX_POS_Y_THRESHOLD)
+            return FaithfulNavigationIds.ID_BUILD_HEIGHT_OUTSIDE_CONTRACT;
         var chunks = maid.worldObj.getChunkProvider();
-        for (int chunkX = (x - DOMAIN_RADIUS) >> 4; chunkX <= (x + DOMAIN_RADIUS) >> 4; chunkX++) {
-            for (int chunkZ = (z - DOMAIN_RADIUS) >> 4; chunkZ <= (z + DOMAIN_RADIUS) >> 4; chunkZ++) {
-                if (!chunks.chunkExists(chunkX, chunkZ)) return "candidate_chunk_unloaded";
+        for (int chunkX = (x - FaithfulNavigationTuning.DOMAIN_RADIUS)
+            >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT; chunkX
+                <= (x + FaithfulNavigationTuning.DOMAIN_RADIUS)
+                    >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT; chunkX++) {
+            for (int chunkZ = (z - FaithfulNavigationTuning.DOMAIN_RADIUS)
+                >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT; chunkZ
+                    <= (z + FaithfulNavigationTuning.DOMAIN_RADIUS)
+                        >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT; chunkZ++) {
+                if (!chunks.chunkExists(chunkX, chunkZ)) return FaithfulNavigationIds.ID_CANDIDATE_CHUNK_UNLOADED;
             }
         }
-        for (int bx = x - DOMAIN_RADIUS; bx <= x + DOMAIN_RADIUS; bx++) {
-            for (int bz = z - DOMAIN_RADIUS; bz <= z + DOMAIN_RADIUS; bz++) {
-                for (int by = y - 2; by <= y + 3; by++) {
+        for (int bx = x - FaithfulNavigationTuning.DOMAIN_RADIUS; bx
+            <= x + FaithfulNavigationTuning.DOMAIN_RADIUS; bx++) {
+            for (int bz = z - FaithfulNavigationTuning.DOMAIN_RADIUS; bz
+                <= z + FaithfulNavigationTuning.DOMAIN_RADIUS; bz++) {
+                for (int by = y - FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_PARAM; by
+                    <= y + FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_X_OFFSET; by++) {
                     Block block = maid.worldObj.getBlock(bx, by, bz);
-                    if (block != Blocks.air && block != Blocks.stone) return "unknown_candidate_or_neighbour_block";
-                    if (by == y - 1 && block != Blocks.stone) return "complete_stone_floor_required";
+                    if (block != Blocks.air && block != Blocks.stone)
+                        return FaithfulNavigationIds.ID_UNKNOWN_CANDIDATE_OR_NEIGHBOUR_BLOCK;
+                    if (by == y - 1 && block != Blocks.stone)
+                        return FaithfulNavigationIds.ID_COMPLETE_STONE_FLOOR_REQUIRED;
                 }
             }
         }
-        var area = AxisAlignedBB.getBoundingBox(x - 4, y - 2, z - 4, x + 5, y + 4, z + 5);
+        var area = AxisAlignedBB.getBoundingBox(
+            x - FaithfulNavigationTuning.CHUNK_SECTION_SHIFT,
+            y - FaithfulNavigationTuning.DRY_PLATFORM_TRY_TELEPORT_PARAM,
+            z - FaithfulNavigationTuning.CHUNK_SECTION_SHIFT,
+            x + FaithfulNavigationTuning.DRY_PLATFORM_AREA,
+            y + FaithfulNavigationTuning.CHUNK_SECTION_SHIFT,
+            z + FaithfulNavigationTuning.DRY_PLATFORM_AREA);
         for (Object entity : maid.worldObj.getEntitiesWithinAABBExcludingEntity(maid, area)) {
-            if (entity != owner) return "other_entity_inside_candidate_domain";
+            if (entity != owner) return FaithfulNavigationIds.ID_OTHER_ENTITY_INSIDE_CANDIDATE_DOMAIN;
         }
         int maidX = MathHelper.floor_double(maid.posX), maidY = MathHelper.floor_double(maid.posY);
         int maidZ = MathHelper.floor_double(maid.posZ);
-        if (!chunks.chunkExists(maidX >> 4, maidZ >> 4)) return "maid_chunk_unloaded";
-        if (maid.worldObj.getBlock(maidX, maidY - 1, maidZ) != Blocks.stone) return "maid_stone_floor_required";
+        if (!chunks.chunkExists(
+            maidX >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT,
+            maidZ >> FaithfulNavigationTuning.CHUNK_SECTION_SHIFT)) return FaithfulNavigationIds.ID_MAID_CHUNK_UNLOADED;
+        if (maid.worldObj.getBlock(maidX, maidY - 1, maidZ) != Blocks.stone)
+            return FaithfulNavigationIds.ID_MAID_STONE_FLOOR_REQUIRED;
         if (maid.worldObj.getBlock(maidX, maidY, maidZ) != Blocks.air
-            || maid.worldObj.getBlock(maidX, maidY + 1, maidZ) != Blocks.air) return "maid_dry_air_required";
+            || maid.worldObj.getBlock(maidX, maidY + 1, maidZ) != Blocks.air)
+            return FaithfulNavigationIds.ID_MAID_DRY_AIR_REQUIRED;
         return null;
     }
 
     private static boolean halfGrid(double value) {
-        return Double.isFinite(value) && Math.abs(value) < WORLD_LIMIT && value == Math.floor(value) + 0.5D;
+        return Double.isFinite(value) && Math.abs(value) < FaithfulNavigationTuning.WORLD_LIMIT
+            && value == Math.floor(value) + FaithfulNavigationTuning.CENTER_OFFSET_D;
     }
 
     private static boolean integerY(double value) {
@@ -229,6 +262,6 @@ public final class DryPlatformFollowTeleport {
 
         private int attempts, rngCalls, collisionQueries, collisionRejections, x, y, z;
         private boolean hasCandidate, moved;
-        private String lastRejection = "no_candidate_accepted";
+        private String lastRejection = FaithfulNavigationIds.ID_NO_CANDIDATE_ACCEPTED;
     }
 }

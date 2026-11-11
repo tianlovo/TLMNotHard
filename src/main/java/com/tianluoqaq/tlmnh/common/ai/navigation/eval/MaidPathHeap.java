@@ -7,7 +7,7 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidPathNode;
 /** 保留现代二叉堆严格比较和相等时右子节点的次序，避免通用队列改变路线 */
 final class MaidPathHeap {
 
-    private MaidPathNode[] entries = new MaidPathNode[128];
+    private MaidPathNode[] entries = new MaidPathNode[NavigationEvalTuning.PATH_HEAP_DOMAIN_PARAM];
     private int size;
 
     boolean empty() {
@@ -15,19 +15,20 @@ final class MaidPathHeap {
     }
 
     void add(MaidPathNode node) {
-        if (node.heapIndex >= 0) throw new IllegalStateException("Node already queued");
-        if (size == entries.length) entries = Arrays.copyOf(entries, size * 2);
+        if (node.heapIndex >= 0) throw new IllegalStateException(NavigationEvalDiagnostics.MSG_NODE_ALREADY_QUEUED);
+        if (size == entries.length)
+            entries = Arrays.copyOf(entries, size * NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_RAW_TYPE_THIRD_PARAM);
         entries[size] = node;
         node.heapIndex = size;
         up(size++);
     }
 
     MaidPathNode pop() {
-        var node = entries[0];
-        entries[0] = entries[--size];
+        var node = entries[NavigationEvalTuning.COST_INITIAL_VALUE];
+        entries[NavigationEvalTuning.COST_INITIAL_VALUE] = entries[--size];
         entries[size] = null;
-        if (size > 0) down(0);
-        node.heapIndex = -1;
+        if (size > 0) down(NavigationEvalTuning.COST_INITIAL_VALUE);
+        node.heapIndex = NavigationEvalTuning.UNSET_OR_NOT_FOUND;
         return node;
     }
 
@@ -41,7 +42,7 @@ final class MaidPathHeap {
     private void up(int index) {
         var node = entries[index];
         while (index > 0) {
-            int parent = (index - 1) >> 1;
+            int parent = (index - 1) >> NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP;
             var previous = entries[parent];
             if (!(node.f < previous.f)) break;
             entries[index] = previous;
@@ -55,7 +56,8 @@ final class MaidPathHeap {
     private void down(int index) {
         var node = entries[index];
         while (true) {
-            int left = 1 + (index << 1), right = left + 1;
+            int left = NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP
+                + (index << NavigationEvalTuning.AMPHIBIOUS_EVALUATOR_BLOCK_TYPE_UNIT_STEP), right = left + 1;
             if (left >= size) break;
             float rightCost = right < size ? entries[right].f : Float.POSITIVE_INFINITY;
             int child = entries[left].f < rightCost ? left : right;

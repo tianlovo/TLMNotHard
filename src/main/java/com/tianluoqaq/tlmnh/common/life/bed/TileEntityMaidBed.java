@@ -29,11 +29,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 /** 只有床头保存临时占用；睡眠动作每 tick 续租 */
 public final class TileEntityMaidBed extends TileEntity {
 
-    static final String PLACEMENT_TAG = "TLMNHBedPlacementPending";
     private NBTBase placementPending;
     private boolean warnedPlacement;
 
-    private static final String DROP_TAG = "TLMNHBedDropQueued";
     private final MaidBedLease lease = new MaidBedLease();
     private EntityMaid occupant;
     private NBTBase savedColor;
@@ -43,7 +41,8 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     @SideOnly(Side.CLIENT)
     public boolean shouldRenderInPass(int pass) {
-        return pass == (getColor() == MaidBedColor.BLUE ? 1 : 0);
+        return pass == (getColor() == MaidBedColor.BLUE ? MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP
+            : MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE);
     }
 
     @Override
@@ -103,12 +102,14 @@ public final class TileEntityMaidBed extends TileEntity {
     }
 
     void stagePlacement(NBTTagCompound marker) {
-        if (placementPending != null || dropQueued()) throw new IllegalStateException("Existing bed state retained");
+        if (placementPending != null || dropQueued())
+            throw new IllegalStateException(MaidBedDiagnostics.MSG_EXISTING_BED_STATE_RETAINED);
         placementPending = marker.copy();
     }
 
     void finishPlacement(NBTTagCompound marker) {
-        if (!marker.equals(placementPending)) throw new IllegalStateException("Bed placement marker changed");
+        if (!marker.equals(placementPending))
+            throw new IllegalStateException(MaidBedDiagnostics.MSG_BED_PLACEMENT_MARKER_CHANGED);
         placementPending = null;
     }
 
@@ -130,7 +131,8 @@ public final class TileEntityMaidBed extends TileEntity {
     }
 
     public void queueItemDrop(ItemStack stack) {
-        if (placementPending()) throw new IllegalStateException("Uncommitted bed cannot transfer an item");
+        if (placementPending())
+            throw new IllegalStateException(MaidBedDiagnostics.MSG_UNCOMMITTED_BED_CANNOT_TRANSFER_AN);
         if (dropQueued()) return;
         if (worldObj == null || worldObj.isRemote
             || worldObj.getTileEntity(xCoord, yCoord, zCoord) != this
@@ -138,12 +140,12 @@ public final class TileEntityMaidBed extends TileEntity {
             || stack == null
             || stack.getItem() != MaidLifeContent.maidBedItem
             || stack.stackSize <= 0)
-            throw new IllegalStateException("Authoritative bed head required for item transfer");
+            throw new IllegalStateException(MaidBedDiagnostics.MSG_AUTHORITATIVE_BED_HEAD_REQUIRED_FOR);
         MaidTileReturns.prepare(this, Collections.singletonList(stack));
         MaidTileReturns.beforeClear(this);
         var planned = MaidShrineTransfer.snapshot(this);
         var token = MaidTileReturns.firstId(this);
-        planned.setString(DROP_TAG, token.toString());
+        planned.setString(MaidBedNbtKeys.DROP_TAG, token.toString());
         queuedDrop = new NBTTagString(token.toString());
         queuedDuringThisLoad = true;
         markDirty();
@@ -154,17 +156,17 @@ public final class TileEntityMaidBed extends TileEntity {
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
         writeColor(tag);
-        if (placementPending == null) tag.removeTag(PLACEMENT_TAG);
-        else tag.setTag(PLACEMENT_TAG, placementPending.copy());
-        if (queuedDrop == null) tag.removeTag(DROP_TAG);
-        else tag.setTag(DROP_TAG, queuedDrop.copy());
+        if (placementPending == null) tag.removeTag(MaidBedNbtKeys.PLACEMENT_TAG);
+        else tag.setTag(MaidBedNbtKeys.PLACEMENT_TAG, placementPending.copy());
+        if (queuedDrop == null) tag.removeTag(MaidBedNbtKeys.DROP_TAG);
+        else tag.setTag(MaidBedNbtKeys.DROP_TAG, queuedDrop.copy());
     }
 
     @Override
     public Packet getDescriptionPacket() {
         var tag = new NBTTagCompound();
         writeColor(tag);
-        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, tag);
+        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE, tag);
     }
 
     @Override
@@ -189,12 +191,13 @@ public final class TileEntityMaidBed extends TileEntity {
             || !(worldObj.getBlock(xCoord, yCoord, zCoord) instanceof BlockMaidBed)) return false;
         int meta = worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
         if (!BlockBed.isBlockHeadOfBed(meta)) return false;
-        int direction = meta & 3;
-        int footX = xCoord - BlockBed.field_149981_a[direction][0];
-        int footZ = zCoord - BlockBed.field_149981_a[direction][1];
+        int direction = meta & MaidBedLayout.LOW_TWO_BITS_MASK;
+        int footX = xCoord - BlockBed.field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_ZERO_BASE];
+        int footZ = zCoord - BlockBed.field_149981_a[direction][MaidBedLayout.BLOCK_BED_DEFAULT_UNIT_STEP];
         return worldObj.blockExists(footX, yCoord, footZ)
             && worldObj.getBlock(footX, yCoord, footZ) == worldObj.getBlock(xCoord, yCoord, zCoord)
-            && (worldObj.getBlockMetadata(footX, yCoord, footZ) & 11) == direction;
+            && (worldObj.getBlockMetadata(footX, yCoord, footZ) & MaidBedLayout.BED_COLOR_BLUE_FIRST_PARAM)
+                == direction;
     }
 
     public boolean claim(EntityMaid maid) {
@@ -231,8 +234,10 @@ public final class TileEntityMaidBed extends TileEntity {
             || !worldObj.blockExists(xCoord, yCoord, zCoord)
             || !(worldObj.getBlock(xCoord, yCoord, zCoord) instanceof BlockMaidBed)) return;
         int old = worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
-        int next = occupied ? old | 4 : old & ~4;
-        if (old != next) worldObj.setBlockMetadataWithNotify(xCoord, yCoord, zCoord, next, 2);
+        int next = occupied ? old | MaidBedLayout.BED_COLOR_YELLOW_FIRST_PARAM
+            : old & ~MaidBedLayout.BED_COLOR_YELLOW_FIRST_PARAM;
+        if (old != next) worldObj
+            .setBlockMetadataWithNotify(xCoord, yCoord, zCoord, next, MaidBedLayout.BLOCK_BED_SET_BLOCK_SIXTH_PARAM);
     }
 
     @Override
@@ -253,11 +258,11 @@ public final class TileEntityMaidBed extends TileEntity {
             } else if (!warnedQueuedDrop) {
                 warnedQueuedDrop = true;
                 ModContext.LOG.warn(
-                    "Reloaded bed item transfer state retained at {},{},{}",
+                    MaidBedDiagnostics.MSG_RELOADED_BED_ITEM_TRANSFER_STATE,
                     xCoord,
                     yCoord,
                     zCoord,
-                    new IllegalStateException("Bed item ownership needs review; no automatic reissue"));
+                    new IllegalStateException(MaidBedDiagnostics.MSG_BED_ITEM_OWNERSHIP_NEEDS_REVIEW));
             }
             return;
         }
@@ -279,10 +284,10 @@ public final class TileEntityMaidBed extends TileEntity {
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
         savedColor = MaidBedColorData.read(tag);
-        placementPending = tag.hasKey(PLACEMENT_TAG) ? tag.getTag(PLACEMENT_TAG)
+        placementPending = tag.hasKey(MaidBedNbtKeys.PLACEMENT_TAG) ? tag.getTag(MaidBedNbtKeys.PLACEMENT_TAG)
             .copy() : null;
         warnedPlacement = false;
-        queuedDrop = tag.hasKey(DROP_TAG) ? tag.getTag(DROP_TAG)
+        queuedDrop = tag.hasKey(MaidBedNbtKeys.DROP_TAG) ? tag.getTag(MaidBedNbtKeys.DROP_TAG)
             .copy() : null;
         queuedDuringThisLoad = warnedQueuedDrop = false;
         lease.clear();
@@ -307,6 +312,7 @@ public final class TileEntityMaidBed extends TileEntity {
     @Override
     public boolean shouldRefresh(Block oldBlock, Block newBlock, int oldMeta, int newMeta, World world, int x, int y,
         int z) {
-        return oldBlock != newBlock || (oldMeta & 8) != (newMeta & 8);
+        return oldBlock != newBlock || (oldMeta & MaidBedLayout.BED_PLACEMENT_SET_BLOCK_FIFTH_PARAM)
+            != (newMeta & MaidBedLayout.BED_PLACEMENT_SET_BLOCK_FIFTH_PARAM);
     }
 }

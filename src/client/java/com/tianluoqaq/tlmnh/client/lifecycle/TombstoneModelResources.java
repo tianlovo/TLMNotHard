@@ -16,8 +16,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class TombstoneModelResources implements IResourceManagerReloadListener {
 
-    private static final ResourceLocation MODEL = new ResourceLocation(
-        ClientTombstoneIds.MODEL_JSON_TOMBSTONE);
+    private static final ResourceLocation MODEL = new ResourceLocation(ClientTombstoneIds.MODEL_JSON_TOMBSTONE);
     private IResourceManager manager;
     private SimpleBedrockModel<MaidTombstoneEntity> model;
 
@@ -29,7 +28,8 @@ public final class TombstoneModelResources implements IResourceManagerReloadList
 
     public SimpleBedrockModel<MaidTombstoneEntity> get() throws IOException {
         if (model == null) {
-            if (manager == null) throw new IOException(ClientTombstoneDiagnostics.MSG_TOMBSTONE_RESOURCES_HAVE_NOT_BEEN);
+            if (manager == null)
+                throw new IOException(ClientTombstoneDiagnostics.MSG_TOMBSTONE_RESOURCES_HAVE_NOT_BEEN);
             try (var stream = manager.getResource(MODEL)
                 .getInputStream()) {
                 model = new SimpleBedrockModel<>(stream);

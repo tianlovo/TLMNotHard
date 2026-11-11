@@ -10,7 +10,7 @@ import net.minecraft.util.ChatComponentTranslation;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SetAttackListMessage;
-import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -33,9 +33,17 @@ public final class MaidTaskConfigNetwork {
 
     public static void init() {
         if (channel != null) return;
-        channel = NetworkRegistry.INSTANCE.newSimpleChannel("tlmnh_task1");
-        channel.registerMessage(EditHandler.class, SetAttackListMessage.class, 0, Side.SERVER);
-        channel.registerMessage(SnapshotHandler.class, MaidAttackSnapshot.class, 1, Side.CLIENT);
+        channel = NetworkRegistry.INSTANCE.newSimpleChannel(MaidNetworkProtocol.ID_TLMNH_TASK1);
+        channel.registerMessage(
+            EditHandler.class,
+            SetAttackListMessage.class,
+            MaidNetworkProtocol.GET_INITIAL_VALUE,
+            Side.SERVER);
+        channel.registerMessage(
+            SnapshotHandler.class,
+            MaidAttackSnapshot.class,
+            MaidNetworkProtocol.MIN_LENGTH_THRESHOLD,
+            Side.CLIENT);
         FMLCommonHandler.instance()
             .bus()
             .register(new MaidTaskConfigNetwork());
@@ -63,11 +71,11 @@ public final class MaidTaskConfigNetwork {
     }
 
     public static boolean navigates(int action) {
-        return action >= ContainerMaid.ACTION_IDLE && action <= ContainerMaid.ACTION_RANGED
-            || action == ContainerMaid.ACTION_ORIGINAL_MAIN
-            || action == ContainerMaid.ACTION_CONFIG
-            || action == ContainerMaid.ACTION_MODELS
-            || action == ContainerMaid.ACTION_SOUNDS;
+        return action >= MaidContainerProtocol.ACTION_IDLE && action <= MaidContainerProtocol.ACTION_RANGED
+            || action == MaidContainerProtocol.ACTION_ORIGINAL_MAIN
+            || action == MaidContainerProtocol.ACTION_CONFIG
+            || action == MaidContainerProtocol.ACTION_MODELS
+            || action == MaidContainerProtocol.ACTION_SOUNDS;
     }
 
     /** 主线程入口，与开发夹具共用真实会话和提交条件 */
@@ -77,11 +85,13 @@ public final class MaidTaskConfigNetwork {
         TaskConfigContainer menu = player.openContainer instanceof TaskConfigContainer current
             && payload.matchesIdentity(current) ? current : CLOSED.get(player.playerNetServerHandler);
         int action = message.nextAction();
-        boolean accepted = menu != null && (action == -1 || navigates(action) && player.openContainer == menu)
+        boolean accepted = menu != null
+            && (action == MaidNetworkProtocol.UNSET_OR_NOT_FOUND || navigates(action) && player.openContainer == menu)
             && menu.submit(player, payload);
-        if (accepted && action != -1) menu.enchantItem(player, action);
+        if (accepted && action != MaidNetworkProtocol.UNSET_OR_NOT_FOUND) menu.enchantItem(player, action);
         if (accepted) CLOSED.remove(player.playerNetServerHandler, menu);
-        else player.addChatMessage(new ChatComponentTranslation("message.tlmnh.attack_config.denied"));
+        else player
+            .addChatMessage(new ChatComponentTranslation(MaidNetworkProtocol.I18N_MESSAGE_TLMNH_ATTACK_CONFIG_DENIED));
         return accepted;
     }
 
@@ -94,7 +104,7 @@ public final class MaidTaskConfigNetwork {
             if (PENDING.remove(handler, entry.getValue()) && handler.netManager.isChannelOpen()
                 && handler.playerEntity.playerNetServerHandler == handler)
                 apply(handler.playerEntity, entry.getValue());
-            if (++processed >= 128) break;
+            if (++processed >= MaidNetworkProtocol.MAX_PROCESSED_THRESHOLD) break;
         }
         CLOSED.entrySet()
             .removeIf(

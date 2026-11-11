@@ -22,13 +22,17 @@ public final class MaidEffectNetwork {
 
     public static void init() {
         if (channel != null) return;
-        channel = NetworkRegistry.INSTANCE.newSimpleChannel("tlmnh_effect1");
-        channel.registerMessage(Handler.class, SendEffectMessage.class, 0, Side.CLIENT);
+        channel = NetworkRegistry.INSTANCE.newSimpleChannel(MaidNetworkProtocol.ID_TLMNH_EFFECT1);
+        channel.registerMessage(
+            Handler.class,
+            SendEffectMessage.class,
+            MaidNetworkProtocol.GET_INITIAL_VALUE,
+            Side.CLIENT);
     }
 
     public static void send(AbstractMaidContainer menu, EntityPlayerMP viewer) {
         if (channel == null || viewer.openContainer != menu) return;
-        String key = "network/maid_effects/" + menu.getMaid()
+        String key = MaidNetworkProtocol.ID_NETWORK_MAID_EFFECTS + menu.getMaid()
             .getUniqueID();
         if (!IntegrationGuard.available(Side.SERVER, key)) return;
         try {

@@ -108,14 +108,10 @@ public final class IntegrationGuard {
         var faults = faultMap(side);
         var existing = faults.get(key);
         if (existing != null) return existing;
-        var fault = new Fault(side, key, String.format("TLMNH-P%06d", ++sequence), failure, owner);
+        var fault = new Fault(side, key, String.format(ProtectionIds.KEY_TLMNH_P_06D, ++sequence), failure, owner);
         faults.put(key, fault);
-        ModContext.LOG.error(
-            "{}: {} protected fallback for {}; original owned data must remain intact",
-            fault.code,
-            side,
-            key,
-            failure);
+        ModContext.LOG
+            .error(ProtectionDiagnostics.MSG_PROTECTED_FALLBACK_FOR_ORIGINAL_OWNED, fault.code, side, key, failure);
         return fault;
     }
 

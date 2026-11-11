@@ -22,7 +22,6 @@ import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetrySink.Acceptance;
 /** 默认关闭的单实体记录入口；采集失败只使记录无效，不能改变游戏动作的返回结果 */
 public final class MaidTelemetryChannel {
 
-    private static final int PROJECTILE_LIMIT = 256;
     private final EntityMaid maid;
     private final Set<UUID> projectiles = new HashSet<>();
     private final ArrayDeque<UUID> projectileOrder = new ArrayDeque<>();
@@ -38,8 +37,8 @@ public final class MaidTelemetryChannel {
 
     public void start(String sessionId, int eventCapacity, int candidateCapacity) {
         if (isEnabled() || maid.worldObj.isRemote)
-            throw new IllegalStateException("Server recording is already active or unavailable");
-        if (epoch == Long.MAX_VALUE) throw new IllegalStateException("Recording epoch exhausted");
+            throw new IllegalStateException(AiBudgetDiagnostics.MSG_SERVER_RECORDING_IS_ALREADY_ACTIVE);
+        if (epoch == Long.MAX_VALUE) throw new IllegalStateException(AiBudgetDiagnostics.MSG_RECORDING_EPOCH_EXHAUSTED);
         recordingWorld = maid.worldObj;
         recordingMaid = maid.getUniqueID();
         ledger = new MaidTelemetryLedger(
@@ -49,7 +48,7 @@ public final class MaidTelemetryChannel {
             recordingWorld.getTotalWorldTime(),
             eventCapacity,
             candidateCapacity);
-        sequence = projectileBindingsDropped = 0;
+        sequence = projectileBindingsDropped = AiBudgetTuning.NAVIGATION_BUDGET_USED;
         fault = null;
         projectiles.clear();
         projectileOrder.clear();
@@ -72,7 +71,7 @@ public final class MaidTelemetryChannel {
     }
 
     public MaidTelemetryLedger.Snapshot snapshot() {
-        if (ledger == null) throw new IllegalStateException("No recording session");
+        if (ledger == null) throw new IllegalStateException(AiBudgetDiagnostics.MSG_NO_RECORDING_SESSION);
         return ledger.snapshot();
     }
 
@@ -122,8 +121,15 @@ public final class MaidTelemetryChannel {
     public void releaseAttempt(Entity target) {
         if (!isEnabled()) return;
         emit(
-            s -> MaidTelemetryEvent
-                .release(s.epoch, s.sequence, s.tick, false, "bow", "", id(target), "release_requested"));
+            s -> MaidTelemetryEvent.release(
+                s.epoch,
+                s.sequence,
+                s.tick,
+                false,
+                AiBudgetIds.ID_BOW,
+                "",
+                id(target),
+                AiBudgetIds.ID_RELEASE_REQUESTED));
     }
 
     public void releaseConfirmed(EntityArrow arrow, Entity target) {
@@ -131,7 +137,7 @@ public final class MaidTelemetryChannel {
         UUID identifier = arrow.getUniqueID();
         if (projectiles.add(identifier)) {
             projectileOrder.addLast(identifier);
-            if (projectileOrder.size() > PROJECTILE_LIMIT) {
+            if (projectileOrder.size() > AiBudgetTuning.PROJECTILE_LIMIT) {
                 projectiles.remove(projectileOrder.removeFirst());
                 projectileBindingsDropped++;
             }
@@ -142,10 +148,10 @@ public final class MaidTelemetryChannel {
                 s.sequence,
                 s.tick,
                 true,
-                "bow",
+                AiBudgetIds.ID_BOW,
                 id(arrow),
                 id(target),
-                "spawn_rechecked_resources_committed"));
+                AiBudgetIds.ID_SPAWN_RECHECKED_RESOURCES_COMMITTED));
     }
 
     public void provisional(String action, String source, Entity target, String detail, double amount) {
@@ -192,17 +198,17 @@ public final class MaidTelemetryChannel {
         try {
             if (maid.worldObj != recordingWorld || !maid.getUniqueID()
                 .equals(recordingMaid)) {
-                invalidate("recording_world_or_entity_identity_changed");
+                invalidate(AiBudgetIds.ID_RECORDING_WORLD_OR_ENTITY_IDENTITY_CHANGED);
                 return;
             }
             var stamp = new Stamp(epoch, Math.incrementExact(sequence), recordingWorld.getTotalWorldTime());
             sequence = stamp.sequence;
             var acceptance = ledger.record(factory.apply(stamp));
             if (acceptance != Acceptance.ACCEPTED && acceptance != Acceptance.ACCEPTED_DETAIL_DROPPED)
-                invalidate("telemetry_rejected:" + acceptance);
+                invalidate(AiBudgetIds.ID_TELEMETRY_REJECTED + acceptance);
         } catch (RuntimeException | LinkageError failure) {
             invalidate(
-                "telemetry_failure:" + failure.getClass()
+                AiBudgetIds.ID_TELEMETRY_FAILURE + failure.getClass()
                     .getSimpleName());
         }
     }

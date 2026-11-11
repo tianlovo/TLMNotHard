@@ -8,7 +8,6 @@ public final class BackhandCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.BACKHAND;
 
-
     public static final BackhandCompat INSTANCE = new BackhandCompat();
 
     private BackhandCompat() {}

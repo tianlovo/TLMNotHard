@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact;
@@ -23,10 +24,10 @@ final class CombatReobservation {
     final int targetEntityId;
     final Vec lastSeen;
     CombatTerrain.Route route, proof;
-    int cursor = 1;
+    int cursor = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
     long firstAccepted = Long.MIN_VALUE, retryAt;
     CombatPlan.StageState state = CombatPlan.StageState.PROPOSED;
-    String reason = "NOT_INSTALLED", threats;
+    String reason = CombatPlanIds.KEY_NOT_INSTALLED, threats;
     CombatObservedRisk comparison;
     int graphVisited, graphWork;
     CombatPassiveDoorExitProof passiveExitProof;
@@ -53,12 +54,18 @@ final class CombatReobservation {
             && entityEpoch == s.entityEpoch
             && observationEpoch == s.observationEpoch
             && lastSeenAt == t.observedAt
-            && lastSeen.distance(t.position) < .0001;
+            && lastSeen.distance(t.position) < CombatPlanTuning.COMBAT_PLANNER_EQUIVALENT_FACTOR;
     }
 
     CombatMovementFact.Node node(CombatSnapshot s) {
         return route == null ? null
-            : new CombatMovementFact.Node(id * 2, cursor, s, target, targetEntityId, route.next(cursor));
+            : new CombatMovementFact.Node(
+                id * CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+                cursor,
+                s,
+                target,
+                targetEntityId,
+                route.next(cursor));
     }
 
     void synchronize(CombatSnapshot s) {
@@ -69,7 +76,7 @@ final class CombatReobservation {
                 passiveExitProof = null;
                 if (firstAccepted == Long.MIN_VALUE) firstAccepted = f.tick;
                 cursor++;
-                reason = "REOBSERVATION_NATIVE_NODE_COMPLETE";
+                reason = CombatPlanIds.KEY_REOBSERVATION_NATIVE_NODE_COMPLETE;
                 state = cursor >= route.nodes.size() ? CombatPlan.StageState.COMPLETE : CombatPlan.StageState.ACTIVE;
             } else if (f.outcome == CombatMovementFact.Outcome.INSTALLED && f.pathIdentity > 0 && f.inArea) {
                 if (firstAccepted == Long.MIN_VALUE) firstAccepted = f.tick;
@@ -82,7 +89,7 @@ final class CombatReobservation {
                 && state != CombatPlan.StageState.NATIVE_FAILURE) {
                     state = CombatPlan.StageState.WAIT_SERVICE;
                     reason = f.reason;
-                    if (f.reason != null && f.reason.startsWith("REOBSERVATION_")) {
+                    if (f.reason != null && f.reason.startsWith(CombatPlanIds.KEY_REOBSERVATION)) {
                         proof = null;
                         comparison = null;
                     }
@@ -90,7 +97,7 @@ final class CombatReobservation {
         }
         if (state == CombatPlan.StageState.NATIVE_FAILURE && s.tick >= retryAt) {
             state = CombatPlan.StageState.PROPOSED;
-            reason = "ORIGINAL_BACKOFF_ELAPSED";
+            reason = CombatPlanIds.KEY_ORIGINAL_BACKOFF_ELAPSED;
         }
     }
 
@@ -102,34 +109,42 @@ final class CombatReobservation {
     }
 
     CombatPlan decide(CombatSnapshot s, CombatWorkQuota q, long decision) {
-        graphVisited = graphWork = 0;
+        graphVisited = graphWork = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         Target t = s.target(s.selectedTarget);
         if (!matches(s, t)) return null;
         synchronize(s);
         if (route != null && cursor >= route.nodes.size() && !q.full) {
-            reason = "LOCAL_BODY_ROUTE_COMPLETE_WAIT_FULL";
+            reason = CombatPlanIds.KEY_LOCAL_BODY_ROUTE_COMPLETE_WAIT_FULL;
             return null;
         }
         if (!s.bodyComplete || !s.self.grounded
             || s.self.stationary
             || s.self.recentlyHurt
             || state == CombatPlan.StageState.NATIVE_FAILURE) {
-            waitService("BODY_OR_BACKOFF_UNREADY");
+            waitService(CombatPlanIds.KEY_BODY_OR_BACKOFF_UNREADY);
             return null;
         }
-        CombatSnapshot.Weapon hand = s.weapon(-1);
+        CombatSnapshot.Weapon hand = s.weapon(CombatPlanTuning.UNSET_OR_NOT_FOUND);
         if (hand == null) return null;
         ThreatEstimator.ProjectileOcclusion occlusion = ThreatEstimator.occlusion(s, q);
         ThreatEstimator.Risk immediate = new ThreatEstimator.Risk(true);
-        double immediateDamage = ThreatEstimator
-            .damage(s, s.self.position, s.self.position, 2, 0, false, q, occlusion, immediate);
+        double immediateDamage = ThreatEstimator.damage(
+            s,
+            s.self.position,
+            s.self.position,
+            CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+            false,
+            q,
+            occlusion,
+            immediate);
         if (!Double.isFinite(immediateDamage) || !immediate.known || immediate.acute) {
-            waitService("IMMEDIATE_OBSERVATION_UNREADY_OR_ACUTE");
+            waitService(CombatPlanIds.KEY_IMMEDIATE_OBSERVATION_UNREADY_OR_ACUTE);
             return null;
         }
         String currentThreats = threats(s, q);
         if (currentThreats == null) {
-            waitService("THREAT_IDENTITY_OR_SERVICE_UNREADY");
+            waitService(CombatPlanIds.KEY_THREAT_IDENTITY_OR_SERVICE_UNREADY);
             return null;
         }
         if (q.full) {
@@ -141,16 +156,16 @@ final class CombatReobservation {
             if (route == null || cursor >= route.nodes.size()) {
                 terrain = CombatTerrain.findBody(s, t, q);
                 if (terrain.approach == null) {
-                    waitService("NO_CLOSER_ORDINARY_BODY_ROUTE");
+                    waitService(CombatPlanIds.KEY_NO_CLOSER_ORDINARY_BODY_ROUTE);
                     return null;
                 }
                 route = terrain.approach;
-                cursor = 1;
+                cursor = CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE;
                 state = CombatPlan.StageState.PROPOSED;
             }
             proof = reprove(s, route, cursor, q);
             if (proof == null) {
-                waitService("BODY_FORWARD_OR_RETURN_UNPROVED");
+                waitService(CombatPlanIds.KEY_BODY_FORWARD_OR_RETURN_UNPROVED);
                 return null;
             }
             if (terrain == null) terrain = CombatTerrain.findBody(s, t, q);
@@ -161,15 +176,19 @@ final class CombatReobservation {
             CombatObservedRisk waiting = assess(s, null, q, occlusion);
             CombatObservedRisk defense = null;
             if (terrain.retreat != null) {
-                CombatTerrain.Route retreat = reprove(s, terrain.retreat, 1, q);
+                CombatTerrain.Route retreat = reprove(
+                    s,
+                    terrain.retreat,
+                    CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
+                    q);
                 if (retreat == null) {
-                    waitService("DEFENSE_BODY_COMPARISON_UNPROVED");
+                    waitService(CombatPlanIds.KEY_DEFENSE_BODY_COMPARISON_UNPROVED);
                     return null;
                 }
                 defense = assess(s, retreat, q, occlusion);
             }
             if (!moving.reserves(s) || !moving.nonWorse(waiting) || defense != null && !moving.nonWorse(defense)) {
-                waitService("OBSERVED_COMPARISON_OR_RESERVES_REJECTED");
+                waitService(CombatPlanIds.KEY_OBSERVED_COMPARISON_OR_RESERVES_REJECTED);
                 return null;
             }
             comparison = moving;
@@ -178,7 +197,7 @@ final class CombatReobservation {
             || proof == null
             || !proof.fresh(s.tick)
             || !Objects.equals(threats, currentThreats)) {
-                waitService("COMPARISON_STALE_OR_THREAT_CHANGED");
+                waitService(CombatPlanIds.KEY_COMPARISON_STALE_OR_THREAT_CHANGED);
                 return null;
             }
         var node = node(s);
@@ -189,7 +208,7 @@ final class CombatReobservation {
                 : passiveExitProof;
             if (candidate == null || candidate.movement(s.self.position, null, s.tick, q) == null) {
                 passiveExitProof = null;
-                waitService("CURRENT_PASSIVE_EXIT_UNPROVED");
+                waitService(CombatPlanIds.KEY_CURRENT_PASSIVE_EXIT_UNPROVED);
                 return null;
             }
             passiveExitProof = candidate;
@@ -197,16 +216,16 @@ final class CombatReobservation {
         } else {
             if (!CombatTerrain.bodyStep(s, s.self.position, route.next(cursor), q)
                 || !CombatTerrain.bodyStep(s, route.next(cursor), s.self.position, q)) {
-                waitService("CURRENT_ORDINARY_SEGMENT_UNPROVED");
+                waitService(CombatPlanIds.KEY_CURRENT_ORDINARY_SEGMENT_UNPROVED);
                 return null;
             }
             segment = new CombatMovementSegment(node, s.self.position, proof.provedAt);
         }
         if (!segment.ordinaryAdjacent()) {
-            waitService("CURRENT_BODY_NODE_NOT_ADJACENT");
+            waitService(CombatPlanIds.KEY_CURRENT_BODY_NODE_NOT_ADJACENT);
             return null;
         }
-        reason = "OBSERVED_ONLY_TOTAL_UNKNOWN";
+        reason = CombatPlanIds.KEY_OBSERVED_ONLY_TOTAL_UNKNOWN;
         return new CombatPlan(
             decision,
             s,
@@ -215,9 +234,9 @@ final class CombatReobservation {
             CombatPlan.Macro.APPROACH,
             route.destination,
             lastSeen,
-            "bounded_reobservation",
+            CombatPlanIds.ID_BOUNDED_REOBSERVATION,
             -Double.MAX_VALUE,
-            0,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
             Double.NaN,
             false,
             q,
@@ -249,13 +268,15 @@ final class CombatReobservation {
 
     static CombatObservedRisk assess(CombatSnapshot s, CombatTerrain.Route route, CombatWorkQuota q,
         ThreatEstimator.ProjectileOcclusion occlusion) {
-        double[] self = new double[CombatWorkQuota.HYPOTHESES], owner = new double[self.length];
-        double single = 0, ownerSingle = 0, hidden = 0;
+        double[] self = new double[CombatBudgetTuning.HYPOTHESES], owner = new double[self.length];
+        double single = 0, ownerSingle = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+            hidden = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         boolean complete = q.spend(Work.CANDIDATE), acute = false;
         for (int h = 0; h < self.length && complete; h++) {
             Vec p = s.self.position;
             var risk = new ThreatEstimator.Risk(true);
-            for (int elapsed = 2; elapsed <= CombatWorkQuota.HORIZON; elapsed += CombatWorkQuota.STEP) {
+            for (int elapsed = CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM; elapsed
+                <= CombatBudgetTuning.HORIZON; elapsed += CombatBudgetTuning.STEP) {
                 if (!q.spend(Work.ADVANCE)) {
                     complete = false;
                     break;
@@ -294,7 +315,8 @@ final class CombatReobservation {
                 .append(';');
         }
         for (CombatSnapshot.Projectile p : s.projectiles) {
-            if (!quota.spend(Work.COLLISION) || p.observedAt > s.tick || s.tick - p.observedAt > 2) return null;
+            if (!quota.spend(Work.COLLISION) || p.observedAt > s.tick
+                || s.tick - p.observedAt > CombatPlanTuning.COMBAT_PLANNER_DAMAGE_FOURTH_PARAM) return null;
             key.append(p.id)
                 .append('/')
                 .append(p.damageSource)

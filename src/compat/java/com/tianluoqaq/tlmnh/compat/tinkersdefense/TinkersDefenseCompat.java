@@ -12,7 +12,6 @@ public final class TinkersDefenseCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.TINKERS_DEFENSE;
 
-
     public static final TinkersDefenseCompat INSTANCE = new TinkersDefenseCompat();
 
     private TinkersDefenseCompat() {}

@@ -26,7 +26,8 @@ public final class MaidSensingSession {
     }
 
     public boolean acquire(Kind kind) {
-        if (!current.getAsBoolean()) throw new IllegalStateException("Expired sensing session");
+        if (!current.getAsBoolean())
+            throw new IllegalStateException(PerceptionBudgetDiagnostics.MSG_EXPIRED_SENSING_SESSION);
         return budget.acquire(requests.get(kind), world.getTotalWorldTime());
     }
 

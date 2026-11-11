@@ -57,19 +57,20 @@ public final class MaidTelemetryEvent {
 
     private MaidTelemetryEvent(long epoch, long sequence, long tick, Kind kind, String action, String source,
         String target, String detail, Payload payload) {
-        if (epoch < 0 || sequence < 0 || tick < 0) throw new IllegalArgumentException("Negative telemetry stamp");
+        if (epoch < 0 || sequence < 0 || tick < 0)
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_NEGATIVE_TELEMETRY_STAMP);
         this.epoch = epoch;
         this.sequence = sequence;
         worldTick = tick;
-        this.kind = Objects.requireNonNull(kind, "kind");
+        this.kind = Objects.requireNonNull(kind, AiTelemetryIds.ID_KIND);
         actionId = identifier(action);
         sourceId = identifier(source);
         targetId = identifier(target);
         var description = detail == null ? "" : detail;
-        detailTruncated = description.length() > 512;
-        int end = Math.min(description.length(), 512);
+        detailTruncated = description.length() > AiTelemetryTuning.MAX_LENGTH_THRESHOLD;
+        int end = Math.min(description.length(), AiTelemetryTuning.MAX_LENGTH_THRESHOLD);
         if (end < description.length() && end > 0 && Character.isHighSurrogate(description.charAt(end - 1))) end--;
-        this.detail = description.substring(0, end);
+        this.detail = description.substring(AiTelemetryTuning.SUBSTRING_START_OFFSET, end);
         navigation = payload instanceof Navigation value ? value : null;
         candidateScan = payload instanceof CandidateScan value ? value : null;
         candidate = payload instanceof Candidate value ? value : null;
@@ -89,9 +90,9 @@ public final class MaidTelemetryEvent {
     public static MaidTelemetryEvent navigation(long epoch, long sequence, long tick, Kind phase, String action,
         String target, String outcome, long durationNanos) {
         if (phase != Kind.NAV_SUBMITTED && phase != Kind.NAV_RETURNED && phase != Kind.NAV_PROCESSED)
-            throw new IllegalArgumentException("Not a navigation phase");
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_NOT_NAVIGATION_PHASE);
         if (durationNanos < 0 || phase != Kind.NAV_RETURNED && durationNanos != 0)
-            throw new IllegalArgumentException("Navigation duration belongs to RETURNED only");
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_NAVIGATION_DURATION_BELONGS_TO_RETURNED);
         return new MaidTelemetryEvent(
             epoch,
             sequence,
@@ -107,7 +108,7 @@ public final class MaidTelemetryEvent {
     public static MaidTelemetryEvent candidateScan(long epoch, long sequence, long tick, String action, String detail,
         int returned, int processed) {
         if (returned < 0 || processed < 0 || processed > returned)
-            throw new IllegalArgumentException("Invalid scan counts");
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_INVALID_SCAN_COUNTS);
         return new MaidTelemetryEvent(
             epoch,
             sequence,
@@ -171,7 +172,7 @@ public final class MaidTelemetryEvent {
     public static MaidTelemetryEvent damage(long epoch, long sequence, long tick, String action, String sourceId,
         String target, String detail, EvidenceGrade grade, double healthBefore, double healthAfter,
         boolean absorptionKnown, double absorptionBefore, double absorptionAfter) {
-        Objects.requireNonNull(grade, "grade");
+        Objects.requireNonNull(grade, AiTelemetryIds.ID_GRADE);
         finite(healthBefore);
         finite(healthAfter);
         finite(healthAfter - healthBefore);
@@ -211,11 +212,11 @@ public final class MaidTelemetryEvent {
 
     public static MaidTelemetryEvent terminal(long epoch, long sequence, long tick, String actionId, String target,
         String detail, TerminalOutcome outcome, boolean effectConfirmed) {
-        Objects.requireNonNull(outcome, "outcome");
+        Objects.requireNonNull(outcome, AiTelemetryIds.ID_OUTCOME);
         if (identifier(actionId).trim()
-            .isEmpty()) throw new IllegalArgumentException("Terminal action ID required");
-        if (outcome == TerminalOutcome.COMPLETED && !effectConfirmed)
-            throw new IllegalArgumentException("Completion needs explicit effect confirmation");
+            .isEmpty()) throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_TERMINAL_ACTION_ID_REQUIRED);
+        if (outcome == TerminalOutcome.COMPLETED && !effectConfirmed) throw new IllegalArgumentException(
+            AiTelemetryDiagnostics.MSG_COMPLETION_NEEDS_EXPLICIT_EFFECT_CONFIRMATION);
         return new MaidTelemetryEvent(
             epoch,
             sequence,
@@ -231,7 +232,7 @@ public final class MaidTelemetryEvent {
     /** BRAIN 包含其他组件耗时；统计总 AI 耗时时需独立采样以避免重复累加 */
     public static MaidTelemetryEvent work(long epoch, long sequence, long tick, String action, WorkComponent component,
         long durationNanos) {
-        if (durationNanos < 0) throw new IllegalArgumentException("Negative work duration");
+        if (durationNanos < 0) throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_NEGATIVE_WORK_DURATION);
         return new MaidTelemetryEvent(
             epoch,
             sequence,
@@ -241,17 +242,19 @@ public final class MaidTelemetryEvent {
             "",
             "",
             "",
-            new WorkSample(Objects.requireNonNull(component, "component"), durationNanos));
+            new WorkSample(Objects.requireNonNull(component, AiTelemetryIds.ID_COMPONENT), durationNanos));
     }
 
     static String identifier(String value) {
         var text = value == null ? "" : value;
-        if (text.length() > 160) throw new IllegalArgumentException("Telemetry identifier exceeds 160 characters");
+        if (text.length() > AiTelemetryTuning.MAX_LENGTH_THRESHOLD_2)
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_TELEMETRY_IDENTIFIER_EXCEEDS_160_CHARACTERS);
         return text;
     }
 
     private static void finite(double value) {
-        if (!Double.isFinite(value)) throw new IllegalArgumentException("Non-finite telemetry value");
+        if (!Double.isFinite(value))
+            throw new IllegalArgumentException(AiTelemetryDiagnostics.MSG_NON_FINITE_TELEMETRY_VALUE);
     }
 
     private interface Payload {

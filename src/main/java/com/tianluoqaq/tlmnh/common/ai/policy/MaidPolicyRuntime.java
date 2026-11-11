@@ -66,7 +66,7 @@ public final class MaidPolicyRuntime {
         }
 
         default void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
-            throw new IllegalStateException("Ordinary intent execution is not installed");
+            throw new IllegalStateException(AiPolicyDiagnostics.MSG_ORDINARY_INTENT_EXECUTION_IS_NOT);
         }
 
         /** 取消各动作持有的资源；一项失败时仍应尝试其余清理，再汇总异常 */
@@ -124,7 +124,7 @@ public final class MaidPolicyRuntime {
 
     public MaidPolicyRuntime(UUID maidId, LegacyActions actions, AfterNavigationActions afterNavigation) {
         context = new MaidPolicyContext(maidId);
-        this.actions = Objects.requireNonNull(actions, "actions");
+        this.actions = Objects.requireNonNull(actions, AiPolicyIds.ID_ACTIONS);
         this.afterNavigation = afterNavigation;
     }
 
@@ -143,7 +143,7 @@ public final class MaidPolicyRuntime {
 
     private TickResult tick(boolean afterNativeNavigation, boolean afterLiving, BooleanSupplier lifePermission) {
         if (retired) return TickResult.RETIRED;
-        Objects.requireNonNull(lifePermission, "lifePermission");
+        Objects.requireNonNull(lifePermission, AiPolicyIds.ID_LIFEPERMISSION);
         if (dispatching || changing) {
             refuseReentry();
             return retired ? TickResult.RETIRED : TickResult.REFUSED_REENTRANT;
@@ -200,7 +200,7 @@ public final class MaidPolicyRuntime {
     /** 不可用模式停止执行并明确报告，不回落到旧原型 */
     public SelectionResult select(MaidBrainProfile requested) {
         if (retired) return SelectionResult.RETIRED;
-        Objects.requireNonNull(requested, "requested");
+        Objects.requireNonNull(requested, AiPolicyIds.ID_REQUESTED);
         if (dispatching || changing) {
             refuseReentry();
             return retired ? SelectionResult.RETIRED : SelectionResult.REFUSED_REENTRANT;
@@ -219,7 +219,7 @@ public final class MaidPolicyRuntime {
     /** 生命周期失效先取消旧 token；根协调器的状态决定下一自然 tick 是否允许动作 */
     public void invalidate(InvalidationReason reason) {
         if (retired) return;
-        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(reason, AiPolicyIds.ID_REASON);
         if (cancelAndInvalidate(reason) && !retired) {
             faulted = false;
             context.setActive(hasImplementation(profile));
@@ -229,7 +229,7 @@ public final class MaidPolicyRuntime {
     /** 身份替换或卸载时销毁旧外壳，使持有的历史引用失效以防止重复驱动 */
     public void retire(InvalidationReason reason) {
         if (retired) return;
-        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(reason, AiPolicyIds.ID_REASON);
         retired = true;
         context.retire();
         cancelAndInvalidate(reason);

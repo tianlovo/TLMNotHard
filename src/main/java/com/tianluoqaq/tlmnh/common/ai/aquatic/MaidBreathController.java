@@ -21,11 +21,22 @@ import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 /** 低氧物品使用与三维找空气，复用 Root 动作所有权，不加载区块或改变空气值 */
 public final class MaidBreathController {
 
-    private static final int START_AIR = 100, RECOVERED_AIR = 290, RANGE = 16;
-    private static final int SEARCH_PER_TICK = 128, MAX_SEARCHED = 32768, RETRY_TICKS = 20;
-    private static final double SPEED = .5;
-    private static final int[][] NEIGHBORS = { { 0, 1, 0 }, { 1, 0, 0 }, { -1, 0, 0 }, { 0, 0, 1 }, { 0, 0, -1 },
-        { 0, -1, 0 } };
+    private static final int[][] NEIGHBORS = {
+        { AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE },
+        { AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE },
+        { AquaticAiTuning.UNSET_OR_NOT_FOUND, AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE },
+        { AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP },
+        { AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE, AquaticAiTuning.UNSET_OR_NOT_FOUND },
+        { AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE, AquaticAiTuning.UNSET_OR_NOT_FOUND,
+            AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE } };
     private final EntityMaid maid;
     private final MaidActionRunner runner;
     private final ArrayDeque<Node> searching = new ArrayDeque<>();
@@ -35,7 +46,7 @@ public final class MaidBreathController {
     private ChunkCoordinates origin;
     private boolean active;
     private long retryAt;
-    private String status = "idle";
+    private String status = AquaticAiIds.ID_IDLE;
 
     public MaidBreathController(EntityMaid maid, MaidActionRunner runner) {
         this.maid = maid;
@@ -57,20 +68,21 @@ public final class MaidBreathController {
 
     public String routeDiagnostic() {
         var next = route.peek();
-        return "remaining=" + route.size()
-            + ";next="
-            + (next == null ? "none" : next.posX + "," + next.posY + "," + next.posZ)
-            + ";feet="
+        return AquaticAiIds.ID_REMAINING + route.size()
+            + AquaticAiIds.ID_NEXT
+            + (next == null ? AquaticAiIds.ID_NONE
+                : next.posX + AquaticAiIds.COMMA_DELIMITER + next.posY + AquaticAiIds.COMMA_DELIMITER + next.posZ)
+            + AquaticAiIds.ID_FEET
             + maid.boundingBox.minY
-            + ";size="
+            + AquaticAiIds.ID_SIZE
             + maid.width
-            + ","
+            + AquaticAiIds.COMMA_DELIMITER
             + maid.height
-            + ";motion="
+            + AquaticAiIds.ID_MOTION
             + maid.motionX
-            + ","
+            + AquaticAiIds.COMMA_DELIMITER
             + maid.motionY
-            + ","
+            + AquaticAiIds.COMMA_DELIMITER
             + maid.motionZ;
     }
 
@@ -87,7 +99,7 @@ public final class MaidBreathController {
             || maid.getBrainCoordinator()
                 .isSuspended()
             || maid.isPotionActive(Potion.waterBreathing)
-            || maid.getAir() >= (active ? RECOVERED_AIR : START_AIR)) {
+            || maid.getAir() >= (active ? AquaticAiTuning.RECOVERED_AIR : AquaticAiTuning.START_AIR)) {
             cancel();
             return false;
         }
@@ -99,7 +111,7 @@ public final class MaidBreathController {
             maid.getNavigator()
                 .clearPathEntity();
             maid.getShieldController()
-                .cancelUse("low_air");
+                .cancelUse(AquaticAiIds.ID_LOW_AIR);
             maid.getMealController()
                 .cancel();
         }
@@ -109,12 +121,12 @@ public final class MaidBreathController {
             || maid.getMealController()
                 .tryStartBreathing()) {
             route.clear();
-            setStatus("using_breath_item");
+            setStatus(AquaticAiIds.ID_USING_BREATH_ITEM);
             return true;
         }
         if (maid.isSitting() || maid.ridingEntity != null || maid.getLeashed() || maid.hasPose(MaidPose.SLEEPING)) {
             clearSearch();
-            setStatus("movement_forbidden");
+            setStatus(AquaticAiIds.ID_MOVEMENT_FORBIDDEN);
             return true;
         }
         if (!route.isEmpty()) {
@@ -123,15 +135,19 @@ public final class MaidBreathController {
             if (!passable(next) || !givesAir(route.peekLast())) clearSearch();
             else {
                 double dy = next.posY - maid.boundingBox.minY;
-                if (maid.getDistanceSq(next.posX + .5, maid.posY, next.posZ + .5) + dy * dy < .09) route.remove();
-                setStatus("going_to_air");
+                if (maid.getDistanceSq(
+                    next.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    maid.posY,
+                    next.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR) + dy * dy
+                    < AquaticAiTuning.MIN_DY_THRESHOLD) route.remove();
+                setStatus(AquaticAiIds.ID_GOING_TO_AIR);
                 return true;
             }
         }
         long now = maid.worldObj.getTotalWorldTime();
         if (searching.isEmpty()) {
             if (now < retryAt) {
-                setStatus("no_air_route");
+                setStatus(AquaticAiIds.ID_NO_AIR_ROUTE);
                 return true;
             }
             clearSearch();
@@ -142,59 +158,66 @@ public final class MaidBreathController {
             visited.add(origin);
             searching.add(new Node(origin, null));
         }
-        for (int scanned = 0; scanned < SEARCH_PER_TICK && !searching.isEmpty(); scanned++) {
+        for (int scanned = 0; scanned < AquaticAiTuning.SEARCH_PER_TICK && !searching.isEmpty(); scanned++) {
             var node = searching.remove();
             if (givesAir(node.point)) {
                 for (var step = node; step != null; step = step.parent) route.addFirst(step.point);
                 searching.clear();
                 visited.clear();
-                setStatus("going_to_air");
+                setStatus(AquaticAiIds.ID_GOING_TO_AIR);
                 return true;
             }
             for (int[] delta : NEIGHBORS) {
                 var point = new ChunkCoordinates(
-                    node.point.posX + delta[0],
-                    node.point.posY + delta[1],
-                    node.point.posZ + delta[2]);
+                    node.point.posX + delta[AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE],
+                    node.point.posY + delta[AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP],
+                    node.point.posZ + delta[AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM]);
                 int dx = point.posX - origin.posX, dz = point.posZ - origin.posZ;
-                if (dx * dx + dz * dz > RANGE * RANGE || Math.abs(point.posY - origin.posY) > RANGE
-                    || visited.size() >= MAX_SEARCHED
+                if (dx * dx + dz * dz > AquaticAiTuning.RANGE * AquaticAiTuning.RANGE
+                    || Math.abs(point.posY - origin.posY) > AquaticAiTuning.RANGE
+                    || visited.size() >= AquaticAiTuning.MAX_SEARCHED
                     || !visited.add(point)
                     || !passable(point)) continue;
                 searching.add(new Node(point, node));
             }
         }
         if (searching.isEmpty()) {
-            retryAt = now + RETRY_TICKS;
-            setStatus("no_air_route");
-        } else setStatus("searching_air");
+            retryAt = now + AquaticAiTuning.RETRY_TICKS;
+            setStatus(AquaticAiIds.ID_NO_AIR_ROUTE);
+        } else setStatus(AquaticAiIds.ID_SEARCHING_AIR);
         return true;
     }
 
     private boolean loaded(ChunkCoordinates p) {
-        if (p.posY < 1 || p.posY + maid.height >= maid.worldObj.getHeight()) return false;
+        if (p.posY < AquaticAiTuning.BREATH_CONTROLLER_DEFAULT_UNIT_STEP
+            || p.posY + maid.height >= maid.worldObj.getHeight()) return false;
         for (int x = p.posX - 1; x <= p.posX + 1; x++)
             for (int z = p.posZ - 1; z <= p.posZ + 1; z++) if (!maid.worldObj.getChunkProvider()
-                .chunkExists(x >> 4, z >> 4)) return false;
+                .chunkExists(x >> AquaticAiTuning.CHUNK_SECTION_SHIFT, z >> AquaticAiTuning.CHUNK_SECTION_SHIFT))
+                return false;
         return true;
     }
 
     private boolean passable(ChunkCoordinates p) {
         if (!loaded(p) || !maid.getHomeArea()
-            .contains(p.posX + .5, p.posY, p.posZ + .5)) return false;
+            .contains(
+                p.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                p.posY,
+                p.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR))
+            return false;
         for (int y = p.posY; y <= MathHelper.floor_float(p.posY + maid.height); y++) {
             var material = maid.worldObj.getBlock(p.posX, y, p.posZ)
                 .getMaterial();
             if (material == Material.lava || material == Material.fire || material == Material.cactus) return false;
         }
-        double half = maid.width / 2;
+        double half = maid.width / AquaticAiTuning.BREATH_CONTROLLER_TICK_PARAM;
         var box = AxisAlignedBB.getBoundingBox(
-            p.posX + .5 - half,
-            p.posY + .001,
-            p.posZ + .5 - half,
-            p.posX + .5 + half,
-            p.posY + maid.height - .001,
-            p.posZ + .5 + half);
+            p.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR - half,
+            p.posY + AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET,
+            p.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR - half,
+            p.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR + half,
+            p.posY + maid.height - AquaticAiTuning.AQUATIC_CONTROLLER_WATER_HEIGHT_X_OFFSET,
+            p.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR + half);
         return maid.worldObj.getCollidingBoundingBoxes(maid, box)
             .isEmpty();
     }
@@ -211,27 +234,40 @@ public final class MaidBreathController {
     public boolean travelWater() {
         if (!isSwimming() || !maid.isInWater()) return false;
         var target = route.peek();
-        double x = target.posX + .5 - maid.posX, y = target.posY - maid.boundingBox.minY,
-            z = target.posZ + .5 - maid.posZ;
+        double x = target.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posX,
+            y = target.posY - maid.boundingBox.minY,
+            z = target.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR - maid.posZ;
         double length = Math.sqrt(x * x + y * y + z * z);
-        if (length > 1.0e-5) {
-            float yaw = (float) Math.toDegrees(Math.atan2(z, x)) - 90;
+        if (length > AquaticAiTuning.MAX_LENGTH_THRESHOLD) {
+            float yaw = (float) Math.toDegrees(Math.atan2(z, x)) - AquaticAiTuning.BREATH_CONTROLLER_YAW;
             float turn = MathHelper.wrapAngleTo180_float(yaw - maid.rotationYaw);
-            maid.rotationYaw += Math.max(-90, Math.min(90, turn));
+            maid.rotationYaw += Math.max(
+                AquaticAiTuning.BREATH_CONTROLLER_MAX_FIRST_PARAM,
+                Math.min(AquaticAiTuning.BREATH_CONTROLLER_YAW, turn));
             maid.renderYawOffset = maid.rotationYaw;
-            double speed = SPEED * maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+            double speed = AquaticAiTuning.SPEED * maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
                 .getAttributeValue();
-            maid.motionX += speed * x * .005;
-            maid.motionY += speed * y / length * .25;
-            maid.motionZ += speed * z * .005;
-            maid.moveFlying(0, (float) (speed * 3 * Math.sqrt(x * x + z * z) / length), .01F);
+            maid.motionX += speed * x * AquaticAiTuning.BREATH_CONTROLLER_TRAVEL_WATER_FACTOR;
+            maid.motionY += speed * y / length * AquaticAiTuning.BREATH_CONTROLLER_TRAVEL_WATER_FACTOR_2;
+            maid.motionZ += speed * z * AquaticAiTuning.BREATH_CONTROLLER_TRAVEL_WATER_FACTOR;
+            maid.moveFlying(
+                AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE,
+                (float) (speed * AquaticAiTuning.BREATH_CONTROLLER_MOVE_FLYING_SECOND_PARAM
+                    * Math.sqrt(x * x + z * z)
+                    / length),
+                AquaticAiTuning.AQUATIC_CONTROLLER_MOVE_FLYING_THIRD_FACTOR);
             maid.getLookHelper()
-                .setLookPosition(target.posX + .5, target.posY + maid.getEyeHeight(), target.posZ + .5, 30, 30);
+                .setLookPosition(
+                    target.posX + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    target.posY + maid.getEyeHeight(),
+                    target.posZ + AquaticAiTuning.BREATH_CONTROLLER_GET_DISTANCE_SQ_FIRST_FACTOR,
+                    AquaticAiTuning.BREATH_CONTROLLER_SET_LOOK_POSITION_FOURTH_PARAM,
+                    AquaticAiTuning.BREATH_CONTROLLER_SET_LOOK_POSITION_FOURTH_PARAM);
         }
         maid.moveEntity(maid.motionX, maid.motionY, maid.motionZ);
-        maid.motionX *= .9;
-        maid.motionY *= .9;
-        maid.motionZ *= .9;
+        maid.motionX *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
+        maid.motionY *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
+        maid.motionZ *= AquaticAiTuning.AQUATIC_CONTROLLER_TRAVEL_WATER_FACTOR;
         return true;
     }
 
@@ -250,7 +286,11 @@ public final class MaidBreathController {
             maid.getNavigator()
                 .clearPathEntity();
             maid.getMoveHelper()
-                .setMoveTo(maid.posX, maid.posY, maid.posZ, 0);
+                .setMoveTo(
+                    maid.posX,
+                    maid.posY,
+                    maid.posZ,
+                    AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE);
         }
         if (stopped != null) stopped.cancel();
         runner.release(stopped);
@@ -259,9 +299,9 @@ public final class MaidBreathController {
             maid.getMealController()
                 .cancel();
         active = false;
-        retryAt = 0;
+        retryAt = AquaticAiTuning.AQUATIC_CONTROLLER_FLUID_JUMP_THRESHOLD_ZERO_BASE;
         clearSearch();
-        setStatus("idle");
+        setStatus(AquaticAiIds.ID_IDLE);
     }
 
     private void setStatus(String value) {
@@ -269,7 +309,7 @@ public final class MaidBreathController {
         status = value;
         maid.getBrainCoordinator()
             .getTelemetry()
-            .state("breath", "", value);
+            .state(AquaticAiIds.ID_BREATH, "", value);
     }
 
     private static final class Node {

@@ -39,9 +39,9 @@ public final class CombatPassiveDoorExitProof {
             || !target.fresh(s.tick)
             || !Objects.equals(node.target, s.selectedTarget)
             || node.targetEntityId != target.entityId
-            || node.foot.distance(source.k) > .0001
+            || node.foot.distance(source.k) > CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
             || node.role != CombatMovementFact.Role.ORDINARY)
-            throw new IllegalArgumentException("Current admitted passive door exit required");
+            throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_CURRENT_ADMITTED_PASSIVE_DOOR_EXIT);
         this.node = node;
         geometry = s.geometry;
         this.source = source;
@@ -53,7 +53,8 @@ public final class CombatPassiveDoorExitProof {
         lastSeenAt = target.observedAt;
         this.weapon = weapon;
         segment = new CombatMovementSegment(node, s.self.position, geometry.observedAt);
-        if (!segment.ordinaryAdjacent()) throw new IllegalArgumentException("Adjacent passive exit required");
+        if (!segment.ordinaryAdjacent())
+            throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_ADJACENT_PASSIVE_EXIT_REQUIRED);
     }
 
     public boolean fresh(long now) {
@@ -62,7 +63,7 @@ public final class CombatPassiveDoorExitProof {
             && admittedAt <= now
             && now - admittedAt <= CombatBudgetTuning.OBSERVATION_TTL
             && lastSeenAt <= now
-            && now - lastSeenAt <= CombatSnapshot.HIDDEN_TTL;
+            && now - lastSeenAt <= CombatTerrainTuning.HIDDEN_TTL;
     }
 
     public boolean sameEvidence(CombatPassiveDoorExitProof other) {
@@ -91,9 +92,12 @@ public final class CombatPassiveDoorExitProof {
     }
 
     private boolean dispatchPoint(Vec p) {
-        return same(p, source.k) || Math.abs(p.x - (Math.floor(segment.from.x) + .5)) < .0001
-            && Math.abs(p.z - (Math.floor(segment.from.z) + .5)) < .0001
-            && Math.abs(p.y - segment.from.y) < .0001;
+        return same(p, source.k) || Math
+            .abs(p.x - (Math.floor(segment.from.x) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR))
+            < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
+            && Math.abs(p.z - (Math.floor(segment.from.z) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR))
+                < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
+            && Math.abs(p.y - segment.from.y) < CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR;
     }
 
     private boolean body(Vec a, Vec b, long now, CombatWorkQuota quota) {
@@ -136,12 +140,12 @@ public final class CombatPassiveDoorExitProof {
 
         public boolean contains(Vec p) {
             return p != null && Double.isFinite(p.x + p.y + p.z)
-                && p.x >= Math.min(occupiedOrigin.x, k.x) - .5
-                && p.x <= Math.max(occupiedOrigin.x, k.x) + .5
-                && p.z >= Math.min(occupiedOrigin.z, k.z) - .5
-                && p.z <= Math.max(occupiedOrigin.z, k.z) + .5
-                && p.y >= Math.min(occupiedOrigin.y, k.y) - .0001
-                && p.y <= Math.max(occupiedOrigin.y, k.y) + .0001;
+                && p.x >= Math.min(occupiedOrigin.x, k.x) - CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR
+                && p.x <= Math.max(occupiedOrigin.x, k.x) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR
+                && p.z >= Math.min(occupiedOrigin.z, k.z) - CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR
+                && p.z <= Math.max(occupiedOrigin.z, k.z) + CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR
+                && p.y >= Math.min(occupiedOrigin.y, k.y) - CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR
+                && p.y <= Math.max(occupiedOrigin.y, k.y) + CombatTerrainTuning.COMBAT_CONDITIONAL_SAME_FACTOR;
         }
 
         public boolean outside(Vec p, double width, double height) {
@@ -158,7 +162,7 @@ public final class CombatPassiveDoorExitProof {
                 && p.z + width > d.z
                 && p.z - width < d.z + 1
                 && p.y + height > d.y
-                && p.y < d.y + 2;
+                && p.y < d.y + CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM;
         }
     }
 
@@ -209,7 +213,7 @@ public final class CombatPassiveDoorExitProof {
                 && serial == expectedSerial
                 && serial > 0
                 && geometryAt <= now
-                && now - geometryAt <= CombatSnapshot.GEOMETRY_TTL
+                && now - geometryAt <= CombatTerrainTuning.GEOMETRY_TTL
                 && work > 0
                 && CombatMovementFact.sameStandingCell(point, source.k)
                 && source.outside(point, halfWidth, height);

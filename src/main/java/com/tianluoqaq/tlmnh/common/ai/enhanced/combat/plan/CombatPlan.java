@@ -166,14 +166,14 @@ public final class CombatPlan {
             trace,
             Strategy.REACTION,
             StageState.NONE,
-            0,
-            0,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
             null,
             null,
             false,
             false,
             Long.MIN_VALUE,
-            0,
+            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
             "");
     }
 
@@ -371,8 +371,8 @@ public final class CombatPlan {
         observedAt = snapshot.tick;
         expiresAt = snapshot.tick + CombatBudgetTuning.OBSERVATION_TTL;
         targetId = target == null ? null : target.id;
-        targetEntityId = target == null ? -1 : target.entityId;
-        weaponSlot = weapon == null ? -1 : weapon.slot;
+        targetEntityId = target == null ? CombatPlanTuning.UNSET_OR_NOT_FOUND : target.entityId;
+        weaponSlot = weapon == null ? CombatPlanTuning.UNSET_OR_NOT_FOUND : weapon.slot;
         weaponFingerprint = weapon == null ? "" : weapon.fingerprint;
         family = weapon == null ? MaidWeaponProfile.Family.UNKNOWN : weapon.profile.family;
         this.macro = macro;

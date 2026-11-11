@@ -44,12 +44,14 @@ public final class FollowCoreLookDriver {
     private final int minDuration, maxDuration;
 
     public FollowCoreLookDriver() {
-        this(45, 90);
+        this(
+            FaithfulFollowTuning.FOLLOW_CORE_FOLLOW_CORE_LOOK_DRIVER_PARAM,
+            FaithfulFollowTuning.FOLLOW_CORE_FOLLOW_CORE_LOOK_DRIVER_PARAM_2);
     }
 
     public FollowCoreLookDriver(int minDuration, int maxDuration) {
         if (minDuration < 0 || maxDuration < minDuration || (long) maxDuration - minDuration + 1 > Integer.MAX_VALUE)
-            throw new IllegalArgumentException("Invalid look behavior duration range");
+            throw new IllegalArgumentException(FaithfulFollowDiagnostics.MSG_INVALID_LOOK_BEHAVIOR_DURATION_RANGE);
         this.minDuration = minDuration;
         this.maxDuration = maxDuration;
     }
@@ -60,7 +62,8 @@ public final class FollowCoreLookDriver {
         state.status = Status.RUNNING;
         int bound = maxDuration + 1 - minDuration;
         int random = actor.nextWorldInt(bound);
-        if (random < 0 || random >= bound) throw new IllegalArgumentException("World integer outside requested bound");
+        if (random < 0 || random >= bound)
+            throw new IllegalArgumentException(FaithfulFollowDiagnostics.MSG_WORLD_INTEGER_OUTSIDE_REQUESTED_BOUND);
         state.endTimestamp = behaviorTime + minDuration + random;
         return true;
     }

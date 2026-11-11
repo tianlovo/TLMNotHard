@@ -31,7 +31,9 @@ public final class AngelicaRenderQueries {
         } catch (ClassNotFoundException absent) {
             return GL11.glGetInteger(GL13.GL_CLIENT_ACTIVE_TEXTURE);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException(AngelicaClientQueryDiagnostics.MSG_CANNOT_OBSERVE_ACTUAL_CLIENT_TEXTURE, failure);
+            throw new IllegalStateException(
+                AngelicaClientQueryDiagnostics.MSG_CANNOT_OBSERVE_ACTUAL_CLIENT_TEXTURE,
+                failure);
         }
     }
 }

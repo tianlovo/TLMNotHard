@@ -10,7 +10,7 @@ public final class MaidHomeSettings {
     public static final MaidHomeSettings EMPTY = new MaidHomeSettings(
         false,
         false,
-        0,
+        MaidLifeTuning.DECODE_INITIAL_VALUE,
         Point.ZERO,
         Point.ZERO,
         Point.ZERO);
@@ -22,9 +22,9 @@ public final class MaidHomeSettings {
         this.enabled = enabled;
         this.configured = configured;
         this.dimension = dimension;
-        this.work = Objects.requireNonNull(work, "work");
-        this.idle = Objects.requireNonNull(idle, "idle");
-        this.rest = Objects.requireNonNull(rest, "rest");
+        this.work = Objects.requireNonNull(work, MaidLifeIds.ID_WORK);
+        this.idle = Objects.requireNonNull(idle, MaidLifeIds.ID_IDLE);
+        this.rest = Objects.requireNonNull(rest, MaidLifeIds.ID_REST);
     }
 
     public Point center(Activity activity) {
@@ -32,36 +32,56 @@ public final class MaidHomeSettings {
     }
 
     public String encode() {
-        return "1;" + (enabled ? 1
-            : 0) + ";" + (configured ? 1 : 0) + ";" + dimension + ";" + work + ";" + idle + ";" + rest;
+        return MaidLifeIds.ID_1
+            + (enabled ? MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP : MaidLifeTuning.DECODE_INITIAL_VALUE)
+            + MaidLifeIds.SEMICOLON_DELIMITER
+            + (configured ? MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP : MaidLifeTuning.DECODE_INITIAL_VALUE)
+            + MaidLifeIds.SEMICOLON_DELIMITER
+            + dimension
+            + MaidLifeIds.SEMICOLON_DELIMITER
+            + work
+            + MaidLifeIds.SEMICOLON_DELIMITER
+            + idle
+            + MaidLifeIds.SEMICOLON_DELIMITER
+            + rest;
     }
 
     public static MaidHomeSettings decode(String encoded) {
-        if (encoded == null || encoded.length() > 192) throw new IllegalArgumentException("Invalid home encoding");
-        var parts = encoded.split(";", -1);
-        if (parts.length != 7 || !"1".equals(parts[0]) || !bit(parts[1]) || !bit(parts[2]))
-            throw new IllegalArgumentException("Invalid home encoding");
+        if (encoded == null || encoded.length() > MaidLifeTuning.MAX_LENGTH_THRESHOLD)
+            throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_HOME_ENCODING);
+        var parts = encoded.split(MaidLifeIds.SEMICOLON_DELIMITER, MaidLifeTuning.UNSET_OR_NOT_FOUND);
+        if (parts.length != MaidLifeTuning.TARGET_LENGTH_THRESHOLD_2
+            || !MaidLifeIds.ID_1_2.equals(parts[MaidLifeTuning.DECODE_INITIAL_VALUE])
+            || !bit(parts[MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP])
+            || !bit(parts[MaidLifeTuning.HOME_AREA_PARSE_INT_FIRST_PARAM]))
+            throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_HOME_ENCODING);
         return new MaidHomeSettings(
-            "1".equals(parts[1]),
-            "1".equals(parts[2]),
-            Integer.parseInt(parts[3]),
-            Point.decode(parts[4]),
-            Point.decode(parts[5]),
-            Point.decode(parts[6]));
+            MaidLifeIds.ID_1_2.equals(parts[MaidLifeTuning.HOME_AREA_SETTINGS_UNIT_STEP]),
+            MaidLifeIds.ID_1_2.equals(parts[MaidLifeTuning.HOME_AREA_PARSE_INT_FIRST_PARAM]),
+            Integer.parseInt(parts[MaidLifeTuning.TARGET_LENGTH_THRESHOLD]),
+            Point.decode(parts[MaidLifeTuning.HOME_SETTINGS_DECODE_FIRST_PARAM]),
+            Point.decode(parts[MaidLifeTuning.HOME_SETTINGS_DECODE_FIRST_PARAM_2]),
+            Point.decode(parts[MaidLifeTuning.HOME_SETTINGS_DECODE_FIRST_PARAM_3]));
     }
 
     private static boolean bit(String value) {
-        return "0".equals(value) || "1".equals(value);
+        return MaidLifeIds.ID_0.equals(value) || MaidLifeIds.ID_1_2.equals(value);
     }
 
     public static final class Point {
 
-        public static final Point ZERO = new Point(0, 0, 0);
+        public static final Point ZERO = new Point(
+            MaidLifeTuning.DECODE_INITIAL_VALUE,
+            MaidLifeTuning.DECODE_INITIAL_VALUE,
+            MaidLifeTuning.DECODE_INITIAL_VALUE);
         public final int x, y, z;
 
         public Point(int x, int y, int z) {
-            if (Math.abs((long) x) > 29999984 || Math.abs((long) z) > 29999984 || y < 0 || y > 255)
-                throw new IllegalArgumentException("Home center outside build bounds");
+            if (Math.abs((long) x) > MaidLifeTuning.HOME_AREA_CAN_EDIT_PARAM
+                || Math.abs((long) z) > MaidLifeTuning.HOME_AREA_CAN_EDIT_PARAM
+                || y < 0
+                || y > MaidLifeTuning.MAX_Y_THRESHOLD)
+                throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_HOME_CENTER_OUTSIDE_BUILD_BOUNDS);
             this.x = x;
             this.y = y;
             this.z = z;
@@ -74,13 +94,17 @@ public final class MaidHomeSettings {
 
         @Override
         public String toString() {
-            return x + "," + y + "," + z;
+            return x + MaidLifeIds.COMMA_DELIMITER + y + MaidLifeIds.COMMA_DELIMITER + z;
         }
 
         private static Point decode(String encoded) {
-            var values = encoded.split(",", -1);
-            if (values.length != 3) throw new IllegalArgumentException("Invalid home center");
-            return new Point(Integer.parseInt(values[0]), Integer.parseInt(values[1]), Integer.parseInt(values[2]));
+            var values = encoded.split(MaidLifeIds.COMMA_DELIMITER, MaidLifeTuning.UNSET_OR_NOT_FOUND);
+            if (values.length != MaidLifeTuning.TARGET_LENGTH_THRESHOLD)
+                throw new IllegalArgumentException(MaidLifeDiagnostics.MSG_INVALID_HOME_CENTER);
+            return new Point(
+                Integer.parseInt(values[MaidLifeTuning.HOME_POSITION_X_INDEX]),
+                Integer.parseInt(values[MaidLifeTuning.HOME_POSITION_Y_INDEX]),
+                Integer.parseInt(values[MaidLifeTuning.HOME_POSITION_Z_INDEX]));
         }
     }
 }

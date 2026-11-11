@@ -22,12 +22,12 @@ public final class MaidLifeContent {
     private MaidLifeContent() {}
 
     public static void register() {
-        if (registered) throw new IllegalStateException("Maid life content is already registered");
-        GameRegistry.registerBlock(snackCabinet, ItemSnackCabinet.class, "snack_cabinet");
-        GameRegistry.registerBlock(maidBed, (Class<? extends ItemBlock>) null, "maid_bed");
-        GameRegistry.registerItem(maidBedItem, "maid_bed");
-        GameRegistry.registerTileEntity(TileEntitySnackCabinet.class, "tlmnh:snack_cabinet");
-        GameRegistry.registerTileEntity(TileEntityMaidBed.class, "tlmnh:maid_bed");
+        if (registered) throw new IllegalStateException(ContentRegistryDiagnostics.MSG_MAID_LIFE_CONTENT_IS_ALREADY);
+        GameRegistry.registerBlock(snackCabinet, ItemSnackCabinet.class, ContentRegistryIds.ID_SNACK_CABINET);
+        GameRegistry.registerBlock(maidBed, (Class<? extends ItemBlock>) null, ContentRegistryIds.ID_MAID_BED);
+        GameRegistry.registerItem(maidBedItem, ContentRegistryIds.ID_MAID_BED);
+        GameRegistry.registerTileEntity(TileEntitySnackCabinet.class, ContentRegistryIds.ID_TLMNH_SNACK_CABINET);
+        GameRegistry.registerTileEntity(TileEntityMaidBed.class, ContentRegistryIds.ID_TLMNH_MAID_BED);
         registered = true;
     }
 }

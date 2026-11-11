@@ -18,7 +18,6 @@ public final class CombatSnapshot {
 
     public final CombatMovementFact movementFact;
 
-    public static final int GEOMETRY_TTL = 8, HIDDEN_TTL = 100;
     public final long tick, entityEpoch, observationEpoch, equipmentEpoch;
     public final UUID selfId;
     public final Self self;
@@ -220,7 +219,12 @@ public final class CombatSnapshot {
 
         public Vec horizontalUnit() {
             double length = Math.sqrt(x * x + z * z);
-            return length < 1.0E-6 ? new Vec(0, 0, 0) : new Vec(x / length, 0, z / length);
+            return length < CombatTerrainTuning.MIN_LENGTH_THRESHOLD
+                ? new Vec(
+                    CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                    CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                    CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE)
+                : new Vec(x / length, CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE, z / length);
         }
     }
 
@@ -296,8 +300,8 @@ public final class CombatSnapshot {
                 preferBow,
                 preferencePending,
                 recentlyHurt,
-                .3,
-                1.8);
+                CombatTerrainTuning.COMBAT_SNAPSHOT_DOMAIN_FACTOR,
+                CombatTerrainTuning.COMBAT_SNAPSHOT_DOMAIN_FACTOR_2);
         }
 
         public Self(Vec position, Vec velocity, Vec ownerPosition, float health, float ownerHealth, double halfWidth,
@@ -311,8 +315,8 @@ public final class CombatSnapshot {
             this.position = position;
             this.velocity = velocity;
             this.ownerPosition = ownerPosition;
-            this.health = Math.max(1, health);
-            this.ownerHealth = Math.max(1, ownerHealth);
+            this.health = Math.max(CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP, health);
+            this.ownerHealth = Math.max(CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP, ownerHealth);
             this.halfWidth = halfWidth;
             this.height = height;
             this.reach = reach;
@@ -325,7 +329,7 @@ public final class CombatSnapshot {
             this.cadenceRemainingTicks = cadenceRemainingTicks < 0 ? Long.MAX_VALUE : cadenceRemainingTicks;
             this.cadenceReady = cadenceReady && this.cadenceRemainingTicks == 0;
             this.drawing = drawing;
-            this.attackDelay = Math.max(1, attackDelay);
+            this.attackDelay = Math.max(CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP, attackDelay);
             this.drawTicks = drawTicks;
             this.ammunition = ammunition;
             this.preferBow = preferBow;
@@ -378,8 +382,8 @@ public final class CombatSnapshot {
             this.velocity = velocity;
             this.observedAt = observedAt;
             this.lastOwnHitAt = lastOwnHitAt;
-            this.health = Math.max(1, health);
-            this.estimatedDamage = Math.max(1, estimatedDamage);
+            this.health = Math.max(CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP, health);
+            this.estimatedDamage = Math.max(CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP, estimatedDamage);
             this.halfWidth = halfWidth;
             this.height = height;
             this.visible = visible;
@@ -390,7 +394,8 @@ public final class CombatSnapshot {
         }
 
         public boolean fresh(long now) {
-            return now >= observedAt && now - observedAt <= (visible ? CombatBudgetTuning.OBSERVATION_TTL : HIDDEN_TTL);
+            return now >= observedAt
+                && now - observedAt <= (visible ? CombatBudgetTuning.OBSERVATION_TTL : CombatTerrainTuning.HIDDEN_TTL);
         }
     }
 
@@ -455,7 +460,16 @@ public final class CombatSnapshot {
         public final double halfWidth, height;
 
         public Friend(Vec position, double halfWidth, double height) {
-            this(null, -1, -1, Long.MIN_VALUE, 0, false, position, halfWidth, height);
+            this(
+                null,
+                CombatTerrainTuning.UNSET_OR_NOT_FOUND,
+                CombatTerrainTuning.UNSET_OR_NOT_FOUND,
+                Long.MIN_VALUE,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                false,
+                position,
+                halfWidth,
+                height);
         }
 
         public Friend(UUID id, int entityId, int dimension, long observedAt, long coverageRound, boolean current,
@@ -475,7 +489,6 @@ public final class CombatSnapshot {
     /** 本轮已付费木门样本的纯值身份；不授予门操作权限 */
     public static final class DoorCell {
 
-        public static final String MALISIS_WOOD = "net.malisis.doors.door.block.Door@1.19.13-GTNH";
         public final String provider;
         public final int x, y, z, queryY, metadata, lowerMetadata, upperMetadata;
         public final boolean centered, stableOpened;
@@ -495,8 +508,8 @@ public final class CombatSnapshot {
         }
 
         public boolean sameDoor(DoorCell other) {
-            return other != null && MALISIS_WOOD.equals(provider)
-                && MALISIS_WOOD.equals(other.provider)
+            return other != null && CombatTerrainIds.MALISIS_WOOD.equals(provider)
+                && CombatTerrainIds.MALISIS_WOOD.equals(other.provider)
                 && stableOpened
                 && other.stableOpened
                 && x == other.x
@@ -511,8 +524,6 @@ public final class CombatSnapshot {
 
     public static final class Geometry {
 
-        public static final byte SOLID = 1, WATER = 2, HAZARD = 4, UNKNOWN = 8, OPENABLE = 16, RAY_BLOCKING = 32,
-            RAY_UNKNOWN = 64;
         public final int x, y, z, sizeX, sizeY, sizeZ;
         public final long observedAt;
         public final boolean complete;
@@ -532,12 +543,12 @@ public final class CombatSnapshot {
 
         public Geometry(int x, int y, int z, int sizeX, int sizeY, int sizeZ, long observedAt, boolean complete,
             byte[] cells, double[] bounds, DoorCell[] doorCells) {
-            if (bounds != null && bounds.length != cells.length * 6)
-                throw new IllegalArgumentException("Invalid bounded shape dimensions");
+            if (bounds != null && bounds.length != cells.length * CombatTerrainTuning.COMBAT_SNAPSHOT_DOMAIN_PARAM)
+                throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_INVALID_BOUNDED_SHAPE_DIMENSIONS);
             if (doorCells != null && doorCells.length != cells.length)
-                throw new IllegalArgumentException("Invalid bounded door-cell dimensions");
-            if (cells.length != sizeX * sizeY * sizeZ || cells.length > 512)
-                throw new IllegalArgumentException("Combat geometry outside bounded output");
+                throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_INVALID_BOUNDED_DOOR_CELL_DIMENSIONS);
+            if (cells.length != sizeX * sizeY * sizeZ || cells.length > CombatTerrainTuning.MAX_LENGTH_THRESHOLD)
+                throw new IllegalArgumentException(CombatTerrainDiagnostics.MSG_COMBAT_GEOMETRY_OUTSIDE_BOUNDED_OUTPUT);
             this.x = x;
             this.y = y;
             this.z = z;
@@ -555,15 +566,21 @@ public final class CombatSnapshot {
             px -= x;
             py -= y;
             pz -= z;
-            if (px < 0 || py < 0 || pz < 0 || px >= sizeX || py >= sizeY || pz >= sizeZ) return UNKNOWN;
+            if (px < 0 || py < 0 || pz < 0 || px >= sizeX || py >= sizeY || pz >= sizeZ)
+                return CombatTerrainTuning.UNKNOWN;
             return cells[(py * sizeZ + pz) * sizeX + px];
         }
 
         public double bound(int px, int py, int pz, int side) {
             int lx = px - x, ly = py - y, lz = pz - z;
             if (bounds == null || lx < 0 || ly < 0 || lz < 0 || lx >= sizeX || ly >= sizeY || lz >= sizeZ)
-                return (side % 3 == 0 ? px : side % 3 == 1 ? py : pz) + (side >= 3 ? 1 : 0);
-            return bounds[((ly * sizeZ + lz) * sizeX + lx) * 6 + side];
+                return (side % CombatTerrainTuning.COMBAT_MOVEMENT_DOMAIN_PARAM == 0 ? px
+                    : side % CombatTerrainTuning.COMBAT_MOVEMENT_DOMAIN_PARAM
+                        == CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP ? py : pz)
+                    + (side >= CombatTerrainTuning.COMBAT_MOVEMENT_DOMAIN_PARAM
+                        ? CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
+                        : CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE);
+            return bounds[((ly * sizeZ + lz) * sizeX + lx) * CombatTerrainTuning.COMBAT_SNAPSHOT_DOMAIN_PARAM + side];
         }
 
         public DoorCell doorAt(int px, int py, int pz) {
@@ -574,7 +591,7 @@ public final class CombatSnapshot {
         }
 
         public boolean fresh(long now) {
-            return now >= observedAt && now - observedAt <= GEOMETRY_TTL;
+            return now >= observedAt && now - observedAt <= CombatTerrainTuning.GEOMETRY_TTL;
         }
     }
 }

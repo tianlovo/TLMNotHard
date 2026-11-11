@@ -54,13 +54,14 @@ public final class MaidLifecycleService {
             && player.isEntityAlive()
             && MaidInteractions.isMainHand(player)
             && (!(player instanceof EntityPlayerMP server) || server.theItemInWorldManager.getGameType()
-                .getID() != 3);
+                .getID() != MaidLifecycleTuning.TARGET_SIZE_THRESHOLD);
     }
 
     public static boolean hasHealth(float health, float maximum, boolean creative) {
         return Float.isFinite(health) && Float.isFinite(maximum)
             && maximum > 0
-            && (creative || health >= maximum / 2.0F + 1.0F);
+            && (creative || health >= maximum / MaidLifecycleTuning.MIDPOINT_DIVISOR_F
+                + MaidLifecycleTuning.LIFECYCLE_SERVICE_HAS_HEALTH_FACTOR);
     }
 
     public static Result releaseInitial(EntityPlayer player, ItemStack stack, int x, int y, int z) {
@@ -86,7 +87,12 @@ public final class MaidLifecycleService {
         try {
             maid = new EntityMaid(world);
             if (!maid.bindTo(owner)) return Result.DENIED;
-            maid.setLocationAndAngles(x + 0.5D, y + 1.0D, z + 0.5D, 0, 0);
+            maid.setLocationAndAngles(
+                x + MaidLifecycleTuning.CENTER_OFFSET_D,
+                y + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_SECOND_FAC,
+                z + MaidLifecycleTuning.CENTER_OFFSET_D,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE);
             if (!safeSpawn(maid)) return Result.BLOCKED;
             if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
             handedOff = true;
@@ -118,7 +124,7 @@ public final class MaidLifecycleService {
             if (owner == null) return Result.INVALID_CREDENTIAL;
             if (!owner.equals(player.getUniqueID())) return Result.WRONG_OWNER;
             var capture = ledger.capture(token);
-            if (!capture.getCompoundTag("Credential")
+            if (!capture.getCompoundTag(MaidLifecyclePart2NbtKeys.KEY_CREDENTIAL)
                 .equals(stack.writeToNBT(new NBTTagCompound()))) return Result.INVALID_CREDENTIAL;
             if (!ledger.redemption(token)
                 .hasNoTags())
@@ -134,7 +140,7 @@ public final class MaidLifecycleService {
                 || !maid.isEntityAlive()
                 || !maid.getUniqueID()
                     .toString()
-                    .equals(capture.getString("Subject")))
+                    .equals(capture.getString(MaidLifecyclePart2NbtKeys.KEY_SUBJECT)))
                 return Result.INVALID_CREDENTIAL;
             for (var loaded : MinecraftServer.getServer().worldServers)
                 if (loaded != null) for (Object entity : loaded.loadedEntityList.toArray())
@@ -144,7 +150,12 @@ public final class MaidLifecycleService {
                         return Result.BLOCKED;
             maid.dimension = world.provider.dimensionId;
             MaidCaptureService.markReleased(maid, token);
-            maid.setLocationAndAngles(x + .5D, y + 1D, z + .5D, 0, 0);
+            maid.setLocationAndAngles(
+                x + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_FIRST_FACT,
+                y + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_SECOND_FAC_2,
+                z + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_FIRST_FACT,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE);
             if (!safeSpawn(maid)) return Result.BLOCKED;
             if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)) return Result.DENIED;
             handedOff = true;
@@ -153,7 +164,8 @@ public final class MaidLifecycleService {
             return result;
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
-            IntegrationGuard.report(Side.SERVER, "capture/release/" + token, failure, player.getUniqueID());
+            IntegrationGuard
+                .report(Side.SERVER, MaidLifecycleIds.ID_CAPTURE_RELEASE + token, failure, player.getUniqueID());
             return Result.DENIED;
         } finally {
             if (reserved && !handedOff) ledger.rollback(token);
@@ -163,7 +175,7 @@ public final class MaidLifecycleService {
     static boolean releaseRequestAllowed(EntityPlayer player, ItemStack stack, ItemStack expected, World world,
         int slot, int x, int y, int z) {
         return releaseRequestUnchanged(player, stack, expected, world, slot, x, y, z)
-            && player.canPlayerEdit(x, y + 1, z, 1, stack)
+            && player.canPlayerEdit(x, y + 1, z, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD, stack)
             && releaseRequestUnchanged(player, stack, expected, world, slot, x, y, z);
     }
 
@@ -173,16 +185,22 @@ public final class MaidLifecycleService {
             && player.inventory.currentItem == slot
             && player.getCurrentEquippedItem() == stack
             && ItemStack.areItemStacksEqual(stack, expected)
-            && player.getDistanceSq(x + 0.5D, y + 1.0D, z + 0.5D) <= 64.0D;
+            && player.getDistanceSq(
+                x + MaidLifecycleTuning.CENTER_OFFSET_D,
+                y + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_SECOND_FAC,
+                z + MaidLifecycleTuning.CENTER_OFFSET_D) <= MaidLifecycleTuning.LIFECYCLE_SERVICE_DOMAIN_FACTOR;
     }
 
     /** 先将本次材料转换为专属凭证；放置失败仍保留该凭证，不回造可再次交易的核心 */
     public static Result activateCore(EntityPlayer player, ItemStack stack, int x, int y, int z) {
         if (!canUse(player) || stack == null
-            || stack.stackSize != 1
+            || stack.stackSize != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             || stack.getItem() != MaidResurrectionContent.MAID_CORE
             || player.getCurrentEquippedItem() != stack
-            || player.getDistanceSq(x + .5, y + 1, z + .5) > 64
+            || player.getDistanceSq(
+                x + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR,
+                y + 1,
+                z + MaidLifecycleTuning.DEATH_INGRESS_RUN_FACTOR) > MaidLifecycleTuning.CAPTURE_SERVICE_ADMITTED_PARAM
             || !IntegrationGuard.available(Side.SERVER, ExternalFeature.PROGRESSION_RECIPES)) return Result.DENIED;
         var world = player.worldObj;
         int slot = player.inventory.currentItem;
@@ -201,7 +219,11 @@ public final class MaidLifecycleService {
             || player.worldObj.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) != shrine
             || player.worldObj.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord) != MaidResurrectionContent.SHRINE
             || player.getCurrentEquippedItem() != null
-            || player.getDistanceSq(shrine.xCoord + 0.5D, shrine.yCoord + 0.5D, shrine.zCoord + 0.5D) > 64.0D)
+            || player.getDistanceSq(
+                shrine.xCoord + MaidLifecycleTuning.CENTER_OFFSET_D,
+                shrine.yCoord + MaidLifecycleTuning.CENTER_OFFSET_D,
+                shrine.zCoord + MaidLifecycleTuning.CENTER_OFFSET_D)
+                > MaidLifecycleTuning.LIFECYCLE_SERVICE_DOMAIN_FACTOR)
             return Result.DENIED;
         if (!hasHealth(player.getHealth(), player.getMaxHealth(), player.capabilities.isCreativeMode))
             // 已进入扣费阶段的精确恢复允许当前已扣为0.25，不再要求第二次达到生存门槛
@@ -238,7 +260,12 @@ public final class MaidLifecycleService {
             if (!maid.isTamed() || !owner.toString()
                 .equals(maid.func_152113_b())) return Result.INVALID_CREDENTIAL;
             maid.setHealth(maid.getMaxHealth());
-            maid.setLocationAndAngles(shrine.xCoord + 0.5D, shrine.yCoord + 1.0D, shrine.zCoord + 0.5D, 0, 0);
+            maid.setLocationAndAngles(
+                shrine.xCoord + MaidLifecycleTuning.CENTER_OFFSET_D,
+                shrine.yCoord + MaidLifecycleTuning.LIFECYCLE_SERVICE_SET_LOCATION_AND_ANGLES_SECOND_FAC,
+                shrine.zCoord + MaidLifecycleTuning.CENTER_OFFSET_D,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                MaidLifecycleTuning.CORE_INITIAL_VALUE);
             if (!safeSpawn(maid, shrine)) return Result.BLOCKED;
             if (!canUse(player) || player.worldObj != world
                 || shrine.isInvalid()
@@ -250,7 +277,10 @@ public final class MaidLifecycleService {
                 || world.getBlock(shrineX, shrineY, shrineZ) != MaidResurrectionContent.SHRINE
                 || !ItemStack.areItemStacksEqual(shrine.getFilm(), film)
                 || player.getCurrentEquippedItem() != null
-                || player.getDistanceSq(shrineX + 0.5D, shrineY + 0.5D, shrineZ + 0.5D) > 64.0D
+                || player.getDistanceSq(
+                    shrineX + MaidLifecycleTuning.CENTER_OFFSET_D,
+                    shrineY + MaidLifecycleTuning.CENTER_OFFSET_D,
+                    shrineZ + MaidLifecycleTuning.CENTER_OFFSET_D) > MaidLifecycleTuning.LIFECYCLE_SERVICE_DOMAIN_FACTOR
                 || !hasHealth(player.getHealth(), player.getMaxHealth(), player.capabilities.isCreativeMode))
                 return Result.DENIED;
             handedOff = true;
@@ -280,16 +310,16 @@ public final class MaidLifecycleService {
         int x = (int) Math.floor(maid.posX);
         int y = (int) Math.floor(maid.posY);
         int z = (int) Math.floor(maid.posZ);
-        return y > 0 && y + 2 < world.getHeight()
-            && world.blockExists(x, y + 2, z)
+        return y > 0 && y + MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM < world.getHeight()
+            && world.blockExists(x, y + MaidLifecycleTuning.DEATH_INGRESS_STATE_PARAM, z)
             && (shrine == null ? World.doesBlockHaveSolidTopSurface(world, x, y - 1, z)
                 : !shrine.isInvalid() && shrine.getWorldObj() == world
                     && shrine.xCoord == x
                     && shrine.yCoord == y - 1
                     && shrine.zCoord == z
-                    && maid.posX == x + 0.5D
+                    && maid.posX == x + MaidLifecycleTuning.CENTER_OFFSET_D
                     && maid.posY == y
-                    && maid.posZ == z + 0.5D
+                    && maid.posZ == z + MaidLifecycleTuning.CENTER_OFFSET_D
                     && world.getTileEntity(x, y - 1, z) == shrine
                     // 自有神龛中心有真实屋顶碰撞，但原三层形状不构成整面UP支撑
                     && world.getBlock(x, y - 1, z) == MaidResurrectionContent.SHRINE)
@@ -302,7 +332,7 @@ public final class MaidLifecycleService {
     public static void tell(EntityPlayer player, Result result) {
         if (result != Result.SUCCESS && player != null && !player.worldObj.isRemote) player.addChatMessage(
             new ChatComponentTranslation(
-                "message.tlmnh.lifecycle." + result.name()
+                MaidLifecycleIds.I18N_MESSAGE_TLMNH_LIFECYCLE + result.name()
                     .toLowerCase(Locale.ROOT)));
     }
 }

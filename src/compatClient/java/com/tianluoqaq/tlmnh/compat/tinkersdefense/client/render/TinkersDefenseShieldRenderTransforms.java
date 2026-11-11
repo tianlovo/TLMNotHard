@@ -44,21 +44,33 @@ public final class TinkersDefenseShieldRenderTransforms {
         var helper = equippedIconHelper();
         return BattlegearShieldRenderTransforms.nativeIconBridge(blocking)
             .mul(helper)
-            .translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z / TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z_2)
+            .translate(
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z
+                    / TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z_2)
             .mul(new Matrix4f(helper).invert());
     }
 
     private static Matrix4f equippedIconHelper() {
-        return new Matrix4f().translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_MATRIX4F_OFFSET_Y, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X)
+        return new Matrix4f()
+            .translate(
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_MATRIX4F_OFFSET_Y,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X)
             .scale(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_SCALE_X)
             .rotateY((float) Math.toRadians(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_TO_RADIANS_FIRST_PARAM))
             .rotateZ((float) Math.toRadians(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_TO_RADIANS_FIRST_PARAM_2))
-            .translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_Y, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X);
+            .translate(
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_X,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_Y,
+                TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X);
     }
 
     private static final class Api {
 
-        private static final Class<?> ROUND = resolve(TinkersDefenseClientRenderIds.ID_GMAIL_LANCE5057_ITEMS_ROUNDSHIELD),
+        private static final Class<?> ROUND = resolve(
+            TinkersDefenseClientRenderIds.ID_GMAIL_LANCE5057_ITEMS_ROUNDSHIELD),
             HEATER = resolve(TinkersDefenseClientRenderIds.ID_GMAIL_LANCE5057_ITEMS_HEATERSHIELD),
             RENDERER = resolve(TinkersDefenseClientRenderReflectionSpec.TARGET_CLASS_FLEXIBLE_TOOL_RENDERER);
         private static final Field DEPTH = resolveDepth();
@@ -67,8 +79,7 @@ public final class TinkersDefenseShieldRenderTransforms {
             var item = stack.getItem()
                 .getClass();
             if ((item != ROUND && item != HEATER) || renderer == null || renderer.getClass() != RENDERER)
-                throw new IllegalStateException(
-                    TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_ITEM_OR);
+                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_ITEM_OR);
             float depth = DEPTH.getFloat(renderer);
             if (!Float.isFinite(depth) || depth <= 0)
                 throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_HAS_AN);
@@ -78,7 +89,9 @@ public final class TinkersDefenseShieldRenderTransforms {
             try {
                 return Class.forName(name, false, TinkersDefenseShieldRenderTransforms.class.getClassLoader());
             } catch (ClassNotFoundException failure) {
-                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERING_CLASS + name, failure);
+                throw new IllegalStateException(
+                    TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERING_CLASS + name,
+                    failure);
             }
         }
 
@@ -87,10 +100,13 @@ public final class TinkersDefenseShieldRenderTransforms {
                 var field = RENDERER.getField(TinkersDefenseClientRenderIds.ID_DEPTH);
                 if (field.getDeclaringClass() != RENDERER || field.getType() != float.class
                     || Modifier.isStatic(field.getModifiers()))
-                    throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH);
+                    throw new IllegalStateException(
+                        TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH);
                 return field;
             } catch (NoSuchFieldException failure) {
-                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH_2, failure);
+                throw new IllegalStateException(
+                    TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH_2,
+                    failure);
             }
         }
     }

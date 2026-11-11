@@ -14,7 +14,7 @@ import net.minecraft.util.IIcon;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.clienthook.HandSlotIconHook;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -25,11 +25,11 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
         super(inventory, maid);
         for (int row = 0; row < 2; row++) for (int col = 0; col < 2; col++) {
             int armorType = row * 2 + col;
-            addMaidSlot(MaidInventory.ARMOR_START + 3 - armorType, 94 + 20 * col, 37 + 20 * row, armorType);
+            addMaidSlot(MaidInventoryLayout.ARMOR_START + 3 - armorType, 94 + 20 * col, 37 + 20 * row, armorType);
         }
-        addMaidSlot(MaidInventory.MAIN_HAND, 87, 77, -1);
-        addMaidSlot(MaidInventory.OFF_HAND, 121, 77, -1);
-        for (int i = 0; i < MaidInventory.BACKPACK_SIZE; i++) addMaidSlot(i, 143 + 18 * i, 37, -1);
+        addMaidSlot(MaidInventoryLayout.MAIN_HAND, 87, 77, -1);
+        addMaidSlot(MaidInventoryLayout.OFF_HAND, 121, 77, -1);
+        for (int i = 0; i < MaidInventoryLayout.BACKPACK_SIZE; i++) addMaidSlot(i, 143 + 18 * i, 37, -1);
     }
 
     private void addMaidSlot(int index, int x, int y, int armorType) {
@@ -54,8 +54,8 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
             @SideOnly(Side.CLIENT)
             public IIcon getBackgroundIconIndex() {
                 if (armorType >= 0) return ItemArmor.func_94602_b(armorType);
-                if (index == MaidInventory.MAIN_HAND || index == MaidInventory.OFF_HAND)
-                    return HandSlotIconHook.iconForHand(index == MaidInventory.OFF_HAND);
+                if (index == MaidInventoryLayout.MAIN_HAND || index == MaidInventoryLayout.OFF_HAND)
+                    return HandSlotIconHook.iconForHand(index == MaidInventoryLayout.OFF_HAND);
                 return null;
             }
         });

@@ -28,8 +28,9 @@ public final class MaidNamingNetwork {
 
     public static void init() {
         if (channel != null) return;
-        channel = NetworkRegistry.INSTANCE.newSimpleChannel("tlmnh_name1");
-        channel.registerMessage(Handler.class, MaidNameRequest.class, 0, Side.SERVER);
+        channel = NetworkRegistry.INSTANCE.newSimpleChannel(MaidNetworkProtocol.ID_TLMNH_NAME1);
+        channel
+            .registerMessage(Handler.class, MaidNameRequest.class, MaidNetworkProtocol.GET_INITIAL_VALUE, Side.SERVER);
         FMLCommonHandler.instance()
             .bus()
             .register(new MaidNamingNetwork());
@@ -45,7 +46,8 @@ public final class MaidNamingNetwork {
             || !(player.openContainer instanceof ContainerMaidNaming container)
             || !request.matches(container)) return false;
         boolean accepted = container.submit(player, request.getName(), request.isAlwaysShow());
-        if (!accepted) player.addChatMessage(new ChatComponentTranslation("message.tlmnh.naming.denied"));
+        if (!accepted)
+            player.addChatMessage(new ChatComponentTranslation(MaidNetworkProtocol.I18N_MESSAGE_TLMNH_NAMING_DENIED));
         player.closeScreen();
         return accepted;
     }
@@ -59,7 +61,7 @@ public final class MaidNamingNetwork {
             if (PENDING.remove(handler, entry.getValue()) && handler.netManager.isChannelOpen()
                 && handler.playerEntity.playerNetServerHandler == handler)
                 apply(handler.playerEntity, entry.getValue());
-            if (++processed >= 128) break;
+            if (++processed >= MaidNetworkProtocol.MAX_PROCESSED_THRESHOLD) break;
         }
     }
 

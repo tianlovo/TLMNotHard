@@ -8,16 +8,16 @@ import net.minecraftforge.common.config.Configuration;
 /** 原诱惑物的注册ID设置；目标平台没有对应的现代物品标签时回退蛋糕 */
 public final class MaidTemptationConfig {
 
-    public static String itemId = "minecraft:cake";
+    public static String itemId = MaidConfigConfigSpec.ID_MINECRAFT_CAKE;
 
     private MaidTemptationConfig() {}
 
     public static void load(Configuration config) {
         itemId = config.getString(
-            "MaidTemptationItem",
-            "interaction",
-            "minecraft:cake",
-            "主手诱惑女仆的物品注册ID，未知ID回退蛋糕 / Main-hand temptation item ID; unknown ID falls back to cake");
+            MaidConfigConfigSpec.KEY_MAID_TEMPTATION_ITEM,
+            MaidConfigConfigSpec.ID_INTERACTION,
+            MaidConfigConfigSpec.ID_MINECRAFT_CAKE,
+            MaidConfigConfigSpec.MSG_ID_ID_MAIN_HAND_TEMPTATION);
     }
 
     public static boolean matches(ItemStack stack) {

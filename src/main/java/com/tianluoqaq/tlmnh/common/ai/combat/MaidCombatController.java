@@ -7,16 +7,6 @@ import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 /** 战斗动作的有界生命周期；执行端提供感知、目标规则、原生导航与攻击 */
 public final class MaidCombatController {
 
-    public static final int SCAN_INTERVAL = 10;
-    public static final int PATH_INTERVAL = 10;
-    public static final int PATH_RETRY_INTERVAL = 40;
-    public static final int ATTACK_INTERVAL = 20;
-    public static final int HIDDEN_TIMEOUT = 40;
-    public static final int PURSUIT_TIMEOUT = 200;
-    private static final int STUCK_INTERVAL = 40;
-    private static final int MAX_PATH_FAILURES = 3;
-    private static final double LAST_SEEN_REACH_SQ = 2.25D;
-
     public enum Status {
         IDLE,
         HARD_STOP,
@@ -92,7 +82,7 @@ public final class MaidCombatController {
         default void interruptAttack() {}
 
         default int attackInterval() {
-            return ATTACK_INTERVAL;
+            return AiCombatTuning.ATTACK_INTERVAL;
         }
 
         void release(boolean suppressTarget);
@@ -114,8 +104,8 @@ public final class MaidCombatController {
     private PathResult lastPathResult;
 
     public MaidCombatController(Actor actor, int phase) {
-        this.actor = Objects.requireNonNull(actor, "actor");
-        nextScan = Math.floorMod(phase, SCAN_INTERVAL) + 1L;
+        this.actor = Objects.requireNonNull(actor, AiCombatIds.ID_ACTOR);
+        nextScan = Math.floorMod(phase, AiCombatTuning.SCAN_INTERVAL) + 1L;
     }
 
     /** true 表示本 tick 占用动作，false 表示协调器可恢复主人跟随 */
@@ -130,7 +120,7 @@ public final class MaidCombatController {
                 return false;
             }
             scans++;
-            nextScan = tick + SCAN_INTERVAL;
+            nextScan = tick + AiCombatTuning.SCAN_INTERVAL;
             if (!actor.acquireTarget()) {
                 status = Status.NO_TARGET;
                 return false;
@@ -143,13 +133,13 @@ public final class MaidCombatController {
             if (!actor.controlValid() || !actor.targetValid()) return stop(Status.CANCELLED, false);
             selections++;
             pursuitStarted = tick;
-            unseenTicks = consecutivePathFailures = 0;
+            unseenTicks = consecutivePathFailures = AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES;
             markProgress();
         }
         if (!actor.controlValid()) return stop(Status.CANCELLED, false);
         boolean visible = actor.targetVisible();
-        unseenTicks = visible ? 0 : unseenTicks + 1;
-        if (unseenTicks > HIDDEN_TIMEOUT) return stop(Status.TARGET_HIDDEN, true);
+        unseenTicks = visible ? AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES : unseenTicks + 1;
+        if (unseenTicks > AiCombatTuning.HIDDEN_TIMEOUT) return stop(Status.TARGET_HIDDEN, true);
         actor.lookAtTarget();
         double distance = actor.distanceSq();
         if (!Double.isFinite(distance)) return stop(Status.TARGET_LOST, false);
@@ -176,22 +166,22 @@ public final class MaidCombatController {
         // 弓手行走和使用物品是并行行为，离开发射距离不等于中断蓄力
         if (visible && actor.prepareWhileChasing()) actor.prepareAttack();
         else actor.interruptAttack();
-        if (!visible && distance <= LAST_SEEN_REACH_SQ) {
+        if (!visible && distance <= AiCombatTuning.LAST_SEEN_REACH_SQ) {
             actor.stopNavigation();
             status = Status.SEARCHING_LAST_SEEN;
             return true;
         }
-        if (tick - pursuitStarted >= PURSUIT_TIMEOUT) return stop(Status.PATH_FAILED, true);
-        if (tick - progressTick >= STUCK_INTERVAL) {
+        if (tick - pursuitStarted >= AiCombatTuning.PURSUIT_TIMEOUT) return stop(Status.PATH_FAILED, true);
+        if (tick - progressTick >= AiCombatTuning.STUCK_INTERVAL) {
             double movement = square(actor.x() - progressX) + square(actor.y() - progressY)
                 + square(actor.z() - progressZ);
             markProgress();
-            if (actor.hasPath() && movement < 0.0625) {
+            if (actor.hasPath() && movement < AiCombatTuning.MIN_MOVEMENT_THRESHOLD) {
                 actor.stopNavigation();
                 pathFailures++;
                 consecutivePathFailures++;
-                nextPath = Math.max(nextPath, tick + PATH_RETRY_INTERVAL);
-                if (consecutivePathFailures >= MAX_PATH_FAILURES) return stop(Status.PATH_FAILED, true);
+                nextPath = Math.max(nextPath, tick + AiCombatTuning.PATH_RETRY_INTERVAL);
+                if (consecutivePathFailures >= AiCombatTuning.MAX_PATH_FAILURES) return stop(Status.PATH_FAILED, true);
                 status = Status.STUCK;
                 return true;
             }
@@ -200,7 +190,7 @@ public final class MaidCombatController {
             status = actor.hasPath() ? Status.CHASING : Status.PATH_COOLDOWN;
             return true;
         }
-        nextPath = tick + PATH_INTERVAL;
+        nextPath = tick + AiCombatTuning.PATH_INTERVAL;
         lastPathResult = actor.approachTarget();
         if (lastPathResult.isDeferred()) {
             nextPath = tick + 1;
@@ -211,14 +201,14 @@ public final class MaidCombatController {
         }
         pathRequests++;
         if (lastPathResult == PathResult.STARTED) {
-            consecutivePathFailures = 0;
+            consecutivePathFailures = AiCombatTuning.COMBAT_CONTROLLER_CONSECUTIVE_PATH_FAILURES;
             status = Status.CHASING;
         } else {
             pathFailures++;
             consecutivePathFailures++;
-            nextPath = tick + PATH_RETRY_INTERVAL;
+            nextPath = tick + AiCombatTuning.PATH_RETRY_INTERVAL;
             actor.stopNavigation();
-            if (consecutivePathFailures >= MAX_PATH_FAILURES) return stop(Status.PATH_FAILED, true);
+            if (consecutivePathFailures >= AiCombatTuning.MAX_PATH_FAILURES) return stop(Status.PATH_FAILED, true);
             status = Status.PATH_FAILED;
         }
         return true;

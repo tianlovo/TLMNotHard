@@ -13,15 +13,14 @@ import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent
 /** 原型的可见 IMob 生活中断信号，不等于原版仅苦力怕的 panic 传感器 */
 public final class MaidDangerSensor {
 
-    private static final int SCAN_INTERVAL = 10;
     private final EntityMaid maid;
     private final MaidTelemetryChannel telemetry;
     private final MaidDangerState state = new MaidDangerState();
     private long frame, nextScan;
 
     public MaidDangerSensor(EntityMaid maid, MaidTelemetryChannel telemetry) {
-        this.maid = Objects.requireNonNull(maid, "maid");
-        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.maid = Objects.requireNonNull(maid, MaidPerceptionIds.ID_MAID);
+        this.telemetry = Objects.requireNonNull(telemetry, MaidPerceptionIds.ID_TELEMETRY);
     }
 
     public void beginFrame(MaidPolicyContext context, long frame) {
@@ -31,7 +30,7 @@ public final class MaidDangerSensor {
             return;
         }
         if (state.beginFrame(maid.worldObj, context, maid.worldObj.getTotalWorldTime()) || frame < this.frame)
-            nextScan = 0;
+            nextScan = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
         this.frame = frame;
     }
 
@@ -41,7 +40,7 @@ public final class MaidDangerSensor {
             .hasRecentHurt()) return true;
         if (!state.isFrame(maid.worldObj, maid.worldObj.getTotalWorldTime()) || maid.worldObj.isRemote) return false;
         if (frame >= nextScan) {
-            nextScan = frame + SCAN_INTERVAL;
+            nextScan = frame + MaidPerceptionTuning.SCAN_INTERVAL;
             scan();
         }
         var observation = state.getObservation();
@@ -58,19 +57,25 @@ public final class MaidDangerSensor {
 
     private void scan() {
         boolean recording = telemetry.isEnabled();
-        long started = recording ? System.nanoTime() : 0;
-        var candidates = maid.worldObj.getEntitiesWithinAABB(IMob.class, maid.boundingBox.expand(8, 4, 8));
-        int size = candidates.size(), start = state.scanStart(size), inspected = 0;
+        long started = recording ? System.nanoTime() : MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
+        var candidates = maid.worldObj.getEntitiesWithinAABB(
+            IMob.class,
+            maid.boundingBox.expand(
+                MaidPerceptionTuning.DANGER_SENSOR_EXPAND_FIRST_PARAM,
+                MaidPerceptionTuning.DANGER_SENSOR_EXPAND_SECOND_PARAM,
+                MaidPerceptionTuning.DANGER_SENSOR_EXPAND_FIRST_PARAM));
+        int size = candidates.size(), start = state.scanStart(size),
+            inspected = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
         EntityLivingBase found = null;
-        while (inspected < size && inspected < MaidDangerState.SCAN_BUDGET) {
+        while (inspected < size && inspected < MaidPerceptionTuning.SCAN_BUDGET) {
             var value = candidates.get((int) (((long) start + inspected) % size));
             inspected++;
             boolean accepted = value instanceof EntityLivingBase entity && entity instanceof IMob
                 && entity.isEntityAlive()
                 && maid.getEntitySenses()
                     .canSee(entity);
-            if (value instanceof EntityLivingBase entity)
-                telemetry.candidate("danger", entity, accepted, "visible_hostile_filter");
+            if (value instanceof EntityLivingBase entity) telemetry
+                .candidate(MaidPerceptionIds.ID_DANGER, entity, accepted, MaidPerceptionIds.ID_VISIBLE_HOSTILE_FILTER);
             if (accepted) {
                 found = (EntityLivingBase) value;
                 break;
@@ -78,19 +83,19 @@ public final class MaidDangerSensor {
         }
         state.recordScan(size, inspected, found == null ? null : found.getUniqueID(), found);
         telemetry.scan(
-            "danger",
+            MaidPerceptionIds.ID_DANGER,
             size,
             inspected,
-            "native_aabb_returned_list;partial=" + (size > inspected)
-                + ";start="
+            MaidPerceptionIds.ID_NATIVE_AABB_RETURNED_LIST_PARTIAL + (size > inspected)
+                + MaidPerceptionIds.ID_START
                 + start
-                + ";result="
+                + MaidPerceptionIds.ID_RESULT
                 + state.getResult());
-        if (recording) telemetry.work("danger", WorkComponent.SENSOR, System.nanoTime() - started);
+        if (recording) telemetry.work(MaidPerceptionIds.ID_DANGER, WorkComponent.SENSOR, System.nanoTime() - started);
     }
 
     public void clear() {
         state.clear();
-        nextScan = 0;
+        nextScan = MaidPerceptionTuning.DANGER_SENSOR_NEXT_SCAN;
     }
 }

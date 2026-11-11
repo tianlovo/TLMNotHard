@@ -19,13 +19,13 @@ public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
     private Consumer<Runnable> wrappedExecutorFactory;
 
     public MaidExternalOfferSink(MaidBehaviorId moduleId, MaidSessionCallbackScope scope) {
-        this.moduleId = Objects.requireNonNull(moduleId, "moduleId");
-        this.scope = Objects.requireNonNull(scope, "scope");
+        this.moduleId = Objects.requireNonNull(moduleId, EnhancedSessionIds.ID_MODULEID);
+        this.scope = Objects.requireNonNull(scope, EnhancedSessionIds.ID_SCOPE);
     }
 
     public void bindFrame(MaidIntentFrame frame, Consumer<Runnable> executorHook) {
-        this.activeFrame = Objects.requireNonNull(frame, "frame");
-        this.wrappedExecutorFactory = Objects.requireNonNull(executorHook, "executorHook");
+        this.activeFrame = Objects.requireNonNull(frame, EnhancedSessionIds.ID_FRAME);
+        this.wrappedExecutorFactory = Objects.requireNonNull(executorHook, EnhancedSessionIds.ID_EXECUTORHOOK);
     }
 
     public void clearFrame() {
@@ -37,7 +37,7 @@ public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
         scope.requireOffer(moduleId);
         var frame = activeFrame;
         if (frame == null || !frame.isCurrent())
-            throw new IllegalStateException("Offer frame is no longer current for " + moduleId);
+            throw new IllegalStateException(EnhancedSessionDiagnostics.MSG_OFFER_FRAME_IS_NO_LONGER + moduleId);
         return frame;
     }
 
@@ -55,9 +55,9 @@ public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
     public <P> void offer(MaidBehaviorGroup group, String target, double utility, P payload,
         Consumer<? super P> executeAction) {
         var frame = requireActiveFrame();
-        Objects.requireNonNull(group, "group");
-        Objects.requireNonNull(target, "target");
-        Objects.requireNonNull(executeAction, "executeAction");
+        Objects.requireNonNull(group, EnhancedSessionIds.ID_GROUP);
+        Objects.requireNonNull(target, EnhancedSessionIds.ID_TARGET);
+        Objects.requireNonNull(executeAction, EnhancedSessionIds.ID_EXECUTEACTION);
         Group internalGroup = switch (group) {
             case DANGER -> Group.DANGER;
             case RECOVERY -> Group.RECOVERY;
@@ -67,7 +67,7 @@ public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
             case AMBIENT -> Group.AMBIENT;
         };
         var dispatcher = wrappedExecutorFactory;
-        String namespacedTarget = moduleId + "|" + target;
+        String namespacedTarget = moduleId + EnhancedSessionIds.PIPE_DELIMITER + target;
         frame.offerTyped(
             moduleId,
             internalGroup,

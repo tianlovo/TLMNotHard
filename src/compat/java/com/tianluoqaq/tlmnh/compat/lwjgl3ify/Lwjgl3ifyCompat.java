@@ -8,7 +8,6 @@ public final class Lwjgl3ifyCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.LWJGL3IFY;
 
-
     public static final Lwjgl3ifyCompat INSTANCE = new Lwjgl3ifyCompat();
 
     private Lwjgl3ifyCompat() {}

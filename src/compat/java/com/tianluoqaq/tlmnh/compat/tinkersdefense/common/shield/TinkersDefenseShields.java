@@ -10,8 +10,6 @@ import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
 /** 两种实装匠魂盾牌的材料和损伤合同 */
 public final class TinkersDefenseShields {
 
-
-
     private TinkersDefenseShields() {}
 
     public static boolean supports(String id) {
@@ -32,7 +30,8 @@ public final class TinkersDefenseShields {
             || data.getInteger(TinkersDefenseShieldIds.KEY_HEAD) < 0
             || data.getInteger(TinkersDefenseShieldIds.KEY_HANDLE) < 0
             || data.getInteger(TinkersDefenseShieldIds.KEY_ACCESSORY) < 0
-            || TinkersDefenseShieldIds.HEATER.equals(id) && data.getInteger(TinkersDefenseShieldIds.KEY_EXTRA) < 0) return Status.INVALID_TOOL_DATA;
+            || TinkersDefenseShieldIds.HEATER.equals(id) && data.getInteger(TinkersDefenseShieldIds.KEY_EXTRA) < 0)
+            return Status.INVALID_TOOL_DATA;
         return data.getBoolean(TinkersDefenseShieldIds.KEY_BROKEN) ? Status.BROKEN : Status.READY;
     }
 

@@ -22,16 +22,18 @@ public final class MaidTombstoneEntity extends Entity {
 
     public MaidTombstoneEntity(World world) {
         super(world);
-        setSize(0.8F, 1.2F);
+        setSize(
+            MaidLifecycleTuning.TOMBSTONE_ENTITY_SET_SIZE_FIRST_FACTOR,
+            MaidLifecycleTuning.TOMBSTONE_ENTITY_SET_SIZE_SECOND_FACTOR);
         preventEntitySpawning = false;
     }
 
     public void initialize(UUID token, UUID owner, String name) {
         if (worldObj.isRemote || this.token != null || token == null || owner == null)
-            throw new IllegalStateException("Invalid tombstone initialization");
+            throw new IllegalStateException(MaidLifecyclePart3Diagnostics.MSG_INVALID_TOMBSTONE_INITIALIZATION);
         this.token = token;
         this.owner = owner;
-        dataWatcher.updateObject(20, name == null ? "" : name);
+        dataWatcher.updateObject(MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM, name == null ? "" : name);
     }
 
     public UUID getToken() {
@@ -43,12 +45,12 @@ public final class MaidTombstoneEntity extends Entity {
     }
 
     public String getMaidName() {
-        return dataWatcher.getWatchableObjectString(20);
+        return dataWatcher.getWatchableObjectString(MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM);
     }
 
     @Override
     protected void entityInit() {
-        dataWatcher.addObject(20, "");
+        dataWatcher.addObject(MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM, "");
     }
 
     @Override
@@ -56,7 +58,8 @@ public final class MaidTombstoneEntity extends Entity {
         lastTickPosX = prevPosX = posX;
         lastTickPosY = prevPosY = posY;
         lastTickPosZ = prevPosZ = posZ;
-        if (!worldObj.isRemote && posY < 5) setPosition(posX, 5, posZ);
+        if (!worldObj.isRemote && posY < MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM)
+            setPosition(posX, MaidLifecycleTuning.DEATH_EXPERIENCE_BLOCK_EXISTS_SECOND_PARAM, posZ);
     }
 
     @Override
@@ -93,19 +96,21 @@ public final class MaidTombstoneEntity extends Entity {
     @Override
     protected void readEntityFromNBT(NBTTagCompound tag) {
         try {
-            token = UUID.fromString(tag.getString("Token"));
-            owner = UUID.fromString(tag.getString("OwnerId"));
+            token = UUID.fromString(tag.getString(MaidLifecyclePart2NbtKeys.KEY_TOKEN));
+            owner = UUID.fromString(tag.getString(MaidLifecyclePart2NbtKeys.KEY_OWNER_ID));
         } catch (IllegalArgumentException exception) {
             token = null;
             owner = null;
         }
-        dataWatcher.updateObject(20, tag.getString("MaidName"));
+        dataWatcher.updateObject(
+            MaidLifecycleTuning.CAPTURE_SERVICE_PUT_SECOND_PARAM,
+            tag.getString(MaidLifecyclePart2NbtKeys.KEY_MAID_NAME));
     }
 
     @Override
     protected void writeEntityToNBT(NBTTagCompound tag) {
-        if (token != null) tag.setString("Token", token.toString());
-        if (owner != null) tag.setString("OwnerId", owner.toString());
-        tag.setString("MaidName", getMaidName());
+        if (token != null) tag.setString(MaidLifecyclePart2NbtKeys.KEY_TOKEN, token.toString());
+        if (owner != null) tag.setString(MaidLifecyclePart2NbtKeys.KEY_OWNER_ID, owner.toString());
+        tag.setString(MaidLifecyclePart2NbtKeys.KEY_MAID_NAME, getMaidName());
     }
 }

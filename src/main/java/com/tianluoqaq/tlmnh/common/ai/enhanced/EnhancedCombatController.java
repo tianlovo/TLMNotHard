@@ -11,6 +11,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatFullServiceReceipt;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatRangePolicy;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
@@ -20,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedRideController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedSupportTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -30,6 +32,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentHooks.CombatPhase;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -38,12 +41,13 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 一个战斗会话内部切武器与动作，实体级节拍和已接受命中不随取消重建 */
 public final class EnhancedCombatController {
 
-    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("unified_combat");
-    private static final int REPLAN_TICKS = 4, FAILED_APPROACH_TICKS = 200, RETRY_TICKS = 100, MAX_FAILED_TARGETS = 32;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin(EnhancedAiIds.ID_UNIFIED_COMBAT);
+
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final CombatPlanner planner = new CombatPlanner();
-    private final MaidTargetCooldowns<UUID> failures = MaidTargetCooldowns.forUuidFifo(MAX_FAILED_TARGETS);
+    private final MaidTargetCooldowns<UUID> failures = MaidTargetCooldowns
+        .forUuidFifo(EnhancedAiTuning.MAX_FAILED_TARGETS);
     private EntityLivingBase ownedTarget;
     private Point lastSeen;
     private CombatWorkQuota quota;
@@ -77,7 +81,7 @@ public final class EnhancedCombatController {
             lastFullAt = Long.MIN_VALUE;
         }
         CombatObservation observation = actor.combatObservation();
-        boolean due = lastFullAt == Long.MIN_VALUE || now - lastFullAt >= REPLAN_TICKS;
+        boolean due = lastFullAt == Long.MIN_VALUE || now - lastFullAt >= EnhancedAiTuning.REPLAN_TICKS;
         if (observation.readiness() != null && observation.readiness().tick == now) reportPreparation(observation, now);
         quota = CombatWorldBudget
             .heartbeat(maid.worldObj, maid.getUniqueID(), now, due && hasServiceTarget(observation));
@@ -91,12 +95,19 @@ public final class EnhancedCombatController {
             quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, true);
         failures.purgeExpired(now, (id, entry) -> {
             Vec seen = observation.lastSeen(id);
-            return seen == null || Math.sqrt(entry.distanceSq(seen.x, seen.y, seen.z)) > 2;
+            return seen == null || Math.sqrt(entry.distanceSq(seen.x, seen.y, seen.z))
+                > EnhancedAiTuning.ENHANCED_AMBIENT_CLOSER_THAN_SECOND_PARAM;
         });
         if (ownedTarget != null && approachFailed(now)) {
             Vec position = observation.lastSeen(ownedTarget.getUniqueID());
             if (position != null) {
-                failures.record(ownedTarget.getUniqueID(), now + RETRY_TICKS, position.x, position.y, position.z, null);
+                failures.record(
+                    ownedTarget.getUniqueID(),
+                    now + EnhancedAiTuning.RETRY_TICKS,
+                    position.x,
+                    position.y,
+                    position.z,
+                    null);
                 abandonedTargets++;
             }
         }
@@ -123,11 +134,11 @@ public final class EnhancedCombatController {
                     maidHurt,
                     rangePolicy.isMeleeUnproductive(id, now),
                     meleeContention
-                        && observation.hasObservedFriendNear(maid, seen, CombatRangePolicy.FRIEND_MELEE_RADIUS_SQ),
+                        && observation.hasObservedFriendNear(maid, seen, CombatBudgetTuning.FRIEND_MELEE_RADIUS_SQ),
                     canProgressAgainst(observation, target, seen, now)));
         }
         for (OfferCandidate current : candidates) {
-            int bestAlternativeUrgency = -1;
+            int bestAlternativeUrgency = EnhancedAiTuning.UNSET_OR_NOT_FOUND;
             boolean uncontestedAlternative = false;
             for (OfferCandidate other : candidates) {
                 if (other == current || other.unproductive || !other.progressable) continue;
@@ -162,7 +173,7 @@ public final class EnhancedCombatController {
         if (!observation.visible(target.getUniqueID())) return false;
         double distanceSq = maid.getDistanceSq(seen.x, seen.y, seen.z);
         boolean bowInRange = observation.supportedBow() && observation.observedAmmunition(now)
-            && distanceSq <= MaidBowAttack.RANGE_SQ;
+            && distanceSq <= MaidCombatTuning.RANGE_SQ;
         if (bowInRange) return true;
         if (!observation.supportedMelee()) return false;
         double reach = MaidCombatAttributes.entityReach(maid) + maid.getFavorabilityManager()
@@ -193,7 +204,7 @@ public final class EnhancedCombatController {
 
     private boolean approachFailed(long now) {
         Long since = actor.getCantReachSince();
-        return since != null && now >= since && now - since > FAILED_APPROACH_TICKS;
+        return since != null && now >= since && now - since > EnhancedAiTuning.FAILED_APPROACH_TICKS;
     }
 
     private boolean permitted() {
@@ -206,7 +217,7 @@ public final class EnhancedCombatController {
             || maid.getHomeArea()
                 .activity() != Activity.WORK)
             return false;
-        return MaidDomainGuard.isMaidWithinDomain(maid, actor, MaidDomainGuard.DEFAULT_OWNER_DOMAIN_RADIUS);
+        return MaidDomainGuard.isMaidWithinDomain(maid, actor, EnhancedSupportTuning.DEFAULT_OWNER_DOMAIN_RADIUS);
     }
 
     /** 身份与存活可重验；隐藏目标的活动边界只用最后可见位置 */
@@ -290,7 +301,7 @@ public final class EnhancedCombatController {
         }
         if (trial != null) trial.applied(result, quota);
         lastResult = result;
-        long accepted = Math.max(0, actor.meleeNativeAccepted() - hits);
+        long accepted = Math.max(EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE, actor.meleeNativeAccepted() - hits);
         attacks += accepted;
         if (actor.isCurrent()) {
             boolean rejectedMelee = accepted == 0 && actor.meleeAttempts() > attempts
@@ -298,7 +309,7 @@ public final class EnhancedCombatController {
                 && !maid.getCombatCadence()
                     .ready();
             if (accepted > 0 || rejectedMelee) {
-                long committedCooldown = accepted > 0 ? 0
+                long committedCooldown = accepted > 0 ? EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE
                     : maid.getCombatCadence()
                         .remainingTicks();
                 actor.combatObservation()
@@ -307,7 +318,7 @@ public final class EnhancedCombatController {
             }
         }
         releases += Math.max(
-            0,
+            EnhancedAiTuning.ENHANCED_AMBIENT_NEXT_CHOICE,
             actor.rangedBow()
                 .getShots() - shots);
         if (result == CombatPlan.Result.STALE) staleDecisions++;
@@ -348,7 +359,7 @@ public final class EnhancedCombatController {
         lastFullAt = Long.MIN_VALUE;
         planner.finishDecision();
         if (!preserveRequest) CombatWorldBudget.cancel(maid.worldObj, maid.getUniqueID());
-        if (actor.isCurrent()) actor.cancelUnifiedCombat("combat_session_cancelled");
+        if (actor.isCurrent()) actor.cancelUnifiedCombat(EnhancedAiIds.ID_COMBAT_SESSION_CANCELLED);
         if (previous != null && maid.getModernCombatMemory()
             .target() == previous) maid.getModernCombatMemory()
                 .target(null);

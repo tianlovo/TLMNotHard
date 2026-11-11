@@ -20,8 +20,6 @@ import cpw.mods.fml.relauncher.Side;
 /** 获取权与实际玩家交付分别确认；只凭准确物理收据恢复，不按旧槽位或相同原材料猜认 */
 final class MaidAcquisitionDelivery {
 
-    private static final String RECEIPT = "TLMNHAcquisitionReceipt";
-
     private MaidAcquisitionDelivery() {}
 
     static boolean gift(EntityPlayer player) {
@@ -74,7 +72,14 @@ final class MaidAcquisitionDelivery {
             var stack = player.inventory.mainInventory[slot];
             var token = receiptToken(stack);
             if (token != null) {
-                core(player, stack, slot, false, 0, 0, 0);
+                core(
+                    player,
+                    stack,
+                    slot,
+                    false,
+                    MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                    MaidLifecycleTuning.CORE_INITIAL_VALUE,
+                    MaidLifecycleTuning.CORE_INITIAL_VALUE);
                 continue;
             }
             token = MaidLifecycleItems.token(stack);
@@ -92,7 +97,7 @@ final class MaidAcquisitionDelivery {
 
     static ItemStack core(EntityPlayer player, ItemStack source, int slot, boolean clicked, int x, int y, int z) {
         if (!MaidLifecycleService.canUse(player) || source == null
-            || source.stackSize != 1
+            || source.stackSize != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             || source.getItem() != MaidResurrectionContent.MAID_CORE
             || slot < 0
             || slot >= player.inventory.mainInventory.length
@@ -108,7 +113,7 @@ final class MaidAcquisitionDelivery {
             MaidLifecycleDurability.requirePlayer(player);
             token = receiptToken(source);
             if (source.hasTagCompound() && source.getTagCompound()
-                .hasKey(RECEIPT)) {
+                .hasKey(MaidLifecycleNbtKeys.RECEIPT)) {
                 if (token == null || ledger.initialKind(token) != MaidLifecycleData.Kind.ACQUIRED
                     || !before.owner.equals(ledger.owner(token, MaidLifecycleData.Kind.ACQUIRED))
                     || ledger.delivered(token)
@@ -127,17 +132,17 @@ final class MaidAcquisitionDelivery {
                 var tag = stamped.hasTagCompound() ? (NBTTagCompound) stamped.getTagCompound()
                     .copy() : new NBTTagCompound();
                 var receipt = new NBTTagCompound();
-                receipt.setInteger("Schema", 1);
-                receipt.setString("Token", token.toString());
-                receipt.setString("Owner", before.owner.toString());
-                tag.setTag(RECEIPT, receipt);
+                receipt.setInteger(MaidLifecycleNbtKeys.KEY_SCHEMA, MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD);
+                receipt.setString(MaidLifecycleNbtKeys.KEY_TOKEN, token.toString());
+                receipt.setString(MaidLifecycleNbtKeys.KEY_OWNER, before.owner.toString());
+                tag.setTag(MaidLifecycleNbtKeys.RECEIPT, receipt);
                 stamped.setTagCompound(tag);
                 var bound = MaidLifecycleItems.credential(MaidResurrectionContent.INITIAL_SLAB, token, before.owner);
                 if (source.hasTagCompound()) {
                     var payload = (NBTTagCompound) source.getTagCompound()
                         .copy();
-                    payload.setString("TLMNHToken", token.toString());
-                    payload.setString("InitMaidOwner", before.owner.toString());
+                    payload.setString(MaidLifecycleNbtKeys.KEY_TLMNH_TOKEN, token.toString());
+                    payload.setString(MaidLifecycleNbtKeys.KEY_INIT_MAID_OWNER, before.owner.toString());
                     bound.setTagCompound(payload);
                 }
                 ledger.prepareAcquisition(
@@ -162,7 +167,7 @@ final class MaidAcquisitionDelivery {
             if (!allowed(stampedBefore, slot, source, expectedStamp, clicked, x, y, z)) return null;
             var result = ProtectedItemCodec.decode(ledger.acquisitionCredential(token));
             if (!credential(player, ledger, result, token))
-                throw new IllegalStateException("Invalid stored acquisition output");
+                throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_INVALID_STORED_ACQUISITION_OUTPUT);
             var expectedResult = result.copy();
             ledger.issueAcquisition(stampedBefore.world, token);
             if (!allowed(stampedBefore, slot, source, expectedStamp, clicked, x, y, z)) return null;
@@ -208,14 +213,14 @@ final class MaidAcquisitionDelivery {
     private static int credentialSlot(EntityPlayer player, MaidLifecycleData ledger, UUID token) {
         for (int slot = 0; slot < player.inventory.mainInventory.length; slot++)
             if (credential(player, ledger, player.inventory.mainInventory[slot], token)) return slot;
-        return -1;
+        return MaidLifecycleTuning.MISSING_CREDENTIAL_SLOT;
     }
 
     private static boolean credential(EntityPlayer player, MaidLifecycleData ledger, ItemStack stack, UUID token) {
         var kind = ledger.initialKind(token);
         boolean identity = token != null && kind != null
             && stack != null
-            && stack.stackSize == 1
+            && stack.stackSize == MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             && stack.getItem() == MaidResurrectionContent.INITIAL_SLAB
             && token.equals(MaidLifecycleItems.token(stack))
             && player.getUniqueID()
@@ -225,29 +230,30 @@ final class MaidAcquisitionDelivery {
                 .toString()
                 .equals(
                     stack.getTagCompound()
-                        .getString("InitMaidOwner"));
+                        .getString(MaidLifecycleNbtKeys.KEY_INIT_MAID_OWNER));
         return identity && (ledger.acquisitionPhase(token) == MaidLifecycleData.AcquisitionPhase.NONE
             || ItemStack.areItemStacksEqual(stack, ProtectedItemCodec.decode(ledger.acquisitionCredential(token))));
     }
 
     private static UUID receiptToken(ItemStack stack) {
-        if (stack == null || stack.stackSize != 1
+        if (stack == null || stack.stackSize != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
             || stack.getItem() != MaidResurrectionContent.MAID_CORE
             || !stack.hasTagCompound()
             || !stack.getTagCompound()
-                .hasKey(RECEIPT, Constants.NBT.TAG_COMPOUND))
+                .hasKey(MaidLifecycleNbtKeys.RECEIPT, Constants.NBT.TAG_COMPOUND))
             return null;
         var receipt = stack.getTagCompound()
-            .getCompoundTag(RECEIPT);
-        if (!receipt.hasKey("Schema", Constants.NBT.TAG_INT) || receipt.getInteger("Schema") != 1
-            || !receipt.hasKey("Token", Constants.NBT.TAG_STRING)
-            || !receipt.hasKey("Owner", Constants.NBT.TAG_STRING)
+            .getCompoundTag(MaidLifecycleNbtKeys.RECEIPT);
+        if (!receipt.hasKey(MaidLifecycleNbtKeys.KEY_SCHEMA, Constants.NBT.TAG_INT)
+            || receipt.getInteger(MaidLifecycleNbtKeys.KEY_SCHEMA) != MaidLifecycleTuning.TARGET_STACK_SIZE_THRESHOLD
+            || !receipt.hasKey(MaidLifecycleNbtKeys.KEY_TOKEN, Constants.NBT.TAG_STRING)
+            || !receipt.hasKey(MaidLifecycleNbtKeys.KEY_OWNER, Constants.NBT.TAG_STRING)
             || receipt.func_150296_c()
-                .size() != 3)
+                .size() != MaidLifecycleTuning.TARGET_SIZE_THRESHOLD)
             return null;
         try {
-            UUID.fromString(receipt.getString("Owner"));
-            return UUID.fromString(receipt.getString("Token"));
+            UUID.fromString(receipt.getString(MaidLifecycleNbtKeys.KEY_OWNER));
+            return UUID.fromString(receipt.getString(MaidLifecycleNbtKeys.KEY_TOKEN));
         } catch (IllegalArgumentException failure) {
             return null;
         }
@@ -263,20 +269,20 @@ final class MaidAcquisitionDelivery {
 
     private static void persistReplacement(Snapshot before, int slot, ItemStack result, ItemStack expected) {
         if (!before.replaced(slot, result, expected))
-            throw new IllegalStateException("Acquisition callback changed inventory");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_ACQUISITION_CALLBACK_CHANGED_INVENTORY);
         var delivered = (NBTTagList) before.inventory.writeToNBT(new NBTTagList())
             .copy();
         MaidLifecycleDurability.player(before.player, delivered, before.selected);
         if (!before.replaced(slot, result, expected)
             || !delivered.equals(before.inventory.writeToNBT(new NBTTagList())))
-            throw new IllegalStateException("Native save callback changed acquisition delivery");
+            throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_NATIVE_SAVE_CALLBACK_CHANGED_ACQUISITION);
     }
 
     private static void report(EntityPlayer player, UUID token, Throwable failure) {
         IntegrationGuard.throwIfFatal(failure);
         IntegrationGuard.report(
             Side.SERVER,
-            "acquisition/" + (token == null ? player.getUniqueID() : token),
+            MaidLifecycleIds.ID_ACQUISITION + (token == null ? player.getUniqueID() : token),
             failure,
             player.getUniqueID());
     }

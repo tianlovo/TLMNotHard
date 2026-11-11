@@ -9,9 +9,6 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 /** 统一女仆家园与主人活动域判定；家园启用时按配置域裁决，非家园按主人半径裁决 */
 public final class MaidDomainGuard {
 
-    public static final double DEFAULT_OWNER_DOMAIN_RADIUS = 16.0;
-    public static final double LIFE_OWNER_DOMAIN_RADIUS = 12.0;
-
     private MaidDomainGuard() {}
 
     public static boolean isMaidWithinDomain(EntityMaid maid, ModernFollowCoreActor actor, double ownerRadius) {
@@ -25,7 +22,7 @@ public final class MaidDomainGuard {
     }
 
     public static boolean isPointWithinActiveDomain(EntityMaid maid, double x, double y, double z) {
-        return isPointWithinDomain(maid, x, y, z, DEFAULT_OWNER_DOMAIN_RADIUS);
+        return isPointWithinDomain(maid, x, y, z, EnhancedSupportTuning.DEFAULT_OWNER_DOMAIN_RADIUS);
     }
 
     public static boolean isPointWithinDomain(EntityMaid maid, double x, double y, double z, double ownerRadius) {
@@ -39,7 +36,7 @@ public final class MaidDomainGuard {
             || owner.dimension != maid.dimension
             || !owner.isEntityAlive()
             || owner instanceof EntityPlayerMP mp && mp.theItemInWorldManager.getGameType()
-                .getID() == 3)
+                .getID() == EnhancedSupportTuning.TARGET_GET_ID_THRESHOLD)
             return false;
         return owner.getDistanceSq(x, y, z) <= ownerRadius * ownerRadius;
     }

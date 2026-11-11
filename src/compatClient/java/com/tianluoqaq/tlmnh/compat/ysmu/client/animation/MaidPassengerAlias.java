@@ -20,9 +20,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidPassengerAlias {
 
-
-
-
     private static JsonObject lastObserved;
     private static long matches;
 
@@ -45,7 +42,8 @@ public final class MaidPassengerAlias {
             }
             if (declaredId == null) return original;
             if (!YsmuClientAnimationIds.PROVIDER.equals(DependencyFingerprint.mod(YsmuCompat.MOD_ID)))
-                throw new IllegalStateException(YsmuClientAnimationDiagnostics.MSG_YSM_PASSENGER_MATCHER_PROVIDER_DIFFERS);
+                throw new IllegalStateException(
+                    YsmuClientAnimationDiagnostics.MSG_YSM_PASSENGER_MATCHER_PROVIDER_DIFFERS);
             String clip = prefix + declaredId;
             if (DevelopmentFlags.isDevCommandsEnabled()) {
                 matches++;
@@ -57,7 +55,8 @@ public final class MaidPassengerAlias {
                 String registry = EntityList.getEntityString(maid);
                 observed.addProperty(YsmuClientAnimationIds.ID_ACTUALREGISTRYID, registry);
                 String canonical = registry == null ? "" : registry.toLowerCase(Locale.US);
-                if (!canonical.isEmpty() && canonical.indexOf(':') < 0) canonical = YsmuClientAnimationIds.ID_MINECRAFT + canonical;
+                if (!canonical.isEmpty() && canonical.indexOf(':') < 0)
+                    canonical = YsmuClientAnimationIds.ID_MINECRAFT + canonical;
                 observed.addProperty(YsmuClientAnimationIds.ID_CANONICALACTUALID, canonical);
                 observed.addProperty(YsmuClientAnimationIds.ID_ORIGINALDOTEST, original);
                 observed.addProperty(YsmuClientAnimationIds.ID_SELECTEDCLIP, clip);
@@ -74,7 +73,9 @@ public final class MaidPassengerAlias {
     public static JsonObject observation() {
         var result = new JsonObject();
         result.addProperty(YsmuClientAnimationIds.ID_ALIASMATCHES, matches);
-        result.addProperty(YsmuClientAnimationIds.ID_GUARDAVAILABLE, IntegrationGuard.available(Side.CLIENT, YsmuClientAnimationIds.GUARD));
+        result.addProperty(
+            YsmuClientAnimationIds.ID_GUARDAVAILABLE,
+            IntegrationGuard.available(Side.CLIENT, YsmuClientAnimationIds.GUARD));
         if (lastObserved != null) result.add(YsmuClientAnimationIds.ID_LASTALIASMATCH, lastObserved);
         return result;
     }

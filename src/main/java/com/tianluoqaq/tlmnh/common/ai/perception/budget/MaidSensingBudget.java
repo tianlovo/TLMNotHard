@@ -24,9 +24,9 @@ public final class MaidSensingBudget {
         public final Kind kind;
 
         public Request(UUID actor, UUID scope, Kind kind) {
-            this.actor = Objects.requireNonNull(actor, "actor");
-            this.scope = Objects.requireNonNull(scope, "scope");
-            this.kind = Objects.requireNonNull(kind, "kind");
+            this.actor = Objects.requireNonNull(actor, PerceptionBudgetIds.ID_ACTOR);
+            this.scope = Objects.requireNonNull(scope, PerceptionBudgetIds.ID_SCOPE);
+            this.kind = Objects.requireNonNull(kind, PerceptionBudgetIds.ID_KIND);
         }
 
         @Override
@@ -40,7 +40,6 @@ public final class MaidSensingBudget {
         }
     }
 
-    private static final int ABANDONED_TICKS = 2;
     private final int limit;
     private final Map<Request, Long> waiting = new LinkedHashMap<>();
     private final EnumMap<Kind, Long> admissions = new EnumMap<>(Kind.class);
@@ -48,12 +47,13 @@ public final class MaidSensingBudget {
     private int used;
 
     public MaidSensingBudget(int limit) {
-        if (limit < 1) throw new IllegalArgumentException("Positive sensing budget required");
+        if (limit < PerceptionBudgetTuning.MIN_LIMIT_THRESHOLD)
+            throw new IllegalArgumentException(PerceptionBudgetDiagnostics.MSG_POSITIVE_SENSING_BUDGET_REQUIRED);
         this.limit = limit;
     }
 
     public boolean acquire(Request request, long now) {
-        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(request, PerceptionBudgetIds.ID_REQUEST);
         advance(now);
         waiting.put(request, now);
         if (used < limit && waiting.keySet()
@@ -62,7 +62,7 @@ public final class MaidSensingBudget {
             .equals(request)) {
             waiting.remove(request);
             used++;
-            admissions.merge(request.kind, 1L, Long::sum);
+            admissions.merge(request.kind, PerceptionBudgetTuning.SENSING_BUDGET_MERGE_SECOND_LIMIT, Long::sum);
             return true;
         }
         deferred++;
@@ -87,10 +87,10 @@ public final class MaidSensingBudget {
         if (now != tick) {
             if (now < tick) waiting.clear();
             tick = now;
-            used = 0;
+            used = PerceptionBudgetTuning.SENSING_BUDGET_USED;
         }
         for (Iterator<Long> i = waiting.values()
-            .iterator(); i.hasNext();) if (now - i.next() > ABANDONED_TICKS) i.remove();
+            .iterator(); i.hasNext();) if (now - i.next() > PerceptionBudgetTuning.ABANDONED_TICKS) i.remove();
     }
 
     public int used(long now) {
@@ -107,7 +107,7 @@ public final class MaidSensingBudget {
     }
 
     public long admitted(Kind kind) {
-        return admissions.getOrDefault(kind, 0L);
+        return admissions.getOrDefault(kind, PerceptionBudgetTuning.SENSING_BUDGET_GET_OR_DEFAULT_SECOND_LIMIT);
     }
 
     public long deferred() {

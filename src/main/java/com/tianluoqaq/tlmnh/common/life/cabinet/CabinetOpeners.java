@@ -10,7 +10,6 @@ import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 /** 原ContainerOpenersCounter的首开/末关声音；旧IInventory回调无玩家，下一tick核实际窗口 */
 public final class CabinetOpeners {
 
-    private static final int RECHECK_TICKS = 5;
     private final TileEntitySnackCabinet cabinet;
     private int count;
     private long nextCheck;
@@ -25,8 +24,8 @@ public final class CabinetOpeners {
     }
 
     public void reset() {
-        count = 0;
-        nextCheck = 0;
+        count = SnackCabinetLayout.BLOCK_SNACK_GET_COMPARATOR_INPUT_OVERRIDE_ZERO_BASE;
+        nextCheck = SnackCabinetLayout.BLOCK_SNACK_GET_COMPARATOR_INPUT_OVERRIDE_ZERO_BASE;
         requested = false;
     }
 
@@ -38,19 +37,19 @@ public final class CabinetOpeners {
         long now = world.getTotalWorldTime();
         if (!requested && (count == 0 || now < nextCheck)) return;
         requested = false;
-        nextCheck = now + RECHECK_TICKS;
+        nextCheck = now + SnackCabinetLayout.RECHECK_TICKS;
         int actual = 0;
         var box = AxisAlignedBB.getBoundingBox(
-            cabinet.xCoord - 5,
-            cabinet.yCoord - 5,
-            cabinet.zCoord - 5,
-            cabinet.xCoord + 6,
-            cabinet.yCoord + 6,
-            cabinet.zCoord + 6);
+            cabinet.xCoord - SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM,
+            cabinet.yCoord - SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM,
+            cabinet.zCoord - SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM,
+            cabinet.xCoord + SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM_2,
+            cabinet.yCoord + SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM_2,
+            cabinet.zCoord + SnackCabinetLayout.CABINET_OPENERS_TICK_PARAM_2);
         for (Object candidate : world.getEntitiesWithinAABB(EntityPlayer.class, box)) {
             var player = (EntityPlayer) candidate;
             if (player instanceof EntityPlayerMP mp && mp.theItemInWorldManager.getGameType()
-                .getID() == 3) continue;
+                .getID() == SnackCabinetLayout.LOW_TWO_BITS_MASK) continue;
             if (player.isEntityAlive() && player.openContainer instanceof ContainerChest chest
                 && chest.getLowerChestInventory() == cabinet
                 && cabinet.isUseableByPlayer(player)) actual++;
@@ -60,15 +59,23 @@ public final class CabinetOpeners {
         if (!opened && !closed) return;
         int direction = BlockSnackCabinet
             .facingDirection(world.getBlockMetadata(cabinet.xCoord, cabinet.yCoord, cabinet.zCoord));
-        double x = cabinet.xCoord + .5 + (direction == 1 ? -.5 : direction == 3 ? .5 : 0);
-        double z = cabinet.zCoord + .5 + (direction == 0 ? .5 : direction == 2 ? -.5 : 0);
+        double x = cabinet.xCoord + SnackCabinetLayout.BLOCK_SNACK_FACING_2
+            + (direction == SnackCabinetLayout.TARGET_SIDE_THRESHOLD ? SnackCabinetLayout.CABINET_OPENERS_TICK_FACTOR
+                : direction == SnackCabinetLayout.LOW_TWO_BITS_MASK ? SnackCabinetLayout.BLOCK_SNACK_FACING_2
+                    : SnackCabinetLayout.BLOCK_SNACK_GET_COMPARATOR_INPUT_OVERRIDE_ZERO_BASE);
+        double z = cabinet.zCoord + SnackCabinetLayout.BLOCK_SNACK_FACING_2
+            + (direction == 0 ? SnackCabinetLayout.BLOCK_SNACK_FACING_2
+                : direction == SnackCabinetLayout.BLOCK_SNACK_FACING_DIRECTION_PARAM
+                    ? SnackCabinetLayout.CABINET_OPENERS_TICK_FACTOR
+                    : SnackCabinetLayout.BLOCK_SNACK_GET_COMPARATOR_INPUT_OVERRIDE_ZERO_BASE);
         world.playSoundEffect(
             x,
-            cabinet.yCoord + .5,
+            cabinet.yCoord + SnackCabinetLayout.BLOCK_SNACK_FACING_2,
             z,
             CompatServices.worldContent()
                 .barrelSound(opened),
-            .5F,
-            world.rand.nextFloat() * .1F + .8F);
+            SnackCabinetLayout.CABINET_OPENERS_TICK_FACTOR_2,
+            world.rand.nextFloat() * SnackCabinetLayout.CABINET_OPENERS_TICK_FACTOR_3
+                + SnackCabinetLayout.CABINET_OPENERS_TICK_FACTOR_4);
     }
 }

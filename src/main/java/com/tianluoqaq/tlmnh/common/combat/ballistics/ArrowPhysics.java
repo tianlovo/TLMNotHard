@@ -7,8 +7,12 @@ import java.util.function.Function;
 public final class ArrowPhysics {
 
     // 固定1.7.10 EntityArrow.onUpdate中的float常量，保留实际提升到double的值
-    public static final ArrowPhysics OVERWORLD_AIR = new ArrowPhysics((double) 0.99F, (double) 0.05F);
-    public static final ArrowPhysics OVERWORLD_WATER = new ArrowPhysics((double) 0.8F, (double) 0.05F);
+    public static final ArrowPhysics OVERWORLD_AIR = new ArrowPhysics(
+        (double) BallisticsTuning.ARROW_PHYSICS_ARROW_PHYSICS_FIRST_FACTOR,
+        (double) BallisticsTuning.ARROW_PHYSICS_ARROW_PHYSICS_SECOND_FACTOR);
+    public static final ArrowPhysics OVERWORLD_WATER = new ArrowPhysics(
+        (double) BallisticsTuning.ARROW_PHYSICS_ARROW_PHYSICS_FIRST_FACTOR_2,
+        (double) BallisticsTuning.ARROW_PHYSICS_ARROW_PHYSICS_SECOND_FACTOR);
     public final double drag, gravity;
     private final Function<BallisticVector, Medium> medium;
 
@@ -17,8 +21,10 @@ public final class ArrowPhysics {
     }
 
     private ArrowPhysics(double drag, double gravity, Function<BallisticVector, Medium> medium) {
-        if (!Double.isFinite(drag) || drag <= 0 || drag > 1 || !Double.isFinite(gravity) || gravity < 0)
-            throw new IllegalArgumentException("Invalid arrow physics profile");
+        if (!Double.isFinite(drag) || drag <= 0
+            || drag > BallisticsTuning.MIN_MAX_TICKS_THRESHOLD
+            || !Double.isFinite(gravity)
+            || gravity < 0) throw new IllegalArgumentException(BallisticsDiagnostics.MSG_INVALID_ARROW_PHYSICS_PROFILE);
         this.drag = drag;
         this.gravity = gravity;
         this.medium = medium;
@@ -54,8 +60,8 @@ public final class ArrowPhysics {
     }
 
     public BallisticVector positionAt(State initial, double ticks) {
-        if (!Double.isFinite(ticks) || ticks < 0 || ticks > ArrowInterceptSolver.MAX_FLIGHT_TICKS)
-            throw new IllegalArgumentException("Flight time outside the supported budget");
+        if (!Double.isFinite(ticks) || ticks < 0 || ticks > BallisticsTuning.MAX_FLIGHT_TICKS)
+            throw new IllegalArgumentException(BallisticsDiagnostics.MSG_FLIGHT_TIME_OUTSIDE_THE_SUPPORTED);
         State current = initial;
         int whole = (int) ticks;
         for (int i = 0; i < whole; i++) current = step(current);
@@ -72,8 +78,8 @@ public final class ArrowPhysics {
         public final BallisticVector push;
 
         public Medium(double drag, BallisticVector push) {
-            if (!Double.isFinite(drag) || drag <= 0 || drag > 1)
-                throw new IllegalArgumentException("Invalid medium drag");
+            if (!Double.isFinite(drag) || drag <= 0 || drag > BallisticsTuning.MIN_MAX_TICKS_THRESHOLD)
+                throw new IllegalArgumentException(BallisticsDiagnostics.MSG_INVALID_MEDIUM_DRAG);
             this.drag = drag;
             this.push = Objects.requireNonNull(push);
         }
@@ -84,8 +90,8 @@ public final class ArrowPhysics {
         public final BallisticVector position, velocity;
 
         public State(BallisticVector position, BallisticVector velocity) {
-            this.position = Objects.requireNonNull(position, "position");
-            this.velocity = Objects.requireNonNull(velocity, "velocity");
+            this.position = Objects.requireNonNull(position, BallisticsIds.ID_POSITION);
+            this.velocity = Objects.requireNonNull(velocity, BallisticsIds.ID_VELOCITY);
         }
     }
 }
