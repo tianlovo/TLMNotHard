@@ -63,7 +63,8 @@ public final class CompatBootstrap implements CompatRegistrar {
             .doors(new DoorProviderImpl())
             .worldContent(new WorldContentImpl())
             .nutrition(new NutritionProviderImpl())
-            .lifecycleStorage(new LifecycleStorageImpl());
+            .lifecycleStorage(new LifecycleStorageImpl())
+            .backpacks(new BackpackCompatDispatcher());
     }
 
     private static final class ShieldProviderImpl implements ShieldCompatProvider {

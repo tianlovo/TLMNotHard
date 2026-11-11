@@ -8,6 +8,7 @@ import com.tianluoqaq.tlmnh.common.ai.spi.WorldExtraContentProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.ShieldCompatProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.WeaponCompatProvider;
+import com.tianluoqaq.tlmnh.common.inventory.spi.BackpackContainerCompatProvider;
 import com.tianluoqaq.tlmnh.common.life.spi.NutritionCompatProvider;
 import com.tianluoqaq.tlmnh.common.lifecycle.spi.LifecycleStorageCompatProvider;
 
@@ -24,6 +25,7 @@ public final class CompatServices {
     private static WorldExtraContentProvider worldContent = WorldExtraContentProvider.NOOP;
     private static NutritionCompatProvider nutrition = NutritionCompatProvider.NOOP;
     private static LifecycleStorageCompatProvider lifecycleStorage = LifecycleStorageCompatProvider.NOOP;
+    private static BackpackContainerCompatProvider backpacks = BackpackContainerCompatProvider.NOOP;
     private static volatile boolean frozen;
     private static volatile int registeredCount;
 
@@ -83,6 +85,10 @@ public final class CompatServices {
         return lifecycleStorage;
     }
 
+    public static BackpackContainerCompatProvider backpacks() {
+        return backpacks;
+    }
+
     public static final class Sink {
 
         private Sink() {}
@@ -130,6 +136,12 @@ public final class CompatServices {
         public Sink lifecycleStorage(LifecycleStorageCompatProvider provider) {
             ensureMutable();
             lifecycleStorage = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink backpacks(BackpackContainerCompatProvider provider) {
+            ensureMutable();
+            backpacks = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
     }
