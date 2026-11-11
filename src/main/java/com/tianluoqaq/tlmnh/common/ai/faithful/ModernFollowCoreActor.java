@@ -1506,9 +1506,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         life.wake();
         if (!maid.hasPose(MaidPose.SLEEPING)) return;
-        var life = maid.getBrainCoordinator()
-            .getLifeController();
-        if (life.isSleeping()) life.cancel();
+        maid.getBrainCoordinator()
+            .cancelLegacySleepIfActive();
         guard();
         maid.setPose(MaidPose.SLEEPING, false);
     }

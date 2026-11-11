@@ -359,6 +359,23 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
         }
     }
 
+    @Override
+    public void onAcceptedHurt() {
+        actor.wakeOwnedSleepOnHurt();
+    }
+
+    @Override
+    public net.minecraft.pathfinding.PathEntity peekActivePath() {
+        var path = actor.peekPathMemory();
+        return path == null ? null : (net.minecraft.pathfinding.PathEntity) path.getIdentity();
+    }
+
+    @Override
+    public boolean refreshModernBrain(MaidPolicyRuntime runtime, Token token) {
+        refreshBrain(runtime, token);
+        return true;
+    }
+
     /** 对应stopAll + copyWithoutBehaviors；停止副作用决定擦哪些记忆，其余对象原样保留 */
     public void refreshBrain(MaidPolicyRuntime runtime, Token token) {
         if (refreshing) throw new IllegalStateException("Reentrant modern Brain refresh");

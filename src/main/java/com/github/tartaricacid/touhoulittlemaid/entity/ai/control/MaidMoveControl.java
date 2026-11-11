@@ -82,8 +82,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
             && operation != Operation.STRAFE
             && operation != Operation.JUMPING
             && !maid.getBrainCoordinator()
-                .getBreathController()
-                .isSwimming()
+                .hasLegacyBreathSwimming()
             && !maid.getAquaticController()
                 .getManager()
                 .wantToSwim();
@@ -142,8 +141,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         // 已消费标签保留至下一次setter/撤销，防止保留坐标在下tick水路被无标签复用
         // 原型低氧路线有独立 travel 执行器，不能在水面附近重新驱动旧导航目标
         if (maid.getBrainCoordinator()
-            .getBreathController()
-            .isSwimming()) {
+            .hasLegacyBreathSwimming()) {
             maid.setAIMoveSpeed(0);
             return;
         }

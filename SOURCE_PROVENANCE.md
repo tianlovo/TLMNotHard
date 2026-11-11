@@ -1697,3 +1697,11 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
   处理导航、行为决策与原生移动控制在同一 tick 交接时的旧输入。
 - 普通无标签输入沿用原坐标、速度、操作与移动算法；辅助段先核真实路径和当前身体通路，
   实体位移、运动向量与碰撞属性均交由物理引擎与原生导航驱动，保障底层行为一致性。
+
+## Indev209 行为会话与兼容入口
+
+来源为 TLM 固定提交 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的
+`entity/passive/EntityMaid.java` 与 `entity/ai/control/MaidMoveControl.java`，保留原包、文件头和 MIT 许可。
+实体保存入口转发已有行为会话的数据，以独立副本和旧快照比较提交 `TLMNH.BehaviorExt` 子标签。
+原生移动控制通过协调器查询已有旧原型呼吸状态，按需创建的旧控制器图集中在本工程新增的 `MaidLegacyBrainHost`。
+行为模块、会话编排、平台能力适配及持久化校验位于 `com.tianluoqaq.tlmnh`，构建与实测状态见 `PROGRESS.md`。

@@ -36,13 +36,11 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
             clear();
             return;
         }
-        var breath = maid.getBrainCoordinator()
-            .getBreathController();
-        var policy = maid.getBrainCoordinator()
-            .peekPolicyRuntime();
+        var brain = maid.getBrainCoordinator();
+        var policy = brain.peekPolicyRuntime();
         boolean prototype = policy == null || policy.isReady()
             && policy.getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.LEGACY_PROTOTYPE;
-        if (prototype) manager.setGoingToBreath(breath.isActive());
+        if (prototype) manager.setGoingToBreath(brain.hasLegacyBreathActive());
         manager.setEatBreatheItem(
             maid.getMealController()
                 .isBreathing());
@@ -59,11 +57,10 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
         if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
             navigator.tickMode();
         // Existing prototype oxygen route owns its separate actuator until the faithful breath task is wired
-        var breath = maid.getBrainCoordinator()
-            .getBreathController();
-        if (breath.isSwimming()) {
+        var brain = maid.getBrainCoordinator();
+        if (brain.hasLegacyBreathSwimming()) {
             manager.setWantToSwim(true);
-            var target = breath.nextSwimTarget();
+            var target = brain.peekLegacySwimTarget();
             if (target != null) manager.setSwimTarget(target);
         }
     }

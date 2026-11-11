@@ -291,8 +291,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             super.moveEntityWithHeading(0, 0);
             return;
         }
-        if (brain != null && brain.getBreathController()
-            .travelWater()) return;
+        if (brain != null && brain.travelLegacyBreathWater()) return;
         if (aquatic != null && aquatic.travelWater(strafe, forward)) return;
         if (brain != null && brain.applyCombatMovement()) {
             strafe = moveStrafing * .98F;
@@ -989,9 +988,30 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         }
     }
 
+    /** 导出 TLMNH 扩展标签的独立深拷贝，行为数据由会话层按命名空间分发 */
+    public NBTTagCompound copyBehaviorSaveData() {
+        return (NBTTagCompound) extraSaveData.copy();
+    }
+
+    /** 原子提交 BehaviorExt 子标签，旧快照不匹配或类型异常时保留现场 */
+    public boolean commitBehaviorExtensionData(NBTTagCompound before, NBTTagCompound after) {
+        if (worldObj == null || worldObj.isRemote || before == null || after == null) return false;
+        var previous = before.getTag("BehaviorExt");
+        var current = extraSaveData.getTag("BehaviorExt");
+        var proposed = after.getTag("BehaviorExt");
+        if (!java.util.Objects.equals(previous, current)) return false;
+        if (java.util.Objects.equals(current, proposed)) return true;
+        if (current != null && !(current instanceof NBTTagCompound)) return false;
+        if (proposed != null && !(proposed instanceof NBTTagCompound)) return false;
+        if (proposed == null || ((NBTTagCompound) proposed).hasNoTags()) extraSaveData.removeTag("BehaviorExt");
+        else extraSaveData.setTag("BehaviorExt", proposed.copy());
+        return true;
+    }
+
     @Override
     public void writeEntityToNBT(NBTTagCompound tag) {
         super.writeEntityToNBT(tag);
+        if (brain != null) brain.flushPersistentBehaviorData();
         var extension = (NBTTagCompound) extraSaveData.copy();
         extension.setInteger("Schema", Math.max(SAVE_VERSION, extension.getInteger("Schema")));
         tag.setTag("TLMNH", extension);
