@@ -560,8 +560,12 @@ final class MaidLegacyBrainHost {
                 dz = observation.getZ() - maid.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             double fraction = distance > 16 ? 16 / distance : 1;
-            var result = combatPlanner
-                .request(maid, maid.posX + dx * fraction, maid.posY + dy * fraction, maid.posZ + dz * fraction, 1.0D);
+            var result = combatPlanner.request(
+                maid,
+                maid.posX + dx * fraction,
+                maid.posY + dy * fraction,
+                maid.posZ + dz * fraction,
+                LegacyBrainTuning.COMBAT_APPROACH_SPEED_MODIFIER);
             if (result == PathResult.STARTED) ownedPath = maid.getNavigator()
                 .getPath();
             return result;
@@ -751,7 +755,7 @@ final class MaidLegacyBrainHost {
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             double fraction = distance > 16 ? 16 / distance : 1;
             double x = maid.posX + dx * fraction, y = maid.posY + dy * fraction, z = maid.posZ + dz * fraction;
-            var result = planner.request(maid, x, y, z, 1.0D);
+            var result = planner.request(maid, x, y, z, LegacyBrainTuning.FOLLOW_MOVE_SPEED_MODIFIER);
             if (result != PathResult.STARTED) return result;
             ownedPath = maid.getNavigator()
                 .getPath();
