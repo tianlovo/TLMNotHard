@@ -1705,3 +1705,10 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
 实体保存入口转发已有行为会话的数据，以独立副本和旧快照比较提交 `TLMNH.BehaviorExt` 子标签。
 原生移动控制通过协调器查询已有旧原型呼吸状态，按需创建的旧控制器图集中在本工程新增的 `MaidLegacyBrainHost`。
 行为模块、会话编排、平台能力适配及持久化校验位于 `com.tianluoqaq.tlmnh`，构建与实测状态见 `PROGRESS.md`。
+
+## 0.1.0-beta.2 基础工具收口与上游文件导入整理
+
+本批涉及的上游移植文件（位于 `com/github/tartaricacid/touhoulittlemaid/` 下已纳入仓库的类）仅整理代码体内的全限定类型导入、
+将 `NBTTagCompound` 类型常量统一改用 Forge `Constants.NBT`，并把调试属性读取收口至 `DevelopmentFlags`。
+所有上游文件的原包名、MIT 版权头、字段语义及持久 NBT 键名均保持原样。
+新增的 `DevelopmentFlags`、`KnownModIds`、`OptionalApi`、`Sha256Hex` 与 `EventBuses` 均为 `com.tianluoqaq.tlmnh` 下的独立工具类。
