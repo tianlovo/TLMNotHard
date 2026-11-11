@@ -1712,3 +1712,13 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
 将 `NBTTagCompound` 类型常量统一改用 Forge `Constants.NBT`，并把调试属性读取收口至 `DevelopmentFlags`。
 所有上游文件的原包名、MIT 版权头、字段语义及持久 NBT 键名均保持原样。
 新增的 `DevelopmentFlags`、`KnownModIds`、`OptionalApi`、`Sha256Hex` 与 `EventBuses` 均为 `com.tianluoqaq.tlmnh` 下的独立工具类。
+
+## 0.1.0-beta.2 开发工具拆包与渲染诊断钩子收口
+
+原本混在生产包内的开发命令、探针、基准与回放代码已拆至独立的 `src/devtools/`、`src/devtoolsTest/` 与 `src/replay/` 源码集，
+单独产出 `tlmnhdevtools` 附属构件，正式发布包不再携带开发期类。
+上游客户端移植类 `MaidModelDetailsGui`、`EntityTombstoneRenderer`、`TileEntityMaidBedRenderer`、
+`TileEntityShrineRenderer` 与 `TileEntitySnackCabinetRenderer` 将原本直接调用的渲染采样与模型切换埋点改为经
+`ClientDevelopmentAccess.hooks()` 转发；发布态默认走空实现，原包名、MIT 版权头与渲染行为保持不变。
+新增的 `DevelopmentHooks`、`DevelopmentAccess`、`ClientDevelopmentHooks`、`ClientDevelopmentAccess` 及 `tlmnhdevtools`
+入口均为 `com.tianluoqaq.tlmnh` 下的自有代码。
