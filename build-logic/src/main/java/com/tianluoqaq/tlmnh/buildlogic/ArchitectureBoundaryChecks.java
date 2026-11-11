@@ -70,6 +70,7 @@ public final class ArchitectureBoundaryChecks {
         Arrays.asList(
             "TLMNotHard#MOD_ID",
             "TLMNotHard#MOD_NAME",
+            "MaidBehaviorId#BUILTIN_NAMESPACE",
             "CompatibilityLedger#NAME",
             "MaidLifecycleData#NAME",
             "Tags#VERSION"));
@@ -92,6 +93,16 @@ public final class ArchitectureBoundaryChecks {
             "0X0"));
 
     private static final Set<String> EXACT_INT_ONE_TOKENS = new HashSet<>(Arrays.asList("1", "1L", "1l"));
+
+    private static final List<String> UNARY_KEYWORDS = Arrays.asList(
+        "return",
+        "case",
+        "yield",
+        "throw",
+        "else",
+        "assert",
+        "instanceof",
+        "new");
 
     private static final int MAX_CONSTANTS_PER_DEFINITION_FILE = 120;
     private static final int DEFAULT_MAX_BUSINESS_CLASSES_PER_PACKAGE = 12;
@@ -400,6 +411,7 @@ public final class ArchitectureBoundaryChecks {
         String[] maskedLines = masked.split("\n", -1);
         String[] noStrLines = codeNoStrings.split("\n", -1);
         int lineCount = Math.min(maskedLines.length, noStrLines.length);
+        String prevNonEmptyLine = "";
 
         for (int idx = 0; idx < lineCount; idx++) {
             int lineNo = idx + 1;
@@ -453,27 +465,40 @@ public final class ArchitectureBoundaryChecks {
                         while (i < nc.length && Character.isLetter(nc[i])) i++;
                     }
                     String numToken = new String(nc, start, i - start);
-                    if (!isStructuralZeroOrOne(lnNoStr, start, i, numToken)) {
+                    if (!isStructuralZeroOrOne(lnNoStr, prevNonEmptyLine, start, i, numToken)) {
                         violations.add("[Magic number] " + rel + ":" + lineNo + " contains literal " + numToken);
                     }
                     continue;
                 }
                 i++;
             }
+            if (!trimmedNoStr.isEmpty()) {
+                prevNonEmptyLine = trimmedNoStr;
+            }
         }
     }
 
-    private static boolean isStructuralZeroOrOne(String lineNoStrings, int colStart, int colEnd, String numToken) {
+    private static boolean isStructuralZeroOrOne(
+        String lineNoStrings,
+        String prevNonEmptyLine,
+        int colStart,
+        int colEnd,
+        String numToken) {
         String trimmed = lineNoStrings.trim();
         String before = rtrim(lineNoStrings.substring(0, colStart));
         String after = lineNoStrings.substring(colEnd)
             .trim();
 
-        // Reject unary minus (e.g. -1, -0.0); allow binary subtraction `expr - 1`
+        // Reject unary minus (e.g. -1, -0.0); allow single-line or wrapped binary subtraction `expr - 1`
         if (before.endsWith("-")) {
+            if (before.endsWith("--")) {
+                return false;
+            }
             String prevBeforeMinus = rtrim(before.substring(0, before.length() - 1));
-            boolean isBinarySub = !prevBeforeMinus.isEmpty() && isExprEndChar(prevBeforeMinus.charAt(prevBeforeMinus.length() - 1));
-            if (!isBinarySub) {
+            if (prevBeforeMinus.isEmpty()) {
+                prevBeforeMinus = prevNonEmptyLine;
+            }
+            if (!isBinaryExprEnd(prevBeforeMinus)) {
                 return false;
             }
         }
@@ -486,8 +511,14 @@ public final class ArchitectureBoundaryChecks {
                 return true;
             }
             if (before.endsWith("+") || before.endsWith("-")) {
+                if (before.endsWith("++") || before.endsWith("--")) {
+                    return false;
+                }
                 String prevOp = rtrim(before.substring(0, before.length() - 1));
-                if (!prevOp.isEmpty() && isExprEndChar(prevOp.charAt(prevOp.length() - 1))) {
+                if (prevOp.isEmpty()) {
+                    prevOp = prevNonEmptyLine;
+                }
+                if (isBinaryExprEnd(prevOp)) {
                     return true;
                 }
             }
@@ -499,7 +530,8 @@ public final class ArchitectureBoundaryChecks {
                 && ("0".equals(numToken) || "0L".equals(numToken) || "0l".equals(numToken))) {
                 return true;
             }
-            if (endsWithRelOp(before) || startsWithRelOp(after)) {
+            String effectiveBefore = before.isEmpty() ? prevNonEmptyLine : before;
+            if (endsWithRelOp(effectiveBefore) || startsWithRelOp(after)) {
                 return true;
             }
             if ("0".equals(numToken) && before.endsWith("[") && after.startsWith("]") && before.contains("new ")) {
@@ -516,6 +548,24 @@ public final class ArchitectureBoundaryChecks {
         }
 
         return false;
+    }
+
+    private static boolean isBinaryExprEnd(String prev) {
+        if (prev == null || prev.isEmpty()) {
+            return false;
+        }
+        if (!isExprEndChar(prev.charAt(prev.length() - 1))) {
+            return false;
+        }
+        for (String kw : UNARY_KEYWORDS) {
+            if (prev.endsWith(kw)) {
+                int idx = prev.length() - kw.length();
+                if (idx == 0 || !Character.isJavaIdentifierPart(prev.charAt(idx - 1))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static boolean isExprEndChar(char c) {
