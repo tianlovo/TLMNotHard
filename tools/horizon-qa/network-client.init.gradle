@@ -3,7 +3,7 @@ gradle.projectsEvaluated {
     def project = gradle.rootProject
     def sources = project.sourceSets.create('combatNetworkClient') {
         java.srcDir(project.file('tools/horizon-qa/network-client'))
-        compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.main.compileClasspath
     }
     project.extensions.getByName('spotless').java {
         target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')

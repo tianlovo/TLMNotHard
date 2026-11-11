@@ -14,7 +14,7 @@ gradle.projectsEvaluated {
     def sources = project.sourceSets.create('horizonQaPilot') {
         java.srcDir(new File(tool, 'pilot'))
         resources.srcDir(new File(tool, 'resources'))
-        compileClasspath += project.sourceSets.main.output + project.sourceSets.main.compileClasspath + project.files(devJar)
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.main.compileClasspath + project.files(devJar)
     }
     // Concrete GT machine fixtures need their actual target-platform API hierarchy at QA compile time.
     for (coordinate in [
