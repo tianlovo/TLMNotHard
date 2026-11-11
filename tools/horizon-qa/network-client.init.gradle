@@ -1,12 +1,13 @@
 // Optional client-only QA artifact, independent of the dedicated Horizon-QA pilot source set
 gradle.projectsEvaluated {
     def project = gradle.rootProject
+    if (!project.plugins.hasPlugin('com.gtnewhorizons.gtnhconvention')) return
     def sources = project.sourceSets.create('combatNetworkClient') {
         java.srcDir(project.file('tools/horizon-qa/network-client'))
-        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.main.compileClasspath
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.devtools.compileClasspath
     }
     project.extensions.getByName('spotless').java {
-        target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
+        target('src/*/java/**/*.java', 'kernel/*/src/*/java/**/*.java', 'build-logic/src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
     }
     project.tasks.named(sources.compileJavaTaskName).configure {
         options.annotationProcessorPath = project.tasks.named('compileJava').get().options.annotationProcessorPath

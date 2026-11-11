@@ -1,9 +1,10 @@
 // Optional non-published test mod; main/release source sets and dependencies remain independent
 gradle.projectsEvaluated {
     def project = gradle.rootProject
+    if (!project.plugins.hasPlugin('com.gtnewhorizons.gtnhconvention')) return
     def tool = project.file('tools/horizon-qa')
     project.extensions.getByName('spotless').java {
-        target('src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
+        target('src/*/java/**/*.java', 'kernel/*/src/*/java/**/*.java', 'build-logic/src/*/java/**/*.java', 'src/*/scala/**/*.java', 'tools/horizon-qa/pilot/**/*.java', 'tools/horizon-qa/network-client/**/*.java', 'tools/combat-tactics/**/*.java')
     }
     def devPath = System.getenv('TLMNH_HQA_DEV_JAR')
     if (!devPath) throw new GradleException('TLMNH_HQA_DEV_JAR must point to the pinned Horizon-QA 0.15.0 dev JAR')
@@ -14,7 +15,7 @@ gradle.projectsEvaluated {
     def sources = project.sourceSets.create('horizonQaPilot') {
         java.srcDir(new File(tool, 'pilot'))
         resources.srcDir(new File(tool, 'resources'))
-        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.main.compileClasspath + project.files(devJar)
+        compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.devtools.compileClasspath + project.files(devJar)
     }
     // Concrete GT machine fixtures need their actual target-platform API hierarchy at QA compile time.
     for (coordinate in [
