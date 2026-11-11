@@ -14,15 +14,16 @@ import org.junit.Test;
 
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.foundation.KnownModIds;
+import com.tianluoqaq.tlmnh.common.inventory.spi.BackpackContainerCompatProvider;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 
-/** 核对 16 个外部模组描述类的包名映射、版本元数据与 ExternalFeature 依赖覆盖 */
+/** 核对 21 个外部模组描述类的包名映射、版本元数据与 ExternalFeature 依赖覆盖 */
 public class CompatModulesTest {
 
     @Test
     public void allDescriptorsFollowPackageNamingAndMetadataInvariants() {
         var descriptors = CompatModules.all();
-        assertEquals(16, descriptors.size());
+        assertEquals(21, descriptors.size());
         Set<String> modIds = new HashSet<>();
         Set<String> packages = new HashSet<>();
         for (CompatDescriptor descriptor : descriptors) {
@@ -76,5 +77,8 @@ public class CompatModulesTest {
         assertFalse(
             "ServiceLoader should replace NOOP door provider on compatTest classpath",
             CompatServices.doors() == com.tianluoqaq.tlmnh.common.ai.spi.DoorCompatProvider.NOOP);
+        assertFalse(
+            "ServiceLoader should replace NOOP backpack provider on compatTest classpath",
+            CompatServices.backpacks() == BackpackContainerCompatProvider.NOOP);
     }
 }
