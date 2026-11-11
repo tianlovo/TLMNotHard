@@ -2,7 +2,7 @@
 
 将 Touhou Little Maid 移植到 GTNH 2.9.0，保留女仆核心玩法并改进行为 AI。
 
-**Indev**：正在开发，尚无正式版本；当前构建仅用于开发和测试。
+**Beta**：首个公开测试版本为 `0.1.0-beta.1`，首个稳定版的功能与验收仍在推进。
 
 简体中文 | [English](README.en.md)
 
@@ -38,8 +38,11 @@ GTNH 维护仓与 CropsNH 育种留作后续扩展；语言支持以简体中文
 
 ## 安装
 
-目前仅提供源码构建，尚未发布供生存游玩使用的正式安装包。
-开发候选的玩家操作、配置项与双端成对回滚说明见 [Indev 使用说明](docs/USER_GUIDE.md)。
+从 [GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.1) 下载
+`tlmnh-0.1.0-beta.1.jar` 并核对随附的 `SHA256SUMS.txt`。
+正常停止两端并备份完整世界、配置和旧 TLM JAR 后，将同一新 JAR 放入两端的 `mods/`，移出旧 TLM JAR。
+本次发布的已知问题与待开发功能见 [Beta 发布说明](docs/releases/0.1.0-beta.1.md)。
+玩家操作、配置项与双端成对回滚说明见 [使用说明](docs/USER_GUIDE.md)。
 新配置默认启用 Enhanced；已有配置中显式指定的 Legacy 会继续保留，修改策略后需重启服务端。
 当前 Enhanced 候选采用动态索敌，非家园目标获取与保持半径默认分别为 20 格和 24 格，可在服务端配置中调整。
 双端增量打包工具见 [打包与更新说明](scripts/distribution/README.md)，当前仅生成本地验证包。
@@ -48,7 +51,7 @@ GTNH 维护仓与 CropsNH 育种留作后续扩展；语言支持以简体中文
 ```powershell
 git clone https://github.com/tianlovo/TLMNotHard.git
 Set-Location TLMNotHard
-$env:VERSION = "0.1.0-indev.local"
+$env:VERSION = "0.1.0-beta.1"
 ./gradlew.bat build
 ```
 
@@ -72,12 +75,12 @@ $env:VERSION = "0.1.0-indev.local"
 ```powershell
 ./gradlew.bat test
 ./gradlew.bat build
-python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-indev.local.jar
+python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.1.jar
 npx --yes markdownlint-cli2@0.24.0
 ```
 
 上例沿用安装步骤中的 `VERSION`；若使用其他版本名，请同步替换 JAR 文件名。
-默认版本号由 Git 标签与提交自动生成，正式版发布前保留 `indev` 标识，普通提交不单独打 tag。
+默认版本号由 Git 标签与提交自动生成；可用 `VERSION` 显式选择构建版本，发布里程碑使用独立 tag。
 
 在 IntelliJ IDEA 中直接打开源码根目录并按 Gradle 工程导入，将构建和测试委托给 Gradle。
 项目 SDK 与 Gradle JVM 使用 Java 25，源码语言级别设为 17，目标字节码设为 8。
@@ -85,8 +88,8 @@ npx --yes markdownlint-cli2@0.24.0
 
 ## 开发状态
 
-当前仍处于 Indev 阶段，尚未满足首个正式版的发布门槛。
-首版整体进度、各模块实现与验证详情、近期进展及下一步计划统一记录在 [Indev 开发进度](PROGRESS.md)。
+当前处于 Beta 阶段，首个稳定版的发布验收尚未完成。
+首版整体进度、各模块实现与验证详情、近期进展及下一步计划统一记录在 [开发进度](PROGRESS.md)。
 构建检查、夹具测试、自然玩法验证与正式发布验收分别记录，不合并不同候选的结果来宣称单一产物完整通过。
 
 更多技术细节见 [开发说明](DEVELOPMENT.md)、[移植记录](SOURCE_PROVENANCE.md) 和

@@ -2,7 +2,7 @@
 
 A Touhou Little Maid port for GTNH 2.9.0, retaining core maid gameplay and improving behaviour AI
 
-**Indev**: under development, with no stable release; current builds are for development and testing
+**Beta**: the first public test version is `0.1.0-beta.1`. Work continues towards the first stable release.
 
 [简体中文](README.md) | English
 
@@ -44,8 +44,13 @@ GTNH machine maintenance and CropsNH breeding are future extensions. Simplified 
 
 ## Install
 
-Build from source for now; no stable package for survival play has been released.
-See the [Indev user guide](docs/USER_GUIDE.en.md) for controls, configuration and paired world rollback.
+Download `tlmnh-0.1.0-beta.1.jar` from
+[GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.1)
+and verify the accompanying `SHA256SUMS.txt`.
+Stop both sides and back up the complete world, configuration and old TLM JARs.
+Place the same new JAR in both `mods/` directories and move the old TLM JARs out.
+See the [Beta release notes](docs/releases/0.1.0-beta.1.md) for known issues and remaining work.
+See the [user guide](docs/USER_GUIDE.en.md) for controls, configuration and paired world rollback.
 New configurations default to Enhanced. Existing explicit Legacy settings are retained; restart the server after changes.
 The current Enhanced candidate uses dynamic target detection, with configurable non-home acquisition and retention radii
 of 20 and 24 blocks by default.
@@ -56,7 +61,7 @@ Run these commands in Windows PowerShell:
 ```powershell
 git clone https://github.com/tianlovo/TLMNotHard.git
 Set-Location TLMNotHard
-$env:VERSION = "0.1.0-indev.local"
+$env:VERSION = "0.1.0-beta.1"
 ./gradlew.bat build
 ```
 
@@ -81,13 +86,13 @@ Run builds and checks from the source root:
 ```powershell
 ./gradlew.bat test
 ./gradlew.bat build
-python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-indev.local.jar
+python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.1.jar
 npx --yes markdownlint-cli2@0.24.0
 ```
 
 These commands reuse `VERSION` from the installation example; adjust the JAR name if you choose another version.
-By default, versions are derived from Git tags and commits and retain `indev` until the stable release.
-Ordinary commits do not receive individual tags.
+By default, versions are derived from Git tags and commits. Set `VERSION` to choose an explicit build version.
+Release milestones receive their own tags.
 
 Open the source root in IntelliJ IDEA as a Gradle project and delegate builds and tests to Gradle.
 Use Java 25 for the project SDK and Gradle JVM, language level 17 and target bytecode 8.
@@ -95,9 +100,9 @@ The local 2.9.0 test server and client entries are described in [IDEA setup](DEV
 
 ## Development status
 
-The project remains Indev and has not met the first stable release gates.
+The project is in Beta. Acceptance for the first stable release is still in progress.
 Overall progress, module implementation and validation details, recent results and next steps are maintained in
-[Indev progress](PROGRESS.md), currently in Chinese.
+[Development progress](PROGRESS.md), currently in Chinese.
 Build checks, fixtures, natural gameplay and release acceptance are recorded separately;
 results from different candidates do not establish complete acceptance of a single artifact.
 
