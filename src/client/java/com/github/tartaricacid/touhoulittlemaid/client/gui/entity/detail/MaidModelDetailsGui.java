@@ -15,13 +15,13 @@ import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewEntity;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -77,7 +77,8 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     private static ItemStack previewShield() {
         return IntegrationGuard.call(Side.CLIENT, ExternalFeature.SHIELDS, () -> {
-            var shield = BattlegearShieldAccess.woodenShieldItem();
+            var shield = CompatServices.shields()
+                .previewShieldItem();
             if (shield == null) throw new IllegalStateException("Native wood shield missing for model preview");
             return new ItemStack(shield);
         }, () -> null);

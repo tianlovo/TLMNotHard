@@ -77,15 +77,13 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.MaidVehiclePlatform;
-import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.MaidDoorAccess;
 
 /** 现代Follow/Move/Look的目标环境边界，读取真实路径事实，不使用旧终点或watchdog近似 */
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
@@ -1176,21 +1174,25 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public Vehicle ownerControlledVehicle() {
         guard();
         var player = resolveOwner();
-        var controlled = player == null ? null : MaidVehiclePlatform.controlledVehicle(player);
+        var controlled = player == null ? null
+            : CompatServices.worldContent()
+                .controlledVehicleOf(player);
         guard();
         return controlled == null || controlled.worldObj != world ? null : new VehicleView(controlled);
     }
 
     public boolean sameMaidVehicle(Vehicle value) {
         var expected = vehicle(value).entity;
-        var actual = MaidVehiclePlatform.vehicle(maid);
+        var actual = CompatServices.worldContent()
+            .vehicleOf(maid);
         guard();
         return actual == expected;
     }
 
     public boolean canAddPassenger(Vehicle value) {
         var expected = vehicle(value).entity;
-        boolean allowed = MaidVehiclePlatform.canAddPassenger(expected);
+        boolean allowed = CompatServices.worldContent()
+            .canAddPassenger(expected);
         guard();
         return allowed;
     }
@@ -1198,7 +1200,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean isOwnerControlledVehicle(Vehicle value) {
         var expected = vehicle(value).entity;
         var player = resolveOwner();
-        var actual = player == null ? null : MaidVehiclePlatform.controlledVehicle(player);
+        var actual = player == null ? null
+            : CompatServices.worldContent()
+                .controlledVehicleOf(player);
         guard();
         return actual == expected;
     }
@@ -1238,9 +1242,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void startRiding(Vehicle value) {
         var target = vehicle(value).entity;
         if (!canFollowOwnerVehicle() || !vehicleOwnerPresent() || !canAddPassenger(value)) return;
-        var controlled = MaidVehiclePlatform.controlledVehicle(resolveOwner());
+        var controlled = CompatServices.worldContent()
+            .controlledVehicleOf(resolveOwner());
         guard();
-        if (controlled == target) MaidVehiclePlatform.mount(maid, target);
+        if (controlled == target) CompatServices.worldContent()
+            .mountVehicle(maid, target);
     }
 
     public void stopRiding() {
@@ -1310,7 +1316,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         if (!world.blockExists(pos.x, pos.y, pos.z)) return false;
         var block = world.getBlock(pos.x, pos.y, pos.z);
-        boolean bubble = EtFuturumBlocks.isBubbleColumn(block);
+        boolean bubble = CompatServices.worldContent()
+            .isBubbleColumn(block);
         if (block.getMaterial()
             .isLiquid() && !bubble) return false;
         var box = block.getCollisionBoundingBoxFromPool(world, pos.x, pos.y, pos.z);
@@ -3059,7 +3066,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         guard();
         if (doorKind(pos) == MaidDoorActor.Kind.NONE) return false;
         var p = nativeDoorPosition(pos);
-        return MaidDoorAccess.open(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z);
+        return CompatServices.doors()
+            .isDoorOpen(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z);
     }
 
     public boolean setDoorOpen(MaidDoorActor.Position pos, boolean value, MaidDoorActor.DoorPath expected) {
@@ -3102,7 +3110,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         var p = nativeDoorPosition(pos);
         if (value) doorOpenRequests++;
         else doorCloseRequests++;
-        return MaidDoorAccess.setOpen(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z, value);
+        return CompatServices.doors()
+            .setDoorOpen(world.getBlock(p.x, p.y, p.z), world, p.x, p.y, p.z, value);
     }
 
     public boolean doorTooFar(MaidDoorActor.Position pos, double distance) {

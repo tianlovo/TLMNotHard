@@ -9,7 +9,7 @@ import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.ResourceLocation;
 
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
 
@@ -48,7 +48,8 @@ public final class MaidCombatEntities {
     }
 
     public static boolean isArmorStand(Entity entity) {
-        return EtFuturumEntities.isArmorStand(entity);
+        return CompatServices.worldContent()
+            .isArmorStand(entity);
     }
 
     public static boolean isMaidItemEntity(Entity entity) {

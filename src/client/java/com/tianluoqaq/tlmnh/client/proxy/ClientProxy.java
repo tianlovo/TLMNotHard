@@ -24,6 +24,7 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidC
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
@@ -66,6 +67,7 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void init() {
         super.init();
+        ClientCompatServices.initAndFreeze();
         ClientProtectionEvents.register();
         MaidSwimRenderPose.register();
         MaidPlayerCarryArms.register();

@@ -9,6 +9,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes;
@@ -63,6 +64,7 @@ public final class TLMNotHard {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        CompatServices.preInitAndFreeze();
         var side = event.getSide();
         LOG.info("Initializing {} {} on {}", MOD_NAME, Tags.VERSION, side);
         BuiltinModelCatalog.load();

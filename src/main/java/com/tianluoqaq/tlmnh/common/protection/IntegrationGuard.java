@@ -1,10 +1,16 @@
 package com.tianluoqaq.tlmnh.common.protection;
 
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -23,9 +29,9 @@ public final class IntegrationGuard {
         public final String key, code;
         public final Throwable cause;
         public final Side side;
-        public final java.util.UUID owner;
+        public final UUID owner;
 
-        Fault(Side side, String key, String code, Throwable cause, java.util.UUID owner) {
+        Fault(Side side, String key, String code, Throwable cause, UUID owner) {
             this.side = side;
             this.key = key;
             this.code = code;
@@ -34,7 +40,7 @@ public final class IntegrationGuard {
         }
     }
 
-    private static final Map<Side, Map<String, Fault>> FAULTS = new java.util.EnumMap<>(Side.class);
+    private static final Map<Side, Map<String, Fault>> FAULTS = new EnumMap<>(Side.class);
     private static long sequence;
 
     private IntegrationGuard() {}
@@ -78,8 +84,8 @@ public final class IntegrationGuard {
     }
 
     public static void throwIfFatal(Throwable failure) {
-        var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Throwable, Boolean>());
-        var pending = new java.util.ArrayDeque<Throwable>();
+        var seen = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
+        var pending = new ArrayDeque<Throwable>();
         if (failure != null) pending.add(failure);
         while (!pending.isEmpty()) {
             var cause = pending.removeFirst();
@@ -89,7 +95,7 @@ public final class IntegrationGuard {
             if (cause instanceof InterruptedException) Thread.currentThread()
                 .interrupt();
             if (cause.getCause() != null) pending.add(cause.getCause());
-            java.util.Collections.addAll(pending, cause.getSuppressed());
+            Collections.addAll(pending, cause.getSuppressed());
         }
     }
 
@@ -97,7 +103,7 @@ public final class IntegrationGuard {
         return report(side, key, failure, null);
     }
 
-    public static synchronized Fault report(Side side, String key, Throwable failure, java.util.UUID owner) {
+    public static synchronized Fault report(Side side, String key, Throwable failure, UUID owner) {
         throwIfFatal(failure);
         var faults = faultMap(side);
         var existing = faults.get(key);
@@ -136,7 +142,7 @@ public final class IntegrationGuard {
     }
 
     public static synchronized void resetForDevelopment(Side side) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development command required");
+        DevelopmentFlags.requireDevCommands();
         faultMap(side).clear();
     }
 }

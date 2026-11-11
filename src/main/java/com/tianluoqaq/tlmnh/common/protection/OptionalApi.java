@@ -139,7 +139,7 @@ public final class OptionalApi {
         }
     }
 
-    private static boolean isModLoaded(String modId) {
+    public static boolean isModLoaded(String modId) {
         return Loader.isModLoaded(modId);
     }
 }

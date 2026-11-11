@@ -18,8 +18,8 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 
 /** 正式版方块能力适配，碰撞仅查方块，不将其他演员当作静态寻路墙 */
 public final class MaidNativePathRegion implements MaidPathRegion {
@@ -107,12 +107,15 @@ public final class MaidNativePathRegion implements MaidPathRegion {
         if (block.isAir(world, x, y, z)) return OPEN;
         if (block instanceof BlockTrapDoor || block == Blocks.waterlily) return TRAPDOOR;
         if (block == Blocks.cactus) return DAMAGE_OTHER;
-        if (EtFuturumBlocks.isHoney(block)) return STICKY_HONEY;
-        if (EtFuturumBlocks.isWitherRose(block)) return DAMAGE_CAUTIOUS;
+        if (CompatServices.worldContent()
+            .isHoneyBlock(block)) return STICKY_HONEY;
+        if (CompatServices.worldContent()
+            .isWitherRose(block)) return DAMAGE_CAUTIOUS;
         if (block == Blocks.cocoa) return COCOA;
         Material material = block.getMaterial();
         if (material == Material.lava) return LAVA;
-        if (block == Blocks.fire || EtFuturumBlocks.isMagma(block)) return DAMAGE_FIRE;
+        if (block == Blocks.fire || CompatServices.worldContent()
+            .isMagmaBlock(block)) return DAMAGE_FIRE;
         if (block instanceof BlockDoor) return block.getBlocksMovement(world, x, y, z) ? DOOR_OPEN
             : material == Material.wood ? DOOR_WOOD_CLOSED : DOOR_IRON_CLOSED;
         if (block instanceof BlockRailBase) return RAIL;

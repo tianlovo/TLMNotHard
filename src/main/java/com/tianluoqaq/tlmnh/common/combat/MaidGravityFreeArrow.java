@@ -3,7 +3,7 @@ package com.tianluoqaq.tlmnh.common.combat;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.world.World;
 
-import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.mixin.MixinArrowFlightState;
 
 /** 原飞行基线的独立箭类型，保留原生碰撞、拾取与存档，仅在自身更新中调整飞行物理 */
@@ -24,7 +24,8 @@ public final class MaidGravityFreeArrow extends EntityArrow {
         super.onUpdate();
         // 原生仅在飞行分支增加此值；命中方块的当帧仍执行末尾物理，停留/脱离方块分支不执行
         if (flight.tlmnh$getAirTicks() <= airTicks) return;
-        motionY += (double) NativeArrowGravity.forArrow(this);
+        motionY += (double) CompatServices.projectilePhysics()
+            .arrowGravity(this);
         if (isInWater()) {
             double scale = (double) .6F / (double) .8F;
             motionX *= scale;

@@ -13,8 +13,8 @@ import net.minecraft.item.ItemSword;
 import net.minecraft.util.DamageSource;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.gregtech.common.combat.GregTechWeaponAdapter;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -23,7 +23,6 @@ public final class MaidWeaponCatalog {
 
     private static final String VANILLA_GUARD = "combat/weapon/vanilla";
     private static final String VANILLA_DEPENDENCY = "minecraft:1.7.10";
-    private static final String GREGTECH_TOOL_CLASS = "gregtech.common.items.MetaGeneratedTool01";
 
     private static final MaidWeaponStrike.HitEffects VANILLA_EFFECTS = new MaidWeaponStrike.HitEffects() {
 
@@ -46,10 +45,10 @@ public final class MaidWeaponCatalog {
         if (stack == null || stack.getItem() == null || stack.stackSize != 1)
             return MaidWeaponProfile.unknown("missing_or_invalid_stack");
         Item item = stack.getItem();
-        if (GREGTECH_TOOL_CLASS.equals(
-            item.getClass()
-                .getName()))
-            return GregTechWeaponAdapter.inspect(stack);
+        if (CompatServices.weapons()
+            .handles(item))
+            return CompatServices.weapons()
+                .inspect(stack);
         if (!vanillaSword(item) && item != Items.bow) return MaidWeaponProfile.unknown("weapon_not_admitted");
         if (!IntegrationGuard.available(Side.SERVER, VANILLA_GUARD))
             return MaidWeaponProfile.unknown("vanilla_capability_disabled");
@@ -86,11 +85,10 @@ public final class MaidWeaponCatalog {
             || stack == null
             || stack.getItem() == null
             || maid.getHeldItem() != stack) return null;
-        if (GREGTECH_TOOL_CLASS.equals(
-            stack.getItem()
-                .getClass()
-                .getName()))
-            return GregTechWeaponAdapter.prepare(maid, stack);
+        if (CompatServices.weapons()
+            .handles(stack.getItem()))
+            return CompatServices.weapons()
+                .prepareMelee(maid, stack);
         var profile = inspect(stack);
         if (!profile.melee() || maid.getHeldItem() != stack) return null;
         return new MaidWeaponStrike(stack, profile, false, VANILLA_EFFECTS);

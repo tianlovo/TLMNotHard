@@ -36,9 +36,8 @@ import net.minecraft.world.storage.ThreadedFileIOBase;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
-import com.tianluoqaq.tlmnh.compat.endlessids.common.storage.EndlessIdsSectionData;
-import com.tianluoqaq.tlmnh.compat.hodgepodge.common.storage.HodgepodgeWorldDataBarrier;
 
 /** 两类出站保管的写前屏障与实际目标读回；不把原生吞掉IO异常的返回当作存盘成功 */
 final class MaidLifecycleDurability {
@@ -51,7 +50,8 @@ final class MaidLifecycleDurability {
             if (MaidLifecycleData.get(world) != ledger)
                 throw new IllegalStateException("Lifecycle storage no longer owns the active ledger");
             server.checkSessionLock();
-            HodgepodgeWorldDataBarrier.beforeLedgerWrite();
+            CompatServices.lifecycleStorage()
+                .beforeLedgerWrite();
             var target = server.getSaveHandler()
                 .getMapFileFromName(MaidLifecycleData.NAME)
                 .getCanonicalFile();
@@ -203,8 +203,10 @@ final class MaidLifecycleDurability {
                     if (section.getByte("Y") != y >> 4) continue;
                     sectionCount++;
                     int index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
-                    if (EndlessIdsSectionData.blockId(section, index) != Block.getIdFromBlock(block)
-                        || EndlessIdsSectionData.metadata(section, index) != metadata)
+                    if (CompatServices.lifecycleStorage()
+                        .sectionBlockId(section, index) != Block.getIdFromBlock(block)
+                        || CompatServices.lifecycleStorage()
+                            .sectionMetadata(section, index) != metadata)
                         throw new IllegalStateException("Native source block or metadata changed during save");
                 }
                 if (sectionCount != 1 && !(sectionCount == 0 && block == Blocks.air && metadata == 0))
@@ -335,9 +337,10 @@ final class MaidLifecycleDurability {
             if (!section.hasKey("Y", Constants.NBT.TAG_BYTE) || section.getByte("Y") != shrine.yCoord >> 4) continue;
             count++;
             int index = ((shrine.yCoord & 15) << 8) | ((shrine.zCoord & 15) << 4) | (shrine.xCoord & 15);
-            int id = EndlessIdsSectionData.blockId(section, index);
-            if (id != Block.getIdFromBlock(MaidResurrectionContent.SHRINE)
-                || EndlessIdsSectionData.metadata(section, index) != metadata)
+            int id = CompatServices.lifecycleStorage()
+                .sectionBlockId(section, index);
+            if (id != Block.getIdFromBlock(MaidResurrectionContent.SHRINE) || CompatServices.lifecycleStorage()
+                .sectionMetadata(section, index) != metadata)
                 throw new IllegalStateException("Native shrine block or facing changed during save");
         }
         if (count != 1) throw new IllegalStateException("Native shrine block section is not unique");

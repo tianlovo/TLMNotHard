@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.progression;
 
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.KnownModIds;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
@@ -17,7 +18,7 @@ public final class MaidProgressionRecipes {
         if (attempted) throw new IllegalStateException("Maid progression recipes already attempted");
         attempted = true;
         registered = IntegrationGuard.call(Side.SERVER, ExternalFeature.PROGRESSION_RECIPES, () -> {
-            if (!Loader.isModLoaded("gregtech") || !Loader.isModLoaded("dreamcraft"))
+            if (!Loader.isModLoaded(KnownModIds.GREGTECH) || !Loader.isModLoaded(KnownModIds.DREAMCRAFT))
                 throw new IllegalStateException("GregTech and GTNH progression providers are required for recipes");
             GregTechProgression.register();
             return true;

@@ -17,8 +17,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState;
 
 /** 沿当前动作已安装的路径开关门和爬梯，不另行抢占移动目标或创建路径 */
 public final class MaidTraversalController {
@@ -99,8 +99,8 @@ public final class MaidTraversalController {
     }
 
     private boolean isOpen(Block block, int x, int y, int z) {
-        return block instanceof BlockDoor door ? NativeDoorState.isOpenOrOpening(door, maid.worldObj, x, y, z)
-            : (maid.worldObj.getBlockMetadata(x, y, z) & 4) != 0;
+        return block instanceof BlockDoor door ? CompatServices.doors()
+            .isDoorOpenOrOpening(door, maid.worldObj, x, y, z) : (maid.worldObj.getBlockMetadata(x, y, z) & 4) != 0;
     }
 
     private void setOpen(Block block, int x, int y, int z, boolean value) {

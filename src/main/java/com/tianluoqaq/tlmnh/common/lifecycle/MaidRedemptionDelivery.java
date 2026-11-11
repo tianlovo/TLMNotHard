@@ -13,10 +13,10 @@ import net.minecraft.world.WorldProvider;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
-import com.tianluoqaq.tlmnh.compat.witchery.common.entity.WitcheryInitialSize;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -59,7 +59,8 @@ final class MaidRedemptionDelivery {
             var origin = Source.capture(player, source, shrine, x, y, z);
             MaidLifecycleDurability.requirePlayer(player);
             MaidLifecycleDurability.requireEntities(world);
-            WitcheryInitialSize.prepare(maid, player.getUniqueID());
+            CompatServices.lifecycleStorage()
+                .prepareInitialSize(maid, player.getUniqueID());
             var expected = MaidLifecycleDurability.maidSnapshot(maid);
             publication = new MaidLifecycleDurability.Publication(maid, expected);
             var intent = origin.intent(expected);

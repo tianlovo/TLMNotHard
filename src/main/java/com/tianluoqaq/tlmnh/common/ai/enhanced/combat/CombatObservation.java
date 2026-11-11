@@ -34,11 +34,12 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidCombatConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
-import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 
 /** 唯一世界观测边界；区块实体列表增量游标，不先执行全量AABB查询 */
 public final class CombatObservation {
@@ -83,7 +84,7 @@ public final class CombatObservation {
         BUDGET_REJECTED
     }
 
-    private NativeArrowGravity.LaunchSample observationGravity;
+    private ProjectilePhysicsProvider.ArrowLaunchSample observationGravity;
     private int gravityQueries, gravityReuses;
 
     private Geometry geometry;
@@ -629,7 +630,7 @@ public final class CombatObservation {
         double gravity = tracked.gravity;
         // 当前observe tick内只复用已实际查询的同源输入；换tick/provider/身份/箭类型均重新收费
         if (observationGravity != null && observationGravity.sameObservationInput(arrow)) {
-            gravity = observationGravity.gravity;
+            gravity = observationGravity.gravity();
             gravityReuses++;
         } else {
             observationGravity = null;
@@ -638,9 +639,10 @@ public final class CombatObservation {
                 return rejectObservation();
             }
             gravityQueries++;
-            var sample = NativeArrowGravity.sampleForLaunch(arrow);
+            var sample = CompatServices.projectilePhysics()
+                .sampleArrowLaunch(arrow);
             if (sample != null && sample.isCurrent(arrow)) {
-                gravity = sample.gravity;
+                gravity = sample.gravity();
                 observationGravity = sample;
             } else {
                 permanentProjectileGap = permanentObservationGap = true;

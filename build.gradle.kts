@@ -39,14 +39,41 @@ val clientTestSourceSet = sourceSets.create("clientTest") {
     runtimeClasspath += output + clientSourceSet.output + clientSourceSet.runtimeClasspath + testSourceSet.runtimeClasspath
 }
 
+val compatSourceSet = sourceSets.create("compat") {
+    compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
+    runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath
+}
+
+val compatClientSourceSet = sourceSets.create("compatClient") {
+    compileClasspath += compatSourceSet.output + clientSourceSet.output + mainSourceSet.output + compatSourceSet.compileClasspath + clientSourceSet.compileClasspath
+    runtimeClasspath += output + compatSourceSet.output + clientSourceSet.output + compatSourceSet.runtimeClasspath + clientSourceSet.runtimeClasspath
+}
+
+val compatTestSourceSet = sourceSets.create("compatTest") {
+    compileClasspath += compatClientSourceSet.output + compatSourceSet.output + clientSourceSet.output + compatClientSourceSet.compileClasspath + testSourceSet.compileClasspath
+    runtimeClasspath += output + compatClientSourceSet.output + compatSourceSet.output + compatClientSourceSet.runtimeClasspath + testSourceSet.runtimeClasspath
+}
+
+dependencies {
+    add(compatSourceSet.compileOnlyConfigurationName, "com.github.GTNewHorizons:AppleCore:3.3.13:dev") { isTransitive = false }
+    add(compatSourceSet.compileOnlyConfigurationName, "com.github.GTNewHorizons:Battlegear2-for-Backhand:1.6.8-backhand:dev") { isTransitive = false }
+    add(compatClientSourceSet.compileOnlyConfigurationName, "com.github.GTNewHorizons:Battlegear2-for-Backhand:1.6.8-backhand:dev") { isTransitive = false }
+}
+
+// Contract tests may inspect adapters; main compilation remains independent of their output
+testSourceSet.compileClasspath += compatClientSourceSet.output + compatClientSourceSet.compileClasspath
+testSourceSet.runtimeClasspath += compatClientSourceSet.output + compatSourceSet.output + compatClientSourceSet.runtimeClasspath + compatClientSourceSet.compileClasspath
+clientTestSourceSet.compileClasspath += compatClientSourceSet.output + compatClientSourceSet.compileClasspath
+clientTestSourceSet.runtimeClasspath += compatClientSourceSet.output + compatClientSourceSet.runtimeClasspath + compatClientSourceSet.compileClasspath
+
 val replaySourceSet = sourceSets.create("replay") {
     compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
     runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath
 }
 
 val devtoolsSourceSet = sourceSets.create("devtools") {
-    compileClasspath += clientSourceSet.output + mainSourceSet.output + clientSourceSet.compileClasspath
-    runtimeClasspath += output + clientSourceSet.output + clientSourceSet.runtimeClasspath
+    compileClasspath += compatClientSourceSet.output + compatSourceSet.output + clientSourceSet.output + mainSourceSet.output + compatClientSourceSet.compileClasspath
+    runtimeClasspath += output + compatClientSourceSet.output + compatSourceSet.output + clientSourceSet.output + compatClientSourceSet.runtimeClasspath
 }
 
 val devtoolsTestSourceSet = sourceSets.create("devtoolsTest") {
@@ -57,7 +84,7 @@ val devtoolsTestSourceSet = sourceSets.create("devtoolsTest") {
 testSourceSet.compileClasspath += replaySourceSet.output
 testSourceSet.runtimeClasspath += replaySourceSet.output
 
-listOf(clientSourceSet, clientTestSourceSet, replaySourceSet, devtoolsSourceSet, devtoolsTestSourceSet).forEach { extraSourceSet ->
+listOf(clientSourceSet, clientTestSourceSet, compatSourceSet, compatClientSourceSet, compatTestSourceSet, replaySourceSet, devtoolsSourceSet, devtoolsTestSourceSet).forEach { extraSourceSet ->
     tasks.named<JavaCompile>(extraSourceSet.compileJavaTaskName) {
         options.annotationProcessorPath = configurations.named("testAnnotationProcessor").get()
     }
@@ -75,6 +102,8 @@ listOf("jar", "shadowJar").forEach { taskName ->
     tasks.named<Jar>(taskName) {
         dependsOn(molangJar)
         from(clientSourceSet.output)
+        from(compatSourceSet.output)
+        from(compatClientSourceSet.output)
         from({ molangRuntime.map { zipTree(it).matching { include("**/*.class") } } })
         manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
         dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
@@ -90,7 +119,7 @@ listOf("jar", "shadowJar").forEach { taskName ->
 
 val baseReobfJar = tasks.named<ReobfuscatedJar>("reobfJar")
 baseReobfJar.configure {
-    referenceClasspath.from(clientSourceSet.compileClasspath)
+    referenceClasspath.from(clientSourceSet.compileClasspath, compatSourceSet.compileClasspath, compatClientSourceSet.compileClasspath)
     doLast {
         val artifacts = outputs.files.files.filter { it.isFile && it.extension.equals("jar", ignoreCase = true) }
         if (artifacts.isEmpty()) throw GradleException("No final reobfuscated JAR was produced for sound verification")
@@ -164,6 +193,8 @@ tasks.withType<Test>().configureEach {
 
 tasks.named<Jar>("sourcesJar") {
     from(clientSourceSet.allSource)
+    from(compatSourceSet.allSource)
+    from(compatClientSourceSet.allSource)
     from("kernel/molang/src/main/java")
 }
 
@@ -178,6 +209,14 @@ val clientTest = tasks.register<Test>("clientTest") {
     group = "verification"
     testClassesDirs = clientTestSourceSet.output.classesDirs
     classpath = clientTestSourceSet.runtimeClasspath
+    useJUnit()
+}
+
+val compatTest = tasks.register<Test>("compatTest") {
+    description = "Runs third-party adapter descriptor and boundary unit tests"
+    group = "verification"
+    testClassesDirs = compatTestSourceSet.output.classesDirs
+    classpath = compatTestSourceSet.runtimeClasspath
     useJUnit()
 }
 
@@ -207,5 +246,5 @@ val testClientGson = tasks.register<Test>("testClientGson") {
     useJUnit()
 }
 tasks.named("check") {
-    dependsOn("jar", ":kernel:molang:test", clientTest, devtoolsTest, testClientGson, verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
+    dependsOn("jar", "verifyArchitectureBoundaries", ":kernel:molang:test", clientTest, compatTest, devtoolsTest, testClientGson, verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
 }

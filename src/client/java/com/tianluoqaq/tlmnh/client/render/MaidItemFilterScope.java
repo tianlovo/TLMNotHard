@@ -9,12 +9,14 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GLContext;
 
-import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
+import com.tianluoqaq.tlmnh.client.compat.spi.RenderPlatformCompat;
 
 /** 保存本次物品图集采样与caller临时窗口，不调用会清掉caller窗口的全局restore函数 */
 final class MaidItemFilterScope implements AutoCloseable {
 
-    private final MaidRenderPlatformState.FilterWindow window = MaidRenderPlatformState.captureFilterWindow();
+    private final RenderPlatformCompat.FilterWindowHandle window = ClientCompatServices.renderPlatform()
+        .captureFilterWindow();
     private final int texture, min, mag;
     private final float aniso;
     private final boolean anisotropic = GLContext.getCapabilities().GL_EXT_texture_filter_anisotropic;

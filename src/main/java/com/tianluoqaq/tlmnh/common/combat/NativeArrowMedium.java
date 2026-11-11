@@ -24,7 +24,8 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.physics.NativeLiquidPhysics;
+import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 
 /** 一次预瞄的有界、只读水域快照；不移动箭、不推进世界、不加载区块 */
 public final class NativeArrowMedium implements IBlockAccess {
@@ -41,7 +42,7 @@ public final class NativeArrowMedium implements IBlockAccess {
     private final Map<Point, Cell> cells = new LinkedHashMap<>();
     private final double minX, minY, minZ, maxX, maxY, maxZ;
     private final float width, height, yOffset, ySize;
-    private final NativeLiquidPhysics.Sample liquidPhysics;
+    private final ProjectilePhysicsProvider.LiquidFlowSample liquidPhysics;
 
     public NativeArrowMedium(EntityArrow arrow, BooleanSupplier authorized) {
         this.arrow = arrow;
@@ -64,7 +65,8 @@ public final class NativeArrowMedium implements IBlockAccess {
         height = arrow.height;
         yOffset = arrow.yOffset;
         ySize = arrow.ySize;
-        liquidPhysics = NativeLiquidPhysics.sample();
+        liquidPhysics = CompatServices.projectilePhysics()
+            .sampleLiquidFlow();
     }
 
     public ArrowPhysics.Medium at(BallisticVector position) {

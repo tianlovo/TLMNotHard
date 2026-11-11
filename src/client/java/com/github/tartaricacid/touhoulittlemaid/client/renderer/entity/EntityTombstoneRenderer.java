@@ -12,6 +12,7 @@ import net.minecraft.util.StatCollector;
 
 import org.lwjgl.opengl.GL11;
 
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
@@ -21,7 +22,6 @@ import com.tianluoqaq.tlmnh.client.render.TessellatorVertexConsumer;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.twilightforest.client.render.TombstoneDimensionTexture;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -101,7 +101,8 @@ public final class EntityTombstoneRenderer extends Render {
         int dimension = entity.worldObj.provider.dimensionId;
         if (dimension == -1) return NETHER_TEXTURE;
         if (dimension == 1) return END_TEXTURE;
-        var optional = TombstoneDimensionTexture.resolve(entity.worldObj);
+        var optional = ClientCompatServices.itemRender()
+            .resolveTombstoneTexture(entity.worldObj);
         return optional == null ? DEFAULT_TEXTURE : optional;
     }
 

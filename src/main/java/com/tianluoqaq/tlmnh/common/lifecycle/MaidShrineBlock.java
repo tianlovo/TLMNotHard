@@ -24,7 +24,7 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -126,13 +126,15 @@ public final class MaidShrineBlock extends BlockContainer {
         if (player.isSneaking()) {
             if (held != null) return true;
             if (MaidShrineTransfer.transfer(player, shrine, false)) {
-                EtFuturumSounds.shrineFrame(world, x, y, z, false);
+                CompatServices.worldContent()
+                    .playShrineFrameSound(world, x, y, z, false);
             }
             return true;
         }
         if (held != null) {
             if (MaidShrineTransfer.transfer(player, shrine, true)) {
-                EtFuturumSounds.shrineFrame(world, x, y, z, true);
+                CompatServices.worldContent()
+                    .playShrineFrameSound(world, x, y, z, true);
             } else MaidLifecycleService.tell(player, MaidLifecycleService.Result.INVALID_CREDENTIAL);
             return true;
         }

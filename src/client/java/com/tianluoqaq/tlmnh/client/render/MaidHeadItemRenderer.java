@@ -27,9 +27,8 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumBannerRenderAccess;
-import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumSkullRenderAccess;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -82,7 +81,8 @@ public final class MaidHeadItemRenderer {
                 if (renderer != null && renderer.getClass() == TileEntitySkullRenderer.class) {
                     ((TileEntitySkullRenderer) renderer)
                         .func_152674_a(-.5F, 0, -.5F, 1, 180, helmet.getItemDamage(), profile(helmet));
-                } else EtFuturumSkullRenderAccess.render(renderer, helmet.getItemDamage(), profile(helmet));
+                } else ClientCompatServices.itemRender()
+                    .renderCustomSkull(renderer, helmet.getItemDamage(), profile(helmet));
                 if (DevelopmentFlags.isDevCommandsEnabled()) LAST_SKULL_RENDERER.put(
                     maid,
                     renderer.getClass()
@@ -92,7 +92,8 @@ public final class MaidHeadItemRenderer {
         }
         ItemStack stack = maid.getBackpackShowItem();
         if (stack == null || stack.stackSize <= 0 || !(stack.getItem() instanceof ItemBlock)) return;
-        if (EtFuturumBannerRenderAccess.isBanner(stack)) return;
+        if (ClientCompatServices.itemRender()
+            .isBanner(stack)) return;
         Block block = Block.getBlockFromItem(stack.getItem());
         // 1.20默认方块状态；旧平台用该物品公开的元数据入口，不借用玩家朝向
         int metadata = stack.getItem()

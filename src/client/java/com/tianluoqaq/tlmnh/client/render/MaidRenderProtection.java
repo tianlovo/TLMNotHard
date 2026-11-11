@@ -2,9 +2,9 @@ package com.tianluoqaq.tlmnh.client.render;
 
 import java.util.function.Supplier;
 
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -15,7 +15,8 @@ public final class MaidRenderProtection {
 
     public static boolean ready() {
         return IntegrationGuard.call(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, () -> {
-            MaidRenderPlatformState.preflight();
+            ClientCompatServices.renderPlatform()
+                .preflight();
             return true;
         }, () -> false);
     }

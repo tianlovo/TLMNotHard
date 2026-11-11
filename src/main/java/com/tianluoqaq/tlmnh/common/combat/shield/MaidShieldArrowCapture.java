@@ -8,9 +8,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.DamageSource;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.combat.spi.ShieldCompatProvider;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 import com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin;
 
 import cpw.mods.fml.relauncher.Side;
@@ -56,11 +56,11 @@ public final class MaidShieldArrowCapture {
         private final EntityMaid maid;
         private final ItemStack shield;
         private final EntityArrow arrow;
-        private final BattlegearShieldAccess.ArrowCapture count;
+        private final ShieldCompatProvider.ArrowCaptureHandle count;
         private final Object call;
 
-        private Pending(EntityMaid maid, ItemStack shield, EntityArrow arrow, BattlegearShieldAccess.ArrowCapture count,
-            Object call) {
+        private Pending(EntityMaid maid, ItemStack shield, EntityArrow arrow,
+            ShieldCompatProvider.ArrowCaptureHandle count, Object call) {
             this.maid = maid;
             this.shield = shield;
             this.arrow = arrow;

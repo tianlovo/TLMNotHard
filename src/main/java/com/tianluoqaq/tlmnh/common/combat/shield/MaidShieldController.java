@@ -19,12 +19,11 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
-import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
 import com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin;
 
 /** TLM举盾生命周期与原生平台物品格挡分开，冷却按Item维护，不占主手近战动作 */
@@ -106,7 +105,8 @@ public final class MaidShieldController {
             requestedWear = wear;
             wearCallbackInvoked = wearInvoked;
             stackSizeAfter = shield == null ? 0 : shield.stackSize;
-            brokenAfter = TConstructToolData.broken(shield);
+            brokenAfter = CompatServices.shields()
+                .isToolBroken(shield);
             equipmentChangedDuringCallback = equipmentChanged;
             cooldownApplied = cooldown;
         }
@@ -513,7 +513,11 @@ public final class MaidShieldController {
             if (!IntegrationGuard.available(ExternalFeature.SHIELDS) || !sameUseContext(use, shield, world, identity))
                 return;
             event.setCanceled(true);
-            maid.playSound(BattlegearShieldAccess.BLOCK_SOUND, 1, 1);
+            maid.playSound(
+                CompatServices.shields()
+                    .defaultBlockSound(),
+                1,
+                1);
             if (wear >= 0) {
                 wore = true;
                 shield.damageItem(wear, maid);

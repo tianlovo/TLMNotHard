@@ -13,8 +13,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.clienthook.HandSlotIconHook;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.compat.battlegear2.client.gui.BattlegearSlotIcons;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -55,7 +55,7 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
             public IIcon getBackgroundIconIndex() {
                 if (armorType >= 0) return ItemArmor.func_94602_b(armorType);
                 if (index == MaidInventory.MAIN_HAND || index == MaidInventory.OFF_HAND)
-                    return BattlegearSlotIcons.hand(index == MaidInventory.OFF_HAND);
+                    return HandSlotIconHook.iconForHand(index == MaidInventory.OFF_HAND);
                 return null;
             }
         });

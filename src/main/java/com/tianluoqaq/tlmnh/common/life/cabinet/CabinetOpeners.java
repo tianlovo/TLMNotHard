@@ -5,9 +5,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.ContainerChest;
 import net.minecraft.util.AxisAlignedBB;
 
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.life.BlockSnackCabinet;
 import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
-import com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds;
 
 /** 原ContainerOpenersCounter的首开/末关声音；旧IInventory回调无玩家，下一tick核实际窗口 */
 public final class CabinetOpeners {
@@ -68,7 +68,8 @@ public final class CabinetOpeners {
             x,
             cabinet.yCoord + .5,
             z,
-            EtFuturumSounds.barrel(opened),
+            CompatServices.worldContent()
+                .barrelSound(opened),
             .5F,
             world.rand.nextFloat() * .1F + .8F);
     }

@@ -18,9 +18,9 @@ import com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -53,7 +53,8 @@ public final class MaidDetailsPreview implements AutoCloseable {
         var manager = RenderManager.instance;
         float viewX = manager.playerViewX, viewY = manager.playerViewY;
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
-        try (var filters = MaidRenderPlatformState.captureFilterWindow(); var scope = new MaidItemRenderScope()) {
+        try (var filters = ClientCompatServices.renderPlatform()
+            .captureFilterWindow(); var scope = new MaidItemRenderScope()) {
             GL11.glColor4f(1, 1, 1, 1);
             GL11.glEnable(GL11.GL_COLOR_MATERIAL);
             GL11.glEnable(GL11.GL_DEPTH_TEST);

@@ -15,7 +15,7 @@ import org.lwjgl.opengl.GL12;
 
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.texture.CacheIconTexture;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -44,7 +44,8 @@ public final class MaidIconCapture {
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT), unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
         CacheIconTexture texture = null;
-        try (var filters = MaidRenderPlatformState.captureFilterWindow(); var scope = new MaidItemRenderScope()) {
+        try (var filters = ClientCompatServices.renderPlatform()
+            .captureFilterWindow(); var scope = new MaidItemRenderScope()) {
             var resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
             int size = (int) Math.ceil(256.0 / resolution.getScaleFactor());
             GL11.glEnable(GL11.GL_SCISSOR_TEST);

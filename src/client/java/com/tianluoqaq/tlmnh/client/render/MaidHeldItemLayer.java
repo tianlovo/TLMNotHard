@@ -20,14 +20,13 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.client.render.MaidHandAttachment.Attachment;
 import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Profile;
 import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.compat.battlegear2.client.render.BattlegearShieldRenderTransforms;
-import com.tianluoqaq.tlmnh.compat.tinkersdefense.client.render.TinkersDefenseShieldRenderTransforms;
 
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -225,17 +224,12 @@ public final class MaidHeldItemLayer {
                 profile == Profile.FULL_3D && stack.getItem()
                     .shouldRotateAroundWhenRendering());
             if (side == Side.LEFT) {
-                bridge = BattlegearShieldRenderTransforms.adapt(
-                    stack,
-                    selectedRenderer,
-                    maid.hasPose(MaidPose.USING_ITEM) && maid.hasPose(MaidPose.USING_OFFHAND),
-                    bridge);
-                if (bridge == null) return;
-                bridge = TinkersDefenseShieldRenderTransforms.adapt(
-                    stack,
-                    selectedRenderer,
-                    maid.hasPose(MaidPose.USING_ITEM) && maid.hasPose(MaidPose.USING_OFFHAND),
-                    bridge);
+                bridge = ClientCompatServices.itemRender()
+                    .adaptOffhandShieldTransform(
+                        stack,
+                        selectedRenderer,
+                        maid.hasPose(MaidPose.USING_ITEM) && maid.hasPose(MaidPose.USING_OFFHAND),
+                        bridge);
                 if (bridge == null) return;
             }
             var entry = new Matrix4f(source).mul(bridge);

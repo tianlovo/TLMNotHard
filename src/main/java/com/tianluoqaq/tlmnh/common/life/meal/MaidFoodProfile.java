@@ -1,10 +1,8 @@
 package com.tianluoqaq.tlmnh.common.life.meal;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -18,9 +16,9 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 
@@ -48,7 +46,8 @@ public final class MaidFoodProfile {
         if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return null;
         EnumAction action = stack.getItemUseAction();
         if (action != EnumAction.eat && action != EnumAction.drink) return null;
-        var values = AppleCoreNutrition.values(stack);
+        var values = CompatServices.nutrition()
+            .foodValues(stack);
         if (values == null || values[0] < 0 || !Float.isFinite(values[1])) return null;
         var profile = new MaidFoodProfile(stack, (int) values[0], values[1]);
         if (!Float.isFinite(profile.total) || profile.total < 0 || profile.duration <= 0 || profile.duration > 1200)
@@ -96,23 +95,14 @@ public final class MaidFoodProfile {
 
     private static MaidFoodProfile gregtech(ItemStack stack, MaidFoodProfile profile)
         throws ReflectiveOperationException {
-        Class<?> meta = Class.forName("gregtech.api.items.MetaGeneratedItem");
-        if (!meta.isInstance(stack.getItem())) return null;
-        var stats = (Map<?, ?>) meta.getField("mFoodStats")
-            .get(stack.getItem());
-        Object stat = stats.get((short) stack.getItemDamage());
-        if (stat == null || !stat.getClass()
-            .getName()
-            .equals("gregtech.api.util.GTFoodStat")) return null;
-        if ((boolean) field(stat, "mExplosive")) return null;
-        var empty = (ItemStack) field(stat, "mEmptyContainer");
-        profile.container = empty == null ? null : empty.copy();
-        profile.milk = (boolean) field(stat, "mMilk");
+        var data = CompatServices.nutrition()
+            .inspectCustomFood(stack);
+        if (data == null) return null;
+        profile.container = data.emptyContainerCopy();
+        profile.milk = data.curesMilk;
         profile.requiresGregtech = true;
-        int[] potions = (int[]) field(stat, "mPotionEffects");
-        boolean ambient = (boolean) field(stat, "mInvisibleParticles");
-        for (int i = 3; i < potions.length; i += 4)
-            profile.effect(potions[i - 3], potions[i - 2], potions[i - 1], potions[i] / 100F, ambient);
+        for (var effect : data.effects)
+            profile.effect(effect.potionId, effect.durationTicks, effect.amplifier, effect.probability, effect.ambient);
         return profile;
     }
 
@@ -151,13 +141,6 @@ public final class MaidFoodProfile {
             type = type.getSuperclass();
         }
         return type == ItemFood.class;
-    }
-
-    private static Object field(Object value, String name) throws ReflectiveOperationException {
-        Field field = value.getClass()
-            .getDeclaredField(name);
-        field.setAccessible(true);
-        return field.get(value);
     }
 
     private void effect(int id, int ticks, int amplifier, float chance, boolean ambient) {

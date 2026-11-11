@@ -19,11 +19,11 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPa
 import com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.SimpleBedrockModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumBannerRenderAccess;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -45,7 +45,8 @@ public final class MaidBannerRenderer {
     public static void render(EntityMaid maid, BuiltinMaidModel model) {
         if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 0);
         var stack = maid.getBackpackShowItem();
-        if (!EtFuturumBannerRenderAccess.isBanner(stack) || stack.stackSize <= 0
+        if (!ClientCompatServices.itemRender()
+            .isBanner(stack) || stack.stackSize <= 0
             || !model.hasCompletedPoseFor(maid)
             || !model.getChoice()
                 .isShowBackpack()
@@ -61,7 +62,8 @@ public final class MaidBannerRenderer {
             int light = maid.getBrightnessForRender(model.getPosedPartialTick());
             try (var scope = new MaidItemRenderScope()) {
                 // 原生动态纹理首次上传也会改变GL绑定，因此须位于与绘制相同的恢复边界内
-                var pattern = EtFuturumBannerRenderAccess.texture(stack);
+                var pattern = ClientCompatServices.itemRender()
+                    .bannerTexture(stack);
                 if (pattern == null || maid.getBackpackShowItem() != stack) return false;
                 GL11.glDisable(GL11.GL_CULL_FACE);
                 GL11.glEnable(GL11.GL_NORMALIZE);

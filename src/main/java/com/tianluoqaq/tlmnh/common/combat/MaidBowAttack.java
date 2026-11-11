@@ -30,12 +30,13 @@ import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
+import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
-import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -173,7 +174,8 @@ public final class MaidBowAttack {
     }
 
     private boolean fireOnce(EntityLivingBase target) {
-        if (!NativeArrowGravity.available()) {
+        if (!CompatServices.projectilePhysics()
+            .arrowGravityAvailable()) {
             status = Status.PHYSICS_UNAVAILABLE;
             return false;
         }
@@ -204,7 +206,8 @@ public final class MaidBowAttack {
                 .blocksTransfer()))
             return false;
         lastRefusal = null;
-        if (!NativeArrowGravity.available() || !MaidProjectileImpactProtection.available(maid)) {
+        if (!CompatServices.projectilePhysics()
+            .arrowGravityAvailable() || !MaidProjectileImpactProtection.available(maid)) {
             status = Status.PHYSICS_UNAVAILABLE;
             return false;
         }
@@ -282,7 +285,7 @@ public final class MaidBowAttack {
             .getTelemetry();
         boolean recording = telemetry.isEnabled();
         EntityArrow arrow;
-        NativeArrowGravity.LaunchSample launch;
+        ProjectilePhysicsProvider.ArrowLaunchSample launch;
         NativeAim nativeAim = null;
         if (original) {
             var sourceArrow = new MaidGravityFreeArrow(world, origin.x, origin.y, origin.z);
@@ -296,12 +299,14 @@ public final class MaidBowAttack {
                 maid.worldObj.difficultySetting.getDifficultyId());
             arrow = sourceArrow;
             lastSolution = null;
-            launch = NativeArrowGravity.sampleForLaunch(arrow);
+            launch = CompatServices.projectilePhysics()
+                .sampleArrowLaunch(arrow);
         } else {
             // 查询必须针对真正将要生成的箭，不用代理箭或主世界固定值代替实际provider
             arrow = new EntityArrow(world, origin.x, origin.y, origin.z);
             arrow.shootingEntity = maid;
-            launch = NativeArrowGravity.sampleForLaunch(arrow);
+            launch = CompatServices.projectilePhysics()
+                .sampleArrowLaunch(arrow);
             if (launch == null || !launch.isCurrent(arrow) || !current.getAsBoolean()) {
                 arrow.setDead();
                 status = Status.PHYSICS_UNAVAILABLE;
@@ -477,7 +482,8 @@ public final class MaidBowAttack {
         if (firing || !admitted.getAsBoolean()
             || target == null
             || !hasBow(maid)
-            || !NativeArrowGravity.available()
+            || !CompatServices.projectilePhysics()
+                .arrowGravityAvailable()
             || !MaidProjectileImpactProtection.available(maid)) return Status.PHYSICS_UNAVAILABLE;
         var world = maid.worldObj;
         var provider = world.provider;
@@ -511,7 +517,8 @@ public final class MaidBowAttack {
                 && !target.isDead
                 && targetIdentity.equals(target.getUniqueID())
                 && world.getEntityByID(target.getEntityId()) == target;
-            var launch = NativeArrowGravity.sampleForLaunch(candidate);
+            var launch = CompatServices.projectilePhysics()
+                .sampleArrowLaunch(candidate);
             if (launch == null || !valid.getAsBoolean()) return Status.PHYSICS_UNAVAILABLE;
             return nativeAim(
                 candidate,
@@ -525,13 +532,13 @@ public final class MaidBowAttack {
         }
     }
 
-    private NativeAim nativeAim(EntityArrow arrow, EntityLivingBase target, NativeArrowGravity.LaunchSample launch,
-        BooleanSupplier current, boolean prototype) {
+    private NativeAim nativeAim(EntityArrow arrow, EntityLivingBase target,
+        ProjectilePhysicsProvider.ArrowLaunchSample launch, BooleanSupplier current, boolean prototype) {
         var result = new NativeAim();
         if (!IntegrationGuard.available(Side.SERVER, NativeArrowMedium.GUARD)) return result;
         try {
             result.medium = new NativeArrowMedium(arrow, current);
-            result.physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity)
+            result.physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity())
                 .withMedium(result.medium::at);
             result.targetPoint = aimPoint(target);
             var velocity = observed == target

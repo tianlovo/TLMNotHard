@@ -10,7 +10,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
-import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+import com.tianluoqaq.tlmnh.client.compat.ClientCompatServices;
 
 /** 已支持物品的GL边界，矩阵栈与attrib分开恢复，不修改FBO或program */
 public final class MaidItemRenderScope implements AutoCloseable {
@@ -110,7 +110,8 @@ public final class MaidItemRenderScope implements AutoCloseable {
             this.depthName = depthName;
             GL11.glMatrixMode(mode);
             // Angelica的TEXTURE软件栈深度不能用driver兼容查询冒充
-            depth = MaidRenderPlatformState.matrixDepth(depthName);
+            depth = ClientCompatServices.renderPlatform()
+                .matrixDepth(depthName);
             top = BufferUtils.createFloatBuffer(16);
             GL11.glGetFloat(matrixName, top);
         }
@@ -132,7 +133,8 @@ public final class MaidItemRenderScope implements AutoCloseable {
 
         private void restore() {
             GL11.glMatrixMode(mode);
-            int current = MaidRenderPlatformState.matrixDepth(depthName);
+            int current = ClientCompatServices.renderPlatform()
+                .matrixDepth(depthName);
             if (current < depth) {
                 // 被回调弹掉的caller下层矩阵不可凭一份top快照重建
                 GL11.glLoadMatrix(top.duplicate());

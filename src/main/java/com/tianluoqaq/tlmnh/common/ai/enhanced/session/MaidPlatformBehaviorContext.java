@@ -35,9 +35,7 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
-import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
-import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
-import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
@@ -219,22 +217,33 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         }
 
         @Override
-        public MaidTask task() {
+        public String taskId() {
             check();
-            return maid.getTask();
+            return maid.getTask()
+                .getId();
         }
 
         @Override
-        public MaidSchedule schedule() {
+        public ScheduleMode schedule() {
             check();
-            return maid.getSchedule();
+            MaidSchedule current = maid.getSchedule();
+            return switch (current) {
+                case NIGHT -> ScheduleMode.NIGHT;
+                case ALL -> ScheduleMode.ALL;
+                case DAY -> ScheduleMode.DAY;
+            };
         }
 
         @Override
-        public Activity activity() {
+        public ActivityPhase activity() {
             check();
-            return maid.getHomeArea()
+            Activity current = maid.getHomeArea()
                 .activity();
+            return switch (current) {
+                case IDLE -> ActivityPhase.IDLE;
+                case REST -> ActivityPhase.REST;
+                case WORK -> ActivityPhase.WORK;
+            };
         }
 
         @Override
@@ -519,12 +528,12 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
 
         public interface Backend {
 
-            Lease tryAcquireCopyValidated(Object owner, Hand hand, Kind kind, Predicate<ItemStack> itemValidator,
-                BooleanSupplier extraGuard);
+            MaidItemUseState.Lease tryAcquireCopyValidated(Object owner, MaidItemUseState.Hand hand,
+                MaidItemUseState.Kind kind, Predicate<ItemStack> itemValidator, BooleanSupplier extraGuard);
 
-            boolean isCurrent(Lease lease);
+            boolean isCurrent(MaidItemUseState.Lease lease);
 
-            boolean release(Lease lease);
+            boolean release(MaidItemUseState.Lease lease);
         }
 
         private final MaidBehaviorId moduleId;
@@ -533,7 +542,7 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         private final Consumer<Throwable> asyncFaultHandler;
         private final Backend backend;
         private final Object leaseOwner;
-        private final List<Lease> ownedLeases = new ArrayList<>();
+        private final List<MaidItemUseState.Lease> ownedLeases = new ArrayList<>();
 
         public IsolatedHandAccess(MaidBehaviorId moduleId, MaidSessionCallbackScope scope,
             Supplier<Boolean> moduleHealthyGuard, Consumer<Throwable> asyncFaultHandler, Backend backend,
@@ -551,8 +560,8 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         }
 
         @Override
-        public Lease tryAcquireHand(Hand hand, Kind kind, Predicate<ItemStack> itemValidator,
-            BooleanSupplier extraGuard) {
+        public MaidHandAccess.Lease tryAcquireHand(MaidHandAccess.Hand hand, MaidHandAccess.Kind kind,
+            Predicate<ItemStack> itemValidator, BooleanSupplier extraGuard) {
             check();
             Objects.requireNonNull(hand, "hand");
             Objects.requireNonNull(kind, "kind");
@@ -576,7 +585,12 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
                     return false;
                 }
             };
-            var lease = backend.tryAcquireCopyValidated(leaseOwner, hand, kind, guardedValidator, guardedExtra);
+            var lease = backend.tryAcquireCopyValidated(
+                leaseOwner,
+                MaidItemUseState.Hand.fromApi(hand),
+                MaidItemUseState.Kind.fromApi(kind),
+                guardedValidator,
+                guardedExtra);
             if (lease != null && !ownedLeases.contains(lease)) {
                 ownedLeases.add(lease);
             }
@@ -584,16 +598,17 @@ public final class MaidPlatformBehaviorContext implements MaidBehaviorContext {
         }
 
         @Override
-        public boolean isCurrent(Lease lease) {
+        public boolean isCurrent(MaidHandAccess.Lease lease) {
             check();
-            return lease != null && ownedLeases.contains(lease) && backend.isCurrent(lease);
+            return lease instanceof MaidItemUseState.Lease internal && ownedLeases.contains(internal)
+                && backend.isCurrent(internal);
         }
 
         @Override
-        public boolean releaseHand(Lease lease) {
+        public boolean releaseHand(MaidHandAccess.Lease lease) {
             check();
-            if (lease == null || !ownedLeases.remove(lease)) return false;
-            return backend.release(lease);
+            if (!(lease instanceof MaidItemUseState.Lease internal) || !ownedLeases.remove(internal)) return false;
+            return backend.release(internal);
         }
 
         public void releaseOwnedResources() {
