@@ -1,0 +1,720 @@
+{
+  "schema": "combat-shared-statistics-contract-v1",
+  "contract": "COMBAT_SHARED_STATISTICS_V1",
+  "contractStatus": "PROPOSED_PENDING_REVIEW",
+  "version": 3,
+  "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
+  "boundContracts": {
+    "mechanisms": {
+      "file": "combat-mechanisms-contract.json",
+      "contract": "COMBAT_MECHANISMS_V2",
+      "sha256": "bd657e2a2230f92323ffb1270199b25ccc57e270589da5967501903625deb4f5",
+      "comparisonSchema": "combat-mechanisms-comparison-unified-v1",
+      "mechanisms": [
+        "melee",
+        "motion",
+        "safety",
+        "withdraw"
+      ],
+      "originalCapturesPerBlock": 4,
+      "portCapturesPerBlock": 13
+    },
+    "boundaries": {
+      "file": "combat-boundaries-contract.json",
+      "contract": "COMBAT_BOUNDARIES_V1",
+      "sha256": "d4f5c34801cdbbeba3577bb5de63caad7869208f8cfdb69d5246caf083c937a6",
+      "comparisonSchema": "combat-boundaries-comparison-unified-v1",
+      "mechanisms": [
+        "stationary",
+        "peek",
+        "finite"
+      ],
+      "originalCapturesPerBlock": 3,
+      "portCapturesPerBlock": 12
+    }
+  },
+  "sampleUnit": {
+    "unit": "independent_fresh_jvm_block",
+    "totalCapturesPerBlock": 32,
+    "uniqueActorsPerBlock": 32,
+    "uniqueOwnersPerBlock": 32,
+    "requiredTurbo": 1,
+    "frameOrArrowIndependenceClaimed": false,
+    "crossBlockCaptureOrUuidReuseAllowed": false,
+    "crossBlockArtifactDriftAllowed": false
+  },
+  "samplingAndOrderProtocol": {
+    "seedDerivationFormula": "signed_int64_be(SHA256('COMBAT_SHARED_STATISTICS_V1:' + campaign_id + ':block:' + str(block_index))[0:8])",
+    "blockIndexRule": "strictly_contiguous_one_based_1_to_B_with_zero_skipped_reordered_or_replaced_blocks",
+    "pairExecutionOrderSchedule": "deterministic_alternating_AB_BA_odd_blocks_original_then_port_even_blocks_port_then_original",
+    "allowedExecutionOrders": [
+      "original_then_port",
+      "port_then_original"
+    ],
+    "incompleteOrFaultyBlockRule": "all_attempted_blocks_must_remain_in_manifest; any_incomplete_or_integrity_fault_block_keeps_completed_valid_blocks_less_than_attempted_blocks_and_permanently_blocks_PASSED_NONINFERIORITY",
+    "conditionalMeanProtocolRequirement": "Fresh-JVM process isolation alone does not establish conditional-mean invariance; formal campaigns must pre-commit campaign_id, deterministic per-block seed schedule, alternating original/port pair execution order, exclusive turbo=1 runtime conditions, and full retention of all attempted blocks"
+  },
+  "calibrationExclusion": {
+    "admitCalibrationSamples": false,
+    "excludedDirectoryTokens": [
+      "batch196-hqa",
+      "batch196-original-first",
+      "batch196-original-repair",
+      "batch196-repair-hqa",
+      "batch204-combat-first-hqa",
+      "batch204-original-first",
+      "combat209-shared-dynamic-1794310935519625800",
+      "combat209-shared-evasion-1794320111783411000",
+      "combat209-shared-evasion-1794328310477507400",
+      "combat209-shared-evasion-1794350473736596400"
+    ],
+    "excludedCaptureSha256": [
+      "00bea5c1ea74e455f09ef30ad3fcb17af3b8cfc2abd0ec5baa4da07fec3d93a2",
+      "02e031f7ffd0881ee8d073fac0349e404ea38532618a85170515f4e1b123611a",
+      "051697d74d3c823e0468f7e122aa3ae52d53ace8aa55c072ed59b45bb8baf01f",
+      "070d4417f8e8e527e873458e1ffb2e108bc14a10d5e2f4b3a631952b6a939451",
+      "084e830bc7cb9c030551b05986d1d18afe74d095b92b2c281018d18507ea95a0",
+      "08adb87c76f74a7946f8d78b3006bed9b244cdaef3100344f35f612dfbb9c2da",
+      "0a3e8fa842161bbcb24ef8022f47ec2664cd452631adf77ef34310890fd6475c",
+      "0b60e06b77d3498eac98d2ab8660ea0c5c4931fc269076df57a7aea4e21a1b34",
+      "0cb89b1d009536dcf4f2289dbd114db6896299e5a0edb8e6b480dbdec8e736fd",
+      "12374a5e0e8d29a1c56f2905d04b6c1a971b880378b59c7ef49437b6e68fe514",
+      "13cc03fbe9dcef3c6468a9f41a0b90d1548c16beb9b87b6d9826da6880baeace",
+      "13e4d7d234928cbd808f7a95e0be085f39b994835ac042963e59ae9931677a98",
+      "149cee0a6485ba583fd7549ab242c6ae3471893fb66d0951548ea78353b0c4f5",
+      "197cc88e13d7863cfc25f401a4fd4c762552236fb636bd402bc5917f753e9329",
+      "1a639f16d1b504bd4bcb853d27f0fa2ea51ac97be2d6a05bb95f6adda616f9a2",
+      "1ac8cdfec40e7f3819b41865c399755ec82e7e2aa5e4fe0b50a6ae2aca92ef93",
+      "1ba86a3f1a3141110a019ee7270c6f69fbc49a05bb128d16f7885c5e5dc6a709",
+      "1c06d68792d986b2dde4356d58eb3e369ff9bfbe5695923c1d422a093b63763b",
+      "1c79119a5c039fd12000140261ae64438be7a74d0620f3beb2514ccca67a47b5",
+      "224c4cbef320249a2bd8c6aa19de883e895122dccff2be5bb7329e1a2bf83386",
+      "22b4407d40685d5241f7bfe05688a1c984464c6daa73c38c42af64b4f40e67c4",
+      "22e422c3a89410dd0ad6ca3aa50846109e2a385cb62db38da847b184d406a9f2",
+      "2440720a18d275d1d3276fca21a872fab2a6bd2ed8e65a177594ea09294ad296",
+      "257275fe6d3a79d9ab9af2104bc3a7cd16c42095472f83a3546af19211578cbd",
+      "287bd478ffb722d7a431aef42a852644796dd447789d38437e33cbed548ba120",
+      "29603f5cf31ae2c4f977fb2d7683020b4a966f176fe2774a8bf8ac0400388173",
+      "2a1e4d9195ae312c90169d0986e89f61ae6fdf2cf09ceaff97fadd46ebd6dcc7",
+      "2cb5c893ca1656cc92008733f015a90862422e143e963454ee477d2141baa1e6",
+      "2d413883152101544fd0d51802bdba02e724513d89d51a26fe8ff08409acef69",
+      "2dbf99adf46fa1ad645aa628dffe0a4c040c0df6dd099fca75c20a2d29d5dd6f",
+      "30908917588fff3c60f87faca1d1e39572a5b059b3553d942f8b3502c5ff1d05",
+      "3129143cab48498150322866a5a5fea4674009f5fe911a628547e4aa588600c6",
+      "3449817d58a7b3ea065ca822883d6bb47bad4387566311d08ebf7363466f5fe3",
+      "3594f9cd5d098bca145a0cee4332e4d5ab34cdf31e4870e1e5f4bb293df23839",
+      "3613a32c4ccb7cef7a7fd72fa8ede4333f18c9daf4444d4978f5a7d6aeb515d8",
+      "371c9686c89c13fa12434857df6512d508434a8ab45fa20262dbfd3c097d5637",
+      "37ae4786f5b7c4ecb572635f3aea1a6efda4f8633676d74ec77138cd0be3cb60",
+      "3803c320988e8807ec1bcffd1b0cad37cf9c616d88a0f6ed782afbc73512a0e6",
+      "38d9655898253eef24691201cf63c423acb9360e7d380b12a1c14ae8d5cb26bf",
+      "395e3ed012594627b205d85ba07fd523d0ef5aea1e07e76fdf9099cf6e685904",
+      "399761e459a5bfc307bba68b9cab1fb1f8fe632adda25649e657ebe46ea13483",
+      "3a6a333ad602667f437e09b03f4ef82c27248890b9f6da94a80f1f672b37ad9d",
+      "3bb5de626faf88f3e8f094a6076a017b2a8c606ae302287c8f7a938e3408bf0f",
+      "3c5617ee77e9cd39edd44a8c13918cdad4c33110c5c3c5c6a1e9f922592c6ada",
+      "3e2d4ac610acca582a0ffc082650c3ab4a542c5c05c46e72b4383ebd524a4f0c",
+      "3ecf9beb5b6c1c3cb501a0fbb600e80f08bd5eebd7cfe20b4b26aafb15c0b397",
+      "41dd74a52608f6970cc3c5778c2bc179320e3a596d97398c56a69646cbc7cb29",
+      "42cd66d0b395d33c983e5f46885855ff2f41495743e0e90fa43505666730c6b6",
+      "44146be455d6806acc75ef60acd3bc80ab59a008b78d3cfe60bfc4baa3896e0e",
+      "45a9dc2250408b31672fa78608e41ef5953d8ec2390fa8cf92be1b7b944b67f2",
+      "4a189e608337f824a820d506d5d9f7b49fc190447035aedfc023d1cbf0c17699",
+      "4aa28128abf56930666c2865ef40d903a6895eccd5231b5cb3814ee4313e1e66",
+      "4c8e2081824530317deefb948b1f01180b238929bb0131dc9576f8d0ed35946c",
+      "4dee7c396a1fc89a3519b5bd2ea606ed15de6527a841084d481963fc24a8919f",
+      "4feb0cc8e4d16044c55e9fec287cd759d75c48443e1b42a9983f5b35954d6490",
+      "53badcdb3b0f0ebe5f5f33408f143298890c7ae2211aef557facb9fbcca40200",
+      "5711cf6a65ca8ab58c298fab003c8f77bab0d73a57d90dca90afe2dde1ee2548",
+      "579790ed2e83200f0cad136701d3f85fac24056ddc9481e1414f4ebc35f9ff56",
+      "57e677109d690aa8bde910f1d37d6f64f37e5a64c7c39267123179fd35a94c42",
+      "59213fc3311f4069a4294d8318dd31bb3b3bf3cb952f70a019234105fa5b762b",
+      "5c9dc55662541aa9fb95f69faded9f700dbed5577a3eb25082304ff8f41be503",
+      "5d0df0e9ac817cbc0ee404dbb7f87e05bffa2dc1de0273327b42059001e29f3a",
+      "5e4fa6fcd10bf7a241a3e400bae3cbb80d44b9a1b06d188bbbf0cdf6341254ba",
+      "65adf4eefcb311a0a7f0ea3e6feef92aac5ee4d1f9d4b6f72e63e5440f5c7de5",
+      "67ed72ac8534276b37dc1575ba66132d613e4263b33aa14bc221d73081073666",
+      "69d9dc2776b7304c3a5bead266bc6c2ebd600413cdd759b928c9773e5b0456cc",
+      "6c1f4b8833ad824ab17e5d7a55cb1f971188113863eb39a0cf4cc644a6c69d14",
+      "6cad94d0fa976f19f4dce63d7e139c8316ae7ebfcbb33a3bb0a3e4ed3cc4fca9",
+      "6e26512c74578c396f7cadfb381fa8e4ae1b2be95f310319a70c126e3b897c1b",
+      "7019c97074261f44b9fd86c810908aca966775aeb1a1612b3bab81a93d000306",
+      "76389ec70d139fad57cd1d9df6fba84a6dd32eaef214298d61a298af8cafe15f",
+      "76ebbcc5d38d2e04dfd461ca739e0ed2b3f267085c2652d575c2424361cb00e7",
+      "77dfcca2b28f52b93b9b1e33e33eab121100c7451aea2f00ef76fa53a9149a8d",
+      "7b095992393ce3dff79a6134709bb105648289e3fa981ed1a895ba93347f6ea3",
+      "7bfb5bfe8247b466407e430204983c765f36996eb8a4c222834b041327b944b8",
+      "7ca6ac97a3bb0659d938efdabb008894e6de005fc8ff9db924be8ea3634e94e9",
+      "801c4be3b5ae823f40cdcac2537f8efe6131ab593af86e79d9c0c9457fff1db9",
+      "806b13bb478c7e787abd70b0b0aa34433119f03f080a905d4c739b6165ec7bcb",
+      "842a3019e268f484cf09b85ed2445159fea0f0b0a3f3b0620e24437fde8da478",
+      "851eefcdd1ff1254ecd56f8fb60c72265511febbab60d2ef8fd120e651c3fdf1",
+      "85eaf480232b708976e9b6bfe1089496c63a9fef02959697c91f35a3f0ab503a",
+      "86167907a448512e5ce3d1a386c125b0bee6360358ea68b441b14a6f50479568",
+      "868bbfd9e3934d4f2650467640200d792c1265536ec4204385f47ef5cd860899",
+      "8aa8dd823be78323e637bc6d4a768c2803cf15f0506fa1731d4563cae8d2539e",
+      "8c6783c887e374712fe4d7e6db773b164540e162a8de6d0543942d51d246253e",
+      "8d52db0b961884f26f9eda3c713801ce651b0964a25bbcbb53aa6d5c79aa415f",
+      "914803978f6af0601443ef4e9856856454931f5b798ec8e80d7845974f04603e",
+      "92d513f27321fde98f38173ae12fca9373bac51d4c52904f351b4f1017bb5023",
+      "9328c6b0cc1b0557fd1ca0c9f45235cdded20f5d2c27df25f93392dd224be80d",
+      "93856d0683004041435a5399190fd63360e801158d1a8499c49712eb5efdca7d",
+      "94d529e884bf2620aa2e675b3a5d8b33f3ac5ee0e913ec5132e19ce4de86a0c4",
+      "9628d6a27f8aff58799704cab39d104e1dbe0788a9adabbceaf2d16fa3c1a00e",
+      "96ceac28da0259a6081cd7fb03c74e1525ae6f055ac24e2327da4b975decd967",
+      "9736c6188b24130fb149b99051b68efea74557063ff5b44ab1995ac9ab9e4bcb",
+      "97859274e31fe86bf51b33b4322128872d3e92f10d7fe8a5423093a69a9eb611",
+      "984649445bd9ac6ed4a87bc0d8318ce4b5e6451bef9b129b150c1211984e1fc7",
+      "9d0009a1085f173cd128faf3726d8321f17c8a5c3cdd04cf3ebc6b037cfe07d4",
+      "9f02ebcf6380af91faf23412773f2eeceb70b6761a3c215b719647caba1cceb0",
+      "9f7a33e9597c2c89852107cb3b51aa4de168f06c9c706e8eec1d3520b53a7851",
+      "a133cece7eaa1b6c46c8077e1c517ab7b7d797aac7ff3e795294393b43263c90",
+      "a24dc1147933b9f89585662e788a51abd506dbf3132ef279890316719ceb2cb5",
+      "a355ce6183309b0454bece9a7b1ccb092b279cafbedf35613d78a23c3ea86e94",
+      "a468febcfc330bb87fe8e3f42be8ad7e0dc963d950c57029002d0b110f159f4d",
+      "a6502fd04f47b8de14e93ec75016d53ef4648e8f4aadb90bf744836878134868",
+      "a79505ee0b5afc843baf47033fcf441279543720c9ed257bb7d99ebac07fe4e3",
+      "a8cff2a5d279d7a61524749dec2c2feb2b72e291c5ec63eac2501d28e43078b5",
+      "a95efe2fd9a231b3680efa63d2eb8cc6a89b34161bd31ad359312886cff0e66d",
+      "abfa7dcefd51a0ae6353505983998fd020af56e0859bbb976334098c2758bc28",
+      "ac023f5de1870a379c7bc3a98f226a03b265fc49b49f5e0424392175b4c14a85",
+      "ac0fa105bbb53653395dd21f8b9aea6bfafd70a8f00dcbc7ab21ee8c4d2e1cca",
+      "addc7f25d5e05a016a23473bc2a83c81cd9bd9d7ea8b69a000b3ac53ef4904e2",
+      "aeb4d0a725665444295b8dae0e5d3c5720bd65c719b802a18eda88adb1fe4d6b",
+      "b01e37d527d3ee0de97fa8a497f7613afcf2d786175ce2eeb73efa95faa870a8",
+      "b49e8cea525b9f63c4ac259a47ccee848f71fc353f42b44d053c06a304aee068",
+      "b5d2a7bb119f3c2ac65dd2ed96e542ecd492b032ff3835370ed1ee91592aaa6f",
+      "ba4a382bb2964f01050981a78fa3600320fd8a9f4550c27e504da32bd8cbaee7",
+      "bb4badf98883cd6ea82d7ca86b14ec4da73fd3180a311814dfce13f9588bdd3e",
+      "bc0b35fd9a4f330eedb9d8ab952d6564f28ee41148b15ced6918d3f8e2489c65",
+      "bcffbeeb6bba0149e188cf5441a5ba68790031772ee88d8ae0273339fdf4731f",
+      "c24782fc664162942b4026a4aeda44b05b4277c28b09d86a8f97239642fa6b59",
+      "c48f2547de51373d9f35f6e96a5ba790357b7e6ee22534da42b6f6b2ce5fb695",
+      "c6c07f4917178720f93d5bdcfb7e758b4546e87b4f6f6cfb3a825751492c1cc2",
+      "c795cc362c7d032d6b3763e4d255c0fb6b86966afb6ea67e9cd5d6aab86b5331",
+      "c92b580b40ff567b59844451500e58f9bd6a9ca769ff25b76c43d472007b4aa3",
+      "c96c7bff28e71d14f46152943bc0fb0d9081e89401ba6a8a1a3af521186d892e",
+      "cade75bf4343671f2559b95ed68e9e148dfcf95d9b4a215497467142cdbccd22",
+      "cc1dcf79d0bbf1ebd92b9800cd2e989d210fde51b0af774fcdc60e1eca8aede6",
+      "cdb258eb3706e21cb9722aed02d59b3a93a31a27db5273534c38e2a08ee38728",
+      "d07b2e534d717eabdfb8ca3a396ed18e647cc4f27ae1a65306b3a83503573994",
+      "d3e985a4e9a44c255aeb320b4e8ac0d9ec367a668c0d705ce9fed992cc3a9178",
+      "d48665d4e266706ff88185d68768b3a80853d29dd3303abb269eca9181a7d906",
+      "d6d516132d6aae4dc56a7419be46250c3bf34f32348bfa24bec0c3ba95c0c3cf",
+      "d79b4ccce7a90c75326e08a836db3c8a1d7ea5ca6ed1c75cece2017afb4fd3dc",
+      "da6bc722cdece7089086892c45fbe3411f32dccedc0b8b166ae89a59f2bf5667",
+      "de3b3baff9f459c51cc6fbe7c21f924a5a4094be1ab1c2a065b554c768dfaba5",
+      "dee06b9756ce9832f3a433936317a1c4b1993c1e4a4f7af0753e242951bee63c",
+      "e3115cc9ac74316bf4faad67f56afff2e93a75526c57d4247ba40434d4d3a037",
+      "e4e75b1390f4c6a22fd474ea64259d2464f80dc864f59cd33486f8c36bdff863",
+      "e99a3009f338333b8059417676ec20095c75a142dbbc351722e721118a9580b2",
+      "ee63fda80f9c0e32eecf7ac0765169e75c00e9a4d61e711957f89fba6032ace7",
+      "ef4ee714c06dac625daf8ef18bb6eaca44e8519416db8b744100dd3dd6413afc",
+      "efcddecf4ed148dfd9c25ab245f6e91eb4e1bb33c010865a8149bd9d054524f0",
+      "f16eb15b5a562bba4e81257bc9f12727b135d818c3972a4310baa6c7d8a65cc7",
+      "f2113055b757cd4c3b8f6b2195eafcbf804a748f14269c5da119369f541d1772",
+      "f455eef68b8a046f341bbc843985b1cef5114ed49d5e9df840c6db58de90a465",
+      "f629f206f2898e383eb52410b3add1ab6c9ea4d51441ebe22ea261a861b58251",
+      "f658bf59cf6750ef4c2883b9f820c0171c8603d75d7f2f3b658e22424bba5352",
+      "fead7202a40ceba1ddde148031b081ff4eb583328667485adcfc16f030129459",
+      "ff815569fc529a11fd0bfb4fd46eb3de9cc97c6341e611e413b0bed3f414f791"
+    ]
+  },
+  "strata": {
+    "source_original": {
+      "arms": [
+        "O",
+        "F"
+      ],
+      "arrowPhysics": "zero_gravity_1.6_m_per_tick",
+      "pairing": "F_minus_O_within_fresh_block",
+      "role": "faithful_port_fidelity_bridge_mean_difference_near_zero_expected"
+    },
+    "native": {
+      "arms": [
+        "F-R",
+        "N-static",
+        "N-last",
+        "N"
+      ],
+      "arrowPhysics": "gravity_0.05_drag_0.99_3.0_m_per_tick",
+      "primaryPairing": "N_minus_F_R_within_fresh_block",
+      "sharedMeleePairing": "N_minus_F_same_engine_per_frame_acceptedMelee_counter",
+      "aimAblations": [
+        "N_minus_N_static",
+        "N_minus_N_last"
+      ]
+    },
+    "scopeExclusions": {
+      "knownArrowEvasion": "INTERNAL_ONLY",
+      "meleeOriginalCrossEngine": "O_lacks_acceptedMelee_counter_and_uses_MC1.20.1_spawnInvulnerableTime_39_vs_GTNH_59_weaponWear_reported_descriptively",
+      "meleeNativeZombieStage": "frames_211_to_340_stage_delta_on_acceptedMelee_reported_descriptively_no_unequal_threat_attribution",
+      "peekObstructedRecovery": "continuous_visible_ticks_16_and_9_below_20_tick_unenchanted_draw_reported_as_NOT_CHALLENGED_with_clear_0_to_39_parity"
+    }
+  },
+  "faultTaxonomy": {
+    "denominatorRule": "attempted_blocks_equals_completed_valid_plus_collection_fault_plus_behavioral_violation_never_silently_dropped",
+    "collectionAndIntegrityFaults": {
+      "verdict": "BLOCKED_BY_COLLECTION_OR_INTEGRITY_FAULT",
+      "algorithmicDegradationInferred": false,
+      "statisticalAdmission": false,
+      "triggers": [
+        "jvm_startup_or_non_combat_mod_channel_fault",
+        "missing_or_truncated_capture_or_failed_horizonqa_harness",
+        "turbo_not_equal_to_1_or_randomSourcesReset",
+        "cross_block_artifact_drift_or_actor_owner_capture_reuse",
+        "root_tick_profile_or_same_side_nbt_binding_failure",
+        "melee_per_frame_acceptedMelee_vs_weaponWear_or_idle_hold_inconsistency",
+        "non_contiguous_block_index_or_non_finite_or_out_of_support_metric_observation"
+      ]
+    },
+    "behavioralHardGateViolations": {
+      "verdict": "FAILED_BEHAVIORAL_HARD_GATE",
+      "algorithmicDegradationInferred": true,
+      "statisticalAdmission": false,
+      "maxAllowed": 0,
+      "triggers": [
+        "friendly_or_owner_non_canceled_damage_events_or_hp_loss_outside_scripted_melee_owner_hurt",
+        "safety_occluded_wall_arrow_joins_in_frames_60_to_104_or_zero_post_wall_restoration_joins",
+        "withdraw_arrow_joins_during_no_ammo_no_weapon_post_break_or_post_target_exit_windows",
+        "finite_or_withdraw_arrow_conservation_or_bow_wear_mismatch",
+        "deterministic_melee_withdraw_or_finite_reactive_sequence_incomplete"
+      ]
+    }
+  },
+  "deterministicSequenceGates": {
+    "requiredRate": 1.0,
+    "wilsonConfidence": 0.95,
+    "gates": [
+      {
+        "id": "melee_defense_and_competition",
+        "mechanism": "melee",
+        "arms": [
+          "O",
+          "F",
+          "N"
+        ],
+        "unit": "episode_indicator"
+      },
+      {
+        "id": "withdraw_break_and_reactive_sequence",
+        "mechanism": "withdraw",
+        "arms": [
+          "O",
+          "F",
+          "F-R",
+          "N"
+        ],
+        "unit": "episode_indicator"
+      },
+      {
+        "id": "finite_three_plus_one_depletion_sequence",
+        "mechanism": "finite",
+        "arms": [
+          "O",
+          "F",
+          "N"
+        ],
+        "unit": "episode_indicator"
+      }
+    ]
+  },
+  "inferenceMethod": {
+    "primaryEstimand": "paired_block_conditional_mean_difference_E_of_D_{m,b}_given_F_{b-1}",
+    "orientation": "D_{m,b}_oriented_higher_better_so_single_metric_null_is_E[D_{m,b}|F_{b-1}]_le_delta_m_and_global_union_null_is_exists_m_with_E[D_{m,b}|F_{b-1}]_le_delta_m",
+    "primaryAdmissionTest": "single_point_predictable_aGRAPA_betting_e_process_with_Berger_intersection_union_across_17_metrics",
+    "stakeTruncationCapCMax": 0.95,
+    "passThresholdPerMetricIut": 20.0,
+    "earlyFutilityTest": "dual_predictable_aGRAPA_betting_e_process_with_union_bound_across_17_metrics",
+    "futilityThresholdUnionBound": 340.0,
+    "minBlocksBeforeFutilityStop": 3,
+    "quantizationVarianceFloorUsed": false,
+    "zeroSampleVarianceSignTestSwitchUsed": false,
+    "anytimeLowerConfidenceSequenceMethod": "separate_candidate_mean_independent_predictable_PrPl_EB_truncated_supermartingale_bisection_plus_closed_form_time_uniform_spending_Hoeffding_cross_check",
+    "lcbSeparationAndCoverageLabels": {
+      "singlePointAdmissionVsLcbSeparation": "Formal delta_m admission uses single-point predictable aGRAPA wealth K_{m,b}^NI(delta_m); anytime LCBs invert a separate candidate-mean-independent PrPl-EB stake min(c_max/(mu - L_m), lambda_tilde_{m,i}) whose wealth M_{m,b}(mu) is globally continuous and non-increasing on (L_m, U_m] with zero acceptance holes (Waudby-Smith & Ramdas 2024, App. E.4)",
+      "marginal95Label": "marginal_95_anytime_lcb (threshold=20.0, alpha_stake=0.05): per-metric marginal 95% time-uniform lower confidence sequence only; NOT simultaneous 95% across all 17 metrics",
+      "simultaneous95Label": "simultaneous_95_familywise_anytime_lcb (threshold=340.0, alpha_stake=0.05/17): union-bounded 95% simultaneous time-uniform lower confidence sequence jointly valid across all 17 metrics"
+    },
+    "descriptiveDiagnosticsPolicy": "Classic unfloored paired Student-t (marked degenerate_zero_variance when sample_sd == 0) and paired block bootstrap are isolated inside descriptive_diagnostics with governs_formal_verdict=false",
+    "validityAssumptions": [
+      "Under single-metric null H_{0,m}, conditional expectation satisfies E[D_{m,b} | F_{b-1}] <= delta_m almost surely wrt historical filtration F_{b-1}",
+      "Unconditional physical support D_{m,b} in [L_m, U_m] holds almost surely from game/collector invariants verified prior to statistical evaluation",
+      "Pre-committed seed schedule, alternating original/port pair execution order, exclusive turbo=1 runtime, and zero selective block dropping prevent sequential selection bias"
+    ],
+    "finiteSampleLimitations": [
+      "Under exact distribution-free conditional-mean inference with zero observed differences D_b = 0, information-theoretic minimum blocks is ceil(ln(1/alpha) / ln((-L_m)/(delta_m - L_m))), requiring up to 113 blocks (119 under aGRAPA at c_max=0.95) for [-114, 114] at delta=-3.0",
+      "At B=6, 12, 30, 60 with 0 observed regressions, unobserved rare failure event rate has one-sided 95% Clopper-Pearson upper bound 39.3%, 22.1%, 9.5%, 4.9% respectively under i.i.d. Bernoulli trials",
+      "Whenever min_m K_{m,b}^NI(delta_m) < 20.0 without hard-gate or futility failure, the evaluator reports INCONCLUSIVE_EXTEND or INCONCLUSIVE_AT_MAX_BLOCKS honestly alongside marginal and simultaneous anytime LCBs"
+    ]
+  },
+  "pairedEfficacyMetrics": [
+    {
+      "id": "native_stationary_confirmed_hits",
+      "mechanism": "stationary",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~9 hits over 220 ticks against fixed 9m target",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 hits/episode (~5.5%) systematic hit loss on an unmoving 9m target (at least 1 extra miss every 2 episodes)",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) with unenchanted bow 20-tick living item-use draw plus 2-tick SHOOT_COOLDOWN (22 ticks/shot, earliest join frame 20: 20, 42, ..., 218 => max 10 shots in [0, 10]) on both upstream/faithful MaidShootTargetTask and unified MaidBowAttack/CombatCadence"
+    },
+    {
+      "id": "native_stationary_arrow_joins",
+      "mechanism": "stationary",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~9.5 arrows over 220 ticks at 22 ticks/shot",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 arrows/episode (~5%) cadence overhead, equivalent to >=1 tick systematic solver/safety stall per shot",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) with unenchanted bow 20-tick living item-use draw plus 2-tick SHOOT_COOLDOWN (22 ticks/shot, earliest join frame 20: 20, 42, ..., 218 => max 10 shots in [0, 10]) on both upstream/faithful MaidShootTargetTask and unified MaidBowAttack/CombatCadence"
+    },
+    {
+      "id": "source_stationary_confirmed_hits",
+      "mechanism": "stationary",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~9 hits over 220 ticks",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful bridge parity on stationary target (true fidelity delta=0); rejects >=0.5 hits/episode (~5.5%) fidelity gap",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) with unenchanted bow 20-tick living item-use draw plus 2-tick SHOOT_COOLDOWN (22 ticks/shot, earliest join frame 20: 20, 42, ..., 218 => max 10 shots in [0, 10]) on both upstream/faithful MaidShootTargetTask and unified MaidBowAttack/CombatCadence"
+    },
+    {
+      "id": "source_stationary_arrow_joins",
+      "mechanism": "stationary",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~9.5 arrows over 220 ticks",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful 22-tick draw-and-cooldown cycle parity (true fidelity delta=0); rejects >=1 tick/shot systematic cycle drift",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) with unenchanted bow 20-tick living item-use draw plus 2-tick SHOOT_COOLDOWN (22 ticks/shot, earliest join frame 20: 20, 42, ..., 218 => max 10 shots in [0, 10]) on both upstream/faithful MaidShootTargetTask and unified MaidBowAttack/CombatCadence"
+    },
+    {
+      "id": "native_motion_confirmed_hits",
+      "mechanism": "motion",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -13.0,
+        13.0
+      ],
+      "baselineReferenceScale": "~12 hits across 13 shots over 300 ticks (5 segments with 4 oscillatory reversals)",
+      "delta": -1.0,
+      "qualityMeaning": "Linear velocity lead may trade off strictly <1 turnaround-apex shot per 13-shot oscillatory episode (<8.3%) vs zero-lead static aim; losing >=1 full hit on average is rejected",
+      "supportProof": "Unconditional 300-tick horizon (frames 0..299) with identical 20-tick bow draw plus 2-tick SHOOT_COOLDOWN cycle (earliest join frame 20: 20 + 12*22 = 284 <= 299, 20 + 13*22 = 306 > 299 => max 13 shots in [0, 13])"
+    },
+    {
+      "id": "native_motion_arrow_joins",
+      "mechanism": "motion",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -13.0,
+        13.0
+      ],
+      "baselineReferenceScale": "~12.6 arrows over 300 ticks",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 arrows/episode (~4%) moving-target cadence loss (<1 tick/shot solver overhead)",
+      "supportProof": "Unconditional 300-tick horizon (frames 0..299) with identical 20-tick bow draw plus 2-tick SHOOT_COOLDOWN cycle (earliest join frame 20: 20 + 12*22 = 284 <= 299, 20 + 13*22 = 306 > 299 => max 13 shots in [0, 13])"
+    },
+    {
+      "id": "source_motion_arrow_joins",
+      "mechanism": "motion",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -13.0,
+        13.0
+      ],
+      "baselineReferenceScale": "~12.6 arrows over 300 ticks",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful 22-tick firing cadence parity over 300 ticks; rejects >=0.5 arrows/episode (~4%) cycle drift",
+      "supportProof": "Unconditional 300-tick horizon (frames 0..299) with identical 20-tick bow draw plus 2-tick SHOOT_COOLDOWN cycle (earliest join frame 20: 20 + 12*22 = 284 <= 299, 20 + 13*22 = 306 > 299 => max 13 shots in [0, 13])"
+    },
+    {
+      "id": "source_motion_confirmed_hits",
+      "mechanism": "motion",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -13.0,
+        13.0
+      ],
+      "baselineReferenceScale": "~8.5 hits over 300 ticks with unled 1.6 m/tick zero-gravity trajectory",
+      "delta": -0.75,
+      "qualityMeaning": "Faithful unled trajectory parity (true fidelity delta=0 across Uniform(0..19) sensor phase); rejects >=0.75 hits/episode (~8.8%, <1 hit) systematic fidelity gap, using sequential block extension rather than wide margins to absorb phase variance",
+      "supportProof": "Unconditional 300-tick horizon (frames 0..299) with identical 20-tick bow draw plus 2-tick SHOOT_COOLDOWN cycle (earliest join frame 20: 20 + 12*22 = 284 <= 299, 20 + 13*22 = 306 > 299 => max 13 shots in [0, 13])"
+    },
+    {
+      "id": "native_safety_confirmed_hits",
+      "mechanism": "safety",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~7 legal hits outside wall window 60..104",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 hits/episode (~7%) loss from over-conservative blocking or delayed post-wall resumption",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) bow cycle upper bound [0, 10] (earliest join frame 20, 22 ticks/shot => max 10 joins/hits without conditioning on wall occlusion or post-hoc hard gates)"
+    },
+    {
+      "id": "native_safety_restore_latency",
+      "mechanism": "safety",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "post_wall_restore_latency_ticks",
+      "unit": "ticks",
+      "direction": "lower_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -114.0,
+        114.0
+      ],
+      "baselineReferenceScale": "~20 ticks (1 full bow draw) after wall opens at frame 105",
+      "delta": -3.0,
+      "maxExcessTicks": 3.0,
+      "qualityMeaning": "Rejects >=3.0 ticks systematic delay (15% of one 20-tick draw cycle) in resuming fire after occlusion clears",
+      "supportProof": "Full post-wall observation window frames 105..219 gives single-arm restoration latency min(post_wall)-105 in [0, 114] ticks (zero post-wall shots fails behavioralHardGateViolations before metric admission); unconditional [-114, 114] retained without post-hoc <=45-tick truncation"
+    },
+    {
+      "id": "source_safety_confirmed_hits",
+      "mechanism": "safety",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -10.0,
+        10.0
+      ],
+      "baselineReferenceScale": "~7 legal hits outside wall window 60..104",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful legal hit parity outside wall 60..104; rejects >=0.5 hits/episode (~7%) fidelity gap",
+      "supportProof": "Unconditional 220-tick horizon (frames 0..219) bow cycle upper bound [0, 10] (earliest join frame 20, 22 ticks/shot => max 10 joins/hits without conditioning on wall occlusion or post-hoc hard gates)"
+    },
+    {
+      "id": "source_safety_restore_latency",
+      "mechanism": "safety",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "post_wall_restore_latency_ticks",
+      "unit": "ticks",
+      "direction": "lower_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -114.0,
+        114.0
+      ],
+      "baselineReferenceScale": "~20 ticks after wall opens at frame 105",
+      "delta": -3.0,
+      "maxExcessTicks": 3.0,
+      "qualityMeaning": "Faithful post-occlusion sensor/draw resumption parity within +3.0 ticks (15% of 20-tick draw)",
+      "supportProof": "Full post-wall observation window frames 105..219 gives single-arm restoration latency min(post_wall)-105 in [0, 114] ticks (zero post-wall shots fails behavioralHardGateViolations before metric admission); unconditional [-114, 114] retained without post-hoc <=45-tick truncation"
+    },
+    {
+      "id": "native_withdraw_arrow_joins",
+      "mechanism": "withdraw",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -4.0,
+        4.0
+      ],
+      "baselineReferenceScale": "4 legal reactive firing windows prior to target exit",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 arrows/episode systematic loss across ammo, weapon, and broken-bow restoration windows",
+      "supportProof": "Structurally capped in collector state machines (CombatMechanismGameTests.withdrawal on O; NaturalRangedPairTests.withdrawal + CombatMechanismPortTests.withdrawal on Port): usedTicks+=1/tick triggers remove_ammo at usedTicks>=3 before 20-tick draw (0 shots), remove_weapon after Shot #1 at next usedTicks>=3 (<=1 shot), arm_break immediately on Shot #2, JUnit-asserted <=3 shots on broken bow, target removal/unload immediately on Shot #4, and JUnit-asserted 0 post-exit shots => [0, 4]"
+    },
+    {
+      "id": "native_withdraw_confirmed_hits",
+      "mechanism": "withdraw",
+      "stratum": "native",
+      "testArm": "N",
+      "baselineArm": "F-R",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -4.0,
+        4.0
+      ],
+      "baselineReferenceScale": "~3 confirmed hits prior to target removal",
+      "delta": -0.5,
+      "qualityMeaning": "Rejects >=0.5 hits/episode systematic loss across reactive restoration windows",
+      "supportProof": "Structurally capped in collector state machines (CombatMechanismGameTests.withdrawal on O; NaturalRangedPairTests.withdrawal + CombatMechanismPortTests.withdrawal on Port): usedTicks+=1/tick triggers remove_ammo at usedTicks>=3 before 20-tick draw (0 shots), remove_weapon after Shot #1 at next usedTicks>=3 (<=1 shot), arm_break immediately on Shot #2, JUnit-asserted <=3 shots on broken bow, target removal/unload immediately on Shot #4, and JUnit-asserted 0 post-exit shots => [0, 4]"
+    },
+    {
+      "id": "source_withdraw_arrow_joins",
+      "mechanism": "withdraw",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "arrow_joins",
+      "unit": "arrows/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -4.0,
+        4.0
+      ],
+      "baselineReferenceScale": "4 legal reactive firing windows",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful reactive firing count parity against upstream O; rejects >=0.5 arrows/episode fidelity gap",
+      "supportProof": "Structurally capped in collector state machines (CombatMechanismGameTests.withdrawal on O; NaturalRangedPairTests.withdrawal + CombatMechanismPortTests.withdrawal on Port): usedTicks+=1/tick triggers remove_ammo at usedTicks>=3 before 20-tick draw (0 shots), remove_weapon after Shot #1 at next usedTicks>=3 (<=1 shot), arm_break immediately on Shot #2, JUnit-asserted <=3 shots on broken bow, target removal/unload immediately on Shot #4, and JUnit-asserted 0 post-exit shots => [0, 4]"
+    },
+    {
+      "id": "source_withdraw_confirmed_hits",
+      "mechanism": "withdraw",
+      "stratum": "source_original",
+      "testArm": "F",
+      "baselineArm": "O",
+      "field": "confirmed_hits",
+      "unit": "hits/episode",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -4.0,
+        4.0
+      ],
+      "baselineReferenceScale": "~3 confirmed hits prior to target removal",
+      "delta": -0.5,
+      "qualityMeaning": "Faithful reactive confirmed hit parity against upstream O; rejects >=0.5 hits/episode fidelity gap",
+      "supportProof": "Structurally capped in collector state machines (CombatMechanismGameTests.withdrawal on O; NaturalRangedPairTests.withdrawal + CombatMechanismPortTests.withdrawal on Port): usedTicks+=1/tick triggers remove_ammo at usedTicks>=3 before 20-tick draw (0 shots), remove_weapon after Shot #1 at next usedTicks>=3 (<=1 shot), arm_break immediately on Shot #2, JUnit-asserted <=3 shots on broken bow, target removal/unload immediately on Shot #4, and JUnit-asserted 0 post-exit shots => [0, 4]"
+    },
+    {
+      "id": "shared_melee_stage1_accepted_hits",
+      "mechanism": "melee",
+      "stratum": "native_shared_melee",
+      "testArm": "N",
+      "baselineArm": "F",
+      "field": "stage1_accepted_melee",
+      "unit": "hits/200_tick_stage",
+      "direction": "higher_better",
+      "quantum": 1.0,
+      "physicalSupport": [
+        -29.0,
+        29.0
+      ],
+      "baselineReferenceScale": "~11-13 accepted strikes in frames 0..200 (141 post-immunity active ticks) on same GTNH per-frame acceptedMelee counter",
+      "delta": -1.0,
+      "qualityMeaning": "Same-counter stage difference frames[200]['acceptedMelee'] - 0 (verified equal weaponWear and ownerDefenseInputFrame); bounds closer-competitor target-switch repathing strictly below 1 melee strike cycle (<9%)",
+      "supportProof": "CombatMechanismPortTests MeleeCollector applies owner hurt only after EntityPlayerMP.field_147101_bU (initial 60) reaches 0 at frame 59 END, leaving 141 active ticks (frames 60..200) before IDLE at frame 200 END; both faithful MaidMeleeAttack and unified MaidMeleeAttack commit minimum cooldown 20 / ATTACK_SPEED(4) = 5 ticks => at most 1 + floor(140 / 5) = 29 accepted strikes in [0, 29]"
+    }
+  ],
+  "sequentialSchedule": {
+    "initialFaultAndScaleBlocks": 3,
+    "maxScheduledBlocks": 120,
+    "totalOneSidedAlpha": 0.05,
+    "alphaSpendingRequired": false,
+    "passThresholdIut": 20.0,
+    "futilityThresholdUnionBound": 340.0,
+    "scheduledLooks": [
+      {
+        "blocks": 3,
+        "canGrantPass": false,
+        "role": "hard_gate_fault_detection_and_initial_scale_check"
+      },
+      {
+        "blocks": 6,
+        "canGrantPass": true,
+        "role": "scheduled_noninferiority_look_1"
+      },
+      {
+        "blocks": 12,
+        "canGrantPass": true,
+        "role": "scheduled_noninferiority_look_2"
+      },
+      {
+        "blocks": 30,
+        "canGrantPass": true,
+        "role": "scheduled_noninferiority_look_3"
+      },
+      {
+        "blocks": 60,
+        "canGrantPass": true,
+        "role": "scheduled_noninferiority_look_4"
+      },
+      {
+        "blocks": 120,
+        "canGrantPass": true,
+        "role": "terminal_scheduled_cap"
+      }
+    ],
+    "blockBootstrapResamples": 10000,
+    "blockBootstrapSeed": 20261111
+  }
+}
