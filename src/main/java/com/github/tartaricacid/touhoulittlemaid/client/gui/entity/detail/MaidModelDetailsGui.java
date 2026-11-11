@@ -12,11 +12,10 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidMode
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tianluoqaq.tlmnh.client.development.MaidDetailsItemFixtures;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewEntity;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
-import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
@@ -86,7 +85,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     /** 开发观测只改变未登记的预览实体，不发送装备或格挡状态到服务端 */
     public void previewShieldBlocking(boolean active) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentAccess.isEnabled()) throw new IllegalStateException("Development preview required");
         boolean using = active && guiEntity.getOffhandItem() != null;
         guiEntity.setPose(MaidPose.USING_ITEM, using);
         guiEntity.setPose(MaidPose.USING_OFFHAND, using);
@@ -94,7 +93,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     /** 开发装备输入只进入本窗口的独立预览，沿现有原生物品工厂及保护边界 */
     public boolean previewEquipment(String action) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentAccess.isEnabled()) throw new IllegalStateException("Development preview required");
         if (action.equals("clear_offhand")) {
             guiEntity.setOffhandItem(null);
             previewShieldBlocking(false);
@@ -108,7 +107,8 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         var stack = IntegrationGuard.call(
             Side.CLIENT,
             ExternalFeature.SHIELDS,
-            () -> MaidDetailsItemFixtures.create(action, construction),
+            () -> ClientDevelopmentAccess.hooks()
+                .createDetailsItemFixture(action, construction),
             () -> null);
         equipmentFixture = construction;
         if (stack == null) return false;
@@ -118,7 +118,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
     }
 
     public boolean previewAction(String action) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentAccess.isEnabled()) throw new IllegalStateException("Development preview required");
         for (var value : buttonList) if (value instanceof ModelDetailsButton button && button.id >= 10
             && button.id < 10 + STATES.length
             && button.isSelected()) button.press();
@@ -141,8 +141,14 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         result.addProperty("previewAimingBow", preview.hasPose(MaidPose.AIMING_BOW));
         result.addProperty("previewSleeping", preview.hasPose(MaidPose.SLEEPING));
         result.add("equipmentFixture", new JsonParser().parse(equipmentFixture.toString()));
-        result.add("sourceVisibleState", MaidVisibleStateSnapshot.capture(container.getMaid()));
-        result.add("previewVisibleState", MaidVisibleStateSnapshot.capture(guiEntity));
+        result.add(
+            "sourceVisibleState",
+            ClientDevelopmentAccess.hooks()
+                .captureVisibleState(container.getMaid()));
+        result.add(
+            "previewVisibleState",
+            ClientDevelopmentAccess.hooks()
+                .captureVisibleState(guiEntity));
         return result;
     }
 

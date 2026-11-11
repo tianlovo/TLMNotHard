@@ -1,18 +1,20 @@
 package com.tianluoqaq.tlmnh.common.command;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.WorldServer;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
@@ -45,6 +47,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidPoseRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidRangedMovementProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldNativeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidStateProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidWorldSoundRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture;
@@ -59,15 +62,29 @@ import com.tianluoqaq.tlmnh.common.development.visual.MaidBannerVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.visual.MaidCarryVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState;
 import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
-import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleProbe;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleRestartProbe;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
-/** 只在显式 JVM 开关下注册，供真实 Forge 环境验证实体和 NBT */
+/** 表驱动开发调试命令入口，仅随独立调试模组在显式开发开关下注册 */
 public final class DevelopmentCommand extends CommandBase {
+
+    private static final String USAGE_KEY = "commands.tlmnhdev.usage";
+    private static final Map<String, Subcommand> PRE_GATE_SUBCOMMANDS = buildPreGateTable();
+    private static final Map<String, Subcommand> SUBCOMMANDS = buildMainTable();
+
+    @FunctionalInterface
+    private interface Subcommand {
+
+        void execute(ICommandSender sender, String[] args);
+    }
+
+    public static Set<String> registeredSubcommands() {
+        var names = new LinkedHashMap<String, Boolean>();
+        for (String key : PRE_GATE_SUBCOMMANDS.keySet()) names.put(key, Boolean.TRUE);
+        for (String key : SUBCOMMANDS.keySet()) names.put(key, Boolean.TRUE);
+        return Collections.unmodifiableSet(names.keySet());
+    }
 
     @Override
     public String getCommandName() {
@@ -76,7 +93,7 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "commands.tlmnhdev.usage";
+        return USAGE_KEY;
     }
 
     @Override
@@ -86,138 +103,104 @@ public final class DevelopmentCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
-        // 状态与匹配UUID的中止必须可在事务占用期间到达，不受下面的普通命令门禁吞掉
-        if (args.length == 1 && "shield-runtime-status".equals(args[0])) {
-            sender.addChatMessage(
-                new ChatComponentTranslation(
-                    "commands.tlmnhdev.shield_runtime_status",
-                    MaidShieldRuntimeProbe.status()
-                        .toString()));
-            return;
-        }
-        if (args.length == 2 && "shield-runtime-abort".equals(args[0])) {
-            MaidShieldRuntimeProbe.abort(args[1]);
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.shield_runtime_aborting"));
+        if (args.length == 0) throw new WrongUsageException(getCommandUsage(sender));
+        // 状态查询与按 UUID 中止需要穿透运行期夹具占用门禁
+        var preGate = PRE_GATE_SUBCOMMANDS.get(args[0]);
+        if (preGate != null) {
+            preGate.execute(sender, args);
             return;
         }
         if (MaidBowRuntimeProbe.isFixtureReserved() || MaidLifeRuntimeProbe.isFixtureReserved()
-            || MaidShieldRuntimeProbe.isActive())
+            || MaidShieldRuntimeProbe.isActive()) {
             throw new IllegalStateException("A natural runtime experiment owns the development fixture");
-        if (args.length == 1 && "shield-runtime-test".equals(args[0])) {
-            String run = MaidShieldRuntimeProbe.start((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.shield_runtime_started", run));
-            return;
         }
-        if (args.length == 1 && "shield-native-test".equals(args[0])) {
-            MaidShieldNativeProbe.run((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "follow-core-adapter-test".equals(args[0])) {
-            MaidFollowCoreAdapterProbe.run((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "follow-fallback-test".equals(args[0])) {
-            MaidFollowCoreAdapterProbe.runFallback((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "navigation-stop-test".equals(args[0])) {
-            MaidFollowCoreAdapterProbe.runNavigationStop((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "native-ai-phase-test".equals(args[0])) {
-            MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 2 && "native-ai-phase-test".equals(args[0]) && "early_component".equals(args[1])) {
-            MaidNativePhaseProbe.run((WorldServer) sender.getEntityWorld(), true);
-            return;
-        }
-        if (args.length == 2 && "follow-teleport-replay".equals(args[0])) {
-            MaidFollowTeleportProbe.run((WorldServer) sender.getEntityWorld(), args[1]);
-            return;
-        }
-        if ((args.length == 1 || args.length == 2) && "bow-runtime-test".equals(args[0])) {
-            MaidBowRuntimeProbe.start((WorldServer) sender.getEntityWorld(), recordingRequested(args));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_runtime_started"));
-            return;
-        }
-        if ((args.length == 1 || args.length == 2) && "life-runtime-test".equals(args[0])) {
-            MaidLifeRuntimeProbe.start((WorldServer) sender.getEntityWorld(), recordingRequested(args));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_runtime_started"));
-            return;
-        }
-        if (args.length == 1 && "gecko-library-test".equals(args[0])) {
+        var handler = SUBCOMMANDS.get(args[0]);
+        if (handler == null) throw new WrongUsageException(getCommandUsage(sender));
+        handler.execute(sender, args);
+    }
+
+    private static Map<String, Subcommand> buildPreGateTable() {
+        var map = new LinkedHashMap<String, Subcommand>();
+        register(
+            map,
+            "shield-runtime-status",
+            arity(
+                1,
+                (sender, args) -> reply(
+                    sender,
+                    "commands.tlmnhdev.shield_runtime_status",
+                    MaidShieldRuntimeProbe.status()
+                        .toString())));
+        register(map, "shield-runtime-abort", arity(2, (sender, args) -> {
+            MaidShieldRuntimeProbe.abort(args[1]);
+            reply(sender, "commands.tlmnhdev.shield_runtime_aborting");
+        }));
+        return Collections.unmodifiableMap(map);
+    }
+
+    private static Map<String, Subcommand> buildMainTable() {
+        var map = new LinkedHashMap<String, Subcommand>();
+        register(map, "shield-runtime-test", arity(1, (sender, args) -> {
+            String run = MaidShieldRuntimeProbe.start(worldServer(sender));
+            reply(sender, "commands.tlmnhdev.shield_runtime_started", run);
+        }));
+        register(map, "shield-native-test", worldOnly(MaidShieldNativeProbe::run));
+        register(map, "follow-core-adapter-test", worldOnly(MaidFollowCoreAdapterProbe::run));
+        register(map, "follow-fallback-test", worldOnly(MaidFollowCoreAdapterProbe::runFallback));
+        register(map, "navigation-stop-test", worldOnly(MaidFollowCoreAdapterProbe::runNavigationStop));
+        register(map, "native-ai-phase-test", (sender, args) -> {
+            if (args.length == 1) {
+                MaidNativePhaseProbe.run(worldServer(sender));
+            } else if (args.length == 2 && "early_component".equals(args[1])) {
+                MaidNativePhaseProbe.run(worldServer(sender), true);
+            } else {
+                throw usage();
+            }
+        });
+        register(map, "follow-teleport-replay", worldArg(MaidFollowTeleportProbe::run));
+        register(map, "bow-runtime-test", (sender, args) -> {
+            requireArity(args, 1, 2);
+            MaidBowRuntimeProbe.start(worldServer(sender), recordingRequested(args));
+            reply(sender, "commands.tlmnhdev.bow_runtime_started");
+        });
+        register(map, "life-runtime-test", (sender, args) -> {
+            requireArity(args, 1, 2);
+            MaidLifeRuntimeProbe.start(worldServer(sender), recordingRequested(args));
+            reply(sender, "commands.tlmnhdev.life_runtime_started");
+        });
+        register(map, "gecko-library-test", arity(1, (sender, args) -> {
             MaidGeckoLibraryProbe.run();
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.gecko_library_passed"));
-            return;
-        }
-        if (args.length == 1 && "telemetry-native-test".equals(args[0])) {
-            MaidTelemetryProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.telemetry_native_passed"));
-            return;
-        }
-        if (args.length == 1 && "policy-lifecycle-test".equals(args[0])) {
-            MaidPolicyLifecycleProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.policy_lifecycle_passed"));
-            return;
-        }
-        if (args.length == 1 && "lifecycle-persist-create".equals(args[0])) {
-            MaidLifecycleRestartProbe.create((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_restart_pending"));
-            return;
-        }
-        if (args.length == 1 && "lifecycle-persist-check".equals(args[0])) {
-            MaidLifecycleRestartProbe.verify((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_restart_passed"));
-            return;
-        }
-        if (args.length == 1 && "lifecycle-test".equals(args[0])) {
-            MaidLifecycleProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lifecycle_passed"));
-            return;
-        }
-        if (args.length == 1 && "bow-core-test".equals(args[0])) {
-            MaidBowProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.bow_core_passed"));
-            return;
-        }
-        if (args.length == 1 && "life-test".equals(args[0])) {
-            MaidLifeProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.life_passed"));
-            return;
-        }
-        if (args.length == 1 && "home-test".equals(args[0])) {
-            MaidHomeProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.home_passed"));
-            return;
-        }
-        if (args.length == 1 && "lab-world-test".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.gecko_library_passed");
+        }));
+        register(map, "telemetry-native-test", worldReply(MaidTelemetryProbe::run, "telemetry_native_passed"));
+        register(map, "policy-lifecycle-test", worldReply(MaidPolicyLifecycleProbe::run, "policy_lifecycle_passed"));
+        register(
+            map,
+            "lifecycle-persist-create",
+            worldReply(MaidLifecycleRestartProbe::create, "lifecycle_restart_pending"));
+        register(
+            map,
+            "lifecycle-persist-check",
+            worldReply(MaidLifecycleRestartProbe::verify, "lifecycle_restart_passed"));
+        register(map, "lifecycle-test", worldReply(MaidLifecycleProbe::run, "lifecycle_passed"));
+        register(map, "bow-core-test", worldReply(MaidBowProbe::run, "bow_core_passed"));
+        register(map, "life-test", worldReply(MaidLifeProbe::run, "life_passed"));
+        register(map, "home-test", worldReply(MaidHomeProbe::run, "home_passed"));
+        register(map, "lab-world-test", arity(1, (sender, args) -> {
             AnimationLab.verifyWorld();
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_world_passed"));
-            return;
-        }
-        if (args.length >= 1 && args.length <= 4 && "lab-enter".equals(args[0])) {
-            var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
-            if (args.length == 4 && !"sitting".equals(args[3]) && !"standing".equals(args[3]))
-                throw new WrongUsageException(getCommandUsage(sender));
-            AnimationLab.enter(
-                player,
-                args.length >= 3 ? args[2] : "geckolib:winefox_hanfu",
-                args.length < 4 || "sitting".equals(args[3]));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_entered"));
-            return;
-        }
-        if (args.length >= 1 && args.length <= 2 && "lab-exit".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.lab_world_passed");
+        }));
+        register(map, "lab-enter", DevelopmentCommand::handleLabEnter);
+        register(map, "lab-exit", (sender, args) -> {
+            requireArity(args, 1, 2);
             AnimationLab.leave(args.length == 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_left"));
-            return;
-        }
-        if (args.length == 2 && "lab-observer-test".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.lab_left");
+        });
+        register(map, "lab-observer-test", arity(2, (sender, args) -> {
             AnimationLab.verifyObserver(getPlayer(sender, args[1]));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.lab_observer_passed"));
-            return;
-        }
-        if (args.length == 2 && "lab-state".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.lab_observer_passed");
+        }));
+        register(map, "lab-state", arity(2, (sender, args) -> {
             var maid = AnimationLab.ownedSceneMaid(getPlayer(sender, args[1]));
             var snapshot = MaidVisibleStateSnapshot.capture(maid);
             snapshot.addProperty(
@@ -225,391 +208,202 @@ public final class DevelopmentCommand extends CommandBase {
                 maid.getUniqueID()
                     .toString());
             TLMNotHard.LOG.info("TLMNH_LAB_STATE {}", snapshot);
-            return;
-        }
-        if (args.length == 3 && "lab-naming-fixture".equals(args[0])) {
-            MaidNamingInteractionFixture.run(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-care-fixture".equals(args[0])) {
-            MaidCareInteractionFixture.run(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-visual-hunger".equals(args[0])) {
-            var player = getPlayer(sender, args[1]);
-            if ("restore".equals(args[2])) MaidCoreInteractionProbe.setVisualFixture(player, "restore");
-            else {
-                if (!"hungry".equals(args[2]) && !"full".equals(args[2]))
-                    throw new WrongUsageException(getCommandUsage(sender));
-                var maid = AnimationLab.ownedSceneMaid(player);
-                MaidVisualFixtureState.stageHunger(maid, "full".equals(args[2]) ? 20 : 0);
-            }
-            TLMNotHard.LOG.info("TLMNH_VISUAL_HUNGER action={}", args[2]);
-            return;
-        }
-        if (args.length == 2 && "lab-open-original-gui".equals(args[0])) {
-            AnimationLab.openOriginalGui(getPlayer(sender, args[1]));
-            return;
-        }
-        if (args.length == 2 && "lab-open-gui".equals(args[0])) {
-            AnimationLab.openOwnerGui(getPlayer(sender, args[1]));
-            return;
-        }
-        if (args.length == 1 && "model-test".equals(args[0])) {
+        }));
+        register(map, "lab-naming-fixture", playerArg(MaidNamingInteractionFixture::run));
+        register(map, "lab-care-fixture", playerArg(MaidCareInteractionFixture::run));
+        register(map, "lab-visual-hunger", DevelopmentCommand::handleLabVisualHunger);
+        register(map, "lab-open-original-gui", playerOnly(AnimationLab::openOriginalGui));
+        register(map, "lab-open-gui", playerOnly(AnimationLab::openOwnerGui));
+        register(map, "model-test", arity(1, (sender, args) -> {
             BuiltinModelProbe.run(sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.model_passed"));
-            return;
-        }
-        if (args.length == 1 && "interaction-test".equals(args[0])) {
-            MaidInteractionProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.interaction_passed"));
-            return;
-        }
-        if (args.length == 3 && "lab-world-sound".equals(args[0])) {
-            MaidWorldSoundRuntimeProbe.run(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 1 && "config-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runConfig((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "back-item-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runBackItem((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 2 && "favorability-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runFavorability((WorldServer) sender.getEntityWorld(), args[1]);
-            return;
-        }
-        if (args.length == 2 && "meal-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runMeals((WorldServer) sender.getEntityWorld(), args[1]);
-            return;
-        }
-        if (args.length == 1 && "panic-runtime-test".equals(args[0])) {
-            MaidCoreInteractionProbe.startPanicRuntime((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "breath-runtime-test".equals(args[0])) {
-            MaidBreathProbe.start((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 3 && "aquatic-pose-stage".equals(args[0])) {
-            MaidPoseRuntimeProbe.stage(CommandBase.getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 4 && "player-disk".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.model_passed");
+        }));
+        register(map, "interaction-test", worldReply(MaidInteractionProbe::run, "interaction_passed"));
+        register(map, "lab-world-sound", playerArg(MaidWorldSoundRuntimeProbe::run));
+        register(map, "config-test", worldOnly(MaidCoreInteractionProbe::runConfig));
+        register(map, "back-item-test", worldOnly(MaidCoreInteractionProbe::runBackItem));
+        register(map, "favorability-test", worldArg(MaidCoreInteractionProbe::runFavorability));
+        register(map, "meal-test", worldArg(MaidCoreInteractionProbe::runMeals));
+        register(map, "panic-runtime-test", worldOnly(MaidCoreInteractionProbe::startPanicRuntime));
+        register(map, "breath-runtime-test", worldOnly(MaidBreathProbe::start));
+        register(map, "aquatic-pose-stage", playerArg(MaidPoseRuntimeProbe::stage));
+        register(map, "player-disk", arity(4, (sender, args) -> {
             try {
                 MaidPlayerDiskProbe.run(getPlayer(sender, args[1]), args[2], args[3]);
             } catch (Exception failure) {
                 throw new IllegalStateException("Native player disk observation failed", failure);
             }
-            return;
-        }
-        if (args.length == 1 && "ranged-movement-test".equals(args[0])) {
-            MaidRangedMovementProbe.start((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "navigation-budget-test".equals(args[0])) {
-            MaidNavigationBudgetProbe.start((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "intent-runtime-test".equals(args[0])) {
-            MaidIntentRuntimeProbe.start((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "self-care-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runSelfCare((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "bubbles-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runBubbles((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 3 && "lab-visual-fixture".equals(args[0])) {
-            MaidCoreInteractionProbe.setVisualFixture(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-carry-visual".equals(args[0])) {
-            MaidCarryVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-banner-visual".equals(args[0])) {
-            MaidBannerVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-shrine-visual".equals(args[0])) {
-            ShrineVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-cabinet-visual".equals(args[0])) {
-            CabinetVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-sleep-visual".equals(args[0])) {
-            MaidSleepVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-bed-visual".equals(args[0])) {
-            MaidBedVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 3 && "lab-tombstone-visual".equals(args[0])) {
-            TombstoneVisualFixture.set(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 2 && "lab-open-default-gui".equals(args[0])) {
-            MaidCoreInteractionProbe.openDefaultGui(getPlayer(sender, args[1]));
-            return;
-        }
-        if (args.length == 1 && "effects-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runEffects((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 3 && "lab-gui-effects".equals(args[0])) {
-            MaidCoreInteractionProbe.setGuiEffectFixture(getPlayer(sender, args[1]), args[2]);
-            return;
-        }
-        if (args.length == 1 && "pickup-traversal-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runPickupAndTraversal((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "pickup-runtime-test".equals(args[0])) {
-            MaidCoreInteractionProbe.startPickupRuntime((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "world-sound-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runWorldSound((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "sound-test".equals(args[0])) {
-            MaidCoreInteractionProbe.runSound((WorldServer) sender.getEntityWorld());
-            return;
-        }
-        if (args.length == 1 && "core-interactions-test".equals(args[0])) {
-            MaidCoreInteractionProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.core_interactions_passed"));
-            return;
-        }
-        if ((args.length == 3 || args.length == 4) && "brain-profile".equals(args[0])) {
-            var entity = sender.getEntityWorld()
-                .getEntityByID(parseInt(sender, args[1]));
-            if (!(entity instanceof EntityMaid maid)) throw new WrongUsageException(getCommandUsage(sender));
-            MaidBrainProfile selected = null;
-            for (var profile : MaidBrainProfile.values()) if (profile.getId()
-                .equals(args[2])) selected = profile;
-            if (selected == null) throw new WrongUsageException(getCommandUsage(sender));
-            var flight = MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
-            if (args.length == 4) {
-                try {
-                    flight = MaidFaithfulFlightProfile.valueOf(args[3].toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException invalid) {
-                    throw new WrongUsageException(getCommandUsage(sender));
-                }
-            }
-            var result = maid.selectBrainProfileForDevelopment(selected, flight);
-            sender.addChatMessage(
-                new ChatComponentTranslation(
-                    "commands.tlmnhdev.brain_profile",
-                    selected.getId() + "/" + flight.name(),
-                    result.name()));
-            return;
-        }
-        if (args.length == 1 && "brain-test".equals(args[0])) {
-            MaidBrainProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
-            return;
-        }
-        if (args.length == 1 && "action-control-test".equals(args[0])) {
-            MaidBrainProbe.runActionControl((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
-            return;
-        }
-        if (args.length == 1 && "owner-sensor-test".equals(args[0])) {
-            MaidBrainProbe.runOwnerSensor((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
-            return;
-        }
-        if (args.length == 1 && "danger-sensor-test".equals(args[0])) {
-            MaidBrainProbe.runDangerSensor((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.brain_passed"));
-            return;
-        }
-        if (args.length == 1 && "naming-test".equals(args[0])) {
-            MaidNamingProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.naming_passed"));
-            return;
-        }
-        if (args.length == 1 && "combat-core-test".equals(args[0])) {
-            MaidCombatProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.combat_core_passed"));
-            return;
-        }
-        if (args.length == 1 && "arrow-physics-test".equals(args[0])) {
-            MaidArrowPhysicsProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.arrow_physics_passed"));
-            return;
-        }
-        if (args.length == 2 && "follow-runtime-test".equals(args[0])) {
+        }));
+        register(map, "ranged-movement-test", worldOnly(MaidRangedMovementProbe::start));
+        register(map, "navigation-budget-test", worldOnly(MaidNavigationBudgetProbe::start));
+        register(map, "intent-runtime-test", worldOnly(MaidIntentRuntimeProbe::start));
+        register(map, "self-care-test", worldOnly(MaidCoreInteractionProbe::runSelfCare));
+        register(map, "bubbles-test", worldOnly(MaidCoreInteractionProbe::runBubbles));
+        register(map, "lab-visual-fixture", playerArg(MaidCoreInteractionProbe::setVisualFixture));
+        register(map, "lab-carry-visual", playerArg(MaidCarryVisualFixture::set));
+        register(map, "lab-banner-visual", playerArg(MaidBannerVisualFixture::set));
+        register(map, "lab-shrine-visual", playerArg(ShrineVisualFixture::set));
+        register(map, "lab-cabinet-visual", playerArg(CabinetVisualFixture::set));
+        register(map, "lab-sleep-visual", playerArg(MaidSleepVisualFixture::set));
+        register(map, "lab-bed-visual", playerArg(MaidBedVisualFixture::set));
+        register(map, "lab-tombstone-visual", playerArg(TombstoneVisualFixture::set));
+        register(map, "lab-open-default-gui", playerOnly(MaidCoreInteractionProbe::openDefaultGui));
+        register(map, "effects-test", worldOnly(MaidCoreInteractionProbe::runEffects));
+        register(map, "lab-gui-effects", playerArg(MaidCoreInteractionProbe::setGuiEffectFixture));
+        register(map, "pickup-traversal-test", worldOnly(MaidCoreInteractionProbe::runPickupAndTraversal));
+        register(map, "pickup-runtime-test", worldOnly(MaidCoreInteractionProbe::startPickupRuntime));
+        register(map, "world-sound-test", worldOnly(MaidCoreInteractionProbe::runWorldSound));
+        register(map, "sound-test", worldOnly(MaidCoreInteractionProbe::runSound));
+        register(map, "core-interactions-test", worldReply(MaidCoreInteractionProbe::run, "core_interactions_passed"));
+        register(map, "brain-profile", DevelopmentCommand::handleBrainProfile);
+        register(map, "brain-test", worldReply(MaidBrainProbe::run, "brain_passed"));
+        register(map, "action-control-test", worldReply(MaidBrainProbe::runActionControl, "brain_passed"));
+        register(map, "owner-sensor-test", worldReply(MaidBrainProbe::runOwnerSensor, "brain_passed"));
+        register(map, "danger-sensor-test", worldReply(MaidBrainProbe::runDangerSensor, "brain_passed"));
+        register(map, "naming-test", worldReply(MaidNamingProbe::run, "naming_passed"));
+        register(map, "combat-core-test", worldReply(MaidCombatProbe::run, "combat_core_passed"));
+        register(map, "arrow-physics-test", worldReply(MaidArrowPhysicsProbe::run, "arrow_physics_passed"));
+        register(map, "follow-runtime-test", arity(2, (sender, args) -> {
             MaidFollowRuntimeProbe.start(getPlayer(sender, args[1]));
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.follow_runtime_started"));
-            return;
-        }
-        if (args.length >= 1 && args.length <= 3 && "spawn".equals(args[0])) {
-            var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
-            var maid = new EntityMaid(player.worldObj);
-            if (args.length == 3) {
-                if (!BuiltinModelCatalog.contains(args[2])) throw new WrongUsageException(getCommandUsage(sender));
-                maid.setModelId(args[2]);
-            }
-            maid.bindTo(player.getUniqueID());
-            maid.setPosition(player.posX + 1.5D, player.posY, player.posZ);
-            if (!player.worldObj.spawnEntityInWorld(maid))
-                throw new IllegalStateException("TLMNH development maid spawn rejected");
-            TLMNotHard.LOG.info(
-                "TLMNH_DEV_MAID_SPAWN uuid={} model={} dimension={}",
-                maid.getUniqueID(),
-                maid.getModelId(),
-                maid.dimension);
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.spawned"));
-            return;
-        }
-        if (args.length == 1 && "container-test".equals(args[0])) {
-            MaidContainerProbe.run((WorldServer) sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.container_passed"));
-            return;
-        }
-        if (args.length == 1 && "state-test".equals(args[0])) {
-            testState(sender);
-            return;
-        }
-        if (args.length == 1 && "persist-create".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.follow_runtime_started");
+        }));
+        register(map, "spawn", DevelopmentCommand::handleSpawn);
+        register(map, "container-test", worldReply(MaidContainerProbe::run, "container_passed"));
+        register(map, "state-test", arity(1, (sender, args) -> MaidStateProbe.run(sender)));
+        register(map, "persist-create", arity(1, (sender, args) -> {
             MaidPersistenceProbe.create(sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.persist_created"));
-            return;
-        }
-        if (args.length == 1 && "persist-check".equals(args[0])) {
+            reply(sender, "commands.tlmnhdev.persist_created");
+        }));
+        register(map, "persist-check", arity(1, (sender, args) -> {
             MaidPersistenceProbe.verify(sender.getEntityWorld());
-            sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.persist_passed"));
-            return;
-        }
-        throw new WrongUsageException(getCommandUsage(sender));
+            reply(sender, "commands.tlmnhdev.persist_passed");
+        }));
+        return Collections.unmodifiableMap(map);
     }
 
-    private boolean recordingRequested(String[] args) {
+    private static void handleLabEnter(ICommandSender sender, String[] args) {
+        requireArity(args, 1, 4);
+        var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+        if (args.length == 4 && !"sitting".equals(args[3]) && !"standing".equals(args[3])) throw usage();
+        AnimationLab.enter(
+            player,
+            args.length >= 3 ? args[2] : "geckolib:winefox_hanfu",
+            args.length < 4 || "sitting".equals(args[3]));
+        reply(sender, "commands.tlmnhdev.lab_entered");
+    }
+
+    private static void handleLabVisualHunger(ICommandSender sender, String[] args) {
+        requireArity(args, 3, 3);
+        var player = getPlayer(sender, args[1]);
+        if ("restore".equals(args[2])) {
+            MaidCoreInteractionProbe.setVisualFixture(player, "restore");
+        } else {
+            if (!"hungry".equals(args[2]) && !"full".equals(args[2])) throw usage();
+            var maid = AnimationLab.ownedSceneMaid(player);
+            MaidVisualFixtureState.stageHunger(maid, "full".equals(args[2]) ? 20 : 0);
+        }
+        TLMNotHard.LOG.info("TLMNH_VISUAL_HUNGER action={}", args[2]);
+    }
+
+    private static void handleBrainProfile(ICommandSender sender, String[] args) {
+        requireArity(args, 3, 4);
+        var entity = sender.getEntityWorld()
+            .getEntityByID(parseInt(sender, args[1]));
+        if (!(entity instanceof EntityMaid maid)) throw usage();
+        MaidBrainProfile selected = null;
+        for (var profile : MaidBrainProfile.values()) {
+            if (profile.getId()
+                .equals(args[2])) selected = profile;
+        }
+        if (selected == null) throw usage();
+        var flight = MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+        if (args.length == 4) {
+            try {
+                flight = MaidFaithfulFlightProfile.valueOf(args[3].toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException invalid) {
+                throw usage();
+            }
+        }
+        var result = maid.selectBrainProfileForDevelopment(selected, flight);
+        reply(sender, "commands.tlmnhdev.brain_profile", selected.getId() + "/" + flight.name(), result.name());
+    }
+
+    private static void handleSpawn(ICommandSender sender, String[] args) {
+        requireArity(args, 1, 3);
+        var player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+        var maid = new EntityMaid(player.worldObj);
+        if (args.length == 3) {
+            if (!BuiltinModelCatalog.contains(args[2])) throw usage();
+            maid.setModelId(args[2]);
+        }
+        maid.bindTo(player.getUniqueID());
+        maid.setPosition(player.posX + 1.5D, player.posY, player.posZ);
+        if (!player.worldObj.spawnEntityInWorld(maid)) {
+            throw new IllegalStateException("TLMNH development maid spawn rejected");
+        }
+        TLMNotHard.LOG.info(
+            "TLMNH_DEV_MAID_SPAWN uuid={} model={} dimension={}",
+            maid.getUniqueID(),
+            maid.getModelId(),
+            maid.dimension);
+        reply(sender, "commands.tlmnhdev.spawned");
+    }
+
+    private static void register(Map<String, Subcommand> table, String name, Subcommand handler) {
+        if (table.put(name, handler) != null) {
+            throw new IllegalStateException("Duplicate tlmnhdev subcommand: " + name);
+        }
+    }
+
+    private static Subcommand arity(int expected, Subcommand action) {
+        return (sender, args) -> {
+            requireArity(args, expected, expected);
+            action.execute(sender, args);
+        };
+    }
+
+    private static Subcommand worldOnly(Consumer<WorldServer> action) {
+        return arity(1, (sender, args) -> action.accept(worldServer(sender)));
+    }
+
+    private static Subcommand worldReply(Consumer<WorldServer> action, String translationSuffix) {
+        return arity(1, (sender, args) -> {
+            action.accept(worldServer(sender));
+            reply(sender, "commands.tlmnhdev." + translationSuffix);
+        });
+    }
+
+    private static Subcommand worldArg(BiConsumer<WorldServer, String> action) {
+        return arity(2, (sender, args) -> action.accept(worldServer(sender), args[1]));
+    }
+
+    private static Subcommand playerOnly(Consumer<EntityPlayerMP> action) {
+        return arity(2, (sender, args) -> action.accept(getPlayer(sender, args[1])));
+    }
+
+    private static Subcommand playerArg(BiConsumer<EntityPlayerMP, String> action) {
+        return arity(3, (sender, args) -> action.accept(getPlayer(sender, args[1]), args[2]));
+    }
+
+    private static WorldServer worldServer(ICommandSender sender) {
+        return (WorldServer) sender.getEntityWorld();
+    }
+
+    private static void reply(ICommandSender sender, String key, Object... params) {
+        sender.addChatMessage(new ChatComponentTranslation(key, params));
+    }
+
+    private static void requireArity(String[] args, int min, int max) {
+        if (args.length < min || args.length > max) throw usage();
+    }
+
+    private static WrongUsageException usage() {
+        return new WrongUsageException(USAGE_KEY);
+    }
+
+    private static boolean recordingRequested(String[] args) {
         if (args.length == 1 || "record".equals(args[1])) return true;
         if ("plain".equals(args[1])) return false;
-        throw new WrongUsageException("commands.tlmnhdev.usage");
-    }
-
-    private static void testState(ICommandSender sender) {
-        var original = new EntityMaid(sender.getEntityWorld());
-        var owner = UUID.fromString("58103183-d81d-4208-9efe-67e06ba30a12");
-        require(original.bindTo(owner), "first owner binding");
-        require(!original.bindTo(UUID.randomUUID()), "owner transfer blocked");
-        original.setCustomNameTag("TLMNH state test");
-        original.setHealth(13.5F);
-        original.setSitting(true);
-        for (var pose : MaidPose.values()) {
-            require(!original.hasPose(pose), "initial pose " + pose);
-            original.setPose(pose, true);
-            require(original.hasPose(pose), "active pose " + pose);
-        }
-        original.setPose(MaidPose.BEGGING, false);
-        require(!original.hasPose(MaidPose.BEGGING) && original.hasPose(MaidPose.SLEEPING), "independent pose flags");
-        original.setTask(MaidTask.RANGED_ATTACK);
-        original.setSchedule(MaidSchedule.NIGHT);
-        original.setExperience(155);
-        original.setHunger(17);
-        original.setFavorability(23);
-        original.setPickupItems(false);
-        original.setPickupExperience(true);
-        var inventory = original.getMaidInventory();
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
-            var stack = new ItemStack(Items.arrow, slot + 1);
-            stack.setStackDisplayName("slot-" + slot);
-            inventory.setInventorySlotContents(slot, stack);
-        }
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.bow, 1, 11));
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, new ItemStack(Items.golden_apple, 3));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START, new ItemStack(Items.iron_boots, 1, 4));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 1, new ItemStack(Items.iron_leggings));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 2, new ItemStack(Items.iron_chestplate));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 3, new ItemStack(Items.iron_helmet));
-        require(
-            !inventory.isItemValidForSlot(MaidInventory.ARMOR_START, new ItemStack(Items.iron_helmet)),
-            "armor slot restriction");
-
-        var snapshot = new NBTTagCompound();
-        original.writeToNBT(snapshot);
-        var restored = new EntityMaid(sender.getEntityWorld());
-        restored.readFromNBT(snapshot);
-        for (var pose : MaidPose.values()) require(!restored.hasPose(pose), "transient pose " + pose);
-        require(
-            restored.getUniqueID()
-                .equals(original.getUniqueID()),
-            "entity UUID");
-        require(
-            restored.func_152113_b()
-                .equals(owner.toString()) && restored.isTamed(),
-            "owner UUID");
-        require(restored.isSitting(), "sitting");
-        require(restored.getHealth() == original.getHealth(), "health");
-        require(
-            restored.getCustomNameTag()
-                .equals(original.getCustomNameTag()),
-            "name");
-        require(
-            restored.getModelId()
-                .equals(original.getModelId()),
-            "model ID");
-        require(
-            restored.getTask() == MaidTask.RANGED_ATTACK && restored.getSchedule() == MaidSchedule.NIGHT,
-            "task and schedule");
-        require(
-            restored.getExperience() == 155 && restored.getHunger() == 17 && restored.getFavorability() == 23,
-            "life state");
-        require(!restored.canPickupItems() && restored.canPickupExperience(), "pickup flags");
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) {
-            require(
-                ItemStack.areItemStacksEqual(
-                    inventory.getStackInSlot(slot),
-                    restored.getMaidInventory()
-                        .getStackInSlot(slot)),
-                "inventory slot " + slot);
-        }
-        var offhand = restored.getOffhandItem();
-        offhand.stackSize--;
-        restored.syncOffhand();
-        require(
-            restored.getDataWatcher()
-                .getWatchableObjectItemStack(27).stackSize == 2,
-            "offhand in-place update");
-
-        // 缺省和损坏枚举不能使区块读取崩溃，扩展区中的未知数据仍保留
-        snapshot.setString("MaidScheduleMode", "invalid-schedule");
-        snapshot.setString("MaidTask", "invalid-task");
-        snapshot.setInteger(EntityMaid.EXPERIENCE_TAG, -1);
-        snapshot.getCompoundTag("TLMNH")
-            .setString("FutureField", "retained");
-        restored.readFromNBT(snapshot);
-        require(
-            restored.getSchedule() == MaidSchedule.DAY && restored.getTask() == MaidTask.IDLE,
-            "invalid enum fallback");
-        require(restored.getExperience() == 0, "negative XP fallback");
-        var next = new NBTTagCompound();
-        restored.writeToNBT(next);
-        require(
-            "retained".equals(
-                next.getCompoundTag("TLMNH")
-                    .getString("FutureField")),
-            "unknown extension retention");
-        TLMNotHard.LOG.info(
-            "TLMNH_STATE_TEST_PASS slots={} owner=immutable offhand=dirty-tracked nbt=roundtrip",
-            MaidInventory.TOTAL_SIZE);
-        sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.passed"));
-    }
-
-    private static void require(boolean condition, String name) {
-        if (!condition) throw new IllegalStateException("TLMNH state test failed: " + name);
+        throw usage();
     }
 }

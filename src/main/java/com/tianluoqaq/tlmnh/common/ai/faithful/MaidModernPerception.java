@@ -24,7 +24,8 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
-import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentHooks.CombatPhase;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
@@ -107,8 +108,9 @@ public final class MaidModernPerception {
         if (unifiedCombatObservation()) {
             var quota = CombatWorldBudget
                 .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
-            var trial = CombatEffectPilotSession.current(maid);
-            try (var measurement = CombatEffectPilotSession.measure(maid, CombatEffectPilotSession.Phase.OBSERVATION)) {
+            var hooks = DevelopmentAccess.hooks();
+            var trial = hooks.currentCombatTrial(maid);
+            try (var measurement = hooks.measureCombat(maid, CombatPhase.OBSERVATION)) {
                 combatObservation.observe(maid, quota);
                 setNearby(combatObservation.boundedLiving());
             } finally {

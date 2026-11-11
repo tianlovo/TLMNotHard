@@ -29,8 +29,8 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
-import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
-import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.Phase;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentAccess;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentHooks.CombatPhase;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
@@ -60,7 +60,8 @@ public final class EnhancedCombatController {
     }
 
     public void offer(MaidIntentFrame frame) {
-        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.OFFER)) {
+        try (var measurement = DevelopmentAccess.hooks()
+            .measureCombat(maid, CombatPhase.OFFER)) {
             offerCurrent(frame);
         }
     }
@@ -246,7 +247,8 @@ public final class EnhancedCombatController {
         actor.combatObservation()
             .fullGranted(quota);
         CombatSnapshot snapshot;
-        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.SNAPSHOT)) {
+        try (var measurement = DevelopmentAccess.hooks()
+            .measureCombat(maid, CombatPhase.SNAPSHOT)) {
             snapshot = actor.readonlyCombatSnapshot(ownedTarget, quota);
         }
         if (snapshot == null || !knownTarget(ownedTarget)) return;
@@ -258,7 +260,8 @@ public final class EnhancedCombatController {
             MathHelper.floor_double(seen.x),
             MathHelper.floor_double(seen.y),
             MathHelper.floor_double(seen.z));
-        var trial = CombatEffectPilotSession.current(maid);
+        var trial = DevelopmentAccess.hooks()
+            .currentCombatTrial(maid);
         lastPlan = trial == null ? planner.decide(snapshot, quota) : trial.decide(snapshot, quota, planner);
         actor.combatObservation()
             .completeForecast(now, lastPlan.simulated);
@@ -280,7 +283,8 @@ public final class EnhancedCombatController {
         long hits = actor.meleeNativeAccepted(), shots = actor.rangedBow()
             .getShots();
         CombatPlan.Result result;
-        try (var measurement = CombatEffectPilotSession.measure(maid, Phase.SUBMIT)) {
+        try (var measurement = DevelopmentAccess.hooks()
+            .measureCombat(maid, CombatPhase.SUBMIT)) {
             result = actor.tryApplyCombatPlan(lastPlan);
         }
         if (trial != null) trial.applied(result, quota);

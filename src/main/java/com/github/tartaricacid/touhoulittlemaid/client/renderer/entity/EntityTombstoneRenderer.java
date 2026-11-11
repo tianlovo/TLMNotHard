@@ -12,7 +12,7 @@ import net.minecraft.util.StatCollector;
 
 import org.lwjgl.opengl.GL11;
 
-import com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
@@ -88,7 +88,10 @@ public final class EntityTombstoneRenderer extends Render {
                     z);
                 renderNameTag(tombstone.getMaidName(), x, y + 1.85, z);
             }
-            TombstoneRenderObservation.completed(tombstone, model, texture, shown ? 2 : 0);
+            if (ClientDevelopmentAccess.isActive()) {
+                ClientDevelopmentAccess.hooks()
+                    .tombstoneRenderCompleted(tombstone, model, texture, shown ? 2 : 0);
+            }
             return true;
         }, () -> false);
     }

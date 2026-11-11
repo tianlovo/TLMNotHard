@@ -9,15 +9,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.MaidCreeperAvoidance;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatProjectileEvents;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldEvents;
-import com.tianluoqaq.tlmnh.common.command.DevelopmentCommand;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
-import com.tianluoqaq.tlmnh.common.development.AnimationLab;
-import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
-import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
-import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
-import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
-import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.progression.MaidProgressionRecipes;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
@@ -39,7 +31,6 @@ import cpw.mods.fml.common.event.FMLMissingMappingsEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 
@@ -82,7 +73,6 @@ public final class TLMNotHard {
         RecoveryParcel.register();
         ProtectionEvents.register();
         MaidResurrectionContent.register();
-        AnimationLab.register();
         MaidBrainLifecycle.register();
         CombatProjectileEvents.register();
         MaidShieldEvents.register();
@@ -108,11 +98,6 @@ public final class TLMNotHard {
         // 开服阶段顺手预热 GT 依赖指纹，省得第一场战斗在实体 tick 里临时读整包 JAR
         DependencyFingerprint.mod(KnownModIds.GREGTECH);
         event.registerServerCommand(new ProtectionCommand());
-        if (DevelopmentFlags.isDevCommandsEnabled()) {
-            AnimationLab.validateAutoEntry();
-            MaidShieldRuntimeProbe.registerForDevelopment();
-            event.registerServerCommand(new DevelopmentCommand());
-        }
     }
 
     @Mod.EventHandler
@@ -122,20 +107,4 @@ public final class TLMNotHard {
         }
     }
 
-    @Mod.EventHandler
-    public void serverStopping(FMLServerStoppingEvent event) {
-        Throwable failure = null;
-        for (Runnable close : new Runnable[] { MaidCoreInteractionProbe::cancelPanicRuntime,
-            MaidBowRuntimeProbe::cancel, MaidLifeRuntimeProbe::cancel, MaidShieldRuntimeProbe::cancel,
-            MaidEpisodeRecorder::closeAll }) {
-            try {
-                close.run();
-            } catch (RuntimeException | Error error) {
-                if (failure == null) failure = error;
-                else if (failure != error) failure.addSuppressed(error);
-            }
-        }
-        if (failure instanceof RuntimeException error) throw error;
-        if (failure instanceof Error error) throw error;
-    }
 }

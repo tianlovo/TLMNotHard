@@ -14,7 +14,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
-import com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineItemRenderEffects;
 import com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
@@ -102,7 +102,10 @@ public final class TileEntityShrineRenderer extends TileEntitySpecialRenderer {
                     1F / 16F);
                 ShrineItemRenderEffects.glint(display);
             }
-            ShrineRenderObservation.completed(shrine, model, display != null);
+            if (ClientDevelopmentAccess.isActive()) {
+                ClientDevelopmentAccess.hooks()
+                    .shrineRenderCompleted(shrine, model, display != null);
+            }
             return true;
         }, () -> false);
     }

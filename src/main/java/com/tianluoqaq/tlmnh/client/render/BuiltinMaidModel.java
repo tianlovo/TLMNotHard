@@ -11,9 +11,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.AnimatedGeoModel;
-import com.tianluoqaq.tlmnh.client.development.GpuMatrixProbe;
-import com.tianluoqaq.tlmnh.client.development.HeadBindingProbe;
-import com.tianluoqaq.tlmnh.client.development.RenderSubmissionProbe;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -102,30 +100,33 @@ public final class BuiltinMaidModel extends ModelBase {
     public void render(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
         float headPitch, float scale) {
         float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
+        boolean devActive = ClientDevelopmentAccess.isActive();
+        var devHooks = ClientDevelopmentAccess.hooks();
         if (entity instanceof EntityMaid maid) {
             try {
                 var state = MaidAnimationState.capture(maid, partialTick);
                 if (geckoPlayer == null) {
                     setupPose(state, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-                    HeadBindingProbe.afterBedrock(this, maid, netHeadYaw, headPitch, partialTick);
+                    if (devActive) devHooks.headAfterBedrock(this, maid, netHeadYaw, headPitch, partialTick);
                 } else {
                     boolean paused = Minecraft.getMinecraft()
                         .isGamePaused();
                     double seekTicks = geckoPlayer.advanceClock(ageInTicks, paused);
                     var frame = MaidMolangFrames.capture(maid, partialTick, seekTicks, netHeadYaw, headPitch);
-                    HeadBindingProbe.beforePlayer(this, maid, frame, netHeadYaw, headPitch);
+                    if (devActive) devHooks.headBeforePlayer(this, maid, frame, netHeadYaw, headPitch);
                     boolean applied = geckoPlayer.apply(state, frame, limbSwing, limbSwingAmount, partialTick, paused);
-                    HeadBindingProbe.afterPlayer(this, maid, frame, netHeadYaw, headPitch, partialTick, applied);
+                    if (devActive)
+                        devHooks.headAfterPlayer(this, maid, frame, netHeadYaw, headPitch, partialTick, applied);
                 }
             } catch (RuntimeException error) {
-                HeadBindingProbe.failed(maid, error);
+                if (devActive) devHooks.headFailed(maid, error);
                 throw error;
             }
         }
-        if (entity instanceof EntityMaid maid) GpuMatrixProbe.afterPose(this, maid, partialTick);
+        if (devActive && entity instanceof EntityMaid maid) devHooks.gpuMatrixAfterPose(this, maid, partialTick);
         var consumer = TessellatorVertexConsumer.INSTANCE;
         int light = entity.getBrightnessForRender(partialTick);
-        RenderSubmissionProbe.begin(this, entity, light);
+        if (devActive) devHooks.submissionBegin(this, entity, light);
         boolean completed = false;
         try {
             consumer.begin();
@@ -136,7 +137,7 @@ public final class BuiltinMaidModel extends ModelBase {
             }
             completed = true;
         } finally {
-            RenderSubmissionProbe.finish(completed);
+            if (devActive) devHooks.submissionFinish(completed);
         }
         if (entity instanceof EntityMaid maid) {
             posedActor = maid.getUniqueID()

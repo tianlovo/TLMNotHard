@@ -1,7 +1,5 @@
 package com.tianluoqaq.tlmnh.client.proxy;
 
-import java.io.IOException;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.player.EntityPlayer;
@@ -26,7 +24,6 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidC
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
-import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
@@ -46,7 +43,6 @@ import com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
@@ -117,15 +113,6 @@ public final class ClientProxy extends CommonProxy {
         var shrineModels = new ShrineModelResources();
         ((IReloadableResourceManager) manager).registerReloadListener(shrineModels);
         ClientRegistry.bindTileEntitySpecialRenderer(MaidShrineTile.class, new TileEntityShrineRenderer(shrineModels));
-        if (DevelopmentFlags.isDevCommandsEnabled()) {
-            try {
-                FMLCommonHandler.instance()
-                    .bus()
-                    .register(new ClientDevelopmentControl(Minecraft.getMinecraft()));
-            } catch (IOException error) {
-                throw new IllegalStateException("Cannot initialize client development controls", error);
-            }
-        }
     }
 
     @Override

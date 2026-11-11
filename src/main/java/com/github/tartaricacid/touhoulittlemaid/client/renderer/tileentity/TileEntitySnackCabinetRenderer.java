@@ -11,7 +11,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
-import com.tianluoqaq.tlmnh.client.development.life.CabinetRenderObservation;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.life.cabinet.MaidCabinetModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
@@ -71,8 +71,15 @@ public final class TileEntitySnackCabinetRenderer extends TileEntitySpecialRende
                     vertices.end();
                 }
             }
-            CabinetRenderObservation
-                .completed(cabinet, model, type, model.getPart("full").visible, model.getPart("half").visible);
+            if (ClientDevelopmentAccess.isActive()) {
+                ClientDevelopmentAccess.hooks()
+                    .cabinetRenderCompleted(
+                        cabinet,
+                        model,
+                        type,
+                        model.getPart("full").visible,
+                        model.getPart("half").visible);
+            }
             return true;
         }, () -> false);
     }

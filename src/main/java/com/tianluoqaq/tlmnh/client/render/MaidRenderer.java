@@ -31,8 +31,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.client.development.HeldItemGpuProbe;
-import com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangFrames;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
@@ -72,7 +71,10 @@ public final class MaidRenderer extends RenderLiving {
         try (var scope = new MaidItemRenderScope()) {
             var model = modelFor((EntityMaid) entity);
             model.beginRenderFrame();
-            HeldItemGpuProbe.beforeMaidBody((EntityMaid) entity, model);
+            if (ClientDevelopmentAccess.isActive()) {
+                ClientDevelopmentAccess.hooks()
+                    .heldGpuBeforeMaidBody((EntityMaid) entity, model);
+            }
             mainModel = model;
             super.doRender(entity, x, y, z, yaw, partialTick);
             if (DevelopmentFlags.isDevCommandsEnabled()) {
@@ -178,7 +180,10 @@ public final class MaidRenderer extends RenderLiving {
         GL11.glRotatef(270, 0, 1, 0);
         rotateCarriedMaid(maid);
         MaidSwimRenderPose.apply(maid, (BuiltinMaidModel) mainModel, partialTick);
-        MaidSleepRenderObservation.completed(maid, direction, rotation);
+        if (ClientDevelopmentAccess.isActive()) {
+            ClientDevelopmentAccess.hooks()
+                .maidSleepRenderCompleted(maid, direction, rotation);
+        }
     }
 
     private void rotateCarriedMaid(EntityMaid maid) {
@@ -203,11 +208,15 @@ public final class MaidRenderer extends RenderLiving {
     protected void renderEquippedItems(EntityLivingBase entity, float partialTick) {
         super.renderEquippedItems(entity, partialTick);
         if (entity instanceof EntityMaid maid && mainModel instanceof BuiltinMaidModel model) {
-            if (HeldItemGpuProbe.isCapturing(maid) && HeldItemGpuProbe.atEquippedItems(
-                maid,
-                model,
-                partialTick,
-                () -> heldItems.render(maid, model, renderManager.itemRenderer, partialTick))) return;
+            if (ClientDevelopmentAccess.isActive() && ClientDevelopmentAccess.hooks()
+                .heldGpuIsCapturing(maid)
+                && ClientDevelopmentAccess.hooks()
+                    .heldGpuAtEquippedItems(
+                        maid,
+                        model,
+                        partialTick,
+                        () -> heldItems.render(maid, model, renderManager.itemRenderer, partialTick)))
+                return;
             heldItems.render(maid, model, renderManager.itemRenderer, partialTick);
             headItems.render(maid, model);
             backItems.render(maid, model, renderManager.itemRenderer);

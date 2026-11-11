@@ -1,0 +1,24 @@
+{
+  "modListVersion": 2,
+  "modList": [
+    {
+      "modid": "tlmnhdevtools",
+      "name": "Touhou Little Maid (Not Hard) Devtools",
+      "description": "TLMNotHard 本地调试与实机验收探针模组（不随公开正式产物分发）",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "url": "https://github.com/tianlovo/TLMNotHard",
+      "updateUrl": "",
+      "authorList": ["tianlovo"],
+      "credits": "Touhou Little Maid upstream contributors; GTNH ExampleMod contributors",
+      "license": "GPL-3.0-only",
+      "logoFile": "",
+      "screenshots": [],
+      "parent": "tlmnh",
+      "requiredMods": ["tlmnh"],
+      "dependencies": ["tlmnh"],
+      "dependants": [],
+      "useDependencyInformation": true
+    }
+  ]
+}

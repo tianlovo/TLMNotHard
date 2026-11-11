@@ -17,11 +17,11 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.client.diagnostic.ClientDevelopmentAccess;
 import com.tianluoqaq.tlmnh.common.interaction.MaidNameRules;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
-import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglTextInput;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -175,7 +175,8 @@ public final class GuiMaidNaming extends GuiContainer {
             try {
                 for (int i = 0; i < value.length(); i++) {
                     char character = value.charAt(i);
-                    LwjglTextInput.character(character);
+                    ClientDevelopmentAccess.hooks()
+                        .injectCharacterInput(character);
                     keyTyped(character, Keyboard.KEY_NONE);
                 }
             } catch (ReflectiveOperationException failure) {
