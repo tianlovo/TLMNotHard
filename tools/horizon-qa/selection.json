@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "description": "Minimal representative Horizon-QA native game-test profiles mapped by failure mechanism",
+  "isolated_jvm_profiles": [
+    "compat_protection"
+  ],
+  "profiles": {
+    "compat_shield": [
+      "tlmnhqapilot:ShieldArrowCaptureTests.threeRealShieldTypesCatchNaturalArrowsOnce"
+    ],
+    "compat_door": [
+      "tlmnhqapilot:EnhancedDoorTests.independentPermissionsOpenActualDoorAndGateThenBothAnimationsClose"
+    ],
+    "compat_arrow_gravity": [
+      "tlmnhqapilot:ActualArrowPhysicsTests.installedMoonProviderDrivesBothAimAndTerrainSafety"
+    ],
+    "compat_protection": [
+      "tlmnhqapilot:ProtectionTests.losslessStorageAndUnavailableApis"
+    ],
+    "behavior_and_combat_smoke": [
+      "tlmnhqapilot:EnhancedPolicyTests.movingRootSuspensionNativeReadAndFaithfulRoundTripRetireOldAuthority",
+      "tlmnhqapilot:EnhancedCoreTests.lowAirPreemptsHealingAndReturnsBothUnconsumedStacks",
+      "tlmnhqapilot:UnifiedCombatCapacityTests.nativeThirtyTwoCombatantsShareBoundedWorldWorkAndReactWithoutForecast"
+    ],
+    "legacy_equipment_smoke": [
+      "tlmnhqapilot:MaidTaskEquipmentTests.ordinaryTaskButtonsSwapOriginalWeaponStacksUnderLegacy"
+    ]
+  }
+}

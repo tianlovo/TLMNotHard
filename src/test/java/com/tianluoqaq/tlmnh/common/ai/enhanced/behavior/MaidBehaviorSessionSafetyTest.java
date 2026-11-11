@@ -25,9 +25,9 @@ import net.minecraft.nbt.NBTTagCompound;
 
 import org.junit.Test;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.tianluoqaq.tlmnh.api.behavior.MaidActionAccess;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorContext;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorGroup;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorInitContext;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorModule;
@@ -48,8 +48,6 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
-import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 public class MaidBehaviorSessionSafetyTest {
 
@@ -91,8 +89,14 @@ public class MaidBehaviorSessionSafetyTest {
         var sinkB = new MaidExternalOfferSink(idB, scope);
         var frame = new MaidIntentFrame(policyContext, policyContext.getToken(), 1L);
 
+        // EMERGENCY 与 COMMAND 已从公开 API 枚举 MaidBehaviorGroup 中移除，由编译期类型约束替代运行期异常分支
+        for (MaidBehaviorGroup exposed : MaidBehaviorGroup.values()) {
+            assertFalse("EMERGENCY".equals(exposed.name()));
+            assertFalse("COMMAND".equals(exposed.name()));
+        }
+
         try {
-            sinkA.offer(Group.AUTONOMOUS, "shared", .5, "x", v -> {});
+            sinkA.offer(MaidBehaviorGroup.AUTONOMOUS, "shared", .5, "x", v -> {});
             fail("Expected unbound/outside-offer sink call to throw IllegalStateException");
         } catch (IllegalStateException expected) {
             // expected
@@ -101,19 +105,7 @@ public class MaidBehaviorSessionSafetyTest {
         long ticketA = scope.enter(MaidSessionCallbackScope.Phase.OFFER, idA, frame::isCurrent);
         sinkA.bindFrame(frame, Runnable::run);
         try {
-            try {
-                sinkA.offer(Group.EMERGENCY, "air", 1.0, "bad", v -> {});
-                fail("Expected external module offer in EMERGENCY group to be rejected");
-            } catch (IllegalArgumentException expected) {
-                // expected
-            }
-            try {
-                sinkA.offer(Group.COMMAND, "follow", 1.0, "bad", v -> {});
-                fail("Expected external module offer in COMMAND group to be rejected");
-            } catch (IllegalArgumentException expected) {
-                // expected
-            }
-            sinkA.offer(Group.AUTONOMOUS, "shared", .6, "alpha", v -> {});
+            sinkA.offer(MaidBehaviorGroup.AUTONOMOUS, "shared", .6, "alpha", v -> {});
         } finally {
             sinkA.clearFrame();
             scope.exit(ticketA);
@@ -122,7 +114,7 @@ public class MaidBehaviorSessionSafetyTest {
         long ticketB = scope.enter(MaidSessionCallbackScope.Phase.OFFER, idB, frame::isCurrent);
         sinkB.bindFrame(frame, Runnable::run);
         try {
-            sinkB.offer(Group.AUTONOMOUS, "shared", .6, "beta", v -> {});
+            sinkB.offer(MaidBehaviorGroup.AUTONOMOUS, "shared", .6, "beta", v -> {});
         } finally {
             sinkB.clearFrame();
             scope.exit(ticketB);
@@ -140,7 +132,7 @@ public class MaidBehaviorSessionSafetyTest {
         long ticketB2 = scope.enter(MaidSessionCallbackScope.Phase.OFFER, idB, secondFrame::isCurrent);
         sinkB.bindFrame(secondFrame, Runnable::run);
         try {
-            sinkB.offer(Group.AUTONOMOUS, "shared", .6, "beta-only", v -> {});
+            sinkB.offer(MaidBehaviorGroup.AUTONOMOUS, "shared", .6, "beta-only", v -> {});
         } finally {
             sinkB.clearFrame();
             scope.exit(ticketB2);
@@ -204,7 +196,7 @@ public class MaidBehaviorSessionSafetyTest {
                         } catch (IllegalStateException expected) {
                             // expected
                         }
-                        sink.offer(Group.AUTONOMOUS, "node-1", .8, 7, payload -> {
+                        sink.offer(MaidBehaviorGroup.AUTONOMOUS, "node-1", .8, 7, payload -> {
                             assertEquals(Integer.valueOf(7), payload);
                             context.actions()
                                 .stopWalk();
@@ -318,7 +310,7 @@ public class MaidBehaviorSessionSafetyTest {
 
                     @Override
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
-                        sink.offer(Group.AUTONOMOUS, "boom", .95, "payload", v -> {
+                        sink.offer(MaidBehaviorGroup.AUTONOMOUS, "boom", .95, "payload", v -> {
                             events.add("broken:execute");
                             throw new RuntimeException("execute boom");
                         });
@@ -389,7 +381,7 @@ public class MaidBehaviorSessionSafetyTest {
 
                     @Override
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
-                        sink.offer(Group.RECOVERY, "hijack", 1.0, "bad", v -> events.add("SHOULD_NOT_RUN"));
+                        sink.offer(MaidBehaviorGroup.RECOVERY, "hijack", 1.0, "bad", v -> events.add("SHOULD_NOT_RUN"));
                         throw new RuntimeException("boom after offer");
                     }
                 };
@@ -448,7 +440,7 @@ public class MaidBehaviorSessionSafetyTest {
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
                         if (!offerAEnabled.get()) return;
                         String t = currentTargetForA.get();
-                        sink.offer(Group.AUTONOMOUS, t, .8, t, payload -> {
+                        sink.offer(MaidBehaviorGroup.AUTONOMOUS, t, .8, t, payload -> {
                             savedSteps++;
                             events.add("A:exec:" + payload);
                         });
@@ -631,7 +623,7 @@ public class MaidBehaviorSessionSafetyTest {
         // Case 1: acquire succeeds during execute; next tick advanceUse -> reconcile throws in itemValidator
         var validatorFaultId = MaidBehaviorId.of("mod_bad", "deferred_validator");
         var throwInValidator = new AtomicBoolean(false);
-        var acquiredLeaseRef = new AtomicReference<MaidItemUseState.Lease>();
+        var acquiredLeaseRef = new AtomicReference<MaidHandAccess.Lease>();
         var slotRef1 = new MaidExternalBehaviorSlot[1];
         var isolatedHands1 = new MaidPlatformBehaviorContext.IsolatedHandAccess(
             validatorFaultId,
@@ -668,9 +660,9 @@ public class MaidBehaviorSessionSafetyTest {
 
                     @Override
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
-                        sink.offer(Group.AUTONOMOUS, "use", .8, Boolean.TRUE, ignored -> {
+                        sink.offer(MaidBehaviorGroup.AUTONOMOUS, "use", .8, Boolean.TRUE, ignored -> {
                             var lease = context.hands()
-                                .tryAcquireHand(MaidItemUseState.Hand.MAIN, MaidItemUseState.Kind.SNOWBALL, stack -> {
+                                .tryAcquireHand(MaidHandAccess.Hand.MAIN, MaidHandAccess.Kind.SNOWBALL, stack -> {
                                     if (throwInValidator.get()) {
                                         throw new IllegalStateException("deferred validator boom");
                                     }
@@ -694,7 +686,7 @@ public class MaidBehaviorSessionSafetyTest {
         s1.execute();
 
         assertNotNull(acquiredLeaseRef.get());
-        assertTrue(useState.isCurrent(acquiredLeaseRef.get()));
+        assertTrue(useState.isCurrent((MaidItemUseState.Lease) acquiredLeaseRef.get()));
         assertTrue(slot1.isHealthy());
 
         useState.advanceUse(1);
@@ -704,7 +696,7 @@ public class MaidBehaviorSessionSafetyTest {
         throwInValidator.set(true);
         useState.advanceUse(1);
         assertNull(useState.peek());
-        assertFalse(useState.isCurrent(acquiredLeaseRef.get()));
+        assertFalse(useState.isCurrent((MaidItemUseState.Lease) acquiredLeaseRef.get()));
         assertTrue(slot1.isFaulted());
         assertFalse(slot1.isHealthy());
         assertEquals(
@@ -753,14 +745,14 @@ public class MaidBehaviorSessionSafetyTest {
                     @Override
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
                         sink.offer(
-                            Group.AUTONOMOUS,
+                            MaidBehaviorGroup.AUTONOMOUS,
                             "shield",
                             .8,
                             Boolean.TRUE,
                             ignored -> context.hands()
                                 .tryAcquireHand(
-                                    MaidItemUseState.Hand.OFF,
-                                    MaidItemUseState.Kind.SHIELD,
+                                    MaidHandAccess.Hand.OFF,
+                                    MaidHandAccess.Kind.SHIELD,
                                     stack -> true,
                                     () -> {
                                         if (throwInGuard.get()) {
@@ -814,11 +806,10 @@ public class MaidBehaviorSessionSafetyTest {
         long oomTicket = scope.enter(MaidSessionCallbackScope.Phase.EXECUTE, oomModuleId, () -> true);
         try {
             assertNotNull(
-                isolatedHands3
-                    .tryAcquireHand(MaidItemUseState.Hand.MAIN, MaidItemUseState.Kind.FOOD, stack -> true, () -> {
-                        if (throwOom.get()) throw new OutOfMemoryError("simulated jvm oom");
-                        return true;
-                    }));
+                isolatedHands3.tryAcquireHand(MaidHandAccess.Hand.MAIN, MaidHandAccess.Kind.FOOD, stack -> true, () -> {
+                    if (throwOom.get()) throw new OutOfMemoryError("simulated jvm oom");
+                    return true;
+                }));
         } finally {
             scope.exit(oomTicket);
         }
@@ -883,7 +874,12 @@ public class MaidBehaviorSessionSafetyTest {
 
                     @Override
                     public void offer(MaidBehaviorContext context, MaidBehaviorOfferSink sink) {
-                        sink.offer(Group.AUTONOMOUS, "t1", .70, "t1", payload -> events.add("healthy:exec:" + payload));
+                        sink.offer(
+                            MaidBehaviorGroup.AUTONOMOUS,
+                            "t1",
+                            .70,
+                            "t1",
+                            payload -> events.add("healthy:exec:" + payload));
                     }
                 };
             }
@@ -894,20 +890,20 @@ public class MaidBehaviorSessionSafetyTest {
         var hand = new MaidHandAccess() {
 
             @Override
-            public MaidItemUseState.Lease tryAcquireHand(MaidItemUseState.Hand handSide, MaidItemUseState.Kind kind,
-                Predicate<ItemStack> itemValidator, BooleanSupplier extraGuard) {
+            public Lease tryAcquireHand(Hand handSide, Kind kind, Predicate<ItemStack> itemValidator,
+                BooleanSupplier extraGuard) {
                 scope.requireExecute(moduleId);
                 return null;
             }
 
             @Override
-            public boolean isCurrent(MaidItemUseState.Lease lease) {
+            public boolean isCurrent(Lease lease) {
                 scope.requireExecute(moduleId);
                 return false;
             }
 
             @Override
-            public boolean releaseHand(MaidItemUseState.Lease lease) {
+            public boolean releaseHand(Lease lease) {
                 scope.requireExecute(moduleId);
                 return false;
             }
@@ -979,21 +975,21 @@ public class MaidBehaviorSessionSafetyTest {
             }
 
             @Override
-            public MaidTask task() {
+            public String taskId() {
                 scope.requireObservation(moduleId);
-                return MaidTask.IDLE;
+                return "touhou_little_maid:idle";
             }
 
             @Override
-            public MaidSchedule schedule() {
+            public ScheduleMode schedule() {
                 scope.requireObservation(moduleId);
-                return MaidSchedule.DAY;
+                return ScheduleMode.DAY;
             }
 
             @Override
-            public Activity activity() {
+            public ActivityPhase activity() {
                 scope.requireObservation(moduleId);
-                return Activity.WORK;
+                return ActivityPhase.WORK;
             }
 
             @Override
