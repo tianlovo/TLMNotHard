@@ -25,12 +25,15 @@ import org.gradle.api.GradleException;
 
 import groovy.json.JsonSlurper;
 
-/** 发布归档的许可证、内置音频、保留资产与非发布类泄露校验 */
+/** 发布归档的许可证、内置音频、保留资产、适配服务描述与非发布类泄露校验 */
 public final class ReleaseArchiveChecks {
 
     private static final List<String> FORBIDDEN_CLASS_SUFFIXES = Arrays
         .asList("Probe", "Fixture", "Fixtures", "ReplayMain", "Test");
     private static final String EXPECTED_MIXIN_CONFIGS = "mixins.tlmnh.json,mixins.tlmnh.ysmu.json";
+    private static final List<String> REQUIRED_SERVICE_REGISTRARS = Arrays.asList(
+        "META-INF/services/com.tianluoqaq.tlmnh.common.compat.CompatRegistrar",
+        "META-INF/services/com.tianluoqaq.tlmnh.client.compat.ClientCompatRegistrar");
 
     private ReleaseArchiveChecks() {}
 
@@ -117,12 +120,21 @@ public final class ReleaseArchiveChecks {
 
     public static void verifyReleaseJarContents(File file) {
         try (ZipFile archive = new ZipFile(file)) {
+            List<String> entries = zipFileEntries(archive);
             List<String> classes = new ArrayList<>();
-            for (String entry : zipFileEntries(archive)) {
+            for (String entry : entries) {
                 if (entry.endsWith(".class")) classes.add(entry);
             }
             if (classes.isEmpty()) {
                 throw new GradleException("Release JAR [" + file.getName() + "] contains no compiled classes");
+            }
+            for (String servicePath : REQUIRED_SERVICE_REGISTRARS) {
+                if (countExact(entries, servicePath) != 1) {
+                    throw new GradleException(
+                        "Release JAR [" + file.getName()
+                            + "] is missing or duplicating ServiceLoader descriptor: "
+                            + servicePath);
+                }
             }
             for (String entry : classes) {
                 if (entry.contains("/development/") || entry.startsWith("com/tianluoqaq/tlmnh/devtools/")) {

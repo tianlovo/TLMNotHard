@@ -4,12 +4,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
-import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
-
 /** 当前回调帧有效的只读观测视图；除 isCurrent 外在过期帧调用均拒绝并抛出异常 */
 public interface MaidObservationView {
+
+    enum ScheduleMode {
+        DAY,
+        NIGHT,
+        ALL
+    }
+
+    enum ActivityPhase {
+        WORK,
+        IDLE,
+        REST
+    }
 
     /** 检查当前回调帧与底层策略授权是否仍然有效，过期引用安全返回 false */
     boolean isCurrent();
@@ -32,11 +40,12 @@ public interface MaidObservationView {
 
     int favorability();
 
-    MaidTask task();
+    /** 当前任务命名空间标识（如 touhou_little_maid:idle） */
+    String taskId();
 
-    MaidSchedule schedule();
+    ScheduleMode schedule();
 
-    Activity activity();
+    ActivityPhase activity();
 
     boolean isSitting();
 

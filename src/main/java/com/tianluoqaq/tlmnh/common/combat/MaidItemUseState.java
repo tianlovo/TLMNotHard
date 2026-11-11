@@ -3,22 +3,52 @@ package com.tianluoqaq.tlmnh.common.combat;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
+import com.tianluoqaq.tlmnh.api.behavior.MaidHandAccess;
+
 /** 持续使用只允许一个持有者，普通近战挥手不占用此资源 */
 public final class MaidItemUseState {
 
     public enum Hand {
+
         MAIN,
-        OFF
+        OFF;
+
+        public static Hand fromApi(MaidHandAccess.Hand hand) {
+            return hand == MaidHandAccess.Hand.OFF ? OFF : MAIN;
+        }
+
+        public MaidHandAccess.Hand toApi() {
+            return this == OFF ? MaidHandAccess.Hand.OFF : MaidHandAccess.Hand.MAIN;
+        }
     }
 
     public enum Kind {
+
         BOW,
         SHIELD,
         FOOD,
-        SNOWBALL
+        SNOWBALL;
+
+        public static Kind fromApi(MaidHandAccess.Kind kind) {
+            return switch (kind) {
+                case BOW -> BOW;
+                case SHIELD -> SHIELD;
+                case FOOD -> FOOD;
+                case SNOWBALL -> SNOWBALL;
+            };
+        }
+
+        public MaidHandAccess.Kind toApi() {
+            return switch (this) {
+                case BOW -> MaidHandAccess.Kind.BOW;
+                case SHIELD -> MaidHandAccess.Kind.SHIELD;
+                case FOOD -> MaidHandAccess.Kind.FOOD;
+                case SNOWBALL -> MaidHandAccess.Kind.SNOWBALL;
+            };
+        }
     }
 
-    public static final class Lease {
+    public static final class Lease implements MaidHandAccess.Lease {
 
         private final Object owner, item;
         private final Hand hand;
@@ -45,6 +75,21 @@ public final class MaidItemUseState {
         }
 
         public long getGeneration() {
+            return generation;
+        }
+
+        @Override
+        public MaidHandAccess.Hand hand() {
+            return hand.toApi();
+        }
+
+        @Override
+        public MaidHandAccess.Kind kind() {
+            return kind.toApi();
+        }
+
+        @Override
+        public long generation() {
             return generation;
         }
     }

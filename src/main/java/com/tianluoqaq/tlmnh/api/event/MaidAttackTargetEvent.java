@@ -7,7 +7,10 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
 import cpw.mods.fml.common.eventhandler.Cancelable;
 
-/** 1.7平台的Brain选敌事件，对应现代Forge的可取消BEHAVIOR_TARGET变更 */
+/**
+ * 1.7 平台的 Brain 选敌事件，对应现代 Forge 的可取消 BEHAVIOR_TARGET 变更。
+ * 作为 Forge 事件总线契约，按平台惯例直接携带宿主实体 EntityMaid（公开 API 自包含规则的文档化例外）
+ */
 @Cancelable
 public final class MaidAttackTargetEvent extends LivingEvent {
 

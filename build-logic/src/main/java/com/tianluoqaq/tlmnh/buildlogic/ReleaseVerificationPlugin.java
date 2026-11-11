@@ -9,7 +9,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.language.jvm.tasks.ProcessResources;
 
-/** 注册根项目资源、许可证与保留资产校验任务，保持既有任务名不变 */
+/** 注册根项目资源、许可证、保留资产与架构边界校验任务 */
 public class ReleaseVerificationPlugin implements Plugin<Project> {
 
     @Override
@@ -71,6 +71,20 @@ public class ReleaseVerificationPlugin implements Plugin<Project> {
                         project.fileTree("src/main/resources", tree -> tree.exclude("**/*.ogg")),
                         project.fileTree("licenses"));
                 task.doLast(ignored -> ReleaseArchiveChecks.verifyBuiltinRetentionDirectory(resourcesDir, licensesDir));
+            });
+
+        project.getTasks()
+            .register("verifyArchitectureBoundaries", task -> {
+                task.setGroup("verification");
+                task.setDescription(
+                    "Verifies T0 source-set, public-API self-containment, compat isolation, and client boundary rules");
+                task.getInputs()
+                    .files(
+                        project.fileTree("src/main/java"),
+                        project.fileTree("src/client/java"),
+                        project.fileTree("src/compat/java"),
+                        project.fileTree("src/compatClient/java"));
+                task.doLast(ignored -> ArchitectureBoundaryChecks.verifyProjectBoundaries(project.getProjectDir()));
             });
 
         project.getTasks()

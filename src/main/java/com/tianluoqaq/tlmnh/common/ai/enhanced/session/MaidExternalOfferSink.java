@@ -3,13 +3,14 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced.session;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorGroup;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorOfferSink;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 
-/** 外部行为模块单帧提案入口；强制阻断 EMERGENCY 与 COMMAND 保留分组并将目标键隔离到模块命名空间 */
+/** 外部行为模块单帧提案入口；把公开行为组映射到内部仲裁组，并将目标键隔离到模块命名空间 */
 public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
 
     private final MaidBehaviorId moduleId;
@@ -51,18 +52,25 @@ public final class MaidExternalOfferSink implements MaidBehaviorOfferSink {
     }
 
     @Override
-    public <P> void offer(Group group, String target, double utility, P payload, Consumer<? super P> executeAction) {
+    public <P> void offer(MaidBehaviorGroup group, String target, double utility, P payload,
+        Consumer<? super P> executeAction) {
         var frame = requireActiveFrame();
         Objects.requireNonNull(group, "group");
         Objects.requireNonNull(target, "target");
         Objects.requireNonNull(executeAction, "executeAction");
-        if (group == Group.EMERGENCY || group == Group.COMMAND) throw new IllegalArgumentException(
-            "External behavior module " + moduleId + " cannot offer into reserved group " + group);
+        Group internalGroup = switch (group) {
+            case DANGER -> Group.DANGER;
+            case RECOVERY -> Group.RECOVERY;
+            case COMBAT -> Group.COMBAT;
+            case CARE -> Group.CARE;
+            case AUTONOMOUS -> Group.AUTONOMOUS;
+            case AMBIENT -> Group.AMBIENT;
+        };
         var dispatcher = wrappedExecutorFactory;
         String namespacedTarget = moduleId + "|" + target;
         frame.offerTyped(
             moduleId,
-            group,
+            internalGroup,
             Kind.EXTENSION,
             namespacedTarget,
             target,
