@@ -1,0 +1,435 @@
+{
+  "baseline": "0.1.0-beta.1",
+  "compatibilityName": "TLMNH_Compatibility",
+  "features": [
+    {
+      "name": "PLAYER_OFFHAND",
+      "id": "player_offhand",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "backhand"
+      ]
+    },
+    {
+      "name": "SHIELDS",
+      "id": "shields",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "battlegear2",
+        "TConstruct",
+        "tinkersdefense"
+      ]
+    },
+    {
+      "name": "NUTRITION",
+      "id": "nutrition",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "AppleCore"
+      ]
+    },
+    {
+      "name": "GREGTECH_FOOD",
+      "id": "gregtech_food",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "gregtech"
+      ]
+    },
+    {
+      "name": "PROGRESSION_RECIPES",
+      "id": "progression_recipes",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "gregtech",
+        "dreamcraft"
+      ]
+    },
+    {
+      "name": "ANIMATED_DOORS",
+      "id": "animated_doors",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "malisisdoors",
+        "malisiscore"
+      ]
+    },
+    {
+      "name": "VEHICLES",
+      "id": "vehicles",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "etfuturum"
+      ]
+    },
+    {
+      "name": "CABINET_SOUNDS",
+      "id": "cabinet_sounds",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "etfuturum"
+      ]
+    },
+    {
+      "name": "SHRINE_SOUNDS",
+      "id": "shrine_sounds",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "etfuturum"
+      ]
+    },
+    {
+      "name": "ARROW_GRAVITY",
+      "id": "arrow_gravity",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": [
+        "GalacticraftCore"
+      ]
+    },
+    {
+      "name": "ITEM_DELIVERY",
+      "id": "item_delivery",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": []
+    },
+    {
+      "name": "BEHAVIOR_RUNTIME",
+      "id": "behavior_runtime",
+      "revision": 1,
+      "clientOnly": false,
+      "dependencies": []
+    },
+    {
+      "name": "CLIENT_RENDER_STATE",
+      "id": "client_render_state",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": [
+        "angelica"
+      ]
+    },
+    {
+      "name": "CLIENT_SLOT_ICONS",
+      "id": "client_slot_icons",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": [
+        "battlegear2"
+      ]
+    },
+    {
+      "name": "CLIENT_HEAD_ITEMS",
+      "id": "client_head_items",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": [
+        "etfuturum"
+      ]
+    },
+    {
+      "name": "CLIENT_TOMBSTONE",
+      "id": "client_tombstone",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": []
+    },
+    {
+      "name": "CLIENT_MAID_BED",
+      "id": "client_maid_bed",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": []
+    },
+    {
+      "name": "CLIENT_SNACK_CABINET",
+      "id": "client_snack_cabinet",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": []
+    },
+    {
+      "name": "CLIENT_SHRINE",
+      "id": "client_shrine",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": []
+    },
+    {
+      "name": "CLIENT_BANNER",
+      "id": "client_banner",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": [
+        "etfuturum"
+      ]
+    },
+    {
+      "name": "CLIENT_TOMBSTONE_DIMENSION_TEXTURE",
+      "id": "client_tombstone_dimension_texture",
+      "revision": 1,
+      "clientOnly": true,
+      "dependencies": [
+        "TwilightForest"
+      ]
+    }
+  ],
+  "lifecycle": {
+    "name": "TLMNH_Lifecycle",
+    "schema": 9,
+    "root": {
+      "Schema": 3,
+      "Entries": 9,
+      "ReturnedFilms": 9
+    },
+    "entry": {
+      "Token": 8,
+      "Owner": 8,
+      "Subject": 8,
+      "Kind": 8,
+      "MaidName": 8,
+      "AcquisitionPhase": 8,
+      "Consumed": 1,
+      "Delivered": 1,
+      "Published": 1,
+      "TombstoneHeld": 1,
+      "ExperienceHeld": 1,
+      "Identity": 10,
+      "AcquisitionSource": 10,
+      "AcquisitionReceipt": 10,
+      "AcquisitionCredential": 10,
+      "Redemption": 10,
+      "DeathIngress": 10,
+      "TombstonePublication": 10,
+      "Capture": 10,
+      "TombstoneItems": 9,
+      "Dimension": 3,
+      "X": 6,
+      "Y": 6,
+      "Z": 6,
+      "DeathExperience": 3,
+      "ExperienceReadyAt": 4
+    },
+    "returnedFilm": {
+      "Id": 8,
+      "Stack": 10,
+      "Dimension": 3,
+      "X": 6,
+      "Y": 6,
+      "Z": 6,
+      "Phase": 8,
+      "Context": 10
+    }
+  },
+  "entityWriters": [
+    {
+      "class": "com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid",
+      "method": "writeEntityToNBT",
+      "keys": [
+        "Equipment",
+        "MaidExperience",
+        "MaidFavorability",
+        "MaidHunger",
+        "MaidInventory",
+        "MaidIsPickup",
+        "MaidScheduleMode",
+        "ModelId",
+        "PickupExperience",
+        "PickupItems",
+        "Silent",
+        "SoundPackId",
+        "StruckByLightning",
+        "TLMNH",
+        "TLMNHOffhand",
+        "TLMNHRecovery"
+      ],
+      "delegates": [
+        "com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager#addAdditionalSaveData(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidConfigManager#addAdditionalSaveData(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.tianluoqaq.tlmnh.common.combat.CombatCadence#save(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt#save(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings#save(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState#save(Lnet/minecraft/nbt/NBTTagCompound;Ljava/lang/String;Z)V",
+        "com.tianluoqaq.tlmnh.common.life.MaidHomeArea#save(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "com.tianluoqaq.tlmnh.common.life.meal.MaidMealController#save(Lnet/minecraft/nbt/NBTTagCompound;)V",
+        "net.minecraft.entity.passive.EntityTameable#writeEntityToNBT(Lnet/minecraft/nbt/NBTTagCompound;)V"
+      ]
+    },
+    {
+      "class": "com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidConfigManager",
+      "method": "addAdditionalSaveData",
+      "keys": [
+        "MaidIsRideable",
+        "MaidSubConfig"
+      ]
+    },
+    {
+      "class": "com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager",
+      "method": "addAdditionalSaveData",
+      "keys": [
+        "FavorabilityManagerCounter"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState",
+      "method": "save",
+      "keys": [
+        "MaidTask",
+        "TLMNH"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.combat.CombatCadence",
+      "method": "save",
+      "keys": [
+        "TLMNHCombatCadence"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt",
+      "method": "save",
+      "keys": [
+        "TLMNHCombatHitReceipt"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.life.MaidHomeArea",
+      "method": "save",
+      "keys": [
+        "TLMNHHome"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings",
+      "method": "save",
+      "keys": [
+        "MaidTaskDataMaps"
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.life.meal.MaidMealController",
+      "method": "save",
+      "keys": [
+        "Equipment",
+        "MaidInventory",
+        "TLMNHOffhand"
+      ]
+    }
+  ],
+  "networks": [
+    {
+      "class": "com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork",
+      "channels": [
+        "tlmnh_effect1"
+      ],
+      "messages": [
+        [
+          "com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork$Handler",
+          "com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage",
+          0,
+          "CLIENT"
+        ]
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork",
+      "channels": [
+        "tlmnh_name1"
+      ],
+      "messages": [
+        [
+          "com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork$Handler",
+          "com.tianluoqaq.tlmnh.common.network.MaidNameRequest",
+          0,
+          "SERVER"
+        ]
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork",
+      "channels": [
+        "tlmnh_sound1"
+      ],
+      "messages": [
+        [
+          "com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork$Handler",
+          "com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage",
+          0,
+          "CLIENT"
+        ]
+      ]
+    },
+    {
+      "class": "com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork",
+      "channels": [
+        "tlmnh_task1"
+      ],
+      "messages": [
+        [
+          "com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork$EditHandler",
+          "com.github.tartaricacid.touhoulittlemaid.network.message.SetAttackListMessage",
+          0,
+          "SERVER"
+        ],
+        [
+          "com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork$SnapshotHandler",
+          "com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot",
+          1,
+          "CLIENT"
+        ]
+      ]
+    }
+  ],
+  "mixins": {
+    "mixins.tlmnh.json": {
+      "required": true,
+      "minVersion": "0.8.5-GTNH",
+      "package": "com.tianluoqaq.tlmnh.mixin",
+      "plugin": "com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin",
+      "refmap": "mixins.tlmnh.refmap.json",
+      "target": "@env(DEFAULT)",
+      "compatibilityLevel": "JAVA_8",
+      "mixins": [
+        "MixinEntityNavigator",
+        "MixinEntityAquatic",
+        "MixinEntityLivingBase",
+        "MixinEntityPose",
+        "MixinPathNavigate",
+        "MixinEntityPlayerVehicle",
+        "MixinMaidWorldGenSpawning",
+        "MixinArrowFlightState",
+        "MixinArrowImpact",
+        "MixinArrowSource",
+        "MixinEntityArrowShieldCapture"
+      ],
+      "client": [
+        "client.MixinModelBipedCarry"
+      ],
+      "server": []
+    },
+    "mixins.tlmnh.ysmu.json": {
+      "required": false,
+      "minVersion": "0.8.5-GTNH",
+      "package": "com.tianluoqaq.tlmnh.compat.ysmu.client.mixin",
+      "plugin": "com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin",
+      "refmap": "mixins.tlmnh.refmap.json",
+      "target": "@env(DEFAULT)",
+      "compatibilityLevel": "JAVA_8",
+      "mixins": [],
+      "client": [
+        "MixinMaidPassengerAlias"
+      ],
+      "server": []
+    }
+  }
+}
