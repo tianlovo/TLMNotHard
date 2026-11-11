@@ -1,11 +1,17 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 
 /** 正常跟随继续走路，达到原版掉队范围才尝试有限安全落点；失败退回导航并限频重试 */
 public final class EnhancedFollowController {
+
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("follow_owner");
 
     private enum Recovery {
         DEFERRED,
@@ -22,6 +28,22 @@ public final class EnhancedFollowController {
     public EnhancedFollowController(EntityMaid maid, ModernFollowCoreActor actor) {
         this.maid = maid;
         this.actor = actor;
+    }
+
+    public void offer(MaidIntentFrame frame, boolean vehicleOffered, Kind selectedKind) {
+        var owner = actor.getOwner();
+        if (!EnhancedRideController.stationary(maid) && !vehicleOffered
+            && !maid.getHomeArea()
+                .enabled()
+            && owner != null
+            && !owner.isSpectator()
+            && !owner.isDeadOrDying()
+            && owner.getWorldIdentity() == actor.getWorldIdentity()) {
+            double start = selectedKind == Kind.FOLLOW ? 2 : 6;
+            if (!actor.closerThan(owner, start)) {
+                frame.offerTyped(ID, Group.COMMAND, Kind.FOLLOW, "owner", 1, owner, this::execute);
+            }
+        }
     }
 
     private boolean eligible(Owner owner) {

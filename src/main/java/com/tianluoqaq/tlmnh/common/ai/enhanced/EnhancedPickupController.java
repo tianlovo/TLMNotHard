@@ -1,12 +1,13 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
-
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -17,16 +18,17 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 /** 拾取先确认完整可达路线，失败只暂避当前实体位置，不改动掉落物或库存 */
 public final class EnhancedPickupController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("pickup");
     private static final int MAX_CANDIDATES = 64, MAX_FAILED_TARGETS = 32, FAILED_RETRY_TICKS = 100;
     private static final double RECONSIDER_DISTANCE_SQUARED = 1;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
     private final EnhancedNavigationController navigation;
-    private final Map<Entity, FailedApproach> failed = new IdentityHashMap<>();
+    private final MaidTargetCooldowns<Entity> failed = MaidTargetCooldowns.forIdentityClearOnFull(MAX_FAILED_TARGETS);
     private Entity target;
     private boolean routeStarted;
-    private long lastTick = Long.MIN_VALUE, rejectedRoutes;
+    private long rejectedRoutes;
 
     public EnhancedPickupController(EntityMaid maid, ModernFollowCoreActor actor, MaidModernPerception perception,
         EnhancedNavigationController navigation) {
@@ -39,23 +41,26 @@ public final class EnhancedPickupController {
     public void offer(MaidIntentFrame frame) {
         if (!permitted()) return;
         long now = actor.worldGameTime();
-        if (now < lastTick) failed.clear();
-        lastTick = now;
-        failed.entrySet()
-            .removeIf(
-                entry -> entry.getValue()
-                    .expired(entry.getKey(), now));
+        failed.advanceTick(now);
+        failed.purgeExpired(
+            now,
+            (entity, entry) -> !entity.isEntityAlive() || entity.worldObj != entry.contextRef()
+                || !(entry.contextRef() instanceof World world)
+                || world.getEntityByID(entity.getEntityId()) != entity
+                || entity.getDistanceSq(entry.x(), entry.y(), entry.z()) > RECONSIDER_DISTANCE_SQUARED);
         if (target != null && routeStarted && failedNavigation()) reject(target, now);
         int inspected = 0;
         for (var candidate : perception.pickupEntities()) {
             if (++inspected > MAX_CANDIDATES) break;
-            if (!failed.containsKey(candidate) && legal(candidate)) frame.offer(
+            if (!failed.contains(candidate) && legal(candidate)) frame.offerTyped(
+                ID,
                 Group.AUTONOMOUS,
                 Kind.PICKUP,
                 candidate.getUniqueID()
                     .toString(),
                 1 / (1 + Math.sqrt(maid.getDistanceSqToEntity(candidate))),
-                candidate);
+                candidate,
+                this::execute);
         }
     }
 
@@ -96,7 +101,7 @@ public final class EnhancedPickupController {
     }
 
     public void execute(Entity selected) {
-        if (!legal(selected) || failed.containsKey(selected)) return;
+        if (!legal(selected) || failed.contains(selected)) return;
         if (target != selected) {
             target = selected;
             routeStarted = false;
@@ -141,11 +146,19 @@ public final class EnhancedPickupController {
     }
 
     private void reject(Entity selected, long now) {
-        if (failed.size() >= MAX_FAILED_TARGETS) failed.clear();
-        failed.put(selected, new FailedApproach(selected, now + FAILED_RETRY_TICKS));
+        failed
+            .record(selected, now + FAILED_RETRY_TICKS, selected.posX, selected.posY, selected.posZ, selected.worldObj);
         rejectedRoutes++;
         target = null;
         routeStarted = false;
+    }
+
+    public void onTargetChanged() {
+        cancel();
+    }
+
+    public void onDeselected(TransitionReason reason) {
+        cancel();
     }
 
     /** 实际路线由根的actor所有权清理；短期失败记录跨正常意图切换保留 */
@@ -160,27 +173,5 @@ public final class EnhancedPickupController {
 
     public long rejectedRoutes() {
         return rejectedRoutes;
-    }
-
-    private static final class FailedApproach {
-
-        final net.minecraft.world.World world;
-        final double x, y, z;
-        final long retryAt;
-
-        FailedApproach(Entity entity, long retryAt) {
-            world = entity.worldObj;
-            x = entity.posX;
-            y = entity.posY;
-            z = entity.posZ;
-            this.retryAt = retryAt;
-        }
-
-        boolean expired(Entity entity, long now) {
-            return now >= retryAt || !entity.isEntityAlive()
-                || entity.worldObj != world
-                || world.getEntityByID(entity.getEntityId()) != entity
-                || entity.getDistanceSq(x, y, z) > RECONSIDER_DISTANCE_SQUARED;
-        }
     }
 }

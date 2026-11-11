@@ -1,35 +1,60 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.pathfinding.PathEntity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidInteractWithDoor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorProvider;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorRegistry;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorStage;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
+import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidExternalBehaviorSlot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidPlatformBehaviorContext;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidPlatformHandLease;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidSessionCallbackScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedMealController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidBehaviorExtensionData;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentArbiter;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Intent;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
-import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
-/** 首版保留活动的独立增强根；复用执行适配，不调用F或旧原型的决策入口 */
+/** 增强策略单活跃会话协调根；按固定五阶段收集类型化提案并隔离外部扩展模块 */
 public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedActions {
 
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final MaidModernPerception perception;
-    private final com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing;
+    private final MaidSensingSession sensing;
+    private final MaidPlatformHandLease handLeaseIssuer;
+    private final MaidSessionCallbackScope callbackScope = new MaidSessionCallbackScope();
     private final MaidIntentArbiter arbiter = new MaidIntentArbiter();
     private final EnhancedNavigationController navigation;
     private final EnhancedLifeController life;
     private final EnhancedCombatController combat;
+    private final EnhancedMealController meal;
     private final EnhancedPickupController pickup;
     private final EnhancedPanicController panic;
     private final EnhancedRideController ride;
@@ -40,22 +65,37 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
     private final EnhancedBuoyancyController buoyancy;
     private final EnhancedFollowController follow;
     private final EnhancedHomeController homeReturn;
+    private final List<MaidExternalBehaviorSlot> externalSlots;
+    private final Map<MaidBehaviorId, MaidExternalBehaviorSlot> externalById;
+    private final EnumMap<MaidBehaviorStage, List<MaidExternalBehaviorSlot>> externalByStage;
     private MaidInteractWithDoor doors = new MaidInteractWithDoor();
+    private MaidBehaviorId activeModuleId;
     private Kind selectedKind;
     private String selectedTarget;
+    private String selectedRawTarget;
+    private Group selectedGroup;
     private boolean ticking;
     private long decisions, transitions;
     private Entity observedMount;
     private boolean observedSitting;
-    private long nextMeal, lastCareTick = Long.MIN_VALUE;
     private final ModernFlightProfile flightProfile;
 
     public EnhancedCoreBrain(EntityMaid maid) {
-        this(maid, ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
+        this(maid, ModernFlightProfile.NATIVE_MOTION_COMPENSATION, null, MaidBehaviorRegistry.global());
     }
 
     public EnhancedCoreBrain(EntityMaid maid, ModernFlightProfile flightProfile) {
+        this(maid, flightProfile, null, MaidBehaviorRegistry.global());
+    }
+
+    public EnhancedCoreBrain(EntityMaid maid, ModernFlightProfile flightProfile, NBTTagCompound initialTlmnhExtension) {
+        this(maid, flightProfile, initialTlmnhExtension, MaidBehaviorRegistry.global());
+    }
+
+    public EnhancedCoreBrain(EntityMaid maid, ModernFlightProfile flightProfile, NBTTagCompound initialTlmnhExtension,
+        MaidBehaviorRegistry registry) {
         this.maid = Objects.requireNonNull(maid, "maid");
+        Objects.requireNonNull(registry, "registry");
         if (!supportsFlightProfile(flightProfile))
             throw new IllegalArgumentException("Unsupported enhanced flight profile");
         this.flightProfile = flightProfile;
@@ -63,28 +103,78 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         maid.getModernCombatMemory()
             .clear();
         actor = new ModernFollowCoreActor(maid, flightProfile);
-        sensing = new com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession(
-            maid.worldObj,
-            maid.getUniqueID(),
-            actor::isCurrent);
+        var identity = maid.getUniqueID();
+        sensing = new MaidSensingSession(maid.worldObj, identity, actor::isCurrent);
         perception = new MaidModernPerception(maid, actor::isCurrent, sensing::acquire);
         actor.bindPerception(perception);
         actor.bindSensing(sensing);
-        var budget = com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget.forWorld(maid.worldObj);
-        var identity = maid.getUniqueID();
+        handLeaseIssuer = new MaidPlatformHandLease(
+            maid,
+            actor,
+            () -> maid.getBrainCoordinator()
+                .peekPolicyRuntime(),
+            () -> !maid.getBrainCoordinator()
+                .isSuspended());
+        var budget = MaidWorldNavigationBudget.forWorld(maid.worldObj);
         navigation = new EnhancedNavigationController(actor, actor::requestEnhancedPath, () -> budget.cancel(identity));
         life = new EnhancedLifeController(maid, actor, sensing);
         combat = new EnhancedCombatController(maid, actor, perception);
+        meal = new EnhancedMealController(maid, actor, () -> selectedKind);
         pickup = new EnhancedPickupController(maid, actor, perception, navigation);
         panic = new EnhancedPanicController(maid, actor, perception);
         ride = new EnhancedRideController(maid, actor);
         follow = new EnhancedFollowController(maid, actor);
         homeReturn = new EnhancedHomeController(maid, actor);
-        breathing = new EnhancedBreathingController(maid, actor, navigation, follow);
+        breathing = new EnhancedBreathingController(maid, actor, sensing, navigation, follow::recoverForAir);
         climb = new EnhancedClimbController(actor);
         ambient = new EnhancedAmbientController(maid, actor, perception, sensing, navigation);
-        snowball = new EnhancedSnowballController(maid, actor, perception);
+        snowball = new EnhancedSnowballController(maid, actor, perception, handLeaseIssuer);
         buoyancy = new EnhancedBuoyancyController(maid, actor);
+
+        List<MaidBehaviorProvider> providers = registry.snapshotAndFreeze();
+        if (providers.isEmpty()) {
+            externalSlots = Collections.emptyList();
+            externalById = Collections.emptyMap();
+            externalByStage = new EnumMap<>(MaidBehaviorStage.class);
+        } else {
+            var slots = new ArrayList<MaidExternalBehaviorSlot>(providers.size());
+            var byId = new HashMap<MaidBehaviorId, MaidExternalBehaviorSlot>(providers.size());
+            var byStage = new EnumMap<MaidBehaviorStage, List<MaidExternalBehaviorSlot>>(MaidBehaviorStage.class);
+            for (var provider : providers) {
+                var slotRef = new MaidExternalBehaviorSlot[1];
+                var context = new MaidPlatformBehaviorContext(
+                    provider.id(),
+                    maid,
+                    actor,
+                    perception,
+                    navigation,
+                    combat,
+                    handLeaseIssuer,
+                    callbackScope,
+                    () -> slotRef[0] != null && slotRef[0].isHealthy(),
+                    failure -> {
+                        if (slotRef[0] != null) {
+                            slotRef[0].onAsyncCallbackFault("handLeaseKeepAlive", failure);
+                        }
+                    });
+                var slot = new MaidExternalBehaviorSlot(
+                    identity,
+                    maid.dimension,
+                    provider,
+                    callbackScope,
+                    context,
+                    context::releaseOwnedResources);
+                slotRef[0] = slot;
+                slots.add(slot);
+                byId.put(slot.id(), slot);
+                byStage.computeIfAbsent(slot.stage(), ignored -> new ArrayList<>())
+                    .add(slot);
+            }
+            externalSlots = Collections.unmodifiableList(slots);
+            externalById = Collections.unmodifiableMap(byId);
+            externalByStage = byStage;
+            loadPersistentBehaviorData(initialTlmnhExtension);
+        }
     }
 
     public static boolean supportsFlightProfile(ModernFlightProfile profile) {
@@ -102,6 +192,38 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             .flightProfile() == flightProfile;
     }
 
+    public void loadPersistentBehaviorData(NBTTagCompound tlmnhExtension) {
+        for (var slot : externalSlots) {
+            slot.loadPersistentData(tlmnhExtension);
+        }
+    }
+
+    @Override
+    public NBTTagCompound flushPersistentBehaviorData(NBTTagCompound baseTlmnhExtension) {
+        if (externalSlots.isEmpty()) {
+            return baseTlmnhExtension == null ? new NBTTagCompound() : (NBTTagCompound) baseTlmnhExtension.copy();
+        }
+        return MaidBehaviorExtensionData.flush(baseTlmnhExtension, externalSlots);
+    }
+
+    @Override
+    public void onAcceptedHurt() {
+        actor.wakeOwnedSleepOnHurt();
+    }
+
+    @Override
+    public PathEntity peekActivePath() {
+        return actor.peekOwnedPath();
+    }
+
+    @Override
+    public boolean refreshModernBrain(MaidPolicyRuntime runtime, Token token) {
+        if (runtime == null || !runtime.getProfile()
+            .isEnhanced()) return false;
+        runtime.invalidate(MaidPolicyRuntime.InvalidationReason.RESET);
+        return true;
+    }
+
     @Override
     public void tick(Token token) {
         if (ticking) throw new IllegalStateException("Reentrant enhanced core decision");
@@ -111,7 +233,8 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                 .peekPolicyRuntime();
             actor.beginFrame(runtime, token);
             if (observedMount != maid.ridingEntity || observedSitting != maid.isSitting()) {
-                stopSelected();
+                stopAllActiveSessions(TransitionReason.POSTURE_CHANGED, runtime, token);
+                if (!isSessionLive(runtime, token)) return;
                 actor.beginEntityFrame(runtime, token);
                 observedMount = maid.ridingEntity;
                 observedSitting = maid.isSitting();
@@ -124,81 +247,65 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             if (home.enabled() && !home.sameDimension()
                 || maid.getTask() != MaidTask.IDLE && maid.getTask() != MaidTask.ATTACK
                     && maid.getTask() != MaidTask.RANGED_ATTACK) {
-                stopSelected();
+                stopAllActiveSessions(TransitionReason.POSTURE_CHANGED, runtime, token);
                 return;
             }
             var frame = new MaidIntentFrame(runtime.getContext(), token, actor.worldGameTime());
             boolean danger = panic.offer(frame);
             boolean stationary = EnhancedRideController.stationary(maid);
-            boolean lowAir = actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
+            boolean lowAir = breathing.lowAir();
             if (!actor.canBrainMoving() && !sleeping && !danger && !lowAir && (!stationary || maid.getLeashed())) {
-                stopSelected();
+                stopAllActiveSessions(TransitionReason.POSTURE_CHANGED, runtime, token);
                 return;
             }
-            breathing.stopIfRecovered();
-            if (lowAir || actor.isGoingToBreath() || actor.isEatBreatheItem())
-                frame.offer(Group.EMERGENCY, Kind.BREATHE, "air", 1, null);
-            boolean vehicle = ride.offerVehicle(frame);
-            ride.offerStationary(frame);
-            if (!stationary && !vehicle && home.enabled() && !home.containsMaid()) {
-                var center = home.center();
-                frame.offer(
-                    Group.COMMAND,
-                    Kind.HOME,
-                    "home:" + home.settings().dimension + ":" + center,
-                    1,
-                    new com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point(
-                        center.x,
-                        center.y,
-                        center.z));
-            }
-            var owner = actor.getOwner();
-            if (!stationary && !vehicle
-                && !home.enabled()
-                && owner != null
-                && !owner.isSpectator()
-                && !owner.isDeadOrDying()
-                && owner.getWorldIdentity() == actor.getWorldIdentity()) {
-                double start = selectedKind == Kind.FOLLOW ? 2 : 6;
-                if (!actor.closerThan(owner, start)) frame.offer(Group.COMMAND, Kind.FOLLOW, "owner", 1, owner);
-            }
-            boolean eating = maid.getMealController()
-                .isEating();
-            long now = actor.worldGameTime();
-            if (now < lastCareTick) nextMeal = 0;
-            lastCareTick = now;
+            breathing.offer(frame, lowAir);
+            if (!offerExternalStage(MaidBehaviorStage.SURVIVAL_AND_DANGER, frame, runtime, token)) return;
+
+            boolean vehicle = ride.offer(frame);
+            homeReturn.offer(frame, vehicle);
+            follow.offer(frame, vehicle, selectedKind);
+            if (!offerExternalStage(MaidBehaviorStage.COMMAND_AND_POSTURE, frame, runtime, token)) return;
+
             combat.offer(frame);
-            // 新受击仍立即还手；伤害窗口结束后，持续战斗不能永久阻止自疗
-            boolean reactingToHit = maid.hurtTime > 0 && (frame.kindMask()
-                & ((1 << Kind.MELEE.ordinal()) | (1 << Kind.RANGED.ordinal()) | (1 << Kind.COMBAT.ordinal()))) != 0;
-            if (maid.isTamed() && !actor.isSleeping()
-                && !reactingToHit
-                && (eating && selectedKind != Kind.MEAL || actor.missingHealth() >= 2 && hasFood(true)))
-                frame.offer(
-                    Group.RECOVERY,
-                    Kind.HEAL,
-                    "meal",
-                    Math.min(1, actor.missingHealth() / maid.getMaxHealth()),
-                    null);
-            else if (maid.isTamed() && (eating && selectedKind == Kind.MEAL || !eating && now >= nextMeal
-                && home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
-                && actor.canAddWorkMeal()
-                && maid.getItemUseState()
-                    .peek() == null
-                && hasFood(false))) frame.offer(Group.CARE, Kind.MEAL, "workmeal", .1, null);
+            meal.offer(frame);
+            if (!offerExternalStage(MaidBehaviorStage.COMBAT_AND_RECOVERY, frame, runtime, token)) return;
+
             life.offer(frame, runtime.getContext());
             pickup.offer(frame);
+            if (!offerExternalStage(MaidBehaviorStage.CARE_AND_AUTONOMOUS, frame, runtime, token)) return;
+
             boolean foodRequest = ambient.offerBeg(frame);
             if (!foodRequest) snowball.offer(frame);
             ambient.offer(frame);
+            if (!offerExternalStage(MaidBehaviorStage.AMBIENT_IDLE, frame, runtime, token)) return;
+
             var selected = arbiter.choose(frame);
+            MaidBehaviorId nextModuleId = selected == null ? null : selected.moduleId();
             Kind nextKind = selected == null ? null : selected.kind;
             String nextTarget = selected == null ? null : selected.target;
-            if (nextKind != selectedKind || !java.util.Objects.equals(nextTarget, selectedTarget)) {
-                stopSelected(true);
+            String nextRawTarget = selected == null ? null : selected.rawTarget();
+            Group nextGroup = selected == null ? null : selected.group;
+            if (!Objects.equals(nextModuleId, activeModuleId) || nextKind != selectedKind
+                || !Objects.equals(nextTarget, selectedTarget)) {
+                if (activeModuleId != null) {
+                    if (Objects.equals(nextModuleId, activeModuleId) && nextKind == selectedKind) {
+                        notifyTargetChanged(activeModuleId, selectedRawTarget, nextRawTarget, runtime, token);
+                    } else {
+                        TransitionReason reason = resolveDeselectReason(activeModuleId, frame, selected);
+                        deselectModule(activeModuleId, reason, runtime, token);
+                    }
+                }
+                resetSharedLocomotion(false);
+                if (!isSessionLive(runtime, token)) {
+                    clearSelectedSession();
+                    return;
+                }
                 actor.beginEntityFrame(runtime, token);
+                activeModuleId = nextModuleId;
                 selectedKind = nextKind;
                 selectedTarget = nextTarget;
+                selectedRawTarget = nextRawTarget;
+                selectedGroup = nextGroup;
                 transitions++;
             }
             if (selected == null) {
@@ -206,40 +313,20 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                 return;
             }
             if (!frame.accepts(selected)) return;
-            switch (selected.kind) {
-                case BREATHE -> breathing.execute();
-                case FOLLOW -> follow
-                    .execute((com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner) selected.payload);
-                case HOME -> homeReturn
-                    .execute((com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point) selected.payload);
-                case SLEEP, SNACK -> life.execute(
-                    (com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent) selected.payload,
-                    runtime.getContext());
-                case MELEE, RANGED -> combat
-                    .execute((net.minecraft.entity.EntityLivingBase) selected.payload, selected.kind == Kind.RANGED);
-                case COMBAT -> combat.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
-                case PANIC -> panic.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
-                case VEHICLE -> ride.executeVehicle(
-                    (com.tianluoqaq.tlmnh.common.ai.faithful.MaidVehicleActor.Vehicle) selected.payload);
-                case RIDE -> ride.look();
-                case MEAL -> {
-                    if (!maid.getMealController()
-                        .isEating()) {
-                        actor.eatMeal(false);
-                        nextMeal = actor.worldGameTime() + 50;
+            selected.execute();
+            if (!isSessionLive(runtime, token)) return;
+            if (activeModuleId != null) {
+                var extSlot = externalById.get(activeModuleId);
+                if (extSlot != null && extSlot.isFaulted()) {
+                    resetSharedLocomotion(false);
+                    clearSelectedSession();
+                    if (isSessionLive(runtime, token)) {
+                        actor.beginEntityFrame(runtime, token);
+                        buoyancy.tick();
                     }
+                    return;
                 }
-                case HEAL -> {
-                    // 活跃进食不重复调用开始效果，紧急组仍可取消当前物品租约
-                    if (!maid.getMealController()
-                        .isEating()) actor.eatMeal(true);
-                }
-                case PICKUP -> pickup.execute((Entity) selected.payload);
-                case BEG, OBSERVE, WANDER -> ambient.execute(selected);
-                case SNOWBALL -> snowball.execute((net.minecraft.entity.EntityLivingBase) selected.payload);
-                default -> throw new IllegalStateException("Unsupported enhanced core intent");
             }
-            if (!actor.isCurrent()) return;
             if (EnhancedRideController.stationary(maid)) {
                 actor.eraseWalkTarget();
                 if (selected.kind == Kind.HEAL || selected.kind == Kind.MEAL) ride.look();
@@ -250,59 +337,147 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             if (actor.isCurrent()) doors.trigger(actor);
             if (actor.isCurrent()) buoyancy.tick();
         } finally {
+            callbackScope.invalidateAll();
             ticking = false;
         }
     }
 
-    private boolean hasFood(boolean healing) {
-        var inventory = maid.getMaidInventory();
-        for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
-            var stack = inventory.getStackInSlot(slot);
-            if (stack != null && !MaidMealConfig.blocked(stack, healing) && MaidFoodProfile.inspect(stack) != null)
-                return true;
+    private boolean offerExternalStage(MaidBehaviorStage stage, MaidIntentFrame frame, MaidPolicyRuntime runtime,
+        Token token) {
+        var stageSlots = externalByStage.get(stage);
+        if (stageSlots == null || stageSlots.isEmpty()) return true;
+        BooleanSupplier liveGuard = () -> isSessionLive(runtime, token) && frame.isCurrent();
+        for (var slot : stageSlots) {
+            slot.offer(frame, liveGuard);
+            if (!isSessionLive(runtime, token) || !frame.isCurrent()) return false;
         }
-        return false;
+        return true;
     }
 
-    private void stopSelected() {
-        stopSelected(false);
+    private TransitionReason resolveDeselectReason(MaidBehaviorId outgoingId, MaidIntentFrame frame, Intent selected) {
+        var extSlot = externalById.get(outgoingId);
+        if (extSlot != null && extSlot.isFaulted()) return TransitionReason.MODULE_FAULTED;
+        if (selected != null && frame.hasModuleOffer(outgoingId)) return TransitionReason.PREEMPTED;
+        if (selected != null && selectedGroup != null && selected.group.compareTo(selectedGroup) < 0)
+            return TransitionReason.PREEMPTED;
+        return TransitionReason.COMPLETED_OR_IDLE;
     }
 
-    private void stopSelected(boolean preserveObservation) {
-        selectedKind = null;
-        selectedTarget = null;
+    private void notifyTargetChanged(MaidBehaviorId moduleId, String prevTarget, String nextTarget,
+        MaidPolicyRuntime runtime, Token token) {
+        if (EnhancedCombatController.ID.equals(moduleId)) {
+            combat.onTargetChanged();
+        } else if (EnhancedLifeController.ID.equals(moduleId)) {
+            life.onTargetChanged();
+        } else if (EnhancedPickupController.ID.equals(moduleId)) {
+            pickup.onTargetChanged();
+        } else if (EnhancedSnowballController.ID.equals(moduleId)) {
+            snowball.onTargetChanged();
+        } else if (EnhancedAmbientController.ID.equals(moduleId)) {
+            ambient.onTargetChanged();
+        } else {
+            var extSlot = externalById.get(moduleId);
+            if (extSlot != null) {
+                extSlot.onTargetChanged(prevTarget, nextTarget, () -> isSessionLive(runtime, token));
+            }
+        }
+    }
+
+    private void deselectModule(MaidBehaviorId moduleId, TransitionReason reason, MaidPolicyRuntime runtime,
+        Token token) {
+        if (EnhancedBreathingController.ID.equals(moduleId)) {
+            breathing.onDeselected(reason);
+        } else if (EnhancedPanicController.ID.equals(moduleId)) {
+            panic.onDeselected(reason);
+        } else if (EnhancedCombatController.ID.equals(moduleId)) {
+            combat.onDeselected(reason);
+        } else if (EnhancedLifeController.ID.equals(moduleId)) {
+            life.onDeselected(reason);
+        } else if (EnhancedPickupController.ID.equals(moduleId)) {
+            pickup.onDeselected(reason);
+        } else if (EnhancedSnowballController.ID.equals(moduleId)) {
+            snowball.onDeselected(reason);
+        } else if (EnhancedAmbientController.ID.equals(moduleId)) {
+            ambient.onDeselected(reason);
+        } else {
+            var extSlot = externalById.get(moduleId);
+            if (extSlot != null) {
+                BooleanSupplier liveGuard = runtime != null && token != null ? () -> isSessionLive(runtime, token)
+                    : () -> false;
+                extSlot.onDeselected(reason, liveGuard);
+            }
+        }
+    }
+
+    private void stopAllActiveSessions(TransitionReason reason, MaidPolicyRuntime runtime, Token token) {
+        var previousModule = activeModuleId;
+        clearSelectedSession();
+        if (previousModule != null && runtime != null && token != null) {
+            deselectModule(previousModule, reason, runtime, token);
+        }
         panic.cancel();
         ambient.cancel();
         snowball.cancel();
         pickup.cancel();
         breathing.cancel();
-        sensing.cancel(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
-        climb.cancel();
-        doors = new MaidInteractWithDoor();
-        navigation.cancel();
+        meal.cancel();
+        sensing.cancel(MaidSensingBudget.Kind.AIR);
         try {
             try {
                 life.cancel();
             } finally {
-                combat.cancel(
-                    preserveObservation && maid.isUnifiedCombat()
-                        && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK);
+                combat.cancel();
             }
         } finally {
-            actor.cancelOwnedResources(!preserveObservation);
+            resetSharedLocomotion(true);
         }
+    }
+
+    private void resetSharedLocomotion(boolean clearCombatObservation) {
+        climb.cancel();
+        doors = new MaidInteractWithDoor();
+        navigation.cancel();
+        actor.cancelOwnedResources(clearCombatObservation);
+    }
+
+    private void clearSelectedSession() {
+        activeModuleId = null;
+        selectedKind = null;
+        selectedTarget = null;
+        selectedRawTarget = null;
+        selectedGroup = null;
+    }
+
+    private boolean isSessionLive(MaidPolicyRuntime runtime, Token token) {
+        return runtime != null && token != null
+            && maid.getBrainCoordinator()
+                .peekPolicyRuntime() == runtime
+            && runtime.isReady()
+            && runtime.getContext()
+                .isCurrent(token)
+            && !maid.getBrainCoordinator()
+                .isSuspended()
+            && maid.isEntityAlive()
+            && !maid.isDead;
     }
 
     @Override
     public void cancel() {
+        callbackScope.invalidateAll();
         try {
-            stopSelected();
+            stopAllActiveSessions(TransitionReason.BRAIN_INVALIDATED, null, null);
         } finally {
             try {
-                arbiter.clear();
-                perception.clear();
+                for (var slot : externalSlots) {
+                    slot.cancel();
+                }
             } finally {
-                sensing.cancelAll();
+                try {
+                    arbiter.clear();
+                    perception.clear();
+                } finally {
+                    sensing.cancelAll();
+                }
             }
         }
     }
@@ -311,6 +486,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
     public void afterLivingUpdate(Token token) {
         // 仅沿用本tick仍有效的actor相位，不能复活已取消动作
         if (actor.isCurrent()) actor.afterLivingFrame(token);
+    }
+
+    public MaidBehaviorId activeModuleId() {
+        return activeModuleId;
     }
 
     public Kind selectedKind() {
@@ -327,6 +506,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
 
     public EnhancedCombatController combat() {
         return combat;
+    }
+
+    public EnhancedMealController meal() {
+        return meal;
     }
 
     public EnhancedPickupController pickup() {
@@ -377,7 +560,7 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         return perception;
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing() {
+    public MaidSensingSession sensing() {
         return sensing;
     }
 }

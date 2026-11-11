@@ -77,6 +77,21 @@ public final class MaidPolicyRuntime {
 
         default void afterLivingUpdate(MaidPolicyContext.Token token) {}
 
+        default void onAcceptedHurt() {}
+
+        default net.minecraft.pathfinding.PathEntity peekActivePath() {
+            return null;
+        }
+
+        default boolean refreshModernBrain(MaidPolicyRuntime runtime, MaidPolicyContext.Token token) {
+            return false;
+        }
+
+        default net.minecraft.nbt.NBTTagCompound flushPersistentBehaviorData(
+            net.minecraft.nbt.NBTTagCompound baseTlmnhExtension) {
+            return baseTlmnhExtension == null ? null : (net.minecraft.nbt.NBTTagCompound) baseTlmnhExtension.copy();
+        }
+
         /** 旧 token 已先失效；清理只依据本动作实际持有的资源身份 */
         void cancel();
     }

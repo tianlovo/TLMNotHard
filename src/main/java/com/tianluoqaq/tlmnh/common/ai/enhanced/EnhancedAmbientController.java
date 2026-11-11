@@ -7,6 +7,8 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -22,6 +24,7 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 无其他活动时才选择短程闲逛或观察；请求食物只表现意图，不取走主人手中物品 */
 public final class EnhancedAmbientController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("ambient");
     private static final int CHOICE_INTERVAL = 20, LOOK_TICKS = 40, WALK_TICKS = 100;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
@@ -50,7 +53,7 @@ public final class EnhancedAmbientController {
             nextChoice = 0;
         }
         lastTick = now;
-        if (frame.kindMask() != 0 || !permitted()) {
+        if (frame.hasOffers() || !permitted()) {
             sensing.cancel(MaidSensingBudget.Kind.AMBIENT);
             return;
         }
@@ -77,13 +80,7 @@ public final class EnhancedAmbientController {
         // 可见对象存在时轮换观察和闲逛，避免随机抽样长期遗漏一种表现
         if (target != null && preferLook) {
             preferLook = false;
-            frame.offer(
-                Group.AMBIENT,
-                Kind.OBSERVE,
-                target.getUniqueID()
-                    .toString(),
-                .3,
-                target);
+            offerObserve(frame, target);
             return;
         }
         samples++;
@@ -99,35 +96,44 @@ public final class EnhancedAmbientController {
                 return;
             }
         }
-        if (target != null) frame.offer(
+        if (target != null) offerObserve(frame, target);
+    }
+
+    private void offerPlan(MaidIntentFrame frame) {
+        if (watching != null) offerObserve(frame, watching);
+        else offerWalk(frame, destination);
+    }
+
+    public boolean offerBeg(MaidIntentFrame frame) {
+        if (frame.hasOffers()) return false;
+        boolean wanted = temptingOwner() != null;
+        if (wanted && permitted()) {
+            frame.offerTyped(ID, Group.AMBIENT, Kind.BEG, "owner", 1, null, ignored -> executeBeg());
+        }
+        return wanted;
+    }
+
+    private void offerObserve(MaidIntentFrame frame, EntityLivingBase target) {
+        frame.offerTyped(
+            ID,
             Group.AMBIENT,
             Kind.OBSERVE,
             target.getUniqueID()
                 .toString(),
             .3,
-            target);
-    }
-
-    private void offerPlan(MaidIntentFrame frame) {
-        if (watching != null) frame.offer(
-            Group.AMBIENT,
-            Kind.OBSERVE,
-            watching.getUniqueID()
-                .toString(),
-            .3,
-            watching);
-        else offerWalk(frame, destination);
-    }
-
-    public boolean offerBeg(MaidIntentFrame frame) {
-        if (frame.kindMask() != 0) return false;
-        boolean wanted = temptingOwner() != null;
-        if (wanted && permitted()) frame.offer(Group.AMBIENT, Kind.BEG, "owner", 1, null);
-        return wanted;
+            target,
+            this::executeObserve);
     }
 
     private void offerWalk(MaidIntentFrame frame, Point point) {
-        frame.offer(Group.AMBIENT, Kind.WANDER, point.x + ":" + point.y + ":" + point.z, .1, point);
+        frame.offerTyped(
+            ID,
+            Group.AMBIENT,
+            Kind.WANDER,
+            point.x + ":" + point.y + ":" + point.z,
+            .1,
+            point,
+            this::executeWander);
     }
 
     private boolean permitted() {
@@ -178,39 +184,43 @@ public final class EnhancedAmbientController {
         return actor.isEnhancedLandDestination(point);
     }
 
-    public void execute(Intent intent) {
+    public void executeBeg() {
         if (!permitted()) return;
+        var owner = temptingOwner();
+        if (owner == null) return;
+        actor.setBegging(true);
+        if (!actor.closerThan(owner, 2)) actor.setWalkAndLookTargetMemories(owner, .6F, 2);
+        else {
+            actor.eraseWalkTarget();
+            actor.lookAtOwner(owner);
+        }
+    }
+
+    public void executeObserve(EntityLivingBase target) {
+        if (!permitted() || !legalLook(target)) return;
+        if (watching != target) {
+            watching = target;
+            until = actor.worldGameTime() + LOOK_TICKS;
+            lookStarts++;
+        }
+        actor.lookAtAmbientEntity(target);
+    }
+
+    public void executeWander(Point point) {
+        if (!permitted() || !legalWalk(point)) return;
+        if (!point.equals(destination)) {
+            destination = point;
+            until = actor.worldGameTime() + WALK_TICKS;
+            walkStarts++;
+        }
+        actor.setPositionWalkAndLook(point, .3F, 0);
+    }
+
+    public void execute(Intent intent) {
         switch (intent.kind) {
-            case BEG -> {
-                var owner = temptingOwner();
-                if (owner == null) return;
-                actor.setBegging(true);
-                if (!actor.closerThan(owner, 2)) actor.setWalkAndLookTargetMemories(owner, .6F, 2);
-                else {
-                    actor.eraseWalkTarget();
-                    actor.lookAtOwner(owner);
-                }
-            }
-            case OBSERVE -> {
-                var target = (EntityLivingBase) intent.payload;
-                if (!legalLook(target)) return;
-                if (watching != target) {
-                    watching = target;
-                    until = actor.worldGameTime() + LOOK_TICKS;
-                    lookStarts++;
-                }
-                actor.lookAtAmbientEntity(target);
-            }
-            case WANDER -> {
-                var point = (Point) intent.payload;
-                if (!legalWalk(point)) return;
-                if (!point.equals(destination)) {
-                    destination = point;
-                    until = actor.worldGameTime() + WALK_TICKS;
-                    walkStarts++;
-                }
-                actor.setPositionWalkAndLook(point, .3F, 0);
-            }
+            case BEG -> executeBeg();
+            case OBSERVE -> executeObserve((EntityLivingBase) intent.payload);
+            case WANDER -> executeWander((Point) intent.payload);
             default -> throw new IllegalArgumentException("Ambient intent required");
         }
     }
@@ -219,6 +229,14 @@ public final class EnhancedAmbientController {
         destination = null;
         watching = null;
         until = 0;
+    }
+
+    public void onTargetChanged() {
+        clearPlan();
+    }
+
+    public void onDeselected(TransitionReason reason) {
+        cancel();
     }
 
     /** 无token时只释放本实例计划和排队身份；实际LOOK/PATH/姿态由actor所有者清理 */

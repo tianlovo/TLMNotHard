@@ -1,12 +1,17 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 
 /** 增强返家自行选择步行或有限恢复，不调用原型runner或F日程任务 */
 public final class EnhancedHomeController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("home_return");
     private static final int RECOVERY_RETRY_TICKS = 40;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
@@ -15,6 +20,22 @@ public final class EnhancedHomeController {
     public EnhancedHomeController(EntityMaid maid, ModernFollowCoreActor actor) {
         this.maid = maid;
         this.actor = actor;
+    }
+
+    public void offer(MaidIntentFrame frame, boolean vehicleOffered) {
+        var home = maid.getHomeArea();
+        if (!EnhancedRideController.stationary(maid) && !vehicleOffered && home.enabled() && !home.containsMaid()) {
+            var center = home.center();
+            var target = new Point(center.x, center.y, center.z);
+            frame.offerTyped(
+                ID,
+                Group.COMMAND,
+                Kind.HOME,
+                "home:" + home.settings().dimension + ":" + center,
+                1,
+                target,
+                this::execute);
+        }
     }
 
     private boolean eligible(Point target) {

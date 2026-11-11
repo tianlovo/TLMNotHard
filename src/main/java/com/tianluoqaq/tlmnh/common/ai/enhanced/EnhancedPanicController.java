@@ -5,6 +5,8 @@ import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -17,6 +19,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 /** 增强安全决策独立消费真实伤害/可见威胁，受伤事实本身不提供逃离坐标 */
 public final class EnhancedPanicController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("panic");
     private static final int MAX_CANDIDATES = 64, RETRY_TICKS = 20;
     private static final double DANGER_DISTANCE_SQUARED = 64;
     private final EntityMaid maid;
@@ -43,7 +46,7 @@ public final class EnhancedPanicController {
                 nearest = candidate;
         }
         if (nearest == null && maid.getMaidLastDamageSource() == null) return false;
-        frame.offer(Group.DANGER, Kind.PANIC, "panic", 1, nearest);
+        frame.offerTyped(ID, Group.DANGER, Kind.PANIC, "panic", 1, nearest, this::execute);
         return true;
     }
 
@@ -115,6 +118,10 @@ public final class EnhancedPanicController {
                 .withinRestriction(point.x, point.y, point.z)
             && actor.isEnhancedLandDestination(point)
             && threat.getDistanceSq(point.x + .5, point.y, point.z + .5) > maid.getDistanceSqToEntity(threat);
+    }
+
+    public void onDeselected(TransitionReason reason) {
+        cancel();
     }
 
     public void cancel() {

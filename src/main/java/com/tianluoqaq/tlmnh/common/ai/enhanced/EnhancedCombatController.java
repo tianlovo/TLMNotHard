@@ -1,15 +1,15 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
@@ -18,6 +18,8 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidModernPerception;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
@@ -34,18 +36,19 @@ import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 /** 一个战斗会话内部切武器与动作，实体级节拍和已接受命中不随取消重建 */
 public final class EnhancedCombatController {
 
-    private static final int REPLAN_TICKS = 4, FAILED_APPROACH_TICKS = 200, RETRY_TICKS = 100;
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("unified_combat");
+    private static final int REPLAN_TICKS = 4, FAILED_APPROACH_TICKS = 200, RETRY_TICKS = 100, MAX_FAILED_TARGETS = 32;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
     private final CombatPlanner planner = new CombatPlanner();
-    private final Map<UUID, Failure> failures = new LinkedHashMap<>();
+    private final MaidTargetCooldowns<UUID> failures = MaidTargetCooldowns.forUuidFifo(MAX_FAILED_TARGETS);
     private EntityLivingBase ownedTarget;
     private Point lastSeen;
     private CombatWorkQuota quota;
     private CombatPlan lastPlan;
     private CombatSnapshot lastSnapshot;
     private CombatPlan.Result lastResult;
-    private long lastFullAt = Long.MIN_VALUE, lastOfferAt = Long.MIN_VALUE, attacks, releases, abandonedTargets;
+    private long lastFullAt = Long.MIN_VALUE, attacks, releases, abandonedTargets;
     private long fullDecisions, lightDecisions, staleDecisions;
     private long bodyServices;
     private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status lastServiceResult = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status.NOT_GRANTED;
@@ -67,11 +70,9 @@ public final class EnhancedCombatController {
             return;
         }
         long now = actor.worldGameTime();
-        if (now < lastOfferAt) {
-            failures.clear();
+        if (failures.advanceTick(now)) {
             lastFullAt = Long.MIN_VALUE;
         }
-        lastOfferAt = now;
         CombatObservation observation = actor.combatObservation();
         boolean due = lastFullAt == Long.MIN_VALUE || now - lastFullAt >= REPLAN_TICKS;
         if (observation.readiness() != null && observation.readiness().tick == now) reportPreparation(observation, now);
@@ -85,18 +86,14 @@ public final class EnhancedCombatController {
         reportPreparation(observation, now);
         if (due && bodyServicePrepared(observation))
             quota = CombatWorldBudget.heartbeat(maid.worldObj, maid.getUniqueID(), now, true);
-        failures.entrySet()
-            .removeIf(
-                entry -> entry.getValue()
-                    .expired(observation.lastSeen(entry.getKey()), now));
+        failures.purgeExpired(now, (id, entry) -> {
+            Vec seen = observation.lastSeen(id);
+            return seen == null || Math.sqrt(entry.distanceSq(seen.x, seen.y, seen.z)) > 2;
+        });
         if (ownedTarget != null && approachFailed(now)) {
             Vec position = observation.lastSeen(ownedTarget.getUniqueID());
             if (position != null) {
-                if (failures.size() >= 32) failures.remove(
-                    failures.keySet()
-                        .iterator()
-                        .next());
-                failures.put(ownedTarget.getUniqueID(), new Failure(position, now + RETRY_TICKS));
+                failures.record(ownedTarget.getUniqueID(), now + RETRY_TICKS, position.x, position.y, position.z, null);
                 abandonedTargets++;
             }
         }
@@ -108,7 +105,7 @@ public final class EnhancedCombatController {
         List<OfferCandidate> candidates = new ArrayList<>();
         for (EntityLivingBase target : observation.targets()) {
             UUID id = target.getUniqueID();
-            if (!knownTarget(target) || failures.containsKey(id)) continue;
+            if (!knownTarget(target) || failures.contains(id)) continue;
             Vec seen = observation.lastSeen(id);
             if (seen == null) continue;
             boolean ownerHurt = owner != null && target == owner.getAITarget();
@@ -145,7 +142,14 @@ public final class EnhancedCombatController {
                 current.maidHurt,
                 current.target == ownedTarget,
                 current.friendEngaged && uncontestedAlternative);
-            frame.offer(Group.COMBAT, Kind.COMBAT, current.id.toString(), utility, current.target);
+            frame.offerTyped(
+                ID,
+                Group.COMBAT,
+                Kind.COMBAT,
+                current.id.toString(),
+                utility,
+                current.target,
+                this::execute);
         }
     }
 
@@ -180,7 +184,7 @@ public final class EnhancedCombatController {
 
     private boolean hasServiceTarget(CombatObservation observation) {
         for (EntityLivingBase target : observation.targets())
-            if (knownTarget(target) && !failures.containsKey(target.getUniqueID())) return true;
+            if (knownTarget(target) && !failures.contains(target.getUniqueID())) return true;
         return false;
     }
 
@@ -199,13 +203,7 @@ public final class EnhancedCombatController {
             || maid.getHomeArea()
                 .activity() != Activity.WORK)
             return false;
-        var home = maid.getHomeArea();
-        if (home.enabled()) return home.sameDimension() && home.containsMaid();
-        var owner = actor.getOwner();
-        return owner != null && !owner.isDeadOrDying()
-            && !owner.isSpectator()
-            && owner.getWorldIdentity() == actor.getWorldIdentity()
-            && actor.closerThan(owner, 16);
+        return MaidDomainGuard.isMaidWithinDomain(maid, actor, MaidDomainGuard.DEFAULT_OWNER_DOMAIN_RADIUS);
     }
 
     /** 身份与存活可重验；隐藏目标的活动边界只用最后可见位置 */
@@ -311,13 +309,26 @@ public final class EnhancedCombatController {
             planner.finishAttack(lastPlan, new Vec(maid.posX, maid.boundingBox.minY, maid.posZ), now);
     }
 
-    /** 原Enhanced根调用形状保留，模式现在由会话选定武器决定 */
-    public void execute(EntityLivingBase selected, boolean ignoredBowMode) {
-        execute(selected);
+    public void onTargetChanged() {
+        cancel(true);
+    }
+
+    public void onDeselected(TransitionReason reason) {
+        boolean preserveObservation = reason != TransitionReason.BRAIN_INVALIDATED && maid.isUnifiedCombat()
+            && maid.getTask() == MaidTask.ATTACK;
+        cancel(preserveObservation);
+        if (!preserveObservation && actor.isCurrent()) {
+            actor.combatObservation()
+                .clear();
+        }
     }
 
     public void cancel() {
         cancel(false);
+        if (actor.isCurrent()) {
+            actor.combatObservation()
+                .clear();
+        }
     }
 
     public void cancel(boolean preserveRequest) {
@@ -426,21 +437,6 @@ public final class EnhancedCombatController {
             this.unproductive = unproductive;
             this.friendEngaged = friendEngaged;
             this.progressable = progressable;
-        }
-    }
-
-    private static final class Failure {
-
-        final Vec position;
-        final long retryAt;
-
-        Failure(Vec position, long retryAt) {
-            this.position = position;
-            this.retryAt = retryAt;
-        }
-
-        boolean expired(Vec seen, long now) {
-            return now >= retryAt || seen == null || seen.distance(position) > 2;
         }
     }
 }

@@ -1,14 +1,16 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.block.BlockBed;
 import net.minecraft.tileentity.TileEntity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidDomainGuard;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
@@ -27,6 +29,7 @@ import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 /** 增强策略只读候选与实际生活动作；动作共享平台物品提交，不借用旧root */
 public final class EnhancedLifeController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("life_care");
     private static final int SCAN_INTERVAL = 20, MAX_BED_APPROACH_TICKS = 200, MAX_SNACK_APPROACH_TICKS = 160,
         CANDIDATE_RETRY_TICKS = 100, MAX_FAILED_CANDIDATES = 32;
     private final EntityMaid maid;
@@ -36,8 +39,9 @@ public final class EnhancedLifeController {
     private List<MaidLifeCandidate> observations = Collections.emptyList();
     private MaidPolicyContext.Token observedToken;
     private boolean observedRest;
-    private long nextScan, nextSnack, approachStartedAt, lastOfferTick = Long.MIN_VALUE, abandonedCandidates;
-    private final Map<TileEntity, Long> failedCandidates = new IdentityHashMap<>();
+    private long nextScan, nextSnack, approachStartedAt, abandonedCandidates;
+    private final MaidTargetCooldowns<TileEntity> failedCandidates = MaidTargetCooldowns
+        .forIdentityClearOnFull(MAX_FAILED_CANDIDATES);
     private TileEntity approachedCandidate;
     private TileEntityMaidBed reservedBed;
     private int bites, placements, sleepEntries;
@@ -56,24 +60,16 @@ public final class EnhancedLifeController {
             return;
         }
         long now = maid.worldObj.getTotalWorldTime();
-        if (now < lastOfferTick) {
-            failedCandidates.clear();
+        if (failedCandidates.advanceTick(now)) {
             nextScan = nextSnack = 0;
             approachStartedAt = now;
         }
-        lastOfferTick = now;
-        failedCandidates.entrySet()
-            .removeIf(
-                entry -> now >= entry.getValue() || entry.getKey()
-                    .isInvalid()
-                    || entry.getKey()
-                        .getWorldObj() != maid.worldObj);
+        failedCandidates.purgeExpired(now, (tile, entry) -> tile.isInvalid() || tile.getWorldObj() != maid.worldObj);
         boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
         int approachLimit = approachedCandidate instanceof TileEntityMaidBed ? MAX_BED_APPROACH_TICKS
             : MAX_SNACK_APPROACH_TICKS;
         if (approachedCandidate != null && !actor.isSleeping() && now - approachStartedAt > approachLimit) {
-            if (failedCandidates.size() >= MAX_FAILED_CANDIDATES) failedCandidates.clear();
-            failedCandidates.put(approachedCandidate, now + CANDIDATE_RETRY_TICKS);
+            failedCandidates.record(approachedCandidate, now + CANDIDATE_RETRY_TICKS);
             abandonedCandidates++;
             cancel();
         }
@@ -90,7 +86,7 @@ public final class EnhancedLifeController {
         }
         if (reservedBed != null && rest && legalBed(reservedBed)) {
             sensing.cancel(MaidSensingBudget.Kind.LIFE);
-            offer(frame, observation(reservedBed, context), Action.BED);
+            offer(frame, observation(reservedBed, context), Action.BED, context);
             return;
         }
         if (now >= nextScan && sensing.acquire(MaidSensingBudget.Kind.LIFE)) {
@@ -101,31 +97,34 @@ public final class EnhancedLifeController {
         // 接近中的合法柜保留到完成或本次期限，失败候选冷却过期不会抢走正在走的路线
         if (!rest && approachedCandidate != null) for (var observation : observations) {
             var tile = sensor.resolve(observation, context);
-            if (tile == approachedCandidate && !failedCandidates.containsKey(tile)
-                && offerSnack(frame, observation, tile)) return;
+            if (tile == approachedCandidate && !failedCandidates.contains(tile)
+                && offerSnack(frame, observation, tile, context)) return;
         }
         for (var observation : observations) {
             var tile = sensor.resolve(observation, context);
-            if (failedCandidates.containsKey(tile)) continue;
+            if (failedCandidates.contains(tile)) continue;
             if (rest) {
-                if (tile instanceof TileEntityMaidBed bed && legalBed(bed)) offer(frame, observation, Action.BED);
-            } else if (tile != null) offerSnack(frame, observation, tile);
+                if (tile instanceof TileEntityMaidBed bed && legalBed(bed))
+                    offer(frame, observation, Action.BED, context);
+            } else if (tile != null) offerSnack(frame, observation, tile, context);
         }
     }
 
-    private boolean offerSnack(MaidIntentFrame frame, MaidLifeCandidate observation, TileEntity tile) {
+    private boolean offerSnack(MaidIntentFrame frame, MaidLifeCandidate observation, TileEntity tile,
+        MaidPolicyContext context) {
         var point = snackPoint(tile);
         if (!actor.withinLifeRestriction(point) || !actor.workPointNearOwner(point)) return false;
-        if (actor.shouldStealCake(point)) offer(frame, observation, Action.STEAL);
-        else if (actor.shouldPlaceCake(point, actor.firstCakeStack())) offer(frame, observation, Action.PLACE);
+        if (actor.shouldStealCake(point)) offer(frame, observation, Action.STEAL, context);
+        else if (actor.shouldPlaceCake(point, actor.firstCakeStack())) offer(frame, observation, Action.PLACE, context);
         else return false;
         return true;
     }
 
-    private void offer(MaidIntentFrame frame, MaidLifeCandidate observation, Action action) {
+    private void offer(MaidIntentFrame frame, MaidLifeCandidate observation, Action action, MaidPolicyContext context) {
         double distance = maid.getDistanceSq(observation.getX() + .5, observation.getY() + .5, observation.getZ() + .5);
         var intent = new MaidLifeIntent(action, observation, distance);
-        frame.offer(
+        frame.offerTyped(
+            ID,
             action == Action.BED ? Group.CARE : Group.AUTONOMOUS,
             action == Action.BED ? Kind.SLEEP : Kind.SNACK,
             observation.getDimension() + ":"
@@ -137,7 +136,8 @@ public final class EnhancedLifeController {
                 + ":"
                 + action,
             1 / (1 + Math.sqrt(distance)),
-            intent);
+            intent,
+            selected -> execute(selected, context));
     }
 
     private MaidLifeCandidate observation(TileEntityMaidBed bed, MaidPolicyContext context) {
@@ -156,7 +156,7 @@ public final class EnhancedLifeController {
     public void execute(MaidLifeIntent intent, MaidPolicyContext context) {
         if (!permitted() || intent == null) return;
         var tile = sensor.resolve(intent.getCandidate(), context);
-        if (tile == null || failedCandidates.containsKey(tile)) return;
+        if (tile == null || failedCandidates.contains(tile)) return;
         boolean rest = MaidLifeRules.isRest(maid.getSchedule(), maid.worldObj.getWorldTime());
         if ((intent.getAction() == Action.BED) != rest) return;
         if (intent.getAction() == Action.BED) {
@@ -225,13 +225,7 @@ public final class EnhancedLifeController {
             || maid.getItemUseState()
                 .peek() != null)
             return false;
-        var home = maid.getHomeArea();
-        if (home.enabled()) return home.sameDimension() && home.containsMaid();
-        var owner = actor.getOwner();
-        return owner != null && !owner.isDeadOrDying()
-            && !owner.isSpectator()
-            && owner.getWorldIdentity() == actor.getWorldIdentity()
-            && actor.closerThan(owner, 12);
+        return MaidDomainGuard.isMaidWithinDomain(maid, actor, MaidDomainGuard.LIFE_OWNER_DOMAIN_RADIUS);
     }
 
     private boolean legalBed(TileEntityMaidBed bed) {
@@ -254,6 +248,17 @@ public final class EnhancedLifeController {
 
     private static Point snackPoint(TileEntity tile) {
         return new Point(tile.xCoord, tile.yCoord + 1, tile.zCoord);
+    }
+
+    public void onTargetChanged() {
+        var bed = reservedBed;
+        reservedBed = null;
+        approachedCandidate = null;
+        if (bed != null) bed.release(maid);
+    }
+
+    public void onDeselected(TransitionReason reason) {
+        cancel();
     }
 
     /** 不访问失效actor，不恢复已提交物品；床租约只按实际持有身份释放 */

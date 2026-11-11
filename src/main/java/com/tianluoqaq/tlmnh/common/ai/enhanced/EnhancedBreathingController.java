@@ -2,23 +2,34 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.Entity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBreathAirStopTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
+import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 
 /** 增强呼吸独立处理离座与移动，手部被其他动作持有不阻止安全找空气 */
 public final class EnhancedBreathingController {
 
+    public static final MaidBehaviorId ID = MaidBehaviorId.builtin("breathing");
     private static final int NEARBY_RETRY_TICKS = 10, EXHAUSTED_RETRY_TICKS = 20;
     private final EntityMaid maid;
     private final ModernFollowCoreActor actor;
+    private final MaidSensingSession sensing;
     private final EnhancedNavigationController navigation;
-    private final EnhancedFollowController follow;
+    private final BooleanSupplier airRecoveryFallback;
     private final MaidBreathAirStopTask stop = new MaidBreathAirStopTask();
     private Entity attemptedMount;
     private boolean attemptedSit;
@@ -28,16 +39,28 @@ public final class EnhancedBreathingController {
     private Point searchOrigin;
     private long nextSearch, nextNearbySearch, lastTick = Long.MIN_VALUE;
 
-    public EnhancedBreathingController(EntityMaid maid, ModernFollowCoreActor actor,
-        EnhancedNavigationController navigation, EnhancedFollowController follow) {
+    public EnhancedBreathingController(EntityMaid maid, ModernFollowCoreActor actor, MaidSensingSession sensing,
+        EnhancedNavigationController navigation, BooleanSupplier airRecoveryFallback) {
         this.maid = maid;
         this.actor = actor;
+        this.sensing = sensing;
         this.navigation = navigation;
-        this.follow = follow;
+        this.airRecoveryFallback = Objects.requireNonNull(airRecoveryFallback, "airRecoveryFallback");
+    }
+
+    public boolean lowAir() {
+        return actor.airSupply() < 100 && !actor.hasBreathingEffect() && !actor.hasDrownBauble();
     }
 
     public void stopIfRecovered() {
         if (stop.checkExtraStartConditions(actor)) stop.start(actor);
+    }
+
+    public void offer(MaidIntentFrame frame, boolean lowAirNow) {
+        stopIfRecovered();
+        if (lowAirNow || actor.isGoingToBreath() || actor.isEatBreatheItem()) {
+            frame.offerTyped(ID, Group.EMERGENCY, Kind.BREATHE, "air", 1, null, ignored -> execute());
+        }
     }
 
     public void execute() {
@@ -127,7 +150,7 @@ public final class EnhancedBreathingController {
         candidates.clear();
         candidateIndex = 0;
         nextSearch = now + EXHAUSTED_RETRY_TICKS;
-        if (follow.recoverForAir() && actor.isCurrent()) {
+        if (airRecoveryFallback.getAsBoolean() && actor.isCurrent()) {
             actor.setGoingToBreath(false);
             actor.eraseTargetPos();
         }
@@ -143,6 +166,10 @@ public final class EnhancedBreathingController {
         points.add(candidate);
     }
 
+    public void onDeselected(TransitionReason reason) {
+        cancel();
+    }
+
     public void cancel() {
         attemptedMount = null;
         attemptedSit = false;
@@ -152,6 +179,7 @@ public final class EnhancedBreathingController {
         searchOrigin = null;
         nextSearch = nextNearbySearch = 0;
         lastTick = Long.MIN_VALUE;
+        if (sensing != null) sensing.cancel(MaidSensingBudget.Kind.AIR);
     }
 
     public long emergencyReleases() {
