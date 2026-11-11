@@ -8,6 +8,8 @@ import java.io.StringReader;
 
 import org.junit.Test;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -153,7 +155,7 @@ public class MoveCoreReplayMainTest {
                 new JsonParser()
                     .parse("{\"targetBlock\":[8,192,0],\"walk\":{\"present\":true},\"createReplies\":[\"A\"]}"));
         var originalSteps = row(reference).getAsJsonArray("steps");
-        var steps = new com.google.gson.JsonArray();
+        var steps = new JsonArray();
         steps.add(originalSteps.get(0));
         steps.add(originalSteps.get(1));
         steps.add(restart);
@@ -295,7 +297,7 @@ public class MoveCoreReplayMainTest {
         assertThrows(IllegalArgumentException.class, () -> MoveCoreReplayMain.replay(unknownPath, "none"));
         var missingRandom = fixture();
         var originalCalls = step(missingRandom, 0).getAsJsonArray("callTrace");
-        var withoutRandom = new com.google.gson.JsonArray();
+        var withoutRandom = new JsonArray();
         withoutRandom.add(originalCalls.get(0));
         withoutRandom.add(originalCalls.get(2));
         step(missingRandom, 0).add("callTrace", withoutRandom);
@@ -413,7 +415,7 @@ public class MoveCoreReplayMainTest {
                     + (targetX + 0.5)
                     + ",193.5,0.5],\"entityIsConfiguredTarget\":true,\"entityUuid\":\"00000000-0000-0000-0000-000000000001\","
                     + "\"entityRuntimeClass\":\"synthetic.Target\",\"entitySpectator\":false}")
-                : com.google.gson.JsonNull.INSTANCE);
+                : JsonNull.INSTANCE);
         return result;
     }
 

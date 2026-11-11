@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.lifecycle;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
 import java.util.UUID;
 
 import net.minecraft.nbt.NBTTagCompound;
@@ -104,7 +105,7 @@ public class MaidLifecycleDataTest {
         attempt.setString("fixture-film", "callback-mutation");
         data.abandonReturnedFilm(id);
         var restored = roundtrip(data);
-        assertEquals(java.util.Collections.singletonList(id), restored.pendingReturnedFilms(7));
+        assertEquals(Collections.singletonList(id), restored.pendingReturnedFilms(7));
         assertEquals(
             "original-credential",
             restored.reserveReturnedFilm(id)
@@ -322,7 +323,7 @@ public class MaidLifecycleDataTest {
         assertTrue(
             data.pendingDeathExperience(7, 39)
                 .isEmpty());
-        assertEquals(java.util.Collections.singletonList(token), data.pendingDeathExperience(7, 40));
+        assertEquals(Collections.singletonList(token), data.pendingDeathExperience(7, 40));
         assertEquals(Integer.MAX_VALUE, data.reserveDeathExperience(token));
         assertEquals(0, data.reserveDeathExperience(token));
         assertNull(data.reserveTombstone(token));
@@ -390,7 +391,7 @@ public class MaidLifecycleDataTest {
         assertEquals(53, restored.remainingDeathExperience(token));
         assertFalse(restored.isTombstoneHeld(token));
         assertFalse(restored.isDeathExperienceHeld(token));
-        assertEquals(java.util.Collections.singletonList(token), restored.pendingDeathExperience(0, 40));
+        assertEquals(Collections.singletonList(token), restored.pendingDeathExperience(0, 40));
     }
 
     @Test

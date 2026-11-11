@@ -6,9 +6,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 import org.junit.Test;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
 public class BuiltinSoundCatalogTest {
@@ -38,7 +40,7 @@ public class BuiltinSoundCatalogTest {
                     .getAsJsonArray("sounds");
                 var ranged = nativeEvents.getAsJsonObject("maid.mode.range_attack")
                     .getAsJsonArray("sounds");
-                var rangedFiles = new java.util.ArrayList<com.google.gson.JsonElement>();
+                var rangedFiles = new ArrayList<JsonElement>();
                 for (var sound : ranged) rangedFiles.add(sound);
                 for (var attack : attacks) assertTrue(rangedFiles.contains(attack));
             }

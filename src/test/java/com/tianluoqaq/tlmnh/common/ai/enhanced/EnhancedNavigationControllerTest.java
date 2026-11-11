@@ -3,9 +3,12 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.Proxy;
+import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.common.ai.MaidNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
@@ -18,9 +21,9 @@ public class EnhancedNavigationControllerTest {
 
     @Test
     public void runningRouteCannotEraseTheSameActorsQueuedModeSwitch() {
-        var budget = new com.tianluoqaq.tlmnh.common.ai.MaidNavigationBudget(1);
-        var identity = new java.util.UUID(0, 1);
-        var other = new java.util.UUID(0, 2);
+        var budget = new MaidNavigationBudget(1);
+        var identity = new UUID(0, 1);
+        var other = new UUID(0, 2);
         var f = new Fixture();
         var controller = new EnhancedNavigationController(f.actor, target -> {
             assertTrue(budget.acquire(identity, f.time));
@@ -159,9 +162,7 @@ public class EnhancedNavigationControllerTest {
                     case "navigationPath" -> installed;
                     case "navigationIsDone" -> done;
                     case "navigationIsStuck" -> stuck;
-                    case "observeBlockedRoute" -> observeBlockage
-                        ? (java.util.function.BooleanSupplier) () -> corridorClear
-                        : null;
+                    case "observeBlockedRoute" -> observeBlockage ? (BooleanSupplier) () -> corridorClear : null;
                     case "moveTo" -> {
                         installed = (Path) args[0];
                         yield true;

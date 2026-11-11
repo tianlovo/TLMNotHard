@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -752,7 +753,7 @@ public final class MoveCoreReplayMain {
                 require(
                     bool(tracker, "entityIsConfiguredTarget"),
                     "Tracker does not reference the configured actual target");
-                java.util.UUID.fromString(text(tracker, "entityUuid"));
+                UUID.fromString(text(tracker, "entityUuid"));
                 text(tracker, "entityRuntimeClass");
                 bool(tracker, "entitySpectator");
             } else {

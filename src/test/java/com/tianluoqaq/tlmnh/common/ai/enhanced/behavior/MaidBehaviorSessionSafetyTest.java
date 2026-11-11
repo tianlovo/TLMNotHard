@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -582,7 +583,7 @@ public class MaidBehaviorSessionSafetyTest {
         assertEquals(3, candidateNbt.getInteger("Steps"));
         assertFalse(events.contains("C:deselect:PREEMPTED"));
         assertEquals(
-            java.util.Arrays.asList(
+            Arrays.asList(
                 "A:exec:t1",
                 "A:exec:t1",
                 "A:target:t1->t2",

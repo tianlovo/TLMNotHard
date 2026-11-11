@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -63,7 +64,7 @@ public class FollowCoreReplayMainTest {
         actual(input).addProperty("ownerResolved", false);
         for (String key : new String[] { "distanceSquared", "ownerSpectator", "ownerDeadOrDying", "sameLevel",
             "ownerUnderwater" }) {
-            actual(input).add(key, com.google.gson.JsonNull.INSTANCE);
+            actual(input).add(key, JsonNull.INSTANCE);
         }
         JsonObject normalised = normalised(FollowCoreReplayMain.replay(input, "none"));
         assertFalse(

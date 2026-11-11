@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.gson.GsonBuilder;
@@ -347,7 +348,7 @@ public final class LookCoreReplayMain {
             require(beforePatch.equals(previousObserved), "Unpatched actual input continuity differs");
             JsonObject expected = copy(beforePatch);
             expected.addProperty("worldGameTime", actualTime);
-            for (java.util.Map.Entry<String, JsonElement> entry : patch.entrySet()) {
+            for (Map.Entry<String, JsonElement> entry : patch.entrySet()) {
                 require(config.has(entry.getKey()), "Unknown external patch field");
                 config.add(entry.getKey(), cloneJson(entry.getValue()));
             }
@@ -651,7 +652,7 @@ public final class LookCoreReplayMain {
     private static JsonElement cloneJson(JsonElement value) {
         if (value.isJsonObject()) {
             JsonObject out = new JsonObject();
-            for (java.util.Map.Entry<String, JsonElement> e : value.getAsJsonObject()
+            for (Map.Entry<String, JsonElement> e : value.getAsJsonObject()
                 .entrySet()) out.add(e.getKey(), cloneJson(e.getValue()));
             return out;
         }
@@ -665,7 +666,7 @@ public final class LookCoreReplayMain {
 
     private static void keys(JsonObject value, String... names) {
         Set<String> actual = new HashSet<String>();
-        for (java.util.Map.Entry<String, JsonElement> e : value.entrySet()) actual.add(e.getKey());
+        for (Map.Entry<String, JsonElement> e : value.entrySet()) actual.add(e.getKey());
         require(actual.equals(new HashSet<String>(Arrays.asList(names))), "Missing or unknown typed input fields");
     }
 

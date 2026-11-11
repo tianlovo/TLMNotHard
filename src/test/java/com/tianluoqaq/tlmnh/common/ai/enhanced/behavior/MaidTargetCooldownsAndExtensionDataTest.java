@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -17,6 +18,7 @@ import net.minecraft.nbt.NBTTagString;
 
 import org.junit.Test;
 
+import com.tianluoqaq.tlmnh.api.behavior.MaidActionAccess;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorContext;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorInitContext;
@@ -24,6 +26,8 @@ import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorModule;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorOfferSink;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorProvider;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorStage;
+import com.tianluoqaq.tlmnh.api.behavior.MaidHandAccess;
+import com.tianluoqaq.tlmnh.api.behavior.MaidObservationView;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidExternalBehaviorSlot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidSessionCallbackScope;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidBehaviorExtensionData;
@@ -298,17 +302,17 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         var slot = new MaidExternalBehaviorSlot(UUID.randomUUID(), 0, provider, scope, new MaidBehaviorContext() {
 
             @Override
-            public com.tianluoqaq.tlmnh.api.behavior.MaidObservationView observation() {
+            public MaidObservationView observation() {
                 throw new IllegalStateException();
             }
 
             @Override
-            public com.tianluoqaq.tlmnh.api.behavior.MaidActionAccess actions() {
+            public MaidActionAccess actions() {
                 throw new IllegalStateException();
             }
 
             @Override
-            public com.tianluoqaq.tlmnh.api.behavior.MaidHandAccess hands() {
+            public MaidHandAccess hands() {
                 throw new IllegalStateException();
             }
         }, () -> {});
@@ -350,7 +354,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
     }
 
     private static ModulePersistentAdapter adapter(MaidBehaviorId id, boolean faulted,
-        java.util.function.Consumer<NBTTagCompound> writer) {
+        Consumer<NBTTagCompound> writer) {
         return new ModulePersistentAdapter() {
 
             @Override

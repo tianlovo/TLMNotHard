@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.io.InputStream;
+
 import net.minecraft.util.ResourceLocation;
 
 import org.junit.Test;
@@ -109,7 +111,7 @@ public class RenderSubmissionTraceTest {
         };
     }
 
-    private static java.io.InputStream resource(ResourceLocation location) {
+    private static InputStream resource(ResourceLocation location) {
         return RenderSubmissionTraceTest.class
             .getResourceAsStream("/assets/" + location.getResourceDomain() + "/" + location.getResourcePath());
     }

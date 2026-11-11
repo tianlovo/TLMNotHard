@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -20,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -168,7 +170,7 @@ public class PackagedClassResourceResolverTest {
                             }
 
                             @Override
-                            public java.io.InputStream getInputStream() {
+                            public InputStream getInputStream() {
                                 return new ByteArrayInputStream(changed);
                             }
                         };
@@ -303,7 +305,7 @@ public class PackagedClassResourceResolverTest {
     private static String sha(byte[] bytes) throws Exception {
         var result = new StringBuilder();
         for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) result.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+            .digest(bytes)) result.append(String.format(Locale.ROOT, "%02x", value & 255));
         return result.toString();
     }
 }

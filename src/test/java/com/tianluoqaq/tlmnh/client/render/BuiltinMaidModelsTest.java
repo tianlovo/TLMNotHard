@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -197,7 +198,7 @@ public class BuiltinMaidModelsTest {
             models.create(selected)
                 .getGecko()
                 .geoModel());
-        var animationResources = new java.util.HashSet<>(selected.getAnimations());
+        var animationResources = new HashSet<>(selected.getAnimations());
         animationResources.add(BuiltinGeckoAnimations.DEFAULT_MAID_ANIMATION);
         int expectedResources = 1 + animationResources.size();
         assertEquals(expectedResources, reads[0]);

@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.network;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -59,8 +60,7 @@ public class MaidBubbleCodecTest {
         assertThrows(RuntimeException.class, () -> MaidBubbleCodec.decode("1;[[1,true,\"a\"]]"));
         assertThrows(
             RuntimeException.class,
-            () -> MaidBubbleCodec
-                .decode("1;[[1,false,\"" + String.join("", java.util.Collections.nCopies(257, "x")) + "\"]]"));
+            () -> MaidBubbleCodec.decode("1;[[1,false,\"" + String.join("", Collections.nCopies(257, "x")) + "\"]]"));
         assertThrows(
             RuntimeException.class,
             () -> MaidBubbleCodec

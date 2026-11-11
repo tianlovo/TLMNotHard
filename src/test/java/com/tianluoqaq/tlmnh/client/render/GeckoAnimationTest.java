@@ -31,6 +31,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.keyframe.bone.Bon
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.MolangParser;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.storage.VariableStorage;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.molang.value.IValue;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.ExpressionEvaluator;
 import com.github.tartaricacid.touhoulittlemaid.molang.runtime.binding.ObjectBinding;
 import com.tianluoqaq.tlmnh.client.render.molang.MaidMolangBindings;
@@ -298,7 +299,7 @@ public class GeckoAnimationTest {
             .getAnimation("test");
     }
 
-    private static com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile read(String json) {
+    private static AnimationFile read(String json) {
         return BuiltinGeckoAnimations.read(bytes(json), MaidMolangBindings.parser());
     }
 

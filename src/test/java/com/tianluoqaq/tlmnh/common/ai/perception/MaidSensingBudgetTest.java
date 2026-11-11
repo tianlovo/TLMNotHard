@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.ai.perception;
 
 import static org.junit.Assert.*;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -15,7 +16,7 @@ public class MaidSensingBudgetTest {
     @Test
     public void allActorsAndChannelsGetTurnWithoutFastRequesterExceedingQuota() {
         var budget = new MaidSensingBudget(1);
-        var requests = java.util.Arrays.stream(Kind.values())
+        var requests = Arrays.stream(Kind.values())
             .map(MaidSensingBudgetTest::request)
             .toArray(Request[]::new);
         var admitted = new HashSet<Request>();

@@ -3,11 +3,14 @@ package com.tianluoqaq.tlmnh.client.development;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import java.util.Locale;
+
 import org.junit.Test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentRequest.Command;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 public class ClientDevelopmentRequestTest {
 
@@ -133,7 +136,7 @@ public class ClientDevelopmentRequestTest {
                 command,
                 parse(
                     "{\"command\":\"" + command.name()
-                        .toLowerCase(java.util.Locale.ROOT) + "\"}").command);
+                        .toLowerCase(Locale.ROOT) + "\"}").command);
         for (String json : new String[] { "{}", "{\"command\":null}", "{\"command\":1}", "{\"command\":{}}",
             "{\"command\":\"chat\"}", "{\"command\":\"exec\"}" })
             assertThrows(IllegalArgumentException.class, () -> parse(json));
@@ -206,7 +209,7 @@ public class ClientDevelopmentRequestTest {
 
     @Test
     public void namingInputKeepsNativeLengthAndRejectsControlPayloads() {
-        var request = new com.google.gson.JsonObject();
+        var request = new JsonObject();
         request.addProperty("command", "models_ui");
         request.addProperty("action", "naming_text");
         for (String name : new String[] { "", " ", "命名试验 女仆", new String(new char[32]).replace('\0', '中') }) {
@@ -223,8 +226,8 @@ public class ClientDevelopmentRequestTest {
 
     @Test
     public void renderProbeAcceptsBuiltinObservationsAndReviewedFaultModels() {
-        com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.load();
-        for (var choice : com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.choices()) {
+        BuiltinModelCatalog.load();
+        for (var choice : BuiltinModelCatalog.choices()) {
             var request = parse("{\"command\":\"render_probe\",\"model\":\"" + choice.getId() + "\"}");
             assertEquals(choice.getId(), request.model);
             assertEquals("none", request.fault);
