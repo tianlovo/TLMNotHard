@@ -105,11 +105,11 @@ public final class MaidHeldItemLayer {
                 : selectedRenderer.getClass()
                     .getName();
             genericMirrored = hand.attachment.side == Side.LEFT && profile != Profile.SHIELD_LEFT;
-            sourceMatrix = source.get(new float[16]);
-            bridgeMatrix = bridge.get(new float[16]);
-            var actual = BufferUtils.createFloatBuffer(16);
+            sourceMatrix = source.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
+            bridgeMatrix = bridge.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
+            var actual = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
             GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actual);
-            nativeEntryMatrix = new float[16];
+            nativeEntryMatrix = new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM];
             actual.get(nativeEntryMatrix);
         }
     }
@@ -127,7 +127,7 @@ public final class MaidHeldItemLayer {
     private static volatile Observer observer;
     private static volatile DevelopmentDrawGate developmentDrawGate;
     private static long nativeSequence, nativeAttempts, nativeCompleted;
-    private final FloatBuffer matrixBuffer = BufferUtils.createFloatBuffer(16);
+    private final FloatBuffer matrixBuffer = BufferUtils.createFloatBuffer(AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
     private boolean rendering;
 
     /** 单次客户端开发事务的精确手部故障，不替换任何物品renderer注册 */
@@ -152,12 +152,12 @@ public final class MaidHeldItemLayer {
 
     public static synchronized DevelopmentDrawGate installDevelopmentDrawGate(String actor, Side side,
         String transaction) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item gate disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_DISABLED);
         if (developmentDrawGate != null || actor == null
             || side == null
             || transaction == null
-            || !transaction.matches("[A-Za-z0-9_-]{1,100}\\.json"))
-            throw new IllegalStateException("Invalid or already active held item gate");
+            || !transaction.matches(AttachmentRenderIds.MODEL_JSON_A_ZA_Z0_9_1_100))
+            throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_INVALID_OR_ALREADY_ACTIVE_HELD);
         UUID.fromString(actor);
         return developmentDrawGate = new DevelopmentDrawGate(actor, side, transaction);
     }
@@ -165,7 +165,7 @@ public final class MaidHeldItemLayer {
     public static synchronized void setDevelopmentDrawSkip(DevelopmentDrawGate expected, boolean skipping) {
         if (!DevelopmentFlags.isDevCommandsEnabled() || expected == null
             || developmentDrawGate != expected
-            || expected.owner != Thread.currentThread()) throw new IllegalStateException("Unowned held item gate");
+            || expected.owner != Thread.currentThread()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_UNOWNED_HELD_ITEM_GATE);
         expected.skipping = skipping;
     }
 
@@ -177,10 +177,10 @@ public final class MaidHeldItemLayer {
     }
 
     public static synchronized void setObserverForDevelopment(Observer next) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item observer disabled");
-        if (next == null) throw new IllegalArgumentException("Observer must not be null");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_OBSERVER_DISABLED);
+        if (next == null) throw new IllegalArgumentException(AttachmentRenderDiagnostics.MSG_OBSERVER_MUST_NOT_BE_NULL);
         if (observer != null && observer != next)
-            throw new IllegalStateException("Held item observer already installed");
+            throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_OBSERVER_ALREADY_INSTALLED);
         observer = next;
     }
 
@@ -196,7 +196,7 @@ public final class MaidHeldItemLayer {
     }
 
     public void render(EntityMaid maid, BuiltinMaidModel model, ItemRenderer renderer, float partialTick) {
-        if (rendering) throw new IllegalStateException("Nested maid held item layer");
+        if (rendering) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_NESTED_MAID_HELD_ITEM_LAYER);
         rendering = true;
         try {
             renderHand(maid, model, renderer, partialTick, Side.RIGHT, maid.getHeldItem());
@@ -239,7 +239,7 @@ public final class MaidHeldItemLayer {
             var entry = new Matrix4f(source).mul(bridge);
             matrixBuffer.clear();
             entry.get(matrixBuffer);
-            matrixBuffer.position(0);
+            matrixBuffer.position(AttachmentRenderLayout.PUT_INITIAL_VALUE);
             GL11.glMultMatrix(matrixBuffer);
             if (side == Side.LEFT && profile != Profile.SHIELD_LEFT) {
                 int previousFront = GL11.glGetInteger(GL11.GL_FRONT_FACE);
@@ -247,11 +247,11 @@ public final class MaidHeldItemLayer {
             }
             GL11.glEnable(GL11.GL_NORMALIZE);
             var item = stack.getItem();
-            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage()) : 1;
+            int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(stack.getItemDamage()) : AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y;
             for (int pass = 0; pass < passes; pass++) {
                 if ((side == Side.LEFT ? maid.getOffhandItem() : maid.getHeldItem()) != stack) return;
                 int color = item.getColorFromItemStack(stack, pass);
-                GL11.glColor4f((color >> 16 & 255) / 255F, (color >> 8 & 255) / 255F, (color & 255) / 255F, 1);
+                GL11.glColor4f((color >> AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color >> AttachmentRenderLayout.SECOND_BYTE_SHIFT & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, (color & AttachmentRenderLayout.UNSIGNED_BYTE_MASK) / AttachmentRenderLayout.COLOR_CHANNEL_MAX_F, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
                 NativeCall call = observing == null && developmentDrawGate == null ? null
                     : new NativeCall(++nativeSequence, hand, profile, pass, stack, selectedRenderer, source, bridge);
                 invokeNative(renderer, maid, stack, pass, observing, call);
@@ -288,7 +288,7 @@ public final class MaidHeldItemLayer {
                 && gate.owner == Thread.currentThread()
                 && gate.actor.equals(call.hand.actor)
                 && gate.side == call.hand.attachment.side) {
-                if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item gate revoked");
+                if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_HELD_ITEM_GATE_REVOKED);
                 gate.suppressed++;
                 if (observing != null) observing.skippedByDevelopmentGate(call, gate.transaction);
                 return;

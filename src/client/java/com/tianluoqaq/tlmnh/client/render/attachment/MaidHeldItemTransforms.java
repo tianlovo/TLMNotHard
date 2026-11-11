@@ -7,8 +7,8 @@ public final class MaidHeldItemTransforms {
 
     public enum Side {
 
-        LEFT(-1),
-        RIGHT(1);
+        LEFT(AttachmentRenderLayout.UNSET_OR_NOT_FOUND),
+        RIGHT(AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
 
         private final int sign;
 
@@ -28,26 +28,26 @@ public final class MaidHeldItemTransforms {
     private MaidHeldItemTransforms() {}
 
     public static Matrix4f bedrockTail(Side side, boolean positioningBone) {
-        return new Matrix4f().rotateX(radians(-90))
-            .rotateY(radians(180))
-            .translate(positioningBone ? 0 : side.sign / 16F, .125F, positioningBone ? -.0625F : -.525F);
+        return new Matrix4f().rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM))
+            .rotateY(radians(AttachmentRenderLayout.HEAD_ITEM_FUNC_152674_A_FIFTH_PARAM))
+            .translate(positioningBone ? AttachmentRenderLayout.PUT_INITIAL_VALUE : side.sign / AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Y, positioningBone ? AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y_2 : AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Z);
     }
 
     public static Matrix4f geckoModelBase() {
-        return new Matrix4f().translate(0, 1.5F, 0)
-            .scale(-1, -1, 1);
+        return new Matrix4f().translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_SCALE_X, AttachmentRenderLayout.PUT_INITIAL_VALUE)
+            .scale(AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
     }
 
     public static Matrix4f geckoTail() {
-        return new Matrix4f().translate(0, -.0625F, -.1F)
-            .rotateX(radians(-90));
+        return new Matrix4f().translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_FIXED_ICON_BRIDGE_OFFSET_Y_2, AttachmentRenderLayout.HELD_ITEM_MATRIX4F_OFFSET_Z)
+            .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM));
     }
 
     /** 1.20.1 ItemInHandLayer的标准手部基准，不包含物品模型display变换 */
     public static Matrix4f modernHandBasis(Side side) {
-        return new Matrix4f().rotateX(radians(-90))
-            .rotateY(radians(180))
-            .translate(side.sign / 16F, .125F, -.625F);
+        return new Matrix4f().rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM))
+            .rotateY(radians(AttachmentRenderLayout.HEAD_ITEM_FUNC_152674_A_FIFTH_PARAM))
+            .translate(side.sign / AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_X, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Y, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Z_2);
     }
 
     /** 移植坐标合同，不能据此宣称两版本物品模型外观完全等价 */
@@ -59,49 +59,49 @@ public final class MaidHeldItemTransforms {
     /** native进入ItemRenderer之前的矩阵，ItemRenderer自己的helper变换仍正常执行 */
     public static Matrix4f nativeArmEntry(Side side, Profile profile, boolean rotateFull3D) {
         if (profile == Profile.SHIELD_LEFT) {
-            if (side != Side.LEFT) throw new IllegalArgumentException("Shield-left profile requires the left hand");
+            if (side != Side.LEFT) throw new IllegalArgumentException(AttachmentRenderDiagnostics.MSG_SHIELD_LEFT_PROFILE_REQUIRES_THE);
             // BG第三人称副手盾入口，不能叠加Backhand通用左手镜像
-            return new Matrix4f().translate(1F / 16, 7F / 16, 1F / 16)
-                .scale(10F / 16, -10F / 16, 10F / 16)
-                .translate(8F / 16, -11F / 16, -1F / 16)
-                .rotateX(radians(-10))
-                .rotateY(radians(-45))
-                .rotateZ(radians(25));
+            return new Matrix4f().translate(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_X / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_X / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM)
+                .scale(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_Y / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM)
+                .translate(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_X_2 / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y_2 / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Z / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM)
+                .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_2))
+                .rotateY(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_3))
+                .rotateZ(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_4));
         }
         // 普通副手以实际手部局部原点对称，不复制玩家pivot抵消或玩家事件
         var matrix = new Matrix4f();
-        if (side == Side.LEFT) matrix.scale(-1, 1, 1);
-        matrix.translate(-1F / 16, 7F / 16, 1F / 16);
+        if (side == Side.LEFT) matrix.scale(AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+        matrix.translate(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Z / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_X / AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM);
         switch (profile) {
-            case BLOCK_3D -> matrix.translate(0, .1875F, -.3125F)
-                .rotateX(radians(20))
-                .rotateY(radians(45))
-                .scale(-.375F, -.375F, .375F);
-            case BOW -> matrix.translate(0, .125F, .3125F)
-                .rotateY(radians(-20))
-                .scale(.625F, -.625F, .625F)
-                .rotateX(radians(-100))
-                .rotateY(radians(45));
+            case BLOCK_3D -> matrix.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y_3, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Z_2)
+                .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_5))
+                .rotateY(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_6))
+                .scale(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_2, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_2, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_Z);
+            case BOW -> matrix.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Y, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Z_3)
+                .rotateY(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_7))
+                .scale(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_3, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Z_2, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_3)
+                .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_8))
+                .rotateY(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_6));
             case FULL_3D -> {
-                if (rotateFull3D) matrix.rotateZ(radians(180))
-                    .translate(0, -.125F, 0);
-                matrix.translate(0, .1875F, 0)
-                    .scale(.625F, -.625F, .625F)
-                    .rotateX(radians(-100))
-                    .rotateY(radians(45));
+                if (rotateFull3D) matrix.rotateZ(radians(AttachmentRenderLayout.HEAD_ITEM_FUNC_152674_A_FIFTH_PARAM))
+                    .translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y_4, AttachmentRenderLayout.PUT_INITIAL_VALUE);
+                matrix.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y_3, AttachmentRenderLayout.PUT_INITIAL_VALUE)
+                    .scale(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_3, AttachmentRenderLayout.HELD_ITEM_RENDER_OFFSET_Z_2, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_X_3)
+                    .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_8))
+                    .rotateY(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_6));
             }
-            case FLAT -> matrix.translate(.25F, .1875F, -.1875F)
-                .scale(.375F)
-                .rotateZ(radians(60))
-                .rotateX(radians(-90))
-                .rotateZ(radians(20));
-            default -> throw new IllegalArgumentException("Unknown native item profile");
+            case FLAT -> matrix.translate(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_X_3, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Y_3, AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_OFFSET_Z_4)
+                .scale(AttachmentRenderLayout.HELD_ITEM_NATIVE_ARM_ENTRY_SCALE_Z)
+                .rotateZ(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_9))
+                .rotateX(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM))
+                .rotateZ(radians(AttachmentRenderLayout.HELD_ITEM_RADIANS_FIRST_PARAM_5));
+            default -> throw new IllegalArgumentException(AttachmentRenderDiagnostics.MSG_UNKNOWN_NATIVE_ITEM_PROFILE);
         }
         return matrix;
     }
 
     public static boolean finite(Matrix4f matrix) {
-        for (float value : matrix.get(new float[16])) if (!Float.isFinite(value)) return false;
+        for (float value : matrix.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM])) if (!Float.isFinite(value)) return false;
         return true;
     }
 

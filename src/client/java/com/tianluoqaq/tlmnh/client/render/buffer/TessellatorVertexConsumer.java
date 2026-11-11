@@ -17,14 +17,14 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
 
     public static final TessellatorVertexConsumer INSTANCE = new TessellatorVertexConsumer();
-    private final FloatBuffer color = BufferUtils.createFloatBuffer(4);
+    private final FloatBuffer color = BufferUtils.createFloatBuffer(RenderBufferLayout.TESSELLATOR_VERTEX_CREATE_FLOAT_BUFFER_FIRST_PARAM);
     private final Tessellator tessellator = Tessellator.instance;
     private boolean active;
 
     private TessellatorVertexConsumer() {}
 
     public void begin() {
-        if (active) throw new IllegalStateException("Nested TLMNH model batch");
+        if (active) throw new IllegalStateException(RenderBufferDiagnostics.MSG_NESTED_TLMNH_MODEL_BATCH);
         color.clear();
         GL11.glGetFloat(GL11.GL_CURRENT_COLOR, color);
         tessellator.startDrawingQuads();
@@ -32,7 +32,7 @@ public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
     }
 
     public void end() {
-        if (!active) throw new IllegalStateException("No active TLMNH model batch");
+        if (!active) throw new IllegalStateException(RenderBufferDiagnostics.MSG_NO_ACTIVE_TLMNH_MODEL_BATCH);
         try {
             if (ClientDevelopmentAccess.isActive()) {
                 var hooks = ClientDevelopmentAccess.hooks();
@@ -49,7 +49,7 @@ public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
     @Override
     public void vertex(float x, float y, float z, float red, float green, float blue, float alpha, float u, float v,
         int overlay, int lightmap, float normalX, float normalY, float normalZ) {
-        if (!active) throw new IllegalStateException("TLMNH vertex outside model batch");
+        if (!active) throw new IllegalStateException(RenderBufferDiagnostics.MSG_TLMNH_VERTEX_OUTSIDE_MODEL_BATCH);
         boolean devActive = ClientDevelopmentAccess.isActive();
         if (devActive) {
             var hooks = ClientDevelopmentAccess.hooks();
@@ -62,10 +62,10 @@ public final class TessellatorVertexConsumer implements LegacyVertexConsumer {
             normalY = (float) (normalY / length);
             normalZ = (float) (normalZ / length);
         }
-        red *= color.get(0);
-        green *= color.get(1);
-        blue *= color.get(2);
-        alpha *= color.get(3);
+        red *= color.get(RenderBufferLayout.GET_INITIAL_VALUE);
+        green *= color.get(RenderBufferLayout.TARGET_SIZE_THRESHOLD);
+        blue *= color.get(RenderBufferLayout.TESSELLATOR_VERTEX_GET_FIRST_PARAM);
+        alpha *= color.get(RenderBufferLayout.TESSELLATOR_VERTEX_GET_FIRST_PARAM_2);
         tessellator.setColorRGBA_F(red, green, blue, alpha);
         tessellator.setBrightness(lightmap);
         tessellator.setNormal(normalX, normalY, normalZ);

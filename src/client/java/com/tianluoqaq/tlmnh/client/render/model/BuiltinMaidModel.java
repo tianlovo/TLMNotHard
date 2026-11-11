@@ -47,7 +47,7 @@ public final class BuiltinMaidModel extends ModelBase {
         this.choice = choice;
         this.bedrock = bedrock;
         this.gecko = gecko;
-        if ((bedrock == null) == (gecko == null)) throw new IllegalArgumentException("Expected one model geometry");
+        if ((bedrock == null) == (gecko == null)) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_EXPECTED_ONE_MODEL_GEOMETRY);
         bedrockPose = bedrock == null ? null : new BedrockPose(bedrock);
         bedrockAnimations = bedrock == null ? null : new BuiltinBedrockAnimations(choice);
         geckoPlayer = gecko == null ? null
@@ -106,7 +106,7 @@ public final class BuiltinMaidModel extends ModelBase {
     @Override
     public void render(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
         float headPitch, float scale) {
-        float partialTick = Math.max(0, Math.min(1, ageInTicks - entity.ticksExisted));
+        float partialTick = Math.max(BuiltinModelLayout.MAX_INITIAL_VALUE, Math.min(BuiltinModelLayout.MIN_SINGLE_UNIT, ageInTicks - entity.ticksExisted));
         boolean devActive = ClientDevelopmentAccess.isActive();
         var devHooks = ClientDevelopmentAccess.hooks();
         if (entity instanceof EntityMaid maid) {
@@ -162,7 +162,7 @@ public final class BuiltinMaidModel extends ModelBase {
             poses.pushPose();
             try {
                 bedrockPose.applyTransform(poses);
-                bedrock.renderToBuffer(poses, consumer, light, 0, 1, 1, 1, 1);
+                bedrock.renderToBuffer(poses, consumer, light, BuiltinModelLayout.MAX_INITIAL_VALUE, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT);
             } finally {
                 poses.popPose();
             }
@@ -171,9 +171,9 @@ public final class BuiltinMaidModel extends ModelBase {
         poses.pushPose();
         try {
             // ModelBase 的脚位于 Y=24/16，Gecko 位于 Y=0，且 X/Y 轴方向相反
-            poses.translate(0, 1.5, 0);
-            poses.scale(-1, -1, 1);
-            GECKO_RENDERER.render(gecko, poses, consumer, light, 0, 1, 1, 1, 1);
+            poses.translate(BuiltinModelLayout.MAX_INITIAL_VALUE, BuiltinModelLayout.MODEL_RENDER_GEOMETRY_OFFSET_Y, BuiltinModelLayout.MAX_INITIAL_VALUE);
+            poses.scale(BuiltinModelLayout.UNSET_OR_NOT_FOUND, BuiltinModelLayout.UNSET_OR_NOT_FOUND, BuiltinModelLayout.MIN_SINGLE_UNIT);
+            GECKO_RENDERER.render(gecko, poses, consumer, light, BuiltinModelLayout.MAX_INITIAL_VALUE, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT, BuiltinModelLayout.MIN_SINGLE_UNIT);
         } finally {
             poses.popPose();
         }

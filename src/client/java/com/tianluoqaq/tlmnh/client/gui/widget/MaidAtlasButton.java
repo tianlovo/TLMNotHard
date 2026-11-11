@@ -41,17 +41,17 @@ public final class MaidAtlasButton extends GuiButton {
         if (!visible) return;
         minecraft.getTextureManager()
             .bindTexture(atlas);
-        GL11.glColor4f(1, 1, 1, 1);
+        GL11.glColor4f(ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL);
         if (topTab) {
-            if (selected) drawTexturedModalRect(xPosition, yPosition, u, 21, width, height);
-            drawTexturedModalRect(xPosition + 4, yPosition + 6, u, 47, 16, 16);
+            if (selected) drawTexturedModalRect(xPosition, yPosition, u, ClientWidgetLayout.ATLAS_BUTTON_TEX_V, width, height);
+            drawTexturedModalRect(xPosition + ClientWidgetLayout.ATLAS_BUTTON_DEST_X, yPosition + ClientWidgetLayout.ATLAS_BUTTON_DEST_Y, u, ClientWidgetLayout.ATLAS_BUTTON_TEX_V_2, ClientWidgetLayout.ATLAS_BUTTON_WIDTH, ClientWidgetLayout.ATLAS_BUTTON_WIDTH);
         } else if (sideTab) {
-            drawTexturedModalRect(xPosition + 6, yPosition + 4, 193, v + 4, 16, 16);
+            drawTexturedModalRect(xPosition + ClientWidgetLayout.ATLAS_BUTTON_DEST_Y, yPosition + ClientWidgetLayout.ATLAS_BUTTON_DEST_X, ClientWidgetLayout.ATLAS_BUTTON_TEX_U, v + ClientWidgetLayout.ATLAS_BUTTON_DEST_X, ClientWidgetLayout.ATLAS_BUTTON_WIDTH, ClientWidgetLayout.ATLAS_BUTTON_WIDTH);
         } else drawTexturedModalRect(
             xPosition,
             yPosition,
-            u + (selected ? selectedU : 0),
-            v + offsetV + (contains(mouseX, mouseY) || focused ? hoverV : 0),
+            u + (selected ? selectedU : ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE),
+            v + offsetV + (contains(mouseX, mouseY) || focused ? hoverV : ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE),
             width,
             height);
     }

@@ -21,15 +21,15 @@ import cpw.mods.fml.common.registry.GameRegistry;
 /** 提供方物品、音效与盾牌接口；外部类型保持在惰性API类中 */
 public final class BattlegearShieldAccess {
 
-    public static final String BLOCK_SOUND = "battlegear2:shield";
+
     private static final Set<String> IDS = Collections.unmodifiableSet(
         new HashSet<>(
             Arrays.asList(
-                "battlegear2:shield.wood",
-                "battlegear2:shield.hide",
-                "battlegear2:shield.iron",
-                "battlegear2:shield.diamond",
-                "battlegear2:shield.gold")));
+                BattlegearShieldIds.ID_BATTLEGEAR2_SHIELD_WOOD,
+                BattlegearShieldIds.ID_BATTLEGEAR2_SHIELD_HIDE,
+                BattlegearShieldIds.ID_BATTLEGEAR2_SHIELD_IRON,
+                BattlegearShieldIds.ID_BATTLEGEAR2_SHIELD_DIAMOND,
+                BattlegearShieldIds.ID_BATTLEGEAR2_SHIELD_GOLD)));
 
     private BattlegearShieldAccess() {}
 
@@ -38,7 +38,7 @@ public final class BattlegearShieldAccess {
     }
 
     public static Item woodenShieldItem() {
-        return GameRegistry.findItem(Battlegear2Compat.MOD_ID, "shield.wood");
+        return GameRegistry.findItem(Battlegear2Compat.MOD_ID, BattlegearShieldIds.ID_SHIELD_WOOD);
     }
 
     public static boolean isShield(ItemStack stack) {
@@ -73,8 +73,8 @@ public final class BattlegearShieldAccess {
 
         private ArrowCapture(ItemStack stack, int next) {
             previous = stack.hasTagCompound() && stack.getTagCompound()
-                .hasKey("arrows") ? stack.getTagCompound()
-                    .getTag("arrows")
+                .hasKey(BattlegearShieldIds.ID_ARROWS) ? stack.getTagCompound()
+                    .getTag(BattlegearShieldIds.ID_ARROWS)
                     .copy() : null;
             this.next = (short) next;
         }
@@ -83,9 +83,9 @@ public final class BattlegearShieldAccess {
         @Override
         public NBTTagCompound applyTo(ItemStack stack) {
             var data = stack.hasTagCompound() ? stack.getTagCompound() : null;
-            if (!Objects.equals(previous, data == null ? null : data.getTag("arrows"))) return null;
+            if (!Objects.equals(previous, data == null ? null : data.getTag(BattlegearShieldIds.ID_ARROWS))) return null;
             var updated = data == null ? new NBTTagCompound() : (NBTTagCompound) data.copy();
-            updated.setShort("arrows", next);
+            updated.setShort(BattlegearShieldIds.ID_ARROWS, next);
             return updated;
         }
     }
@@ -122,22 +122,22 @@ public final class BattlegearShieldAccess {
             var original = stack.copy();
             var changed = stack.copy();
             if (original.hasTagCompound() && original.getTagCompound()
-                .hasKey("arrows")
+                .hasKey(BattlegearShieldIds.ID_ARROWS)
                 && !original.getTagCompound()
-                    .hasKey("arrows", Constants.NBT.TAG_SHORT))
-                throw new IllegalStateException("Unknown shield arrow-count encoding");
+                    .hasKey(BattlegearShieldIds.ID_ARROWS, Constants.NBT.TAG_SHORT))
+                throw new IllegalStateException(BattlegearShieldDiagnostics.MSG_UNKNOWN_SHIELD_ARROW_COUNT_ENCODING);
             var display = (mods.battlegear2.api.shield.IArrowDisplay) changed.getItem();
             int previous = display.getArrowCount(changed);
             if (previous < 0 || previous > Short.MAX_VALUE)
-                throw new IllegalStateException("Invalid shield arrow count");
+                throw new IllegalStateException(BattlegearShieldDiagnostics.MSG_INVALID_SHIELD_ARROW_COUNT);
             int next = Math.min(Short.MAX_VALUE, previous + 1);
             display.setArrowCount(changed, previous + 1);
             var expected = original.copy();
             if (!expected.hasTagCompound()) expected.setTagCompound(new NBTTagCompound());
             expected.getTagCompound()
-                .setShort("arrows", (short) next);
+                .setShort(BattlegearShieldIds.ID_ARROWS, (short) next);
             if (!ItemStack.areItemStacksEqual(expected, changed))
-                throw new IllegalStateException("Shield arrow callback changed data outside its count");
+                throw new IllegalStateException(BattlegearShieldDiagnostics.MSG_SHIELD_ARROW_CALLBACK_CHANGED_DATA);
             return new ArrowCapture(original, next);
         }
 

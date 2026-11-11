@@ -29,12 +29,12 @@ public final class MaidBedModelResources implements IResourceManagerReloadListen
     }
 
     public SimpleBedrockModel<Entity> get(MaidBedColor color) throws IOException {
-        if (color == null) throw new IOException("Unknown saved maid-bed color retained; rendering stopped");
+        if (color == null) throw new IOException(ClientMaidBedDiagnostics.MSG_UNKNOWN_SAVED_MAID_BED_COLOR);
         var model = models.get(color);
         if (model == null) {
-            if (manager == null) throw new IOException("Maid-bed resources are not initialized");
+            if (manager == null) throw new IOException(ClientMaidBedDiagnostics.MSG_MAID_BED_RESOURCES_ARE_NOT);
             var location = new ResourceLocation(
-                "touhou_little_maid:models/bedrock/block/maid_bed/" + color.resourceName + ".json");
+                ClientMaidBedIds.ID_TOUHOU_LITTLE_MAID_MODELS_BEDROCK_BLOCK_MAID_BED + color.resourceName + ClientMaidBedIds.MODEL_JSON);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {
                 model = new SimpleBedrockModel<>(stream);

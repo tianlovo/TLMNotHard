@@ -45,7 +45,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
     }
 
     public BuiltinMaidModel create(BuiltinModelCatalog.Choice choice) throws IOException {
-        if (choice == null) throw new IllegalArgumentException("Missing builtin model choice");
+        if (choice == null) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_MODEL_CHOICE);
         var location = choice.getGeometry();
         try {
             if (choice.isGecko()) {
@@ -75,7 +75,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
                     float netHeadYaw, float headPitch) {}
             }, null, null);
         } catch (RuntimeException | InvalidVersionSpecificationException error) {
-            throw new IOException("Cannot build builtin geometry " + location, error);
+            throw new IOException(BuiltinModelDiagnostics.MSG_CANNOT_BUILD_BUILTIN_GEOMETRY + location, error);
         }
     }
 
@@ -85,7 +85,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
 
     private InputStream stream(ResourceLocation location) throws IOException {
         var stream = opener.open(location);
-        if (stream == null) throw new IOException("Missing builtin geometry " + location);
+        if (stream == null) throw new IOException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_GEOMETRY + location);
         return stream;
     }
 

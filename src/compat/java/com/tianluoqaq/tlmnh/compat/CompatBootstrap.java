@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.compat;
 
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldIds;
+
 import java.util.UUID;
 
 import net.minecraft.block.Block;
@@ -54,7 +56,7 @@ import com.tianluoqaq.tlmnh.compat.witchery.common.entity.WitcheryInitialSize;
 /** 双端共享适配实现装配入口；仅向 main 暴露窄接口，不在初始化阶段提前加载可选模组类型 */
 public final class CompatBootstrap implements CompatRegistrar {
 
-    private static final String GREGTECH_TOOL_CLASS = "gregtech.common.items.MetaGeneratedTool01";
+
 
     @Override
     public void register(CompatServices.Sink sink) {
@@ -71,7 +73,7 @@ public final class CompatBootstrap implements CompatRegistrar {
 
         @Override
         public String defaultBlockSound() {
-            return BattlegearShieldAccess.BLOCK_SOUND;
+            return BattlegearShieldIds.BLOCK_SOUND;
         }
 
         @Override
@@ -128,13 +130,13 @@ public final class CompatBootstrap implements CompatRegistrar {
 
         @Override
         public float blockAngle(ItemStack stackCopy) {
-            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return 0F;
+            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
             return BattlegearShieldAccess.blockAngle(stackCopy);
         }
 
         @Override
         public float damageReduction(ItemStack stackCopy, DamageSource source) {
-            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return 0F;
+            if (!OptionalApi.isModLoaded(Battlegear2Compat.MOD_ID)) return CompatBootstrapTuning.COMPAT_BOOTSTRAP_BLOCK_ANGLE_FACTOR;
             return BattlegearShieldAccess.reduction(stackCopy, source);
         }
 
@@ -155,7 +157,7 @@ public final class CompatBootstrap implements CompatRegistrar {
 
         @Override
         public boolean handles(Item item) {
-            return item != null && GREGTECH_TOOL_CLASS.equals(
+            return item != null && CompatBootstrapReflectionSpec.GREGTECH_TOOL_CLASS.equals(
                 item.getClass()
                     .getName());
         }
@@ -163,7 +165,7 @@ public final class CompatBootstrap implements CompatRegistrar {
         @Override
         public MaidWeaponProfile inspect(ItemStack stack) {
             if (!OptionalApi.isModLoaded(GregTechCompat.MOD_ID))
-                return MaidWeaponProfile.unknown("gregtech_mod_absent");
+                return MaidWeaponProfile.unknown(CompatBootstrapIds.ID_GREGTECH_MOD_ABSENT);
             return GregTechWeaponAdapter.inspect(stack);
         }
 

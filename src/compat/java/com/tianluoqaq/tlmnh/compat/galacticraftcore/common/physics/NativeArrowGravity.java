@@ -19,7 +19,7 @@ import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 /** 读取星系（Galacticraft）的维度箭矢重力；未安装该模组时沿用原版 EntityArrow 的默认重力 0.05F */
 public final class NativeArrowGravity {
 
-    private static final float VANILLA_ARROW_GRAVITY = 0.05F;
+
     private static final MethodHandle GALACTICRAFT = IntegrationGuard
         .call(ExternalFeature.ARROW_GRAVITY, NativeArrowGravity::resolve, () -> null);
     private static final ThreadLocal<Boolean> LAUNCH_QUERY = new ThreadLocal<>();
@@ -38,7 +38,7 @@ public final class NativeArrowGravity {
     public static LaunchSample sampleForLaunch(EntityArrow arrow) {
         return IntegrationGuard.call(ExternalFeature.ARROW_GRAVITY, () -> {
             if (Boolean.TRUE.equals(LAUNCH_QUERY.get()))
-                throw new IllegalStateException("Reentrant arrow launch gravity query");
+                throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_REENTRANT_ARROW_LAUNCH_GRAVITY_QUERY);
             LAUNCH_QUERY.set(Boolean.TRUE);
             try {
                 return new LaunchSample(arrow);
@@ -59,14 +59,14 @@ public final class NativeArrowGravity {
 
         private LaunchSample(EntityArrow arrow) {
             if (arrow == null || arrow.worldObj == null || arrow.worldObj.isRemote || arrow.worldObj.provider == null)
-                throw new IllegalArgumentException("Actual server arrow required for launch gravity");
+                throw new IllegalArgumentException(GalacticraftPhysicsDiagnostics.MSG_ACTUAL_SERVER_ARROW_REQUIRED_FOR);
             this.arrow = arrow;
             world = arrow.worldObj;
             provider = world.provider;
             dimension = arrow.dimension;
             entityId = arrow.getEntityId();
             identity = arrow.getUniqueID();
-            if (!isCurrent(arrow)) throw new IllegalStateException("Arrow launch identity or provider is inconsistent");
+            if (!isCurrent(arrow)) throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_ARROW_LAUNCH_IDENTITY_OR_PROVIDER);
             var shooter = arrow.shootingEntity;
             var raw = snapshot(arrow);
             var bounds = bounds(arrow);
@@ -76,7 +76,7 @@ public final class NativeArrowGravity {
                 || arrow.getIsCritical() != critical
                 || !raw.equals(snapshot(arrow))
                 || !Arrays.equals(bounds, bounds(arrow)))
-                throw new IllegalStateException("Arrow gravity query changed the actual arrow or its environment");
+                throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_ARROW_GRAVITY_QUERY_CHANGED_THE);
         }
 
         /** 发射流程可正常写入朝向与附魔，但箭矢所属世界、维度提供方及实体身份须保持一致 */
@@ -123,24 +123,24 @@ public final class NativeArrowGravity {
     }
 
     private static float read(EntityArrow arrow) {
-        if (GALACTICRAFT == null) return VANILLA_ARROW_GRAVITY;
+        if (GALACTICRAFT == null) return GalacticraftPhysicsTuning.VANILLA_ARROW_GRAVITY;
         try {
             float result = (float) GALACTICRAFT.invokeExact(arrow);
             if (!Float.isFinite(result) || result < 0)
-                throw new IllegalStateException("Invalid external arrow gravity");
+                throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_INVALID_EXTERNAL_ARROW_GRAVITY);
             return result;
         } catch (RuntimeException | Error direct) {
             throw direct;
         } catch (Throwable failure) {
-            throw new IllegalStateException("Installed arrow gravity query failed", failure);
+            throw new IllegalStateException(GalacticraftPhysicsDiagnostics.MSG_INSTALLED_ARROW_GRAVITY_QUERY_FAILED, failure);
         }
     }
 
     private static MethodHandle resolve() {
         return OptionalApi.findStatic(
             KnownModIds.GALACTICRAFT_CORE,
-            "micdoodle8.mods.galacticraft.core.util.WorldUtil",
-            "getArrowGravity",
+            GalacticraftPhysicsReflectionSpec.TARGET_CLASS_WORLD_UTIL,
+            GalacticraftPhysicsIds.ID_GETARROWGRAVITY,
             MethodType.methodType(float.class, EntityArrow.class));
     }
 }

@@ -22,7 +22,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidEffectDisplay {
 
     public static final MaidEffectDisplay INSTANCE = new MaidEffectDisplay();
-    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(32);
+    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(ClientWidgetLayout.EFFECT_DISPLAY_DOMAIN_PARAM);
     private final AtomicInteger generation = new AtomicInteger();
 
     private MaidEffectDisplay() {}
@@ -70,7 +70,7 @@ public final class MaidEffectDisplay {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getMinecraft();
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < ClientWidgetLayout.EFFECT_DISPLAY_DOMAIN_PARAM; i++) {
             var pending = queue.poll();
             if (pending == null) break;
             var message = pending.message;
@@ -91,7 +91,7 @@ public final class MaidEffectDisplay {
                 if (effect.potionId >= 0 && effect.potionId < Potion.potionTypes.length) {
                     var potion = Potion.potionTypes[effect.potionId];
                     if (potion != null && potion.getName()
-                        .equals(effect.descriptionId)) category = potion.isBadEffect() ? 1 : 0;
+                        .equals(effect.descriptionId)) category = potion.isBadEffect() ? ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL : ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE;
                 }
                 resolved.add(
                     new SendEffectMessage.EffectData(

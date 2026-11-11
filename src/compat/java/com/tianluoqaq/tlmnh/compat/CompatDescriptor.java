@@ -40,7 +40,7 @@ public interface CompatDescriptor {
     static String requireNonEmpty(String value, String name) {
         Objects.requireNonNull(value, name);
         if (value.trim()
-            .isEmpty()) throw new IllegalArgumentException(name + " must not be empty");
+            .isEmpty()) throw new IllegalArgumentException(name + CompatBootstrapDiagnostics.MSG_MUST_NOT_BE_EMPTY);
         return value;
     }
 }

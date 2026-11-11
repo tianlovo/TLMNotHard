@@ -29,16 +29,16 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     private MolangAnimationContext(TEntity entity, VariableStorage storage, Random random,
         IForeignVariableStorage foreignStorage, AnimationControllerContext animationControllerContext,
         MolangModelResources modelResources) {
-        this.entity = Objects.requireNonNull(entity, "entity");
-        this.storage = Objects.requireNonNull(storage, "storage");
-        this.random = Objects.requireNonNull(random, "random");
+        this.entity = Objects.requireNonNull(entity, MolangRenderIds.ID_ENTITY);
+        this.storage = Objects.requireNonNull(storage, MolangRenderIds.ID_STORAGE);
+        this.random = Objects.requireNonNull(random, MolangRenderIds.ID_RANDOM);
         this.foreignStorage = foreignStorage;
         this.animationControllerContext = animationControllerContext;
         this.modelResources = modelResources;
     }
 
     public void updateEntity(TEntity entity) {
-        this.entity = Objects.requireNonNull(entity, "entity");
+        this.entity = Objects.requireNonNull(entity, MolangRenderIds.ID_ENTITY);
     }
 
     public Object evaluateUnsafe(IValue value) throws Exception {
@@ -80,7 +80,7 @@ public final class MolangAnimationContext<TEntity> implements IContext<TEntity> 
     }
 
     public void setAnimationControllerContext(AnimationControllerContext context) {
-        animationControllerContext = Objects.requireNonNull(context, "context");
+        animationControllerContext = Objects.requireNonNull(context, MolangRenderIds.ID_CONTEXT);
     }
 
     @Override

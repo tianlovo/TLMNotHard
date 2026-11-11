@@ -26,12 +26,12 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidWorldSoundPlayer {
 
     public static final MaidWorldSoundPlayer INSTANCE = new MaidWorldSoundPlayer();
-    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(128);
+    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(ClientSoundTuning.WORLD_SOUND_DOMAIN_PARAM);
     private final AtomicInteger generation = new AtomicInteger(), received = new AtomicInteger(),
         overflow = new AtomicInteger();
     private final AtomicBoolean resetRequested = new AtomicBoolean();
     private int attempts, stale, empty;
-    private String lastDecision = "none";
+    private String lastDecision = ClientSoundIds.ID_NONE;
     private PlayMaidSoundMessage lastMessage;
     private MaidSoundInstance lastSound;
     private String lastStoppedUuid = "";
@@ -78,7 +78,7 @@ public final class MaidWorldSoundPlayer {
                 .stopSound(lastSound);
             lastSound = null;
         }
-        lastDecision = "world-reset";
+        lastDecision = ClientSoundIds.ID_WORLD_RESET;
     }
 
     @SubscribeEvent
@@ -86,7 +86,7 @@ public final class MaidWorldSoundPlayer {
         if (event.phase != TickEvent.Phase.END) return;
         if (resetRequested.getAndSet(false)) reset();
         var minecraft = Minecraft.getMinecraft();
-        for (int i = 0; i < 128; i++) {
+        for (int i = 0; i < ClientSoundTuning.WORLD_SOUND_DOMAIN_PARAM; i++) {
             var pending = queue.poll();
             if (pending == null) break;
             var message = pending.message;
@@ -95,24 +95,24 @@ public final class MaidWorldSoundPlayer {
             if (pending.generation != generation.get() || world == null
                 || world.provider.dimensionId != message.dimension()) {
                 stale++;
-                lastDecision = "stale-world";
+                lastDecision = ClientSoundIds.ID_STALE_WORLD;
                 continue;
             }
             var entity = world.getEntityByID(message.entityId());
             if (!(entity instanceof EntityMaid maid) || !maid.getUniqueID()
                 .equals(message.entityUuid())) {
                 stale++;
-                lastDecision = "stale-entity";
+                lastDecision = ClientSoundIds.ID_STALE_ENTITY;
                 continue;
             }
             if (BuiltinSoundCatalog.get(message.pack()).events.get(message.event()) == 0) {
                 empty++;
-                lastDecision = "empty";
+                lastDecision = ClientSoundIds.ID_EMPTY;
                 continue;
             }
             lastSound = new MaidSoundInstance(message.pack(), message.event(), maid);
             attempts++;
-            lastDecision = "submitted-on-client-tick";
+            lastDecision = ClientSoundIds.ID_SUBMITTED_ON_CLIENT_TICK;
             minecraft.getSoundHandler()
                 .playSound(lastSound);
         }
@@ -120,45 +120,45 @@ public final class MaidWorldSoundPlayer {
 
     public JsonObject observation() {
         var result = new JsonObject();
-        result.addProperty("lastStoppedUuid", lastStoppedUuid);
-        result.addProperty("retainedSoundEntity", lastSound != null);
-        result.addProperty("globalPercent", MaidClientPreferences.globalMaidSoundFrequency());
-        result.addProperty("received", received.get());
-        result.addProperty("queued", queue.size());
-        result.addProperty("overflow", overflow.get());
-        result.addProperty("attempts", attempts);
-        result.addProperty("stale", stale);
-        result.addProperty("empty", empty);
-        result.addProperty("decision", lastDecision);
-        result.add("filter", MaidSoundFreqEvent.observation());
+        result.addProperty(ClientSoundIds.ID_LASTSTOPPEDUUID, lastStoppedUuid);
+        result.addProperty(ClientSoundIds.ID_RETAINEDSOUNDENTITY, lastSound != null);
+        result.addProperty(ClientSoundIds.ID_GLOBALPERCENT, MaidClientPreferences.globalMaidSoundFrequency());
+        result.addProperty(ClientSoundIds.ID_RECEIVED, received.get());
+        result.addProperty(ClientSoundIds.ID_QUEUED, queue.size());
+        result.addProperty(ClientSoundIds.ID_OVERFLOW, overflow.get());
+        result.addProperty(ClientSoundIds.ID_ATTEMPTS, attempts);
+        result.addProperty(ClientSoundIds.ID_STALE, stale);
+        result.addProperty(ClientSoundIds.ID_EMPTY, empty);
+        result.addProperty(ClientSoundIds.ID_DECISION, lastDecision);
+        result.add(ClientSoundIds.ID_FILTER, MaidSoundFreqEvent.observation());
         if (lastMessage != null) {
-            result.addProperty("event", lastMessage.event());
-            result.addProperty("pack", lastMessage.pack());
+            result.addProperty(ClientSoundIds.ID_EVENT, lastMessage.event());
+            result.addProperty(ClientSoundIds.ID_PACK, lastMessage.pack());
             result.addProperty(
-                "requestedUuid",
+                ClientSoundIds.ID_REQUESTEDUUID,
                 lastMessage.entityUuid()
                     .toString());
-            result.addProperty("requestedDimension", lastMessage.dimension());
+            result.addProperty(ClientSoundIds.ID_REQUESTEDDIMENSION, lastMessage.dimension());
         }
         if (lastSound != null) {
             var maid = lastSound.getMaid();
             result.addProperty(
-                "soundUuid",
+                ClientSoundIds.ID_SOUNDUUID,
                 maid.getUniqueID()
                     .toString());
-            result.addProperty("soundX", lastSound.getXPosF());
-            result.addProperty("soundY", lastSound.getYPosF());
-            result.addProperty("soundZ", lastSound.getZPosF());
+            result.addProperty(ClientSoundIds.ID_SOUNDX, lastSound.getXPosF());
+            result.addProperty(ClientSoundIds.ID_SOUNDY, lastSound.getYPosF());
+            result.addProperty(ClientSoundIds.ID_SOUNDZ, lastSound.getZPosF());
             result.addProperty(
-                "maidFrequency",
+                ClientSoundIds.ID_MAIDFREQUENCY,
                 maid.getConfigManager()
                     .getSoundFreq());
-            result.addProperty("maidX", maid.posX);
-            result.addProperty("maidY", maid.posY);
-            result.addProperty("maidZ", maid.posZ);
-            result.addProperty("done", lastSound.isDonePlaying());
+            result.addProperty(ClientSoundIds.ID_MAIDX, maid.posX);
+            result.addProperty(ClientSoundIds.ID_MAIDY, maid.posY);
+            result.addProperty(ClientSoundIds.ID_MAIDZ, maid.posZ);
+            result.addProperty(ClientSoundIds.ID_DONE, lastSound.isDonePlaying());
             result.addProperty(
-                "engineReportsPlaying",
+                ClientSoundIds.ID_ENGINEREPORTSPLAYING,
                 Minecraft.getMinecraft()
                     .getSoundHandler()
                     .isSoundPlaying(lastSound));

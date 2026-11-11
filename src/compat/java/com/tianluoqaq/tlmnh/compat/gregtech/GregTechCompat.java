@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class GregTechCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.GREGTECH;
-    public static final String PACKAGE = "gregtech";
-    public static final String REVIEWED_VERSION = "5.09.54.265";
+
+
     public static final GregTechCompat INSTANCE = new GregTechCompat();
 
     private GregTechCompat() {}
@@ -20,12 +20,12 @@ public final class GregTechCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return GregTechIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return GregTechIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class GregTechCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "元生成近战武器能力审查与元生成食物效果解析";
+        return GregTechIds.CAPABILITY_SUMMARY;
     }
 }

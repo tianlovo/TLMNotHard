@@ -6,6 +6,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid;
 
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -80,8 +82,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         add(SOUND, 52, 14, 9, 9, BUTTON, 144, 43, 10, 0, "sound");
         add(TASK_SWITCH, 4, 159, 71, 21, BUTTON, 0, 42, 22, 0, "task");
         add(SCHEDULE, 9, 187, 61, 13, BUTTON, 82, 43, 0, 0, "schedule");
-        add(ContainerMaid.ACTION_HOME, 9, 206, 20, 20, BUTTON, 0, 0, 21, 21, "home");
-        add(ContainerMaid.ACTION_PICKUP_ALL, 30, 206, 20, 20, BUTTON, 42, 0, 21, 21, "pickup");
+        add(MaidContainerProtocol.ACTION_HOME, 9, 206, 20, 20, BUTTON, 0, 0, 21, 21, "home");
+        add(MaidContainerProtocol.ACTION_PICKUP_ALL, 30, 206, 20, 20, BUTTON, 42, 0, 21, 21, "pickup");
         add(RIDE, 51, 206, 20, 20, BUTTON, 84, 0, 21, 21, "maid_riding_set");
         add(DOWNLOAD, 20, 230, 41, 20, BUTTON, 0, 86, 20, 0, "model_download");
         add(MAIN_TAB, 94, 5, 24, 26, SIDE, 107, 21, 0, 0, "main");
@@ -124,10 +126,10 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     private void refreshButtons() {
         for (var raw : buttonList) {
             if (!(raw instanceof MaidAtlasButton button)) continue;
-            button.visible = button.id <= ContainerMaid.ACTION_RANGED || button.id == TASK_CLOSE
+            button.visible = button.id <= MaidContainerProtocol.ACTION_RANGED || button.id == TASK_CLOSE
                 || button.id == 113
                 || button.id == 114 ? taskListOpen : true;
-            if (maid.isUnifiedCombat() && button.id == ContainerMaid.ACTION_RANGED) button.visible = false;
+            if (maid.isUnifiedCombat() && button.id == MaidContainerProtocol.ACTION_RANGED) button.visible = false;
             if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
                 case DOWNLOAD, BOOK, BAUBLE, 113, 114 -> false;
@@ -138,7 +140,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 case TASK_TAB -> !isTaskConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case CONFIG_TAB -> !isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case SKIN, SOUND -> mc.thePlayer.inventory.getItemStack() == null;
-                case ContainerMaid.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
+                case MaidContainerProtocol.ACTION_HOME -> maid.ridingEntity == null && maid.riddenByEntity == null;
                 default -> true;
             };
             button.topTab = button.id >= MAIN_TAB && button.id <= CONFIG_TAB;
@@ -149,9 +151,9 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
                 case MAIN_TAB -> !isConfigPage() && !isTaskConfigPage();
                 case TASK_TAB -> isTaskConfigPage();
                 case CONFIG_TAB -> isConfigPage();
-                case ContainerMaid.ACTION_HOME -> maid.getHomeArea()
+                case MaidContainerProtocol.ACTION_HOME -> maid.getHomeArea()
                     .enabled();
-                case ContainerMaid.ACTION_PICKUP_ALL -> maid.isPickup();
+                case MaidContainerProtocol.ACTION_PICKUP_ALL -> maid.isPickup();
                 case RIDE -> maid.isRideable();
                 default -> false;
             };
@@ -166,15 +168,15 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case TASK_CLOSE -> taskListOpen = false;
             case INFO -> {}
             case GLOBAL -> openGlobalConfig();
-            case SKIN -> send(ContainerMaid.ACTION_MODELS);
-            case SOUND -> send(ContainerMaid.ACTION_SOUNDS);
-            case MAIN_TAB -> send(ContainerMaid.ACTION_ORIGINAL_MAIN);
-            case CONFIG_TAB -> send(ContainerMaid.ACTION_CONFIG);
-            case TASK_TAB -> send(ContainerMaid.ACTION_TASK_CONFIG);
+            case SKIN -> send(MaidContainerProtocol.ACTION_MODELS);
+            case SOUND -> send(MaidContainerProtocol.ACTION_SOUNDS);
+            case MAIN_TAB -> send(MaidContainerProtocol.ACTION_ORIGINAL_MAIN);
+            case CONFIG_TAB -> send(MaidContainerProtocol.ACTION_CONFIG);
+            case TASK_TAB -> send(MaidContainerProtocol.ACTION_TASK_CONFIG);
             case SCHEDULE -> send(
-                ContainerMaid.ACTION_DAY + (maid.getSchedule()
+                MaidContainerProtocol.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
-            case RIDE -> send(ContainerMaid.ACTION_RIDEABLE);
+            case RIDE -> send(MaidContainerProtocol.ACTION_RIDEABLE);
             default -> send(button.id);
         }
         refreshButtons();
@@ -210,12 +212,12 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         if (mc.currentScreen != this || !inventorySlots.canInteractWith(mc.thePlayer)) return false;
         int id = switch (action) {
             case "tasks" -> TASK_SWITCH;
-            case "idle" -> ContainerMaid.ACTION_IDLE;
-            case "attack" -> ContainerMaid.ACTION_ATTACK;
-            case "ranged" -> ContainerMaid.ACTION_RANGED;
+            case "idle" -> MaidContainerProtocol.ACTION_IDLE;
+            case "attack" -> MaidContainerProtocol.ACTION_ATTACK;
+            case "ranged" -> MaidContainerProtocol.ACTION_RANGED;
             case "schedule" -> SCHEDULE;
-            case "home_toggle" -> ContainerMaid.ACTION_HOME;
-            case "pickup" -> ContainerMaid.ACTION_PICKUP_ALL;
+            case "home_toggle" -> MaidContainerProtocol.ACTION_HOME;
+            case "pickup" -> MaidContainerProtocol.ACTION_PICKUP_ALL;
             case "ride_toggle" -> RIDE;
             case "open" -> SKIN;
             case "sound" -> SOUND;
@@ -416,7 +418,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), new ItemStack(TASK_ICONS[task]), x, y);
         RenderHelper.disableStandardItemLighting();
         String title = text(
-            maid.isUnifiedCombat() && task == ContainerMaid.ACTION_ATTACK ? "gui.tlmnh.task.touhou_little_maid:attack"
+            maid.isUnifiedCombat() && task == MaidContainerProtocol.ACTION_ATTACK ? "gui.tlmnh.task.touhou_little_maid:attack"
                 : "task.touhou_little_maid." + TASK_KEYS[task]);
         if (wrap) fontRendererObj.drawSplitString(title, textX, textY, 42, 0x333333);
         else fontRendererObj.drawString(title, textX, textY, 0x333333);
@@ -424,7 +426,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
 
     private List<String> tooltip(MaidAtlasButton button) {
         if (button.id == BAUBLE) return Collections.singletonList(text("gui.tlmnh.original.bauble_excluded"));
-        if (button.id <= ContainerMaid.ACTION_RANGED) return Collections.emptyList();
+        if (button.id <= MaidContainerProtocol.ACTION_RANGED) return Collections.emptyList();
         var lines = new ArrayList<String>();
         if (button.id == TASK_SWITCH || button.id == TASK_CLOSE || button.id == 113 || button.id == 114) {
             String taskKey = switch (button.id) {
@@ -440,7 +442,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             lines.addAll(scheduleTooltips());
         } else {
             String key = "gui.touhou_little_maid.button." + button.tooltip;
-            if (button.id == ContainerMaid.ACTION_HOME || button.id == ContainerMaid.ACTION_PICKUP_ALL
+            if (button.id == MaidContainerProtocol.ACTION_HOME || button.id == MaidContainerProtocol.ACTION_PICKUP_ALL
                 || button.id == RIDE) key += "." + button.selected;
             if (StatCollector.canTranslate(key)) lines.add(text(key));
             if (StatCollector.canTranslate("gui.touhou_little_maid.button." + button.tooltip + ".desc"))

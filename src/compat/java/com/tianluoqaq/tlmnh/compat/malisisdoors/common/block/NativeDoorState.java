@@ -29,11 +29,11 @@ public final class NativeDoorState {
             try {
                 Object state = ANIMATED_STATE.invoke(tile);
                 if (state instanceof Enum<?>value) return value.name()
-                    .equals("OPENED")
+                    .equals(MalisisDoorsBlockIds.KEY_OPENED)
                     || value.name()
-                        .equals("OPENING");
+                        .equals(MalisisDoorsBlockIds.KEY_OPENING);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException("native animated door state is unavailable", failure);
+                throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_NATIVE_ANIMATED_DOOR_STATE_IS, failure);
             }
         }
         return door.func_150015_f(world, x, y, z);
@@ -43,13 +43,13 @@ public final class NativeDoorState {
         try {
             return Class
                 .forName(
-                    "net.malisis.doors.door.tileentity.DoorTileEntity",
+                    MalisisDoorsBlockIds.TARGET_CLASS_DOOR_TILE_ENTITY,
                     false,
                     NativeDoorState.class.getClassLoader())
-                .getMethod("getState");
+                .getMethod(MalisisDoorsBlockIds.ID_GETSTATE);
         } catch (ClassNotFoundException | NoSuchMethodException absent) {
-            if (Loader.isModLoaded("malisisdoors"))
-                throw new IllegalStateException("Installed animated door state API changed", absent);
+            if (Loader.isModLoaded(MalisisDoorsBlockIds.ID_MALISISDOORS))
+                throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_STATE_API, absent);
             return null;
         }
     }

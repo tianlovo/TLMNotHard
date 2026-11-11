@@ -18,24 +18,24 @@ public final class MaidClientPreferences {
 
     private static Configuration configuration;
     private static boolean modelIconCache;
-    private static int globalMaidSoundFrequency = 100;
+    private static int globalMaidSoundFrequency = ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM;
     private static boolean showChatBubbles = true;
     private static final Map<String, Boolean> interactionTips = new HashMap<>();
 
     private MaidClientPreferences() {}
 
     public static void load() {
-        configuration = new Configuration(new File(Minecraft.getMinecraft().mcDataDir, "config/tlmnh-client.cfg"));
+        configuration = new Configuration(new File(Minecraft.getMinecraft().mcDataDir, ClientConfigGuiConfigSpec.ID_CONFIG_TLMNH_CLIENT_CFG));
         configuration.load();
-        modelIconCache = configuration.getBoolean("EnableModelIconCache", "model", false, "Cache builtin model icons");
+        modelIconCache = configuration.getBoolean(ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE, ClientConfigGuiConfigSpec.ID_MODEL, false, ClientConfigGuiConfigSpec.MSG_CACHE_BUILTIN_MODEL_ICONS);
         globalMaidSoundFrequency = configuration
-            .getInt("GlobalMaidSoundFrequency", "sound", 100, 0, 100, "Global maid sound frequency percent");
+            .getInt(ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY, ClientConfigGuiConfigSpec.ID_SOUND, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM, ClientConfigGuiConfigSpec.MSG_GLOBAL_MAID_SOUND_FREQUENCY_PERCENT);
         showChatBubbles = configuration
-            .getBoolean("GlobalMaidShowChatBubble", "render", true, "显示普通聊天气泡 / Show ordinary maid chat bubbles");
+            .getBoolean(ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE, ClientConfigGuiConfigSpec.ID_RENDER, true, ClientConfigGuiConfigSpec.MSG_SHOW_ORDINARY_MAID_CHAT_BUBBLES);
         interactionTips.clear();
         for (var tip : MaidInteractionTipsRules.Tip.values()) interactionTips.put(
             tip.configKey,
-            configuration.getBoolean(tip.configKey, "render", true, "Show the maid interaction hint / 显示女仆交互提示"));
+            configuration.getBoolean(tip.configKey, ClientConfigGuiConfigSpec.ID_RENDER, true, ClientConfigGuiConfigSpec.MSG_SHOW_THE_MAID_INTERACTION_HINT));
         if (configuration.hasChanged()) configuration.save();
     }
 
@@ -57,18 +57,18 @@ public final class MaidClientPreferences {
 
     /** 全局设置页一次提交本地已有配置，取消或丢失窗口权限不调用这里 */
     public static void apply(int percent, boolean bubbles, boolean cache) {
-        if (percent < 0 || percent > 100)
-            throw new IllegalArgumentException("Maid sound frequency percent out of range");
-        if (configuration == null) throw new IllegalStateException("Client preferences are not initialized");
+        if (percent < 0 || percent > ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM)
+            throw new IllegalArgumentException(ClientConfigGuiConfigSpec.MSG_MAID_SOUND_FREQUENCY_PERCENT_OUT);
+        if (configuration == null) throw new IllegalStateException(ClientConfigGuiConfigSpec.MSG_CLIENT_PREFERENCES_ARE_NOT_INITIALIZED);
         if (percent == globalMaidSoundFrequency && bubbles == showChatBubbles && cache == modelIconCache) return;
         globalMaidSoundFrequency = percent;
         showChatBubbles = bubbles;
         modelIconCache = cache;
-        configuration.get("sound", "GlobalMaidSoundFrequency", 100)
+        configuration.get(ClientConfigGuiConfigSpec.ID_SOUND, ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SOUND_FREQUENCY, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM)
             .set(percent);
-        configuration.get("render", "GlobalMaidShowChatBubble", true)
+        configuration.get(ClientConfigGuiConfigSpec.ID_RENDER, ClientConfigGuiConfigSpec.KEY_GLOBAL_MAID_SHOW_CHAT_BUBBLE, true)
             .set(bubbles);
-        configuration.get("model", "EnableModelIconCache", false)
+        configuration.get(ClientConfigGuiConfigSpec.ID_MODEL, ClientConfigGuiConfigSpec.KEY_ENABLE_MODEL_ICON_CACHE, false)
             .set(cache);
         configuration.save();
     }

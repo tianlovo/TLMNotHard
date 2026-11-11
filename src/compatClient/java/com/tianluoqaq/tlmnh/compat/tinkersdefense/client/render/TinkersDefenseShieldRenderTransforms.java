@@ -31,7 +31,7 @@ public final class TinkersDefenseShieldRenderTransforms {
                 IItemRenderer.ItemRenderType.EQUIPPED,
                 stack,
                 IItemRenderer.ItemRendererHelper.EQUIPPED_BLOCK))
-                throw new IllegalStateException("Native TD shield changed its equipped helper contract");
+                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_CHANGED_ITS);
             return nativeIconBridge(blocking);
         }, () -> null);
     }
@@ -44,23 +44,23 @@ public final class TinkersDefenseShieldRenderTransforms {
         var helper = equippedIconHelper();
         return BattlegearShieldRenderTransforms.nativeIconBridge(blocking)
             .mul(helper)
-            .translate(0, 0, 1F / 256)
+            .translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z / TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_Z_2)
             .mul(new Matrix4f(helper).invert());
     }
 
     private static Matrix4f equippedIconHelper() {
-        return new Matrix4f().translate(0, -.3F, 0)
-            .scale(1.5F)
-            .rotateY((float) Math.toRadians(50))
-            .rotateZ((float) Math.toRadians(335))
-            .translate(-.9375F, -.0625F, 0);
+        return new Matrix4f().translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_MATRIX4F_OFFSET_Y, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X)
+            .scale(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_SCALE_X)
+            .rotateY((float) Math.toRadians(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_TO_RADIANS_FIRST_PARAM))
+            .rotateZ((float) Math.toRadians(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_TO_RADIANS_FIRST_PARAM_2))
+            .translate(TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_X, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_RENDER_OFFSET_Y, TinkersDefenseClientRenderLayout.TINKERS_DEFENSE_NATIVE_ICON_BRIDGE_OFFSET_X);
     }
 
     private static final class Api {
 
-        private static final Class<?> ROUND = resolve("gmail.Lance5057.items.RoundShield"),
-            HEATER = resolve("gmail.Lance5057.items.HeaterShield"),
-            RENDERER = resolve("tconstruct.client.FlexibleToolRenderer");
+        private static final Class<?> ROUND = resolve(TinkersDefenseClientRenderIds.ID_GMAIL_LANCE5057_ITEMS_ROUNDSHIELD),
+            HEATER = resolve(TinkersDefenseClientRenderIds.ID_GMAIL_LANCE5057_ITEMS_HEATERSHIELD),
+            RENDERER = resolve(TinkersDefenseClientRenderReflectionSpec.TARGET_CLASS_FLEXIBLE_TOOL_RENDERER);
         private static final Field DEPTH = resolveDepth();
 
         static void requireNativePlate(ItemStack stack, IItemRenderer renderer) throws IllegalAccessException {
@@ -68,29 +68,29 @@ public final class TinkersDefenseShieldRenderTransforms {
                 .getClass();
             if ((item != ROUND && item != HEATER) || renderer == null || renderer.getClass() != RENDERER)
                 throw new IllegalStateException(
-                    "Native TD shield item or equipped renderer differs from the plate contract");
+                    TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_ITEM_OR);
             float depth = DEPTH.getFloat(renderer);
             if (!Float.isFinite(depth) || depth <= 0)
-                throw new IllegalStateException("Native TD shield has an invalid plate depth");
+                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_HAS_AN);
         }
 
         private static Class<?> resolve(String name) {
             try {
                 return Class.forName(name, false, TinkersDefenseShieldRenderTransforms.class.getClassLoader());
             } catch (ClassNotFoundException failure) {
-                throw new IllegalStateException("Native TD shield rendering class missing: " + name, failure);
+                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERING_CLASS + name, failure);
             }
         }
 
         private static Field resolveDepth() {
             try {
-                var field = RENDERER.getField("depth");
+                var field = RENDERER.getField(TinkersDefenseClientRenderIds.ID_DEPTH);
                 if (field.getDeclaringClass() != RENDERER || field.getType() != float.class
                     || Modifier.isStatic(field.getModifiers()))
-                    throw new IllegalStateException("Native TD shield renderer depth signature differs");
+                    throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH);
                 return field;
             } catch (NoSuchFieldException failure) {
-                throw new IllegalStateException("Native TD shield renderer depth field missing", failure);
+                throw new IllegalStateException(TinkersDefenseClientRenderDiagnostics.MSG_NATIVE_TD_SHIELD_RENDERER_DEPTH_2, failure);
             }
         }
     }

@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class AppleCoreCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.APPLE_CORE;
-    public static final String PACKAGE = "applecore";
-    public static final String REVIEWED_VERSION = "3.3.13";
+
+
     public static final AppleCoreCompat INSTANCE = new AppleCoreCompat();
 
     private AppleCoreCompat() {}
@@ -20,12 +20,12 @@ public final class AppleCoreCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return AppleCoreIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return AppleCoreIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class AppleCoreCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "读取食物饥饿恢复量与饱和度倍率";
+        return AppleCoreIds.CAPABILITY_SUMMARY;
     }
 }

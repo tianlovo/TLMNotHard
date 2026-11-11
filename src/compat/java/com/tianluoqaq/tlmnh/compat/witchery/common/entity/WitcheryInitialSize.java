@@ -12,35 +12,35 @@ import cpw.mods.fml.relauncher.Side;
 /** Witchery出生事件的两项原始尺寸初始化，不调用包含其他玩法的完整事件处理器 */
 public final class WitcheryInitialSize {
 
-    private static final String KEY = "witchery/initial_size";
-    private static final String SOURCE_SHA256 = "68c331f624cea6c0827a31e96a6dce2e75461227c42da70f11ba765a8c6a8cec";
+
+
 
     private WitcheryInitialSize() {}
 
     /** 已核witchery-1.7.10-0.24.1的GenericEvents.onEntityJoinWorld字节码0–43；其余ForgeData原样保留 */
     public static void prepare(EntityMaid maid, UUID actor) {
-        if (!Loader.isModLoaded("witchery")) return;
-        if (!IntegrationGuard.available(Side.SERVER, KEY)) throw new IllegalStateException(
-            "Witchery initial-size contract is unavailable; source credential remains intact");
+        if (!Loader.isModLoaded(WitcheryEntityIds.ID_WITCHERY)) return;
+        if (!IntegrationGuard.available(Side.SERVER, WitcheryEntityIds.KEY)) throw new IllegalStateException(
+            WitcheryEntityDiagnostics.MSG_WITCHERY_INITIAL_SIZE_CONTRACT_IS);
         try {
             if (maid.worldObj == null || maid.worldObj.isRemote
                 || !Float.isFinite(maid.width)
                 || !Float.isFinite(maid.height)
                 || maid.width <= 0
                 || maid.height <= 0)
-                throw new IllegalStateException("Unknown maid dimensions before Witchery initialization");
-            if (!DependencyFingerprint.mod("witchery")
-                .endsWith(":sha256:" + SOURCE_SHA256))
-                throw new IllegalStateException("Unverified Witchery initial-size provider; no maid will be published");
+                throw new IllegalStateException(WitcheryEntityDiagnostics.MSG_UNKNOWN_MAID_DIMENSIONS_BEFORE_WITCHERY);
+            if (!DependencyFingerprint.mod(WitcheryEntityIds.ID_WITCHERY)
+                .endsWith(WitcheryEntityIds.REVIEWED_ARTIFACT_REVIEWED + WitcheryEntityIds.SOURCE_SHA256))
+                throw new IllegalStateException(WitcheryEntityDiagnostics.MSG_UNVERIFIED_WITCHERY_INITIAL_SIZE_PROVIDER);
             // 原提供方每次Join都覆盖这两float；在写前快照之前执行同一已核初始化
             var data = maid.getEntityData();
-            data.setFloat("WITCInitialWidth", maid.width);
-            data.setFloat("WITCInitialHeight", maid.height);
+            data.setFloat(WitcheryEntityNbtKeys.KEY_WITC_INITIAL_WIDTH, maid.width);
+            data.setFloat(WitcheryEntityNbtKeys.KEY_WITC_INITIAL_HEIGHT, maid.height);
         } catch (Exception | LinkageError | AssertionError failure) {
             IntegrationGuard.throwIfFatal(failure);
-            IntegrationGuard.report(Side.SERVER, KEY, failure, actor);
+            IntegrationGuard.report(Side.SERVER, WitcheryEntityIds.KEY, failure, actor);
             throw new IllegalStateException(
-                "Cannot prepare verified Witchery dimensions; original source is retained",
+                WitcheryEntityDiagnostics.MSG_CANNOT_PREPARE_VERIFIED_WITCHERY_DIMENSIONS,
                 failure);
         }
     }

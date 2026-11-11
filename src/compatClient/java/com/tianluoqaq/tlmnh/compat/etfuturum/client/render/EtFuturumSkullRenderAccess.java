@@ -18,14 +18,14 @@ public final class EtFuturumSkullRenderAccess {
     public static void render(TileEntitySpecialRenderer renderer, int type, GameProfile profile) {
         if (renderer == null || !renderer.getClass()
             .getName()
-            .equals("ganymedes01.etfuturum.client.renderer.tileentity.TileEntityFancySkullRenderer"))
-            throw new IllegalStateException("Unknown active skull renderer; native head item retained");
+            .equals(EtFuturumClientRenderReflectionSpec.TARGET_CLASS_TILE_ENTITY_FANCY_SKULL_RENDERER))
+            throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_UNKNOWN_ACTIVE_SKULL_RENDERER_NATIVE);
         try {
             if (renderer.getClass() != Api.TYPE)
-                throw new IllegalStateException("Native skull renderer identity changed");
-            Api.RENDER.invoke(renderer, -.5F, 0F, -.5F, 1, 180F, type, profile);
+                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERER_IDENTITY_CHANGED);
+            Api.RENDER.invoke(renderer, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_THIRD_FACTOR, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SECOND_FACTOR, EtFuturumClientRenderLayout.INVOKE_SINGLE_UNIT, EtFuturumClientRenderLayout.ET_FUTURUM_INVOKE_SIXTH_FACTOR, type, profile);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Native skull rendering entry failed", failure);
+            throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_FAILED, failure);
         }
     }
 
@@ -36,9 +36,9 @@ public final class EtFuturumSkullRenderAccess {
 
         static {
             try {
-                TYPE = Class.forName("ganymedes01.etfuturum.client.renderer.tileentity.TileEntityFancySkullRenderer");
+                TYPE = Class.forName(EtFuturumClientRenderReflectionSpec.TARGET_CLASS_TILE_ENTITY_FANCY_SKULL_RENDERER);
                 RENDER = TYPE.getMethod(
-                    "renderSkull",
+                    EtFuturumClientRenderIds.ID_RENDERSKULL,
                     float.class,
                     float.class,
                     float.class,
@@ -47,9 +47,9 @@ public final class EtFuturumSkullRenderAccess {
                     int.class,
                     GameProfile.class);
                 if (RENDER.getReturnType() != void.class)
-                    throw new IllegalStateException("Native skull return contract changed");
+                    throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RETURN_CONTRACT_CHANGED);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException("Native skull rendering entry unavailable", failure);
+                throw new IllegalStateException(EtFuturumClientRenderDiagnostics.MSG_NATIVE_SKULL_RENDERING_ENTRY_UNAVAILABLE, failure);
             }
         }
     }

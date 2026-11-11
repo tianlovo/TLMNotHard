@@ -37,17 +37,17 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidBannerRenderer {
 
     private static final ResourceLocation TEXTURE = new ResourceLocation(
-        "touhou_little_maid:textures/bedrock/entity/maid_banner.png");
+        AttachmentRenderIds.TEXTURE_MAID_BANNER);
     private static final Map<EntityMaid, Integer> LAST_DRAWN = new WeakHashMap<>();
 
     private MaidBannerRenderer() {}
 
     public static int drawnCount(EntityMaid maid) {
-        return LAST_DRAWN.getOrDefault(maid, 0);
+        return LAST_DRAWN.getOrDefault(maid, AttachmentRenderLayout.PUT_INITIAL_VALUE);
     }
 
     public static void render(EntityMaid maid, BuiltinMaidModel model) {
-        if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 0);
+        if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, AttachmentRenderLayout.PUT_INITIAL_VALUE);
         var stack = maid.getBackpackShowItem();
         if (!ClientCompatServices.itemRender()
             .isBanner(stack) || stack.stackSize <= 0
@@ -72,9 +72,9 @@ public final class MaidBannerRenderer {
                 GL11.glDisable(GL11.GL_CULL_FACE);
                 GL11.glEnable(GL11.GL_NORMALIZE);
                 GL11.glEnable(GL11.GL_ALPHA_TEST);
-                GL11.glAlphaFunc(GL11.GL_GREATER, .1F);
+                GL11.glAlphaFunc(GL11.GL_GREATER, AttachmentRenderLayout.BANNER_GL_ALPHA_FUNC_SECOND_FACTOR);
                 GL11.glDepthFunc(GL11.GL_LEQUAL);
-                GL11.glColor4f(1, 1, 1, 1);
+                GL11.glColor4f(AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
                 Minecraft.getMinecraft()
                     .getTextureManager()
                     .bindTexture(TEXTURE);
@@ -82,8 +82,8 @@ public final class MaidBannerRenderer {
                 Minecraft.getMinecraft()
                     .getTextureManager()
                     .bindTexture(pattern);
-                draw(banner, banner.getPart("banner"), poses, light);
-                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 1);
+                draw(banner, banner.getPart(AttachmentRenderIds.ID_BANNER), poses, light);
+                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
             }
             return true;
         }, () -> false);
@@ -94,20 +94,20 @@ public final class MaidBannerRenderer {
         if (model.getGecko() == null) {
             model.getBedrockPose()
                 .applyTransform(poses);
-            poses.translate(0, .5, .025);
-            poses.scale(.5F, .5F, .5F);
+            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y_2, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z);
+            poses.scale(AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X);
         } else {
             var bones = model.getGecko()
                 .backpackBones();
             if (bones.isEmpty()) return null;
-            poses.translate(0, 1.5, 0);
-            poses.scale(-1, -1, 1);
+            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.PUT_INITIAL_VALUE);
+            poses.scale(AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.UNSET_OR_NOT_FOUND, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
             if (RenderUtils.prepMatrixForLocator(poses, bones)) return null;
-            poses.translate(0, .75, .3);
-            poses.scale(.65F, -.65F, -.65F);
+            poses.translate(AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Y_2, AttachmentRenderLayout.BANNER_ATTACHMENT_OFFSET_Z_2);
+            poses.scale(AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_X_2, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y, AttachmentRenderLayout.BANNER_ATTACHMENT_SCALE_Y);
             poses.mulPose(new Quaternionf().rotationY((float) -Math.PI));
         }
-        poses.mulPose(new Quaternionf().rotationX((float) Math.toRadians(-5)));
+        poses.mulPose(new Quaternionf().rotationX((float) Math.toRadians(AttachmentRenderLayout.BANNER_TO_RADIANS_FIRST_PARAM)));
         var matrix = poses.last()
             .pose();
         return MaidHeldItemTransforms.finite(matrix) && matrix.determinant() != 0 ? poses : null;
@@ -117,8 +117,8 @@ public final class MaidBannerRenderer {
         var consumer = TessellatorVertexConsumer.INSTANCE;
         consumer.begin();
         try {
-            if (part == null) model.renderToBuffer(poses, consumer, light, 0, 1, 1, 1, 1);
-            else part.render(poses, consumer, light, 0, 1, 1, 1, 1);
+            if (part == null) model.renderToBuffer(poses, consumer, light, AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
+            else part.render(poses, consumer, light, AttachmentRenderLayout.PUT_INITIAL_VALUE, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y, AttachmentRenderLayout.BACK_ITEM_ATTACHMENT_OFFSET_Y);
         } finally {
             consumer.end();
         }

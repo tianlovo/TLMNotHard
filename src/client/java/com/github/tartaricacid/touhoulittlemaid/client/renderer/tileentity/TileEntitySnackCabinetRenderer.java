@@ -5,6 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity;
 
+import com.tianluoqaq.tlmnh.common.life.cabinet.SnackCabinetLayout;
+
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
@@ -44,11 +46,11 @@ public final class TileEntitySnackCabinetRenderer extends TileEntitySpecialRende
             int metadata = cabinet.getWorldObj()
                 .getBlockMetadata(cabinet.xCoord, cabinet.yCoord, cabinet.zCoord);
             int type = BlockSnackCabinet.cabinetType(metadata);
-            if (type > BlockSnackCabinet.TYPE_HALF)
+            if (type > SnackCabinetLayout.TYPE_HALF)
                 throw new IllegalStateException("Unknown cabinet display state retained");
             var model = models.get();
-            model.getPart("full").visible = type == BlockSnackCabinet.TYPE_FULL;
-            model.getPart("half").visible = type == BlockSnackCabinet.TYPE_HALF;
+            model.getPart("full").visible = type == SnackCabinetLayout.TYPE_FULL;
+            model.getPart("half").visible = type == SnackCabinetLayout.TYPE_HALF;
             try (var scope = new MaidItemRenderScope()) {
                 GL11.glTranslated(x + .5, y + 1.5, z + .5);
                 GL11.glRotatef(-180, 0, 0, 1);

@@ -5,12 +5,12 @@ import java.util.Random;
 /** 保留上游整数随机的上界排除语义，处理等端点、范围溢出和过大的投掷次数 */
 public final class MolangRandom {
 
-    private static final int MAX_ROLLS = 1024;
+
 
     private MolangRandom() {}
 
     public static int rollCount(int requested) {
-        return Math.max(0, Math.min(requested, MAX_ROLLS));
+        return Math.max(MolangRenderLayout.MAX_INITIAL_VALUE, Math.min(requested, MolangRenderLayout.MAX_ROLLS));
     }
 
     public static int nextInteger(Random random, int first, int second) {
@@ -21,7 +21,7 @@ public final class MolangRandom {
         long bits;
         long offset;
         do {
-            bits = random.nextLong() >>> 1;
+            bits = random.nextLong() >>> MolangRenderLayout.MIN_SINGLE_UNIT;
             offset = bits % width;
         } while (bits - offset + width - 1 < 0);
         return (int) (min + offset);

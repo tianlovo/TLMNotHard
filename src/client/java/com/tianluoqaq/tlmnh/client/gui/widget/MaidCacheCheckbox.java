@@ -15,15 +15,15 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidCacheCheckbox extends GuiButton {
 
     private boolean focused;
-    private static final int[][] CHECK_STROKES = { { 15, 7, 2, 0xFFFFFFFF }, { 13, 8, 3, 0xFFFFFFFF },
-        { 12, 9, 2, 0xFFFFFFFF }, { 14, 9, 1, 0xFFCACACA }, { 4, 10, 1, 0xFFFFFFFF }, { 5, 10, 1, 0xFFCACACA },
-        { 11, 10, 2, 0xFFFFFFFF }, { 13, 10, 1, 0xFF868686 }, { 5, 11, 2, 0xFFFFFFFF }, { 7, 11, 1, 0xFFCACACA },
-        { 10, 11, 2, 0xFFFFFFFF }, { 12, 11, 1, 0xFF868686 }, { 6, 12, 2, 0xFFFFFFFF }, { 8, 12, 1, 0xFFCACACA },
-        { 9, 12, 2, 0xFFFFFFFF }, { 11, 12, 1, 0xFFCACACA }, { 7, 13, 3, 0xFFFFFFFF }, { 10, 13, 1, 0xFFCACACA },
-        { 8, 14, 2, 0xFFFFFFFF }, { 10, 14, 1, 0xFF868686 }, { 9, 15, 1, 0xFFCACACA } };
+    private static final int[][] CHECK_STROKES = { { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_2, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_4, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_5, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_6, ClientWidgetLayout.ARGB_WHITE },
+        { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_8, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_9, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_8, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA }, { ClientWidgetLayout.ATLAS_BUTTON_DEST_X, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_11, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA },
+        { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_4, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FF868686 }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_11, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_2, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA },
+        { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FF868686 }, { ClientWidgetLayout.ATLAS_BUTTON_DEST_Y, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_5, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA },
+        { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_8, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_12, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_7, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_2, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_4, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_6, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_4, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA },
+        { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_5, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_9, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3, ClientWidgetLayout.ARGB_WHITE }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_10, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_9, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FF868686 }, { ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_8, ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ARGB_COLOR_FFCACACA } };
 
     public MaidCacheCheckbox(int id, int x, int y, String label) {
-        super(id, x, y, 20, 20, label);
+        super(id, x, y, ClientWidgetLayout.CACHE_CHECKBOX_MAID_CACHE_CHECKBOX_PARAM, ClientWidgetLayout.CACHE_CHECKBOX_MAID_CACHE_CHECKBOX_PARAM, label);
     }
 
     public void clearFocus() {
@@ -41,18 +41,18 @@ public final class MaidCacheCheckbox extends GuiButton {
         if (!visible) return;
         minecraft.getTextureManager()
             .bindTexture(buttonTextures);
-        GL11.glColor4f(1, 1, 1, 1);
-        drawRect(xPosition, yPosition, xPosition + 20, yPosition + 20, focused ? 0xFFFFFFFF : 0xFF000000);
-        GL11.glColor4f(1, 1, 1, 1);
-        drawTexturedModalRect(xPosition + 1, yPosition + 1, 1, 47, 18, 18);
+        GL11.glColor4f(ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL);
+        drawRect(xPosition, yPosition, xPosition + ClientWidgetLayout.CACHE_CHECKBOX_MAID_CACHE_CHECKBOX_PARAM, yPosition + ClientWidgetLayout.CACHE_CHECKBOX_MAID_CACHE_CHECKBOX_PARAM, focused ? ClientWidgetLayout.ARGB_WHITE : ClientWidgetLayout.ARGB_BLACK);
+        GL11.glColor4f(ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL);
+        drawTexturedModalRect(xPosition + 1, yPosition + 1, ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL, ClientWidgetLayout.ATLAS_BUTTON_TEX_V_2, ClientWidgetLayout.CACHE_CHECKBOX_WIDTH, ClientWidgetLayout.CACHE_CHECKBOX_WIDTH);
         if (MaidClientPreferences.modelIconCache()) {
             for (var stroke : CHECK_STROKES) drawRect(
-                xPosition + stroke[0],
-                yPosition + stroke[1],
-                xPosition + stroke[0] + stroke[2],
-                yPosition + stroke[1] + 1,
-                stroke[3]);
+                xPosition + stroke[ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE],
+                yPosition + stroke[ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL],
+                xPosition + stroke[ClientWidgetLayout.ATLAS_BUTTON_DRAW_BUTTON_ZERO_BASE] + stroke[ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_3],
+                yPosition + stroke[ClientWidgetLayout.ATLAS_BUTTON_RED_LEVEL] + 1,
+                stroke[ClientWidgetLayout.CACHE_CHECKBOX_DOMAIN_PARAM_6]);
         }
-        minecraft.fontRenderer.drawStringWithShadow(displayString, xPosition + 24, yPosition + 6, 0xE0E0E0);
+        minecraft.fontRenderer.drawStringWithShadow(displayString, xPosition + ClientWidgetLayout.CACHE_CHECKBOX_TEXT_X, yPosition + ClientWidgetLayout.ATLAS_BUTTON_DEST_Y, ClientWidgetLayout.RGB_COLOR_E0E0E0);
     }
 }

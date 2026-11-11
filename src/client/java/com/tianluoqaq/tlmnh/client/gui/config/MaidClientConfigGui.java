@@ -19,7 +19,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidClientConfigGui extends GuiScreen {
 
-    private static final int FREQUENCY = 0, BUBBLES = 1, CACHE = 2, SAVE = 3, CANCEL = 4;
+
     private final GuiScreen parent;
     private final Container container;
     private int frequency = MaidClientPreferences.globalMaidSoundFrequency();
@@ -44,36 +44,36 @@ public final class MaidClientConfigGui extends GuiScreen {
     @Override
     public void initGui() {
         buttonList.clear();
-        int x = width / 2 - 130, y = height / 2 - 46;
+        int x = width / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR - ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_X_OFFSET, y = height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR - ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_Y_OFFSET;
         slider = new GuiSlider(
-            FREQUENCY,
+            ClientConfigGuiConfigSpec.FREQUENCY,
             x,
             y,
-            260,
-            20,
-            text("gui.touhou_little_maid.maid_config.sound_frequency") + ": ",
-            "%",
-            0,
-            100,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM_2,
+            text(ClientConfigGuiConfigSpec.I18N_GUI_TOUHOU_LITTLE_MAID_MAID_CONFIG_SOUND_FREQUE) + ClientConfigGuiConfigSpec.COLON_SPACE_DELIMITER,
+            ClientConfigGuiConfigSpec.PERCENT_SUFFIX,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE,
+            ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM,
             frequency,
             false,
             true,
             changed -> frequency = changed.getValueInt());
         buttonList.add(slider);
-        buttonList.add(new GuiButton(BUBBLES, x, y + 26, 260, 20, ""));
-        buttonList.add(new GuiButton(CACHE, x, y + 52, 260, 20, ""));
-        buttonList.add(new GuiButton(SAVE, x, y + 90, 126, 20, text("gui.done")));
-        buttonList.add(new GuiButton(CANCEL, x + 134, y + 90, 126, 20, text("gui.cancel")));
+        buttonList.add(new GuiButton(ClientConfigGuiConfigSpec.BUBBLES, x, y + ClientConfigGuiConfigSpec.BUBBLES_BTN_Y, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM_2, ""));
+        buttonList.add(new GuiButton(ClientConfigGuiConfigSpec.CACHE, x, y + ClientConfigGuiConfigSpec.CACHE_BTN_Y, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM_2, ""));
+        buttonList.add(new GuiButton(ClientConfigGuiConfigSpec.SAVE, x, y + ClientConfigGuiConfigSpec.SAVE_BTN_Y, ClientConfigGuiConfigSpec.SAVE_BTN_WIDTH, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM_2, text(ClientConfigGuiConfigSpec.I18N_GUI_DONE)));
+        buttonList.add(new GuiButton(ClientConfigGuiConfigSpec.CANCEL, x + ClientConfigGuiConfigSpec.CANCEL_BTN_X, y + ClientConfigGuiConfigSpec.SAVE_BTN_Y, ClientConfigGuiConfigSpec.SAVE_BTN_WIDTH, ClientConfigGuiConfigSpec.CLIENT_CONFIG_INIT_GUI_PARAM_2, text(ClientConfigGuiConfigSpec.I18N_GUI_CANCEL)));
         labels();
     }
 
     private void labels() {
         for (var button : buttonList) {
-            if (button.id == BUBBLES)
-                button.displayString = text("gui.touhou_little_maid.maid_config.show_chat_bubble") + ": "
-                    + text(bubbles ? "options.on" : "options.off");
-            if (button.id == CACHE) button.displayString = text("gui.touhou_little_maid.skin.enable_cache") + ": "
-                + text(cache ? "options.on" : "options.off");
+            if (button.id == ClientConfigGuiConfigSpec.BUBBLES)
+                button.displayString = text(ClientConfigGuiConfigSpec.I18N_GUI_TOUHOU_LITTLE_MAID_MAID_CONFIG_SHOW_CHAT_BU) + ClientConfigGuiConfigSpec.COLON_SPACE_DELIMITER
+                    + text(bubbles ? ClientConfigGuiConfigSpec.ID_OPTIONS_ON : ClientConfigGuiConfigSpec.ID_OPTIONS_OFF);
+            if (button.id == ClientConfigGuiConfigSpec.CACHE) button.displayString = text(ClientConfigGuiConfigSpec.I18N_GUI_TOUHOU_LITTLE_MAID_SKIN_ENABLE_CACHE) + ClientConfigGuiConfigSpec.COLON_SPACE_DELIMITER
+                + text(cache ? ClientConfigGuiConfigSpec.ID_OPTIONS_ON : ClientConfigGuiConfigSpec.ID_OPTIONS_OFF);
         }
     }
 
@@ -81,14 +81,14 @@ public final class MaidClientConfigGui extends GuiScreen {
     protected void actionPerformed(GuiButton button) {
         if (!button.enabled || mc.currentScreen != this || !valid()) return;
         switch (button.id) {
-            case BUBBLES -> bubbles = !bubbles;
-            case CACHE -> cache = !cache;
-            case SAVE -> {
+            case ClientConfigGuiConfigSpec.BUBBLES -> bubbles = !bubbles;
+            case ClientConfigGuiConfigSpec.CACHE -> cache = !cache;
+            case ClientConfigGuiConfigSpec.SAVE -> {
                 MaidClientPreferences.apply(frequency, bubbles, cache);
                 returnToParent();
                 return;
             }
-            case CANCEL -> {
+            case ClientConfigGuiConfigSpec.CANCEL -> {
                 returnToParent();
                 return;
             }
@@ -118,16 +118,16 @@ public final class MaidClientConfigGui extends GuiScreen {
         drawDefaultBackground();
         drawCenteredString(
             fontRendererObj,
-            text("gui.touhou_little_maid.button.global_config"),
-            width / 2,
-            height / 2 - 88,
-            0xFFFFFF);
+            text(ClientConfigGuiConfigSpec.I18N_GUI_TOUHOU_LITTLE_MAID_BUTTON_GLOBAL_CONFIG),
+            width / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR,
+            height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR - ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM_2,
+            ClientConfigGuiConfigSpec.RGB_WHITE);
         drawCenteredString(
             fontRendererObj,
-            text("gui.tlmnh.client_config.scope"),
-            width / 2,
-            height / 2 - 71,
-            0xAAAAAA);
+            text(ClientConfigGuiConfigSpec.I18N_GUI_TLMNH_CLIENT_CONFIG_SCOPE),
+            width / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR,
+            height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR - ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM_3,
+            ClientConfigGuiConfigSpec.RGB_SILVER);
         super.drawScreen(mouseX, mouseY, partialTick);
     }
 
@@ -135,37 +135,37 @@ public final class MaidClientConfigGui extends GuiScreen {
     public boolean requestAction(String action) {
         if (mc.currentScreen != this || !valid()) return false;
         int id = switch (action) {
-            case "global_sound_zero", "global_sound_full", "global_sound_mid" -> FREQUENCY;
-            case "global_bubbles" -> BUBBLES;
-            case "global_cache" -> CACHE;
-            case "global_save" -> SAVE;
-            case "global_cancel" -> CANCEL;
-            default -> throw new IllegalArgumentException("Unknown client configuration action");
+            case ClientConfigGuiConfigSpec.ID_GLOBAL_SOUND_ZERO, ClientConfigGuiConfigSpec.ID_GLOBAL_SOUND_FULL, ClientConfigGuiConfigSpec.ID_GLOBAL_SOUND_MID -> ClientConfigGuiConfigSpec.FREQUENCY;
+            case ClientConfigGuiConfigSpec.ID_GLOBAL_BUBBLES -> ClientConfigGuiConfigSpec.BUBBLES;
+            case ClientConfigGuiConfigSpec.ID_GLOBAL_CACHE -> ClientConfigGuiConfigSpec.CACHE;
+            case ClientConfigGuiConfigSpec.ID_GLOBAL_SAVE -> ClientConfigGuiConfigSpec.SAVE;
+            case ClientConfigGuiConfigSpec.ID_GLOBAL_CANCEL -> ClientConfigGuiConfigSpec.CANCEL;
+            default -> throw new IllegalArgumentException(ClientConfigGuiConfigSpec.MSG_UNKNOWN_CLIENT_CONFIGURATION_ACTION);
         };
-        if (id == FREQUENCY) {
-            int percent = action.equals("global_sound_zero") ? 0 : action.equals("global_sound_full") ? 100 : 37;
-            int x = slider.xPosition + 4 + Math.round((slider.width - 8) * percent / 100F);
-            int y = slider.yPosition + slider.height / 2;
-            mouseClicked(x, y, 0);
-            mouseMovedOrUp(x, y, 0);
+        if (id == ClientConfigGuiConfigSpec.FREQUENCY) {
+            int percent = action.equals(ClientConfigGuiConfigSpec.ID_GLOBAL_SOUND_ZERO) ? ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE : action.equals(ClientConfigGuiConfigSpec.ID_GLOBAL_SOUND_FULL) ? ClientConfigGuiConfigSpec.CLIENT_CONFIG_DOMAIN_PARAM : ClientConfigGuiConfigSpec.CLIENT_CONFIG_REQUEST_ACTION_PARAM;
+            int x = slider.xPosition + ClientConfigGuiConfigSpec.CLIENT_CONFIG_REQUEST_ACTION_X_OFFSET + Math.round((slider.width - ClientConfigGuiConfigSpec.CLIENT_CONFIG_REQUEST_ACTION_X_OFFSET_2) * percent / ClientConfigGuiConfigSpec.FULL_PERCENTAGE_F);
+            int y = slider.yPosition + slider.height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR;
+            mouseClicked(x, y, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE);
+            mouseMovedOrUp(x, y, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE);
         } else for (var button : buttonList) if (button.id == id && button.enabled) {
-            mouseClicked(button.xPosition + button.width / 2, button.yPosition + button.height / 2, 0);
-            mouseMovedOrUp(button.xPosition + button.width / 2, button.yPosition + button.height / 2, 0);
+            mouseClicked(button.xPosition + button.width / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR, button.yPosition + button.height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE);
+            mouseMovedOrUp(button.xPosition + button.width / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR, button.yPosition + button.height / ClientConfigGuiConfigSpec.MIDPOINT_DIVISOR, ClientConfigGuiConfigSpec.CLIENT_CONFIG_DEFAULT_ZERO_BASE);
             return true;
         }
-        return id == FREQUENCY;
+        return id == ClientConfigGuiConfigSpec.FREQUENCY;
     }
 
     public JsonObject observation() {
         var result = new JsonObject();
-        result.addProperty("draftSoundFrequency", frequency);
-        result.addProperty("draftChatBubbles", bubbles);
-        result.addProperty("draftIconCache", cache);
-        result.addProperty("savedSoundFrequency", MaidClientPreferences.globalMaidSoundFrequency());
-        result.addProperty("savedChatBubbles", MaidClientPreferences.showChatBubbles());
-        result.addProperty("savedIconCache", MaidClientPreferences.modelIconCache());
-        result.addProperty("windowId", container.windowId);
-        result.addProperty("containerCurrent", valid());
+        result.addProperty(ClientConfigGuiConfigSpec.ID_DRAFTSOUNDFREQUENCY, frequency);
+        result.addProperty(ClientConfigGuiConfigSpec.ID_DRAFTCHATBUBBLES, bubbles);
+        result.addProperty(ClientConfigGuiConfigSpec.ID_DRAFTICONCACHE, cache);
+        result.addProperty(ClientConfigGuiConfigSpec.ID_SAVEDSOUNDFREQUENCY, MaidClientPreferences.globalMaidSoundFrequency());
+        result.addProperty(ClientConfigGuiConfigSpec.ID_SAVEDCHATBUBBLES, MaidClientPreferences.showChatBubbles());
+        result.addProperty(ClientConfigGuiConfigSpec.ID_SAVEDICONCACHE, MaidClientPreferences.modelIconCache());
+        result.addProperty(ClientConfigGuiConfigSpec.ID_WINDOWID, container.windowId);
+        result.addProperty(ClientConfigGuiConfigSpec.ID_CONTAINERCURRENT, valid());
         return result;
     }
 

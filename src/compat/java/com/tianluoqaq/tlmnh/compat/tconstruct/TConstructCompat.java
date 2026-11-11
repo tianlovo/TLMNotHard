@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class TConstructCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.TCONSTRUCT;
-    public static final String PACKAGE = "tconstruct";
-    public static final String REVIEWED_VERSION = "1.14.123-GTNH";
+
+
     public static final TConstructCompat INSTANCE = new TConstructCompat();
 
     private TConstructCompat() {}
@@ -20,12 +20,12 @@ public final class TConstructCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return TConstructIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return TConstructIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class TConstructCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "模块化工具损坏态与破盾斧能力只读解析";
+        return TConstructIds.CAPABILITY_SUMMARY;
     }
 }

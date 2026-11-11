@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class GalacticraftCoreCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.GALACTICRAFT_CORE;
-    public static final String PACKAGE = "galacticraftcore";
-    public static final String REVIEWED_VERSION = "3.4.37-GTNH";
+
+
     public static final GalacticraftCoreCompat INSTANCE = new GalacticraftCoreCompat();
 
     private GalacticraftCoreCompat() {}
@@ -20,12 +20,12 @@ public final class GalacticraftCoreCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return GalacticraftIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return GalacticraftIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class GalacticraftCoreCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "维度箭矢重力查询与发射前无副作用核验";
+        return GalacticraftIds.CAPABILITY_SUMMARY;
     }
 }

@@ -27,14 +27,14 @@ public final class BuiltinMaidPacks {
     public static List<Pack> packs() {
         if (packs != null) return packs;
         var result = new ArrayList<Pack>();
-        var stream = BuiltinMaidPacks.class.getResourceAsStream("/assets/tlmnh/builtin-models.json");
-        if (stream == null) throw new IllegalStateException("Missing builtin pack metadata");
+        var stream = BuiltinMaidPacks.class.getResourceAsStream(ClientGuiIds.MODEL_JSON_BUILTIN_MODELS);
+        if (stream == null) throw new IllegalStateException(ClientGuiDiagnostics.MSG_MISSING_BUILTIN_PACK_METADATA);
         try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             var json = new JsonParser().parse(reader)
                 .getAsJsonObject();
-            for (var value : json.getAsJsonArray("packs")) result.add(new Pack(value.getAsJsonObject()));
+            for (var value : json.getAsJsonArray(ClientGuiIds.ID_PACKS)) result.add(new Pack(value.getAsJsonObject()));
         } catch (IOException error) {
-            throw new IllegalStateException("Cannot read builtin pack metadata", error);
+            throw new IllegalStateException(ClientGuiDiagnostics.MSG_CANNOT_READ_BUILTIN_PACK_METADATA, error);
         }
         packs = Collections.unmodifiableList(result);
         return packs;
@@ -48,25 +48,25 @@ public final class BuiltinMaidPacks {
         public final List<Integer> modelIndices;
 
         private Pack(JsonObject json) {
-            id = json.get("id")
+            id = json.get(ClientGuiIds.ID_ID)
                 .getAsString();
-            name = json.get("pack_name")
+            name = json.get(ClientGuiIds.ID_PACK_NAME)
                 .getAsString();
-            version = json.get("version")
+            version = json.get(ClientGuiIds.ID_VERSION)
                 .getAsString();
-            date = json.get("date")
+            date = json.get(ClientGuiIds.ID_DATE)
                 .getAsString();
             icon = new ResourceLocation(
-                json.get("icon")
+                json.get(ClientGuiIds.ID_ICON)
                     .getAsString());
-            authors = strings(json, "author");
-            description = strings(json, "description");
+            authors = strings(json, ClientGuiIds.ID_AUTHOR);
+            description = strings(json, ClientGuiIds.ID_DESCRIPTION);
             var indices = new ArrayList<Integer>();
             var choices = BuiltinModelCatalog.choices();
             for (int i = 0; i < choices.size(); i++) if (choices.get(i)
                 .getPackId()
                 .equals(id)) indices.add(i);
-            if (indices.isEmpty()) throw new IllegalStateException("Empty builtin model pack: " + id);
+            if (indices.isEmpty()) throw new IllegalStateException(ClientGuiDiagnostics.MSG_EMPTY_BUILTIN_MODEL_PACK + id);
             modelIndices = Collections.unmodifiableList(indices);
         }
 

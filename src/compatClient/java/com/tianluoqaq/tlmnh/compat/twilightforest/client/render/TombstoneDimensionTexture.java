@@ -17,7 +17,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class TombstoneDimensionTexture {
 
     private static final ResourceLocation TEXTURE = new ResourceLocation(
-        "touhou_little_maid:textures/bedrock/entity/tombstone/tombstone_twilight_forest.png");
+        TwilightForestClientRenderIds.TEXTURE_TOMBSTONE_TWILIGHT_FOREST);
     private static volatile Class<?> providerType;
 
     private TombstoneDimensionTexture() {}
@@ -29,7 +29,7 @@ public final class TombstoneDimensionTexture {
             if (resolved == null) {
                 resolved = OptionalApi.findClass(
                     KnownModIds.TWILIGHT_FOREST,
-                    "twilightforest.world.WorldProviderTwilightForest",
+                    TwilightForestClientRenderIds.ID_TWILIGHTFOREST_WORLD_WORLDPROVIDERTWILIGHTFOREST,
                     world.provider.getClass()
                         .getClassLoader());
                 providerType = resolved;

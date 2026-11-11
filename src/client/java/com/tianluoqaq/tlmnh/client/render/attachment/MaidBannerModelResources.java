@@ -30,15 +30,15 @@ public final class MaidBannerModelResources implements IResourceManagerReloadLis
 
     public SimpleBedrockModel<Entity> get() throws IOException {
         if (model == null) {
-            if (manager == null) throw new IOException("Banner resources are not initialized");
-            var location = new ResourceLocation("touhou_little_maid:models/bedrock/entity/maid_banner.json");
+            if (manager == null) throw new IOException(AttachmentRenderDiagnostics.MSG_BANNER_RESOURCES_ARE_NOT_INITIALIZED);
+            var location = new ResourceLocation(AttachmentRenderIds.MODEL_JSON_MAID_BANNER);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {
                 model = new SimpleBedrockModel<>(stream);
             }
-            if (model.getPart("main") == SimpleBedrockModel.EMPTY
-                || model.getPart("banner") == SimpleBedrockModel.EMPTY)
-                throw new IOException("Original maid banner frame or cloth is missing");
+            if (model.getPart(AttachmentRenderIds.ID_MAIN) == SimpleBedrockModel.EMPTY
+                || model.getPart(AttachmentRenderIds.ID_BANNER) == SimpleBedrockModel.EMPTY)
+                throw new IOException(AttachmentRenderDiagnostics.MSG_ORIGINAL_MAID_BANNER_FRAME_OR);
         }
         return model;
     }

@@ -58,18 +58,18 @@ public final class ClientCompatServices {
         private Sink() {}
 
         private static void ensureMutable() {
-            if (frozen) throw new IllegalStateException("ClientCompatServices is already frozen");
+            if (frozen) throw new IllegalStateException(ClientCompatDiagnostics.MSG_CLIENTCOMPATSERVICES_IS_ALREADY_FROZEN);
         }
 
         public Sink renderPlatform(RenderPlatformCompat provider) {
             ensureMutable();
-            renderPlatform = Objects.requireNonNull(provider, "provider");
+            renderPlatform = Objects.requireNonNull(provider, ClientCompatIds.ID_PROVIDER);
             return this;
         }
 
         public Sink itemRender(ClientItemRenderCompat provider) {
             ensureMutable();
-            itemRender = Objects.requireNonNull(provider, "provider");
+            itemRender = Objects.requireNonNull(provider, ClientCompatIds.ID_PROVIDER);
             return this;
         }
     }

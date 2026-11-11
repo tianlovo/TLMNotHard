@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class TwilightForestCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.TWILIGHT_FOREST;
-    public static final String PACKAGE = "twilightforest";
-    public static final String REVIEWED_VERSION = "2.7.45";
+
+
     public static final TwilightForestCompat INSTANCE = new TwilightForestCompat();
 
     private TwilightForestCompat() {}
@@ -20,12 +20,12 @@ public final class TwilightForestCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return TwilightForestIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return TwilightForestIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class TwilightForestCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "暮色森林维度的墓碑专属贴图解析";
+        return TwilightForestIds.CAPABILITY_SUMMARY;
     }
 }

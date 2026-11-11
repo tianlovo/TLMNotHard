@@ -38,13 +38,13 @@ public final class MaidHandAttachment {
             this.side = side;
             modelId = model.getChoice()
                 .getId();
-            backend = model.getGecko() == null ? "BEDROCK" : "GECKO";
+            backend = model.getGecko() == null ? AttachmentRenderIds.KEY_BEDROCK : AttachmentRenderIds.KEY_GECKO;
             boneChain = Collections.unmodifiableList(new ArrayList<>(bones));
-            sourceMatrix = status == Status.NON_FINITE ? null : matrix.get(new float[16]);
+            sourceMatrix = status == Status.NON_FINITE ? null : matrix.get(new float[AttachmentRenderLayout.BACK_ITEM_CREATE_FLOAT_BUFFER_FIRST_PARAM]);
         }
 
         public Matrix4f getSourceMatrix() {
-            if (sourceMatrix == null) throw new IllegalStateException("Non-finite hand attachment matrix");
+            if (sourceMatrix == null) throw new IllegalStateException(AttachmentRenderDiagnostics.MSG_NON_FINITE_HAND_ATTACHMENT_MATRIX);
             return new Matrix4f().set(sourceMatrix);
         }
 
@@ -62,7 +62,7 @@ public final class MaidHandAttachment {
         if (model.getBedrock() != null) {
             var parts = model.getBedrock()
                 .getModelMap();
-            String name = side == Side.LEFT ? "armLeft" : "armRight";
+            String name = side == Side.LEFT ? AttachmentRenderIds.ID_ARMLEFT : AttachmentRenderIds.ID_ARMRIGHT;
             var arm = parts.get(name);
             if (arm == null) return new Attachment(
                 model,
@@ -76,7 +76,7 @@ public final class MaidHandAttachment {
             bones.add(name);
             // 上游只定位这一个part，不含父链、part scale或additionalQuaternion
             arm.translateAndRotate(poses);
-            String positioningName = name + "PositioningBone";
+            String positioningName = name + AttachmentRenderIds.KEY_POSITIONING_BONE;
             var positioning = parts.get(positioningName);
             if (positioning != null) {
                 positioning.translateAndRotate(poses);

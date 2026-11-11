@@ -5,6 +5,6 @@ public final class EtFuturumItems {
     private EtFuturumItems() {}
 
     public static boolean isElytra(String id) {
-        return "etfuturum:elytra".equals(id);
+        return EtFuturumItemIds.ID_ETFUTURUM_ELYTRA.equals(id);
     }
 }

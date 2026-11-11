@@ -27,14 +27,14 @@ public final class ShrineModelResources implements IResourceManagerReloadListene
 
     public SimpleBedrockModel<Entity> get() throws IOException {
         if (model == null) {
-            if (manager == null) throw new IOException("Shrine resources are not initialized");
-            var location = new ResourceLocation("touhou_little_maid:models/bedrock/block/shrine.json");
+            if (manager == null) throw new IOException(ClientShrineDiagnostics.MSG_SHRINE_RESOURCES_ARE_NOT_INITIALIZED);
+            var location = new ResourceLocation(ClientShrineIds.MODEL_JSON_SHRINE);
             try (var stream = manager.getResource(location)
                 .getInputStream()) {
                 model = new SimpleBedrockModel<>(stream);
             }
-            if (model.getPart("bone") == SimpleBedrockModel.EMPTY)
-                throw new IOException("Original shrine root is missing");
+            if (model.getPart(ClientShrineIds.ID_BONE) == SimpleBedrockModel.EMPTY)
+                throw new IOException(ClientShrineDiagnostics.MSG_ORIGINAL_SHRINE_ROOT_IS_MISSING);
         }
         return model;
     }

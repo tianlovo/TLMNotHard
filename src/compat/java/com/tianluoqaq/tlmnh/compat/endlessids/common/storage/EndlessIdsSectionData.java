@@ -15,8 +15,8 @@ import cpw.mods.fml.relauncher.Side;
  */
 public final class EndlessIdsSectionData {
 
-    private static final String GUARD = "endlessids/section-data";
-    private static final String EXPECTED = "1.7.4:sha256:9be2b3ae458a72f2cdeb3fb30b77d8528a1dcd64ef08fc69720b79335e5ce0d7";
+
+
 
     private EndlessIdsSectionData() {}
 
@@ -29,71 +29,71 @@ public final class EndlessIdsSectionData {
     }
 
     private static int read(NBTTagCompound section, int index, boolean metadata) {
-        if (!IntegrationGuard.available(Side.SERVER, GUARD))
-            throw new IllegalStateException("Native section decoding remains protected");
+        if (!IntegrationGuard.available(Side.SERVER, EndlessIdsStorageIds.GUARD))
+            throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_NATIVE_SECTION_DECODING_REMAINS_PROTECTED);
         try {
-            if (section == null || index < 0 || index >= 4096)
-                throw new IllegalArgumentException("Native section and index 0..4095 required");
+            if (section == null || index < 0 || index >= EndlessIdsStorageTuning.MAX_INDEX_THRESHOLD)
+                throw new IllegalArgumentException(EndlessIdsStorageDiagnostics.MSG_NATIVE_SECTION_AND_INDEX_4095);
             String fingerprint = DependencyFingerprint.mod(EndlessIdsCompat.MOD_ID);
-            boolean extended = !"absent".equals(fingerprint);
-            if (extended && !EXPECTED.equals(fingerprint))
-                throw new IllegalStateException("Unaudited EndlessIDs section provider: " + fingerprint);
+            boolean extended = !EndlessIdsStorageIds.ID_ABSENT.equals(fingerprint);
+            if (extended && !EndlessIdsStorageIds.EXPECTED.equals(fingerprint))
+                throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_UNAUDITED_ENDLESSIDS_SECTION_PROVIDER + fingerprint);
             validate(section, extended);
             if (metadata) {
-                int value = nibble(section.getByteArray("Data"), index);
-                if (section.hasKey("Data1High")) value |= nibble(section.getByteArray("Data1High"), index) << 4;
-                if (section.hasKey("Data2")) value |= (section.getByteArray("Data2")[index] & 255) << 8;
+                int value = nibble(section.getByteArray(EndlessIdsStorageNbtKeys.KEY_DATA), index);
+                if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH)) value |= nibble(section.getByteArray(EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH), index) << EndlessIdsStorageTuning.CHUNK_SECTION_SHIFT;
+                if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA2)) value |= (section.getByteArray(EndlessIdsStorageNbtKeys.KEY_DATA2)[index] & EndlessIdsStorageTuning.UNSIGNED_BYTE_MASK) << EndlessIdsStorageTuning.SECOND_BYTE_SHIFT;
                 return value;
             }
-            int value = section.getByteArray("Blocks")[index] & 255;
-            if (section.hasKey("Add")) value |= nibble(section.getByteArray("Add"), index) << 8;
-            if (section.hasKey("BlocksB2Hi")) value |= nibble(section.getByteArray("BlocksB2Hi"), index) << 12;
-            if (section.hasKey("BlocksB3")) value |= (section.getByteArray("BlocksB3")[index] & 255) << 16;
+            int value = section.getByteArray(EndlessIdsStorageNbtKeys.KEY_BLOCKS)[index] & EndlessIdsStorageTuning.UNSIGNED_BYTE_MASK;
+            if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_ADD)) value |= nibble(section.getByteArray(EndlessIdsStorageNbtKeys.KEY_ADD), index) << EndlessIdsStorageTuning.SECOND_BYTE_SHIFT;
+            if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI)) value |= nibble(section.getByteArray(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI), index) << EndlessIdsStorageTuning.ENDLESS_IDS_BIT_SHIFT_12;
+            if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3)) value |= (section.getByteArray(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3)[index] & EndlessIdsStorageTuning.UNSIGNED_BYTE_MASK) << EndlessIdsStorageTuning.THIRD_BYTE_SHIFT;
             return value;
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report(Side.SERVER, GUARD, failure);
-            throw new IllegalStateException("Cannot confirm native section; original data remains held", failure);
+            IntegrationGuard.report(Side.SERVER, EndlessIdsStorageIds.GUARD, failure);
+            throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_CANNOT_CONFIRM_NATIVE_SECTION_ORIGINAL, failure);
         }
     }
 
     private static void validate(NBTTagCompound section, boolean extended) {
         for (Object raw : section.func_150296_c()) {
             String key = (String) raw;
-            if ((key.startsWith("Blocks") || key.startsWith("Data") || key.startsWith("Add")) && !key.equals("Blocks")
-                && !key.equals("Add")
-                && !key.equals("BlocksB2Hi")
-                && !key.equals("BlocksB3")
-                && !key.equals("Data")
-                && !key.equals("Data1High")
-                && !key.equals("Data2") || key.equals("Palette")
-                || key.equals("BlockStates"))
-                throw new IllegalStateException("Unknown native section encoding: " + key);
+            if ((key.startsWith(EndlessIdsStorageNbtKeys.KEY_BLOCKS) || key.startsWith(EndlessIdsStorageNbtKeys.KEY_DATA) || key.startsWith(EndlessIdsStorageNbtKeys.KEY_ADD)) && !key.equals(EndlessIdsStorageNbtKeys.KEY_BLOCKS)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_ADD)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_DATA)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH)
+                && !key.equals(EndlessIdsStorageNbtKeys.KEY_DATA2) || key.equals(EndlessIdsStorageNbtKeys.KEY_PALETTE)
+                || key.equals(EndlessIdsStorageNbtKeys.KEY_BLOCK_STATES))
+                throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_UNKNOWN_NATIVE_SECTION_ENCODING + key);
         }
-        array(section, "Blocks", 4096, true);
-        array(section, "Add", 2048, false);
-        array(section, "Data", 2048, true);
-        array(section, "BlocksB2Hi", 2048, false);
-        array(section, "BlocksB3", 4096, false);
-        array(section, "Data1High", 2048, false);
-        array(section, "Data2", 4096, false);
-        if (!extended && (section.hasKey("BlocksB2Hi") || section.hasKey("BlocksB3")
-            || section.hasKey("Data1High")
-            || section.hasKey("Data2")))
-            throw new IllegalStateException("Extended section data has no audited provider");
+        array(section, EndlessIdsStorageNbtKeys.KEY_BLOCKS, EndlessIdsStorageTuning.MAX_INDEX_THRESHOLD, true);
+        array(section, EndlessIdsStorageNbtKeys.KEY_ADD, EndlessIdsStorageTuning.ENDLESS_IDS_ARRAY_THIRD_PARAM, false);
+        array(section, EndlessIdsStorageNbtKeys.KEY_DATA, EndlessIdsStorageTuning.ENDLESS_IDS_ARRAY_THIRD_PARAM, true);
+        array(section, EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI, EndlessIdsStorageTuning.ENDLESS_IDS_ARRAY_THIRD_PARAM, false);
+        array(section, EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3, EndlessIdsStorageTuning.MAX_INDEX_THRESHOLD, false);
+        array(section, EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH, EndlessIdsStorageTuning.ENDLESS_IDS_ARRAY_THIRD_PARAM, false);
+        array(section, EndlessIdsStorageNbtKeys.KEY_DATA2, EndlessIdsStorageTuning.MAX_INDEX_THRESHOLD, false);
+        if (!extended && (section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI) || section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3)
+            || section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH)
+            || section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA2)))
+            throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_EXTENDED_SECTION_DATA_HAS_NO);
         // The target native getters nest these layers; a detached upper layer is not a valid encoding.
-        if (section.hasKey("BlocksB2Hi") && !section.hasKey("Add")
-            || section.hasKey("BlocksB3") && !section.hasKey("BlocksB2Hi")
-            || section.hasKey("Data2") && !section.hasKey("Data1High"))
-            throw new IllegalStateException("Native section extension layers disagree");
+        if (section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI) && !section.hasKey(EndlessIdsStorageNbtKeys.KEY_ADD)
+            || section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B3) && !section.hasKey(EndlessIdsStorageNbtKeys.KEY_BLOCKS_B2_HI)
+            || section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA2) && !section.hasKey(EndlessIdsStorageNbtKeys.KEY_DATA1_HIGH))
+            throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_NATIVE_SECTION_EXTENSION_LAYERS_DISAGREE);
     }
 
     private static void array(NBTTagCompound section, String key, int length, boolean required) {
         if (required && !section.hasKey(key) || section.hasKey(key)
             && (!section.hasKey(key, Constants.NBT.TAG_BYTE_ARRAY) || section.getByteArray(key).length != length))
-            throw new IllegalStateException("Invalid native section array: " + key);
+            throw new IllegalStateException(EndlessIdsStorageDiagnostics.MSG_INVALID_NATIVE_SECTION_ARRAY + key);
     }
 
     private static int nibble(byte[] bytes, int index) {
-        return (bytes[index >> 1] >> ((index & 1) * 4)) & 15;
+        return (bytes[index >> EndlessIdsStorageTuning.ENDLESS_IDS_BIT_SHIFT_1] >> ((index & EndlessIdsStorageTuning.ENDLESS_IDS_BIT_SHIFT_1) * EndlessIdsStorageTuning.CHUNK_SECTION_SHIFT)) & EndlessIdsStorageTuning.CHUNK_LOCAL_MASK;
     }
 }

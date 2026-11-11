@@ -23,7 +23,7 @@ public interface ClientDevelopmentHooks {
     ClientDevelopmentHooks NONE = new ClientDevelopmentHooks() {};
 
     default ItemStack createDetailsItemFixture(String action, JsonObject construction) throws Exception {
-        throw new IllegalStateException("Development item fixtures unavailable without tlmnhdevtools");
+        throw new IllegalStateException(ClientDiagnosticDiagnostics.MSG_DEVELOPMENT_ITEM_FIXTURES_UNAVAILABLE_WITHOUT);
     }
 
     default JsonObject captureVisibleState(EntityMaid maid) {

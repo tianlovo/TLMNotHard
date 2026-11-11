@@ -32,18 +32,18 @@ public final class MaidMolangFrames {
     public static MolangQueryFrame capture(EntityMaid maid, float partialTick, double seekTicks, float netHeadYaw,
         float headPitch) {
         var frame = new MolangQueryFrame();
-        frame.partialTick = Math.max(0, Math.min(1, partialTick));
-        frame.lifetime = seekTicks / 20.0;
+        frame.partialTick = Math.max(MolangRenderLayout.MAX_INITIAL_VALUE, Math.min(MolangRenderLayout.MIN_SINGLE_UNIT, partialTick));
+        frame.lifetime = seekTicks / MolangRenderLayout.MOLANG_FRAMES_LIFETIME;
         // ModelBase给出实体角度；上游Gecko renderer会先wrap/clamp相对yaw，再将两轴取负
-        frame.netHeadYaw = -Math.max(-85F, Math.min(85F, MathHelper.wrapDegrees(netHeadYaw)));
+        frame.netHeadYaw = -Math.max(MolangRenderLayout.MOLANG_FRAMES_MAX_FIRST_FACTOR, Math.min(MolangRenderLayout.MOLANG_FRAMES_MIN_FIRST_FACTOR, MathHelper.wrapDegrees(netHeadYaw)));
         frame.headPitch = -headPitch;
         frame.bodyYaw = MathHelper.wrapDegrees(
             maid.prevRenderYawOffset + (maid.renderYawOffset - maid.prevRenderYawOffset) * frame.partialTick);
         frame.health = maid.getHealth();
         frame.maxHealth = maid.getMaxHealth();
-        frame.groundSpeed = 20 * (float) Math.sqrt((float) (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ));
-        frame.verticalSpeed = 20 * (float) (maid.posY - maid.prevPosY);
-        frame.yawSpeed = 20 * (maid.rotationYaw - maid.prevRotationYaw);
+        frame.groundSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (float) Math.sqrt((float) (maid.motionX * maid.motionX + maid.motionZ * maid.motionZ));
+        frame.verticalSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (float) (maid.posY - maid.prevPosY);
+        frame.yawSpeed = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED * (maid.rotationYaw - maid.prevRotationYaw);
         frame.inWater = maid.isInWater();
         frame.inWaterOrRain = maid.isWet();
         frame.jumping = maid.ridingEntity == null && !maid.onGround && !frame.inWater;
@@ -53,9 +53,9 @@ public final class MaidMolangFrames {
         frame.foodLevel = foodLevel(maid.getAttributeMap());
         double blink = (seekTicks + Math.abs(
             maid.getUniqueID()
-                .getLeastSignificantBits() % 10))
-            % 90;
-        frame.closeEyes = maid.hasPose(MaidPose.SLEEPING) || (85 < blink && blink < 90);
+                .getLeastSignificantBits() % MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM))
+            % MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_2;
+        frame.closeEyes = maid.hasPose(MaidPose.SLEEPING) || (MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_3 < blink && blink < MolangRenderLayout.MOLANG_FRAMES_DOMAIN_PARAM_2);
         frame.viewYaw = (float) (maid.prevRotationYaw
             + MathHelper.wrapDegrees(maid.rotationYaw - maid.prevRotationYaw) * frame.partialTick);
         frame.previousX = maid.prevPosX;
@@ -66,10 +66,10 @@ public final class MaidMolangFrames {
         frame.z = maid.posZ;
         equipment(frame, Slot.MAINHAND, maid.getHeldItem());
         equipment(frame, Slot.OFFHAND, maid.getOffhandItem());
-        equipment(frame, Slot.HEAD, maid.getEquipmentInSlot(4));
-        equipment(frame, Slot.CHEST, maid.getEquipmentInSlot(3));
-        equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(2));
-        equipment(frame, Slot.FEET, maid.getEquipmentInSlot(1));
+        equipment(frame, Slot.HEAD, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM));
+        equipment(frame, Slot.CHEST, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_2));
+        equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_3));
+        equipment(frame, Slot.FEET, maid.getEquipmentInSlot(MolangRenderLayout.MIN_SINGLE_UNIT));
         var chest = frame.equipment(Slot.CHEST);
         frame.hasElytra = chest != null && CompatServices.worldContent()
             .isElytraItem(chest.itemId);
@@ -79,7 +79,7 @@ public final class MaidMolangFrames {
     /** 原YSMBinding读取MAID_HUNGER属性，默认20；持久字段MaidHunger不是该动画查询 */
     public static int foodLevel(BaseAttributeMap attributes) {
         var attribute = attributes.getAttributeInstance(MaidCombatAttributes.MAID_HUNGER);
-        return attribute == null ? 20 : (int) attribute.getAttributeValue();
+        return attribute == null ? MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED : (int) attribute.getAttributeValue();
     }
 
     private static void equipment(MolangQueryFrame frame, Slot slot, ItemStack stack) {
@@ -99,13 +99,13 @@ public final class MaidMolangFrames {
 
     private static String classify(ItemStack stack) {
         Item item = stack.getItem();
-        if (MaidShieldItems.isShield(stack)) return "shield";
-        if (item instanceof ItemSword) return "sword";
-        if (item instanceof ItemAxe) return "axe";
-        if (item instanceof ItemPickaxe) return "pickaxe";
-        if (item instanceof ItemSpade) return "shovel";
-        if (item instanceof ItemHoe) return "hoe";
-        if (item instanceof ItemPotion && ItemPotion.isSplash(stack.getItemDamage())) return "throwable_potion";
+        if (MaidShieldItems.isShield(stack)) return MolangRenderIds.ID_SHIELD;
+        if (item instanceof ItemSword) return MolangRenderIds.ID_SWORD;
+        if (item instanceof ItemAxe) return MolangRenderIds.ID_AXE;
+        if (item instanceof ItemPickaxe) return MolangRenderIds.ID_PICKAXE;
+        if (item instanceof ItemSpade) return MolangRenderIds.ID_SHOVEL;
+        if (item instanceof ItemHoe) return MolangRenderIds.ID_HOE;
+        if (item instanceof ItemPotion && ItemPotion.isSplash(stack.getItemDamage())) return MolangRenderIds.ID_THROWABLE_POTION;
         return "";
     }
 }

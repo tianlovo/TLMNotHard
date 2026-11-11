@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class EtFuturumCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ET_FUTURUM;
-    public static final String PACKAGE = "etfuturum";
-    public static final String REVIEWED_VERSION = "2.6.65-GTNH";
+
+
     public static final EtFuturumCompat INSTANCE = new EtFuturumCompat();
 
     private EtFuturumCompat() {}
@@ -20,12 +20,12 @@ public final class EtFuturumCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return EtFuturumIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return EtFuturumIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class EtFuturumCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "气泡柱、蜂蜜块、船只乘客、水流物理、旗帜头颅渲染与方块音效";
+        return EtFuturumIds.CAPABILITY_SUMMARY;
     }
 }

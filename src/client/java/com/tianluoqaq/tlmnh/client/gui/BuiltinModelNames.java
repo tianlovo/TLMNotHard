@@ -50,16 +50,16 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
     public String name(BuiltinModelCatalog.Choice choice) {
         ensureLanguage();
         String raw = choice.getName();
-        if (raw.startsWith("{") && raw.endsWith("}")) {
-            String key = raw.substring(1, raw.length() - 1);
+        if (raw.startsWith(ClientGuiIds.OPEN_BRACE_TOKEN) && raw.endsWith(ClientGuiIds.CLOSE_BRACE_TOKEN)) {
+            String key = raw.substring(ClientGuiLayout.SUBSTRING_START_OFFSET, raw.length() - 1);
             if (StatCollector.canTranslate(key)) return StatCollector.translateToLocal(key);
         }
         return resolve(raw, translations, choice.getId());
     }
 
     static String resolve(String raw, Map<String, String> translations, String fallback) {
-        if (raw.startsWith("{") && raw.endsWith("}")) {
-            String value = translations.get(raw.substring(1, raw.length() - 1));
+        if (raw.startsWith(ClientGuiIds.OPEN_BRACE_TOKEN) && raw.endsWith(ClientGuiIds.CLOSE_BRACE_TOKEN)) {
+            String value = translations.get(raw.substring(ClientGuiLayout.SUBSTRING_START_OFFSET, raw.length() - 1));
             return value == null || value.isEmpty() ? fallback : value;
         }
         return raw.isEmpty() ? fallback : raw;
@@ -67,7 +67,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
 
     public String text(String raw) {
         ensureLanguage();
-        String fallback = raw.startsWith("{") && raw.endsWith("}") ? raw.substring(1, raw.length() - 1) : raw;
+        String fallback = raw.startsWith(ClientGuiIds.OPEN_BRACE_TOKEN) && raw.endsWith(ClientGuiIds.CLOSE_BRACE_TOKEN) ? raw.substring(ClientGuiLayout.SUBSTRING_START_OFFSET, raw.length() - 1) : raw;
         if (StatCollector.canTranslate(fallback)) return StatCollector.translateToLocal(fallback);
         return resolve(raw, translations, fallback);
     }
@@ -78,8 +78,8 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
         if (current.equals(language)) return;
         if (manager == null) manager = minecraft.getResourceManager();
         translations.clear();
-        readLanguage("en_us");
-        if (!"en_us".equals(current)) readLanguage(current);
+        readLanguage(ClientGuiIds.ID_EN_US);
+        if (!ClientGuiIds.ID_EN_US.equals(current)) readLanguage(current);
         language = current;
         revision++;
     }
@@ -89,7 +89,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
         for (var choice : BuiltinModelCatalog.choices()) packs.add(choice.getPackId());
         for (var pack : BuiltinSoundCatalog.packs()) packs.add(pack.id);
         for (String pack : packs) {
-            var location = new ResourceLocation(pack, "lang/" + code + ".json");
+            var location = new ResourceLocation(pack, ClientGuiIds.ID_LANG + code + ClientGuiIds.MODEL_JSON);
             try (var reader = new InputStreamReader(
                 manager.getResource(location)
                     .getInputStream(),
@@ -110,7 +110,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
             } catch (IOException missingLanguage) {
                 // 模型包不必提供所有语言，缺少时沿用英文或模型ID
             } catch (RuntimeException invalidLanguage) {
-                ModContext.LOG.warn("Cannot read builtin model names {}", location, invalidLanguage);
+                ModContext.LOG.warn(ClientGuiDiagnostics.MSG_CANNOT_READ_BUILTIN_MODEL_NAMES, location, invalidLanguage);
             }
         }
     }

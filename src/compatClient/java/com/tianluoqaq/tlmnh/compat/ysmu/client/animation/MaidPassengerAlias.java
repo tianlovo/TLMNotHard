@@ -20,9 +20,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidPassengerAlias {
 
-    private static final String GUARD = "ysmu/maid-passenger";
-    private static final String PROVIDER = "1.9-git+9f76452dc6-dirty:sha256:5019eca24d80fb6e6ca998b20aba9ee047aa08fc075e9bb69e28fae3e373b952";
-    private static final String ORIGINAL_ID = "touhou_little_maid:maid";
+
+
+
     private static JsonObject lastObserved;
     private static long matches;
 
@@ -30,52 +30,52 @@ public final class MaidPassengerAlias {
 
     public static String resolve(Entity matched, String prefix, Set<String> declared, String original) {
         if (original == null || !original.isEmpty()
-            || !"passenger$".equals(prefix)
+            || !YsmuClientAnimationIds.ID_PASSENGER.equals(prefix)
             || !(matched instanceof EntityMaid maid)
             || !maid.isEntityAlive()
             || declared == null
-            || !IntegrationGuard.available(Side.CLIENT, GUARD)) return original;
+            || !IntegrationGuard.available(Side.CLIENT, YsmuClientAnimationIds.GUARD)) return original;
         try {
             String declaredId = null;
             for (String id : declared) {
-                if (ORIGINAL_ID.equalsIgnoreCase(id)) {
+                if (YsmuClientAnimationIds.ORIGINAL_ID.equalsIgnoreCase(id)) {
                     declaredId = id;
                     break;
                 }
             }
             if (declaredId == null) return original;
-            if (!PROVIDER.equals(DependencyFingerprint.mod(YsmuCompat.MOD_ID)))
-                throw new IllegalStateException("YSM passenger matcher provider differs from the inspected artifact");
+            if (!YsmuClientAnimationIds.PROVIDER.equals(DependencyFingerprint.mod(YsmuCompat.MOD_ID)))
+                throw new IllegalStateException(YsmuClientAnimationDiagnostics.MSG_YSM_PASSENGER_MATCHER_PROVIDER_DIFFERS);
             String clip = prefix + declaredId;
             if (DevelopmentFlags.isDevCommandsEnabled()) {
                 matches++;
                 var observed = new JsonObject();
                 observed.addProperty(
-                    "maidUUID",
+                    YsmuClientAnimationIds.ID_MAIDUUID,
                     maid.getUniqueID()
                         .toString());
                 String registry = EntityList.getEntityString(maid);
-                observed.addProperty("actualRegistryId", registry);
+                observed.addProperty(YsmuClientAnimationIds.ID_ACTUALREGISTRYID, registry);
                 String canonical = registry == null ? "" : registry.toLowerCase(Locale.US);
-                if (!canonical.isEmpty() && canonical.indexOf(':') < 0) canonical = "minecraft:" + canonical;
-                observed.addProperty("canonicalActualId", canonical);
-                observed.addProperty("originalDoTest", original);
-                observed.addProperty("selectedClip", clip);
-                observed.addProperty("maidEntityTick", maid.ticksExisted);
+                if (!canonical.isEmpty() && canonical.indexOf(':') < 0) canonical = YsmuClientAnimationIds.ID_MINECRAFT + canonical;
+                observed.addProperty(YsmuClientAnimationIds.ID_CANONICALACTUALID, canonical);
+                observed.addProperty(YsmuClientAnimationIds.ID_ORIGINALDOTEST, original);
+                observed.addProperty(YsmuClientAnimationIds.ID_SELECTEDCLIP, clip);
+                observed.addProperty(YsmuClientAnimationIds.ID_MAIDENTITYTICK, maid.ticksExisted);
                 lastObserved = observed;
             }
             return clip;
         } catch (Exception | LinkageError | AssertionError failure) {
-            IntegrationGuard.report(Side.CLIENT, GUARD, failure);
+            IntegrationGuard.report(Side.CLIENT, YsmuClientAnimationIds.GUARD, failure);
             return original;
         }
     }
 
     public static JsonObject observation() {
         var result = new JsonObject();
-        result.addProperty("aliasMatches", matches);
-        result.addProperty("guardAvailable", IntegrationGuard.available(Side.CLIENT, GUARD));
-        if (lastObserved != null) result.add("lastAliasMatch", lastObserved);
+        result.addProperty(YsmuClientAnimationIds.ID_ALIASMATCHES, matches);
+        result.addProperty(YsmuClientAnimationIds.ID_GUARDAVAILABLE, IntegrationGuard.available(Side.CLIENT, YsmuClientAnimationIds.GUARD));
+        if (lastObserved != null) result.add(YsmuClientAnimationIds.ID_LASTALIASMATCH, lastObserved);
         return result;
     }
 }

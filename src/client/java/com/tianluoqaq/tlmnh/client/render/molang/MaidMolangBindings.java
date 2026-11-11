@@ -14,8 +14,8 @@ public final class MaidMolangBindings {
 
     public static MolangParser parser() {
         var bindings = new LinkedHashMap<String, ObjectBinding>();
-        bindings.put("tlm", TLMBinding.INSTANCE);
-        bindings.put("ysm", YSMBinding.INSTANCE);
+        bindings.put(MolangRenderIds.ID_TLM, TLMBinding.INSTANCE);
+        bindings.put(MolangRenderIds.ID_YSM, YSMBinding.INSTANCE);
         return new MolangParser(bindings);
     }
 }

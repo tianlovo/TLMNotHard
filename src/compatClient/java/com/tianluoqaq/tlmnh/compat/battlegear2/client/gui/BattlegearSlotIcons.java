@@ -16,7 +16,7 @@ public final class BattlegearSlotIcons {
 
     public static IIcon hand(boolean offhand) {
         return IntegrationGuard
-            .call(Side.CLIENT, ExternalFeature.CLIENT_SLOT_ICONS, () -> Api.icon(offhand ? 1 : 0), () -> null);
+            .call(Side.CLIENT, ExternalFeature.CLIENT_SLOT_ICONS, () -> Api.icon(offhand ? BattlegearClientGuiLayout.ICON_SINGLE_UNIT : BattlegearClientGuiLayout.ICON_INITIAL_VALUE), () -> null);
     }
 
     private static final class Api {

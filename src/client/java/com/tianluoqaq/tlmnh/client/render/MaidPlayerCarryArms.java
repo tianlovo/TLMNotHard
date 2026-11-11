@@ -61,33 +61,33 @@ public final class MaidPlayerCarryArms {
         if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var observed = new JsonObject();
         observed.addProperty(
-            "nativeModelClass",
+            ClientRenderIds.ID_NATIVEMODELCLASS,
             model.getClass()
                 .getName());
-        observed.addProperty("entityTick", player.ticksExisted);
-        observed.addProperty("leftX", model.bipedLeftArm.rotateAngleX);
-        observed.addProperty("leftY", model.bipedLeftArm.rotateAngleY);
-        observed.addProperty("rightX", model.bipedRightArm.rotateAngleX);
-        observed.addProperty("rightY", model.bipedRightArm.rotateAngleY);
+        observed.addProperty(ClientRenderIds.ID_ENTITYTICK, player.ticksExisted);
+        observed.addProperty(ClientRenderIds.ID_LEFTX, model.bipedLeftArm.rotateAngleX);
+        observed.addProperty(ClientRenderIds.ID_LEFTY, model.bipedLeftArm.rotateAngleY);
+        observed.addProperty(ClientRenderIds.ID_RIGHTX, model.bipedRightArm.rotateAngleX);
+        observed.addProperty(ClientRenderIds.ID_RIGHTY, model.bipedRightArm.rotateAngleY);
         OBSERVED.put(player, observed);
     }
 
     public static void setArmRotations(ModelRenderer left, ModelRenderer right) {
-        left.rotateAngleX = (float) Math.toRadians(-65);
-        left.rotateAngleY = (float) Math.toRadians(10);
-        right.rotateAngleX = (float) Math.toRadians(-65);
-        right.rotateAngleY = (float) Math.toRadians(-10);
+        left.rotateAngleX = (float) Math.toRadians(ClientRenderLayout.PLAYER_CARRY_TO_RADIANS_FIRST_PARAM);
+        left.rotateAngleY = (float) Math.toRadians(ClientRenderLayout.DETAILS_PREVIEW_ADD_VERTEX_FIRST_PARAM);
+        right.rotateAngleX = (float) Math.toRadians(ClientRenderLayout.PLAYER_CARRY_TO_RADIANS_FIRST_PARAM);
+        right.rotateAngleY = (float) Math.toRadians(ClientRenderLayout.PLAYER_CARRY_TO_RADIANS_FIRST_PARAM_2);
     }
 
     /** 没有实际ModelBiped调用时不伪造已应用角度，独立Gecko玩家模型可能不经此路径 */
     public static JsonObject observation() {
         var result = new JsonObject();
         var player = Minecraft.getMinecraft().thePlayer;
-        result.addProperty("carryingMaid", carriesMaid(player));
-        result.addProperty("hiddenFirstPersonHandFrames", hiddenHandFrames);
+        result.addProperty(ClientRenderIds.ID_CARRYINGMAID, carriesMaid(player));
+        result.addProperty(ClientRenderIds.ID_HIDDENFIRSTPERSONHANDFRAMES, hiddenHandFrames);
         var pose = OBSERVED.get(player);
-        result.addProperty("actualNativeBipedObserved", pose != null);
-        if (pose != null) result.add("lastNativeBipedPose", pose);
+        result.addProperty(ClientRenderIds.ID_ACTUALNATIVEBIPEDOBSERVED, pose != null);
+        if (pose != null) result.add(ClientRenderIds.ID_LASTNATIVEBIPEDPOSE, pose);
         return result;
     }
 }

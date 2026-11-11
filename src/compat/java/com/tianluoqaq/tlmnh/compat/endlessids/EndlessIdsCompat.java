@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class EndlessIdsCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ENDLESS_IDS;
-    public static final String PACKAGE = "endlessids";
-    public static final String REVIEWED_VERSION = "1.7.4";
+
+
     public static final EndlessIdsCompat INSTANCE = new EndlessIdsCompat();
 
     private EndlessIdsCompat() {}
@@ -20,12 +20,12 @@ public final class EndlessIdsCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return EndlessIdsIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return EndlessIdsIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class EndlessIdsCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "区块区段扩展方块 ID 与元数据层只读解码";
+        return EndlessIdsDiagnostics.CAPABILITY_SUMMARY;
     }
 }

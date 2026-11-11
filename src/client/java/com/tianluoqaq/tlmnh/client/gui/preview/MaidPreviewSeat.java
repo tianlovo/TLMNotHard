@@ -30,6 +30,6 @@ public final class MaidPreviewSeat extends EntityLivingBase {
 
     @Override
     public ItemStack[] getLastActiveItems() {
-        return new ItemStack[5];
+        return new ItemStack[ClientPreviewLayout.MIN_SLOT_THRESHOLD];
     }
 }

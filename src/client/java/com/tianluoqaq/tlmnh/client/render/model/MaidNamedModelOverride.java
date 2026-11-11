@@ -50,7 +50,7 @@ public final class MaidNamedModelOverride {
     }
 
     public static <T> T placeholder(EntityMaid preview, Supplier<T> draw) {
-        Objects.requireNonNull(preview, "preview");
+        Objects.requireNonNull(preview, BuiltinModelIds.ID_PREVIEW);
         var previous = PLACEHOLDER_PREVIEW.get();
         PLACEHOLDER_PREVIEW.set(preview);
         try {
@@ -63,14 +63,14 @@ public final class MaidNamedModelOverride {
 
     private static String sha1(String name) {
         try {
-            var digest = MessageDigest.getInstance("SHA-1")
+            var digest = MessageDigest.getInstance(BuiltinModelIds.KEY_SHA_1)
                 .digest(name.getBytes(StandardCharsets.UTF_8));
-            var result = new StringBuilder(40);
-            for (byte value : digest) result.append(Character.forDigit((value >>> 4) & 15, 16))
-                .append(Character.forDigit(value & 15, 16));
+            var result = new StringBuilder(BuiltinModelLayout.NAMED_MODEL_STRING_BUILDER_FIRST_PARAM);
+            for (byte value : digest) result.append(Character.forDigit((value >>> BuiltinModelLayout.CHUNK_SECTION_SHIFT) & BuiltinModelLayout.CHUNK_LOCAL_MASK, BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM))
+                .append(Character.forDigit(value & BuiltinModelLayout.CHUNK_LOCAL_MASK, BuiltinModelLayout.NAMED_MODEL_FOR_DIGIT_SECOND_PARAM));
             return result.toString();
         } catch (NoSuchAlgorithmException failure) {
-            throw new IllegalStateException("Required platform SHA-1 is unavailable", failure);
+            throw new IllegalStateException(BuiltinModelDiagnostics.MSG_REQUIRED_PLATFORM_SHA_IS_UNAVAILABLE, failure);
         }
     }
 }

@@ -25,8 +25,8 @@ import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 public final class BuiltinGeckoAnimations {
 
     public static final ResourceLocation DEFAULT_MAID_ANIMATION = new ResourceLocation(
-        "touhou_little_maid",
-        "animation/maid.animation.json");
+        BuiltinModelIds.ID_TOUHOU_LITTLE_MAID,
+        BuiltinModelIds.MODEL_JSON_MAID_ANIMATION);
     private final Map<ResourceLocation, AnimationFile> files = new HashMap<>();
     private final Map<String, AnimationFile> models = new HashMap<>();
     private final MolangParser parser = MaidMolangBindings.parser();
@@ -37,7 +37,7 @@ public final class BuiltinGeckoAnimations {
     }
 
     public AnimationFile load(BuiltinModelCatalog.Choice choice) throws IOException {
-        if (!choice.isGecko()) throw new IllegalArgumentException("Expected Gecko model");
+        if (!choice.isGecko()) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_EXPECTED_GECKO_MODEL);
         var cached = models.get(choice.getBaseId());
         if (cached != null) return cached;
         var merged = new LinkedHashMap<String, Animation>();
@@ -55,10 +55,10 @@ public final class BuiltinGeckoAnimations {
         var file = files.get(location);
         if (file == null) {
             try (var stream = opener.open(location)) {
-                if (stream == null) throw new IOException("Missing builtin animation " + location);
+                if (stream == null) throw new IOException(BuiltinModelDiagnostics.MSG_MISSING_BUILTIN_ANIMATION + location);
                 file = read(stream, parser);
             } catch (RuntimeException error) {
-                throw new IOException("Cannot parse builtin animation " + location, error);
+                throw new IOException(BuiltinModelDiagnostics.MSG_CANNOT_PARSE_BUILTIN_ANIMATION + location, error);
             }
             files.put(location, file);
         }
@@ -76,18 +76,18 @@ public final class BuiltinGeckoAnimations {
     public static AnimationFile read(InputStream stream, MolangParser parser) {
         var json = new JsonParser().parse(new InputStreamReader(stream, StandardCharsets.UTF_8))
             .getAsJsonObject();
-        if (!json.has("animations") || !json.get("animations")
-            .isJsonObject()) throw new IllegalArgumentException("Missing animations object");
+        if (!json.has(BuiltinModelIds.ID_ANIMATIONS) || !json.get(BuiltinModelIds.ID_ANIMATIONS)
+            .isJsonObject()) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_MISSING_ANIMATIONS_OBJECT);
         var result = new LinkedHashMap<String, Animation>();
         for (var entry : JsonAnimationUtils.getAnimations(json)) {
             try {
                 var animation = JsonAnimationUtils.deserializeJsonToAnimation(entry, parser);
                 if (!Double.isFinite(animation.animationLength) || animation.animationLength < 0)
-                    throw new IllegalArgumentException("Invalid animation length");
+                    throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_ANIMATION_LENGTH);
                 validate(animation);
                 result.put(entry.getKey(), animation);
             } catch (RuntimeException error) {
-                throw new IllegalArgumentException("Invalid animation " + entry.getKey(), error);
+                throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_ANIMATION + entry.getKey(), error);
             }
         }
         return new AnimationFile(Collections.unmodifiableMap(result));
@@ -101,14 +101,14 @@ public final class BuiltinGeckoAnimations {
         }
         for (var event : animation.customInstructionKeyframes)
             if (!Double.isFinite(event.getStartTick()) || event.getStartTick() < 0)
-                throw new IllegalArgumentException("Invalid timeline tick");
+                throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_TIMELINE_TICK);
     }
 
     private static void validate(List<BoneKeyFrame> frames) {
         for (var frame : frames) {
             if (!Double.isFinite(frame.getStartTick()) || frame.getStartTick() < 0
                 || !Double.isFinite(frame.getTotalTick())
-                || frame.getTotalTick() < 0) throw new IllegalArgumentException("Invalid bone keyframe tick");
+                || frame.getTotalTick() < 0) throw new IllegalArgumentException(BuiltinModelDiagnostics.MSG_INVALID_BONE_KEYFRAME_TICK);
         }
     }
 }

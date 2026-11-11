@@ -30,10 +30,10 @@ public final class MaidDoorAccess {
         if (ANIMATED != null && ANIMATED.state.getDeclaringClass()
             .isInstance(tile)) {
             String state = ((Enum<?>) invoke(ANIMATED.state, tile)).name();
-            return state.equals("OPENED") || state.equals("OPENING");
+            return state.equals(MalisisDoorsBlockIds.KEY_OPENED) || state.equals(MalisisDoorsBlockIds.KEY_OPENING);
         }
         return block instanceof BlockDoor door ? NativeDoorState.isOpenOrOpening(door, world, x, y, z)
-            : block instanceof BlockFenceGate && (world.getBlockMetadata(x, y, z) & 4) != 0;
+            : block instanceof BlockFenceGate && (world.getBlockMetadata(x, y, z) & MalisisDoorsBlockTuning.DOOR_BIT_MASK_4) != 0;
     }
 
     public static boolean setOpen(Block block, World world, int x, int y, int z, boolean value) {
@@ -53,8 +53,8 @@ public final class MaidDoorAccess {
                 invoke(ANIMATED.toggle, tile);
             } else {
                 int meta = world.getBlockMetadata(x, y, z);
-                world.setBlockMetadataWithNotify(x, y, z, value ? meta | 4 : meta & ~4, 2);
-                world.playAuxSFXAtEntity(null, 1003, x, y, z, 0);
+                world.setBlockMetadataWithNotify(x, y, z, value ? meta | MalisisDoorsBlockTuning.DOOR_BIT_MASK_4 : meta & ~MalisisDoorsBlockTuning.DOOR_BIT_MASK_4, MalisisDoorsBlockTuning.DOOR_SET_BLOCK_METADATA_WITH_NOTIFY_FIFTH_PARAM);
+                world.playAuxSFXAtEntity(null, MalisisDoorsBlockTuning.DOOR_PLAY_AUX_SFX_AT_ENTITY_SECOND_PARAM, x, y, z, MalisisDoorsBlockTuning.PLAY_AUX_SFX_AT_ENTITY_INITIAL_VALUE);
             }
         }
         return open(block, world, x, y, z) == value;
@@ -64,23 +64,23 @@ public final class MaidDoorAccess {
         try {
             return method.invoke(value);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Installed animated door API failed", failure);
+            throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_API_FAILED, failure);
         }
     }
 
     private static Animated animated() {
         try {
             var tile = Class.forName(
-                "net.malisis.doors.door.tileentity.DoorTileEntity",
+                MalisisDoorsBlockIds.TARGET_CLASS_DOOR_TILE_ENTITY,
                 false,
                 MaidDoorAccess.class.getClassLoader());
-            return new Animated(tile.getMethod("getState"), tile.getMethod("openOrCloseDoor"));
+            return new Animated(tile.getMethod(MalisisDoorsBlockIds.ID_GETSTATE), tile.getMethod(MalisisDoorsBlockIds.ID_OPENORCLOSEDOOR));
         } catch (ClassNotFoundException absent) {
-            if (Loader.isModLoaded("malisisdoors"))
-                throw new IllegalStateException("Installed animated door class missing", absent);
+            if (Loader.isModLoaded(MalisisDoorsBlockIds.ID_MALISISDOORS))
+                throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_CLASS_MISSING, absent);
             return null;
         } catch (NoSuchMethodException incompatible) {
-            throw new IllegalStateException("Installed animated door API differs", incompatible);
+            throw new IllegalStateException(MalisisDoorsBlockDiagnostics.MSG_INSTALLED_ANIMATED_DOOR_API_DIFFERS, incompatible);
         }
     }
 

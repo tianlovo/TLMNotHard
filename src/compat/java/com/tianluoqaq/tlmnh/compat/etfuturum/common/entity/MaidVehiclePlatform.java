@@ -49,7 +49,7 @@ public final class MaidVehiclePlatform {
             var passengers = (List<?>) call(Efr.PASSENGERS, vehicle);
             if (passengers.isEmpty()) return true;
             var seat = (Entity) call(Efr.GET_SEAT, vehicle);
-            return passengers.size() == 1 && seat != null && !seat.isDead && seat.riddenByEntity == null;
+            return passengers.size() == EtFuturumEntityTuning.TARGET_SIZE_THRESHOLD && seat != null && !seat.isDead && seat.riddenByEntity == null;
         }
         return vehicle.riddenByEntity == null;
     }
@@ -70,7 +70,7 @@ public final class MaidVehiclePlatform {
         try {
             return method.invoke(object, arguments);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Verified EFR vehicle API failed: " + method.getName(), failure);
+            throw new IllegalStateException(EtFuturumEntityDiagnostics.MSG_VERIFIED_EFR_VEHICLE_API_FAILED + method.getName(), failure);
         }
     }
 
@@ -83,19 +83,19 @@ public final class MaidVehiclePlatform {
             Class<?> boat = null, seat = null;
             Method controller = null, passengers = null, getSeat = null, add = null, boatOfSeat = null;
             try {
-                boat = Class.forName("ganymedes01.etfuturum.entities.EntityNewBoat");
-                seat = Class.forName("ganymedes01.etfuturum.entities.EntityNewBoatSeat");
-                controller = boat.getMethod("getControllingPassenger");
-                passengers = boat.getMethod("getPassengers");
-                getSeat = boat.getMethod("getSeat");
-                add = boat.getMethod("addToBoat", Entity.class);
-                boatOfSeat = seat.getMethod("getBoat");
+                boat = Class.forName(EtFuturumEntityReflectionSpec.TARGET_CLASS_ENTITY_NEW_BOAT);
+                seat = Class.forName(EtFuturumEntityReflectionSpec.TARGET_CLASS_ENTITY_NEW_BOAT_SEAT);
+                controller = boat.getMethod(EtFuturumEntityIds.ID_GETCONTROLLINGPASSENGER);
+                passengers = boat.getMethod(EtFuturumEntityIds.ID_GETPASSENGERS);
+                getSeat = boat.getMethod(EtFuturumEntityIds.ID_GETSEAT);
+                add = boat.getMethod(EtFuturumEntityIds.ID_ADDTOBOAT, Entity.class);
+                boatOfSeat = seat.getMethod(EtFuturumEntityIds.ID_GETBOAT);
             } catch (ClassNotFoundException absent) {
-                if (Loader.isModLoaded("etfuturum"))
-                    throw new IllegalStateException("Installed EFR vehicle classes changed", absent);
+                if (Loader.isModLoaded(EtFuturumEntityIds.ID_ETFUTURUM))
+                    throw new IllegalStateException(EtFuturumEntityDiagnostics.MSG_INSTALLED_EFR_VEHICLE_CLASSES_CHANGED, absent);
                 boat = seat = null;
             } catch (NoSuchMethodException incompatible) {
-                throw new IllegalStateException("Unsupported EFR boat API", incompatible);
+                throw new IllegalStateException(EtFuturumEntityDiagnostics.MSG_UNSUPPORTED_EFR_BOAT_API, incompatible);
             }
             BOAT = boat;
             SEAT = seat;

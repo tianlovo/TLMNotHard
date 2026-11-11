@@ -20,7 +20,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidAttackDisplay {
 
     public static final MaidAttackDisplay INSTANCE = new MaidAttackDisplay();
-    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(16);
+    private final ArrayBlockingQueue<Pending> queue = new ArrayBlockingQueue<>(ClientWidgetLayout.ATLAS_BUTTON_WIDTH);
     private final AtomicInteger generation = new AtomicInteger();
 
     private MaidAttackDisplay() {}
@@ -68,7 +68,7 @@ public final class MaidAttackDisplay {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getMinecraft();
-        for (int index = 0; index < 16; index++) {
+        for (int index = 0; index < ClientWidgetLayout.ATLAS_BUTTON_WIDTH; index++) {
             var pending = queue.poll();
             if (pending == null) break;
             if (pending.generation != generation.get() || mc.theWorld == null

@@ -14,7 +14,7 @@ public final class MolangModelResources {
     private Map<String, ? extends IBone> bones = Collections.emptyMap();
 
     public void bindBones(Map<String, ? extends IBone> bones) {
-        this.bones = Objects.requireNonNull(bones, "bones");
+        this.bones = Objects.requireNonNull(bones, MolangRenderIds.ID_BONES);
         physics.reset();
     }
 

@@ -21,7 +21,7 @@ public final class MaidGuiPreview {
     private MaidGuiPreview() {}
 
     public static void draw(EntityMaid maid, int left, int top, int mouseX, int mouseY) {
-        draw(maid, left + 40, top + 100, 40, left + 40 - mouseX, top + 50 - mouseY, left + 6, top + 12, 67, 95);
+        draw(maid, left + ClientRenderLayout.GUI_PREVIEW_DRAW_SECOND_PARAM, top + ClientRenderLayout.GUI_PREVIEW_DRAW_THIRD_PARAM, ClientRenderLayout.GUI_PREVIEW_DRAW_SECOND_PARAM, left + ClientRenderLayout.GUI_PREVIEW_DRAW_SECOND_PARAM - mouseX, top + ClientRenderLayout.GUI_PREVIEW_DRAW_SIXTH_PARAM - mouseY, left + ClientRenderLayout.GUI_PREVIEW_DRAW_ARG7_PARAM, top + ClientRenderLayout.GUI_PREVIEW_DRAW_ARG8_PARAM, ClientRenderLayout.GUI_PREVIEW_DRAW_ARG9_PARAM, ClientRenderLayout.GUI_PREVIEW_DRAW_ARG10_PARAM);
     }
 
     public static void draw(EntityMaid maid, int x, int y, int size, float lookX, float lookY, int clipX, int clipY,

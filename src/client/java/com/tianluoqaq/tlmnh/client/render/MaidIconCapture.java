@@ -41,44 +41,44 @@ public final class MaidIconCapture {
         int imageWidth = fbo ? framebuffer.framebufferTextureWidth : mc.displayWidth;
         int imageHeight = fbo ? framebuffer.framebufferTextureHeight : mc.displayHeight;
         int frameHeight = fbo ? framebuffer.framebufferHeight : mc.displayHeight;
-        if (imageWidth < 256 || frameHeight < 256)
-            throw new IllegalStateException("Model icon capture requires 256 pixels");
+        if (imageWidth < ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD || frameHeight < ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD)
+            throw new IllegalStateException(ClientRenderDiagnostics.MSG_MODEL_ICON_CAPTURE_REQUIRES_256);
         int pack = GL11.glGetInteger(GL11.GL_PACK_ALIGNMENT), unpack = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         float lightX = OpenGlHelper.lastBrightnessX, lightY = OpenGlHelper.lastBrightnessY;
         CacheIconTexture texture = null;
         try (var filters = ClientCompatServices.renderPlatform()
             .captureFilterWindow(); var scope = new MaidItemRenderScope()) {
             var resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-            int size = (int) Math.ceil(256.0 / resolution.getScaleFactor());
+            int size = (int) Math.ceil(ClientRenderLayout.ICON_CAPTURE_CEIL_FIRST_FACTOR / resolution.getScaleFactor());
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
-            GL11.glScissor(0, frameHeight - 256, 256, 256);
+            GL11.glScissor(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, frameHeight - ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD, ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD, ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD);
             GL11.glDepthMask(true);
-            GL11.glClearDepth(1);
+            GL11.glClearDepth(ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-            Gui.drawRect(0, 0, size, size + 2, 0xFF00FF00);
-            GL11.glColor4f(1, 1, 1, 1);
-            GL11.glTranslatef(0, 0, 200);
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240, 240);
-            MaidGuiPreview.draw(maid, size / 2, size, (int) (size / 2 * itemScale), -25, -20, 0, 0, size, size + 2);
+            Gui.drawRect(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, size, size + ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2, ClientRenderLayout.ARGB_COLOR_FF00FF00);
+            GL11.glColor4f(ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glTranslatef(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.ICON_CAPTURE_CAPTURE_UNCHECKED_OFFSET_Z);
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P, ClientRenderLayout.DETAILS_PREVIEW_SET_LIGHTMAP_TEXTURE_COORDS_SECOND_P);
+            MaidGuiPreview.draw(maid, size / ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2, size, (int) (size / ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2 * itemScale), ClientRenderLayout.ICON_CAPTURE_DRAW_FIFTH_PARAM, ClientRenderLayout.DETAILS_PREVIEW_AXES_OFFSET_Z, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, size, size + ClientRenderLayout.DETAILS_PREVIEW_DRAW_AXES_FIRST_PARAM_2);
             int count = imageWidth * imageHeight;
             if (pixels == null || pixels.capacity() < count) pixels = BufferUtils.createIntBuffer(count);
             pixels.clear();
-            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
-            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, ClientRenderLayout.DETAILS_PREVIEW_RED_LEVEL);
             OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
             if (fbo) {
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.framebufferTexture);
-                GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+                GL11.glGetTexImage(GL11.GL_TEXTURE_2D, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
             } else GL11
-                .glReadPixels(0, 0, imageWidth, imageHeight, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
-            var image = new BufferedImage(256, 256, BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) {
+                .glReadPixels(ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X, imageWidth, imageHeight, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+            var image = new BufferedImage(ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD, ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD; y++) for (int x = 0; x < ClientRenderLayout.MIN_IMAGE_WIDTH_THRESHOLD; x++) {
                 int pixel = pixels.get((frameHeight - 1 - y) * imageWidth + x);
-                image.setRGB(x, y, pixel == 0xFF00FF00 ? 0 : pixel);
+                image.setRGB(x, y, pixel == ClientRenderLayout.ARGB_COLOR_FF00FF00 ? ClientRenderLayout.DETAILS_PREVIEW_RENDER_OFFSET_X : pixel);
             }
             texture = new CacheIconTexture(image);
             if (!mc.getTextureManager()
-                .loadTexture(location, texture)) throw new IllegalStateException("Model icon upload failed");
+                .loadTexture(location, texture)) throw new IllegalStateException(ClientRenderDiagnostics.MSG_MODEL_ICON_UPLOAD_FAILED);
             return texture;
         } catch (RuntimeException | Error failure) {
             if (texture != null) texture.deleteGlTexture();

@@ -5,6 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model;
 
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelDataTuning;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -242,7 +244,7 @@ public abstract class AbstractModelGui extends GuiScreen {
     public boolean returnToMaid() {
         if (mc.currentScreen != this || !container.canInteractWith(mc.thePlayer)) return false;
         mc.playerController
-            .sendEnchantPacket(container.windowId, BuiltinModelSelection.wireAction(BuiltinModelSelection.BACK));
+            .sendEnchantPacket(container.windowId, BuiltinModelSelection.wireAction(BuiltinModelDataTuning.BACK));
         return true;
     }
 

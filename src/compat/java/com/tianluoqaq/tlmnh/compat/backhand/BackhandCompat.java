@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class BackhandCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.BACKHAND;
-    public static final String PACKAGE = "backhand";
-    public static final String REVIEWED_VERSION = "1.8.18";
+
+
     public static final BackhandCompat INSTANCE = new BackhandCompat();
 
     private BackhandCompat() {}
@@ -20,12 +20,12 @@ public final class BackhandCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return BackhandIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return BackhandIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class BackhandCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "玩家副手联动能力边界与开发期交互夹具";
+        return BackhandIds.CAPABILITY_SUMMARY;
     }
 }

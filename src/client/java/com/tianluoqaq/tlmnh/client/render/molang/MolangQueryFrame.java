@@ -10,43 +10,43 @@ import java.util.regex.Pattern;
 public final class MolangQueryFrame {
 
     // native 注册表包含 IC2:itemArmor... 这类旧 ID，大小写必须原样保留
-    private static final Pattern ITEM_ID = Pattern.compile("[A-Za-z0-9_.-]+:[A-Za-z0-9/._-]+");
+    private static final Pattern ITEM_ID = Pattern.compile(MolangRenderIds.ID_A_ZA_Z0_9_A_ZA_Z0_9);
     private final Map<Slot, Equipment> equipment = new EnumMap<>(Slot.class);
     public double lifetime, bodyYaw, netHeadYaw, headPitch, health, maxHealth, groundSpeed, verticalSpeed, yawSpeed;
     public boolean inWater, inWaterOrRain, jumping, sneaking;
     public boolean begging, sitting, hasBackpack, closeEyes, hasElytra;
-    public double foodLevel = 20;
+    public double foodLevel = MolangRenderLayout.MOLANG_FRAMES_GROUND_SPEED;
     public float viewYaw;
     public double previousX, previousY, previousZ, x, y, z, partialTick;
 
     public double position(int axis) {
         switch (axis) {
-            case 0:
+            case MolangRenderLayout.MAX_INITIAL_VALUE:
                 return previousX + (x - previousX) * partialTick;
-            case 1:
+            case MolangRenderLayout.MIN_SINGLE_UNIT:
                 return previousY + (y - previousY) * partialTick;
-            case 2:
+            case MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_3:
                 return previousZ + (z - previousZ) * partialTick;
             default:
-                throw new IllegalArgumentException("Invalid position axis");
+                throw new IllegalArgumentException(MolangRenderDiagnostics.MSG_INVALID_POSITION_AXIS);
         }
     }
 
     public double positionDelta(int axis) {
         switch (axis) {
-            case 0:
+            case MolangRenderLayout.MAX_INITIAL_VALUE:
                 return (x - previousX) * partialTick;
-            case 1:
+            case MolangRenderLayout.MIN_SINGLE_UNIT:
                 return (y - previousY) * partialTick;
-            case 2:
+            case MolangRenderLayout.MOLANG_FRAMES_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM_3:
                 return (z - previousZ) * partialTick;
             default:
-                throw new IllegalArgumentException("Invalid position axis");
+                throw new IllegalArgumentException(MolangRenderDiagnostics.MSG_INVALID_POSITION_AXIS);
         }
     }
 
     public void setEquipment(Slot slot, String itemId, int maxDamage, int damage) {
-        setEquipment(slot, itemId, maxDamage, damage, "", "none");
+        setEquipment(slot, itemId, maxDamage, damage, "", MolangRenderIds.ID_NONE);
     }
 
     public void setEquipment(Slot slot, String itemId, int maxDamage, int damage, String classification,
@@ -56,7 +56,7 @@ public final class MolangQueryFrame {
             return;
         }
         // 实际注册表数据不经高版本 ID 校验，避免旧模组的合法物品中断整帧动画
-        String qualified = itemId.indexOf(':') < 0 ? "minecraft:" + itemId : itemId;
+        String qualified = itemId.indexOf(':') < 0 ? MolangRenderIds.ID_MINECRAFT + itemId : itemId;
         equipment.put(slot, new Equipment(qualified, maxDamage, damage, classification, useAnimation));
     }
 
@@ -66,7 +66,7 @@ public final class MolangQueryFrame {
 
     public static String canonicalItemId(String value) {
         if (value == null) return null;
-        String result = value.indexOf(':') < 0 ? "minecraft:" + value : value;
+        String result = value.indexOf(':') < 0 ? MolangRenderIds.ID_MINECRAFT + value : value;
         return ITEM_ID.matcher(result)
             .matches() ? result : null;
     }
@@ -100,8 +100,8 @@ public final class MolangQueryFrame {
             this.itemId = itemId;
             this.maxDamage = maxDamage;
             this.damage = damage;
-            this.classification = Objects.requireNonNull(classification, "classification");
-            this.useAnimation = Objects.requireNonNull(useAnimation, "useAnimation");
+            this.classification = Objects.requireNonNull(classification, MolangRenderIds.ID_CLASSIFICATION);
+            this.useAnimation = Objects.requireNonNull(useAnimation, MolangRenderIds.ID_USEANIMATION);
         }
     }
 }

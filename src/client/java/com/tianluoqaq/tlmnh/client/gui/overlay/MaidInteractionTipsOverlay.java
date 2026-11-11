@@ -41,10 +41,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidInteractionTipsOverlay extends Gui {
 
-    private static final String CAPABILITY = "render/maid_interaction_tips";
+
     private static final ResourceLocation ICON = new ResourceLocation(
-        "touhou_little_maid",
-        "textures/gui/maid_tips_icon.png");
+        ClientOverlayIds.ID_TOUHOU_LITTLE_MAID,
+        ClientOverlayIds.TEXTURE_MAID_TIPS_ICON);
     private RenderItem itemRenderer;
     private Field gameTypeField;
 
@@ -56,7 +56,7 @@ public final class MaidInteractionTipsOverlay extends Gui {
     public void render(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.CROSSHAIRS
             || !IntegrationGuard.available(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE)
-            || !IntegrationGuard.available(Side.CLIENT, CAPABILITY)) return;
+            || !IntegrationGuard.available(Side.CLIENT, ClientOverlayIds.CAPABILITY)) return;
         try {
             var minecraft = Minecraft.getMinecraft();
             var player = minecraft.thePlayer;
@@ -68,16 +68,16 @@ public final class MaidInteractionTipsOverlay extends Gui {
                 || !(hit.entityHit instanceof EntityMaid maid)
                 || maid.worldObj != minecraft.theWorld) return;
             if (gameTypeField == null) gameTypeField = ReflectionHelper
-                .findField(PlayerControllerMP.class, "currentGameType", "field_78779_k");
+                .findField(PlayerControllerMP.class, ClientOverlayIds.ID_CURRENTGAMETYPE, ClientOverlayReflectionSpec.SRG_MEMBER_FIELD_78779_K);
             var gameType = (WorldSettings.GameType) gameTypeField.get(minecraft.playerController);
-            if (gameType == null) throw new IllegalStateException("Native client game type is unavailable");
+            if (gameType == null) throw new IllegalStateException(ClientOverlayDiagnostics.MSG_NATIVE_CLIENT_GAME_TYPE_IS);
             boolean mainHand = player.inventory.currentItem >= 0
                 && player.inventory.currentItem < InventoryPlayer.getHotbarSize();
             boolean sameVehicle = player.ridingEntity != null && player.ridingEntity == maid.ridingEntity;
             if (!MaidInteractionTipsRules.visible(
                 minecraft.gameSettings.thirdPersonView == 0,
                 !minecraft.gameSettings.hideGUI,
-                gameType.getID() == 3,
+                gameType.getID() == ClientOverlayLayout.TARGET_GET_ID_THRESHOLD,
                 maid.isEntityAlive(),
                 maid.isOwner(player),
                 mainHand,
@@ -87,11 +87,11 @@ public final class MaidInteractionTipsOverlay extends Gui {
             var tip = tip(held);
             if (tip == null || !MaidClientPreferences.interactionTipEnabled(tip.configKey)) return;
             String text = StatCollector.translateToLocal(tip.translationKey)
-                .replace("Shift", GameSettings.getKeyDisplayString(minecraft.gameSettings.keyBindSneak.getKeyCode()));
+                .replace(ClientOverlayIds.KEY_SHIFT, GameSettings.getKeyDisplayString(minecraft.gameSettings.keyBindSneak.getKeyCode()));
             draw(minecraft, held.copy(), text, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         } catch (Throwable failure) {
             IntegrationGuard.throwIfFatal(failure);
-            IntegrationGuard.report(Side.CLIENT, CAPABILITY, failure);
+            IntegrationGuard.report(Side.CLIENT, ClientOverlayIds.CAPABILITY, failure);
         }
     }
 
@@ -110,11 +110,11 @@ public final class MaidInteractionTipsOverlay extends Gui {
 
     private void draw(Minecraft minecraft, ItemStack held, String text, int width, int height) {
         var font = minecraft.fontRenderer;
-        var lines = font.listFormattedStringToWidth(text, 120);
-        int x = width / 2 + 32;
-        int y = height / 2 - 5 - lines.size() * 10;
+        var lines = font.listFormattedStringToWidth(text, ClientOverlayLayout.INTERACTION_TIPS_LIST_FORMATTED_STRING_TO_WIDTH_SECO);
+        int x = width / ClientOverlayLayout.MIDPOINT_DIVISOR + ClientOverlayLayout.INTERACTION_TIPS_DRAW_X_OFFSET;
+        int y = height / ClientOverlayLayout.MIDPOINT_DIVISOR - ClientOverlayLayout.INTERACTION_TIPS_DRAW_Y_OFFSET - lines.size() * ClientOverlayLayout.INTERACTION_TIPS_DRAW_Y_OFFSET_2;
         try (var scope = new MaidItemRenderScope()) {
-            GL11.glColor4f(1, 1, 1, 1);
+            GL11.glColor4f(ClientOverlayLayout.INTERACTION_TIPS_RED_LEVEL, ClientOverlayLayout.INTERACTION_TIPS_RED_LEVEL, ClientOverlayLayout.INTERACTION_TIPS_RED_LEVEL, ClientOverlayLayout.INTERACTION_TIPS_RED_LEVEL);
             RenderHelper.enableGUIStandardItemLighting();
             if (itemRenderer == null) itemRenderer = new RenderItem();
             itemRenderer.renderItemAndEffectIntoGUI(font, minecraft.getTextureManager(), held, x, y);
@@ -125,11 +125,11 @@ public final class MaidInteractionTipsOverlay extends Gui {
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             minecraft.getTextureManager()
                 .bindTexture(ICON);
-            Gui.func_146110_a(x + 10, y - 4, 0, 0, 16, 16, 16, 16);
-            y += 18;
+            Gui.func_146110_a(x + ClientOverlayLayout.INTERACTION_TIPS_DRAW_Y_OFFSET_2, y - ClientOverlayLayout.INTERACTION_TIPS_DEST_Y, ClientOverlayLayout.INTERACTION_TIPS_TEX_U, ClientOverlayLayout.INTERACTION_TIPS_TEX_U, ClientOverlayLayout.INTERACTION_TIPS_WIDTH, ClientOverlayLayout.INTERACTION_TIPS_WIDTH, ClientOverlayLayout.INTERACTION_TIPS_WIDTH, ClientOverlayLayout.INTERACTION_TIPS_WIDTH);
+            y += ClientOverlayLayout.INTERACTION_TIPS_DRAW_PARAM;
             for (Object line : lines) {
-                font.drawStringWithShadow((String) line, x, y, 0xFFFFFF);
-                y += 10;
+                font.drawStringWithShadow((String) line, x, y, ClientOverlayLayout.RGB_WHITE);
+                y += ClientOverlayLayout.INTERACTION_TIPS_DRAW_Y_OFFSET_2;
             }
         }
     }

@@ -39,8 +39,8 @@ public final class ClientProtectionEvents {
     private static void verifyBaseline() {
         IntegrationGuard.call(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, () -> {
             var path = Minecraft.getMinecraft().mcDataDir.toPath()
-                .resolve("config/tlmnh-client-compatibility.dat");
-            var ledger = new CompatibilityLedger("client");
+                .resolve(ClientProtectionIds.ID_CONFIG_TLMNH_CLIENT_COMPATIBILITY_DAT);
+            var ledger = new CompatibilityLedger(ClientProtectionIds.ID_CLIENT);
             if (Files.exists(path)) {
                 try (var input = Files.newInputStream(path)) {
                     ledger.readFromNBT(CompressedStreamTools.readCompressed(input));
@@ -49,7 +49,7 @@ public final class ClientProtectionEvents {
             ledger.check(Side.CLIENT);
             if (ledger.isDirty() && IntegrationGuard.available(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE)) {
                 Files.createDirectories(path.getParent());
-                var temporary = Files.createTempFile(path.getParent(), "tlmnh-client-compatibility-", ".tmp");
+                var temporary = Files.createTempFile(path.getParent(), ClientProtectionIds.ID_TLMNH_CLIENT_COMPATIBILITY, ClientProtectionIds.ID_TMP);
                 try {
                     var data = new NBTTagCompound();
                     ledger.writeToNBT(data);
@@ -77,7 +77,7 @@ public final class ClientProtectionEvents {
         for (var fault : IntegrationGuard.faults(Side.CLIENT)
             .values()) if (notified.add(fault.code)) {
                 var message = new ChatComponentTranslation(
-                    "chat.tlmnh.protection.client_fallback",
+                    ClientProtectionIds.I18N_CHAT_TLMNH_PROTECTION_CLIENT_FALLBACK,
                     fault.code,
                     fault.key);
                 message.getChatStyle()

@@ -31,7 +31,7 @@ public final class MaidItemFilterScope implements AutoCloseable {
         mag = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER);
         aniso = anisotropic
             ? GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT)
-            : 1;
+            : RenderScopeLayout.ITEM_FILTER_MAID_ITEM_FILTER_SCOPE_UNIT_STEP;
     }
 
     @Override

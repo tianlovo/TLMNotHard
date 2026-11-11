@@ -22,7 +22,7 @@ public final class MaidItemRenderScope implements AutoCloseable {
     private boolean attributesPushed, clientAttributesPushed, closed;
 
     public MaidItemRenderScope() {
-        if (!MaidRenderProtection.ready()) throw new IllegalStateException("Native render state unavailable");
+        if (!MaidRenderProtection.ready()) throw new IllegalStateException(RenderScopeDiagnostics.MSG_NATIVE_RENDER_STATE_UNAVAILABLE);
         matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         try {
@@ -112,7 +112,7 @@ public final class MaidItemRenderScope implements AutoCloseable {
             // Angelica的TEXTURE软件栈深度不能用driver兼容查询冒充
             depth = ClientCompatServices.renderPlatform()
                 .matrixDepth(depthName);
-            top = BufferUtils.createFloatBuffer(16);
+            top = BufferUtils.createFloatBuffer(RenderScopeLayout.ITEM_RENDER_CREATE_FLOAT_BUFFER_FIRST_PARAM);
             GL11.glGetFloat(matrixName, top);
         }
 
@@ -127,7 +127,7 @@ public final class MaidItemRenderScope implements AutoCloseable {
                     GL11.GL_PROJECTION_STACK_DEPTH,
                     GL11.GL_PROJECTION_MATRIX);
                 case GL11.GL_TEXTURE -> new MatrixState(mode, GL11.GL_TEXTURE_STACK_DEPTH, GL11.GL_TEXTURE_MATRIX);
-                default -> throw new IllegalArgumentException("Unknown item matrix mode");
+                default -> throw new IllegalArgumentException(RenderScopeDiagnostics.MSG_UNKNOWN_ITEM_MATRIX_MODE);
             };
         }
 
@@ -138,9 +138,9 @@ public final class MaidItemRenderScope implements AutoCloseable {
             if (current < depth) {
                 // 被回调弹掉的caller下层矩阵不可凭一份top快照重建
                 GL11.glLoadMatrix(top.duplicate());
-                throw new IllegalStateException("Native item renderer removed caller matrix entries");
+                throw new IllegalStateException(RenderScopeDiagnostics.MSG_NATIVE_ITEM_RENDERER_REMOVED_CALLER);
             }
-            if (current - depth > 128) throw new IllegalStateException("Unbounded native item matrix leak");
+            if (current - depth > RenderScopeLayout.MAX_DEPTH_THRESHOLD) throw new IllegalStateException(RenderScopeDiagnostics.MSG_UNBOUNDED_NATIVE_ITEM_MATRIX_LEAK);
             while (current-- > depth) GL11.glPopMatrix();
             GL11.glLoadMatrix(top.duplicate());
         }

@@ -10,24 +10,24 @@ public final class EtFuturumBlocks {
     public static boolean isBubbleColumn(Block block) {
         return block.getClass()
             .getName()
-            .equals("ganymedes01.etfuturum.blocks.BlockBubbleColumn");
+            .equals(EtFuturumBlockReflectionSpec.TARGET_CLASS_BLOCK_BUBBLE_COLUMN);
     }
 
     public static boolean isHoney(Block block) {
         return block.getClass()
             .getName()
-            .equals("ganymedes01.etfuturum.blocks.BlockHoney");
+            .equals(EtFuturumBlockReflectionSpec.TARGET_CLASS_BLOCK_HONEY);
     }
 
     public static boolean isWitherRose(Block block) {
         return block.getClass()
             .getName()
-            .equals("ganymedes01.etfuturum.blocks.BlockWitherRose");
+            .equals(EtFuturumBlockReflectionSpec.TARGET_CLASS_BLOCK_WITHER_ROSE);
     }
 
     public static boolean isMagma(Block block) {
         return block.getClass()
             .getName()
-            .equals("ganymedes01.etfuturum.blocks.BlockMagma");
+            .equals(EtFuturumBlockReflectionSpec.TARGET_CLASS_BLOCK_MAGMA);
     }
 }

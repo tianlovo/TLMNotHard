@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class AngelicaCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.ANGELICA;
-    public static final String PACKAGE = "angelica";
-    public static final String REVIEWED_VERSION = "2.2.43";
+
+
     public static final AngelicaCompat INSTANCE = new AngelicaCompat();
 
     private AngelicaCompat() {}
@@ -20,12 +20,12 @@ public final class AngelicaCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return AngelicaIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return AngelicaIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class AngelicaCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "客户端矩阵栈深度读取与图集纹理过滤状态窗口保存";
+        return AngelicaIds.CAPABILITY_SUMMARY;
     }
 }

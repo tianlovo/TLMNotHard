@@ -23,13 +23,13 @@ public final class ClientDevelopmentAccess {
     }
 
     public static synchronized void install(ClientDevelopmentHooks implementation) {
-        Objects.requireNonNull(implementation, "implementation");
+        Objects.requireNonNull(implementation, ClientDiagnosticIds.ID_IMPLEMENTATION);
         if (implementation == ClientDevelopmentHooks.NONE) {
-            throw new IllegalArgumentException("Cannot install NONE as an active client development hook");
+            throw new IllegalArgumentException(ClientDiagnosticDiagnostics.MSG_CANNOT_INSTALL_NONE_AS_AN);
         }
         if (hooks != ClientDevelopmentHooks.NONE && hooks != implementation) {
             throw new IllegalStateException(
-                "ClientDevelopmentHooks already installed: " + hooks.getClass()
+                ClientDiagnosticDiagnostics.MSG_CLIENTDEVELOPMENTHOOKS_ALREADY_INSTALLED + hooks.getClass()
                     .getName());
         }
         hooks = implementation;

@@ -47,8 +47,8 @@ public final class MaidRenderPlatformState {
                 Object stack = invoke(angelica.matrixStack, null);
                 depth = (Integer) invoke(angelica.matrixDepth, null, stack);
             }
-            if (depth < 1 || depth > 129)
-                throw new IllegalStateException("Invalid native matrix stack depth: " + depth);
+            if (depth < AngelicaClientRenderLayout.MIN_DEPTH_THRESHOLD || depth > AngelicaClientRenderLayout.MAX_DEPTH_THRESHOLD)
+                throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_INVALID_NATIVE_MATRIX_STACK_DEPTH + depth);
             return depth;
         } catch (RuntimeException | LinkageError | AssertionError failure) {
             IntegrationGuard.trip(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, failure);
@@ -67,9 +67,9 @@ public final class MaidRenderPlatformState {
 
     private static final class Bindings {
 
-        private final Field vanillaMin = vanillaField("field_147958_e");
-        private final Field vanillaMag = vanillaField("field_147956_f");
-        private final Field vanillaAniso = vanillaField("field_152779_g");
+        private final Field vanillaMin = vanillaField(AngelicaClientRenderReflectionSpec.SRG_MEMBER_FIELD_147958_E);
+        private final Field vanillaMag = vanillaField(AngelicaClientRenderReflectionSpec.SRG_MEMBER_FIELD_147956_F);
+        private final Field vanillaAniso = vanillaField(AngelicaClientRenderReflectionSpec.SRG_MEMBER_FIELD_152779_G);
         private final Angelica angelica = Angelica.find();
     }
 
@@ -78,8 +78,8 @@ public final class MaidRenderPlatformState {
             TextureUtil.class,
             ObfuscationReflectionHelper.remapFieldNames(TextureUtil.class.getName(), name));
         if (!Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())
-            || field.getType() != (name.equals("field_152779_g") ? float.class : int.class))
-            throw new IllegalStateException("Unsupported vanilla filter field: " + name);
+            || field.getType() != (name.equals(AngelicaClientRenderReflectionSpec.SRG_MEMBER_FIELD_152779_G) ? float.class : int.class))
+            throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_UNSUPPORTED_VANILLA_FILTER_FIELD + name);
         return field;
     }
 
@@ -96,7 +96,7 @@ public final class MaidRenderPlatformState {
             vanillaMag = read(state.vanillaMag, null);
             vanillaAniso = read(state.vanillaAniso, null);
             context = state.angelica == null ? null : invoke(state.angelica.context, null);
-            if (state.angelica != null && context == null) throw new IllegalStateException("Missing Angelica context");
+            if (state.angelica != null && context == null) throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_MISSING_ANGELICA_CONTEXT);
             if (context == null) saved = new Object[0];
             else {
                 saved = new Object[state.angelica.filterFields.length];
@@ -126,7 +126,7 @@ public final class MaidRenderPlatformState {
         try {
             return field.get(owner);
         } catch (IllegalAccessException failure) {
-            throw new IllegalStateException("Cannot read native render state", failure);
+            throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_CANNOT_READ_NATIVE_RENDER_STATE, failure);
         }
     }
 
@@ -146,16 +146,16 @@ public final class MaidRenderPlatformState {
         } catch (InvocationTargetException failure) {
             var cause = failure.getCause();
             rethrow(cause);
-            throw new IllegalStateException("Native render state callback failed", cause);
+            throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_NATIVE_RENDER_STATE_CALLBACK_FAILED, cause);
         } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Cannot access native render state", failure);
+            throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_CANNOT_ACCESS_NATIVE_RENDER_STATE, failure);
         }
     }
 
     private static void rethrow(Throwable failure) {
         if (failure instanceof RuntimeException error) throw error;
         if (failure instanceof Error error) throw error;
-        if (failure != null) throw new IllegalStateException("Native render state restore failed", failure);
+        if (failure != null) throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_NATIVE_RENDER_STATE_RESTORE_FAILED, failure);
     }
 
     private static final class Angelica {
@@ -166,42 +166,42 @@ public final class MaidRenderPlatformState {
         private Angelica(Class<?> manager) throws ReflectiveOperationException {
             Class<?> matrices;
             try {
-                matrices = Class.forName("com.gtnewhorizons.angelica.glsm.GLSMMatrices", true, providerLoader);
+                matrices = Class.forName(AngelicaClientRenderReflectionSpec.TARGET_CLASS_GLSM_MATRICES, true, providerLoader);
             } catch (ClassNotFoundException legacy) {
                 matrices = manager;
             }
-            matrixStack = matrices.getMethod("getMatrixStack");
-            matrixDepth = matrices.getMethod("getMatrixStackDepth", matrixStack.getReturnType());
-            context = manager.getMethod("ctx");
+            matrixStack = matrices.getMethod(AngelicaClientRenderIds.ID_GETMATRIXSTACK);
+            matrixDepth = matrices.getMethod(AngelicaClientRenderIds.ID_GETMATRIXSTACKDEPTH, matrixStack.getReturnType());
+            context = manager.getMethod(AngelicaClientRenderIds.ID_CTX);
             if (matrixDepth.getReturnType() != int.class || !Modifier.isStatic(matrixStack.getModifiers())
                 || !Modifier.isStatic(matrixDepth.getModifiers())
                 || !Modifier.isStatic(context.getModifiers()))
-                throw new IllegalStateException("Unsupported Angelica render method contract");
+                throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_UNSUPPORTED_ANGELICA_RENDER_METHOD_CONTRACT);
             Class<?> contextType = context.getReturnType();
-            filterFields = new Field[] { contextType.getField("savedFilterTextureId"),
-                contextType.getField("savedFilterMin"), contextType.getField("savedFilterMag"),
-                contextType.getField("savedFilterAniso") };
+            filterFields = new Field[] { contextType.getField(AngelicaClientRenderIds.ID_SAVEDFILTERTEXTUREID),
+                contextType.getField(AngelicaClientRenderIds.ID_SAVEDFILTERMIN), contextType.getField(AngelicaClientRenderIds.ID_SAVEDFILTERMAG),
+                contextType.getField(AngelicaClientRenderIds.ID_SAVEDFILTERANISO) };
             for (int i = 0; i < filterFields.length; i++) {
                 var field = filterFields[i];
                 if (Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())
-                    || field.getType() != (i == 3 ? float.class : int.class))
-                    throw new IllegalStateException("Unsupported Angelica filter field contract");
+                    || field.getType() != (i == AngelicaClientRenderLayout.TARGET_I_THRESHOLD ? float.class : int.class))
+                    throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_UNSUPPORTED_ANGELICA_FILTER_FIELD_CONTRACT);
             }
         }
 
         private static Angelica find() {
             Class<?> manager;
             try {
-                manager = Class.forName("com.gtnewhorizons.angelica.glsm.GLStateManager", true, providerLoader);
+                manager = Class.forName(AngelicaClientRenderReflectionSpec.TARGET_CLASS_GL_STATE_MANAGER, true, providerLoader);
             } catch (ClassNotFoundException absent) {
                 if (Loader.isModLoaded(AngelicaCompat.MOD_ID))
-                    throw new IllegalStateException("Angelica render API missing", absent);
+                    throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_ANGELICA_RENDER_API_MISSING, absent);
                 return null;
             }
             try {
                 return new Angelica(manager);
             } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException("Unsupported Angelica native render state API", failure);
+                throw new IllegalStateException(AngelicaClientRenderDiagnostics.MSG_UNSUPPORTED_ANGELICA_NATIVE_RENDER_STATE, failure);
             }
         }
     }

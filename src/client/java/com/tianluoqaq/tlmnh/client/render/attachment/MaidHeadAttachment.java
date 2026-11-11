@@ -22,7 +22,7 @@ public final class MaidHeadAttachment {
         if (model.getBedrock() != null) {
             var head = model.getBedrock()
                 .getModelMap()
-                .get("head");
+                .get(AttachmentRenderIds.ID_HEAD);
             if (head == null) return null;
             model.getBedrockPose()
                 .applyTransform(poses);

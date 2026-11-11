@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class Lwjgl3ifyCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.LWJGL3IFY;
-    public static final String PACKAGE = "lwjgl3ify";
-    public static final String REVIEWED_VERSION = "3.0.42";
+
+
     public static final Lwjgl3ifyCompat INSTANCE = new Lwjgl3ifyCompat();
 
     private Lwjgl3ifyCompat() {}
@@ -20,12 +20,12 @@ public final class Lwjgl3ifyCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return Lwjgl3ifyIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return Lwjgl3ifyIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class Lwjgl3ifyCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "客户端底层输入兼容说明与开发期容器键鼠夹具";
+        return Lwjgl3ifyIds.CAPABILITY_SUMMARY;
     }
 }

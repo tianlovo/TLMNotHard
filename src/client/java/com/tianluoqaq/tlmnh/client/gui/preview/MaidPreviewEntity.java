@@ -36,21 +36,21 @@ public final class MaidPreviewEntity extends EntityMaid {
 
     public MaidPreviewEntity(World world, String model) {
         super(world);
-        if (!world.isRemote) throw new IllegalArgumentException("Client preview only");
+        if (!world.isRemote) throw new IllegalArgumentException(ClientPreviewDiagnostics.MSG_CLIENT_PREVIEW_ONLY);
         setModelId(model);
         onGround = true;
         // 原版详情页明确清零头角，未注册预览不会经自然tick消除旧版构造器的随机朝向
-        rotationYawHead = prevRotationYawHead = 0;
+        rotationYawHead = prevRotationYawHead = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
     }
 
     @Override
     public int getBrightnessForRender(float partialTick) {
-        return 0xF000F0;
+        return ClientPreviewLayout.RGB_COLOR_F000F0;
     }
 
     @Override
     public float getBrightness(float partialTick) {
-        return 1;
+        return ClientPreviewLayout.PREVIEW_ENTITY_GET_BRIGHTNESS_UNIT_STEP;
     }
 
     @Override
@@ -67,38 +67,38 @@ public final class MaidPreviewEntity extends EntityMaid {
 
     /** 受控输入只属于未登记的预览实体，各动作独立开始并沿生产动画读取字段绘制 */
     public void setDevelopmentAction(String name) {
-        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException(ClientPreviewDiagnostics.MSG_DEVELOPMENT_PREVIEW_REQUIRED);
         var action = PreviewAction.valueOf(name.toUpperCase(Locale.ROOT));
         previewPoses.clear();
         setSitting(false);
         mountEntity(null);
-        for (int slot = 0; slot < 5; slot++) setCurrentItemOrArmor(slot, null);
+        for (int slot = 0; slot < ClientPreviewLayout.MIN_SLOT_THRESHOLD; slot++) setCurrentItemOrArmor(slot, null);
         setOffhandItem(null);
-        rotationYawHead = prevRotationYawHead = rotationPitch = prevRotationPitch = 0;
-        rotationYaw = prevRotationYaw = renderYawOffset = prevRenderYawOffset = 0;
-        swingProgress = prevSwingProgress = 0;
-        swingProgressInt = 0;
+        rotationYawHead = prevRotationYawHead = rotationPitch = prevRotationPitch = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
+        rotationYaw = prevRotationYaw = renderYawOffset = prevRenderYawOffset = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
+        swingProgress = prevSwingProgress = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
+        swingProgressInt = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
         isSwingInProgress = false;
-        hurtTime = maxHurtTime = 0;
+        hurtTime = maxHurtTime = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
         developmentAction = action;
-        actionTicks = 0;
+        actionTicks = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD;
         switch (action) {
             case LOOK_LEFT, LOOK_RIGHT -> {
-                rotationYawHead = prevRotationYawHead = action == PreviewAction.LOOK_LEFT ? -35 : 35;
-                rotationPitch = prevRotationPitch = 10;
+                rotationYawHead = prevRotationYawHead = action == PreviewAction.LOOK_LEFT ? ClientPreviewLayout.PREVIEW_ENTITY_SET_DEVELOPMENT_ACTION_PARAM : ClientPreviewLayout.PREVIEW_ENTITY_SET_DEVELOPMENT_ACTION_PARAM_2;
+                rotationPitch = prevRotationPitch = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_PITCH;
             }
-            case ATTACK -> setCurrentItemOrArmor(0, new ItemStack(Items.diamond_sword));
+            case ATTACK -> setCurrentItemOrArmor(ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD, new ItemStack(Items.diamond_sword));
             case AIM -> {
-                setCurrentItemOrArmor(0, new ItemStack(Items.bow));
+                setCurrentItemOrArmor(ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD, new ItemStack(Items.bow));
                 setPose(MaidPose.USING_ITEM, true);
                 setPose(MaidPose.AIMING_BOW, true);
             }
             case EAT -> {
-                setCurrentItemOrArmor(0, new ItemStack(Items.bread));
+                setCurrentItemOrArmor(ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_YAW_HEAD, new ItemStack(Items.bread));
                 setPose(MaidPose.USING_ITEM, true);
             }
             case SLEEP -> setPose(MaidPose.SLEEPING, true);
-            case HURT -> hurtTime = maxHurtTime = 10;
+            case HURT -> hurtTime = maxHurtTime = ClientPreviewLayout.PREVIEW_ENTITY_PREV_ROTATION_PITCH;
             default -> {}
         }
     }
@@ -108,14 +108,14 @@ public final class MaidPreviewEntity extends EntityMaid {
         actionTicks++;
         if (developmentAction == PreviewAction.ATTACK) {
             prevSwingProgress = swingProgress;
-            if (actionTicks % 12 == 1) swingItem();
+            if (actionTicks % ClientPreviewLayout.PREVIEW_ENTITY_ADVANCE_DEVELOPMENT_ACTION_PARAM == ClientPreviewLayout.PREVIEW_ENTITY_GET_BRIGHTNESS_UNIT_STEP) swingItem();
             updateArmSwingProgress();
         }
-        if (developmentAction == PreviewAction.HURT) hurtTime = 6;
+        if (developmentAction == PreviewAction.HURT) hurtTime = ClientPreviewLayout.PREVIEW_ENTITY_HURT_TIME;
     }
 
     public String getDevelopmentAction() {
-        return developmentAction == null ? "none"
+        return developmentAction == null ? ClientPreviewIds.ID_NONE
             : developmentAction.name()
                 .toLowerCase(Locale.ROOT);
     }

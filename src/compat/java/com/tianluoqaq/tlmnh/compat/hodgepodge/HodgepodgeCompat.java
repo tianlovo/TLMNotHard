@@ -7,8 +7,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class HodgepodgeCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.HODGEPODGE;
-    public static final String PACKAGE = "hodgepodge";
-    public static final String REVIEWED_VERSION = "2.7.221";
+
+
     public static final HodgepodgeCompat INSTANCE = new HodgepodgeCompat();
 
     private HodgepodgeCompat() {}
@@ -20,12 +20,12 @@ public final class HodgepodgeCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return HodgepodgeIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return HodgepodgeIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -40,6 +40,6 @@ public final class HodgepodgeCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "世界存档账本写前同步屏障";
+        return HodgepodgeIds.CAPABILITY_SUMMARY;
     }
 }

@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.client.render.animation;
 
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityTuning;
+
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,13 +33,13 @@ public final class MaidAnimationState {
     public int swingTick;
     public boolean pickingUpSnowball, snowballAnimationExpired;
     public double verticalSpeed;
-    public float attackAnim, health = 20, maxHealth = 20;
+    public float attackAnim, health = AnimationLayout.GECKO_PLAYER_LIFETIME, maxHealth = AnimationLayout.GECKO_PLAYER_LIFETIME;
     public int dimension;
     public long dayTime;
-    public String task = "idle";
+    public String task = AnimationIds.ID_IDLE;
 
     public MaidAnimationState(UUID uuid) {
-        this.uuid = Objects.requireNonNull(uuid, "uuid");
+        this.uuid = Objects.requireNonNull(uuid, AnimationIds.ID_UUID);
     }
 
     public static MaidAnimationState capture(EntityMaid maid, float partialTick) {
@@ -46,7 +48,7 @@ public final class MaidAnimationState {
         state.begging = maid.hasPose(MaidPose.BEGGING);
         var snowball = maid.getSnowballAnimation();
         if (!state.begging && snowball.pickingUp()
-            && System.currentTimeMillis() - snowball.startedAt() > MaidSnowballAnimation.DURATION_MILLIS) {
+            && System.currentTimeMillis() - snowball.startedAt() > MaidEntityTuning.DURATION_MILLIS) {
             snowball.clear();
             state.snowballAnimationExpired = true;
         }
@@ -59,10 +61,10 @@ public final class MaidAnimationState {
         state.passenger = maid.ridingEntity != null;
         state.attackAnim = maid.getSwingProgress(partialTick);
         state.mainHandPresent = maid.getHeldItem() != null;
-        state.helmet = maid.getEquipmentInSlot(4) != null;
-        state.chestPlate = maid.getEquipmentInSlot(3) != null;
-        state.leggings = maid.getEquipmentInSlot(2) != null;
-        state.boots = maid.getEquipmentInSlot(1) != null;
+        state.helmet = maid.getEquipmentInSlot(AnimationLayout.BEDROCK_ANIMATIONS_POW_SECOND_PARAM) != null;
+        state.chestPlate = maid.getEquipmentInSlot(AnimationLayout.ANIMATION_STATE_GET_EQUIPMENT_IN_SLOT_FIRST_PARAM) != null;
+        state.leggings = maid.getEquipmentInSlot(AnimationLayout.GECKO_PLAYER_ADD_SECOND_PARAM) != null;
+        state.boots = maid.getEquipmentInSlot(AnimationLayout.BEDROCK_ANIMATIONS_LAYOUT_F1_OFFSET) != null;
         state.hurt = maid.hurtTime > 0;
         state.onGround = maid.onGround;
         state.sprinting = maid.isSprinting();
@@ -71,13 +73,13 @@ public final class MaidAnimationState {
         state.dead = maid.getHealth() <= 0 || maid.isDead;
         state.swinging = maid.isSwingInProgress;
         state.swingTick = maid.swingProgressInt;
-        state.verticalSpeed = 20 * (maid.posY - maid.prevPosY);
+        state.verticalSpeed = AnimationLayout.GECKO_PLAYER_LIFETIME * (maid.posY - maid.prevPosY);
         state.vehicleId = animationEntityId(maid.ridingEntity);
         state.passengerId = animationEntityId(maid.riddenByEntity);
         state.health = maid.getHealth();
         state.maxHealth = maid.getMaxHealth();
         state.dimension = maid.dimension;
-        state.dayTime = Math.floorMod(maid.worldObj.getWorldTime(), 24000L);
+        state.dayTime = Math.floorMod(maid.worldObj.getWorldTime(), AnimationLayout.ANIMATION_STATE_FLOOR_MOD_SECOND_LIMIT);
         var animationTask = maid.getTask();
         if (maid.isUnifiedCombat() && animationTask == MaidTask.ATTACK
             && maid.getHeldItem() != null
@@ -90,12 +92,12 @@ public final class MaidAnimationState {
     }
 
     private static String animationEntityId(Entity entity) {
-        if (entity instanceof MaidPreviewSeat) return "touhou_little_maid:chair";
-        if (entity instanceof EntityPlayer) return "minecraft:player";
-        if (entity instanceof EntityBoat) return "minecraft:boat";
-        if (entity instanceof EntityMinecart) return "minecraft:minecart";
-        if (entity instanceof EntityHorse) return "minecraft:horse";
-        if (entity instanceof EntityMaid) return "touhou_little_maid:maid";
+        if (entity instanceof MaidPreviewSeat) return AnimationIds.ID_TOUHOU_LITTLE_MAID_CHAIR;
+        if (entity instanceof EntityPlayer) return AnimationIds.ID_MINECRAFT_PLAYER;
+        if (entity instanceof EntityBoat) return AnimationIds.ID_MINECRAFT_BOAT;
+        if (entity instanceof EntityMinecart) return AnimationIds.ID_MINECRAFT_MINECART;
+        if (entity instanceof EntityHorse) return AnimationIds.ID_MINECRAFT_HORSE;
+        if (entity instanceof EntityMaid) return AnimationIds.ID_TOUHOU_LITTLE_MAID_MAID;
         return "";
     }
 }

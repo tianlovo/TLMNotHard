@@ -32,7 +32,7 @@ public interface ClientItemRenderCompat {
     }
 
     default void renderCustomSkull(TileEntitySpecialRenderer renderer, int skullType, GameProfile profile) {
-        throw new IllegalStateException("Unknown active skull renderer; native head item retained");
+        throw new IllegalStateException(ClientCompatSpiDiagnostics.MSG_UNKNOWN_ACTIVE_SKULL_RENDERER_NATIVE);
     }
 
     default Matrix4f adaptOffhandShieldTransform(ItemStack stack, IItemRenderer renderer, boolean blocking,

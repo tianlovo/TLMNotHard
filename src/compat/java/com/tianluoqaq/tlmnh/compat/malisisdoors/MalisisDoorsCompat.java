@@ -10,8 +10,8 @@ import com.tianluoqaq.tlmnh.compat.CompatDescriptor;
 public final class MalisisDoorsCompat implements CompatDescriptor {
 
     public static final String MOD_ID = KnownModIds.MALISIS_DOORS;
-    public static final String PACKAGE = "malisisdoors";
-    public static final String REVIEWED_VERSION = "1.19.13-GTNH";
+
+
     public static final MalisisDoorsCompat INSTANCE = new MalisisDoorsCompat();
 
     private MalisisDoorsCompat() {}
@@ -23,12 +23,12 @@ public final class MalisisDoorsCompat implements CompatDescriptor {
 
     @Override
     public String packageSegment() {
-        return PACKAGE;
+        return MalisisDoorsIds.PACKAGE;
     }
 
     @Override
     public String reviewedVersion() {
-        return REVIEWED_VERSION;
+        return MalisisDoorsIds.REVIEWED_VERSION;
     }
 
     @Override
@@ -48,6 +48,6 @@ public final class MalisisDoorsCompat implements CompatDescriptor {
 
     @Override
     public String capabilitySummary() {
-        return "动画门与栅栏门开关状态读写及战斗碰撞箱采样";
+        return MalisisDoorsIds.CAPABILITY_SUMMARY;
     }
 }
