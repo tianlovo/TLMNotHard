@@ -1,8 +1,11 @@
 
+import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar
 import groovy.json.JsonSlurper
 import java.io.File
 import java.security.MessageDigest
+import java.util.jar.JarFile
 import java.util.zip.ZipFile
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
@@ -222,18 +225,80 @@ tasks.named<ProcessResources>("processResources") {
     }
 }
 
+fun verifyReleaseJarContents(file: File) {
+    val forbiddenSuffixes = listOf("Probe", "Fixture", "Fixtures", "ReplayMain", "Test")
+    ZipFile(file).use { archive ->
+        val classes = archive.entries().asSequence()
+            .filter { !it.isDirectory && it.name.endsWith(".class") }
+            .map { it.name }
+            .toList()
+        if (classes.isEmpty()) throw GradleException("Release JAR [${file.name}] contains no compiled classes")
+        for (entry in classes) {
+            if ("/development/" in entry || entry.startsWith("com/tianluoqaq/tlmnh/devtools/"))
+                throw GradleException("Release JAR [${file.name}] leaked development class entry: $entry")
+            val outerSimple = entry.substringAfterLast('/').removeSuffix(".class").substringBefore('$')
+            if (outerSimple == "DevelopmentCommand" || forbiddenSuffixes.any { outerSimple.endsWith(it) })
+                throw GradleException("Release JAR [${file.name}] leaked non-release class [$outerSimple]: $entry")
+        }
+    }
+    JarFile(file).use { archive ->
+        val mixins = archive.manifest?.mainAttributes?.getValue("MixinConfigs")
+        if (mixins != "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
+            throw GradleException("Release JAR [${file.name}] has unexpected MixinConfigs manifest: $mixins")
+    }
+}
+
+val mainSourceSet = sourceSets.main.get()
+val testSourceSet = sourceSets.test.get()
+
+val replaySourceSet = sourceSets.create("replay") {
+    compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
+    runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath
+}
+
+val devtoolsSourceSet = sourceSets.create("devtools") {
+    compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
+    runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath
+}
+
+val devtoolsTestSourceSet = sourceSets.create("devtoolsTest") {
+    compileClasspath += devtoolsSourceSet.output + mainSourceSet.output + testSourceSet.compileClasspath
+    runtimeClasspath += output + devtoolsSourceSet.output + mainSourceSet.output + testSourceSet.runtimeClasspath
+}
+
+testSourceSet.compileClasspath += replaySourceSet.output
+testSourceSet.runtimeClasspath += replaySourceSet.output
+
+listOf(replaySourceSet, devtoolsSourceSet, devtoolsTestSourceSet).forEach { extraSourceSet ->
+    tasks.named<JavaCompile>(extraSourceSet.compileJavaTaskName) {
+        options.annotationProcessorPath = configurations.named("testAnnotationProcessor").get()
+    }
+}
+
+afterEvaluate {
+    tasks.named<ProcessResources>(devtoolsSourceSet.processResourcesTaskName) {
+        val props = mapOf("modVersion" to project.version.toString(), "minecraftVersion" to "1.7.10")
+        inputs.properties(props)
+        filesMatching("mcmod.info") { expand(props) }
+    }
+}
+
 listOf("jar", "shadowJar").forEach { taskName ->
     tasks.named<Jar>(taskName) {
+        manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
         dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
         doLast {
-            verifyBuiltinSoundJar(archiveFile.get().asFile)
-            verifyBuiltinRetentionJar(archiveFile.get().asFile)
-            verifyProjectLicenseJar(archiveFile.get().asFile)
+            val output = archiveFile.get().asFile
+            verifyBuiltinSoundJar(output)
+            verifyBuiltinRetentionJar(output)
+            verifyProjectLicenseJar(output)
+            verifyReleaseJarContents(output)
         }
     }
 }
 
-tasks.named("reobfJar") {
+val baseReobfJar = tasks.named<ReobfuscatedJar>("reobfJar")
+baseReobfJar.configure {
     doLast {
         val artifacts = outputs.files.files.filter { it.isFile && it.extension.equals("jar", ignoreCase = true) }
         if (artifacts.isEmpty()) throw GradleException("No final reobfuscated JAR was produced for sound verification")
@@ -241,15 +306,55 @@ tasks.named("reobfJar") {
             verifyBuiltinSoundJar(it)
             verifyBuiltinRetentionJar(it)
             verifyProjectLicenseJar(it)
+            verifyReleaseJarContents(it)
+        }
+    }
+}
+
+val devtoolsJar = tasks.register<Jar>("devtoolsJar") {
+    group = "build"
+    description = "Packages the un-reobfuscated tlmnhdevtools mod archive"
+    dependsOn(devtoolsSourceSet.classesTaskName, verifyProjectLicense)
+    from(devtoolsSourceSet.output)
+    archiveFileName.set(providers.provider { "tlmnhdevtools-${project.version}-dev.jar" })
+    destinationDirectory.set(layout.buildDirectory.dir("devtools"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    doLast { verifyProjectLicenseJar(archiveFile.get().asFile) }
+}
+
+val reobfDevtoolsJar = tasks.register<ReobfuscatedJar>("reobfDevtoolsJar") {
+    group = "build"
+    description = "Reobfuscates the standalone tlmnhdevtools mod archive to SRG names"
+    dependsOn(devtoolsJar)
+    inputJar.set(devtoolsJar.flatMap { it.archiveFile })
+    mcVersion.set(baseReobfJar.flatMap { it.mcVersion })
+    srg.set(baseReobfJar.flatMap { it.srg })
+    fieldCsv.set(baseReobfJar.flatMap { it.fieldCsv })
+    methodCsv.set(baseReobfJar.flatMap { it.methodCsv })
+    exceptorCfg.set(baseReobfJar.flatMap { it.exceptorCfg })
+    recompMcJar.set(baseReobfJar.flatMap { it.recompMcJar })
+    extraSrgEntries.set(baseReobfJar.flatMap { it.extraSrgEntries })
+    extraSrgFiles.from(baseReobfJar.map { it.extraSrgFiles })
+    referenceClasspath.from(baseReobfJar.map { it.referenceClasspath }, devtoolsSourceSet.compileClasspath)
+    archiveFileName.set(providers.provider { "tlmnhdevtools-${project.version}.jar" })
+    destinationDirectory.set(layout.buildDirectory.dir("devtools"))
+    doLast {
+        val output = archiveFile.get().asFile
+        verifyProjectLicenseJar(output)
+        JarFile(output).use { archive ->
+            if (archive.manifest?.mainAttributes?.getValue("MixinConfigs") != null)
+                throw GradleException("Devtools JAR [${output.name}] must not carry production MixinConfigs")
+            if (archive.getJarEntry("com/tianluoqaq/tlmnh/devtools/TLMNotHardDevtools.class") == null)
+                throw GradleException("Devtools JAR [${output.name}] is missing TLMNotHardDevtools entry point")
         }
     }
 }
 
 tasks.named("assemble") { dependsOn("reobfJar", verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense) }
-tasks.named("check") { dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense) }
+tasks.named("build") { dependsOn(reobfDevtoolsJar) }
 
 tasks.withType<Jar>().configureEach {
-    manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
     from("licenses") { into("META-INF/licenses") }
     from("THIRD_PARTY_NOTICES.md") { into("META-INF") }
     from("LICENSE") { into("META-INF"); rename { "TLMNH-LICENSE.txt" } }
@@ -265,6 +370,14 @@ tasks.withType<Test>().configureEach {
     doFirst { workingDir.mkdirs() }
 }
 
+val devtoolsTest = tasks.register<Test>("devtoolsTest") {
+    description = "Runs unit tests for the standalone tlmnhdevtools source set"
+    group = "verification"
+    testClassesDirs = devtoolsTestSourceSet.output.classesDirs
+    classpath = devtoolsTestSourceSet.runtimeClasspath
+    useJUnit()
+}
+
 val gsonClientRuntime = configurations.create("gsonClientRuntime") {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -276,11 +389,12 @@ dependencies {
 val testClientGson = tasks.register<Test>("testClientGson") {
     description = "Runs model and development protocol checks with the Gson version used by the client runtime"
     group = "verification"
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath.filter { !it.name.startsWith("gson-") } + gsonClientRuntime
+    testClassesDirs = testSourceSet.output.classesDirs + devtoolsTestSourceSet.output.classesDirs
+    classpath = (testSourceSet.runtimeClasspath + devtoolsSourceSet.output + devtoolsTestSourceSet.output)
+        .filter { !it.name.startsWith("gson-") } + gsonClientRuntime
     include("**/BedrockGeometryTest.class", "**/GeckoGeometryTest.class", "**/BuiltinMaidModelsTest.class", "**/BedrockPoseTest.class", "**/BuiltinBedrockAnimationsTest.class", "**/GeckoAnimationTest.class", "**/GeckoControllerTest.class", "**/BuiltinGeckoPlayerTest.class", "**/ClientDevelopmentRequestTest.class", "**/RenderSubmissionTraceTest.class", "**/BuiltinModelSelectionTest.class", "**/BuiltinModelNamesTest.class")
     useJUnit()
 }
 tasks.named("check") {
-    dependsOn(testClientGson)
+    dependsOn("jar", devtoolsTest, testClientGson, verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
 }
