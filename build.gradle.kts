@@ -1,15 +1,13 @@
 
 import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar
-import groovy.json.JsonSlurper
-import java.io.File
-import java.security.MessageDigest
+import com.tianluoqaq.tlmnh.buildlogic.ReleaseArchiveChecks
 import java.util.jar.JarFile
-import java.util.zip.ZipFile
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
+    id("tlmnh.release-verification")
 }
 
 // Jabel 使用 Java 17 语法；IDE 导入模型也应保留 Java 8 的目标字节码
@@ -20,236 +18,26 @@ extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
     }
 }
 
-fun validateProjectLicense(license: ByteArray, metadata: ByteArray, notice: ByteArray, label: String) {
-    val digest = MessageDigest.getInstance("SHA-256").digest(license)
-        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    if (license.size != 35149 || digest != "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986")
-        throw GradleException("Project license [$label] differs from the selected complete GNU GPL version 3 text")
-    val root = JsonSlurper().parseText(metadata.toString(Charsets.UTF_8)) as Map<*, *>
-    val mods = root["modList"] as List<*>
-    if (mods.size != 1 || (mods.single() as Map<*, *>)["license"] != "GPL-3.0-only")
-        throw GradleException("Project license [$label] requires the GPL-3.0-only metadata declaration")
-    val marker = "TLMNH original code license: GPL-3.0-only"
-    if (notice.toString(Charsets.UTF_8).lineSequence().count { it.trim() == marker } != 1)
-        throw GradleException("Project license [$label] requires one original-code license notice")
-}
-
-fun verifyProjectLicenseJar(file: File) {
-    ZipFile(file).use { archive ->
-        val paths = listOf("META-INF/TLMNH-LICENSE.txt", "mcmod.info", "META-INF/THIRD_PARTY_NOTICES.md")
-        val names = archive.entries().asSequence().filter { !it.isDirectory }.map { it.name }.toList()
-        if (paths.any { path -> names.count { it == path } != 1 })
-            throw GradleException("Project license [${file.name}] contains a missing or duplicate license declaration")
-        val bytes = paths.map { archive.getInputStream(archive.getEntry(it)).use { stream -> stream.readBytes() } }
-        validateProjectLicense(bytes[0], bytes[1], bytes[2], file.path)
-    }
-}
-
-val verifyProjectLicense = tasks.register("verifyProjectLicense") {
-    group = "verification"
-    description = "Verifies the complete project license and matching original-code metadata"
-    inputs.files("LICENSE", "src/main/resources/mcmod.info", "THIRD_PARTY_NOTICES.md")
-    doLast {
-        validateProjectLicense(file("LICENSE").readBytes(), file("src/main/resources/mcmod.info").readBytes(),
-            file("THIRD_PARTY_NOTICES.md").readBytes(), "source")
-    }
-}
-
-// 固定上游的 435 个配音与 10 个基础音效均为源码输入，构建不依赖 Python、研究 checkout 或网络导入
-fun verifyBuiltinSoundResources(read: (String) -> ByteArray, names: List<String>, label: String) {
-    fun requireSound(condition: Boolean, message: String) {
-        if (!condition) throw GradleException("Builtin sounds [$label]: $message")
-    }
-    fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
-        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    val manifestPath = "assets/tlmnh/builtin-sounds-provenance.json"
-    val catalogPath = "assets/tlmnh/builtin-sounds.json"
-    val raw = read(manifestPath)
-    requireSound(sha256(raw) == "2c7957f377103ea90ec71b82c5969c334b52954c66e21c13036869d429aaf5b0",
-        "authority manifest differs from the fixed original-byte inventory")
-    val manifest = JsonSlurper().parseText(raw.toString(Charsets.UTF_8)) as Map<*, *>
-    requireSound(manifest["schema"] == 2 && manifest["commit"] == "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
-        "unexpected source schema or upstream commit")
-    requireSound(sha256(read(catalogPath)) == manifest["catalog_sha256"], "catalog differs from authority manifest")
-    requireSound(names.count { it == manifestPath } == 1 && names.count { it == catalogPath } == 1,
-        "missing or duplicate sound manifests")
-    val recorded = mutableSetOf<String>()
-    val audio = mutableSetOf<String>()
-    var voiceCount = 0
-    var baseCount = 0
-    for (value in manifest["files"] as List<*>) {
-        val entry = value as Map<*, *>
-        val path = entry["path"] as String
-        requireSound(path.startsWith("assets/") && path.split('/').none { it.isEmpty() || it == "." || it == ".." }
-            && '\\' !in path && ':' !in path, "unsafe resource path: $path")
-        requireSound(recorded.add(path) && names.count { it == path } == 1, "missing or duplicate resource: $path")
-        val bytes = read(path)
-        requireSound(bytes.size.toLong() == (entry["bytes"] as Number).toLong() && sha256(bytes) == entry["sha256"],
-            "original resource bytes differ: $path")
-        requireSound(entry["audio"] is Boolean, "missing audio classification: $path")
-        if (entry["audio"] == true) {
-            requireSound(path.endsWith(".ogg") && bytes.size >= 4
-                && bytes.copyOfRange(0, 4).contentEquals(byteArrayOf(0x4f, 0x67, 0x67, 0x53)), "invalid Ogg: $path")
-            audio.add(path)
-            when (entry["audio_group"]) {
-                "voice" -> voiceCount++
-                "base" -> baseCount++
-                else -> throw GradleException("Builtin sounds [$label]: unknown audio group: $path")
-            }
-        }
-    }
-    val actualAudio = names.filter { it.endsWith(".ogg", ignoreCase = true) }
-    requireSound(recorded.size == 483 && audio.size == 445 && voiceCount == 435 && baseCount == 10,
-        "expected 483 sourced entries, including 435 voice and 10 base Ogg files")
-    requireSound(actualAudio.size == actualAudio.toSet().size && actualAudio.toSet() == audio,
-        "actual Ogg inventory differs from the complete fixed inventory")
-}
-
-fun verifyBuiltinSoundDirectory(directory: File) {
-    val names = directory.walkTopDown().filter { it.isFile }.map { it.relativeTo(directory).invariantSeparatorsPath }.toList()
-    verifyBuiltinSoundResources({ File(directory, it).readBytes() }, names, directory.path)
-}
-
-fun verifyBuiltinSoundJar(file: File) {
-    ZipFile(file).use { archive ->
-        val names = archive.entries().asSequence().filter { !it.isDirectory }.map { it.name }.toList()
-        verifyBuiltinSoundResources({ name -> archive.getInputStream(archive.getEntry(name)).use { it.readBytes() } }, names, file.path)
-    }
-}
-
-val verifyBuiltinSounds = tasks.register("verifyBuiltinSounds") {
-    group = "verification"
-    description = "Verifies all 445 tracked original-byte Ogg resources and their authoritative source manifest"
-    inputs.files(fileTree("src/main/resources") {
-        include("**/*.ogg", "assets/tlmnh/builtin-sounds*.json")
-        listOf("littlemaid_peco", "touhou_little_maid").forEach { namespace ->
-            include("assets/$namespace/lang/*.json", "assets/$namespace/maid_sound.json", "assets/$namespace/sounds.json")
-        }
-        include("assets/touhou_little_maid/textures/gui/maid_custom_sound.png", "assets/touhou_little_maid/textures/sound_icon.png")
-    })
-    doLast { verifyBuiltinSoundDirectory(file("src/main/resources")) }
-}
-
-// 保留范围按固定 Git 树完整枚举，与可玩 254 目录分开；资源和产物检查不触发本地导入
-fun verifyBuiltinRetentionResources(read: (String) -> ByteArray, names: List<String>, label: String) {
-    fun requireRetention(condition: Boolean, message: String) {
-        if (!condition) throw GradleException("Builtin retention [$label]: $message")
-    }
-    fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
-        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    val counts = names.groupingBy { it }.eachCount()
-    val manifestPath = "assets/tlmnh/builtin-retention-provenance.json"
-    val raw = read(manifestPath)
-    requireRetention(sha256(raw) == "9829ef13de6c8134c947df3e3e2568805a075a2075f3737a27eac22674cafe90",
-        "authority manifest differs from the complete fixed Git-tree inventory")
-    val manifest = JsonSlurper().parseText(raw.toString(Charsets.UTF_8)) as Map<*, *>
-    requireRetention(manifest["schema"] == 1 && manifest["commit"] == "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6"
-        && manifest["license"] == "CC-BY-NC-SA-4.0", "unexpected source schema, commit or license")
-    requireRetention(counts[manifestPath] == 1, "missing or duplicate retention manifest")
-    fun check(path: String, entry: Map<*, *>) {
-        requireRetention(path.isNotEmpty() && !path.startsWith('/') && '\\' !in path && ':' !in path
-            && path.split('/').none { it.isEmpty() || it == "." || it == ".." }, "unsafe resource path: $path")
-        requireRetention(counts[path] == 1, "missing or duplicate retained/protected resource: $path")
-        val bytes = read(path)
-        requireRetention(sha256(bytes) == entry["sha256"]
-            && (entry["bytes"] == null || bytes.size.toLong() == (entry["bytes"] as Number).toLong()),
-            "original resource bytes differ: $path")
-    }
-    val files = manifest["files"] as List<*>
-    val recorded = mutableSetOf<String>()
-    var totalBytes = 0L
-    for (value in files) {
-        val entry = value as Map<*, *>
-        val path = entry["path"] as String
-        requireRetention(recorded.add(path), "duplicate retention declaration: $path")
-        check(path, entry)
-        totalBytes += (entry["bytes"] as Number).toLong()
-    }
-    requireRetention(recorded.size == 332 && totalBytes == 5538204L, "expected all 332 reviewed original files")
-    val catalog = manifest["catalog"] as Map<*, *>
-    check(catalog["path"] as String, catalog)
-    for (value in manifest["baseline_manifests"] as List<*>) {
-        val baseline = value as Map<*, *>
-        val path = baseline["path"] as String
-        check(path, baseline)
-        // 声音已有独立完整门槛；这里只绑定既有清单，避免重复扫描全部 OGG
-        if (path.endsWith("builtin-sounds-provenance.json")) continue
-        val summary = JsonSlurper().parseText(read(path).toString(Charsets.UTF_8)) as Map<*, *>
-        val entries = summary["files"]
-        val targets: List<Pair<String, Map<*, *>>> = when (entries) {
-            is Map<*, *> -> entries.entries.map { (target, entry) -> target as String to (entry as Map<*, *>) }
-            is List<*> -> entries.map { entry ->
-                val record = entry as Map<*, *>
-                record["path"] as String to record
-            }
-            else -> throw GradleException("Builtin retention [$label]: invalid protected manifest: $path")
-        }
-        for ((target, entry) in targets) {
-            val resource = if (target.startsWith("licenses/")) "META-INF/$target"
-                else target.removePrefix("src/main/resources/")
-            requireRetention(resource !in recorded, "retained resource would override an existing effective asset: $resource")
-            check(resource, entry)
-        }
-    }
-}
-
-fun verifyBuiltinRetentionDirectory(directory: File) {
-    val names = directory.walkTopDown().filter { it.isFile }.map { it.relativeTo(directory).invariantSeparatorsPath }.toList()
-    // 处理后资源尚不含 Jar 阶段加入的许可；此阶段核对源码许可，Jar 阶段只读实际 ZIP 条目
-    val licenses = file("licenses").listFiles()?.filter { it.isFile } ?: emptyList()
-    verifyBuiltinRetentionResources({ name ->
-        if (name.startsWith("META-INF/licenses/")) file(name.removePrefix("META-INF/")).readBytes()
-        else File(directory, name).readBytes()
-    }, names + licenses.map { "META-INF/licenses/${it.name}" }, directory.path)
-}
-
-fun verifyBuiltinRetentionJar(file: File) {
-    ZipFile(file).use { archive ->
-        val names = archive.entries().asSequence().filter { !it.isDirectory }.map { it.name }.toList()
-        verifyBuiltinRetentionResources({ name -> archive.getInputStream(archive.getEntry(name)).use { it.readBytes() } }, names, file.path)
-    }
-}
-
-val verifyBuiltinRetention = tasks.register("verifyBuiltinRetention") {
-    group = "verification"
-    description = "Verifies all 332 retained original files and protects the existing fixed model resources"
-    inputs.files(fileTree("src/main/resources") { exclude("**/*.ogg") }, fileTree("licenses"))
-    doLast { verifyBuiltinRetentionDirectory(file("src/main/resources")) }
-}
-
-tasks.named<ProcessResources>("processResources") {
-    dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
-    doLast {
-        verifyBuiltinSoundDirectory(destinationDir)
-        verifyBuiltinRetentionDirectory(destinationDir)
-    }
-}
-
-fun verifyReleaseJarContents(file: File) {
-    val forbiddenSuffixes = listOf("Probe", "Fixture", "Fixtures", "ReplayMain", "Test")
-    ZipFile(file).use { archive ->
-        val classes = archive.entries().asSequence()
-            .filter { !it.isDirectory && it.name.endsWith(".class") }
-            .map { it.name }
-            .toList()
-        if (classes.isEmpty()) throw GradleException("Release JAR [${file.name}] contains no compiled classes")
-        for (entry in classes) {
-            if ("/development/" in entry || entry.startsWith("com/tianluoqaq/tlmnh/devtools/"))
-                throw GradleException("Release JAR [${file.name}] leaked development class entry: $entry")
-            val outerSimple = entry.substringAfterLast('/').removeSuffix(".class").substringBefore('$')
-            if (outerSimple == "DevelopmentCommand" || forbiddenSuffixes.any { outerSimple.endsWith(it) })
-                throw GradleException("Release JAR [${file.name}] leaked non-release class [$outerSimple]: $entry")
-        }
-    }
-    JarFile(file).use { archive ->
-        val mixins = archive.manifest?.mainAttributes?.getValue("MixinConfigs")
-        if (mixins != "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
-            throw GradleException("Release JAR [${file.name}] has unexpected MixinConfigs manifest: $mixins")
-    }
-}
+val verifyProjectLicense = tasks.named("verifyProjectLicense")
+val verifyBuiltinSounds = tasks.named("verifyBuiltinSounds")
+val verifyBuiltinRetention = tasks.named("verifyBuiltinRetention")
 
 val mainSourceSet = sourceSets.main.get()
 val testSourceSet = sourceSets.test.get()
+
+evaluationDependsOn(":kernel:molang")
+val molangJar = project(":kernel:molang").tasks.named<Jar>("jar")
+val molangRuntime = files(molangJar.flatMap { it.archiveFile })
+
+val clientSourceSet = sourceSets.create("client") {
+    compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath + molangRuntime
+    runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath + molangRuntime
+}
+
+val clientTestSourceSet = sourceSets.create("clientTest") {
+    compileClasspath += clientSourceSet.output + clientSourceSet.compileClasspath + testSourceSet.compileClasspath
+    runtimeClasspath += output + clientSourceSet.output + clientSourceSet.runtimeClasspath + testSourceSet.runtimeClasspath
+}
 
 val replaySourceSet = sourceSets.create("replay") {
     compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
@@ -257,19 +45,19 @@ val replaySourceSet = sourceSets.create("replay") {
 }
 
 val devtoolsSourceSet = sourceSets.create("devtools") {
-    compileClasspath += mainSourceSet.output + mainSourceSet.compileClasspath
-    runtimeClasspath += output + mainSourceSet.output + mainSourceSet.runtimeClasspath
+    compileClasspath += clientSourceSet.output + mainSourceSet.output + clientSourceSet.compileClasspath
+    runtimeClasspath += output + clientSourceSet.output + clientSourceSet.runtimeClasspath
 }
 
 val devtoolsTestSourceSet = sourceSets.create("devtoolsTest") {
-    compileClasspath += devtoolsSourceSet.output + mainSourceSet.output + testSourceSet.compileClasspath
-    runtimeClasspath += output + devtoolsSourceSet.output + mainSourceSet.output + testSourceSet.runtimeClasspath
+    compileClasspath += devtoolsSourceSet.output + clientSourceSet.output + devtoolsSourceSet.compileClasspath + testSourceSet.compileClasspath
+    runtimeClasspath += output + devtoolsSourceSet.output + devtoolsSourceSet.runtimeClasspath + testSourceSet.runtimeClasspath
 }
 
 testSourceSet.compileClasspath += replaySourceSet.output
 testSourceSet.runtimeClasspath += replaySourceSet.output
 
-listOf(replaySourceSet, devtoolsSourceSet, devtoolsTestSourceSet).forEach { extraSourceSet ->
+listOf(clientSourceSet, clientTestSourceSet, replaySourceSet, devtoolsSourceSet, devtoolsTestSourceSet).forEach { extraSourceSet ->
     tasks.named<JavaCompile>(extraSourceSet.compileJavaTaskName) {
         options.annotationProcessorPath = configurations.named("testAnnotationProcessor").get()
     }
@@ -285,28 +73,32 @@ afterEvaluate {
 
 listOf("jar", "shadowJar").forEach { taskName ->
     tasks.named<Jar>(taskName) {
+        dependsOn(molangJar)
+        from(clientSourceSet.output)
+        from({ molangRuntime.map { zipTree(it).matching { include("**/*.class") } } })
         manifest.attributes("MixinConfigs" to "mixins.tlmnh.json,mixins.tlmnh.ysmu.json")
         dependsOn(verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
         doLast {
             val output = archiveFile.get().asFile
-            verifyBuiltinSoundJar(output)
-            verifyBuiltinRetentionJar(output)
-            verifyProjectLicenseJar(output)
-            verifyReleaseJarContents(output)
+            ReleaseArchiveChecks.verifyBuiltinSoundJar(output)
+            ReleaseArchiveChecks.verifyBuiltinRetentionJar(output)
+            ReleaseArchiveChecks.verifyProjectLicenseJar(output)
+            ReleaseArchiveChecks.verifyReleaseJarContents(output)
         }
     }
 }
 
 val baseReobfJar = tasks.named<ReobfuscatedJar>("reobfJar")
 baseReobfJar.configure {
+    referenceClasspath.from(clientSourceSet.compileClasspath)
     doLast {
         val artifacts = outputs.files.files.filter { it.isFile && it.extension.equals("jar", ignoreCase = true) }
         if (artifacts.isEmpty()) throw GradleException("No final reobfuscated JAR was produced for sound verification")
         artifacts.forEach {
-            verifyBuiltinSoundJar(it)
-            verifyBuiltinRetentionJar(it)
-            verifyProjectLicenseJar(it)
-            verifyReleaseJarContents(it)
+            ReleaseArchiveChecks.verifyBuiltinSoundJar(it)
+            ReleaseArchiveChecks.verifyBuiltinRetentionJar(it)
+            ReleaseArchiveChecks.verifyProjectLicenseJar(it)
+            ReleaseArchiveChecks.verifyReleaseJarContents(it)
         }
     }
 }
@@ -320,7 +112,7 @@ val devtoolsJar = tasks.register<Jar>("devtoolsJar") {
     destinationDirectory.set(layout.buildDirectory.dir("devtools"))
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
-    doLast { verifyProjectLicenseJar(archiveFile.get().asFile) }
+    doLast { ReleaseArchiveChecks.verifyProjectLicenseJar(archiveFile.get().asFile) }
 }
 
 val reobfDevtoolsJar = tasks.register<ReobfuscatedJar>("reobfDevtoolsJar") {
@@ -341,7 +133,7 @@ val reobfDevtoolsJar = tasks.register<ReobfuscatedJar>("reobfDevtoolsJar") {
     destinationDirectory.set(layout.buildDirectory.dir("devtools"))
     doLast {
         val output = archiveFile.get().asFile
-        verifyProjectLicenseJar(output)
+        ReleaseArchiveChecks.verifyProjectLicenseJar(output)
         JarFile(output).use { archive ->
             if (archive.manifest?.mainAttributes?.getValue("MixinConfigs") != null)
                 throw GradleException("Devtools JAR [${output.name}] must not carry production MixinConfigs")
@@ -370,6 +162,25 @@ tasks.withType<Test>().configureEach {
     doFirst { workingDir.mkdirs() }
 }
 
+tasks.named<Jar>("sourcesJar") {
+    from(clientSourceSet.allSource)
+    from("kernel/molang/src/main/java")
+}
+
+extensions.configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+    java {
+        target("src/*/java/**/*.java", "src/*/scala/**/*.java", "kernel/*/src/*/java/**/*.java", "build-logic/src/*/java/**/*.java")
+    }
+}
+
+val clientTest = tasks.register<Test>("clientTest") {
+    description = "Runs the isolated client source set unit tests"
+    group = "verification"
+    testClassesDirs = clientTestSourceSet.output.classesDirs
+    classpath = clientTestSourceSet.runtimeClasspath
+    useJUnit()
+}
+
 val devtoolsTest = tasks.register<Test>("devtoolsTest") {
     description = "Runs unit tests for the standalone tlmnhdevtools source set"
     group = "verification"
@@ -389,12 +200,12 @@ dependencies {
 val testClientGson = tasks.register<Test>("testClientGson") {
     description = "Runs model and development protocol checks with the Gson version used by the client runtime"
     group = "verification"
-    testClassesDirs = testSourceSet.output.classesDirs + devtoolsTestSourceSet.output.classesDirs
-    classpath = (testSourceSet.runtimeClasspath + devtoolsSourceSet.output + devtoolsTestSourceSet.output)
+    testClassesDirs = testSourceSet.output.classesDirs + clientTestSourceSet.output.classesDirs + devtoolsTestSourceSet.output.classesDirs
+    classpath = (testSourceSet.runtimeClasspath + clientTestSourceSet.runtimeClasspath + devtoolsSourceSet.output + devtoolsTestSourceSet.output)
         .filter { !it.name.startsWith("gson-") } + gsonClientRuntime
     include("**/BedrockGeometryTest.class", "**/GeckoGeometryTest.class", "**/BuiltinMaidModelsTest.class", "**/BedrockPoseTest.class", "**/BuiltinBedrockAnimationsTest.class", "**/GeckoAnimationTest.class", "**/GeckoControllerTest.class", "**/BuiltinGeckoPlayerTest.class", "**/ClientDevelopmentRequestTest.class", "**/RenderSubmissionTraceTest.class", "**/BuiltinModelSelectionTest.class", "**/BuiltinModelNamesTest.class")
     useJUnit()
 }
 tasks.named("check") {
-    dependsOn("jar", devtoolsTest, testClientGson, verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
+    dependsOn("jar", ":kernel:molang:test", clientTest, devtoolsTest, testClientGson, verifyBuiltinSounds, verifyBuiltinRetention, verifyProjectLicense)
 }

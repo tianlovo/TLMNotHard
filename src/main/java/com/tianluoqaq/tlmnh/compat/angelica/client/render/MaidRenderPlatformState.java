@@ -9,11 +9,13 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 
 import org.lwjgl.opengl.GL11;
 
-import com.tianluoqaq.tlmnh.client.render.MaidRenderProtection;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import cpw.mods.fml.relauncher.Side;
 
 /** 目标渲染平台的窄状态适配，缓存成员查找，不引入Angelica打包依赖 */
 public final class MaidRenderPlatformState {
@@ -47,7 +49,7 @@ public final class MaidRenderPlatformState {
                 throw new IllegalStateException("Invalid native matrix stack depth: " + depth);
             return depth;
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            MaidRenderProtection.failed(failure);
+            IntegrationGuard.trip(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, failure);
             throw failure;
         }
     }
@@ -56,7 +58,7 @@ public final class MaidRenderPlatformState {
         try {
             return new FilterWindow(bindings());
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            MaidRenderProtection.failed(failure);
+            IntegrationGuard.trip(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, failure);
             throw failure;
         }
     }
@@ -112,7 +114,7 @@ public final class MaidRenderPlatformState {
             failure = restoreField(state.vanillaAniso, null, vanillaAniso, failure);
             for (int i = 0; i < saved.length; i++)
                 failure = restoreField(state.angelica.filterFields[i], context, saved[i], failure);
-            if (failure != null) MaidRenderProtection.failed(failure);
+            if (failure != null) IntegrationGuard.trip(Side.CLIENT, ExternalFeature.CLIENT_RENDER_STATE, failure);
             rethrow(failure);
         }
     }

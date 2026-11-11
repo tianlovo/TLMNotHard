@@ -18,6 +18,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.clienthook.CarryArmsHook;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -38,6 +39,7 @@ public final class MaidPlayerCarryArms {
 
     public static void register() {
         if (registered) return;
+        CarryArmsHook.install(MaidPlayerCarryArms::apply);
         MinecraftForge.EVENT_BUS.register(INSTANCE);
         registered = true;
     }

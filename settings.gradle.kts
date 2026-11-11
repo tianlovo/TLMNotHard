@@ -1,5 +1,6 @@
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         maven {
             // RetroFuturaGradle
@@ -19,3 +20,12 @@ pluginManagement {
 plugins {
     id("com.gtnewhorizons.gtnhsettingsconvention") version("2.0.33")
 }
+
+// GTNH settings injects the Spotless buildscript dependency into every subproject
+gradle.beforeProject {
+    buildscript.repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+include(":kernel:molang")

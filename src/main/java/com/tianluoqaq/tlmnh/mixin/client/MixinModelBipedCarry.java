@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms;
+import com.tianluoqaq.tlmnh.common.clienthook.CarryArmsHook;
 
 @Mixin(ModelBiped.class)
 public abstract class MixinModelBipedCarry {
@@ -21,6 +21,6 @@ public abstract class MixinModelBipedCarry {
     @Inject(method = "setRotationAngles(FFFFFFLnet/minecraft/entity/Entity;)V", at = @At("TAIL"), require = 1)
     private void tlmnh$carryArms(float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
         float headPitch, float scale, Entity entity, CallbackInfo callback) {
-        MaidPlayerCarryArms.apply((ModelBiped) (Object) this, entity);
+        CarryArmsHook.apply((ModelBiped) (Object) this, entity);
     }
 }
