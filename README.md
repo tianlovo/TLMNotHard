@@ -1,13 +1,13 @@
 # Touhou Little Maid (Not Hard) _(TLMNotHard)_
 
-将 Touhou Little Maid 移植到 GTNH 2.9.0，保留女仆核心玩法并改进行为 AI。
+将 Touhou Little Maid 移植到 GTNH 2.9.0，保留女仆核心玩法并重做非生成式行为 AI。
 
-**Beta**：首个公开测试版本为 `0.1.0-beta.1`，首个稳定版的功能与验收仍在推进。
+**Beta**：当前公开测试版本为 `0.1.0-beta.2`（首个测试版 `0.1.0-beta.1` 已归档保留），正式稳定版仍在推进。
 
 简体中文 | [English](README.en.md)
 
-本仓库将 Minecraft 1.20.1 版 Touhou Little Maid 移植到 GTNH 2.9.0，同时支持客户端与独立服务端。
-本页记录开发版的范围、进度与构建方式；完整玩法、安装与更新说明及发布验收结果将在正式版发布前补齐。
+本仓库将 Minecraft 1.20.1 版 Touhou Little Maid 移植到 GTNH 2.9.0，同时支持客户端与独立专用服务端。
+本页介绍当前测试版的玩法范围、构建方式与协作规范；完整的稳定版安装升级指南将在 `0.1.0` 正式发布前补齐。
 
 ## 目录
 
@@ -23,76 +23,76 @@
 
 工程基于 [GTNH ExampleMod1.7.10](https://github.com/GTNewHorizons/ExampleMod1.7.10) 构建模板搭建，
 上游源码取自 [Touhou Little Maid 的 1.20 分支](https://github.com/TartaricAcid/TouhouLittleMaid/tree/1.20)。
-源码使用现代 Java 语法并编译为 Java 8 字节码，客户端与服务端均运行在 Java 25 上。
+源码采用现代 Java 语法编写，经 Jabel 编译为 Java 8 字节码，客户端与服务端均运行在 Java 25 上。
 
-首版计划纳入以下内容（以下为范围清单，不代表全部已完成）：
+首版规划覆盖以下能力，各项实际完成度与验证进度见 [开发进度](PROGRESS.md)：
 
-- 女仆本体、原版玩家交互、背包与双手、内置模型切换，以及酒狐全系列逐项验收。
+- 女仆本体、原版玩家交互、六格背包与双手装备、内置模型切换，以及酒狐全系列模型与贴图逐项验收。
 - 可配置的自然生成与初始绑定魂符，神龛复活并保留上游生命代价。
-- 偷吃与最小零食柜、睡觉与女仆床，以及融入 GTNH 科技进度的核心配方。
-- 改进的非生成式行为 AI，覆盖感知记忆、指令约束、动作中断与失败恢复，并与原版 TLM 1.20.1 做对照测评。
-- 非魔法远程武器预瞄，首版先支持弓箭，按 2.9.0 实际重力与空气阻力补偿目标移动和箭矢下坠。
+- 偷吃与最小零食柜、睡觉与女仆床，以及贴合 GTNH 蒸汽与 LV 阶段的核心合成配方。
+- 改进的非生成式行为 AI，涵盖感知记忆、指令约束、动作抢占、组件化会话扩展与失败恢复，并与原版 TLM 1.20.1 对照评测。
+- 非魔法远程武器预瞄，首版支持弓箭，结合 2.9.0 实际维度重力与介质阻力补偿移动靶提前量和箭矢下坠。
 
-首版不包含 LLM、空闲与战斗之外的工作、其他非核心 TLM 物品、更换主人，或 YSM 等额外内容模组联动。
-GTNH 维护仓与 CropsNH 育种留作后续扩展；语言支持以简体中文为主，英文补齐。
+首版不包含 LLM、空闲与战斗之外的工作模式、其他非核心 TLM 物品、更换主人或 YSM 深度内容联动。
+GTNH 维护仓与 CropsNH 育种留作后续扩展；界面文本以简体中文为主，英文补齐。
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.1) 下载
-`tlmnh-0.1.0-beta.1.jar` 并核对随附的 `SHA256SUMS.txt`。
-正常停止两端并备份完整世界、配置和旧 TLM JAR 后，将同一新 JAR 放入两端的 `mods/`，移出旧 TLM JAR。
-本次发布的已知问题与待开发功能见 [Beta 发布说明](docs/releases/0.1.0-beta.1.md)。
-玩家操作、配置项与双端成对回滚说明见 [使用说明](docs/USER_GUIDE.md)。
-新配置默认启用 Enhanced；已有配置中显式指定的 Legacy 会继续保留，修改策略后需重启服务端。
-当前 Enhanced 候选采用动态索敌，非家园目标获取与保持半径默认分别为 20 格和 24 格，可在服务端配置中调整。
-双端增量打包工具见 [打包与更新说明](scripts/distribution/README.md)，当前仅生成本地验证包。
-在 Windows PowerShell 中执行以下命令：
+从 [GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.2) 下载
+`tlmnh-0.1.0-beta.2.jar`，并对照随附的 `SHA256SUMS.txt` 核验摘要。
+正常停止客户端和服务端，完整备份存档、两端配置及旧版 JAR 后，将同一份新 JAR 放入两端 `mods/` 目录并移出旧版 JAR。
+本版架构调整、已知问题与后续待办见 [Beta.2 发布说明](docs/releases/0.1.0-beta.2.md)。
+操作按键、配置说明与双端成对回滚步骤见 [使用说明](docs/USER_GUIDE.md)。
+新生成的配置文件默认启用 Enhanced 行为策略；已有配置中显式指定的 Legacy 会原样保留，切换策略后需重启服务端。
+Enhanced 默认启用动态索敌，非家园状态下的目标获取与保持半径默认分别为 20 格和 24 格，可在服务端配置中调整。
+双端本地验证增量包工具见 [打包与更新说明](scripts/distribution/README.md)。
+如需从源码自行构建，可在 Windows PowerShell 中执行：
 
 ```powershell
 git clone https://github.com/tianlovo/TLMNotHard.git
 Set-Location TLMNotHard
-$env:VERSION = "0.1.0-beta.1"
+$env:VERSION = "0.1.0-beta.2"
 ./gradlew.bat build
 ```
 
-构建产物位于 `build/libs/`；部署到独立的 2.9.0 正式版测试客户端与服务端时，两端须使用同一候选版本。
-本项目尚未完成正式发布验收，实际游玩的 Prism 实例在正式分发前应保持原样。
+主模组产物位于 `build/libs/`，独立开发诊断附属模组位于 `build/devtools/`（普通游玩无需安装 `tlmnhdevtools`）。
+部署到独立的 2.9.0 测试服与客户端时，两端必须使用同一构建产物；正式版验收完成前，建议不要直接改动日常游玩的 Prism 实例。
 
 ### 依赖
 
 - 目标整合包：GTNH 2.9.0，Minecraft 1.7.10，Forge 10.13.4.1614
-- UniMixins：使用 2.9.0 自带版本，提供原生导航停止反馈所需的 Mixin 引导
-- JDK 25：启动 Gradle、运行测试与游戏；JDK 17：供 Jabel 编译，目标字节码为 Java 8
+- UniMixins：使用 2.9.0 自带版本，用于原生导航停止反馈与箭矢来源边界等 Mixin 引导
+- JDK 25：启动 Gradle、运行单测与游戏；JDK 17：供 Jabel 编译输出 Java 8 字节码
 - Gradle Wrapper 固定 9.7.1，GTNHGradle 固定 2.0.33，Blowdryer 固定 0.2.2
-- Python 3：运行独立校验脚本；Node.js 22 或更高版本：运行 README 格式检查
+- Python 3：运行字节码、内置资产与仓库路径校验脚本；Node.js 22 及以上：运行 README 格式检查
 
-工具链选择、首次依赖下载与本机缓存说明见 [开发说明](DEVELOPMENT.md)。
+工具链准备、模块源集划分与本机缓存配置详见 [开发说明](DEVELOPMENT.md)。
 
 ## 使用
 
-在源码根目录运行构建与校验：
+在源码根目录执行单测、完整构建与归档校验：
 
 ```powershell
 ./gradlew.bat test
 ./gradlew.bat build
-python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.1.jar
+python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.2.jar
 npx --yes markdownlint-cli2@0.24.0
 ```
 
-上例沿用安装步骤中的 `VERSION`；若使用其他版本名，请同步替换 JAR 文件名。
-默认版本号由 Git 标签与提交自动生成；可用 `VERSION` 显式选择构建版本，发布里程碑使用独立 tag。
+`build` 会一并运行 `:kernel:molang:test`、`test`、`clientTest`、`compatTest`、`devtoolsTest`、`testClientGson` 与架构边界检查。
+默认版本号根据 Git 标签与提交自动推导；可通过 `VERSION` 环境变量显式指定构建版本，阶段里程碑单独打 tag。
 
-在 IntelliJ IDEA 中直接打开源码根目录并按 Gradle 工程导入，将构建和测试委托给 Gradle。
-项目 SDK 与 Gradle JVM 使用 Java 25，源码语言级别设为 17，目标字节码设为 8。
-本机专用 2.9.0 正式版测试服与客户端的运行入口见 [IDEA 配置](DEVELOPMENT.md#intellij-idea-本机配置)。
+在 IntelliJ IDEA 中直接打开源码根目录并按 Gradle 工程导入，将构建和测试统一委托给 Gradle。
+项目 SDK 与 Gradle JVM 选 Java 25，语言级别设为 17，目标字节码设为 8。
+专用 2.9.0 测试服与客户端的本机运行入口配置见 [IDEA 配置](DEVELOPMENT.md#intellij-idea-本机配置)。
 
 ## 开发状态
 
-当前处于 Beta 阶段，首个稳定版的发布验收尚未完成。
-首版整体进度、各模块实现与验证详情、近期进展及下一步计划统一记录在 [开发进度](PROGRESS.md)。
-构建检查、夹具测试、自然玩法验证与正式发布验收分别记录，不合并不同候选的结果来宣称单一产物完整通过。
+项目目前处于公开 Beta 阶段，`0.1.0-beta.2` 完成了源码分层、独立 `:kernel:molang` 子模块、`client` / `compat` 源集物理隔离与
+`tlmnhdevtools` 开发工具拆包，首个稳定版剩余生存适配与发布验收仍在继续推进。
+各模块实现进度、实机验证记录与待决问题统一维护在 [开发进度](PROGRESS.md)，每次验证均绑定具体源码提交与产物摘要。
 
-更多技术细节见 [开发说明](DEVELOPMENT.md)、[移植记录](SOURCE_PROVENANCE.md) 和
+更多实现背景与实验细节见 [开发说明](DEVELOPMENT.md)、[移植记录](SOURCE_PROVENANCE.md) 和
 [动画对照实验](tools/animation-reference-1.20.1/DESIGN.md)。
 
 ## 维护者
@@ -101,21 +101,21 @@ npx --yes markdownlint-cli2@0.24.0
 
 ## 参与贡献
 
-问题反馈与功能建议请提交至 [Issues](https://github.com/tianlovo/TLMNotHard/issues)，欢迎提交 PR。
-涉及较大的玩法或架构改动请先讨论范围，并附上复现条件、验证方式及所用 2.9.0 环境说明。
+Bug 反馈与想法建议欢迎提交到 [Issues](https://github.com/tianlovo/TLMNotHard/issues)，也欢迎直接发 PR。
+涉及玩法机制或跨模块结构调整时建议先开 Issue 对齐范围，并附上复现步骤、验证方式与 2.9.0 环境信息。
 
-新增独立适配文件使用 `com.tianluoqaq.tlmnh` 根包名；移植的上游文件保留原包名、来源信息与适用许可。
-提交说明遵循简体中文约定式提交规范，新增中文表述保持自然、准确；中文代码注释仅省略同行末句句号，同行前句与文档正文正常使用句号。
-提交前请运行 `build` 与 README 格式检查，保持双语 README 的范围、进度与命令一致。
-实现或验证状态发生变化时，需在同次提交中更新 `PROGRESS.md`；进度文档在本地检查，不纳入文档 CI 的触发或 lint 范围。
-IDE 配置、整合包文件、存档、日志、缓存与构建产物不纳入版本管理。
+新增自有代码放在 `com.tianluoqaq.tlmnh` 包下，第三方可选模组适配统一归入 `src/compat` 或 `src/compatClient` 并经领域 SPI 暴露；
+移植的上游文件保留原包名、版权头与适用许可。
+提交说明采用简体中文约定式提交格式，行文保持自然简洁；中文代码注释仅省略同行末句句号，同行前句与文档正文正常加句号。
+提交前请跑通 `build`、仓库路径检查与 README 格式检查，保持中英文 README 的范围与命令同步。
+功能或验证状态变更时请在同批次更新 `PROGRESS.md`；IDE 配置、整合包目录、存档、日志与缓存不纳入版本控制。
 
 ## 许可证
 
-本项目中由 tianlovo 与 contributors 原创且有权许可的适配代码采用 GNU GPL 第 3 版，仅限该版本（`GPL-3.0-only`）。
+本项目中由 tianlovo 与 contributors 原创且享有许可权的适配代码采用 GNU GPL 第 3 版，仅限该版本（`GPL-3.0-only`）。
 Copyright (c) 2026 tianlovo and contributors
 
-许可全文见 [LICENSE](LICENSE)，各文件已有的来源、作者及单独许可声明继续适用。
+许可全文见 [LICENSE](LICENSE)，各文件原有的来源、作者与单独许可声明继续有效。
 移植的上游代码保留 MIT 等原有许可声明；模型、贴图、动画及相关资产保留 CC BY-NC-SA 4.0 许可与原作者署名。
 由原资产脚本改写的 `BuiltinBedrockAnimations.java` 继续按 CC BY-NC-SA 4.0 提供。
-配音与基础音效继续遵循各自原作者条款，具体范围、权利人与许可原文见 [第三方来源与许可](THIRD_PARTY_NOTICES.md) 和 [许可目录](licenses/)。
+配音与基础音效继续遵循各自原作者条款，详细范围、权利人与许可全文见 [第三方来源与许可](THIRD_PARTY_NOTICES.md) 和 [许可目录](licenses/)。

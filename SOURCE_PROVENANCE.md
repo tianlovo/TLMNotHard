@@ -1722,3 +1722,27 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
 `ClientDevelopmentAccess.hooks()` 转发；发布态默认走空实现，原包名、MIT 版权头与渲染行为保持不变。
 新增的 `DevelopmentHooks`、`DevelopmentAccess`、`ClientDevelopmentHooks`、`ClientDevelopmentAccess` 及 `tlmnhdevtools`
 入口均为 `com.tianluoqaq.tlmnh` 下的自有代码。
+
+## 0.1.0-beta.2 客户端与 Molang 内核物理拆分
+
+- 固定上游 `com/github/tartaricacid/touhoulittlemaid/molang` 下的 36 个表达式解析与执行源文件连同 `MolangEngineTest` 纯搬移至
+  独立 Gradle 子模块 `kernel/molang/src/main/java` 与 `kernel/molang/src/test/java`；原包名、Unnamed Team 与 TLM 的 MIT 许可头及类字节码产物路径保持原样。
+- 全部 313 个客户端渲染、GUI、模型、动画及资源加载类（含 `com/github/tartaricacid/simplebedrockmodel/client/**` 与
+  `com/github/tartaricacid/touhoulittlemaid/{api/animation,client,geckolib3}/**` 下的上游移植类）连同 11 个客户端单测纯搬移至
+  `src/client/java` 与 `src/clientTest/java`；上游包名、作者署名及 `BuiltinBedrockAnimations.java` 的 CC BY-NC-SA 4.0 许可声明均未变动。
+- `MixinModelBipedCarryArms` 改经新增公共侧轻量钩子 `CarryArmsHook` 转发玩家背负双臂角度调整，由 `ClientProxy` 在客户端初始化时绑定
+  `MaidPlayerCarryArms::apply`，使 `src/main/java` 不再反向依赖 `src/client/java` 实现类。
+- 原构建脚本中的许可证、内置音频、保留资产与非发布类泄露校验提取至 `build-logic` 预编译插件（`ReleaseVerificationPlugin` 与 `ReleaseArchiveChecks`）。
+
+## 0.1.0-beta.2 第三方适配源集拆分与公开契约自包含
+
+- 原位于 `src/main/java/com/tianluoqaq/tlmnh/compat/` 下的 19 个公共适配类迁入 `src/compat/java`，10 个客户端渲染/GUI/动画适配及可选
+  YSM Mixin 迁入 `src/compatClient/java`；另将 `MaidFoodProfile` 内的 GregTech 自定义食物反射解析抽取为
+  `compat/gregtech/common/food/GregTechFoodAccess`。
+- 新增冻结式注册入口 `CompatServices`、`ClientCompatServices`、领域/客户端 SPI 接口及 16 个 `<ModName>Compat` 描述子，经
+  `META-INF/services/` 在启动期一次性完成绑定并冻结。
+- 上游移植类 `inventory/container/MaidMainContainer.java` 的双手槽位空图标改经 `HandSlotIconHook` 读取，
+  `client/gui/entity/detail/MaidModelDetailsGui.java` 与 `client/renderer/entity/EntityTombstoneRenderer.java` 分别改经
+  `CompatServices.shields()` 与 `ClientCompatServices.itemRender()` 查询预览盾牌及维度墓碑纹理；三份上游文件的原包名、MIT 许可头与交互行为保持不变。
+- 公开扩展包 `com.tianluoqaq.tlmnh.api.behavior` 移除对 `common.*` 内部实现类的直接引用，新增公开纯值分组 `MaidBehaviorGroup`
+  并将手部租约与只读感知视图收敛在 `api.behavior` 内部，由 `MaidPlatformBehaviorContext`、`MaidExternalOfferSink` 与 `MaidItemUseState` 在会话内部桥接。
