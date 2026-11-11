@@ -7,6 +7,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.keyframe.bone;
 
+import java.util.Arrays;
+
 import java.util.List;
 
 public class BoneKeyFrameProcessor {
@@ -28,6 +30,6 @@ public class BoneKeyFrameProcessor {
             }
             list[i] = easingType.buildKeyFrame(frames, i);
         }
-        return java.util.Arrays.asList(list);
+        return Arrays.asList(list);
     }
 }

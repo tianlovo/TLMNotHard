@@ -5,18 +5,25 @@
  */
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+
+import cpw.mods.fml.relauncher.Side;
 
 /** 物品与方块仅分派请求，出生、归属、生命代价由服务端确认 */
 public final class MaidLifecycleService {
@@ -110,7 +117,7 @@ public final class MaidLifecycleService {
             if (!owner.equals(player.getUniqueID())) return Result.WRONG_OWNER;
             var capture = ledger.capture(token);
             if (!capture.getCompoundTag("Credential")
-                .equals(stack.writeToNBT(new net.minecraft.nbt.NBTTagCompound()))) return Result.INVALID_CREDENTIAL;
+                .equals(stack.writeToNBT(new NBTTagCompound()))) return Result.INVALID_CREDENTIAL;
             if (!ledger.redemption(token)
                 .hasNoTags())
                 return MaidRedemptionDelivery.resume(player, ledger, token) ? Result.SUCCESS
@@ -127,7 +134,7 @@ public final class MaidLifecycleService {
                     .toString()
                     .equals(capture.getString("Subject")))
                 return Result.INVALID_CREDENTIAL;
-            for (var loaded : net.minecraft.server.MinecraftServer.getServer().worldServers)
+            for (var loaded : MinecraftServer.getServer().worldServers)
                 if (loaded != null) for (Object entity : loaded.loadedEntityList.toArray())
                     if (entity instanceof EntityMaid other && !other.isDead
                         && other.getUniqueID()
@@ -143,9 +150,8 @@ public final class MaidLifecycleService {
             if (result == Result.SUCCESS) MaidCaptureService.cooldown(player);
             return result;
         } catch (Exception | LinkageError | AssertionError failure) {
-            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(failure);
-            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-                .report(cpw.mods.fml.relauncher.Side.SERVER, "capture/release/" + token, failure, player.getUniqueID());
+            IntegrationGuard.throwIfFatal(failure);
+            IntegrationGuard.report(Side.SERVER, "capture/release/" + token, failure, player.getUniqueID());
             return Result.DENIED;
         } finally {
             if (reserved && !handedOff) ledger.rollback(token);
@@ -175,18 +181,12 @@ public final class MaidLifecycleService {
             || stack.getItem() != MaidResurrectionContent.MAID_CORE
             || player.getCurrentEquippedItem() != stack
             || player.getDistanceSq(x + .5, y + 1, z + .5) > 64
-            || !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
-                cpw.mods.fml.relauncher.Side.SERVER,
-                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PROGRESSION_RECIPES))
-            return Result.DENIED;
+            || !IntegrationGuard.available(Side.SERVER, ExternalFeature.PROGRESSION_RECIPES)) return Result.DENIED;
         var world = player.worldObj;
         int slot = player.inventory.currentItem;
         var expected = stack.copy();
         if (!releaseRequestAllowed(player, stack, expected, world, slot, x, y, z)
-            || !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
-                cpw.mods.fml.relauncher.Side.SERVER,
-                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PROGRESSION_RECIPES))
-            return Result.DENIED;
+            || !IntegrationGuard.available(Side.SERVER, ExternalFeature.PROGRESSION_RECIPES)) return Result.DENIED;
         var bound = MaidAcquisitionDelivery.core(player, stack, slot, true, x, y, z);
         if (bound == null) return Result.DENIED;
         return releaseInitial(player, bound, x, y, z);
@@ -301,6 +301,6 @@ public final class MaidLifecycleService {
         if (result != Result.SUCCESS && player != null && !player.worldObj.isRemote) player.addChatMessage(
             new ChatComponentTranslation(
                 "message.tlmnh.lifecycle." + result.name()
-                    .toLowerCase(java.util.Locale.ROOT)));
+                    .toLowerCase(Locale.ROOT)));
     }
 }

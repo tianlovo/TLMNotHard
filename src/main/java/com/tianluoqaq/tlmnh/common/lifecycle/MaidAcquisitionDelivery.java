@@ -8,6 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
@@ -233,13 +234,13 @@ final class MaidAcquisitionDelivery {
             || stack.getItem() != MaidResurrectionContent.MAID_CORE
             || !stack.hasTagCompound()
             || !stack.getTagCompound()
-                .hasKey(RECEIPT, 10))
+                .hasKey(RECEIPT, Constants.NBT.TAG_COMPOUND))
             return null;
         var receipt = stack.getTagCompound()
             .getCompoundTag(RECEIPT);
-        if (!receipt.hasKey("Schema", 3) || receipt.getInteger("Schema") != 1
-            || !receipt.hasKey("Token", 8)
-            || !receipt.hasKey("Owner", 8)
+        if (!receipt.hasKey("Schema", Constants.NBT.TAG_INT) || receipt.getInteger("Schema") != 1
+            || !receipt.hasKey("Token", Constants.NBT.TAG_STRING)
+            || !receipt.hasKey("Owner", Constants.NBT.TAG_STRING)
             || receipt.func_150296_c()
                 .size() != 3)
             return null;

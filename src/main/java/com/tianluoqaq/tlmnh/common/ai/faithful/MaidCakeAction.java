@@ -7,6 +7,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.FakePlayerFactory;
@@ -75,9 +76,8 @@ final class MaidCakeAction {
     }
 
     private boolean sameFeet(Point point) {
-        return point.x == net.minecraft.util.MathHelper.floor_double(maid.posX)
-            && point.y == net.minecraft.util.MathHelper.floor_double(maid.posY)
-            && point.z == net.minecraft.util.MathHelper.floor_double(maid.posZ);
+        return point.x == MathHelper.floor_double(maid.posX) && point.y == MathHelper.floor_double(maid.posY)
+            && point.z == MathHelper.floor_double(maid.posZ);
     }
 
     private boolean admit() {

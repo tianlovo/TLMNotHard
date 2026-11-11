@@ -5,6 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.sound.data;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.MovingSound;
 import net.minecraft.util.ResourceLocation;
 
@@ -48,7 +49,7 @@ public final class MaidSoundInstance extends MovingSound {
 
     @Override
     public void update() {
-        if (maid.isDead || maid.worldObj != net.minecraft.client.Minecraft.getMinecraft().theWorld) donePlaying = true;
+        if (maid.isDead || maid.worldObj != Minecraft.getMinecraft().theWorld) donePlaying = true;
         else {
             xPosF = (float) maid.posX;
             yPosF = (float) maid.posY;

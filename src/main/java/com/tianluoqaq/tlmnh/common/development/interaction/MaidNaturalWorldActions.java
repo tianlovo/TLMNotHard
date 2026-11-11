@@ -6,11 +6,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
+import net.minecraftforge.common.util.Constants;
 
+import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -18,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
@@ -38,7 +42,7 @@ final class MaidNaturalWorldActions {
 
     static void validateSnapshot(NBTTagCompound data) {
         if (!data.hasKey(KEY)) return;
-        require(data.hasKey(KEY, 10), "Unknown world-action snapshot retained");
+        require(data.hasKey(KEY, Constants.NBT.TAG_COMPOUND), "Unknown world-action snapshot retained");
         require(
             data.getString("Phase")
                 .equals("world-actions"),
@@ -46,13 +50,14 @@ final class MaidNaturalWorldActions {
         var world = data.getCompoundTag(KEY);
         for (Object key : world.func_150296_c()) require(FIELDS.contains(key), "Unknown world-action field retained");
         require(
-            world.hasKey("Schema", 3) && world.getInteger("Schema") == 1
-                && world.hasKey("Stage", 8)
+            world.hasKey("Schema", Constants.NBT.TAG_INT) && world.getInteger("Schema") == 1
+                && world.hasKey("Stage", Constants.NBT.TAG_STRING)
                 && STAGES.contains(world.getString("Stage")),
             "Unknown world-action stage retained");
         for (String key : new String[] { "Inventory", "MealIntermediate", "MealResult" }) require(
-            world.hasKey(key, 9) && ((NBTTagList) world.getTag(key)).tagCount() == world.getTagList(key, 10)
-                .tagCount(),
+            world.hasKey(key, Constants.NBT.TAG_LIST)
+                && ((NBTTagList) world.getTag(key)).tagCount() == world.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                    .tagCount(),
             "Unknown world-action inventory retained");
     }
 
@@ -75,14 +80,14 @@ final class MaidNaturalWorldActions {
         var world = session.data.getCompoundTag(KEY);
         var actual = inventory(session);
         require(
-            actual.equals(world.getTagList("Inventory", 10)) || world.getString("Stage")
+            actual.equals(world.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)) || world.getString("Stage")
                 .equals("meal")
-                && (actual.equals(world.getTagList("MealResult", 10))
-                    || actual.equals(world.getTagList("MealIntermediate", 10))),
+                && (actual.equals(world.getTagList("MealResult", Constants.NBT.TAG_COMPOUND))
+                    || actual.equals(world.getTagList("MealIntermediate", Constants.NBT.TAG_COMPOUND))),
             "Unknown world-action equipment successor retained");
     }
 
-    private static ItemStack owned(Session session, net.minecraft.item.Item item) {
+    private static ItemStack owned(Session session, Item item) {
         var stack = new ItemStack(item);
         var tag = new NBTTagCompound();
         tag.setString("TLMNHNaturalWorld", session.data.getString("Run"));
@@ -102,7 +107,7 @@ final class MaidNaturalWorldActions {
         if (action.equals("world-equipped-bedrock") || action.equals("world-equipped-gecko")) {
             require(
                 session.data.getString("Phase")
-                    .equals("prepared") || session.data.hasKey(KEY, 10),
+                    .equals("prepared") || session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND),
                 "Separate prepared world-action session required");
             unmounted(session);
             restore(session);
@@ -139,7 +144,9 @@ final class MaidNaturalWorldActions {
             session.hand(null, null);
             return;
         }
-        require(session.data.hasKey(KEY, 10), "Prepare this session's world-action materials first");
+        require(
+            session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND),
+            "Prepare this session's world-action materials first");
         var world = session.data.getCompoundTag(KEY);
         switch (action) {
             case "world-arm-carry" -> {
@@ -197,7 +204,7 @@ final class MaidNaturalWorldActions {
                 var bowl = ProtectedItemCodec.encode(new ItemStack(Items.bowl));
                 bowl.setByte("Slot", (byte) 0);
                 after.appendTag(bowl);
-                var before = world.getTagList("Inventory", 10);
+                var before = world.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
                 for (int i = 0; i < before.tagCount(); i++) {
                     var item = before.getCompoundTagAt(i);
                     if ((item.getByte("Slot") & 255) != 7) {
@@ -220,7 +227,8 @@ final class MaidNaturalWorldActions {
             case "world-verify-meal" -> {
                 require(
                     world.getString("Stage")
-                        .equals("meal") && inventory(session).equals(world.getTagList("MealResult", 10))
+                        .equals("meal")
+                        && inventory(session).equals(world.getTagList("MealResult", Constants.NBT.TAG_COMPOUND))
                         && !maid.getMealController()
                             .isEating()
                         && maid.getItemUseState()
@@ -277,9 +285,9 @@ final class MaidNaturalWorldActions {
                 require(maid.attackEntityFrom(DamageSource.outOfWorld, .25F), "Native hurt callback required");
                 maid.setHealth(health);
             }
-            case "world-sound-stale-uuid" -> com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.send(
+            case "world-sound-stale-uuid" -> MaidSoundNetwork.send(
                 maid,
-                new com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage(
+                new PlayMaidSoundMessage(
                     maid.dimension,
                     maid.getEntityId(),
                     UUID.randomUUID(),

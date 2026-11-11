@@ -7,6 +7,7 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -121,7 +122,7 @@ public final class AttackTaskConfigGui extends MaidTaskConfigGui {
                 return;
             }
             var id = new ResourceLocation(value);
-            var next = new java.util.HashMap<>(getAttackGroups());
+            var next = new HashMap<>(getAttackGroups());
             next.put(id, MonsterType.NEUTRAL);
             if (!MaidAttackListPayload.fits(next)) {
                 feedback = "gui.tlmnh.task_config.unavailable";

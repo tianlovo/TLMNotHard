@@ -3,9 +3,11 @@ package com.tianluoqaq.tlmnh.common.life;
 import java.util.ArrayList;
 import java.util.Random;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -13,8 +15,10 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.event.ForgeEventFactory;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -55,7 +59,7 @@ public final class BlockMaidBed extends BlockBed {
         if (bed.getColor() == null) {
             if (!world.isRemote) {
                 player.addChatMessage(new ChatComponentTranslation("message.tlmnh.maid_bed.unreadable_color"));
-                com.tianluoqaq.tlmnh.TLMNotHard.LOG.warn(
+                TLMNotHard.LOG.warn(
                     "Unrecognized saved maid-bed color; dye refused at {},{},{}",
                     x,
                     y,
@@ -115,7 +119,7 @@ public final class BlockMaidBed extends BlockBed {
         if (world.isRemote || world.restoringBlockSnapshots) return;
         // 不能调用BlockBed父实现，它只允许床尾掉落；仍沿用Block的Forge事件及概率流程
         var items = getDrops(world, x, y, z, metadata, fortune);
-        float admitted = net.minecraftforge.event.ForgeEventFactory
+        float admitted = ForgeEventFactory
             .fireBlockHarvesting(items, world, this, x, y, z, metadata, fortune, chance, false, harvesters.get());
         for (var stack : items) if (world.rand.nextFloat() <= admitted) dropBlockAsItem(world, x, y, z, stack);
     }
@@ -136,7 +140,7 @@ public final class BlockMaidBed extends BlockBed {
     }
 
     @Override
-    public void onNeighborBlockChange(World world, int x, int y, int z, net.minecraft.block.Block neighbor) {
+    public void onNeighborBlockChange(World world, int x, int y, int z, Block neighbor) {
         int metadata = world.getBlockMetadata(x, y, z), direction = metadata & 3;
         int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
         int otherX = x + sign * field_149981_a[direction][0], otherZ = z + sign * field_149981_a[direction][1];
@@ -179,7 +183,7 @@ public final class BlockMaidBed extends BlockBed {
         int sign = isBlockHeadOfBed(metadata) ? -1 : 1;
         int otherX = x + sign * field_149981_a[metadata & 3][0], otherZ = z + sign * field_149981_a[metadata & 3][1];
         if (world.blockExists(otherX, y, otherZ) && world.getBlock(otherX, y, otherZ) == this)
-            world.setBlock(otherX, y, otherZ, net.minecraft.init.Blocks.air, 0, 2);
+            world.setBlock(otherX, y, otherZ, Blocks.air, 0, 2);
     }
 
     @Override

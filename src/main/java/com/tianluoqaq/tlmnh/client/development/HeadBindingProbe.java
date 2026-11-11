@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
@@ -24,7 +25,7 @@ public final class HeadBindingProbe {
     private HeadBindingProbe() {}
 
     public static void arm(String request, String model, float yaw, float pitch, String fault) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Head binding probe disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Head binding probe disabled");
         if (pending != null) throw new IllegalStateException("Head binding probe already pending");
         requireObserver();
         var minecraft = Minecraft.getMinecraft();
@@ -198,7 +199,7 @@ public final class HeadBindingProbe {
     private static void requireObserver() {
         var minecraft = Minecraft.getMinecraft();
         var player = minecraft.thePlayer;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(minecraft.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(minecraft.theWorld)
             || player == null
             || minecraft.currentScreen != null
             || minecraft.playerController == null

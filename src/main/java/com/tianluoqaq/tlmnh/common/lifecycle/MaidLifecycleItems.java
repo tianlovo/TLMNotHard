@@ -5,6 +5,7 @@
  */
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.entity.item.EntityItem;
@@ -12,9 +13,13 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 凭证只保存token与展示归属，实际女仆身份由世界账本持有 */
 public final class MaidLifecycleItems {
@@ -87,10 +92,9 @@ public final class MaidLifecycleItems {
         }
 
         @Override
-        @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
-        public void addInformation(ItemStack stack, EntityPlayer player, java.util.List<String> lines,
-            boolean advanced) {
-            lines.add(net.minecraft.util.StatCollector.translateToLocal("tooltips.tlmnh.smart_slab_has_maid.release"));
+        @SideOnly(Side.CLIENT)
+        public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
+            lines.add(StatCollector.translateToLocal("tooltips.tlmnh.smart_slab_has_maid.release"));
         }
 
         @Override

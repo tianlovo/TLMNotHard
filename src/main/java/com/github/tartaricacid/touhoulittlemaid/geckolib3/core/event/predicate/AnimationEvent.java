@@ -6,6 +6,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.event.predicate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController;
@@ -73,7 +74,7 @@ public class AnimationEvent<T extends GeckoAnimationTarget> {
 
     @SuppressWarnings("unchecked")
     public <D> List<D> getExtraDataOfType(Class<D> type) {
-        java.util.ArrayList<D> matches = new java.util.ArrayList<>();
+        ArrayList<D> matches = new ArrayList<>();
         for (Object obj : this.extraData) {
             if (type.isAssignableFrom(obj.getClass())) {
                 matches.add((D) obj);

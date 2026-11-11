@@ -6,6 +6,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.processor;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -35,8 +37,8 @@ public class AnimationProcessor<T extends GeckoAnimationTarget> {
 
     private static final int ROAMING_STRUCT_NAME = StringPool.computeIfAbsent("roaming");
 
-    private final java.util.ArrayList<BoneTopLevelSnapshot> modelRendererList = new java.util.ArrayList<>();
-    private final java.util.HashMap<String, BoneTopLevelSnapshot> modelRendererMap = new java.util.HashMap<>();
+    private final ArrayList<BoneTopLevelSnapshot> modelRendererList = new ArrayList<>();
+    private final HashMap<String, BoneTopLevelSnapshot> modelRendererMap = new HashMap<>();
     private final VariableStorage animationStorage;
     private final ConcurrentLinkedQueue<Pair<IValue, Consumer<String>>> pendingValues = new ConcurrentLinkedQueue<>();
     private final RateLimiter rateLimiter = new RateLimiter(60);

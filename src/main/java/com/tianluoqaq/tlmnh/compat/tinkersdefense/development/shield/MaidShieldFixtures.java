@@ -8,10 +8,13 @@ import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
+import com.tianluoqaq.tlmnh.compat.tconstruct.development.tool.TConstructToolBuilder;
 
 /** 使用真实注册物品与ToolBuilder构造盾牌，不手填正常成品的InfiTool */
 public final class MaidShieldFixtures {
@@ -24,7 +27,7 @@ public final class MaidShieldFixtures {
             String id = "battlegear2:shield." + material;
             result.put(id, new ItemStack(registered(id)));
         }
-        var tools = new com.tianluoqaq.tlmnh.compat.tconstruct.development.tool.TConstructToolBuilder(construction);
+        var tools = new TConstructToolBuilder(construction);
         var builds = new JsonArray();
         construction.add("builds", builds);
         for (boolean heater : new boolean[] { false, true }) {
@@ -47,17 +50,27 @@ public final class MaidShieldFixtures {
             require(stack.getItem() == registered(id) && stack.stackSize == 1, "ToolBuilder returned different shield");
             require(
                 stack.hasTagCompound() && stack.getTagCompound()
-                    .hasKey("InfiTool", 10),
+                    .hasKey("InfiTool", Constants.NBT.TAG_COMPOUND),
                 "Missing InfiTool");
             var tag = stack.getTagCompound()
                 .getCompoundTag("InfiTool");
             for (String key : new String[] { "Head", "Handle", "Accessory" })
-                require(tag.hasKey(key, 3) && tag.getInteger(key) == 0, "Builder changed " + key);
-            require(!heater || tag.hasKey("Extra", 3) && tag.getInteger("Extra") == 0, "Builder changed extra");
-            require(tag.hasKey("TotalDurability", 3) && tag.getInteger("TotalDurability") > 0, "Invalid durability");
-            require(tag.hasKey("Damage", 3) && tag.getInteger("Damage") == 0, "Fresh tool already damaged");
-            require(tag.hasKey("Unbreaking", 3) && tag.getInteger("Unbreaking") == 0, "Wood baseline reinforced");
-            require(tag.hasKey("Broken", 1) && !tag.getBoolean("Broken"), "Fresh tool already broken");
+                require(tag.hasKey(key, Constants.NBT.TAG_INT) && tag.getInteger(key) == 0, "Builder changed " + key);
+            require(
+                !heater || tag.hasKey("Extra", Constants.NBT.TAG_INT) && tag.getInteger("Extra") == 0,
+                "Builder changed extra");
+            require(
+                tag.hasKey("TotalDurability", Constants.NBT.TAG_INT) && tag.getInteger("TotalDurability") > 0,
+                "Invalid durability");
+            require(
+                tag.hasKey("Damage", Constants.NBT.TAG_INT) && tag.getInteger("Damage") == 0,
+                "Fresh tool already damaged");
+            require(
+                tag.hasKey("Unbreaking", Constants.NBT.TAG_INT) && tag.getInteger("Unbreaking") == 0,
+                "Wood baseline reinforced");
+            require(
+                tag.hasKey("Broken", Constants.NBT.TAG_BYTE) && !tag.getBoolean("Broken"),
+                "Fresh tool already broken");
             require(
                 !stack.getTagCompound()
                     .hasKey("Energy")
@@ -71,7 +84,7 @@ public final class MaidShieldFixtures {
                 result.get("battlegear2:shield.wood")
                     .getItem()
                     .getClass(),
-                com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.apiType()));
+                BattlegearShieldAccess.apiType()));
         construction.add(
             "tinkersDefenseIdentity",
             DevelopmentArtifactIdentity.capture(
@@ -105,7 +118,7 @@ public final class MaidShieldFixtures {
         result.addProperty(
             "hasInfiTool",
             stack.hasTagCompound() && stack.getTagCompound()
-                .hasKey("InfiTool", 10));
+                .hasKey("InfiTool", Constants.NBT.TAG_COMPOUND));
         if (result.get("hasInfiTool")
             .getAsBoolean()) {
             var raw = stack.getTagCompound()
@@ -113,8 +126,8 @@ public final class MaidShieldFixtures {
             var infi = new JsonObject();
             for (String key : new String[] { "Head", "Handle", "Accessory", "Extra", "Damage", "TotalDurability",
                 "Unbreaking" }) {
-                infi.addProperty(key + "PresentAsInt", raw.hasKey(key, 3));
-                if (raw.hasKey(key, 3)) infi.addProperty(key, raw.getInteger(key));
+                infi.addProperty(key + "PresentAsInt", raw.hasKey(key, Constants.NBT.TAG_INT));
+                if (raw.hasKey(key, Constants.NBT.TAG_INT)) infi.addProperty(key, raw.getInteger(key));
             }
             infi.addProperty("Broken", raw.getBoolean("Broken"));
             result.add("infi", infi);

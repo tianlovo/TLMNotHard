@@ -9,6 +9,7 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -21,11 +22,19 @@ import net.minecraft.util.StatCollector;
 
 import org.lwjgl.opengl.GL11;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
+import com.tianluoqaq.tlmnh.Tags;
+import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -177,7 +186,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             || mc.thePlayer.inventory.getItemStack() != null) return;
         openingLocalScreen = true;
         try {
-            mc.displayGuiScreen(new com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui(this, inventorySlots));
+            mc.displayGuiScreen(new MaidClientConfigGui(this, inventorySlots));
         } finally {
             openingLocalScreen = false;
         }
@@ -285,12 +294,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         lastMouseX = mouseX;
         lastMouseY = mouseY;
         super.drawScreen(mouseX, mouseY, partialTick);
-        drawCenteredString(
-            fontRendererObj,
-            "1.7.10-" + com.tianluoqaq.tlmnh.Tags.VERSION,
-            guiLeft + 40,
-            guiTop - 4,
-            0xAAAAAA);
+        drawCenteredString(fontRendererObj, "1.7.10-" + Tags.VERSION, guiLeft + 40, guiTop - 4, 0xAAAAAA);
         drawTask(
             maid.getTask()
                 .ordinal(),
@@ -338,15 +342,13 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         return Collections.unmodifiableList(lastDrawnEffects);
     }
 
-    public static String effectText(
-        com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData effect) {
+    public static String effectText(SendEffectMessage.EffectData effect) {
         String label = text(effect.descriptionId);
         if (effect.amplifier >= 1 && effect.amplifier <= 9)
             label += " " + text("enchantment.level." + (effect.amplifier + 1));
         int seconds = Math.max(0, effect.duration) / 20;
         return label + " "
-            + (effect.duration == -1 ? "∞"
-                : String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60));
+            + (effect.duration == -1 ? "∞" : String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60));
     }
 
     public List<String> informationTooltips() {
@@ -358,14 +360,12 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         var owner = maid.getOwner();
         if (owner != null) lines.add(infoLine("tooltips.touhou_little_maid.info.owner", owner.getCommandSenderName()));
         lines.add(infoLine("tooltips.tlmnh.info.name", maid.getCommandSenderName()));
-        var foodLevel = maid.getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.MAID_HUNGER);
+        var foodLevel = maid.getEntityAttribute(MaidCombatAttributes.MAID_HUNGER);
         if (foodLevel != null)
             lines.add(infoLine("tooltips.tlmnh.info.food_level", Double.toString(foodLevel.getAttributeValue())));
-        var model = com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.get(maid.getModelId());
-        if (model != null) lines.add(
-            infoLine(
-                "tooltips.touhou_little_maid.info.model_name",
-                com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames.INSTANCE.name(model)));
+        var model = BuiltinModelCatalog.get(maid.getModelId());
+        if (model != null)
+            lines.add(infoLine("tooltips.touhou_little_maid.info.model_name", BuiltinModelNames.INSTANCE.name(model)));
         lines.add(infoLine("tooltips.touhou_little_maid.info.experience", Integer.toString(maid.getExperience())));
         lines.add(infoLine("tooltips.touhou_little_maid.info.favorability", Integer.toString(maid.getFavorability())));
         return lines;
@@ -381,45 +381,25 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         var schedule = maid.getSchedule();
         lines.add(
             String.format(
-                java.util.Locale.ROOT,
+                Locale.ROOT,
                 "§n%s§7 %02d:%02d",
                 text(
                     "gui.touhou_little_maid.schedule." + schedule.name()
-                        .toLowerCase(java.util.Locale.ROOT)),
+                        .toLowerCase(Locale.ROOT)),
                 (time / 1000 + 6) % 24,
                 (time % 1000) * 60 / 1000));
-        var activity = com.tianluoqaq.tlmnh.common.life.MaidLifeRules.activity(schedule, time);
-        if (schedule == com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.ALL)
-            lines.add("§a█ 00:00-24:00 " + text("gui.touhou_little_maid.activity.work"));
+        var activity = MaidLifeRules.activity(schedule, time);
+        if (schedule == MaidSchedule.ALL) lines.add("§a█ 00:00-24:00 " + text("gui.touhou_little_maid.activity.work"));
         else {
-            boolean night = schedule == com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.NIGHT;
+            boolean night = schedule == MaidSchedule.NIGHT;
             lines.add(
-                scheduleLine(
-                    activity == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK,
-                    night ? "18:00-06:00" : "06:00-18:00",
-                    "work"));
+                scheduleLine(activity == MaidLifeRules.Activity.WORK, night ? "18:00-06:00" : "06:00-18:00", "work"));
             if (night) {
-                lines.add(
-                    scheduleLine(
-                        activity == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.REST,
-                        "06:00-14:00",
-                        "rest"));
-                lines.add(
-                    scheduleLine(
-                        activity == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.IDLE,
-                        "14:00-18:00",
-                        "idle"));
+                lines.add(scheduleLine(activity == MaidLifeRules.Activity.REST, "06:00-14:00", "rest"));
+                lines.add(scheduleLine(activity == MaidLifeRules.Activity.IDLE, "14:00-18:00", "idle"));
             } else {
-                lines.add(
-                    scheduleLine(
-                        activity == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.IDLE,
-                        "18:00-22:00",
-                        "idle"));
-                lines.add(
-                    scheduleLine(
-                        activity == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.REST,
-                        "22:00-06:00",
-                        "rest"));
+                lines.add(scheduleLine(activity == MaidLifeRules.Activity.IDLE, "18:00-22:00", "idle"));
+                lines.add(scheduleLine(activity == MaidLifeRules.Activity.REST, "22:00-06:00", "rest"));
             }
         }
         lines.add(text("tooltips.touhou_little_maid.schedule.desc"));

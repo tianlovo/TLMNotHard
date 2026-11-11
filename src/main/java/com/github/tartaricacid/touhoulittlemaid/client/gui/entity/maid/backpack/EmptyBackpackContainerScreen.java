@@ -6,6 +6,11 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack;
 
+import net.minecraft.client.gui.Gui;
+import net.minecraft.util.ResourceLocation;
+
+import org.lwjgl.opengl.GL11;
+
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 
@@ -15,7 +20,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class EmptyBackpackContainerScreen extends AbstractMaidContainerGui<EmptyBackpackContainer> {
 
-    private static final net.minecraft.util.ResourceLocation BACKPACK = new net.minecraft.util.ResourceLocation(
+    private static final ResourceLocation BACKPACK = new ResourceLocation(
         "touhou_little_maid",
         "textures/gui/maid_gui_backpack.png");
 
@@ -30,17 +35,14 @@ public final class EmptyBackpackContainerScreen extends AbstractMaidContainerGui
             drawRect(guiLeft + 142, guiTop + top[index], guiLeft + 250, guiTop + bottom[index], 0xaa222222);
             mc.getTextureManager()
                 .bindTexture(BACKPACK);
-            org.lwjgl.opengl.GL11.glColor4f(1, 1, 1, 1);
+            GL11.glColor4f(1, 1, 1, 1);
             drawTexturedModalRect(guiLeft + 190, guiTop + iconY[index], 165, 0, 11, 11);
         }
         if (!inventorySlots.inventorySlots.get(47)
             .getHasStack()) {
             mc.getTextureManager()
-                .bindTexture(
-                    new net.minecraft.util.ResourceLocation(
-                        "touhou_little_maid",
-                        "textures/slot/empty_back_show_slot.png"));
-            net.minecraft.client.gui.Gui.func_146110_a(guiLeft + 233, guiTop + 37, 0, 0, 16, 16, 16, 16);
+                .bindTexture(new ResourceLocation("touhou_little_maid", "textures/slot/empty_back_show_slot.png"));
+            Gui.func_146110_a(guiLeft + 233, guiTop + 37, 0, 0, 16, 16, 16, 16);
         }
     }
 

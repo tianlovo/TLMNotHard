@@ -18,6 +18,7 @@ import net.minecraft.world.WorldSettings.GameType;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -44,7 +45,7 @@ public final class MaidRangedMovementProbe {
 
     public static void start(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && world.provider.dimensionId == 0 && pending == null,
+            DevelopmentFlags.isDevCommandsEnabled() && world.provider.dimensionId == 0 && pending == null,
             "Dedicated test overworld and one episode required");
         var probe = new MaidRangedMovementProbe(world);
         pending = probe;

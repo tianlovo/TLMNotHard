@@ -7,15 +7,19 @@ package com.tianluoqaq.tlmnh.common.lifecycle;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
 
+import net.minecraft.entity.EntityList;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -30,8 +34,7 @@ public final class MaidCaptureService {
     static final String RECEIPT = "TLMNHCaptureReceipt";
     private static final String RELEASED = "TLMNHCaptureReleased";
     private static final Map<World, Map<UUID, Long>> COOLDOWNS = new WeakHashMap<>();
-    private static final java.util.Set<EntityMaid> CAPTURING = Collections
-        .newSetFromMap(new java.util.IdentityHashMap<>());
+    private static final Set<EntityMaid> CAPTURING = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private MaidCaptureService() {}
 
@@ -227,14 +230,15 @@ public final class MaidCaptureService {
         if (!"REMOVED".equals(record.getString("Stage")) || !knownDelivery(player, record)) return false;
         var frame = new MaidPlayerTransferSnapshot(player);
         var credential = ProtectedItemCodec.decode(record.getCompoundTag("Credential"));
-        if (record.getTagList("InventoryReceipt", 10)
+        if (record.getTagList("InventoryReceipt", Constants.NBT.TAG_COMPOUND)
             .equals(frame.original)) {
             frame.apply(frame.selected, credential);
             frame.persist();
         } else {
-            MaidLifecycleDurability.player(player, record.getTagList("InventoryFilled", 10), frame.selected);
+            MaidLifecycleDurability
+                .player(player, record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND), frame.selected);
         }
-        if (!record.getTagList("InventoryFilled", 10)
+        if (!record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND)
             .equals(player.inventory.writeToNBT(new NBTTagList()))
             || !ItemStack.areItemStacksEqual(credential, player.getCurrentEquippedItem()))
             throw new IllegalStateException("Unknown capture delivery successor retained");
@@ -254,9 +258,9 @@ public final class MaidCaptureService {
                     .hasNoTags() ? null : ProtectedItemCodec.decode(record.getCompoundTag("Cursor"))))
             return false;
         var inventory = player.inventory.writeToNBT(new NBTTagList());
-        return record.getTagList("InventoryReceipt", 10)
+        return record.getTagList("InventoryReceipt", Constants.NBT.TAG_COMPOUND)
             .equals(inventory)
-            || record.getTagList("InventoryFilled", 10)
+            || record.getTagList("InventoryFilled", Constants.NBT.TAG_COMPOUND)
                 .equals(inventory);
     }
 
@@ -337,7 +341,7 @@ public final class MaidCaptureService {
 
     private static NBTTagCompound rawSnapshot(EntityMaid maid) {
         var result = new NBTTagCompound();
-        var type = net.minecraft.entity.EntityList.getEntityString(maid);
+        var type = EntityList.getEntityString(maid);
         if (type == null) throw new IllegalStateException("Unregistered maid snapshot type");
         result.setString("id", type);
         maid.writeToNBT(result);

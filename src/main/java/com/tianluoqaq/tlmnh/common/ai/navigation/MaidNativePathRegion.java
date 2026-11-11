@@ -2,6 +2,8 @@ package com.tianluoqaq.tlmnh.common.ai.navigation;
 
 import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType.*;
 
+import java.util.ArrayList;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFence;
@@ -15,19 +17,21 @@ import net.minecraft.init.Blocks;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 
 /** 正式版方块能力适配，碰撞仅查方块，不将其他演员当作静态寻路墙 */
 public final class MaidNativePathRegion implements MaidPathRegion {
 
     private final World world;
-    private final com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid;
+    private final EntityMaid maid;
 
     public MaidNativePathRegion(World world) {
         this(world, null);
     }
 
-    public MaidNativePathRegion(World world, com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
+    public MaidNativePathRegion(World world, EntityMaid maid) {
         this.world = world;
         this.maid = maid;
     }
@@ -40,7 +44,7 @@ public final class MaidNativePathRegion implements MaidPathRegion {
             if (home.enabled() && home.containsMaid() && !home.contains(x, y, z)) return BLOCKED;
         }
         var block = world.getBlock(x, y, z);
-        if (block == com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet) return DAMAGE_OTHER;
+        if (block == MaidLifeContent.snackCabinet) return DAMAGE_OTHER;
         if (block.isAir(world, x, y, z)) return OPEN;
         MaidPathType type;
         if (block instanceof BlockFenceGate)
@@ -142,7 +146,7 @@ public final class MaidNativePathRegion implements MaidPathRegion {
         if (!loaded(x, y - 1, z)) return y - 1;
         var block = world.getBlock(x, y - 1, z);
         block.setBlockBoundsBasedOnState(world, x, y - 1, z);
-        var boxes = new java.util.ArrayList<AxisAlignedBB>();
+        var boxes = new ArrayList<AxisAlignedBB>();
         block.addCollisionBoxesToList(
             world,
             x,

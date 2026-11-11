@@ -15,7 +15,10 @@ import net.minecraftforge.event.world.WorldEvent;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -44,7 +47,7 @@ public final class MaidServerLoadProbe implements AutoCloseable {
     private boolean armed, closed, initialEndMayBeUnpaired;
 
     private MaidServerLoadProbe(String run, String label, WorldServer world) throws Exception {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Explicit development mode required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Explicit development mode required");
         require(active == null, "Another server load recorder is active");
         require(
             run != null && !run.trim()
@@ -206,7 +209,7 @@ public final class MaidServerLoadProbe implements AutoCloseable {
 
     public JsonObject snapshot() {
         owner();
-        var result = new com.google.gson.JsonParser().parse(metadata.toString())
+        var result = new JsonParser().parse(metadata.toString())
             .getAsJsonObject();
         result.addProperty("closed", closed);
         result.addProperty("valid", fault == null);
@@ -435,7 +438,7 @@ public final class MaidServerLoadProbe implements AutoCloseable {
 
     private static JsonArray numbers(List<Long> values) {
         var out = new JsonArray();
-        for (long value : values) out.add(new com.google.gson.JsonPrimitive(value));
+        for (long value : values) out.add(new JsonPrimitive(value));
         return out;
     }
 

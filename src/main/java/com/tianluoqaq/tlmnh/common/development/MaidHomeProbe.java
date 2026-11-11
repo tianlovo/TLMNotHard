@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
 import com.tianluoqaq.tlmnh.common.ai.MaidHomeController;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings;
@@ -35,7 +36,7 @@ public final class MaidHomeProbe {
     private MaidHomeProbe() {}
 
     public static void run(WorldServer world) {
-        require(Boolean.getBoolean("tlmnh.devCommands") && !AnimationLab.isLab(world), "test overworld required");
+        require(DevelopmentFlags.isDevCommandsEnabled() && !AnimationLab.isLab(world), "test overworld required");
         var spawn = world.getSpawnPoint();
         int x = (spawn.posX >> 4 << 4) + 4, y = 180, z = (spawn.posZ >> 4 << 4) + 4;
         for (int dx = -4; dx <= 17; dx++) for (int dz = -4; dz <= 6; dz++) {

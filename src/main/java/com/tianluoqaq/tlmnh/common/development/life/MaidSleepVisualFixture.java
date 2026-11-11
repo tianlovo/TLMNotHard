@@ -2,11 +2,13 @@ package com.tianluoqaq.tlmnh.common.development.life;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 /** 原场景女仆的可恢复卧姿显示；不模拟自然入睡、租约或物品消费 */
@@ -18,7 +20,7 @@ public final class MaidSleepVisualFixture {
 
     public static void set(EntityPlayerMP player, String action) {
         var maid = AnimationLab.ownedSceneMaid(player);
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development fixture required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development fixture required");
         require(
             action.equals("clear") || action.equals("reimu-north")
                 || action.equals("reimu-east")
@@ -54,10 +56,10 @@ public final class MaidSleepVisualFixture {
             saved.setFloat("HeadYaw", maid.rotationYawHead);
             parent.setTag(TAG, saved);
         }
-        require(parent.hasKey(TAG, 10), "Opaque sleeping fixture retained");
+        require(parent.hasKey(TAG, Constants.NBT.TAG_COMPOUND), "Opaque sleeping fixture retained");
         var saved = parent.getCompoundTag(TAG);
         require(
-            saved.hasKey("Schema", 3) && saved.getInteger("Schema") == 1
+            saved.hasKey("Schema", Constants.NBT.TAG_INT) && saved.getInteger("Schema") == 1
                 && saved.getString("Actor")
                     .equals(
                         maid.getUniqueID()

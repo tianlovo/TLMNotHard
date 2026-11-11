@@ -5,13 +5,29 @@
  */
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.util.Vec3;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
+
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 单槽神龛：持片装入，潜行空手取回，空手复活 */
 public final class MaidShrineBlock extends BlockContainer {
@@ -46,7 +62,7 @@ public final class MaidShrineBlock extends BlockContainer {
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    @SideOnly(Side.CLIENT)
     public String getItemIconName() {
         return "touhou_little_maid:shrine";
     }
@@ -57,20 +73,19 @@ public final class MaidShrineBlock extends BlockContainer {
     }
 
     @Override
-    public void onBlockPlacedBy(World world, int x, int y, int z, net.minecraft.entity.EntityLivingBase placer,
-        net.minecraft.item.ItemStack stack) {
+    public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase placer, ItemStack stack) {
         if (world.isRemote || placer == null
             || world.getBlock(x, y, z) != this
             || world.getBlockMetadata(x, y, z) > 3
             || !(world.getTileEntity(x, y, z) instanceof MaidShrineTile shrine)
             || shrine.isInvalid()) return;
-        int facing = net.minecraft.util.MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
+        int facing = MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
         world.setBlockMetadataWithNotify(x, y, z, facing, 2);
     }
 
     @Override
-    public void addCollisionBoxesToList(World world, int x, int y, int z, net.minecraft.util.AxisAlignedBB mask,
-        java.util.List<net.minecraft.util.AxisAlignedBB> boxes, net.minecraft.entity.Entity entity) {
+    public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB mask, List<AxisAlignedBB> boxes,
+        Entity entity) {
         for (int tier = 0; tier < 3; tier++) {
             var box = collisionBox(x, y, z, tier);
             if (box.intersectsWith(mask)) boxes.add(box);
@@ -78,29 +93,26 @@ public final class MaidShrineBlock extends BlockContainer {
     }
 
     @Override
-    public net.minecraft.util.MovingObjectPosition collisionRayTrace(World world, int x, int y, int z,
-        net.minecraft.util.Vec3 start, net.minecraft.util.Vec3 end) {
-        net.minecraft.util.MovingObjectPosition closest = null;
+    public MovingObjectPosition collisionRayTrace(World world, int x, int y, int z, Vec3 start, Vec3 end) {
+        MovingObjectPosition closest = null;
         for (int tier = 0; tier < 3; tier++) {
             var hit = collisionBox(x, y, z, tier).calculateIntercept(start, end);
             if (hit != null
                 && (closest == null || start.squareDistanceTo(hit.hitVec) < start.squareDistanceTo(closest.hitVec)))
-                closest = new net.minecraft.util.MovingObjectPosition(x, y, z, hit.sideHit, hit.hitVec);
+                closest = new MovingObjectPosition(x, y, z, hit.sideHit, hit.hitVec);
         }
         return closest;
     }
 
     @Override
-    public boolean isSideSolid(net.minecraft.world.IBlockAccess world, int x, int y, int z,
-        net.minecraftforge.common.util.ForgeDirection side) {
-        return side == net.minecraftforge.common.util.ForgeDirection.DOWN;
+    public boolean isSideSolid(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
+        return side == ForgeDirection.DOWN;
     }
 
-    private static net.minecraft.util.AxisAlignedBB collisionBox(int x, int y, int z, int tier) {
+    private static AxisAlignedBB collisionBox(int x, int y, int z, int tier) {
         double inset = tier * .125;
         double low = tier * 5.0 / 16.0, high = tier == 2 ? 1 : (tier + 1) * 5.0 / 16.0;
-        return net.minecraft.util.AxisAlignedBB
-            .getBoundingBox(x + inset, y + low, z + inset, x + 1 - inset, y + high, z + 1 - inset);
+        return AxisAlignedBB.getBoundingBox(x + inset, y + low, z + inset, x + 1 - inset, y + high, z + 1 - inset);
     }
 
     @Override
@@ -114,13 +126,13 @@ public final class MaidShrineBlock extends BlockContainer {
         if (player.isSneaking()) {
             if (held != null) return true;
             if (MaidShrineTransfer.transfer(player, shrine, false)) {
-                com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, false);
+                EtFuturumSounds.shrineFrame(world, x, y, z, false);
             }
             return true;
         }
         if (held != null) {
             if (MaidShrineTransfer.transfer(player, shrine, true)) {
-                com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds.shrineFrame(world, x, y, z, true);
+                EtFuturumSounds.shrineFrame(world, x, y, z, true);
             } else MaidLifecycleService.tell(player, MaidLifecycleService.Result.INVALID_CREDENTIAL);
             return true;
         }
@@ -135,7 +147,7 @@ public final class MaidShrineBlock extends BlockContainer {
     }
 
     private static void prepareReturn(MaidShrineTile shrine) {
-        var items = new java.util.ArrayList<ItemStack>();
+        var items = new ArrayList<ItemStack>();
         var film = shrine.getFilm();
         if (film != null) items.add(film);
         MaidTileReturns.prepare(shrine, items);

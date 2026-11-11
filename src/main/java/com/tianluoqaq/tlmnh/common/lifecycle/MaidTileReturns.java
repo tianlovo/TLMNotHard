@@ -14,6 +14,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
+import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
@@ -156,9 +158,8 @@ public final class MaidTileReturns {
 
         Prepared(TileEntity tile) {
             this.tile = tile;
-            if (!(tile instanceof MaidShrineTile
-                || tile instanceof com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet
-                || tile instanceof com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed))
+            if (!(tile instanceof MaidShrineTile || tile instanceof TileEntitySnackCabinet
+                || tile instanceof TileEntityMaidBed))
                 throw new IllegalArgumentException("Only owned maid content tiles can stage returns");
             world = tile.getWorldObj();
             x = tile.xCoord;

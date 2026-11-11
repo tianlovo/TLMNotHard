@@ -2,7 +2,12 @@ package com.tianluoqaq.tlmnh.common.lifecycle;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.player.EntityInteractEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
@@ -17,25 +22,25 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 public final class MaidLifecycleEvents {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onPendingUpdate(net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent event) {
+    public void onPendingUpdate(LivingEvent.LivingUpdateEvent event) {
         if (event.entityLiving instanceof EntityMaid maid && MaidLifecycleService.isPendingRedemption(maid))
             event.setCanceled(true);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onPendingInteraction(net.minecraftforge.event.entity.player.EntityInteractEvent event) {
+    public void onPendingInteraction(EntityInteractEvent event) {
         if (event.target instanceof EntityMaid maid && MaidLifecycleService.isPendingRedemption(maid))
             event.setCanceled(true);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onPendingAttack(net.minecraftforge.event.entity.player.AttackEntityEvent event) {
+    public void onPendingAttack(AttackEntityEvent event) {
         if (event.target instanceof EntityMaid maid && MaidLifecycleService.isPendingRedemption(maid))
             event.setCanceled(true);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onPendingDamage(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+    public void onPendingDamage(LivingAttackEvent event) {
         if (event.entityLiving instanceof EntityMaid maid && MaidLifecycleService.isPendingRedemption(maid)
             || event.source.getEntity() instanceof EntityMaid source
                 && MaidLifecycleService.isPendingRedemption(source))
@@ -75,7 +80,7 @@ public final class MaidLifecycleEvents {
     }
 
     @SubscribeEvent
-    public void onWorldUnload(net.minecraftforge.event.world.WorldEvent.Unload event) {
+    public void onWorldUnload(WorldEvent.Unload event) {
         if (!event.world.isRemote) {
             MaidTileReturns.abandon(event.world);
             MaidDeathService.unload(event.world);

@@ -7,6 +7,8 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
@@ -16,10 +18,13 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.render.MaidDetailsPreview;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -237,12 +242,9 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
         result.addProperty("previewTicks", guiEntity.ticksExisted);
         result.addProperty("previewHeadYaw", guiEntity.rotationYawHead);
         result.addProperty("previewPreviousHeadYaw", guiEntity.prevRotationYawHead);
-        result
-            .addProperty("previewUsingItem", guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM));
-        result.addProperty(
-            "previewUsingOffhand",
-            guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND));
-        result.addProperty("previewBegging", guiEntity.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.BEGGING));
+        result.addProperty("previewUsingItem", guiEntity.hasPose(MaidPose.USING_ITEM));
+        result.addProperty("previewUsingOffhand", guiEntity.hasPose(MaidPose.USING_OFFHAND));
+        result.addProperty("previewBegging", guiEntity.hasPose(MaidPose.BEGGING));
         result.addProperty("previewSitting", guiEntity.isSitting());
         result.addProperty("previewRiding", guiEntity.ridingEntity != null);
         result.addProperty("previewMainHand", item(guiEntity.getHeldItem()));
@@ -273,9 +275,8 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
             "sourceSitting",
             container.getMaid()
                 .isSitting());
-        var armor = new com.google.gson.JsonArray();
-        for (int slot = 1; slot <= 4; slot++)
-            armor.add(new com.google.gson.JsonPrimitive(item(guiEntity.getEquipmentInSlot(slot))));
+        var armor = new JsonArray();
+        for (int slot = 1; slot <= 4; slot++) armor.add(new JsonPrimitive(item(guiEntity.getEquipmentInSlot(slot))));
         result.add("previewArmor", armor);
         var toggles = new JsonObject();
         for (var button : buttonList) if (button instanceof ModelDetailsButton state)
@@ -284,8 +285,8 @@ public abstract class AbstractModelDetailsGui extends GuiScreen {
         return result;
     }
 
-    private static String item(net.minecraft.item.ItemStack stack) {
-        return stack == null ? "" : net.minecraft.item.Item.itemRegistry.getNameForObject(stack.getItem());
+    private static String item(ItemStack stack) {
+        return stack == null ? "" : Item.itemRegistry.getNameForObject(stack.getItem());
     }
 
     @Override

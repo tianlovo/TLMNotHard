@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.util.List;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -13,6 +14,7 @@ import net.minecraft.client.audio.SoundPoolEntry;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import paulscode.sound.SoundSystem;
@@ -27,7 +29,7 @@ final class NativeSoundPlaybackObservation {
     static JsonObject capture() {
         var result = new JsonObject();
         result.addProperty("available", false);
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return result;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return result;
         try {
             ISound sound = ReflectionHelper
                 .getPrivateValue(MaidWorldSoundPlayer.class, MaidWorldSoundPlayer.INSTANCE, "lastSound");
@@ -86,7 +88,7 @@ final class NativeSoundPlaybackObservation {
         var event = handler.getSound(sound.getPositionedSoundLocation());
         result.addProperty("available", event != null);
         if (event == null) return result;
-        java.util.List<?> pool = ReflectionHelper
+        List<?> pool = ReflectionHelper
             .getPrivateValue(SoundEventAccessorComposite.class, event, "soundPool", "field_148736_a");
         boolean complete = true;
         for (Object accessor : pool) {

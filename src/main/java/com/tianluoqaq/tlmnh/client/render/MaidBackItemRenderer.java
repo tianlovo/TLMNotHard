@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.client.render;
 
 import java.nio.FloatBuffer;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
@@ -13,6 +15,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -21,10 +24,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class MaidBackItemRenderer {
 
-    private static final java.util.Map<EntityMaid, Integer> LAST_DRAWN = new java.util.WeakHashMap<>();
+    private static final Map<EntityMaid, Integer> LAST_DRAWN = new WeakHashMap<>();
 
     public static void beginFrame(EntityMaid maid) {
-        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 0);
+        if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 0);
     }
 
     public static int drawnCount(EntityMaid maid) {
@@ -89,7 +92,7 @@ public final class MaidBackItemRenderer {
                 int color = item.getColorFromItemStack(stack, pass);
                 GL11.glColor4f((color >> 16 & 255) / 255F, (color >> 8 & 255) / 255F, (color & 255) / 255F, 1);
                 renderer.renderItem(maid, stack, pass);
-                if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, pass + 1);
+                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, pass + 1);
             }
         }
     }

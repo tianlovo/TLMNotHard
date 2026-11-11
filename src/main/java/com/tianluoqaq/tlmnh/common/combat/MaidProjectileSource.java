@@ -7,6 +7,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -51,11 +52,11 @@ public final class MaidProjectileSource {
     }
 
     private static Source read(NBTBase raw) {
-        if (!(raw instanceof NBTTagCompound tag) || !tag.hasKey("Schema", 3)
+        if (!(raw instanceof NBTTagCompound tag) || !tag.hasKey("Schema", Constants.NBT.TAG_INT)
             || tag.getInteger("Schema") != 1
-            || !tag.hasKey("Shooter", 8)
-            || !tag.hasKey("Owner", 8)
-            || !tag.hasKey("Dimension", 3))
+            || !tag.hasKey("Shooter", Constants.NBT.TAG_STRING)
+            || !tag.hasKey("Owner", Constants.NBT.TAG_STRING)
+            || !tag.hasKey("Dimension", Constants.NBT.TAG_INT))
             throw new IllegalArgumentException("Unsupported projectile source record retained unchanged");
         String player = tag.getString("Owner");
         return new Source(
@@ -189,10 +190,10 @@ public final class MaidProjectileSource {
     }
 
     private static void validateHandoff(NBTBase raw, Source source) {
-        if (!(raw instanceof NBTTagCompound tag) || !tag.hasKey("Schema", 3)
+        if (!(raw instanceof NBTTagCompound tag) || !tag.hasKey("Schema", Constants.NBT.TAG_INT)
             || tag.getInteger("Schema") != 1
-            || !tag.hasKey("Player", 8)
-            || !tag.hasKey("Dimension", 3)
+            || !tag.hasKey("Player", Constants.NBT.TAG_STRING)
+            || !tag.hasKey("Dimension", Constants.NBT.TAG_INT)
             || tag.getInteger("Dimension") != source.dimension
             || source.shooter.equals(uuid(tag.getString("Player"))))
             throw new IllegalArgumentException("Unsupported projectile handoff retained unchanged");

@@ -16,6 +16,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -66,7 +67,7 @@ public final class MaidFollowRuntimeProbe {
     }
 
     public static void start(EntityPlayerMP player) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands are disabled");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands are disabled");
         require(pending == null, "Another follow runtime experiment is active");
         require(online(player), "A real connected server player is required");
         require(

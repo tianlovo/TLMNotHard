@@ -20,6 +20,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.IChatBubbleDat
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -35,7 +36,7 @@ public final class ChatBubbleRenderer {
     }
 
     public void render(EntityMaid maid, double x, double y, double z, float partialTick) {
-        boolean dev = Boolean.getBoolean("tlmnh.devCommands");
+        boolean dev = DevelopmentFlags.isDevCommandsEnabled();
         if (dev) LAST_DRAWN.put(maid, 0);
         var manager = RenderManager.instance;
         if (!MaidClientPreferences.showChatBubbles() || !maid.getConfigManager()

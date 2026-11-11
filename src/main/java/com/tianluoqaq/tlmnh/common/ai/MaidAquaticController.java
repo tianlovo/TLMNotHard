@@ -9,6 +9,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidSwimJumpActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidSwimmingActor;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
@@ -38,8 +40,8 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
         }
         var brain = maid.getBrainCoordinator();
         var policy = brain.peekPolicyRuntime();
-        boolean prototype = policy == null || policy.isReady()
-            && policy.getProfile() == com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.LEGACY_PROTOTYPE;
+        boolean prototype = policy == null
+            || policy.isReady() && policy.getProfile() == MaidBrainProfile.LEGACY_PROTOTYPE;
         if (prototype) manager.setGoingToBreath(brain.hasLegacyBreathActive());
         manager.setEatBreatheItem(
             maid.getMealController()
@@ -54,8 +56,7 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
             || maid.getBrainCoordinator()
                 .isSuspended())
             return;
-        if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
-            navigator.tickMode();
+        if (maid.getNavigator() instanceof MaidPathNavigator navigator) navigator.tickMode();
         // Existing prototype oxygen route owns its separate actuator until the faithful breath task is wired
         var brain = maid.getBrainCoordinator();
         if (brain.hasLegacyBreathSwimming()) {
@@ -81,8 +82,7 @@ public final class MaidAquaticController implements MaidSwimmingActor, MaidSwimJ
 
     public void clear() {
         pendingJump = false;
-        if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
-            navigator.resetNavigationIfIdle();
+        if (maid.getNavigator() instanceof MaidPathNavigator navigator) navigator.resetNavigationIfIdle();
         manager.setWantToSwim(false);
         manager.setReadyToLand(false);
         manager.setGoingToBreath(false);

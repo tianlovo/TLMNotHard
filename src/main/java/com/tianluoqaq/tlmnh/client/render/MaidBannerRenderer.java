@@ -19,6 +19,7 @@ import com.github.tartaricacid.simplebedrockmodel.client.bedrock.model.BedrockPa
 import com.github.tartaricacid.touhoulittlemaid.client.model.bedrock.SimpleBedrockModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -42,7 +43,7 @@ public final class MaidBannerRenderer {
     }
 
     public static void render(EntityMaid maid, BuiltinMaidModel model) {
-        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 0);
+        if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 0);
         var stack = maid.getBackpackShowItem();
         if (!EtFuturumBannerRenderAccess.isBanner(stack) || stack.stackSize <= 0
             || !model.hasCompletedPoseFor(maid)
@@ -76,7 +77,7 @@ public final class MaidBannerRenderer {
                     .getTextureManager()
                     .bindTexture(pattern);
                 draw(banner, banner.getPart("banner"), poses, light);
-                if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, 1);
+                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, 1);
             }
             return true;
         }, () -> false);

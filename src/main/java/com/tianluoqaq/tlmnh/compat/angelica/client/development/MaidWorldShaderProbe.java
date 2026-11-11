@@ -5,7 +5,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -14,8 +13,10 @@ import net.minecraft.client.Minecraft;
 
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -33,7 +34,7 @@ public final class MaidWorldShaderProbe {
 
     public static JsonObject perform(String action) {
         var mc = Minecraft.getMinecraft();
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development shader command required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development shader command required");
         require(
             action.equals("status") || action.equals("off") || action.equals("selected") || action.equals("restore"),
             "Unknown world shader action");
@@ -326,14 +327,7 @@ public final class MaidWorldShaderProbe {
 
     private static String hash(byte[] value) {
         if (value == null) return "";
-        try {
-            var result = new StringBuilder();
-            for (byte part : MessageDigest.getInstance("SHA-256")
-                .digest(value)) result.append(String.format("%02x", part & 255));
-            return result.toString();
-        } catch (java.security.NoSuchAlgorithmException failure) {
-            throw new IllegalStateException(failure);
-        }
+        return Sha256Hex.ofBytes(value);
     }
 
     private static void require(boolean value, String message) {

@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 
@@ -81,11 +82,13 @@ public final class MaidBehaviorExtensionData {
         Objects.requireNonNull(moduleId, "moduleId");
         if (tlmnhExtension == null || !tlmnhExtension.hasKey(TAG_BEHAVIOR_EXT))
             return ReadSlice.ok(new NBTTagCompound());
-        if (!tlmnhExtension.hasKey(TAG_BEHAVIOR_EXT, 10)) return ReadSlice.blocked("Non-compound BehaviorExt tag");
+        if (!tlmnhExtension.hasKey(TAG_BEHAVIOR_EXT, Constants.NBT.TAG_COMPOUND))
+            return ReadSlice.blocked("Non-compound BehaviorExt tag");
         var ext = tlmnhExtension.getCompoundTag(TAG_BEHAVIOR_EXT);
         String key = moduleId.toString();
         if (!ext.hasKey(key)) return ReadSlice.ok(new NBTTagCompound());
-        if (!ext.hasKey(key, 10)) return ReadSlice.blocked("Non-compound module tag for " + key);
+        if (!ext.hasKey(key, Constants.NBT.TAG_COMPOUND))
+            return ReadSlice.blocked("Non-compound module tag for " + key);
         var rawModuleTag = ext.getCompoundTag(key);
         var validation = validateCandidate(rawModuleTag);
         if (!validation.valid) return ReadSlice.blocked(validation.reason);
@@ -114,15 +117,17 @@ public final class MaidBehaviorExtensionData {
         Iterable<? extends ModulePersistentAdapter> adapters) {
         Objects.requireNonNull(adapters, "adapters");
         var root = baseTlmnhExtension == null ? new NBTTagCompound() : (NBTTagCompound) baseTlmnhExtension.copy();
-        if (root.hasKey(TAG_BEHAVIOR_EXT) && !root.hasKey(TAG_BEHAVIOR_EXT, 10)) {
+        if (root.hasKey(TAG_BEHAVIOR_EXT) && !root.hasKey(TAG_BEHAVIOR_EXT, Constants.NBT.TAG_COMPOUND)) {
             return root;
         }
-        var ext = root.hasKey(TAG_BEHAVIOR_EXT, 10) ? (NBTTagCompound) root.getCompoundTag(TAG_BEHAVIOR_EXT)
-            .copy() : new NBTTagCompound();
+        var ext = root.hasKey(TAG_BEHAVIOR_EXT, Constants.NBT.TAG_COMPOUND)
+            ? (NBTTagCompound) root.getCompoundTag(TAG_BEHAVIOR_EXT)
+                .copy()
+            : new NBTTagCompound();
         for (var adapter : adapters) {
             String key = adapter.id()
                 .toString();
-            if (ext.hasKey(key) && !ext.hasKey(key, 10)) continue;
+            if (ext.hasKey(key) && !ext.hasKey(key, Constants.NBT.TAG_COMPOUND)) continue;
             if (adapter.isFaulted() || adapter.isPersistencePaused()) continue;
             var candidate = new NBTTagCompound();
             try {

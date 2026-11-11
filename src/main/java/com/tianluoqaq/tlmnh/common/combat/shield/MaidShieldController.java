@@ -20,6 +20,12 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
+import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
+import com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin;
 
 /** TLM举盾生命周期与原生平台物品格挡分开，冷却按Item维护，不占主手近战动作 */
 public final class MaidShieldController {
@@ -87,7 +93,7 @@ public final class MaidShieldController {
             this.depth = depth;
             this.outcome = outcome;
             blocked = outcome == Outcome.BLOCKED;
-            arrowCatchSupported = com.tianluoqaq.tlmnh.core.MixinCompatibilityPlugin.hasShieldCaptureHook()
+            arrowCatchSupported = MixinCompatibilityPlugin.hasShieldCaptureHook()
                 && MaidShieldItems.supportsArrowCapture(shield);
             this.itemId = itemId;
             sourceType = source == null ? "" : source.getDamageType();
@@ -100,7 +106,7 @@ public final class MaidShieldController {
             requestedWear = wear;
             wearCallbackInvoked = wearInvoked;
             stackSizeAfter = shield == null ? 0 : shield.stackSize;
-            brokenAfter = com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData.broken(shield);
+            brokenAfter = TConstructToolData.broken(shield);
             equipmentChangedDuringCallback = equipmentChanged;
             cooldownApplied = cooldown;
         }
@@ -419,7 +425,7 @@ public final class MaidShieldController {
         var world = maid.worldObj;
         var identity = maid.getUniqueID();
         Item originalItem = shield.getItem();
-        var protectedBefore = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(shield);
+        var protectedBefore = ProtectedItemCodec.encode(shield);
         try {
             if (!MaidShieldItems.canBlock(shield, source)) {
                 record(
@@ -441,8 +447,7 @@ public final class MaidShieldController {
             Entity opponent = source.getEntity();
             if (opponent != null) {
                 float rawAngle = MaidShieldItems.blockAngle(shield);
-                if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-                    .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)) return;
+                if (!IntegrationGuard.available(ExternalFeature.SHIELDS)) return;
                 float rawYaw = MaidShieldRules
                     .relativeYaw(opponent.posX, opponent.posZ, maid.posX, maid.posZ, maid.rotationYaw, Math::random);
                 angle = finite(rawAngle);
@@ -466,8 +471,7 @@ public final class MaidShieldController {
                 }
             }
             float rawReduction = MaidShieldItems.durabilityReduction(shield, source);
-            if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-                .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)) return;
+            if (!IntegrationGuard.available(ExternalFeature.SHIELDS)) return;
             reduction = finite(rawReduction);
             if (reduction == null) {
                 record(
@@ -506,14 +510,10 @@ public final class MaidShieldController {
             }
             // 计数API先在副本上执行，依赖失败时本次不取消伤害、不磨盾也不改箭
             var capture = MaidShieldArrowCapture.prepare(maid, shield, source);
-            if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-                .available(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS)
-                || !sameUseContext(use, shield, world, identity)) return;
+            if (!IntegrationGuard.available(ExternalFeature.SHIELDS) || !sameUseContext(use, shield, world, identity))
+                return;
             event.setCanceled(true);
-            maid.playSound(
-                com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess.BLOCK_SOUND,
-                1,
-                1);
+            maid.playSound(BattlegearShieldAccess.BLOCK_SOUND, 1, 1);
             if (wear >= 0) {
                 wore = true;
                 shield.damageItem(wear, maid);
@@ -550,18 +550,15 @@ public final class MaidShieldController {
                 !sameUse,
                 cooldown);
         } catch (RuntimeException | LinkageError | AssertionError failure) {
-            com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-                .trip(com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS, failure);
+            IntegrationGuard.trip(ExternalFeature.SHIELDS, failure);
             event.setCanceled(false);
             release(use, "shield_callback_failed");
             // 仅封存当前由本女仆持有的同引用对象，保持物品所有权流转一致性
             var inventory = maid.getMaidInventory();
             for (int slot = 0; slot < inventory.getSizeInventory(); slot++)
                 if (inventory.getStackInSlot(slot) == shield) {
-                    inventory.setInventorySlotContents(
-                        slot,
-                        com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
-                            .seal(protectedBefore, "shield_callback"));
+                    inventory
+                        .setInventorySlotContents(slot, ProtectedItemCodec.seal(protectedBefore, "shield_callback"));
                     break;
                 }
             record(

@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -29,7 +30,7 @@ public final class MaidWorldSoundProbe {
     public static JsonObject perform(String action) {
         var minecraft = Minecraft.getMinecraft();
         var player = minecraft.thePlayer;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(minecraft.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(minecraft.theWorld)
             || player == null
             || !player.capabilities.disableDamage
             || !player.capabilities.allowFlying

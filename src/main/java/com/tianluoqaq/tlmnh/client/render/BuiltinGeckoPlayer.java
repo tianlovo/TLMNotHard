@@ -7,6 +7,7 @@ package com.tianluoqaq.tlmnh.client.render;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -72,7 +73,7 @@ public final class BuiltinGeckoPlayer implements GeckoAnimationTarget {
         }
         for (Slot slot : new Slot[] { Slot.FEET, Slot.LEGS, Slot.CHEST, Slot.HEAD }) {
             String name = slot.name()
-                .toLowerCase(java.util.Locale.ROOT);
+                .toLowerCase(Locale.ROOT);
             add(name + "_controller", 0, event -> armor(event, slot, name));
         }
     }

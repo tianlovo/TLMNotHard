@@ -6,6 +6,7 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings;
@@ -25,7 +26,7 @@ public final class MaidFilmData {
         for (var key : REMOVED) data.removeTag(key);
         data.setBoolean("Sitting", false);
         // 原maidToFilm先关闭home，再保存身份；保留各活动点而不让复活后仍被死亡地点束缚
-        if (data.hasKey("TLMNHHome", 10)) {
+        if (data.hasKey("TLMNHHome", Constants.NBT.TAG_COMPOUND)) {
             var home = data.getCompoundTag("TLMNHHome");
             try {
                 if (home.getInteger("Schema") == 1) {

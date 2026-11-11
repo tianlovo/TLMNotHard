@@ -1,10 +1,15 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.ResourceLocation;
+
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
 
@@ -31,19 +36,19 @@ public final class MaidCombatEntities {
 
     /** 只读取注册类型，不为编辑器构造模组实体；ID与实际选敌使用同一归一化 */
     @SuppressWarnings("unchecked")
-    public static java.util.Map<ResourceLocation, String> registeredLivingTypes() {
-        var result = new java.util.HashMap<ResourceLocation, String>();
+    public static Map<ResourceLocation, String> registeredLivingTypes() {
+        var result = new HashMap<ResourceLocation, String>();
         for (Object raw : EntityList.stringToClassMapping.entrySet()) {
-            var entry = (java.util.Map.Entry<?, ?>) raw;
+            var entry = (Map.Entry<?, ?>) raw;
             if (!(entry.getKey() instanceof String name) || !(entry.getValue() instanceof Class<?>type)
-                || !net.minecraft.entity.EntityLivingBase.class.isAssignableFrom(type)) continue;
+                || !EntityLivingBase.class.isAssignableFrom(type)) continue;
             result.putIfAbsent(typeId((Class<? extends Entity>) type, name), name);
         }
         return result;
     }
 
     public static boolean isArmorStand(Entity entity) {
-        return com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities.isArmorStand(entity);
+        return EtFuturumEntities.isArmorStand(entity);
     }
 
     public static boolean isMaidItemEntity(Entity entity) {

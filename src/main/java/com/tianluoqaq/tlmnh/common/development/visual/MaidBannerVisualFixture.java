@@ -4,10 +4,12 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
@@ -21,7 +23,7 @@ public final class MaidBannerVisualFixture {
     private MaidBannerVisualFixture() {}
 
     public static void set(EntityPlayerMP observer, String action) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands required");
         require(
             action.equals("reimu-plain") || action.equals("reimu-patterned")
                 || action.equals("winefox-plain")
@@ -65,10 +67,10 @@ public final class MaidBannerVisualFixture {
                     .isShowBackItem());
             parent.setTag(TAG, saved);
         }
-        require(parent.hasKey(TAG, 10), "Opaque banner display scope retained");
+        require(parent.hasKey(TAG, Constants.NBT.TAG_COMPOUND), "Opaque banner display scope retained");
         var saved = parent.getCompoundTag(TAG);
         require(
-            saved.hasKey("Schema", 3) && saved.getInteger("Schema") == 1
+            saved.hasKey("Schema", Constants.NBT.TAG_INT) && saved.getInteger("Schema") == 1
                 && saved.getString("Actor")
                     .equals(
                         maid.getUniqueID()
@@ -80,7 +82,8 @@ public final class MaidBannerVisualFixture {
                 && MaidVisualFixtureState.exists(maid),
             "Unknown or changed banner display scope retained");
         require(
-            saved.hasKey("ExpectedModel", 8) && saved.hasKey("ExpectedShowBack", 1)
+            saved.hasKey("ExpectedModel", Constants.NBT.TAG_STRING)
+                && saved.hasKey("ExpectedShowBack", Constants.NBT.TAG_BYTE)
                 && saved.getString("ExpectedModel")
                     .equals(maid.getModelId())
                 && saved.getBoolean("ExpectedShowBack") == maid.getConfigManager()

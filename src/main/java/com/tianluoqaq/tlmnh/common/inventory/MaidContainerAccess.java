@@ -4,6 +4,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 
 /** 女仆窗口共用的会话、归属、距离与世界实体身份检查 */
 public final class MaidContainerAccess {
@@ -13,7 +14,7 @@ public final class MaidContainerAccess {
     public static boolean canInteract(EntityPlayer viewer, EntityPlayer player, EntityMaid maid) {
         return player != null && player == viewer
             && maid != null
-            && !com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService.isPendingRedemption(maid)
+            && !MaidLifecycleService.isPendingRedemption(maid)
             && maid.getMaidInventory()
                 .isUseableByPlayer(player)
             && player.worldObj.getEntityByID(maid.getEntityId()) == maid;

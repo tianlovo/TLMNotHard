@@ -1,9 +1,12 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.block.Block;
@@ -16,6 +19,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldProvider;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -28,10 +32,10 @@ public final class NativeArrowMedium implements IBlockAccess {
     public static final String GUARD = "arrow_medium";
     private static final int MAX_CELLS = 4096;
     private final World world;
-    private final net.minecraft.world.WorldProvider provider;
+    private final WorldProvider provider;
     private final EntityArrow arrow;
     private final int dimension, entityId;
-    private final java.util.UUID identity;
+    private final UUID identity;
     private final double originX, originY, originZ;
     private final BooleanSupplier authorized;
     private final Map<Point, Cell> cells = new LinkedHashMap<>();
@@ -92,7 +96,7 @@ public final class NativeArrowMedium implements IBlockAccess {
                 flow.xCoord += velocity.xCoord;
                 flow.yCoord += velocity.yCoord;
                 flow.zCoord += velocity.zCoord;
-            } catch (java.lang.reflect.InvocationTargetException failure) {
+            } catch (InvocationTargetException failure) {
                 if (failure.getCause() instanceof Unavailable unavailable) throw unavailable;
                 throw new IllegalStateException("Native water flow query failed", failure.getCause());
             } catch (ReflectiveOperationException failure) {
@@ -231,7 +235,7 @@ public final class NativeArrowMedium implements IBlockAccess {
             Method found = null;
             for (var method : BlockLiquid.class.getDeclaredMethods()) {
                 if (method.getReturnType() != Vec3.class || Modifier.isStatic(method.getModifiers())
-                    || !java.util.Arrays.equals(
+                    || !Arrays.equals(
                         method.getParameterTypes(),
                         new Class<?>[] { IBlockAccess.class, int.class, int.class, int.class }))
                     continue;

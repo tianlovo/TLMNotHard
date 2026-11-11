@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
 import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.config.MaidNavigationConfig;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -46,7 +47,7 @@ public final class MaidNavigationBudgetProbe {
 
     public static void start(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && world.provider.dimensionId == 0 && pending == null,
+            DevelopmentFlags.isDevCommandsEnabled() && world.provider.dimensionId == 0 && pending == null,
             "Dedicated overworld and one episode required");
         var probe = new MaidNavigationBudgetProbe(world);
         pending = probe;

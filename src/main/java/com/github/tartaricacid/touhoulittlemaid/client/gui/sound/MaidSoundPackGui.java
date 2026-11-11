@@ -5,12 +5,15 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.gui.sound;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiConfirmOpenLink;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiYesNoCallback;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
@@ -22,6 +25,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.SoundPa
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInstance;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
@@ -31,7 +35,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
-public final class MaidSoundPackGui extends GuiScreen implements net.minecraft.client.gui.GuiYesNoCallback {
+public final class MaidSoundPackGui extends GuiScreen implements GuiYesNoCallback {
 
     private static final ResourceLocation ICON = new ResourceLocation(
         "touhou_little_maid",
@@ -169,8 +173,8 @@ public final class MaidSoundPackGui extends GuiScreen implements net.minecraft.c
     public void confirmClicked(boolean confirmed, int id) {
         if (confirmed && pendingLink != null) {
             try {
-                java.awt.Desktop.getDesktop()
-                    .browse(new java.net.URI(pendingLink));
+                Desktop.getDesktop()
+                    .browse(new URI(pendingLink));
             } catch (Exception error) {
                 TLMNotHard.LOG.warn("Cannot open builtin sound credit page", error);
             }
@@ -271,7 +275,7 @@ public final class MaidSoundPackGui extends GuiScreen implements net.minecraft.c
                 .isSoundPlaying(lastPreview));
         var visible = new JsonArray();
         for (var raw : buttonList)
-            if (raw instanceof SoundElementButton sound) visible.add(new com.google.gson.JsonPrimitive(sound.event));
+            if (raw instanceof SoundElementButton sound) visible.add(new JsonPrimitive(sound.event));
         result.add("visibleEvents", visible);
         return result;
     }

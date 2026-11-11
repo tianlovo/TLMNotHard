@@ -4,10 +4,11 @@ import java.io.ByteArrayOutputStream;
 import java.net.JarURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 核对实际原生平台类来源和资源字节，不把class资源摘要冒充变换后类定义摘要 */
 public final class MaidGeckoLibraryProbe {
@@ -27,7 +28,7 @@ public final class MaidGeckoLibraryProbe {
     }
 
     public static JsonObject capture() {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development commands disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development commands disabled");
         var report = new JsonObject();
         var classes = new JsonObject();
         try {
@@ -91,9 +92,6 @@ public final class MaidGeckoLibraryProbe {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var output = new StringBuilder();
-        for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) output.append(String.format("%02x", value & 255));
-        return output.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 }

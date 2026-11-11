@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
 /** 收纳只解释本模组收据；实体和物品的嵌套原始NBT不裁剪 */
 final class MaidCaptureRecord {
@@ -36,14 +37,19 @@ final class MaidCaptureRecord {
         if (!data.func_150296_c()
             .equals(FIELDS)) throw new IllegalStateException("Unknown capture record retained");
         for (String key : new String[] { "Token", "Owner", "Subject", "Stage" })
-            if (!data.hasKey(key, 8)) throw new IllegalStateException("Invalid capture identity encoding");
+            if (!data.hasKey(key, Constants.NBT.TAG_STRING))
+                throw new IllegalStateException("Invalid capture identity encoding");
         for (String key : new String[] { "Sequence", "Selected", "Dimension" })
-            if (!data.hasKey(key, 3)) throw new IllegalStateException("Invalid capture position encoding");
+            if (!data.hasKey(key, Constants.NBT.TAG_INT))
+                throw new IllegalStateException("Invalid capture position encoding");
         for (String key : new String[] { "Source", "OriginalMaid", "Receipt", "Credential", "Cursor", "Observed" })
-            if (!data.hasKey(key, 10)) throw new IllegalStateException("Invalid capture payload encoding");
+            if (!data.hasKey(key, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException("Invalid capture payload encoding");
         for (String key : new String[] { "InventoryBefore", "InventoryReceipt", "InventoryFilled" }) {
-            if (!data.hasKey(key, 9) || ((NBTTagList) data.getTag(key)).tagCount() != data.getTagList(key, 10)
-                .tagCount()) throw new IllegalStateException("Invalid capture inventory encoding");
+            if (!data.hasKey(key, Constants.NBT.TAG_LIST)
+                || ((NBTTagList) data.getTag(key)).tagCount() != data.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                    .tagCount())
+                throw new IllegalStateException("Invalid capture inventory encoding");
         }
         if (!token.toString()
             .equals(data.getString("Token"))
@@ -59,8 +65,8 @@ final class MaidCaptureRecord {
             throw new IllegalStateException("Invalid capture identity or state");
         for (String key : new String[] { "Source", "OriginalMaid" }) {
             var maid = data.getCompoundTag(key);
-            if (!maid.hasKey("UUIDMost", 4) || !maid.hasKey("UUIDLeast", 4)
-                || !maid.hasKey("OwnerUUID", 8)
+            if (!maid.hasKey("UUIDMost", Constants.NBT.TAG_LONG) || !maid.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
+                || !maid.hasKey("OwnerUUID", Constants.NBT.TAG_STRING)
                 || !subject.equals(new UUID(maid.getLong("UUIDMost"), maid.getLong("UUIDLeast")))
                 || !owner.toString()
                     .equals(maid.getString("OwnerUUID")))

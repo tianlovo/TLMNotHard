@@ -6,6 +6,7 @@ import java.util.WeakHashMap;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;
@@ -20,7 +21,7 @@ public final class MaidSleepRenderObservation {
     private MaidSleepRenderObservation() {}
 
     public static void completed(EntityMaid maid, int direction, float rotation) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var frame = FRAMES.computeIfAbsent(maid, ignored -> new Frame());
         frame.calls++;
         frame.direction = direction;
@@ -29,7 +30,7 @@ public final class MaidSleepRenderObservation {
 
     public static JsonArray snapshot() {
         var result = new JsonArray();
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return result;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return result;
         for (var entry : FRAMES.entrySet()) {
             var maid = entry.getKey();
             if (maid.isDead) continue;

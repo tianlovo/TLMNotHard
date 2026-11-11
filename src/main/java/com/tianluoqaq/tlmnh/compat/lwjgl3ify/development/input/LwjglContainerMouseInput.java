@@ -19,6 +19,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.development.MaidCareInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.PackagedClassResourceResolver;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 
 import cpw.mods.fml.common.eventhandler.Event;
@@ -40,7 +41,7 @@ public final class LwjglContainerMouseInput {
 
     public static JsonObject click(Minecraft mc, GuiContainer gui, Slot slot, int button, int mode) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && gui == mc.currentScreen
+            DevelopmentFlags.isDevCommandsEnabled() && gui == mc.currentScreen
                 && mc.thePlayer != null
                 && mc.thePlayer.openContainer == gui.inventorySlots,
             "Actual development GUI/container required");

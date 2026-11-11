@@ -5,8 +5,11 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
+import java.util.Objects;
+
 import net.minecraft.entity.DataWatcher;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 public final class MaidConfigManager {
 
@@ -40,21 +43,22 @@ public final class MaidConfigManager {
     }
 
     void readAdditionalSaveData(NBTTagCompound compound) {
-        if (compound.hasKey(RIDEABLE_TAG, 1)) setRideable(compound.getBoolean(RIDEABLE_TAG));
+        if (compound.hasKey(RIDEABLE_TAG, Constants.NBT.TAG_BYTE)) setRideable(compound.getBoolean(RIDEABLE_TAG));
         unreadConfig = (NBTTagCompound) compound.getCompoundTag(MAID_SUB_CONFIG_TAG)
             .copy();
-        if (unreadConfig.hasKey(SOUND_FREQ_TAG, 99)) {
+        if (unreadConfig.hasKey(SOUND_FREQ_TAG, Constants.NBT.TAG_ANY_NUMERIC)) {
             float frequency = unreadConfig.getFloat(SOUND_FREQ_TAG);
             if (Float.isFinite(frequency)) setSoundFreq(frequency);
         }
-        if (unreadConfig.hasKey(PICKUP_TYPE_TAG, 99)) {
+        if (unreadConfig.hasKey(PICKUP_TYPE_TAG, Constants.NBT.TAG_ANY_NUMERIC)) {
             int type = unreadConfig.getInteger(PICKUP_TYPE_TAG);
             setPickupType(type >= 0 && type < PickType.values().length ? PickType.values()[type] : PickType.ALL);
         }
-        for (int i = 0; i < NAVIGATION_TAGS.length; i++) if (unreadConfig.hasKey(NAVIGATION_TAGS[i], 1))
-            setFlag(1 << i, unreadConfig.getBoolean(NAVIGATION_TAGS[i]));
-        for (int i = 0; i < VISUAL_TAGS.length; i++)
-            if (unreadConfig.hasKey(VISUAL_TAGS[i], 1)) setVisualFlag(1 << i, unreadConfig.getBoolean(VISUAL_TAGS[i]));
+        for (int i = 0; i < NAVIGATION_TAGS.length; i++)
+            if (unreadConfig.hasKey(NAVIGATION_TAGS[i], Constants.NBT.TAG_BYTE))
+                setFlag(1 << i, unreadConfig.getBoolean(NAVIGATION_TAGS[i]));
+        for (int i = 0; i < VISUAL_TAGS.length; i++) if (unreadConfig.hasKey(VISUAL_TAGS[i], Constants.NBT.TAG_BYTE))
+            setVisualFlag(1 << i, unreadConfig.getBoolean(VISUAL_TAGS[i]));
     }
 
     public boolean isShowBackpack() {
@@ -115,7 +119,7 @@ public final class MaidConfigManager {
     }
 
     public void setPickupType(PickType type) {
-        write(getSoundFreq(), java.util.Objects.requireNonNull(type), flags());
+        write(getSoundFreq(), Objects.requireNonNull(type), flags());
     }
 
     public boolean isOpenDoor() {

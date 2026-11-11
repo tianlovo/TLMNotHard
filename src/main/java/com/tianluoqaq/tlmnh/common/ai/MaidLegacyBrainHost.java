@@ -1,7 +1,9 @@
 package com.tianluoqaq.tlmnh.common.ai;
 
+import java.util.Collections;
 import java.util.UUID;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.player.EntityPlayer;
@@ -12,6 +14,7 @@ import net.minecraft.util.MathHelper;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
@@ -195,8 +198,7 @@ final class MaidLegacyBrainHost {
         var frame = new MaidIntentFrame(context, token, maid.worldObj.getTotalWorldTime());
         if (home.wantsReturn()) frame.offer(Group.COMMAND, Kind.HOME, "home", 1, null);
         var owner = ownerSensor.findOwner();
-        var lifeOptions = permitted ? life.prepareIntents(context, token)
-            : java.util.Collections.<MaidLifeIntent>emptyList();
+        var lifeOptions = permitted ? life.prepareIntents(context, token) : Collections.<MaidLifeIntent>emptyList();
         // 合法生活保留现有委托范围，不用5格跟随起距截断8格食物活动
         if (lifeOptions.isEmpty() && !maid.getHomeArea()
             .enabled()
@@ -265,7 +267,7 @@ final class MaidLegacyBrainHost {
         if (!frame.accepts(selected)) return;
         switch (selected.kind) {
             case SLEEP, SNACK -> life.tickSelected(context, token, (MaidLifeIntent) selected.payload);
-            case PICKUP -> pickup.tickSelected((net.minecraft.entity.Entity) selected.payload);
+            case PICKUP -> pickup.tickSelected((Entity) selected.payload);
             case FOLLOW -> follow.tick();
             case HOME -> home.tick();
         }
@@ -541,11 +543,10 @@ final class MaidLegacyBrainHost {
 
         @Override
         public boolean hasPath() {
-            return ownedPath != null
-                && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
-                    maid.getNavigator()
-                        .getPath(),
-                    ownedPath)
+            return ownedPath != null && MaidPathOwnership.owns(
+                maid.getNavigator()
+                    .getPath(),
+                ownedPath)
                 && !maid.getNavigator()
                     .noPath();
         }
@@ -568,7 +569,7 @@ final class MaidLegacyBrainHost {
 
         @Override
         public void stopNavigation() {
-            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            if (ownedPath != null && MaidPathOwnership.owns(
                 maid.getNavigator()
                     .getPath(),
                 ownedPath))
@@ -761,7 +762,7 @@ final class MaidLegacyBrainHost {
         public void stopNavigation() {
             var current = maid.getNavigator()
                 .getPath();
-            if (com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(current, ownedPath)) {
+            if (MaidPathOwnership.owns(current, ownedPath)) {
                 maid.getNavigator()
                     .clearPathEntity();
             }

@@ -19,6 +19,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.DoorCell;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry;
 
 import cpw.mods.fml.common.Loader;
 
@@ -346,16 +347,10 @@ public final class CombatSpace {
             Block block = world.getBlock(x, y, z);
             lastBlockType = block.getClass()
                 .getName();
-            if (com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.matches(block)) {
-                var gate = com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry
-                    .capture(world, block, x, y, z, quota);
-                if (gate.result
-                    != com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.Result.SAFE)
-                    return failed(
-                        gate.result
-                            == com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry.Result.BUDGET
-                                ? Result.BUDGET
-                                : Result.UNKNOWN);
+            if (MalisisCombatGeometry.matches(block)) {
+                var gate = MalisisCombatGeometry.capture(world, block, x, y, z, quota);
+                if (gate.result != MalisisCombatGeometry.Result.SAFE)
+                    return failed(gate.result == MalisisCombatGeometry.Result.BUDGET ? Result.BUDGET : Result.UNKNOWN);
                 ShapeList shapes = new ShapeList(quota);
                 try {
                     if (gate.body != null && gate.body.intersectsWith(mask)) shapes.add(gate.body);

@@ -1,9 +1,12 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
 
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
+
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 /** 显式开发QA作用域的纯缓存；不授予额度、准备或动作权限 */
 public final class CombatDiagnosticScope implements AutoCloseable {
@@ -22,7 +25,7 @@ public final class CombatDiagnosticScope implements AutoCloseable {
     }
 
     public static CombatDiagnosticScope open(Object world) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || world == null)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || world == null)
             throw new IllegalStateException("Explicit development QA diagnostics required");
         var scope = new CombatDiagnosticScope(world, ACTIVE.get(world));
         ACTIVE.put(world, scope);
@@ -118,7 +121,7 @@ public final class CombatDiagnosticScope implements AutoCloseable {
 
         private void begin(long now) {
             if (now != tick) {
-                java.util.Arrays.fill(events, null);
+                Arrays.fill(events, null);
                 tick = now;
                 size = dropped = 0;
             }
@@ -155,7 +158,7 @@ public final class CombatDiagnosticScope implements AutoCloseable {
         }
 
         public Frame snapshot() {
-            return new Frame(tick, dropped, java.util.Arrays.copyOf(events, size), lastReject);
+            return new Frame(tick, dropped, Arrays.copyOf(events, size), lastReject);
         }
     }
 }

@@ -5,6 +5,7 @@ import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
@@ -146,7 +147,7 @@ public final class MaidHomeController {
         var stopped = run;
         try {
             if (stopped != null) stopped.cancel();
-            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            if (ownedPath != null && MaidPathOwnership.owns(
                 maid.getNavigator()
                     .getPath(),
                 ownedPath))

@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import java.util.function.Supplier;
+
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.BlockPos;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveActor.Vec3;
 
@@ -34,7 +36,7 @@ public final class MaidLandRandomSampler {
                 actor.nextEntityInt(2 * radius + 1) - radius));
     }
 
-    private static Vec3 sample(Actor actor, int radius, java.util.function.Supplier<BlockPos> direction) {
+    private static Vec3 sample(Actor actor, int radius, Supplier<BlockPos> direction) {
         boolean restricted = FollowFallbackSampler.mobRestricted(actor, radius);
         BlockPos best = null;
         double bestScore = Double.NEGATIVE_INFINITY;

@@ -25,6 +25,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinMaidPacks.Pack;
@@ -231,7 +232,7 @@ public abstract class AbstractModelGui extends GuiScreen {
             .get(index)
             .isEasterEgg()) return false;
         mc.displayGuiScreen(
-            new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui(
+            new MaidModelDetailsGui(
                 container,
                 BuiltinModelCatalog.choices()
                     .get(index)));
@@ -422,7 +423,7 @@ public abstract class AbstractModelGui extends GuiScreen {
                         .trim()
                         .isEmpty())
                         lines.add(
-                            "§6" + net.minecraft.util.StatCollector.translateToLocalFormatted(
+                            "§6" + StatCollector.translateToLocalFormatted(
                                 "gui.touhou_little_maid.skin.tooltips.maid_use_sound_pack_id",
                                 choice.getPreferredSoundPack()));
                     if (mc.gameSettings.advancedItemTooltips) lines.add("\u00a78" + choice.getId());

@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.compat.endlessids.common.storage;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -86,8 +87,8 @@ public final class EndlessIdsSectionData {
     }
 
     private static void array(NBTTagCompound section, String key, int length, boolean required) {
-        if (required && !section.hasKey(key)
-            || section.hasKey(key) && (!section.hasKey(key, 7) || section.getByteArray(key).length != length))
+        if (required && !section.hasKey(key) || section.hasKey(key)
+            && (!section.hasKey(key, Constants.NBT.TAG_BYTE_ARRAY) || section.getByteArray(key).length != length))
             throw new IllegalStateException("Invalid native section array: " + key);
     }
 

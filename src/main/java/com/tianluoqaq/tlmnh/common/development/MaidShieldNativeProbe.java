@@ -6,14 +6,16 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
+import java.nio.file.attribute.DosFileAttributes;
 import java.util.Map;
+import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -24,11 +26,16 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -43,7 +50,7 @@ public final class MaidShieldNativeProbe {
     private MaidShieldNativeProbe() {}
 
     public static void run(WorldServer world) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || world == null || world.isRemote)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || world == null || world.isRemote)
             throw new IllegalStateException("Development server required");
         var output = new JsonObject();
         output.addProperty("schema", "tlmnh-shield-native-v1");
@@ -154,7 +161,7 @@ public final class MaidShieldNativeProbe {
         }
         try {
             Path directory = directory();
-            String name = java.util.UUID.randomUUID() + ".json";
+            String name = UUID.randomUUID() + ".json";
             byte[] bytes = GSON.toJson(output)
                 .getBytes(StandardCharsets.UTF_8);
             if (bytes.length > 8_388_608)
@@ -199,7 +206,7 @@ public final class MaidShieldNativeProbe {
             var shield = prototypes.get(id)
                 .copy();
             var before = shield.copy();
-            var proposal = com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.prepareArrowCapture(shield);
+            var proposal = MaidShieldItems.prepareArrowCapture(shield);
             if (proposal == null || !ItemStack.areItemStacksEqual(before, shield))
                 throw new IllegalStateException("Arrow capture preparation changed the original shield: " + id);
             var tag = proposal.applyTo(shield);
@@ -213,10 +220,10 @@ public final class MaidShieldNativeProbe {
         }
         var limit = prototypes.get("battlegear2:shield.wood")
             .copy();
-        if (!limit.hasTagCompound()) limit.setTagCompound(new net.minecraft.nbt.NBTTagCompound());
+        if (!limit.hasTagCompound()) limit.setTagCompound(new NBTTagCompound());
         limit.getTagCompound()
             .setShort("arrows", Short.MAX_VALUE);
-        var proposal = com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.prepareArrowCapture(limit);
+        var proposal = MaidShieldItems.prepareArrowCapture(limit);
         if (proposal == null || proposal.applyTo(limit)
             .getShort("arrows") != Short.MAX_VALUE)
             throw new IllegalStateException("Shield arrow count did not retain the provider capacity limit");
@@ -495,12 +502,12 @@ public final class MaidShieldNativeProbe {
         }
     }
 
-    private static com.google.gson.JsonElement position(Entity entity) {
+    private static JsonElement position(Entity entity) {
         if (entity == null) return JsonNull.INSTANCE;
         var p = new JsonArray();
-        p.add(new com.google.gson.JsonPrimitive(entity.posX));
-        p.add(new com.google.gson.JsonPrimitive(entity.posY));
-        p.add(new com.google.gson.JsonPrimitive(entity.posZ));
+        p.add(new JsonPrimitive(entity.posX));
+        p.add(new JsonPrimitive(entity.posY));
+        p.add(new JsonPrimitive(entity.posZ));
         return p;
     }
 
@@ -511,11 +518,7 @@ public final class MaidShieldNativeProbe {
             directory = directory.resolve(part);
             if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) Files.createDirectory(directory);
             if (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)
-                || Files
-                    .readAttributes(
-                        directory,
-                        java.nio.file.attribute.DosFileAttributes.class,
-                        LinkOption.NOFOLLOW_LINKS)
+                || Files.readAttributes(directory, DosFileAttributes.class, LinkOption.NOFOLLOW_LINKS)
                     .isOther())
                 throw new IllegalStateException("Capture directory is not an ordinary local directory");
         }
@@ -523,12 +526,6 @@ public final class MaidShieldNativeProbe {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var result = new StringBuilder();
-        for (byte b : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) {
-            result.append(Character.forDigit((b & 255) >>> 4, 16));
-            result.append(Character.forDigit(b & 15, 16));
-        }
-        return result.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 }

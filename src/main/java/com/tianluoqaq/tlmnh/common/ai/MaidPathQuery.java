@@ -1,16 +1,21 @@
 package com.tianluoqaq.tlmnh.common.ai;
 
+import java.util.ArrayList;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFenceGate;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.pathfinding.PathFinder;
 import net.minecraft.pathfinding.PathPoint;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.ChunkCache;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 
 /** 有界原生查询的局部方块视图，不改全局寻路器或世界碰撞 */
 public final class MaidPathQuery {
@@ -19,8 +24,7 @@ public final class MaidPathQuery {
 
     public static PathEntity create(EntityMaid maid, int x, int y, int z, float range, boolean enterDoors,
         boolean closedDoors, boolean avoidWater, boolean swim) {
-        if (maid.getNavigator() instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator navigator)
-            return navigator.createPath(x, y, z, range, 0);
+        if (maid.getNavigator() instanceof MaidPathNavigator navigator) return navigator.createPath(x, y, z, range, 0);
         var vertical = ladderPath(maid, x, y, z, range);
         if (vertical != null) return vertical;
         int ox = MathHelper.floor_double(maid.posX), oy = MathHelper.floor_double(maid.posY),
@@ -32,8 +36,7 @@ public final class MaidPathQuery {
             return new PathFinder(cache, enterDoors, closedDoors, avoidWater, swim) {
 
                 @Override
-                public int getVerticalOffset(net.minecraft.entity.Entity actor, int bx, int by, int bz,
-                    PathPoint size) {
+                public int getVerticalOffset(Entity actor, int bx, int by, int bz, PathPoint size) {
                     boolean adapted = false;
                     for (int dx = 0; dx < size.xCoord; dx++)
                         for (int dy = 0; dy < size.yCoord; dy++) for (int dz = 0; dz < size.zCoord; dz++)
@@ -77,13 +80,12 @@ public final class MaidPathQuery {
         int tx = MathHelper.floor_double(x + 0.5 - maid.width / 2),
             tz = MathHelper.floor_double(z + 0.5 - maid.width / 2);
         if (targetY == cy || Math.abs(targetY - cy) > range || Math.abs(tx - cx) + Math.abs(tz - cz) > 1) return null;
-        var points = new java.util.ArrayList<PathPoint>();
+        var points = new ArrayList<PathPoint>();
         int step = targetY > cy ? 1 : -1;
         for (int py = cy;; py += step) {
             var block = maid.worldObj.getBlock(cx, py, cz);
             if (!block.isLadder(maid.worldObj, cx, py, cz, maid)) return null;
-            var box = net.minecraft.util.AxisAlignedBB
-                .getBoundingBox(cx + 0.2, py, cz + 0.2, cx + 0.8, py + maid.height, cz + 0.8);
+            var box = AxisAlignedBB.getBoundingBox(cx + 0.2, py, cz + 0.2, cx + 0.8, py + maid.height, cz + 0.8);
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, box)
                 .isEmpty()) return null;
             points.add(new PathPoint(cx, py, cz));
@@ -93,7 +95,7 @@ public final class MaidPathQuery {
             if (!maid.worldObj.getBlock(tx, targetY - 1, tz)
                 .getMaterial()
                 .blocksMovement()) return null;
-            var exit = net.minecraft.util.AxisAlignedBB
+            var exit = AxisAlignedBB
                 .getBoundingBox(tx + 0.2, targetY, tz + 0.2, tx + 0.8, targetY + maid.height, tz + 0.8);
             if (!maid.worldObj.getCollidingBoundingBoxes(maid, exit)
                 .isEmpty()) return null;

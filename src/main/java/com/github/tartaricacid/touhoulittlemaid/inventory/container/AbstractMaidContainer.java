@@ -5,23 +5,29 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.inventory.container;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.OriginalMaidTransfers;
+import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 public abstract class AbstractMaidContainer extends ContainerMaid {
 
     protected final EntityMaid maid;
     private int effectCounter;
-    private java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> displayedEffects = java.util.Collections
-        .emptyList();
+    private List<SendEffectMessage.EffectData> displayedEffects = Collections.emptyList();
     private boolean displayedInvulnerable;
 
     protected AbstractMaidContainer(InventoryPlayer inventory, EntityMaid maid) {
@@ -50,18 +56,16 @@ public abstract class AbstractMaidContainer extends ContainerMaid {
     public void detectAndSendChanges() {
         super.detectAndSendChanges();
         if (maid.worldObj.isRemote || effectCounter++ % 20 != 0) return;
-        for (Object listener : crafters) if (listener instanceof net.minecraft.entity.player.EntityPlayerMP viewer)
-            com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork.send(this, viewer);
+        for (Object listener : crafters)
+            if (listener instanceof EntityPlayerMP viewer) MaidEffectNetwork.send(this, viewer);
     }
 
-    public void setDisplayedEffects(
-        java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> effects,
-        boolean invulnerable) {
-        displayedEffects = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(effects));
+    public void setDisplayedEffects(List<SendEffectMessage.EffectData> effects, boolean invulnerable) {
+        displayedEffects = Collections.unmodifiableList(new ArrayList<>(effects));
         displayedInvulnerable = invulnerable;
     }
 
-    public java.util.List<com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage.EffectData> getDisplayedEffects() {
+    public List<SendEffectMessage.EffectData> getDisplayedEffects() {
         return displayedEffects;
     }
 

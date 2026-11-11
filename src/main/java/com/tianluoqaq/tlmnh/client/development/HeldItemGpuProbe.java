@@ -2,15 +2,19 @@ package com.tianluoqaq.tlmnh.client.development;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.DosFileAttributes;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.locks.LockSupport;
 
 import javax.imageio.ImageIO;
 
@@ -51,7 +55,11 @@ import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 import com.tianluoqaq.tlmnh.compat.angelica.client.development.AngelicaBatchReader;
+import com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries;
+import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 import cpw.mods.fml.common.eventhandler.Event;
@@ -165,7 +173,7 @@ public final class HeldItemGpuProbe {
         try {
             requireObserver();
             if (soleMaid(request.model) != request.maid) throw new IllegalStateException("Held GPU actor changed");
-            Object pack = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries.currentShaderPack();
+            Object pack = AngelicaRenderQueries.currentShaderPack();
             if (!(pack instanceof Optional<?>) || ((Optional<?>) pack).isPresent())
                 throw new IllegalStateException("Held GPU pilot requires no shader pack");
             if (!OpenGlHelper.isFramebufferEnabled() || !GLContext.getCapabilities().OpenGL30)
@@ -264,7 +272,7 @@ public final class HeldItemGpuProbe {
     public static boolean atEquippedItems(EntityMaid maid, BuiltinMaidModel model, float partialTick, Runnable draw) {
         var transaction = active;
         if (transaction == null || transaction.request.maid != maid) return false;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || transaction.owner != Thread.currentThread())
+        if (!DevelopmentFlags.isDevCommandsEnabled() || transaction.owner != Thread.currentThread())
             throw new IllegalStateException("Unowned held GPU seam");
         transaction.seams++;
         try {
@@ -351,7 +359,7 @@ public final class HeldItemGpuProbe {
                 .toString());
         report.addProperty("width", SIZE);
         report.addProperty("height", SIZE);
-        report.addProperty("depthEncoding", "GL_DEPTH_COMPONENT_FLOAT32_" + java.nio.ByteOrder.nativeOrder());
+        report.addProperty("depthEncoding", "GL_DEPTH_COMPONENT_FLOAT32_" + ByteOrder.nativeOrder());
         report.addProperty(
             "scope",
             "one actual MaidRenderer body per view; same-pose body and empty-baseline item-layer replay in no-shader FBO; item-only is diagnostic");
@@ -455,7 +463,7 @@ public final class HeldItemGpuProbe {
     private static void requireObserver() {
         var mc = Minecraft.getMinecraft();
         var player = mc.thePlayer;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(mc.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(mc.theWorld)
             || player == null
             || mc.currentScreen != null
             || mc.playerController == null
@@ -472,17 +480,11 @@ public final class HeldItemGpuProbe {
     }
 
     private static MessageDigest digest() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (java.security.NoSuchAlgorithmException failure) {
-            throw new IllegalStateException(failure);
-        }
+        return Sha256Hex.newDigest();
     }
 
     private static String hex(byte[] bytes) {
-        var result = new StringBuilder();
-        for (byte value : bytes) result.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
-        return result.toString();
+        return Sha256Hex.formatHex(bytes);
     }
 
     private static String hash(byte[] bytes) {
@@ -539,7 +541,7 @@ public final class HeldItemGpuProbe {
                 throw new IllegalStateException("Native query availability deadline exceeded");
             }
             if (available == 1) return;
-            java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
+            LockSupport.parkNanos(100_000L);
         }
     }
 
@@ -576,8 +578,8 @@ public final class HeldItemGpuProbe {
     private static void requireEmptyBaseline(byte[] color, byte[] depth) {
         for (byte value : color)
             if (value != 0) throw new IllegalStateException("Diagnostic empty baseline contains actual color");
-        var values = java.nio.ByteBuffer.wrap(depth)
-            .order(java.nio.ByteOrder.nativeOrder())
+        var values = ByteBuffer.wrap(depth)
+            .order(ByteOrder.nativeOrder())
             .asFloatBuffer();
         while (values.hasRemaining())
             if (values.get() != 1F) throw new IllegalStateException("Diagnostic empty baseline contains actual depth");
@@ -752,11 +754,7 @@ public final class HeldItemGpuProbe {
                     throw new IllegalStateException("Held GPU artifact directory already exists");
                 if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) Files.createDirectory(directory);
                 if (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)
-                    || Files
-                        .readAttributes(
-                            directory,
-                            java.nio.file.attribute.DosFileAttributes.class,
-                            LinkOption.NOFOLLOW_LINKS)
+                    || Files.readAttributes(directory, DosFileAttributes.class, LinkOption.NOFOLLOW_LINKS)
                         .isOther()
                     || !directory.toRealPath()
                         .startsWith(game))
@@ -1093,14 +1091,13 @@ public final class HeldItemGpuProbe {
         @SubscribeEvent
         public void onNativeFactoryEvent(Event event) {
             if (!armed || factoryCancellationConsumed
-                || !Boolean.getBoolean("tlmnh.devCommands")
+                || !DevelopmentFlags.isDevCommandsEnabled()
                 || !Boolean.getBoolean("tlmnh.heldCancelFactoryOnce")
                 || pending != request
                 || Thread.currentThread() != request.owner
                 || !request.installing
                 || request.report != null
-                || !com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData.isToolBuildEvent(event))
-                return;
+                || !TConstructToolData.isToolBuildEvent(event)) return;
             factoryCancellationConsumed = true;
             request.factoryFaultTriggered = true;
             observation.addProperty("triggerCount", 1);
@@ -1220,7 +1217,7 @@ public final class HeldItemGpuProbe {
                         HeldItemGpuState.class,
                         MaidRenderer.class,
                         MaidHeldItemLayer.class));
-                if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.heldCancelFactoryOnce")
+                if (DevelopmentFlags.isDevCommandsEnabled() && Boolean.getBoolean("tlmnh.heldCancelFactoryOnce")
                     && !factoryCancellationConsumed
                     && action.startsWith("shield_")) {
                     cancellation = new FactoryCancellationListener(this);

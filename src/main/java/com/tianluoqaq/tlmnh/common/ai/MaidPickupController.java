@@ -14,6 +14,7 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
@@ -257,7 +258,7 @@ public final class MaidPickupController {
         var stopped = run;
         try {
             if (stopped != null) stopped.cancel();
-            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            if (ownedPath != null && MaidPathOwnership.owns(
                 maid.getNavigator()
                     .getPath(),
                 ownedPath))

@@ -5,6 +5,8 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task;
 
+import java.util.function.IntUnaryOperator;
+
 import com.tianluoqaq.tlmnh.common.ai.faithful.MaidMealActor;
 
 public abstract class MaidCheckRateTask {
@@ -16,7 +18,7 @@ public abstract class MaidCheckRateTask {
         return checkExtraStartConditions(maid::nextMealInt);
     }
 
-    protected boolean checkExtraStartConditions(java.util.function.IntUnaryOperator random) {
+    protected boolean checkExtraStartConditions(IntUnaryOperator random) {
         if (nextCheckTickCount > 0) {
             --nextCheckTickCount;
             return false;

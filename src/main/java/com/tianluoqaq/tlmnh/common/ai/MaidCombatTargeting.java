@@ -12,6 +12,7 @@ import net.minecraft.item.ItemBow;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 
 /** 首批战斗安全规则，玩家和宠物遵循上游默认排除语义 */
 public final class MaidCombatTargeting {
@@ -67,7 +68,7 @@ public final class MaidCombatTargeting {
         var area = maid.getHomeArea();
         if (area.enabled()) {
             if (!area.sameDimension() || !area.containsMaid()
-                || area.activity() != com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
+                || area.activity() != MaidLifeRules.Activity.WORK
                 || !area.contains(target.posX, target.posY, target.posZ)) return false;
         } else if (maid.getDistanceSqToEntity(owner) > OWNER_RADIUS_SQ
             || owner.getDistanceSqToEntity(target) > OWNER_RADIUS_SQ) return false;

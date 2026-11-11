@@ -14,6 +14,7 @@ import net.minecraftforge.event.world.WorldEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidWorldSensingBudget;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -61,7 +62,7 @@ public final class MaidBrainLifecycle {
     public void onWorldUnload(WorldEvent.Unload event) {
         if (event.world.isRemote) return;
         MaidWorldNavigationBudget.unload(event.world);
-        com.tianluoqaq.tlmnh.common.ai.perception.MaidWorldSensingBudget.unload(event.world);
+        MaidWorldSensingBudget.unload(event.world);
         UNLOADING_WORLDS.add(event.world);
         visit(
             new ArrayList<>(event.world.loadedEntityList),

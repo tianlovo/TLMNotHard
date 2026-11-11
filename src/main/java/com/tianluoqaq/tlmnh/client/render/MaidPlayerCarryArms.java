@@ -18,6 +18,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -49,13 +50,13 @@ public final class MaidPlayerCarryArms {
     public void hideFirstPersonHand(RenderHandEvent event) {
         if (!carriesMaid(Minecraft.getMinecraft().thePlayer)) return;
         event.setCanceled(true);
-        if (Boolean.getBoolean("tlmnh.devCommands")) hiddenHandFrames++;
+        if (DevelopmentFlags.isDevCommandsEnabled()) hiddenHandFrames++;
     }
 
     public static void apply(ModelBiped model, Entity entity) {
         if (!(entity instanceof EntityPlayer player) || !carriesMaid(player)) return;
         setArmRotations(model.bipedLeftArm, model.bipedRightArm);
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var observed = new JsonObject();
         observed.addProperty(
             "nativeModelClass",

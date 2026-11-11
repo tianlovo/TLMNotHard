@@ -9,7 +9,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +47,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
@@ -59,7 +59,9 @@ import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController.Cause;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController.Outcome;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
@@ -167,7 +169,7 @@ public final class MaidShieldRuntimeProbe {
     /** serverStarting由真实主线程调用一次，RCON命令只入队，不直接碰世界 */
     public static synchronized void registerForDevelopment() {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !pumpRegistered,
+            DevelopmentFlags.isDevCommandsEnabled() && !pumpRegistered,
             "Development tick dispatcher already registered or disabled");
         FMLCommonHandler.instance()
             .bus()
@@ -177,7 +179,7 @@ public final class MaidShieldRuntimeProbe {
 
     public static synchronized String start(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && world != null
+            DevelopmentFlags.isDevCommandsEnabled() && world != null
                 && !world.isRemote
                 && world.provider.dimensionId == 0,
             "Explicit test overworld required");
@@ -210,7 +212,7 @@ public final class MaidShieldRuntimeProbe {
     }
 
     public static synchronized void abort(String expectedRun) {
-        require(Boolean.getBoolean("tlmnh.devCommands") && pending != null, "No abortable shield runtime");
+        require(DevelopmentFlags.isDevCommandsEnabled() && pending != null, "No abortable shield runtime");
         require(pending.run.equals(expectedRun), "Abort run UUID does not own this transaction");
         require(!pending.completed && !pending.closing, "Transaction is already closing or cleanup failed");
         pending.abortRequested = true;
@@ -388,7 +390,7 @@ public final class MaidShieldRuntimeProbe {
                 }
                 return;
             }
-            require(Boolean.getBoolean("tlmnh.devCommands"), "Runtime authority revoked");
+            require(DevelopmentFlags.isDevCommandsEnabled(), "Runtime authority revoked");
             require(System.nanoTime() - startedNanos <= WALL_LIMIT, "Runtime wall-clock deadline");
             if (event.phase == TickEvent.Phase.START) {
                 startInputs();
@@ -1277,7 +1279,7 @@ public final class MaidShieldRuntimeProbe {
         report.add("battlegearIdentity", battlegearIdentity);
         report.add("gates", gates);
         var required = new JsonArray();
-        for (String name : REQUIRED_GATES) required.add(new com.google.gson.JsonPrimitive(name));
+        for (String name : REQUIRED_GATES) required.add(new JsonPrimitive(name));
         report.add("requiredGates", required);
         report.add("cleanup", cleanup);
         if (predecessor != null) report.add("previousClosedTransaction", predecessor.json());
@@ -1462,13 +1464,7 @@ public final class MaidShieldRuntimeProbe {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var text = new StringBuilder();
-        for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) {
-            text.append(Character.forDigit((value >>> 4) & 15, 16));
-            text.append(Character.forDigit(value & 15, 16));
-        }
-        return text.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 
     private static final class CloseReceipt {

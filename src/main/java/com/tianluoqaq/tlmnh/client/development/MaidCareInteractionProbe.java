@@ -12,11 +12,16 @@ import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.Vec3;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
+import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+import com.tianluoqaq.tlmnh.compat.backhand.client.development.NativeBackhandInput;
 
 /** 仅给已由服务端准备的开发场景发送原生玩家操作，不直接给予照料效果或奖励 */
 public final class MaidCareInteractionProbe {
@@ -25,10 +30,9 @@ public final class MaidCareInteractionProbe {
 
     public static JsonObject perform(String action, String identity) {
         if (action.equals("native_click") || action.equals("native_sneak_click"))
-            return com.tianluoqaq.tlmnh.compat.backhand.client.development.NativeBackhandInput
-                .perform(identity, action.equals("native_sneak_click"));
+            return NativeBackhandInput.perform(identity, action.equals("native_sneak_click"));
         var mc = Minecraft.getMinecraft();
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(mc.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(mc.theWorld)
             || mc.thePlayer == null
             || !mc.thePlayer.isEntityAlive()
             || mc.currentScreen != null
@@ -42,7 +46,7 @@ public final class MaidCareInteractionProbe {
         if (action.equals("shrine")) {
             if (!player.capabilities.disableDamage || !player.capabilities.allowFlying
                 || !player.capabilities.isFlying
-                || mc.theWorld.getBlock(7, 65, 0) != com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE
+                || mc.theWorld.getBlock(7, 65, 0) != MaidResurrectionContent.SHRINE
                 || player.getDistanceSq(7.5, 65.5, .5) > 64)
                 throw new IllegalStateException("Actual protected player near the prepared native shrine required");
             boolean previous = player.isSneaking();
@@ -59,7 +63,7 @@ public final class MaidCareInteractionProbe {
                         65,
                         0,
                         1,
-                        net.minecraft.util.Vec3.createVectorHelper(7.5, 66, .5)));
+                        Vec3.createVectorHelper(7.5, 66, .5)));
             } finally {
                 player.setSneaking(previous);
                 connection.addToSendQueue(new C0BPacketEntityAction(player, previous ? 1 : 2));
@@ -67,8 +71,7 @@ public final class MaidCareInteractionProbe {
             result.addProperty("nativePacket", "C0B_STOP_SNEAKING/C08_BLOCK_PLACEMENT/C0B_RESTORE_SNEAKING");
         } else if (action.equals("grave")) {
             var entity = mc.theWorld.getEntityByID(Integer.parseInt(identity));
-            if (!(entity instanceof com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity actual)
-                || player.getDistanceSqToEntity(actual) > 64
+            if (!(entity instanceof MaidTombstoneEntity actual) || player.getDistanceSqToEntity(actual) > 64
                 || !player.capabilities.disableDamage
                 || !player.capabilities.allowFlying
                 || !player.capabilities.isFlying)

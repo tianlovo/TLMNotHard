@@ -6,6 +6,7 @@ import java.util.Set;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.data.inner.AttackListData;
 import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
@@ -33,7 +34,7 @@ public final class MaidAttackSettings {
             .getCompoundTag(GROUPS);
         for (Object raw : groups.func_150296_c()) {
             String key = (String) raw;
-            if (!groups.hasKey(key, 8) || !key.matches("[a-z0-9_.-]+:[a-z0-9/._-]+")) continue;
+            if (!groups.hasKey(key, Constants.NBT.TAG_STRING) || !key.matches("[a-z0-9_.-]+:[a-z0-9/._-]+")) continue;
             try {
                 var type = MonsterType.valueOf(
                     groups.getString(key)

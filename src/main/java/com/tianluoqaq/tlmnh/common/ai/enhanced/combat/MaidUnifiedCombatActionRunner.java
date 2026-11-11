@@ -1,7 +1,10 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
 
+import java.util.UUID;
+
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
+import net.minecraft.potion.Potion;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUseShieldTask;
@@ -13,10 +16,12 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Result;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatFeedback;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -36,7 +41,7 @@ public final class MaidUnifiedCombatActionRunner {
     private final MaidUseShieldTask shield = new MaidUseShieldTask();
     private boolean jumpRequested, jumpPreparing, airborne;
     private long jumpAt;
-    private java.util.UUID jumpTarget;
+    private UUID jumpTarget;
     private ItemStack jumpWeapon;
     private long jumpEpoch, routeApprovedAt;
     private double jumpExpectedDamage, approvedFootY;
@@ -215,8 +220,8 @@ public final class MaidUnifiedCombatActionRunner {
         return jump(target, view, plan, quota);
     }
 
-    private Result bow(EntityLivingBase target, com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor.Target view,
-        CombatPlan plan, CombatWorkQuota quota, com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile profile) {
+    private Result bow(EntityLivingBase target, MaidCombatActor.Target view, CombatPlan plan, CombatWorkQuota quota,
+        MaidWeaponProfile profile) {
         if (!actor.combatObservation()
             .observedAmmunition(maid.worldObj.getTotalWorldTime())
             || profile.remainingDurability >= 0 && profile.remainingDurability < profile.durabilityCost) {
@@ -247,7 +252,7 @@ public final class MaidUnifiedCombatActionRunner {
         return Result.RUNNING;
     }
 
-    private Result melee(EntityLivingBase target, com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor.Target view) {
+    private Result melee(EntityLivingBase target, MaidCombatActor.Target view) {
         if (!maid.getCombatCadence()
             .ready()) return Result.RUNNING;
         var use = maid.getItemUseState()
@@ -284,8 +289,7 @@ public final class MaidUnifiedCombatActionRunner {
         return jumpMeleeResult == null ? value : value + ":" + jumpMeleeResult;
     }
 
-    private Result jump(EntityLivingBase target, com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatActor.Target view,
-        CombatPlan plan, CombatWorkQuota quota) {
+    private Result jump(EntityLivingBase target, MaidCombatActor.Target view, CombatPlan plan, CombatWorkQuota quota) {
         headChecked = supportChecked = false;
         jumpMeleeResult = null;
         if (!jumpRequested || !target.getUniqueID()
@@ -302,7 +306,7 @@ public final class MaidUnifiedCombatActionRunner {
                 || EnhancedRideController.stationary(maid)
                 || !actor.withinMeleeRange(view)
                 || maid.isSprinting()
-                || maid.isPotionActive(net.minecraft.potion.Potion.jump)
+                || maid.isPotionActive(Potion.jump)
                 || !Double.isFinite(jumpPreparing ? jumpExpectedDamage : plan.expectedDamage)
                 || (jumpPreparing ? jumpExpectedDamage : plan.expectedDamage) <= 0) {
                 jumpDiagnostic = "prepare_gate_rejected";

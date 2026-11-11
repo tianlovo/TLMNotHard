@@ -9,6 +9,8 @@ import net.minecraft.entity.player.EntityPlayer;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
+import cpw.mods.fml.common.Loader;
+
 /** 正式版EFR新船的第二乘客由Seat实体承载；使用实际addToBoat，不能直接抢占驾驶位 */
 public final class MaidVehiclePlatform {
 
@@ -89,7 +91,7 @@ public final class MaidVehiclePlatform {
                 add = boat.getMethod("addToBoat", Entity.class);
                 boatOfSeat = seat.getMethod("getBoat");
             } catch (ClassNotFoundException absent) {
-                if (cpw.mods.fml.common.Loader.isModLoaded("etfuturum"))
+                if (Loader.isModLoaded("etfuturum"))
                     throw new IllegalStateException("Installed EFR vehicle classes changed", absent);
                 boat = seat = null;
             } catch (NoSuchMethodException incompatible) {

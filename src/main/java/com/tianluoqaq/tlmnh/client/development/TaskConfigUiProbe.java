@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.client.development;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -9,6 +10,7 @@ import net.minecraft.util.ResourceLocation;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglTextInput;
 
 import cpw.mods.fml.relauncher.Side;
@@ -37,7 +39,7 @@ public final class TaskConfigUiProbe {
     }
 
     public static boolean perform(AttackTaskConfigGui gui, String action, String value) {
-        if (!Boolean.getBoolean("tlmnh.devCommands"))
+        if (!DevelopmentFlags.isDevCommandsEnabled())
             throw new IllegalStateException("Development control is disabled");
         int left = (gui.width - 256) / 2, top = (gui.height - 256) / 2;
         try {
@@ -65,7 +67,7 @@ public final class TaskConfigUiProbe {
             keys.setAccessible(true);
             var page = AttackTaskConfigGui.class.getDeclaredField("page");
             page.setAccessible(true);
-            var ids = (java.util.List<?>) keys.get(gui);
+            var ids = (List<?>) keys.get(gui);
             int index = ids.indexOf(new ResourceLocation(value)), currentPage = page.getInt(gui);
             if (index < 0 || index / 7 != currentPage) return false;
             int x = action.equals("target_remove") ? 200

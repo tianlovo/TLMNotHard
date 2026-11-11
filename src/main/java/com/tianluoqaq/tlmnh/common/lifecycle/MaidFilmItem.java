@@ -5,6 +5,8 @@
  */
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.List;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
@@ -24,7 +26,7 @@ public final class MaidFilmItem extends MaidLifecycleItems.StoredMaidItem {
 
     @Override
     @SideOnly(Side.CLIENT)
-    public void addInformation(ItemStack stack, EntityPlayer player, java.util.List<String> lines, boolean advanced) {
+    public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
         if (MaidLifecycleItems.token(stack) == null) lines.add(
             EnumChatFormatting.DARK_RED
                 + StatCollector.translateToLocal("tooltips.touhou_little_maid.film.no_data.desc"));

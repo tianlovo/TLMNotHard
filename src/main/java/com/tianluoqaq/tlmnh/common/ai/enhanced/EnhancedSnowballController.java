@@ -19,6 +19,7 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -171,7 +172,7 @@ public final class EnhancedSnowballController {
             this,
             item,
             hand,
-            com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind.SNOWBALL,
+            MaidItemUseState.Kind.SNOWBALL,
             () -> run == originalRun && originalRun != null && maid.getTask() == MaidTask.IDLE && snowball(item));
         return handLease != null && actor.isCurrent();
     }

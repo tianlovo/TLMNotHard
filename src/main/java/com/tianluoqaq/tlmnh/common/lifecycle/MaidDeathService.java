@@ -16,6 +16,7 @@ import java.util.UUID;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
@@ -176,9 +177,9 @@ public final class MaidDeathService {
                     holdWild(maid, source);
                     var marker = maid.getEntityData()
                         .getCompoundTag(WILD_TAG);
-                    if (marker.hasKey("Version", 3) && marker.getInteger("Version") == 1
-                        && marker.hasKey("Id", 8)
-                        && marker.hasKey("Raw", 10)
+                    if (marker.hasKey("Version", Constants.NBT.TAG_INT) && marker.getInteger("Version") == 1
+                        && marker.hasKey("Id", Constants.NBT.TAG_STRING)
+                        && marker.hasKey("Raw", Constants.NBT.TAG_COMPOUND)
                         && marker.func_150296_c()
                             .size() == 3) {
                         var observed = MaidDeathIngress.snapshot(maid);
@@ -226,19 +227,21 @@ public final class MaidDeathService {
         if (WILD_CONFIRMED.contains(maid)) return true;
         try {
             var data = maid.getEntityData();
-            if (!data.hasKey(WILD_TAG, 10)) throw new IllegalStateException("Unknown wild death hold marker retained");
+            if (!data.hasKey(WILD_TAG, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException("Unknown wild death hold marker retained");
             var marker = data.getCompoundTag(WILD_TAG);
             boolean observed = marker.hasKey("ObservedId") || marker.hasKey("ObservedRaw");
             if (marker.func_150296_c()
-                .size() != (observed ? 5 : 3) || !marker.hasKey("Version", 3)
+                .size() != (observed ? 5 : 3) || !marker.hasKey("Version", Constants.NBT.TAG_INT)
                 || marker.getInteger("Version") != 1
-                || !marker.hasKey("Id", 8)
-                || !marker.hasKey("Raw", 10)
+                || !marker.hasKey("Id", Constants.NBT.TAG_STRING)
+                || !marker.hasKey("Raw", Constants.NBT.TAG_COMPOUND)
                 || marker.getCompoundTag("Raw")
                     .hasNoTags())
                 throw new IllegalStateException("Invalid wild death hold marker retained");
             if (observed
-                && (!marker.hasKey("ObservedId", 8) || !marker.hasKey("ObservedRaw", 10)
+                && (!marker.hasKey("ObservedId", Constants.NBT.TAG_STRING)
+                    || !marker.hasKey("ObservedRaw", Constants.NBT.TAG_COMPOUND)
                     || marker.getCompoundTag("ObservedRaw")
                         .hasNoTags()))
                 throw new IllegalStateException("Invalid observed wild death successor retained");
@@ -297,7 +300,7 @@ public final class MaidDeathService {
             .blocksTransfer()) return;
         var raw = maid.getEntityData()
             .getTag(COMBAT_DEFERRED);
-        if (!(raw instanceof NBTTagCompound marker) || !marker.hasKey("Version", 3)
+        if (!(raw instanceof NBTTagCompound marker) || !marker.hasKey("Version", Constants.NBT.TAG_INT)
             || marker.getInteger("Version") != 1
             || marker.func_150296_c()
                 .size() != 1
@@ -365,24 +368,25 @@ public final class MaidDeathService {
         for (Object key : receipt.func_150296_c()) if (!PUBLICATION_FIELDS.contains(key))
             throw new IllegalStateException("Unknown tombstone publication field retained: " + key);
         if (receipt.func_150296_c()
-            .size() != PUBLICATION_FIELDS.size() - (receipt.hasKey("Observed") ? 0 : 1) || !receipt.hasKey("Version", 3)
+            .size() != PUBLICATION_FIELDS.size() - (receipt.hasKey("Observed") ? 0 : 1)
+            || !receipt.hasKey("Version", Constants.NBT.TAG_INT)
             || receipt.getInteger("Version") != 1
-            || !receipt.hasKey("Stage", 8)
+            || !receipt.hasKey("Stage", Constants.NBT.TAG_STRING)
             || !(receipt.getString("Stage")
                 .equals("PREPARED")
                 || receipt.getString("Stage")
                     .equals("PUBLISHED")
                 || receipt.getString("Stage")
                     .equals("HELD"))
-            || !receipt.hasKey("Snapshot", 10)
-            || receipt.hasKey("Observed") && !receipt.hasKey("Observed", 10))
+            || !receipt.hasKey("Snapshot", Constants.NBT.TAG_COMPOUND)
+            || receipt.hasKey("Observed") && !receipt.hasKey("Observed", Constants.NBT.TAG_COMPOUND))
             throw new IllegalStateException("Invalid tombstone publication intent");
         var source = receipt.getCompoundTag("Snapshot");
-        if (!source.hasKey("UUIDMost", 4) || !source.hasKey("UUIDLeast", 4)
-            || !source.hasKey("Token", 8)
+        if (!source.hasKey("UUIDMost", Constants.NBT.TAG_LONG) || !source.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
+            || !source.hasKey("Token", Constants.NBT.TAG_STRING)
             || !token.toString()
                 .equals(source.getString("Token"))
-            || !source.hasKey("OwnerId", 8)
+            || !source.hasKey("OwnerId", Constants.NBT.TAG_STRING)
             || !owner.toString()
                 .equals(source.getString("OwnerId")))
             throw new IllegalStateException("Tombstone intent identity disagrees");

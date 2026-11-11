@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import java.util.Objects;
 import java.util.Set;
 
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
@@ -20,7 +21,7 @@ public interface MaidDoorActor {
 
         public Position(int dimension, Point point) {
             this.dimension = dimension;
-            this.point = java.util.Objects.requireNonNull(point, "point");
+            this.point = Objects.requireNonNull(point, "point");
         }
 
         @Override

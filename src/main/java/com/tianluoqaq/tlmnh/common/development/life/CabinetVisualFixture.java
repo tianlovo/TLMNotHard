@@ -1,13 +1,18 @@
 package com.tianluoqaq.tlmnh.common.development.life;
 
+import java.util.UUID;
+
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.inventory.ContainerChest;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -20,7 +25,7 @@ public final class CabinetVisualFixture {
     private CabinetVisualFixture() {}
 
     public static void set(EntityPlayerMP player, String action) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development fixture required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development fixture required");
         AnimationLab.ownedSceneMaid(player);
         require(
             player.openContainer == player.inventoryContainer,
@@ -47,7 +52,7 @@ public final class CabinetVisualFixture {
             validate(world, data.ready);
             MaidLifeContent.snackCabinet.onBlockActivated(world, X[1], 65, -2, player, 2, .5F, .5F, .5F);
             require(
-                player.openContainer instanceof net.minecraft.inventory.ContainerChest chest
+                player.openContainer instanceof ContainerChest chest
                     && chest.getLowerChestInventory() == world.getTileEntity(X[1], 65, -2),
                 "Native 27-slot menu did not open");
             TLMNotHard.LOG.info("TLMNH_CABINET_VISUAL_GUI slots=27");
@@ -136,11 +141,13 @@ public final class CabinetVisualFixture {
         public void readFromNBT(NBTTagCompound tag) {
             raw = (NBTTagCompound) tag.copy();
             require(
-                tag.hasKey("Schema", 3) && tag.getInteger("Schema") == 1,
+                tag.hasKey("Schema", Constants.NBT.TAG_INT) && tag.getInteger("Schema") == 1,
                 "Unknown cabinet fixture schema retained");
-            require(tag.hasKey("Owner", 8) && tag.hasKey("Ready", 1), "Incomplete cabinet fixture journal retained");
+            require(
+                tag.hasKey("Owner", Constants.NBT.TAG_STRING) && tag.hasKey("Ready", Constants.NBT.TAG_BYTE),
+                "Incomplete cabinet fixture journal retained");
             owner = tag.getString("Owner");
-            if (!owner.isEmpty()) java.util.UUID.fromString(owner);
+            if (!owner.isEmpty()) UUID.fromString(owner);
             ready = tag.getBoolean("Ready");
             require(!ready || !owner.isEmpty(), "Ready cabinet fixture has no owner; retained");
             readComplete = true;

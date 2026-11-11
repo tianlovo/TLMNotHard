@@ -6,22 +6,59 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
+import net.minecraftforge.common.MinecraftForge;
 
+import com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.DefaultMaidTaskConfigGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui;
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityTombstoneRenderer;
+import com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityMaidBedRenderer;
+import com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityShrineRenderer;
+import com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntitySnackCabinetRenderer;
+import com.github.tartaricacid.touhoulittlemaid.client.resource.listener.EmojiReloadListener;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
+import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
+import com.tianluoqaq.tlmnh.client.gui.MaidAttackDisplay;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.MaidEffectDisplay;
+import com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsOverlay;
+import com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources;
+import com.tianluoqaq.tlmnh.client.life.cabinet.MaidCabinetModelResources;
+import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources;
+import com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineModelResources;
+import com.tianluoqaq.tlmnh.client.protection.ClientProtectionEvents;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModels;
+import com.tianluoqaq.tlmnh.client.render.MaidBannerModelResources;
+import com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose;
+import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
+import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
+import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
+import com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
+import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -33,28 +70,27 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void init() {
         super.init();
-        com.tianluoqaq.tlmnh.client.protection.ClientProtectionEvents.register();
-        com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.register();
-        com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms.register();
-        var worldSounds = com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE;
+        ClientProtectionEvents.register();
+        MaidSwimRenderPose.register();
+        MaidPlayerCarryArms.register();
+        var worldSounds = MaidWorldSoundPlayer.INSTANCE;
         FMLCommonHandler.instance()
             .bus()
             .register(worldSounds);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(worldSounds);
-        var effects = com.tianluoqaq.tlmnh.client.gui.MaidEffectDisplay.INSTANCE;
+        MinecraftForge.EVENT_BUS.register(worldSounds);
+        var effects = MaidEffectDisplay.INSTANCE;
         FMLCommonHandler.instance()
             .bus()
             .register(effects);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(effects);
-        var attacks = com.tianluoqaq.tlmnh.client.gui.MaidAttackDisplay.INSTANCE;
+        MinecraftForge.EVENT_BUS.register(effects);
+        var attacks = MaidAttackDisplay.INSTANCE;
         FMLCommonHandler.instance()
             .bus()
             .register(attacks);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(attacks);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS
-            .register(new com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent());
-        com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.load();
-        com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsOverlay.register();
+        MinecraftForge.EVENT_BUS.register(attacks);
+        MinecraftForge.EVENT_BUS.register(new MaidSoundFreqEvent());
+        MaidClientPreferences.load();
+        MaidInteractionTipsOverlay.register();
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
         var models = new BuiltinMaidModels(
@@ -62,36 +98,26 @@ public final class ClientProxy extends CommonProxy {
                 .getInputStream());
         ((IReloadableResourceManager) manager).registerReloadListener(models);
         ((IReloadableResourceManager) manager).registerReloadListener(BuiltinModelNames.INSTANCE);
-        ((IReloadableResourceManager) manager)
-            .registerReloadListener(com.tianluoqaq.tlmnh.client.render.MaidBannerModelResources.INSTANCE);
-        ((IReloadableResourceManager) manager).registerReloadListener(
-            com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE);
-        ((IReloadableResourceManager) manager).registerReloadListener(
-            new com.github.tartaricacid.touhoulittlemaid.client.resource.listener.EmojiReloadListener());
+        ((IReloadableResourceManager) manager).registerReloadListener(MaidBannerModelResources.INSTANCE);
+        ((IReloadableResourceManager) manager).registerReloadListener(CacheIconManager.INSTANCE);
+        ((IReloadableResourceManager) manager).registerReloadListener(new EmojiReloadListener());
         RenderingRegistry.registerEntityRenderingHandler(EntityMaid.class, new MaidRenderer(models));
-        var tombstoneModels = new com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources();
+        var tombstoneModels = new TombstoneModelResources();
         ((IReloadableResourceManager) manager).registerReloadListener(tombstoneModels);
         RenderingRegistry
             .registerEntityRenderingHandler(MaidTombstoneEntity.class, new EntityTombstoneRenderer(tombstoneModels));
-        var bedModels = new com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources();
+        var bedModels = new MaidBedModelResources();
         ((IReloadableResourceManager) manager).registerReloadListener(bedModels);
-        cpw.mods.fml.client.registry.ClientRegistry.bindTileEntitySpecialRenderer(
-            com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed.class,
-            new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityMaidBedRenderer(
-                bedModels));
-        var cabinetModels = new com.tianluoqaq.tlmnh.client.life.cabinet.MaidCabinetModelResources();
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityMaidBed.class, new TileEntityMaidBedRenderer(bedModels));
+        var cabinetModels = new MaidCabinetModelResources();
         ((IReloadableResourceManager) manager).registerReloadListener(cabinetModels);
-        cpw.mods.fml.client.registry.ClientRegistry.bindTileEntitySpecialRenderer(
-            com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet.class,
-            new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntitySnackCabinetRenderer(
-                cabinetModels));
-        var shrineModels = new com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineModelResources();
+        ClientRegistry.bindTileEntitySpecialRenderer(
+            TileEntitySnackCabinet.class,
+            new TileEntitySnackCabinetRenderer(cabinetModels));
+        var shrineModels = new ShrineModelResources();
         ((IReloadableResourceManager) manager).registerReloadListener(shrineModels);
-        cpw.mods.fml.client.registry.ClientRegistry.bindTileEntitySpecialRenderer(
-            com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile.class,
-            new com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntityShrineRenderer(
-                shrineModels));
-        if (Boolean.getBoolean("tlmnh.devCommands")) {
+        ClientRegistry.bindTileEntitySpecialRenderer(MaidShrineTile.class, new TileEntityShrineRenderer(shrineModels));
+        if (DevelopmentFlags.isDevCommandsEnabled()) {
             try {
                 FMLCommonHandler.instance()
                     .bus()
@@ -103,44 +129,34 @@ public final class ClientProxy extends CommonProxy {
     }
 
     @Override
-    public void enqueueMaidSound(
-        com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {
-        com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.enqueue(message);
+    public void enqueueMaidSound(PlayMaidSoundMessage message) {
+        MaidWorldSoundPlayer.INSTANCE.enqueue(message);
     }
 
     @Override
-    public void enqueueMaidEffects(com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage message) {
-        com.tianluoqaq.tlmnh.client.gui.MaidEffectDisplay.INSTANCE.enqueue(message);
+    public void enqueueMaidEffects(SendEffectMessage message) {
+        MaidEffectDisplay.INSTANCE.enqueue(message);
     }
 
     @Override
     public Object getClientGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
         int unusedZ) {
         var container = getServerGuiElement(id, player, world, entityId, unusedY, unusedZ);
-        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer original)
-            return new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen(
-                original);
-        if (container instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds sounds)
-            return new com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui(sounds);
-        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer config)
-            return new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui(
-                config);
-        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer task)
-            return task.attackPage()
-                ? new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui(task)
-                : new com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.DefaultMaidTaskConfigGui(
-                    task);
+        if (container instanceof EmptyBackpackContainer original) return new EmptyBackpackContainerScreen(original);
+        if (container instanceof ContainerMaidSounds sounds) return new MaidSoundPackGui(sounds);
+        if (container instanceof MaidConfigContainer config) return new MaidConfigContainerGui(config);
+        if (container instanceof TaskConfigContainer task)
+            return task.attackPage() ? new AttackTaskConfigGui(task) : new DefaultMaidTaskConfigGui(task);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
-        if (container instanceof ContainerMaidModels modelContainer) return modelContainer.isOriginalView()
-            ? com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE
-                .openMaidModelGui(modelContainer)
-            : new GuiMaidModels(modelContainer);
+        if (container instanceof ContainerMaidModels modelContainer)
+            return modelContainer.isOriginalView() ? CacheIconManager.INSTANCE.openMaidModelGui(modelContainer)
+                : new GuiMaidModels(modelContainer);
         return null;
     }
 
     @Override
-    public void enqueueMaidAttackSnapshot(com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot message) {
-        com.tianluoqaq.tlmnh.client.gui.MaidAttackDisplay.INSTANCE.enqueue(message);
+    public void enqueueMaidAttackSnapshot(MaidAttackSnapshot message) {
+        MaidAttackDisplay.INSTANCE.enqueue(message);
     }
 }

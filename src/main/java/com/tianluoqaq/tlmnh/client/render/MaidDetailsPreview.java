@@ -16,7 +16,10 @@ import org.lwjgl.opengl.GL12;
 import com.github.tartaricacid.simplebedrockmodel.client.bedrock.AbstractBedrockEntityModel;
 import com.github.tartaricacid.touhoulittlemaid.client.model.DebugFloorModel;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
 
 import cpw.mods.fml.relauncher.Side;
@@ -38,7 +41,7 @@ public final class MaidDetailsPreview implements AutoCloseable {
         "models/entity/low_stool.json");
     private AbstractBedrockEntityModel<Entity> stool;
     private int resourceRevision = -1;
-    private com.google.gson.JsonObject diagnostic = new com.google.gson.JsonObject();
+    private JsonObject diagnostic = new JsonObject();
 
     public void draw(EntityMaid maid, float x, float y, float scale, float yaw, float pitch, boolean floor,
         float partialTick) {
@@ -70,7 +73,7 @@ public final class MaidDetailsPreview implements AutoCloseable {
             var renderer = manager.getEntityRenderObject(maid);
             long before = MaidHeldItemLayer.getNativeCounters().attempts;
             renderer.doRender(maid, 0, 0, 0, 0, partialTick);
-            if (Boolean.getBoolean("tlmnh.devCommands") && renderer instanceof MaidRenderer maidRenderer) {
+            if (DevelopmentFlags.isDevCommandsEnabled() && renderer instanceof MaidRenderer maidRenderer) {
                 diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
                 diagnostic.addProperty("nativeItemCalls", MaidHeldItemLayer.getNativeCounters().attempts - before);
             }
@@ -166,8 +169,8 @@ public final class MaidDetailsPreview implements AutoCloseable {
         tessellator.draw();
     }
 
-    public com.google.gson.JsonObject observation() {
-        return new com.google.gson.JsonParser().parse(diagnostic.toString())
+    public JsonObject observation() {
+        return new JsonParser().parse(diagnostic.toString())
             .getAsJsonObject();
     }
 

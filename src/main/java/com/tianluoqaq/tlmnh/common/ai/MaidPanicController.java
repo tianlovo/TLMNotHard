@@ -9,6 +9,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
@@ -88,7 +89,7 @@ public final class MaidPanicController {
         }
         // 原版仅以 NEAREST_HOSTILE 选择逃离点，HURT_BY 自身不泄露攻击者位置
         if (threat == null) {
-            if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            if (ownedPath != null && MaidPathOwnership.owns(
                 maid.getNavigator()
                     .getPath(),
                 ownedPath))
@@ -98,7 +99,7 @@ public final class MaidPanicController {
             setStatus("hurt_pause");
             return true;
         }
-        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+        if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
             ownedPath) && !ownedPath.isFinished() && away(ownedPath)) {
@@ -107,7 +108,7 @@ public final class MaidPanicController {
         }
         if (now < nextPath) return true;
         nextPath = now + PATH_RETRY;
-        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+        if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
             ownedPath))
@@ -210,7 +211,7 @@ public final class MaidPanicController {
         var stopped = run;
         run = null;
         if (stopped != null) stopped.cancel();
-        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+        if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
             ownedPath))

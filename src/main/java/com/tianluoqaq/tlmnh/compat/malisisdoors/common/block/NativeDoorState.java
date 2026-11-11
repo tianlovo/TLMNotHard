@@ -8,6 +8,8 @@ import net.minecraft.world.World;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
+import cpw.mods.fml.common.Loader;
+
 /** native 原版木门的 Malisis 动画状态；不替换其开门入口、动画或权限 */
 public final class NativeDoorState {
 
@@ -46,7 +48,7 @@ public final class NativeDoorState {
                     NativeDoorState.class.getClassLoader())
                 .getMethod("getState");
         } catch (ClassNotFoundException | NoSuchMethodException absent) {
-            if (cpw.mods.fml.common.Loader.isModLoaded("malisisdoors"))
+            if (Loader.isModLoaded("malisisdoors"))
                 throw new IllegalStateException("Installed animated door state API changed", absent);
             return null;
         }

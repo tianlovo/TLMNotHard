@@ -8,6 +8,7 @@ import net.minecraft.util.DamageSource;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 
@@ -17,7 +18,7 @@ public final class MaidWorldSoundRuntimeProbe {
     private MaidWorldSoundRuntimeProbe() {}
 
     public static void run(EntityPlayerMP player, String action) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("World sound probe disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("World sound probe disabled");
         var maid = AnimationLab.ownedSceneMaid(player);
         switch (action) {
             case "prepare" -> {

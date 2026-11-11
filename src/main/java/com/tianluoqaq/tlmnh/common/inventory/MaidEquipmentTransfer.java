@@ -8,6 +8,7 @@ import java.util.function.BooleanSupplier;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
@@ -139,7 +140,7 @@ public final class MaidEquipmentTransfer {
         return maid != null && maid.worldObj != null
             && !maid.worldObj.isRemote
             && maid.isEntityAlive()
-            && !com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService.isPendingRedemption(maid)
+            && !MaidLifecycleService.isPendingRedemption(maid)
             && maid.worldObj.getEntityByID(maid.getEntityId()) == maid;
     }
 }

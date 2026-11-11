@@ -7,12 +7,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.zip.ZipFile;
+
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 绑定实际Class资源URL与同一CodeSource的物理条目，不推测MR版本或变换后定义 */
 public final class PackagedClassResourceResolver {
@@ -29,13 +30,7 @@ public final class PackagedClassResourceResolver {
             this.logicalEntry = logicalEntry;
             this.physicalEntry = physicalEntry;
             this.multiReleaseVersion = multiReleaseVersion;
-            var result = new StringBuilder();
-            for (byte value : MessageDigest.getInstance("SHA-256")
-                .digest(bytes)) {
-                result.append(Character.forDigit((value & 255) >>> 4, 16));
-                result.append(Character.forDigit(value & 15, 16));
-            }
-            sha256 = result.toString();
+            sha256 = Sha256Hex.ofBytes(bytes);
         }
     }
 

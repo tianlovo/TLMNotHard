@@ -10,13 +10,14 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.ILoopType.EDefaultLoopTypes;
 
 public class AnimationBuilder {
 
-    private final List<RawAnimation> animationList = new java.util.ArrayList<>();
+    private final List<RawAnimation> animationList = new ArrayList<>();
 
     public AnimationBuilder addAnimation(String animationName, ILoopType loopType) {
         animationList.add(new RawAnimation(animationName, loopType));

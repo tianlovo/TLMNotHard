@@ -11,6 +11,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
+import net.minecraftforge.common.util.Constants;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
@@ -119,7 +120,7 @@ public final class BattlegearShieldAccess {
             if (original.hasTagCompound() && original.getTagCompound()
                 .hasKey("arrows")
                 && !original.getTagCompound()
-                    .hasKey("arrows", 2))
+                    .hasKey("arrows", Constants.NBT.TAG_SHORT))
                 throw new IllegalStateException("Unknown shield arrow-count encoding");
             var display = (mods.battlegear2.api.shield.IArrowDisplay) changed.getItem();
             int previous = display.getArrowCount(changed);

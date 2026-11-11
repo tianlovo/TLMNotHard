@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input;
 
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -10,7 +12,7 @@ public final class LwjglTextInput {
     private LwjglTextInput() {}
 
     public static void character(char value) throws ReflectiveOperationException {
-        if (!Boolean.getBoolean("tlmnh.devCommands"))
+        if (!DevelopmentFlags.isDevCommandsEnabled())
             throw new IllegalStateException("Development control is disabled");
         Class<?> events;
         try {

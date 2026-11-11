@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.combat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -12,6 +13,7 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemBow;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
@@ -36,7 +38,7 @@ public final class EquipmentEpoch {
     private boolean phaseOpen, confirmed;
 
     public EquipmentEpoch(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, "maid");
     }
 
     /** 原生更新提前退出时不能沿用上一轮确认 */
@@ -83,9 +85,9 @@ public final class EquipmentEpoch {
             if (copy.hasTagCompound() && copy.getTagCompound()
                 .hasKey("AttributeModifiers")) {
                 if (!copy.getTagCompound()
-                    .hasKey("AttributeModifiers", 9)
+                    .hasKey("AttributeModifiers", Constants.NBT.TAG_LIST)
                     || copy.getTagCompound()
-                        .getTagList("AttributeModifiers", 10)
+                        .getTagList("AttributeModifiers", Constants.NBT.TAG_COMPOUND)
                         .tagCount() > MAX_MAIN_HAND_ATTRIBUTE_MODIFIERS)
                     return refuse("main_hand_modifier_input_limit");
             }

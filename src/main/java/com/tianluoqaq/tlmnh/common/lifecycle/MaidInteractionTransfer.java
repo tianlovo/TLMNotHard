@@ -3,14 +3,17 @@ package com.tianluoqaq.tlmnh.common.lifecycle;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
@@ -23,7 +26,7 @@ import cpw.mods.fml.relauncher.Side;
 public final class MaidInteractionTransfer {
 
     public static final String TAG = "TLMNHInteractionTransfer";
-    private static final java.util.Set<String> FIELDS = new HashSet<>(
+    private static final Set<String> FIELDS = new HashSet<>(
         Arrays.asList(
             "Schema",
             "Run",
@@ -44,7 +47,7 @@ public final class MaidInteractionTransfer {
 
     /** 胶片只恢复本域的不透明保管记录，不替换其他模组的ForgeData */
     static void restoreFilmHold(EntityMaid maid, NBTTagCompound identity) {
-        if (!identity.hasKey("ForgeData", 10)) return;
+        if (!identity.hasKey("ForgeData", Constants.NBT.TAG_COMPOUND)) return;
         var original = identity.getCompoundTag("ForgeData");
         var restored = maid.getEntityData();
         for (Object raw : original.func_150296_c()) {
@@ -68,11 +71,11 @@ public final class MaidInteractionTransfer {
         row.setInteger("CurrentExperience", maid.getExperience());
         row.setInteger("AvailableExperience", availableExperience(maid));
         row.setLong("WorldTick", maid.worldObj.getTotalWorldTime());
-        if (data.hasKey(TAG, 10)) {
+        if (data.hasKey(TAG, Constants.NBT.TAG_COMPOUND)) {
             var hold = data.getCompoundTag(TAG);
             try {
                 validate(hold);
-                hold.getTagList("DeathBalances", 10)
+                hold.getTagList("DeathBalances", Constants.NBT.TAG_COMPOUND)
                     .appendTag(row);
                 return;
             } catch (Exception | LinkageError | AssertionError failure) {
@@ -93,7 +96,8 @@ public final class MaidInteractionTransfer {
             .hasKey(TAG)) return current;
         try {
             if (!maid.getEntityData()
-                .hasKey(TAG, 10)) throw new IllegalStateException("Unknown interaction hold encoding");
+                .hasKey(TAG, Constants.NBT.TAG_COMPOUND))
+                throw new IllegalStateException("Unknown interaction hold encoding");
             var hold = maid.getEntityData()
                 .getCompoundTag(TAG);
             validate(hold);
@@ -187,39 +191,42 @@ public final class MaidInteractionTransfer {
         for (Object key : hold.func_150296_c()) if (!FIELDS.contains(key))
             throw new IllegalStateException("Unknown interaction hold field preserved: " + key);
         if (hold.func_150296_c()
-            .size() != FIELDS.size() || !hold.hasKey("Schema", 3)
+            .size() != FIELDS.size() || !hold.hasKey("Schema", Constants.NBT.TAG_INT)
             || hold.getInteger("Schema") != 1
-            || !hold.hasKey("Kind", 8)
+            || !hold.hasKey("Kind", Constants.NBT.TAG_STRING)
             || !(hold.getString("Kind")
                 .equals("experience")
                 || hold.getString("Kind")
                     .equals("container")))
             throw new IllegalStateException("Unknown interaction hold schema");
         for (String key : new String[] { "Run", "Player" }) {
-            if (!hold.hasKey(key, 8)) throw new IllegalStateException("Invalid interaction hold identity");
+            if (!hold.hasKey(key, Constants.NBT.TAG_STRING))
+                throw new IllegalStateException("Invalid interaction hold identity");
             UUID.fromString(hold.getString(key));
         }
         for (String key : new String[] { "Source", "OriginalMaid", "Output" })
-            if (!hold.hasKey(key, 10) || hold.getCompoundTag(key)
+            if (!hold.hasKey(key, Constants.NBT.TAG_COMPOUND) || hold.getCompoundTag(key)
                 .hasNoTags()) throw new IllegalStateException("Invalid interaction source snapshot");
         for (String key : new String[] { "Inventory", "PaidInventory", "DeathBalances" })
-            if (!hold.hasKey(key, 9) || ((NBTTagList) hold.getTag(key)).tagCount() != hold.getTagList(key, 10)
-                .tagCount()) throw new IllegalStateException("Invalid interaction inventory snapshot");
-        var balances = hold.getTagList("DeathBalances", 10);
+            if (!hold.hasKey(key, Constants.NBT.TAG_LIST)
+                || ((NBTTagList) hold.getTag(key)).tagCount() != hold.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                    .tagCount())
+                throw new IllegalStateException("Invalid interaction inventory snapshot");
+        var balances = hold.getTagList("DeathBalances", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < balances.tagCount(); i++) {
             var row = balances.getCompoundTagAt(i);
             if (row.func_150296_c()
-                .size() != 3 || !row.hasKey("CurrentExperience", 3)
-                || !row.hasKey("AvailableExperience", 3)
-                || !row.hasKey("WorldTick", 4)
+                .size() != 3 || !row.hasKey("CurrentExperience", Constants.NBT.TAG_INT)
+                || !row.hasKey("AvailableExperience", Constants.NBT.TAG_INT)
+                || !row.hasKey("WorldTick", Constants.NBT.TAG_LONG)
                 || row.getInteger("CurrentExperience") < 0
                 || row.getInteger("AvailableExperience") < 0
                 || row.getInteger("AvailableExperience") > row.getInteger("CurrentExperience"))
                 throw new IllegalStateException("Unknown interaction death balance remains preserved");
         }
-        if (!hold.hasKey("Slot", 3) || hold.getInteger("Slot") < 0
-            || !hold.hasKey("XPBefore", 3)
-            || !hold.hasKey("XPReserved", 3)
+        if (!hold.hasKey("Slot", Constants.NBT.TAG_INT) || hold.getInteger("Slot") < 0
+            || !hold.hasKey("XPBefore", Constants.NBT.TAG_INT)
+            || !hold.hasKey("XPReserved", Constants.NBT.TAG_INT)
             || hold.getInteger("XPBefore") < 0
             || hold.getInteger("XPReserved") < 0
             || hold.getInteger("XPReserved") > hold.getInteger("XPBefore")
@@ -227,7 +234,7 @@ public final class MaidInteractionTransfer {
                 .equals("experience") && hold.getInteger("XPReserved") == 0
             || hold.getString("Kind")
                 .equals("container") && hold.getInteger("XPReserved") != 0
-            || !hold.hasKey("Paid", 1)
+            || !hold.hasKey("Paid", Constants.NBT.TAG_BYTE)
             || hold.getByte("Paid") < 0
             || hold.getByte("Paid") > 1) throw new IllegalStateException("Invalid interaction hold balance");
     }
@@ -241,7 +248,7 @@ public final class MaidInteractionTransfer {
         final int maidId, selected, beforeExperience;
         final String owner;
         final boolean creative;
-        final net.minecraft.entity.player.InventoryPlayer inventory;
+        final InventoryPlayer inventory;
         final ItemStack[] main, armor;
         final ItemStack source, originalSource, paid, cursor;
         final NBTTagList originalInventory, paidInventory;

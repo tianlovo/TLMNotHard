@@ -5,7 +5,9 @@ import static com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType.*;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Objects;
 
+import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.PathEntity;
@@ -13,11 +15,16 @@ import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidUnderWaterNodeEvaluator;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidNavigationManager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
 import com.tianluoqaq.tlmnh.common.ai.MaidWorldNavigationBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Navigation;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
 
@@ -64,8 +71,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         default void ownedMoveDispatchRejected(PathEntity path) {}
 
-        default void ownedMoveDispatched(PathEntity path,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command, long slotRevision) {}
+        default void ownedMoveDispatched(PathEntity path, CombatQueuedMove command, long slotRevision) {}
     }
 
     public enum StopCause {
@@ -151,9 +157,9 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     public boolean claimBrainTarget(Object owner, Object lease, BrainTarget target) {
-        java.util.Objects.requireNonNull(owner, "owner");
-        java.util.Objects.requireNonNull(lease, "lease");
-        java.util.Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(owner, "owner");
+        Objects.requireNonNull(lease, "lease");
+        Objects.requireNonNull(target, "target");
         if (brainOwner != null && brainOwner != owner) return false;
         brainOwner = owner;
         brainLease = lease;
@@ -211,7 +217,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     /** 仅显式QA作用域取得上一次安装的纯值，不读取World或重新安装 */
     public String combatInstallDiagnostic() {
-        var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(maid.worldObj);
+        var scope = CombatDiagnosticScope.current(maid.worldObj);
         return scope == null ? null : (String) scope.get(active);
     }
 
@@ -328,10 +334,8 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     }
 
     public MaidWalkEvaluator evaluator() {
-        return active.water
-            ? new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidUnderWaterNodeEvaluator(
-                context(region()))
-            : new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator(context(region()));
+        return active.water ? new MaidUnderWaterNodeEvaluator(context(region()))
+            : new MaidNodeEvaluator(context(region()));
     }
 
     /** 调用方需在当前任务查询结束时显式关闭，快照数据仅在当前 tick 内有效 */
@@ -439,12 +443,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             if (dispatch.kind == MaidCombatMoveDispatch.Kind.DEFAULT) {
                 maid.getMoveHelper()
                     .setMoveTo(target.xCoord, y, target.zCoord, active.speed);
-                if (brainTarget != null && maid
-                    .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control)
+                if (brainTarget != null && maid.getMoveHelper() instanceof MaidMoveControl control)
                     brainTarget.ordinaryMoveDispatched(raw, control.combatSlotRevision());
             } else if (dispatch.kind == MaidCombatMoveDispatch.Kind.OWNED) {
-                if (maid
-                    .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control
+                if (maid.getMoveHelper() instanceof MaidMoveControl control
                     && control.setOwnedMoveTo(dispatch.command, target.xCoord, y, target.zCoord, active.speed)) {
                     if (brainTarget != null)
                         brainTarget.ownedMoveDispatched(raw, dispatch.command, control.combatSlotRevision());
@@ -467,7 +469,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
     @Override
     public boolean underWater() {
-        return maid.isInsideOfMaterial(net.minecraft.block.material.Material.water);
+        return maid.isInsideOfMaterial(Material.water);
     }
 
     @Override
@@ -618,12 +620,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
 
         boolean install(PathEntity candidate, double speed, boolean resetTimer) {
-            var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope
-                .current(maid.worldObj);
+            var diagnosticScope = CombatDiagnosticScope.current(maid.worldObj);
             if (diagnosticScope != null) {
                 Object ownerLog = diagnosticScope.get(brainOwner);
-                if (!(ownerLog instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.Log log))
-                    diagnosticScope = null;
+                if (!(ownerLog instanceof CombatDiagnosticScope.Log log)) diagnosticScope = null;
                 else if (!log.hasRemainingCurrentCapacity()) {
                     diagnosticScope.put(this, "NOT_EVALUATED_LOG_FULL");
                     diagnosticScope = null;
@@ -723,8 +723,8 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             return true;
         }
 
-        private void traceInstall(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope scope,
-            String candidate, String before, int same, int transformations, String reason, boolean accepted) {
+        private void traceInstall(CombatDiagnosticScope scope, String candidate, String before, int same,
+            int transformations, String reason, boolean accepted) {
             if (scope != null) scope.put(
                 this,
                 "candidate=" + candidate

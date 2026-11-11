@@ -11,6 +11,8 @@
 
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -49,8 +51,8 @@ public class AnimationController<T extends GeckoAnimationTarget> {
      * 动画控制器名称
      */
     private final String name;
-    private final java.util.HashMap<String, BoneAnimationQueue> boneAnimationQueues = new java.util.HashMap<>();
-    private final java.util.ArrayList<BoneAnimationQueue> activeBoneAnimationQueues = new java.util.ArrayList<>();
+    private final HashMap<String, BoneAnimationQueue> boneAnimationQueues = new HashMap<>();
+    private final ArrayList<BoneAnimationQueue> activeBoneAnimationQueues = new ArrayList<>();
     private InstructionKeyFrameExecutor instructionKeyFrameExecutor;
     /**
      * 在动画之间过渡需要多长时间

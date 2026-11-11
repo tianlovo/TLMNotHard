@@ -4,6 +4,9 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.pathfinding.PathEntity;
+
 /** 唯一策略执行壳，开发组件与旧原型互斥，所有调用须来自所属世界的服务端线程 */
 public final class MaidPolicyRuntime {
 
@@ -79,7 +82,7 @@ public final class MaidPolicyRuntime {
 
         default void onAcceptedHurt() {}
 
-        default net.minecraft.pathfinding.PathEntity peekActivePath() {
+        default PathEntity peekActivePath() {
             return null;
         }
 
@@ -87,9 +90,8 @@ public final class MaidPolicyRuntime {
             return false;
         }
 
-        default net.minecraft.nbt.NBTTagCompound flushPersistentBehaviorData(
-            net.minecraft.nbt.NBTTagCompound baseTlmnhExtension) {
-            return baseTlmnhExtension == null ? null : (net.minecraft.nbt.NBTTagCompound) baseTlmnhExtension.copy();
+        default NBTTagCompound flushPersistentBehaviorData(NBTTagCompound baseTlmnhExtension) {
+            return baseTlmnhExtension == null ? null : (NBTTagCompound) baseTlmnhExtension.copy();
         }
 
         /** 旧 token 已先失效；清理只依据本动作实际持有的资源身份 */

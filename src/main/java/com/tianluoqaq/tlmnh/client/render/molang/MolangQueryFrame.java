@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.client.render.molang;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /** 单次绘制所需的查询数据，不包含世界、实体或物品实例引用 */
@@ -99,8 +100,8 @@ public final class MolangQueryFrame {
             this.itemId = itemId;
             this.maxDamage = maxDamage;
             this.damage = damage;
-            this.classification = java.util.Objects.requireNonNull(classification, "classification");
-            this.useAnimation = java.util.Objects.requireNonNull(useAnimation, "useAnimation");
+            this.classification = Objects.requireNonNull(classification, "classification");
+            this.useAnimation = Objects.requireNonNull(useAnimation, "useAnimation");
         }
     }
 }

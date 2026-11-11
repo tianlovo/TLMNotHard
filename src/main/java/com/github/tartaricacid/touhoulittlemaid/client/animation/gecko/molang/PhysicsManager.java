@@ -6,11 +6,13 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.molang;
 
+import java.util.HashMap;
+
 import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.molang.functions.physics.IPhysics;
 
 public class PhysicsManager {
 
-    private final java.util.HashMap<String, IPhysics> physicsValues = new java.util.HashMap<>(16);
+    private final HashMap<String, IPhysics> physicsValues = new HashMap<>(16);
     private float lastRenderTicks = Float.NaN;
 
     public void update(float renderTicks) {

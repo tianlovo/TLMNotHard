@@ -4,12 +4,13 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -17,6 +18,7 @@ import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
@@ -24,13 +26,16 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
+import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -43,6 +48,7 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
@@ -98,7 +104,7 @@ final class MaidModelLifecycleActions {
 
     static void validateSnapshot(NBTTagCompound data) {
         if (!data.hasKey(KEY)) return;
-        require(data.hasKey(KEY, 10), "Unknown model lifecycle snapshot retained");
+        require(data.hasKey(KEY, Constants.NBT.TAG_COMPOUND), "Unknown model lifecycle snapshot retained");
         require(
             data.getString("Phase")
                 .equals("model-lifecycle"),
@@ -107,25 +113,28 @@ final class MaidModelLifecycleActions {
         for (Object key : state.func_150296_c())
             require(FIELDS.contains(key), "Unknown model lifecycle field retained");
         require(
-            state.hasKey("Schema", 3) && state.getInteger("Schema") == 1
-                && state.hasKey("Stage", 8)
+            state.hasKey("Schema", Constants.NBT.TAG_INT) && state.getInteger("Schema") == 1
+                && state.hasKey("Stage", Constants.NBT.TAG_STRING)
                 && STAGES.contains(state.getString("Stage")),
             "Invalid lifecycle stage retained");
         for (String key : new String[] { "Source", "Model" })
-            require(state.hasKey(key, 8), "Invalid lifecycle identity");
+            require(state.hasKey(key, Constants.NBT.TAG_STRING), "Invalid lifecycle identity");
         UUID.fromString(state.getString("Source"));
         for (String key : new String[] { "Token", "Grave", "Candidate" }) if (state.hasKey(key)) {
-            require(state.hasKey(key, 8), "Invalid lifecycle UUID type");
+            require(state.hasKey(key, Constants.NBT.TAG_STRING), "Invalid lifecycle UUID type");
             UUID.fromString(state.getString(key));
         }
         for (String key : new String[] { "SourceNative", "CandidateNative", "EmptyTile", "FilledTile",
-            "RevivedNative" }) if (state.hasKey(key)) require(state.hasKey(key, 10), "Invalid lifecycle raw snapshot");
+            "RevivedNative" })
+            if (state.hasKey(key))
+                require(state.hasKey(key, Constants.NBT.TAG_COMPOUND), "Invalid lifecycle raw snapshot");
         require(
-            state.hasKey("OriginalMetadata", 3) && state.getInteger("OriginalMetadata") == 0,
+            state.hasKey("OriginalMetadata", Constants.NBT.TAG_INT) && state.getInteger("OriginalMetadata") == 0,
             "Unknown original air metadata retained");
-        if (state.hasKey("LedgerSchema")) require(state.hasKey("LedgerSchema", 3), "Unknown ledger schema retained");
+        if (state.hasKey("LedgerSchema"))
+            require(state.hasKey("LedgerSchema", Constants.NBT.TAG_INT), "Unknown ledger schema retained");
         if (state.hasKey("Long")) {
-            require(state.hasKey("Long", 10), "Unknown long-session data retained");
+            require(state.hasKey("Long", Constants.NBT.TAG_COMPOUND), "Unknown long-session data retained");
             var record = state.getCompoundTag("Long");
             for (Object key : record.func_150296_c()) require(
                 Arrays
@@ -147,44 +156,52 @@ final class MaidModelLifecycleActions {
                     .contains(key),
                 "Unknown long-session field retained");
             require(
-                record.hasKey("Profile", 8) && Arrays.asList("faithful_tlm", "enhanced")
+                record.hasKey("Profile", Constants.NBT.TAG_STRING) && Arrays.asList("faithful_tlm", "enhanced")
                     .contains(record.getString("Profile"))
-                    && record.hasKey("StartedAt", 4)
-                    && record.hasKey("Ticks", 3)
+                    && record.hasKey("StartedAt", Constants.NBT.TAG_LONG)
+                    && record.hasKey("Ticks", Constants.NBT.TAG_INT)
                     && (record.getInteger("Ticks") == 9000 || record.getInteger("Ticks") == 24000)
-                    && record.hasKey("Stage", 8)
+                    && record.hasKey("Stage", Constants.NBT.TAG_STRING)
                     && Arrays.asList("running", "finished")
                         .contains(record.getString("Stage")),
                 "Invalid long-session plan retained");
             if (record.getInteger("Ticks") == 24000) {
                 require(
-                    record.hasKey("Configured", 1) && record.getByte("Configured") == 1
+                    record.hasKey("Configured", Constants.NBT.TAG_BYTE) && record.getByte("Configured") == 1
                         && record.getString("Profile")
                             .equals("enhanced")
-                        && record.hasKey("Activity", 8)
+                        && record.hasKey("Activity", Constants.NBT.TAG_STRING)
                         && Arrays.asList("idle", "sleep", "wake", "meal", "melee")
                             .contains(record.getString("Activity")),
                     "Unknown configured long-session plan retained");
                 for (String counter : new String[] { "SleepCount", "MealCount", "MeleeCount" }) require(
-                    record.hasKey(counter, 3) && record.getInteger(counter) >= 0,
+                    record.hasKey(counter, Constants.NBT.TAG_INT) && record.getInteger(counter) >= 0,
                     "Invalid activity counter retained");
                 for (String flag : new String[] { "TailSampling", "ResourcesCleared" }) require(
-                    record.hasKey(flag, 1) && (record.getByte(flag) == 0 || record.getByte(flag) == 1),
+                    record.hasKey(flag, Constants.NBT.TAG_BYTE)
+                        && (record.getByte(flag) == 0 || record.getByte(flag) == 1),
                     "Unknown long-session flag retained");
-                require(record.hasKey("Resources", 10), "Missing finite long-session resources retained");
+                require(
+                    record.hasKey("Resources", Constants.NBT.TAG_COMPOUND),
+                    "Missing finite long-session resources retained");
                 var resources = record.getCompoundTag("Resources");
                 for (Object key : resources.func_150296_c()) require(
                     Arrays.asList("BedFoot", "BedHead", "Soup", "Sword", "TargetNative")
                         .contains(key),
                     "Unknown resource field retained");
-                for (String field : new String[] { "BedFoot", "BedHead", "Soup", "Sword" })
-                    require(resources.hasKey(field, 10), "Missing finite resource snapshot retained");
-                if (resources.hasKey("TargetNative"))
-                    require(resources.hasKey("TargetNative", 10), "Unknown target snapshot retained");
-                if (record.hasKey("FinalNative"))
-                    require(record.hasKey("FinalNative", 10), "Unknown final native snapshot retained");
+                for (String field : new String[] { "BedFoot", "BedHead", "Soup", "Sword" }) require(
+                    resources.hasKey(field, Constants.NBT.TAG_COMPOUND),
+                    "Missing finite resource snapshot retained");
+                if (resources.hasKey("TargetNative")) require(
+                    resources.hasKey("TargetNative", Constants.NBT.TAG_COMPOUND),
+                    "Unknown target snapshot retained");
+                if (record.hasKey("FinalNative")) require(
+                    record.hasKey("FinalNative", Constants.NBT.TAG_COMPOUND),
+                    "Unknown final native snapshot retained");
                 if (record.hasKey("CleanupRecovery")) {
-                    require(record.hasKey("CleanupRecovery", 10), "Unknown cleanup recovery retained");
+                    require(
+                        record.hasKey("CleanupRecovery", Constants.NBT.TAG_COMPOUND),
+                        "Unknown cleanup recovery retained");
                     var proof = record.getCompoundTag("CleanupRecovery");
                     require(
                         proof.func_150296_c()
@@ -192,9 +209,12 @@ final class MaidModelLifecycleActions {
                         "Unknown cleanup recovery fields retained");
                     for (String field : new String[] { "OriginalCandidate", "OriginalRun", "CheckpointSha256",
                         "RecoveredByCandidate" })
-                        require(proof.hasKey(field, 8), "Invalid cleanup recovery identity retained");
+                        require(
+                            proof.hasKey(field, Constants.NBT.TAG_STRING),
+                            "Invalid cleanup recovery identity retained");
                     require(
-                        proof.hasKey("NativeTick", 4) && proof.hasKey("RawCpuAvailable", 1)
+                        proof.hasKey("NativeTick", Constants.NBT.TAG_LONG)
+                            && proof.hasKey("RawCpuAvailable", Constants.NBT.TAG_BYTE)
                             && proof.getByte("RawCpuAvailable") == 0,
                         "Unknown recovery observation retained");
                     require(
@@ -211,9 +231,10 @@ final class MaidModelLifecycleActions {
             } else require(!record.hasKey("Configured"), "Unknown old long-session extension retained");
         }
         if (state.hasKey("FilmInventory")) require(
-            state.hasKey("FilmInventory", 9)
-                && ((NBTTagList) state.getTag("FilmInventory")).tagCount() == state.getTagList("FilmInventory", 10)
-                    .tagCount(),
+            state.hasKey("FilmInventory", Constants.NBT.TAG_LIST)
+                && ((NBTTagList) state.getTag("FilmInventory")).tagCount()
+                    == state.getTagList("FilmInventory", Constants.NBT.TAG_COMPOUND)
+                        .tagCount(),
             "Invalid lifecycle player inventory");
     }
 
@@ -236,7 +257,7 @@ final class MaidModelLifecycleActions {
         MaidLifecycleData.get(session.player.worldObj)
             .writeToNBT(all);
         var state = state(session);
-        var entries = all.getTagList("Entries", 10);
+        var entries = all.getTagList("Entries", Constants.NBT.TAG_COMPOUND);
         NBTTagCompound result = null;
         for (int i = 0; i < entries.tagCount(); i++) {
             var row = entries.getCompoundTagAt(i);
@@ -272,20 +293,20 @@ final class MaidModelLifecycleActions {
         tile.writeToNBT(actual);
         var state = state(session);
         require(
-            actual.equals(state.getCompoundTag("EmptyTile"))
-                || state.hasKey("FilledTile", 10) && actual.equals(state.getCompoundTag("FilledTile")),
+            actual.equals(state.getCompoundTag("EmptyTile")) || state.hasKey("FilledTile", Constants.NBT.TAG_COMPOUND)
+                && actual.equals(state.getCompoundTag("FilledTile")),
             "Unknown shrine tile successor retained");
         return tile;
     }
 
     static boolean transitional(Session session) {
-        if (!session.data.hasKey(KEY, 10)) return false;
+        if (!session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return false;
         var stage = state(session).getString("Stage");
         return !stage.equals("ready") && !stage.equals("revived") && !stage.equals("restart");
     }
 
     static boolean allowedHealth(Session session) {
-        if (!session.data.hasKey(KEY, 10)) return false;
+        if (!session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return false;
         var stage = state(session).getString("Stage");
         return (stage.equals("revive-armed") || stage.equals("revived")) && session.player.getHealth() == .25F
             && entry(session).getBoolean("Consumed");
@@ -315,7 +336,7 @@ final class MaidModelLifecycleActions {
     static boolean isSpawning(Entity entity) {
         var session = owner;
         if (session == null || !MaidCareInteractionFixture.owns(session)
-            || !session.data.hasKey(KEY, 10)
+            || !session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)
             || entity.worldObj != session.player.worldObj) return false;
         var state = state(session);
         if (longActivities != null && longActivities.session == session && longActivities.ownsTarget(entity))
@@ -327,7 +348,7 @@ final class MaidModelLifecycleActions {
         if (entity instanceof MaidTombstoneEntity grave) {
             if (!token.equals(grave.getToken()) || !session.player.getUniqueID()
                 .equals(grave.getOwnerId())) return false;
-            if (state.hasKey("Grave", 8) && !state.getString("Grave")
+            if (state.hasKey("Grave", Constants.NBT.TAG_STRING) && !state.getString("Grave")
                 .equals(
                     grave.getUniqueID()
                         .toString()))
@@ -730,15 +751,15 @@ final class MaidModelLifecycleActions {
     }
 
     static boolean restart(Session session) {
-        return session.data.hasKey(KEY, 10) && state(session).getString("Stage")
+        return session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND) && state(session).getString("Stage")
             .equals("restart");
     }
 
     static boolean allowsRelogin(Session session) {
-        if (!session.data.hasKey(KEY, 10)) return false;
+        if (!session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return false;
         var state = state(session);
         return state.getString("Stage")
-            .equals("revived") && state.hasKey("Long", 10)
+            .equals("revived") && state.hasKey("Long", Constants.NBT.TAG_COMPOUND)
             && state.getCompoundTag("Long")
                 .getString("Stage")
                 .equals("running")
@@ -815,17 +836,12 @@ final class MaidModelLifecycleActions {
                 Files.isRegularFile(path) && !Files.isSymbolicLink(path) && Files.size(path) <= 8 * 1024 * 1024,
                 "Ordinary bounded read-only checkpoint file required");
             var raw = Files.readAllBytes(path);
-            var hash = new StringBuilder();
-            for (byte value : MessageDigest.getInstance("SHA-256")
-                .digest(raw))
-                hash.append(Character.forDigit((value & 255) >>> 4, 16))
-                    .append(Character.forDigit(value & 15, 16));
-            require(checkpointSha.equals(hash.toString()), "Stopped checkpoint bytes changed");
+            require(checkpointSha.equals(Sha256Hex.ofBytes(raw)), "Stopped checkpoint bytes changed");
             try (var input = new DataInputStream(new ByteArrayInputStream(raw))) {
                 checkpoint = CompressedStreamTools.read(input);
                 require(input.available() == 0, "Checkpoint trailing bytes retained");
             }
-            currentCandidate = com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity
+            currentCandidate = DevelopmentArtifactIdentity
                 .capture(MaidCareInteractionFixture.class, MaidModelLifecycleActions.class)
                 .get("artifactSha256")
                 .getAsString();
@@ -836,13 +852,14 @@ final class MaidModelLifecycleActions {
         }
         require(
             checkpoint.func_150296_c()
-                .size() == 9 && checkpoint.hasKey("Schema", 3)
+                .size() == 9 && checkpoint.hasKey("Schema", Constants.NBT.TAG_INT)
                 && checkpoint.getInteger("Schema") == 1,
             "Unknown one-run checkpoint format retained");
         for (String key : new String[] { "OriginalCandidate", "OriginalRun", "Owner", "Actor", "SourceReportSha256" })
-            require(checkpoint.hasKey(key, 8), "Invalid original checkpoint identity type");
-        for (String key : new String[] { "Care", "ActorNative", "BedHead" })
-            require(checkpoint.hasKey(key, 10), "Complete original stopped native payload required");
+            require(checkpoint.hasKey(key, Constants.NBT.TAG_STRING), "Invalid original checkpoint identity type");
+        for (String key : new String[] { "Care", "ActorNative", "BedHead" }) require(
+            checkpoint.hasKey(key, Constants.NBT.TAG_COMPOUND),
+            "Complete original stopped native payload required");
         String originalCandidate = checkpoint.getString("OriginalCandidate");
         require(
             originalCandidate.matches("[0-9a-f]{64}") && !originalCandidate.equals(currentCandidate)
@@ -881,20 +898,21 @@ final class MaidModelLifecycleActions {
                     "FavorabilityManagerCounter")
                 .contains(key)) continue;
             require(
-                java.util.Objects.equals(expected.getTag(key), actual.getTag(key)),
+                Objects.equals(expected.getTag(key), actual.getTag(key)),
                 "Stopped actor protected/unknown native field changed: " + key);
         }
         var beforeCounters = expected.getCompoundTag("FavorabilityManagerCounter");
         var afterCounters = actual.getCompoundTag("FavorabilityManagerCounter");
         require(
-            expected.hasKey("FavorabilityManagerCounter", 10) && actual.hasKey("FavorabilityManagerCounter", 10)
+            expected.hasKey("FavorabilityManagerCounter", Constants.NBT.TAG_COMPOUND)
+                && actual.hasKey("FavorabilityManagerCounter", Constants.NBT.TAG_COMPOUND)
                 && beforeCounters.func_150296_c()
                     .equals(afterCounters.func_150296_c()),
             "Unknown native counter structure retained");
         for (Object rawKey : beforeCounters.func_150296_c()) {
             String key = (String) rawKey;
             require(
-                beforeCounters.hasKey(key, 3) && afterCounters.hasKey(key, 3)
+                beforeCounters.hasKey(key, Constants.NBT.TAG_INT) && afterCounters.hasKey(key, Constants.NBT.TAG_INT)
                     && afterCounters.getInteger(key) >= 0
                     && afterCounters.getInteger(key) <= beforeCounters.getInteger(key),
                 "Native counter changed beyond legal decay: " + key);
@@ -941,8 +959,9 @@ final class MaidModelLifecycleActions {
         owner = session;
         session.data.setBoolean("AwaitLogin", false);
         state(session).setString("Stage", "revived");
-        boolean configured = state(session).hasKey("Long", 10) && state(session).getCompoundTag("Long")
-            .getBoolean("Configured");
+        boolean configured = state(session).hasKey("Long", Constants.NBT.TAG_COMPOUND)
+            && state(session).getCompoundTag("Long")
+                .getBoolean("Configured");
         if (configured) {
             require(
                 MaidBehaviorConfig.profile() == MaidBrainProfile.ENHANCED,
@@ -953,12 +972,13 @@ final class MaidModelLifecycleActions {
             for (String key : new String[] { "OwnerUUID", "ModelId", "SoundPackId", "MaidInventory", "Equipment",
                 "TLMNHOffhand", "TLMNHRecovery", "MaidExperience", "MaidFavorability", "TLMNH", "ForgeData" })
                 require(
-                    java.util.Objects.equals(saved.getTag(key), loaded.getTag(key)),
+                    Objects.equals(saved.getTag(key), loaded.getTag(key)),
                     "Restart changed protected complete native field: " + key);
             // Native favorability counters continue to decay even while the actor is sitting/suspended.
             // The final live snapshot precedes root's normal save/stop, so it is not the disk-time counter.
             require(
-                saved.hasKey("FavorabilityManagerCounter", 10) && loaded.hasKey("FavorabilityManagerCounter", 10),
+                saved.hasKey("FavorabilityManagerCounter", Constants.NBT.TAG_COMPOUND)
+                    && loaded.hasKey("FavorabilityManagerCounter", Constants.NBT.TAG_COMPOUND),
                 "Typed native favorability counters required");
             var beforeCounters = saved.getCompoundTag("FavorabilityManagerCounter");
             var afterCounters = loaded.getCompoundTag("FavorabilityManagerCounter");
@@ -969,7 +989,8 @@ final class MaidModelLifecycleActions {
             for (Object rawKey : beforeCounters.func_150296_c()) {
                 String key = (String) rawKey;
                 require(
-                    beforeCounters.hasKey(key, 3) && afterCounters.hasKey(key, 3)
+                    beforeCounters.hasKey(key, Constants.NBT.TAG_INT)
+                        && afterCounters.hasKey(key, Constants.NBT.TAG_INT)
                         && afterCounters.getInteger(key) >= 0
                         && afterCounters.getInteger(key) <= beforeCounters.getInteger(key),
                     "Counter changed beyond its normal monotone decay: " + key);
@@ -1054,7 +1075,7 @@ final class MaidModelLifecycleActions {
                     .getId());
         result.addProperty("legacyDispatches", currentRuntime == null ? -1 : currentRuntime.legacyDispatchCount());
         result.addProperty("modernDispatches", currentRuntime == null ? -1 : currentRuntime.modernDispatchCount());
-        if (state.hasKey("Long", 10)) {
+        if (state.hasKey("Long", Constants.NBT.TAG_COMPOUND)) {
             var record = state.getCompoundTag("Long");
             var timed = new JsonObject();
             timed.addProperty("stage", record.getString("Stage"));
@@ -1071,7 +1092,7 @@ final class MaidModelLifecycleActions {
             timed.addProperty("controlledFullProfiledActors", 1);
             timed.addProperty("crossRestartContinuousPolicy", false);
             timed.addProperty("configuredEntry", record.getBoolean("Configured"));
-            if (record.hasKey("CleanupRecovery", 10)) {
+            if (record.hasKey("CleanupRecovery", Constants.NBT.TAG_COMPOUND)) {
                 var proof = record.getCompoundTag("CleanupRecovery");
                 var binding = new JsonObject();
                 for (String key : new String[] { "OriginalCandidate", "OriginalRun", "CheckpointSha256",
@@ -1097,7 +1118,7 @@ final class MaidModelLifecycleActions {
         var state = state(session);
         require(
             state.getString("Stage")
-                .equals("revived") && state.hasKey("Long", 10)
+                .equals("revived") && state.hasKey("Long", Constants.NBT.TAG_COMPOUND)
                 && state.getCompoundTag("Long")
                     .getString("Stage")
                     .equals("running")
@@ -1119,9 +1140,9 @@ final class MaidModelLifecycleActions {
 
     /** The normal Care limit remains unchanged; only this exact bounded current plan extends it. */
     static int sessionTickLimit(Session session) {
-        if (!session.data.hasKey(KEY, 10)) return 12000;
+        if (!session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return 12000;
         var state = state(session);
-        if (!state.hasKey("Long", 10) || !state.getCompoundTag("Long")
+        if (!state.hasKey("Long", Constants.NBT.TAG_COMPOUND) || !state.getCompoundTag("Long")
             .getBoolean("Configured")) return 12000;
         var record = state.getCompoundTag("Long");
         require(
@@ -1132,9 +1153,9 @@ final class MaidModelLifecycleActions {
     }
 
     static boolean verifyLongInventory(Session session) {
-        if (!session.data.hasKey(KEY, 10)) return false;
+        if (!session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return false;
         var state = state(session);
-        if (!state.hasKey("Long", 10)) return false;
+        if (!state.hasKey("Long", Constants.NBT.TAG_COMPOUND)) return false;
         var record = state.getCompoundTag("Long");
         if (!record.getBoolean("Configured") || record.getBoolean("ResourcesCleared")) return false;
         require(
@@ -1228,7 +1249,7 @@ final class MaidModelLifecycleActions {
             foot.setInteger("X", 6);
             foot.setInteger("Y", 65);
             foot.setInteger("Z", -1);
-            foot.setInteger("Block", net.minecraft.block.Block.getIdFromBlock(MaidLifeContent.maidBed));
+            foot.setInteger("Block", Block.getIdFromBlock(MaidLifeContent.maidBed));
             foot.setInteger("Metadata", 1);
             var head = (NBTTagCompound) foot.copy();
             head.setInteger("X", 5);
@@ -1251,7 +1272,7 @@ final class MaidModelLifecycleActions {
             }
         }
 
-        ItemStack marked(net.minecraft.item.Item item) {
+        ItemStack marked(Item item) {
             var stack = new ItemStack(item);
             stack.setTagCompound(new NBTTagCompound());
             stack.getTagCompound()
@@ -1259,7 +1280,7 @@ final class MaidModelLifecycleActions {
             return stack;
         }
 
-        com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor actor() {
+        ModernFollowCoreActor actor() {
             var core = session.maid.getBrainCoordinator()
                 .peekEnhancedCore();
             require(

@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -21,6 +23,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
@@ -30,6 +33,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
 import cpw.mods.fml.common.eventhandler.Event;
@@ -559,11 +563,11 @@ public final class MaidLifecycleProbe {
     private static NBTTagList storedTombstoneItems(MaidLifecycleData ledger, UUID token) {
         var saved = new NBTTagCompound();
         ledger.writeToNBT(saved);
-        var entries = saved.getTagList("Entries", 10);
+        var entries = saved.getTagList("Entries", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < entries.tagCount(); i++) {
             var entry = entries.getCompoundTagAt(i);
             if (entry.getString("Token")
-                .equals(token.toString())) return entry.getTagList("TombstoneItems", 10);
+                .equals(token.toString())) return entry.getTagList("TombstoneItems", Constants.NBT.TAG_COMPOUND);
         }
         throw new IllegalStateException("Missing isolated overflow escrow");
     }
@@ -665,10 +669,10 @@ public final class MaidLifecycleProbe {
             require(added.size() == 1, "broken shrine queues one exact return identity " + mutation);
             var returnedId = added.iterator()
                 .next();
-            java.util.function.Supplier<NBTTagCompound> queuedStack = () -> {
+            Supplier<NBTTagCompound> queuedStack = () -> {
                 var saved = new NBTTagCompound();
                 ledger.writeToNBT(saved);
-                var returned = saved.getTagList("ReturnedFilms", 10);
+                var returned = saved.getTagList("ReturnedFilms", Constants.NBT.TAG_COMPOUND);
                 for (int i = 0; i < returned.tagCount(); i++) {
                     var entry = returned.getCompoundTagAt(i);
                     if (returnedId.toString()
@@ -678,7 +682,7 @@ public final class MaidLifecycleProbe {
                 }
                 return null;
             };
-            var expected = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(film);
+            var expected = ProtectedItemCodec.encode(film);
             require(expected.equals(queuedStack.get()), "broken shrine queues complete original film " + mutation);
             var mutate = new MutateJoin(f.world, mutation, f.owner);
             MinecraftForge.EVENT_BUS.register(mutate);
@@ -810,9 +814,7 @@ public final class MaidLifecycleProbe {
                     var replacement = shrine.getFilm();
                     replacement.getTagCompound()
                         .setString("TLMNHProbeSuccessor", "retained");
-                    saved.setTag(
-                        "StorageItem",
-                        com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(replacement));
+                    saved.setTag("StorageItem", ProtectedItemCodec.encode(replacement));
                     shrine.readFromNBT(saved);
                 }
             } else if (event.entity instanceof MaidTombstoneEntity tombstone) {
@@ -897,7 +899,7 @@ public final class MaidLifecycleProbe {
                 .activateBlockOrUseItem(owner, world, owner.getCurrentEquippedItem(), x, y, z, 1, 0.5F, 1, 0.5F);
         }
 
-        private int count(net.minecraft.item.Item item) {
+        private int count(Item item) {
             int value = 0;
             for (var stack : owner.inventory.mainInventory)
                 if (stack != null && stack.getItem() == item) value += stack.stackSize;

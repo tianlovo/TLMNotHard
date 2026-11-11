@@ -16,7 +16,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.MathHelper;
 import com.tianluoqaq.tlmnh.client.render.molang.MolangQueryFrame.Slot;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.item.EtFuturumItems;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -69,8 +71,7 @@ public final class MaidMolangFrames {
         equipment(frame, Slot.LEGS, maid.getEquipmentInSlot(2));
         equipment(frame, Slot.FEET, maid.getEquipmentInSlot(1));
         var chest = frame.equipment(Slot.CHEST);
-        frame.hasElytra = chest != null
-            && com.tianluoqaq.tlmnh.compat.etfuturum.common.item.EtFuturumItems.isElytra(chest.itemId);
+        frame.hasElytra = chest != null && EtFuturumItems.isElytra(chest.itemId);
         return frame;
     }
 
@@ -97,7 +98,7 @@ public final class MaidMolangFrames {
 
     private static String classify(ItemStack stack) {
         Item item = stack.getItem();
-        if (com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.isShield(stack)) return "shield";
+        if (MaidShieldItems.isShield(stack)) return "shield";
         if (item instanceof ItemSword) return "sword";
         if (item instanceof ItemAxe) return "axe";
         if (item instanceof ItemPickaxe) return "pickaxe";

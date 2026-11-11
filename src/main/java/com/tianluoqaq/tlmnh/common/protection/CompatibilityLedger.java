@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.protection;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -54,7 +55,8 @@ public final class CompatibilityLedger extends WorldSavedData {
     }
 
     public void check(Side side) {
-        if ((readComplete || !data.hasNoTags()) && (!data.hasKey("Schema", 3) || data.getInteger("Schema") != 1)) {
+        if ((readComplete || !data.hasNoTags())
+            && (!data.hasKey("Schema", Constants.NBT.TAG_INT) || data.getInteger("Schema") != 1)) {
             for (var feature : ExternalFeature.values())
                 if (feature.clientOnly == (side == Side.CLIENT)) IntegrationGuard.trip(
                     side,
@@ -72,13 +74,15 @@ public final class CompatibilityLedger extends WorldSavedData {
                 continue;
             }
             var saved = data.getCompoundTag(feature.id);
-            if (data.hasKey(feature.id)
-                && (!data.hasKey(feature.id, 10) || !saved.hasKey("Contract", 3) || !saved.hasKey("Fingerprint", 8))) {
+            if (data.hasKey(feature.id) && (!data.hasKey(feature.id, Constants.NBT.TAG_COMPOUND)
+                || !saved.hasKey("Contract", Constants.NBT.TAG_INT)
+                || !saved.hasKey("Fingerprint", Constants.NBT.TAG_STRING))) {
                 IntegrationGuard
                     .trip(side, feature, new IllegalStateException("Malformed compatibility record retained"));
                 continue;
             }
-            if (!data.hasKey(feature.id, 10) || saved.getInteger("Contract") < feature.contractRevision) {
+            if (!data.hasKey(feature.id, Constants.NBT.TAG_COMPOUND)
+                || saved.getInteger("Contract") < feature.contractRevision) {
                 saved = new NBTTagCompound();
                 saved.setInteger("Contract", feature.contractRevision);
                 saved.setString("Fingerprint", current);

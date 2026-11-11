@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.registry;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow;
 
 import cpw.mods.fml.common.registry.EntityRegistry;
 
@@ -11,13 +12,6 @@ public final class ModEntities {
 
     public static void register(Object mod) {
         EntityRegistry.registerModEntity(EntityMaid.class, "maid", 0, mod, 80, 3, true);
-        EntityRegistry.registerModEntity(
-            com.tianluoqaq.tlmnh.common.combat.MaidGravityFreeArrow.class,
-            "gravity_free_arrow",
-            2,
-            mod,
-            80,
-            20,
-            true);
+        EntityRegistry.registerModEntity(MaidGravityFreeArrow.class, "gravity_free_arrow", 2, mod, 80, 20, true);
     }
 }

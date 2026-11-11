@@ -11,6 +11,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
+import com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation;
 import com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
@@ -72,7 +73,7 @@ public final class TileEntityMaidBedRenderer extends TileEntitySpecialRenderer {
                     vertices.end();
                 }
             }
-            com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.completed(bed, model, texture);
+            MaidBedRenderObservation.completed(bed, model, texture);
             return true;
         }, () -> false);
     }

@@ -14,6 +14,8 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
+import com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation;
+import com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineItemRenderEffects;
 import com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineModelResources;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
@@ -98,10 +100,9 @@ public final class TileEntityShrineRenderer extends TileEntitySpecialRenderer {
                     icon.getIconWidth(),
                     icon.getIconHeight(),
                     1F / 16F);
-                com.tianluoqaq.tlmnh.client.lifecycle.shrine.ShrineItemRenderEffects.glint(display);
+                ShrineItemRenderEffects.glint(display);
             }
-            com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation
-                .completed(shrine, model, display != null);
+            ShrineRenderObservation.completed(shrine, model, display != null);
             return true;
         }, () -> false);
     }

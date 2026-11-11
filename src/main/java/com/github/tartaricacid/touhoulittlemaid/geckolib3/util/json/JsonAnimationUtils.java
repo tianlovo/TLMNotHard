@@ -13,6 +13,7 @@ package com.github.tartaricacid.touhoulittlemaid.geckolib3.util.json;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -48,13 +49,12 @@ public class JsonAnimationUtils {
 
     public static List<Map.Entry<String, JsonElement>> getBones(JsonObject json) {
         JsonObject bones = json.getAsJsonObject("bones");
-        return bones == null ? java.util.Collections.emptyList() : new ArrayList<>(bones.entrySet());
+        return bones == null ? Collections.emptyList() : new ArrayList<>(bones.entrySet());
     }
 
     public static List<Map.Entry<String, JsonElement>> getCustomInstructionKeyFrames(JsonObject json) {
         JsonObject customInstructions = json.getAsJsonObject("timeline");
-        return customInstructions == null ? java.util.Collections.emptyList()
-            : new ArrayList<>(customInstructions.entrySet());
+        return customInstructions == null ? Collections.emptyList() : new ArrayList<>(customInstructions.entrySet());
     }
 
     private static JsonElement getObjectByKey(Set<Map.Entry<String, JsonElement>> json, String key)

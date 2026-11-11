@@ -1,17 +1,32 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.ArrayList;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.inventory.Container;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
+
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 供蛋糕摆放与偷吃的最小27格柜体，原模型与玻璃罩由TESR显示 */
 public final class BlockSnackCabinet extends BlockContainer {
@@ -55,7 +70,7 @@ public final class BlockSnackCabinet extends BlockContainer {
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    @SideOnly(Side.CLIENT)
     public String getItemIconName() {
         return "touhou_little_maid:snack_cabinet";
     }
@@ -77,7 +92,7 @@ public final class BlockSnackCabinet extends BlockContainer {
         int previous = world.getBlockMetadata(x, y, z);
         if (cabinetType(previous) > TYPE_HALF) return;
         if (placer != null) {
-            int facing = net.minecraft.util.MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
+            int facing = MathHelper.floor_double(placer.rotationYaw * 4.0F / 360.0F + .5) & 3;
             world.setBlockMetadataWithNotify(x, y, z, (previous & 12) | facing, 2);
         }
         if (stack != null && stack.hasDisplayName() && world.getTileEntity(x, y, z) == cabinet)
@@ -93,7 +108,7 @@ public final class BlockSnackCabinet extends BlockContainer {
     @Override
     public int getComparatorInputOverride(World world, int x, int y, int z, int side) {
         return world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet && !cabinet.isInvalid()
-            ? net.minecraft.inventory.Container.calcRedstoneFromInventory(cabinet)
+            ? Container.calcRedstoneFromInventory(cabinet)
             : 0;
     }
 
@@ -105,7 +120,7 @@ public final class BlockSnackCabinet extends BlockContainer {
     void refreshDisplay(World world, int x, int y, int z) {
         if (world.isRemote || world.getBlock(x, y, z) != this
             || !world.blockExists(x, y + 1, z)
-            || world.getBlock(x, y + 1, z) != net.minecraft.init.Blocks.cake
+            || world.getBlock(x, y + 1, z) != Blocks.cake
             || !(world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet)
             || cabinet.isInvalid()) return;
         int metadata = world.getBlockMetadata(x, y, z);
@@ -120,7 +135,7 @@ public final class BlockSnackCabinet extends BlockContainer {
         var held = player.getCurrentEquippedItem();
         if (side == 1 && held != null && held.getItem() instanceof ItemBlock) return false;
         // 原生蛋糕物品不是 ItemBlock，也要把柜面点击交给其放置逻辑
-        if (side == 1 && held != null && held.getItem() == net.minecraft.init.Items.cake) return false;
+        if (side == 1 && held != null && held.getItem() == Items.cake) return false;
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet
             && cabinet.isUseableByPlayer(player)) {
             if (player.isSneaking() && cabinet.recovery()
@@ -141,7 +156,7 @@ public final class BlockSnackCabinet extends BlockContainer {
     }
 
     private static void prepareReturn(TileEntitySnackCabinet cabinet) {
-        var items = new java.util.ArrayList<ItemStack>();
+        var items = new ArrayList<ItemStack>();
         for (int slot = 0; slot < cabinet.getSizeInventory(); slot++) {
             var stack = cabinet.getStackInSlot(slot);
             if (stack != null) items.add(stack);
@@ -149,24 +164,23 @@ public final class BlockSnackCabinet extends BlockContainer {
         var recovery = cabinet.recovery()
             .write();
         for (int i = 0; i < recovery.tagCount(); i++) {
-            var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(recovery.getCompoundTagAt(i));
+            var stack = ProtectedItemCodec.decode(recovery.getCompoundTagAt(i));
             if (stack == null) throw new IllegalStateException("Empty recovery contents retained");
             items.add(stack);
         }
-        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.prepare(cabinet, items);
+        MaidTileReturns.prepare(cabinet, items);
     }
 
     @Override
     public void breakBlock(World world, int x, int y, int z, Block old, int metadata) {
         if (!world.isRemote && world.getTileEntity(x, y, z) instanceof TileEntitySnackCabinet cabinet) {
             prepareReturn(cabinet);
-            com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.beforeClear(cabinet);
-            var planned = com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer.snapshot(cabinet);
-            planned.setTag("Items", new net.minecraft.nbt.NBTTagList());
-            planned
-                .setTag(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, new net.minecraft.nbt.NBTTagList());
+            MaidTileReturns.beforeClear(cabinet);
+            var planned = MaidShrineTransfer.snapshot(cabinet);
+            planned.setTag("Items", new NBTTagList());
+            planned.setTag(RecoveryStore.TAG, new NBTTagList());
             cabinet.clearForReturn();
-            com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.cleared(cabinet, planned);
+            MaidTileReturns.cleared(cabinet, planned);
         }
         if (!world.isRemote) world.func_147453_f(x, y, z, this);
         super.breakBlock(world, x, y, z, old, metadata);

@@ -16,6 +16,7 @@ import java.util.UUID;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
@@ -25,16 +26,19 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 
 /** Two actual connected players and native input transactions; only this session's generated materials may move. */
 final class MaidPlayerInputActions {
@@ -69,37 +73,39 @@ final class MaidPlayerInputActions {
     static void validateSnapshot(NBTTagCompound data) {
         if (!data.hasKey(KEY)) return;
         require(
-            data.hasKey(KEY, 10) && data.getString("Phase")
+            data.hasKey(KEY, Constants.NBT.TAG_COMPOUND) && data.getString("Phase")
                 .equals("player-inputs"),
             "Unknown player input snapshot retained");
         var row = data.getCompoundTag(KEY);
         for (Object key : row.func_150296_c()) require(FIELDS.contains(key), "Unknown player input field retained");
         require(
-            row.hasKey("Schema", 3) && row.getInteger("Schema") == 1
-                && row.hasKey("Stage", 8)
-                && row.hasKey("Secondary", 8)
-                && row.hasKey("SecondaryOriginal", 10),
+            row.hasKey("Schema", Constants.NBT.TAG_INT) && row.getInteger("Schema") == 1
+                && row.hasKey("Stage", Constants.NBT.TAG_STRING)
+                && row.hasKey("Secondary", Constants.NBT.TAG_STRING)
+                && row.hasKey("SecondaryOriginal", Constants.NBT.TAG_COMPOUND),
             "Invalid player input identity retained");
         UUID.fromString(row.getString("Secondary"));
         for (String key : new String[] { "PrimaryBase", "SecondaryBase", "Materials" }) typedList(row, key);
         require(
-            row.hasKey("XPSeed", 3) && row.getInteger("XPSeed") >= 0
-                && row.hasKey("XPSource", 8)
-                && row.hasKey("AllowedModel", 8),
+            row.hasKey("XPSeed", Constants.NBT.TAG_INT) && row.getInteger("XPSeed") >= 0
+                && row.hasKey("XPSource", Constants.NBT.TAG_STRING)
+                && row.hasKey("AllowedModel", Constants.NBT.TAG_STRING),
             "Unknown player input material plan retained");
-        if (row.hasKey("Denied")) require(row.hasKey("Denied", 10), "Unknown denied-state snapshot retained");
+        if (row.hasKey("Denied"))
+            require(row.hasKey("Denied", Constants.NBT.TAG_COMPOUND), "Unknown denied-state snapshot retained");
         if (row.hasKey("Wild")) {
-            require(row.hasKey("Wild", 8), "Invalid wild actor field");
+            require(row.hasKey("Wild", Constants.NBT.TAG_STRING), "Invalid wild actor field");
             UUID.fromString(row.getString("Wild"));
         }
     }
 
     private static NBTTagList typedList(NBTTagCompound row, String key) {
         require(
-            row.hasKey(key, 9) && ((NBTTagList) row.getTag(key)).tagCount() == row.getTagList(key, 10)
-                .tagCount(),
+            row.hasKey(key, Constants.NBT.TAG_LIST)
+                && ((NBTTagList) row.getTag(key)).tagCount() == row.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                    .tagCount(),
             "Unknown player input native list retained: " + key);
-        return row.getTagList(key, 10);
+        return row.getTagList(key, Constants.NBT.TAG_COMPOUND);
     }
 
     private static Attempt attempt(Session session) {
@@ -119,7 +125,7 @@ final class MaidPlayerInputActions {
     }
 
     static boolean isActivePlayer(Session session, EntityPlayerMP player) {
-        if (session == null || !session.data.hasKey(KEY, 10)) return false;
+        if (session == null || !session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND)) return false;
         var value = LIVE.get(session.data.getString("Run"));
         return value != null && value.session == session
             && MaidCareInteractionFixture.owns(session)
@@ -208,7 +214,7 @@ final class MaidPlayerInputActions {
             if (!value.row.getString("Stage")
                 .startsWith("xp-")
                 || !maid.getEntityData()
-                    .hasKey(MaidInteractionTransfer.TAG, 10))
+                    .hasKey(MaidInteractionTransfer.TAG, Constants.NBT.TAG_COMPOUND))
                 continue;
             var hold = maid.getEntityData()
                 .getCompoundTag(MaidInteractionTransfer.TAG);
@@ -238,8 +244,7 @@ final class MaidPlayerInputActions {
             case "world-player-arm-gui" -> {
                 value.clearGenerated();
                 value.add("sword", new ItemStack(Items.iron_sword), 1);
-                var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess
-                    .woodenShieldItem();
+                var shield = BattlegearShieldAccess.woodenShieldItem();
                 require(shield != null, "Actual registered native shield required");
                 value.add("shield", new ItemStack(shield), 1);
                 value.add("helmet", new ItemStack(Items.iron_helmet), 1);
@@ -288,7 +293,7 @@ final class MaidPlayerInputActions {
             }
             case "world-player-verify-denied" -> {
                 require(
-                    value.row.hasKey("Denied", 10) && value.row.getCompoundTag("Denied")
+                    value.row.hasKey("Denied", Constants.NBT.TAG_COMPOUND) && value.row.getCompoundTag("Denied")
                         .equals(protectedState(session.maid)),
                     "Rejected real input changed protected maid state");
                 if (session.player.theItemInWorldManager.getGameType()
@@ -598,12 +603,12 @@ final class MaidPlayerInputActions {
             value.secondary.closeScreen();
         }
         require(
-            playerInventory(value.secondary).equals(value.row.getTagList("SecondaryBase", 10)),
+            playerInventory(value.secondary).equals(value.row.getTagList("SecondaryBase", Constants.NBT.TAG_COMPOUND)),
             "Original secondary base changed; backup retained");
         var hand = ProtectedItemCodec.decodeField(original, "Hand");
         value.secondary.inventory.setInventorySlotContents(original.getInteger("Selected"), hand);
         require(
-            playerInventory(value.secondary).equals(original.getTagList("Inventory", 10)),
+            playerInventory(value.secondary).equals(original.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)),
             "Complete secondary inventory restore differs; backup retained");
         value.secondary.playerNetServerHandler.setPlayerLocation(
             original.getDouble("X"),
@@ -653,7 +658,7 @@ final class MaidPlayerInputActions {
         result.addProperty("secondaryInventory", playerInventory(value.secondary).toString());
         result.addProperty(
             "maidInventory",
-            protectedState(session.maid).getTagList("Inventory", 10)
+            protectedState(session.maid).getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
                 .toString());
         result.addProperty("primaryOffhandSlot", value.offhand(session.player));
         result.addProperty("secondaryOffhandSlot", value.offhand(value.secondary));
@@ -665,7 +670,7 @@ final class MaidPlayerInputActions {
         result.addProperty("secondaryInventoryNativeNbtBase64", nativeInventory(playerInventory(value.secondary)));
         result.addProperty(
             "maidInventoryNativeNbtBase64",
-            nativeInventory(protectedState(session.maid).getTagList("Inventory", 10)));
+            nativeInventory(protectedState(session.maid).getTagList("Inventory", Constants.NBT.TAG_COMPOUND)));
         result.add("primaryContainer", containerObservation(session.player));
         result.add("secondaryContainer", containerObservation(value.secondary));
         result.addProperty("primaryWindow", session.player.openContainer.windowId);
@@ -824,7 +829,7 @@ final class MaidPlayerInputActions {
         var box = entity.boundingBox;
         var bounds = new JsonArray();
         for (double value : new double[] { box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ })
-            bounds.add(new com.google.gson.JsonPrimitive(value));
+            bounds.add(new JsonPrimitive(value));
         out.add("boxMinMax", bounds);
         return out;
     }
@@ -1258,7 +1263,7 @@ final class MaidPlayerInputActions {
         }
 
         void fillEmpty() {
-            var filler = add("filler", new ItemStack(Item.getItemFromBlock(net.minecraft.init.Blocks.stone), 64), 0);
+            var filler = add("filler", new ItemStack(Item.getItemFromBlock(Blocks.stone), 64), 0);
             int count = 0;
             for (int slot = 0; slot < session.player.inventory.mainInventory.length; slot++) {
                 if (session.player.inventory.mainInventory[slot] == null) {
@@ -1317,8 +1322,8 @@ final class MaidPlayerInputActions {
 
         Map<String, Integer> counts() {
             var counts = new HashMap<String, Integer>();
-            collectPlayer(session.player, row.getTagList("PrimaryBase", 10), counts);
-            collectPlayer(secondary, row.getTagList("SecondaryBase", 10), counts);
+            collectPlayer(session.player, row.getTagList("PrimaryBase", Constants.NBT.TAG_COMPOUND), counts);
+            collectPlayer(secondary, row.getTagList("SecondaryBase", Constants.NBT.TAG_COMPOUND), counts);
             for (int slot = 0; slot < session.maid.getMaidInventory()
                 .getSizeInventory(); slot++)
                 collect(
@@ -1394,8 +1399,8 @@ final class MaidPlayerInputActions {
             row.setInteger("XPSeed", 0);
             session.maid.setExperience(0);
             require(
-                playerInventory(session.player).equals(row.getTagList("PrimaryBase", 10))
-                    && playerInventory(secondary).equals(row.getTagList("SecondaryBase", 10)),
+                playerInventory(session.player).equals(row.getTagList("PrimaryBase", Constants.NBT.TAG_COMPOUND))
+                    && playerInventory(secondary).equals(row.getTagList("SecondaryBase", Constants.NBT.TAG_COMPOUND)),
                 "Original native player bases differ; backups retained");
         }
 

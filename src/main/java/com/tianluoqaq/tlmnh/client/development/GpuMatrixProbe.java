@@ -8,7 +8,6 @@ import java.nio.IntBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +40,9 @@ import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
 import com.tianluoqaq.tlmnh.client.render.TessellatorVertexConsumer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
+import com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
@@ -96,7 +98,7 @@ public final class GpuMatrixProbe {
                 .equals(pending.model)) throw new IllegalStateException("GPU actual actor/model identity differs");
             if (!OpenGlHelper.isFramebufferEnabled() || !GLContext.getCapabilities().OpenGL30)
                 throw new IllegalStateException("Reviewed OpenGL 3 FBO path is unavailable");
-            Object pack = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries.currentShaderPack();
+            Object pack = AngelicaRenderQueries.currentShaderPack();
             if (!(pack instanceof Optional<?>)) throw new IllegalStateException("Shader identity API is unavailable");
             if (((Optional<?>) pack).isPresent())
                 throw new IllegalStateException("Shader packs are outside this GPU fixture");
@@ -336,7 +338,7 @@ public final class GpuMatrixProbe {
     private static void requireObserver() {
         var mc = Minecraft.getMinecraft();
         var player = mc.thePlayer;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(mc.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(mc.theWorld)
             || player == null
             || mc.currentScreen != null
             || mc.playerController == null
@@ -372,11 +374,7 @@ public final class GpuMatrixProbe {
     }
 
     private static MessageDigest digest() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException impossible) {
-            throw new AssertionError(impossible);
-        }
+        return Sha256Hex.newDigest();
     }
 
     private static String resourceHash(ResourceLocation location) throws IOException {
@@ -393,9 +391,7 @@ public final class GpuMatrixProbe {
     }
 
     private static String hex(byte[] bytes) {
-        var text = new StringBuilder();
-        for (byte value : bytes) text.append(String.format("%02x", value & 255));
-        return text.toString();
+        return Sha256Hex.formatHex(bytes);
     }
 
     private static final class Stream implements LegacyVertexConsumer {

@@ -1,11 +1,17 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
+import net.minecraft.block.BlockDoor;
+import net.minecraft.block.BlockFenceGate;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.passive.EntityOcelot;
 import net.minecraft.entity.passive.EntityWolf;
@@ -25,28 +31,57 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.EnderTeleportEvent;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.edible.MaidEdibleBlockAction;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator;
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
+import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack;
 import com.tianluoqaq.tlmnh.api.event.MaidAttackTargetEvent;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRideController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRouteObstacleActor;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatConditionalEntryProof;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDoorContext;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPassiveDoorExitProof;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidCombatMoveDispatch;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNativePathRegion;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidRouteBlockage;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidWalkEvaluator;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.MaidVehiclePlatform;
@@ -56,8 +91,7 @@ import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.MaidDoorAccess;
 public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMoveActor, FollowCoreLookDriver.Actor,
     MaidPathNavigator.BrainTarget, MaidAirActor, MaidClimbActor, MaidScheduleActor, MaidMealActor, MaidVehicleActor,
     MaidLifeActor, MaidStealActor, MaidSnowballActor, MaidRandomActor, MaidRangedActor, MaidDoorActor,
-    com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRouteObstacleActor,
-    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver {
+    EnhancedRouteObstacleActor, CombatNavigationObserver {
 
     private final EntityMaid maid;
     private final World world;
@@ -66,13 +100,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private final MaidCakeAction cake;
     private final TaskAttack attack = new TaskAttack();
     private Object shieldOwner;
-    private final com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack ranged = new com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack();
-    private final com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow;
-    private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation unifiedCombatObservation = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation();
-    private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner unifiedCombat;
+    private final TaskBowAttack ranged = new TaskBowAttack();
+    private final MaidBowAttack rangedBow;
+    private final CombatObservation unifiedCombatObservation = new CombatObservation();
+    private final MaidUnifiedCombatActionRunner unifiedCombat;
     private long unifiedCombatEpoch = 1;
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node combatNode;
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact combatMovementFact;
+    private CombatMovementFact.Node combatNode;
+    private CombatMovementFact combatMovementFact;
     private PathEntity combatInstalledPath;
     private RestrictedCombatMove restrictedCombatMove;
     private PathEntity ordinaryCombatDispatchRaw;
@@ -84,7 +118,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private long combatPathIdentity, nextCombatPathIdentity;
     private MaidItemUseState.Lease rangedUseLease;
     private long meleeAttempts, meleeNativeAccepted, meleePreCancelled;
-    private com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession sensing;
+    private MaidSensingSession sensing;
     private long randomLookSelections, randomWalkSelections, snowballThrows;
     private EntityLivingBase ownedSnowballTarget;
     private Point workTarget;
@@ -111,15 +145,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private int lastScheduleEntityTick = -1;
     private Object behaviorIdentity = new Object();
     private Object frameBehaviors;
-    private java.util.Set<MaidDoorActor.Position> doorsToClose;
+    private Set<MaidDoorActor.Position> doorsToClose;
     private long doorOpenRequests, doorCloseRequests;
 
     public ModernFollowCoreActor(EntityMaid maid) {
-        this(maid, com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile.NATIVE_STATIC_COMPENSATION);
+        this(maid, MaidBowAttack.ModernFlightProfile.NATIVE_STATIC_COMPENSATION);
     }
 
-    public ModernFollowCoreActor(EntityMaid maid,
-        com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile flightProfile) {
+    public ModernFollowCoreActor(EntityMaid maid, MaidBowAttack.ModernFlightProfile flightProfile) {
         this.maid = Objects.requireNonNull(maid, "maid");
         world = Objects.requireNonNull(maid.worldObj, "world");
         if (!(maid.getNavigator() instanceof MaidPathNavigator modern))
@@ -127,8 +160,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         navigation = modern;
         life = new MaidModernLife(maid, this::isCurrent);
         cake = new MaidCakeAction(maid, this::isCurrent, () -> token);
-        rangedBow = new com.tianluoqaq.tlmnh.common.combat.MaidBowAttack(maid, flightProfile);
-        unifiedCombat = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.MaidUnifiedCombatActionRunner(maid, this);
+        rangedBow = new MaidBowAttack(maid, flightProfile);
+        unifiedCombat = new MaidUnifiedCombatActionRunner(maid, this);
     }
 
     public void beginEntityFrame(MaidPolicyRuntime runtime, Token token) {
@@ -157,15 +190,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private void settleArrivedOrdinaryCombatNode() {
         if (walk == null || restrictedCombatMove != null
             || !isCombatNode(walk)
-            || combatNode.role != com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.ORDINARY)
-            return;
+            || combatNode.role != CombatMovementFact.Role.ORDINARY) return;
         Path currentPath = navigationPath();
         if (!combatNodeArrived(walk, currentPath)) return;
-        combatNavigationOutcome(
-            walk,
-            currentPath,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED,
-            0);
+        combatNavigationOutcome(walk, currentPath, EnhancedNavigationController.Outcome.ARRIVED, 0);
         stopNavigation();
         eraseWalkTarget();
         setPathMemory(null);
@@ -184,14 +212,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         memory.bindCombatObservation(unifiedCombatObservation);
     }
 
-    public void bindSensing(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingSession session) {
+    public void bindSensing(MaidSensingSession session) {
         if (sensing != null) throw new IllegalStateException("Sensing session already bound");
         sensing = Objects.requireNonNull(session, "session");
     }
 
     public boolean canScanForAir() {
         guard();
-        return sensing == null || sensing.acquire(com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind.AIR);
+        return sensing == null || sensing.acquire(MaidSensingBudget.Kind.AIR);
     }
 
     @Override
@@ -404,7 +432,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     MathHelper.floor_double(player.posX),
                     MathHelper.floor_double(player.posY),
                     MathHelper.floor_double(player.posZ))
-            || !com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig.matches(player.getHeldItem())) return null;
+            || !MaidTemptationConfig.matches(player.getHeldItem())) return null;
         return new OwnerView(player);
     }
 
@@ -427,7 +455,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public boolean ownerHoldsTemptation(Owner value) {
-        return com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig.matches(owner(value).player.getHeldItem());
+        return MaidTemptationConfig.matches(owner(value).player.getHeldItem());
     }
 
     public void setBegging(boolean value) {
@@ -445,7 +473,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         edibleAction = action;
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS openWorkSearch() {
+    public MaidPathFindingBFS openWorkSearch() {
         return openPickupSearch();
     }
 
@@ -485,7 +513,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void rewardSteal() {
         guard();
         maid.getFavorabilityManager()
-            .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK, 1);
+            .apply(Type.STEAL_EDIBLE_BLOCK, 1);
     }
 
     public void swingMainHand() {
@@ -597,31 +625,29 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 增强调用者需要区分预算等待，原F的nullable createPath合同保持 */
-    public com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation requestEnhancedPath(BlockPos target) {
+    public MaidPathCreation requestEnhancedPath(BlockPos target) {
         guard();
         if (!runtime.getProfile()
             .isEnhanced()) throw new IllegalStateException("Enhanced query requires its actual policy profile");
-        var result = com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.NOT_NAVIGABLE;
-        if (!navigation.canUpdatePath())
-            return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, null);
+        var result = MaidPathCreation.Result.NOT_NAVIGABLE;
+        if (!navigation.canUpdatePath()) return new MaidPathCreation(result, null);
         long before = navigation.budgetDeferrals();
         var path = createPath(target, 0);
-        result = path != null ? com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.FOUND
-            : navigation.budgetDeferrals() > before
-                ? com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.WAITING_BUDGET
-                : com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation.Result.UNREACHABLE;
-        return new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathCreation(result, path);
+        result = path != null ? MaidPathCreation.Result.FOUND
+            : navigation.budgetDeferrals() > before ? MaidPathCreation.Result.WAITING_BUDGET
+                : MaidPathCreation.Result.UNREACHABLE;
+        return new MaidPathCreation(result, path);
     }
 
     @Override
-    public java.util.function.BooleanSupplier observeBlockedRoute() {
+    public BooleanSupplier observeBlockedRoute() {
         navigationLease();
         if (!runtime.getProfile()
             .isEnhanced()) throw new IllegalStateException("Enhanced obstacle observer requires its actual policy");
         if (restrictedCombatMove != null) return null;
         var identity = behaviorIdentity;
         long movementLease = combatMovementLeaseGeneration;
-        return com.tianluoqaq.tlmnh.common.ai.navigation.MaidRouteBlockage.observe(maid, ownedPath, () -> {
+        return MaidRouteBlockage.observe(maid, ownedPath, () -> {
             navigationLease();
             return behaviorIdentity == identity && movementLease == combatMovementLeaseGeneration
                 && restrictedCombatMove == null
@@ -664,12 +690,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         var requested = path(value);
         if (requested.created == null) throw new IllegalStateException("Path was not created for this installation");
         if (restrictedCombatMove != null && !restrictedCombatMove.accepts(requested.raw, worldTick)) {
-            if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
-                traceCombatNative(
-                    "REJECT",
-                    "PRE_INSTALL:" + restrictedCombatMove.diagnosticReason,
-                    requested.raw,
-                    null);
+            if (CombatDiagnosticScope.current(world) != null) traceCombatNative(
+                "REJECT",
+                "PRE_INSTALL:" + restrictedCombatMove.diagnosticReason,
+                requested.raw,
+                null);
             stopRestrictedCombatMove("REOBSERVATION_NATIVE_PATH_UNPROVED");
             return false;
         }
@@ -692,7 +717,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             restrictedCombatMove.previousRaw = restrictedCombatMove.raw;
             restrictedCombatMove.raw = actual == ownedPath ? actual : null;
             if (!accepted) {
-                if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null) {
+                if (CombatDiagnosticScope.current(world) != null) {
                     if (!postAcceptsEvaluated) restrictedCombatMove.diagnosticReason = "NOT_EVALUATED/result=" + result
                         + "/actualPresent="
                         + (actual != null)
@@ -799,13 +824,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 增强恢复使用实际落点身体空间，并在Forge传送回调后复核本次权限和地形 */
-    public boolean teleportEnhancedToOwner(Owner value, java.util.function.BooleanSupplier authorized,
-        boolean requireAir) {
+    public boolean teleportEnhancedToOwner(Owner value, BooleanSupplier authorized, boolean requireAir) {
         return teleportToOwner(value, authorized, true, requireAir);
     }
 
-    private boolean teleportToOwner(Owner value, java.util.function.BooleanSupplier authorized, boolean enhanced,
-        boolean requireAir) {
+    private boolean teleportToOwner(Owner value, BooleanSupplier authorized, boolean enhanced, boolean requireAir) {
         var player = owner(value).player;
         navigationLease();
         teleportAttempts = 0;
@@ -892,7 +915,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 增强返家不使用F的临时移位探测；全部验证完成后才提交实际位置 */
-    public boolean teleportEnhancedToHome(Point center, java.util.function.BooleanSupplier authorized) {
+    public boolean teleportEnhancedToHome(Point center, BooleanSupplier authorized) {
         navigationLease();
         int minimumY = Math.max(
             1,
@@ -1031,7 +1054,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 maid.getVerticalFaceSpeed());
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBFS openPickupSearch() {
+    public MaidPathFindingBFS openPickupSearch() {
         navigationLease();
         var area = maid.getHomeArea();
         var center = area.enabled() ? restrictionCenter() : airSearchPosition();
@@ -1120,7 +1143,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean canAddWorkMeal() {
         guard();
         return maid.getFavorabilityManager()
-            .canAdd(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL.getTypeName());
+            .canAdd(Type.WORK_MEAL.getTypeName());
     }
 
     public void eatMeal(boolean healing) {
@@ -1474,9 +1497,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && !region.collides(x - half, floor + .001, z - half, x + half, floor + maid.height, z + half)
             && region.collides(x - half, floor - .0625, z - half, x + half, floor, z + half)
             && navigation.pathfindingCost(
-                new com.github.tartaricacid.touhoulittlemaid.entity.ai.navigation.MaidNodeEvaluator(
-                    navigation.context(region)).cellType(point.x, point.y, point.z))
-                == 0;
+                new MaidNodeEvaluator(navigation.context(region)).cellType(point.x, point.y, point.z)) == 0;
         guard();
         return clear;
     }
@@ -1754,13 +1775,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return unifiedCombatEpoch;
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation combatObservation() {
+    public CombatObservation combatObservation() {
         guard();
         return unifiedCombatObservation;
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot readonlyCombatSnapshot(
-        EntityLivingBase selected, com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota quota) {
+    public CombatSnapshot readonlyCombatSnapshot(EntityLivingBase selected, CombatWorkQuota quota) {
         guard();
         if (!maid.isUnifiedCombat()) return null;
         var preferences = maid.getCombatTaskState();
@@ -1782,52 +1802,45 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             mayShield,
             ownsRangedUse(),
             ownsRangedUse() ? rangedUsedTicks() : 0,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedRideController.stationary(maid),
+            EnhancedRideController.stationary(maid),
             preferences.preferredTask() == MaidTask.RANGED_ATTACK,
             preferences.preferencePending(),
             combatMovementFact);
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Result tryApplyCombatPlan(
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan plan) {
+    public CombatPlan.Result tryApplyCombatPlan(CombatPlan plan) {
         guard();
         return unifiedCombat.apply(plan);
     }
 
-    public void setCombatNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        float speed) {
+    public void setCombatNodeWalk(CombatMovementFact.Node node, float speed) {
         setCombatNodeWalk(node, speed, null, null);
     }
 
-    public void setReobservationNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment, float speed) {
+    public void setReobservationNodeWalk(CombatMovementFact.Node node, CombatMovementSegment segment, float speed) {
         if (segment == null || !node.same(segment.node)) throw new IllegalArgumentException("Body segment required");
         setCombatNodeWalk(node, speed, segment, null);
     }
 
-    public void setAlignmentNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof proof, float speed) {
-        if (proof == null || !node.same(proof.node)
-            || node.role != com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.SAME_CELL_ALIGNMENT)
+    public void setAlignmentNodeWalk(CombatMovementFact.Node node, CombatAlignmentProof proof, float speed) {
+        if (proof == null || !node.same(proof.node) || node.role != CombatMovementFact.Role.SAME_CELL_ALIGNMENT)
             throw new IllegalArgumentException("Admitted alignment proof required");
         setCombatNodeWalk(node, speed, proof.segment, proof);
     }
 
-    public void setConditionalEntryNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        CombatConditionalEntryProof proof, float speed) {
-        if (proof == null || !node.same(proof.node)
-            || node.role != com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.CONDITIONAL_ENTRY)
+    public void setConditionalEntryNodeWalk(CombatMovementFact.Node node, CombatConditionalEntryProof proof,
+        float speed) {
+        if (proof == null || !node.same(proof.node) || node.role != CombatMovementFact.Role.CONDITIONAL_ENTRY)
             throw new IllegalArgumentException("Admitted conditional entry proof required");
         setCombatNodeWalk(node, speed, proof.segment, null, proof);
     }
 
-    public void setPassiveDoorExitWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        CombatPassiveDoorExitProof proof, float speed) {
+    public void setPassiveDoorExitWalk(CombatMovementFact.Node node, CombatPassiveDoorExitProof proof, float speed) {
         if (proof == null || !node.same(proof.node)) throw new IllegalArgumentException("Passive exit proof required");
         setCombatNodeWalk(node, speed, proof.segment, null, null, proof);
     }
 
-    public void updateAlignmentAdmission(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan plan) {
+    public void updateAlignmentAdmission(CombatPlan plan) {
         guard();
         if (restrictedCombatMove != null && restrictedCombatMove.alignment != null
             && (plan.alignmentProof == null || plan.movementNode == null
@@ -1857,23 +1870,18 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
     }
 
-    private void setCombatNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        float speed, com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof alignment) {
+    private void setCombatNodeWalk(CombatMovementFact.Node node, float speed, CombatMovementSegment segment,
+        CombatAlignmentProof alignment) {
         setCombatNodeWalk(node, speed, segment, alignment, null);
     }
 
-    private void setCombatNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        float speed, com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof alignment,
-        CombatConditionalEntryProof entry) {
+    private void setCombatNodeWalk(CombatMovementFact.Node node, float speed, CombatMovementSegment segment,
+        CombatAlignmentProof alignment, CombatConditionalEntryProof entry) {
         setCombatNodeWalk(node, speed, segment, alignment, entry, null);
     }
 
-    private void setCombatNodeWalk(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node,
-        float speed, com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof alignment,
-        CombatConditionalEntryProof entry, CombatPassiveDoorExitProof passiveExit) {
+    private void setCombatNodeWalk(CombatMovementFact.Node node, float speed, CombatMovementSegment segment,
+        CombatAlignmentProof alignment, CombatConditionalEntryProof entry, CombatPassiveDoorExitProof passiveExit) {
         guard();
         if (node == null || !node.current(worldTick)
             || node.entityEpoch != unifiedCombatEpoch
@@ -1937,7 +1945,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
     }
 
-    public boolean hasInstalledCombatNode(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node) {
+    public boolean hasInstalledCombatNode(CombatMovementFact.Node node) {
         guard();
         if (restrictedCombatMove != null && restrictedCombatMove.ownedWaypoint()
             && combatInstalledPath != null
@@ -2028,67 +2036,56 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && combatInstalledPath.getCurrentPathIndex() == combatInstalledPath.getCurrentPathLength() - 1
                 && restrictedCombatMove.accepts(combatInstalledPath, worldTick)
                 && restrictedCombatMove.passiveExitArrival(worldTick) != null;
-        if (combatNode.role == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.CONDITIONAL_ENTRY)
-            return area && restrictedCombatMove != null
-                && restrictedCombatMove.entry != null
-                && restrictedCombatMove.raw == combatInstalledPath
-                && navigation.getPath() == combatInstalledPath
-                && !combatInstalledPath.isFinished()
-                && combatInstalledPath.getCurrentPathIndex() == combatInstalledPath.getCurrentPathLength() - 1
-                && restrictedCombatMove.accepts(combatInstalledPath, worldTick)
-                && restrictedCombatMove.entryArrival(worldTick) != null;
-        if (combatNode.role
-            == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.SAME_CELL_ALIGNMENT)
-            return area && restrictedCombatMove != null
-                && restrictedCombatMove.alignment != null
-                && restrictedCombatMove.raw == combatInstalledPath
-                && navigation.getPath() == combatInstalledPath
-                && !combatInstalledPath.isFinished()
-                && restrictedCombatMove.alignmentJunction(worldTick) != null;
-        return area && com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.sameStandingCell(
-            new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
-                maid.posX,
-                maid.boundingBox.minY,
-                maid.posZ),
-            combatNode.foot);
+        if (combatNode.role == CombatMovementFact.Role.CONDITIONAL_ENTRY) return area && restrictedCombatMove != null
+            && restrictedCombatMove.entry != null
+            && restrictedCombatMove.raw == combatInstalledPath
+            && navigation.getPath() == combatInstalledPath
+            && !combatInstalledPath.isFinished()
+            && combatInstalledPath.getCurrentPathIndex() == combatInstalledPath.getCurrentPathLength() - 1
+            && restrictedCombatMove.accepts(combatInstalledPath, worldTick)
+            && restrictedCombatMove.entryArrival(worldTick) != null;
+        if (combatNode.role == CombatMovementFact.Role.SAME_CELL_ALIGNMENT) return area && restrictedCombatMove != null
+            && restrictedCombatMove.alignment != null
+            && restrictedCombatMove.raw == combatInstalledPath
+            && navigation.getPath() == combatInstalledPath
+            && !combatInstalledPath.isFinished()
+            && restrictedCombatMove.alignmentJunction(worldTick) != null;
+        return area && CombatMovementFact
+            .sameStandingCell(new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ), combatNode.foot);
     }
 
     @Override
-    public void combatNavigationOutcome(WalkTarget target, Path path,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome outcome, long retryAt) {
+    public void combatNavigationOutcome(WalkTarget target, Path path, EnhancedNavigationController.Outcome outcome,
+        long retryAt) {
         guard();
         if (!isCombatNode(target)) return;
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome fact;
-        if (outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.RUNNING
-            || outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.PARTIAL_PATH) {
+        CombatMovementFact.Outcome fact;
+        if (outcome == EnhancedNavigationController.Outcome.RUNNING
+            || outcome == EnhancedNavigationController.Outcome.PARTIAL_PATH) {
             Object identity = path == null ? null : path.getIdentity();
             if (!(identity instanceof PathEntity raw) || raw != navigation.getPath() || raw != ownedPath) return;
             if (combatInstalledPath != raw) combatPathIdentity = ++nextCombatPathIdentity;
             combatInstalledPath = raw;
-            fact = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.INSTALLED;
-        } else if (outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.ARRIVED) {
+            fact = CombatMovementFact.Outcome.INSTALLED;
+        } else if (outcome == EnhancedNavigationController.Outcome.ARRIVED) {
             if (!combatNodeArrived(target, path)) return;
-            fact = combatNode.role
-                == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Role.SAME_CELL_ALIGNMENT
-                    ? com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.JUNCTION_READY
-                    : com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED;
-        } else if (outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.UNREACHABLE
-            || outcome == com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedNavigationController.Outcome.RECOVERY_WAIT)
-            fact = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.NATIVE_FAILURE;
-        else fact = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.WAIT_SERVICE;
+            fact = combatNode.role == CombatMovementFact.Role.SAME_CELL_ALIGNMENT
+                ? CombatMovementFact.Outcome.JUNCTION_READY
+                : CombatMovementFact.Outcome.ARRIVED;
+        } else if (outcome == EnhancedNavigationController.Outcome.UNREACHABLE
+            || outcome == EnhancedNavigationController.Outcome.RECOVERY_WAIT)
+            fact = CombatMovementFact.Outcome.NATIVE_FAILURE;
+        else fact = CombatMovementFact.Outcome.WAIT_SERVICE;
         var home = maid.getHomeArea();
         boolean area = home.enabled() ? home.sameDimension() && home.containsMaid()
             : maid.getOwner() != null && maid.getDistanceSqToEntity(maid.getOwner()) <= 256;
-        combatMovementFact = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+        combatMovementFact = new CombatMovementFact(
             combatNode,
             fact,
             worldTick,
             combatPathIdentity,
             retryAt,
-            new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
-                maid.posX,
-                maid.boundingBox.minY,
-                maid.posZ),
+            new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ),
             maid.onGround,
             area,
             combatTailMatches(),
@@ -2096,17 +2093,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             combatInstalledPath == null ? -1 : combatInstalledPath.getCurrentPathIndex(),
             combatInstalledPath == null ? -1 : combatInstalledPath.getCurrentPathLength(),
             combatInstalledPath == null || combatInstalledPath.getFinalPathPoint() == null ? null
-                : new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
+                : new CombatSnapshot.Vec(
                     combatInstalledPath.getFinalPathPoint().xCoord,
                     combatInstalledPath.getFinalPathPoint().yCoord,
                     combatInstalledPath.getFinalPathPoint().zCoord),
-            fact == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.JUNCTION_READY
-                && restrictedCombatMove != null ? restrictedCombatMove.junctionReceipt : null,
-            fact == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED
-                && restrictedCombatMove != null
+            fact == CombatMovementFact.Outcome.JUNCTION_READY && restrictedCombatMove != null
+                ? restrictedCombatMove.junctionReceipt
+                : null,
+            fact == CombatMovementFact.Outcome.ARRIVED && restrictedCombatMove != null
                 && restrictedCombatMove.entry != null ? restrictedCombatMove.entryArrivalReceipt : null,
-            fact == com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.ARRIVED
-                && restrictedCombatMove != null
+            fact == CombatMovementFact.Outcome.ARRIVED && restrictedCombatMove != null
                 && restrictedCombatMove.passiveExit != null ? restrictedCombatMove.passiveExitArrivalReceipt : null);
     }
 
@@ -2125,7 +2121,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 || lease.alignment != null && lease.alignmentMovement(now) == null
                 || lease.entry != null && lease.entryMovement(now, null) == null
                 || lease.passiveExit != null && lease.passiveExitMovement(now, null) == null) {
-                if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
+                if (CombatDiagnosticScope.current(world) != null)
                     traceCombatNative("REJECT", "PRE_NATIVE:" + lease.diagnosticReason, actual, null);
                 stopRestrictedCombatMove("REOBSERVATION_PRE_NATIVE_REPROOF_REQUIRED");
                 return false;
@@ -2136,11 +2132,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         }
     }
 
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec alignmentFoot() {
-        return new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
-            maid.posX,
-            maid.boundingBox.minY,
-            maid.posZ);
+    private CombatSnapshot.Vec alignmentFoot() {
+        return new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ);
     }
 
     @Override
@@ -2153,8 +2146,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     private void cancelOrdinaryCombatDispatch() {
-        if (ordinaryCombatDispatchRaw != null && maid
-            .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control)
+        if (ordinaryCombatDispatchRaw != null && maid.getMoveHelper() instanceof MaidMoveControl control)
             control.cancelOrdinaryCombatCommand(ordinaryCombatDispatchRevision);
         ordinaryCombatDispatchRaw = null;
         ordinaryCombatDispatchRevision = -1;
@@ -2170,11 +2162,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     @Override
-    public com.tianluoqaq.tlmnh.common.ai.navigation.MaidCombatMoveDispatch nativeMoveDispatch(PathEntity raw, double x,
-        double y, double z, double speed) {
+    public MaidCombatMoveDispatch nativeMoveDispatch(PathEntity raw, double x, double y, double z, double speed) {
         var lease = restrictedCombatMove;
-        if (lease == null || !lease.ownedWaypoint())
-            return com.tianluoqaq.tlmnh.common.ai.navigation.MaidCombatMoveDispatch.DEFAULT;
+        if (lease == null || !lease.ownedWaypoint()) return MaidCombatMoveDispatch.DEFAULT;
         long now = world.getTotalWorldTime();
         var center = lease.passiveExit != null ? lease.passiveExit.source.k : lease.segment.node.anchor;
         long previousDiagnosticTick = combatDiagnosticTickOverride;
@@ -2182,19 +2172,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         try {
             if (raw != lease.raw || raw != ownedPath
                 || !lease.accepts(raw, now)
-                || (lease.passiveExit != null
-                    ? lease.passiveExitMovement(
-                        now,
-                        new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(x, y, z)) == null
-                    : lease.entry != null
-                        ? lease.entryMovement(
-                            now,
-                            new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(x, y, z)) == null
+                || (lease.passiveExit != null ? lease.passiveExitMovement(now, new CombatSnapshot.Vec(x, y, z)) == null
+                    : lease.entry != null ? lease.entryMovement(now, new CombatSnapshot.Vec(x, y, z)) == null
                         : lease.alignmentMovement(now) == null || Math.abs(x - center.x) > .0001
                             || Math.abs(y - center.y) > .0001
                             || Math.abs(z - center.z) > .0001)) {
                 stopRestrictedCombatMove("ALIGNMENT_ACTUAL_DISPATCH_UNPROVED");
-                return com.tianluoqaq.tlmnh.common.ai.navigation.MaidCombatMoveDispatch.REJECT;
+                return MaidCombatMoveDispatch.REJECT;
             }
             final long version = lease.proofVersion, generation = combatMovementLeaseGeneration;
             final int atEntityTick = maid.ticksExisted, index = raw.getCurrentPathIndex(),
@@ -2202,7 +2186,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             final var foot = alignmentFoot();
             final float width = maid.width, height = maid.height;
             lease.dispatchTick = now;
-            var command = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove(
+            var command = new CombatQueuedMove(
                 () -> restrictedCombatMove == lease && lease.ownedWaypoint()
                     && lease.proofVersion == version
                     && combatMovementLeaseGeneration == generation
@@ -2231,7 +2215,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                         stopRestrictedCombatMove("ALIGNMENT_QUEUED_COMMAND_STALE");
                 });
             lease.queuedCommand = command;
-            var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world);
+            var scope = CombatDiagnosticScope.current(world);
             if (scope != null) {
                 var log = scope.log(this, 12);
                 if (log.hasCapacity(now)) traceCombatNative(
@@ -2250,7 +2234,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     raw);
                 else log.shouldCapture(now, "DISPATCH_CHECKED");
             }
-            return com.tianluoqaq.tlmnh.common.ai.navigation.MaidCombatMoveDispatch.owned(command);
+            return MaidCombatMoveDispatch.owned(command);
         } finally {
             combatDiagnosticTickOverride = previousDiagnosticTick;
         }
@@ -2263,22 +2247,20 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     @Override
-    public void ownedMoveDispatched(PathEntity raw,
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command, long slotRevision) {
+    public void ownedMoveDispatched(PathEntity raw, CombatQueuedMove command, long slotRevision) {
         var lease = restrictedCombatMove;
         if (lease == null || !lease.ownedWaypoint()
             || lease.raw != raw
             || ownedPath != raw
             || lease.queuedCommand != command) return;
-        var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world);
+        var scope = CombatDiagnosticScope.current(world);
         if (scope == null) return;
         var log = scope.log(this, 12);
         if (!log.hasCapacity(lease.dispatchTick)) {
             log.shouldCapture(lease.dispatchTick, "DISPATCH_ACCEPTED");
             return;
         }
-        if (!(maid
-            .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control)
+        if (!(maid.getMoveHelper() instanceof MaidMoveControl control)
             || !control.ownsCombatCommand(command, slotRevision)) return;
         long previousTick = combatDiagnosticTickOverride;
         combatDiagnosticTickOverride = lease.dispatchTick;
@@ -2304,10 +2286,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private void stopRestrictedCombatMove(String reason, boolean alignmentHandoff) {
         RestrictedCombatMove lease = restrictedCombatMove;
         if (lease == null) return;
-        if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
+        if (CombatDiagnosticScope.current(world) != null)
             traceCombatNative("STOP", reason + ":" + lease.diagnosticReason, lease.raw, null);
-        if (lease.ownedWaypoint() && maid
-            .getMoveHelper() instanceof com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl control)
+        if (lease.ownedWaypoint() && maid.getMoveHelper() instanceof MaidMoveControl control)
             control.cancelOwnedCommand(lease.queuedCommand);
         boolean ownPath = lease.raw != null && navigation.getPath() == lease.raw && ownedPath == lease.raw;
         if (ownPath) {
@@ -2323,16 +2304,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (walk == lease.walkIdentity && lease.segment.node.same(combatNode)) {
             walk = null;
             if (combatMovementFact == null || !combatMovementFact.terminalFor(combatNode, world.getTotalWorldTime()))
-                combatMovementFact = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact(
+                combatMovementFact = new CombatMovementFact(
                     combatNode,
-                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Outcome.WAIT_SERVICE,
+                    CombatMovementFact.Outcome.WAIT_SERVICE,
                     world.getTotalWorldTime(),
                     combatPathIdentity,
                     0,
-                    new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
-                        maid.posX,
-                        maid.boundingBox.minY,
-                        maid.posZ),
+                    new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ),
                     maid.onGround,
                     false,
                     false,
@@ -2374,7 +2352,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     private void traceCombatNative(String kind, String reason, PathEntity requested, PathEntity actual) {
-        var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world);
+        var scope = CombatDiagnosticScope.current(world);
         RestrictedCombatMove lease = restrictedCombatMove;
         if (scope == null || lease == null) return;
         long at = combatDiagnosticTickOverride == Long.MIN_VALUE ? worldTick : combatDiagnosticTickOverride;
@@ -2475,13 +2453,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 清理路径后仍可读本次纯缓存，关闭诊断时不取任何native getter */
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.Frame combatNativeDiagnostic() {
-        var scope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world);
+    public CombatDiagnosticScope.Frame combatNativeDiagnostic() {
+        var scope = CombatDiagnosticScope.current(world);
         if (scope == null) return null;
         var cached = scope.get(this);
-        return cached instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.Log log
-            ? log.snapshot()
-            : null;
+        return cached instanceof CombatDiagnosticScope.Log log ? log.snapshot() : null;
     }
 
     private final class RestrictedCombatMove {
@@ -2492,16 +2468,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         final EntityLivingBase owner = maid.getOwner();
         final String ownerIdentity = maid.func_152113_b();
         final long epoch = unifiedCombatEpoch, observation = unifiedCombatObservation.epoch();
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment;
+        CombatMovementSegment segment;
         PathEntity raw, previousRaw;
         WalkTarget walkIdentity;
         String diagnosticReason = "NOT_EVALUATED";
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec diagnosticFoot;
+        CombatSnapshot.Vec diagnosticFoot;
         long diagnosticFootAt = Long.MIN_VALUE;
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof alignment;
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof.Movement movementReceipt;
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof.Junction junctionReceipt;
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove queuedCommand;
+        CombatAlignmentProof alignment;
+        CombatAlignmentProof.Movement movementReceipt;
+        CombatAlignmentProof.Junction junctionReceipt;
+        CombatQueuedMove queuedCommand;
         CombatConditionalEntryProof entry;
         CombatConditionalEntryProof.Movement entryMovementReceipt;
         CombatConditionalEntryProof.Arrival entryArrivalReceipt;
@@ -2518,13 +2494,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         PathEntity bodyRaw;
         int bodyIndex, bodyLength;
 
-        RestrictedCombatMove(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment segment,
-            EntityLivingBase target) {
+        RestrictedCombatMove(CombatMovementSegment segment, EntityLivingBase target) {
             this.segment = segment;
             this.target = target;
         }
 
-        void updateAlignment(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof next) {
+        void updateAlignment(CombatAlignmentProof next) {
             if (alignment != null && alignment.sameEvidence(next)) return;
             if (alignment == null ? next != null : !alignment.sameEvidence(next)) {
                 proofVersion++;
@@ -2569,8 +2544,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && passiveExit.height == maid.height
                 && passiveExit.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
-                && passiveExit.weapon.equals(
-                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.fingerprint(maid.getHeldItem()))
+                && passiveExit.weapon.equals(CombatObservation.fingerprint(maid.getHeldItem()))
                 && unifiedCombatObservation.observedAt(segment.node.target) == passiveExit.lastSeenAt
                 && navigation.isBrainTargetOwner(ModernFollowCoreActor.this)
                 && runtime != null
@@ -2580,8 +2554,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     .isSuspended();
         }
 
-        CombatPassiveDoorExitProof.Movement passiveExitMovement(long now,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec dispatch) {
+        CombatPassiveDoorExitProof.Movement passiveExitMovement(long now, CombatSnapshot.Vec dispatch) {
             if (passiveExit == null || !valid(now)) return null;
             var foot = alignmentFoot();
             int index = raw == null ? -1 : raw.getCurrentPathIndex(),
@@ -2590,8 +2563,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && passiveExitBodyRaw == raw
                 && passiveExitBodyIndex == index
                 && passiveExitBodyLength == length) return passiveExitMovementReceipt;
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
-                .heartbeat(world, maid.getUniqueID(), now, false);
+            var quota = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             passiveExitMovementReceipt = passiveExit.movement(foot, dispatch, now, quota);
             passiveExitArrivalReceipt = null;
             passiveExitBodyRaw = raw;
@@ -2627,8 +2599,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && entry.height == maid.height
                 && entry.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
-                && entry.weapon.equals(
-                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.fingerprint(maid.getHeldItem()))
+                && entry.weapon.equals(CombatObservation.fingerprint(maid.getHeldItem()))
                 && unifiedCombatObservation.visible(segment.node.target)
                 && navigation.isBrainTargetOwner(ModernFollowCoreActor.this)
                 && runtime != null
@@ -2638,8 +2609,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     .isSuspended();
         }
 
-        CombatConditionalEntryProof.Movement entryMovement(long now,
-            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec dispatch) {
+        CombatConditionalEntryProof.Movement entryMovement(long now, CombatSnapshot.Vec dispatch) {
             if (entry == null || !valid(now)) return null;
             var foot = alignmentFoot();
             int index = raw == null ? -1 : raw.getCurrentPathIndex(),
@@ -2648,8 +2618,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && entryBodyRaw == raw
                 && entryBodyIndex == index
                 && entryBodyLength == length) return entryMovementReceipt;
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
-                .heartbeat(world, maid.getUniqueID(), now, false);
+            var quota = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             entryMovementReceipt = entry.movement(foot, dispatch, now, quota);
             entryArrivalReceipt = null;
             entryBodyRaw = raw;
@@ -2678,8 +2647,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && alignment.height == maid.height
                 && alignment.equipmentEpoch == maid.getEquipmentEpoch()
                     .generation()
-                && alignment.weapon.equals(
-                    com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.fingerprint(maid.getHeldItem()))
+                && alignment.weapon.equals(CombatObservation.fingerprint(maid.getHeldItem()))
                 && unifiedCombatObservation.visible(segment.node.target)
                 && navigation.isBrainTargetOwner(ModernFollowCoreActor.this)
                 && runtime != null
@@ -2689,7 +2657,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     .isSuspended();
         }
 
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof.Movement alignmentMovement(long now) {
+        CombatAlignmentProof.Movement alignmentMovement(long now) {
             if (alignment == null || !valid(now)) return null;
             var foot = alignmentFoot();
             int index = raw == null ? -1 : raw.getCurrentPathIndex(),
@@ -2698,8 +2666,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && bodyRaw == raw
                 && bodyIndex == index
                 && bodyLength == length) return movementReceipt;
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
-                .heartbeat(world, maid.getUniqueID(), now, false);
+            var quota = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             movementReceipt = alignment.movement(foot, now, quota);
             junctionReceipt = null;
             bodyRaw = raw;
@@ -2708,13 +2675,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             return movementReceipt;
         }
 
-        com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatAlignmentProof.Junction alignmentJunction(long now) {
+        CombatAlignmentProof.Junction alignmentJunction(long now) {
             var movement = alignmentMovement(now);
             if (movement == null) return null;
             var foot = alignmentFoot();
             if (junctionReceipt != null && junctionReceipt.matches(segment.node, foot, now)) return junctionReceipt;
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
-                .heartbeat(world, maid.getUniqueID(), now, false);
+            var quota = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             junctionReceipt = alignment.junction(movement, foot, now, quota);
             return junctionReceipt;
         }
@@ -2726,8 +2692,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                     && !owner.isDead
                     && owner.isEntityAlive()
                     && owner.getDistanceSq(maid.posX, maid.posY, maid.posZ) <= 256;
-            boolean diagnose = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world)
-                != null;
+            boolean diagnose = CombatDiagnosticScope.current(world) != null;
             if (diagnose) {
                 diagnosticReason = "VALID_NOT_EVALUATED";
                 diagnosticFoot = null;
@@ -2739,10 +2704,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && diagnosticGate(inArea, "AREA", diagnose)
                 && diagnosticGate(Objects.equals(ownerIdentity, maid.func_152113_b()), "OWNER_IDENTITY", diagnose)
                 && diagnosticGate(task == maid.getTask(), "TASK", diagnose)
-                && diagnosticGate(
-                    home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK,
-                    "ACTIVITY",
-                    diagnose)
+                && diagnosticGate(home.activity() == MaidLifeRules.Activity.WORK, "ACTIVITY", diagnose)
                 && diagnosticGate(ownerToken == token, "ACTOR_TOKEN", diagnose)
                 && diagnosticGate(behaviors == behaviorIdentity, "BEHAVIOR", diagnose)
                 && diagnosticGate(epoch == unifiedCombatEpoch, "ENTITY_EPOCH", diagnose)
@@ -2776,16 +2738,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 && diagnosticGate(target.dimension == maid.dimension, "TARGET_DIMENSION", diagnose)
                 && diagnosticGate(segment.node.same(combatNode), "MOVEMENT_NODE", diagnose)
                 && diagnosticGate(combatNodeTarget == target, "MOVEMENT_TARGET", diagnose)
-                && diagnosticPosition(
-                    new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec(
-                        maid.posX,
-                        maid.boundingBox.minY,
-                        maid.posZ),
-                    diagnose);
+                && diagnosticPosition(new CombatSnapshot.Vec(maid.posX, maid.boundingBox.minY, maid.posZ), diagnose);
         }
 
-        boolean diagnosticPosition(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec actual,
-            boolean diagnose) {
+        boolean diagnosticPosition(CombatSnapshot.Vec actual, boolean diagnose) {
             if (diagnose) diagnosticFoot = actual;
             return diagnosticGate(segment.currentPosition(actual), "CURRENT_POSITION", diagnose);
         }
@@ -2806,8 +2762,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         private boolean acceptsNativePath(PathEntity path, long now, boolean installedAlignment) {
             if (!valid(now)) return false;
             if (path == null) {
-                if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
-                    diagnosticReason = "NATIVE_NULL";
+                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_NULL";
                 return false;
             }
             if (ownedWaypoint()
@@ -2817,16 +2772,13 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             }
             int count = path.getCurrentPathLength();
             if (count < 1 || count > 2) {
-                if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
-                    diagnosticReason = "NATIVE_COUNT_" + count;
+                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_COUNT_" + count;
                 return false;
             }
-            var q = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
-                .heartbeat(world, maid.getUniqueID(), now, false);
+            var q = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), now, false);
             int index = path.getCurrentPathIndex();
             if (index < 0 || index > count) {
-                if (com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world) != null)
-                    diagnosticReason = "NATIVE_INDEX_" + index;
+                if (CombatDiagnosticScope.current(world) != null) diagnosticReason = "NATIVE_INDEX_" + index;
                 return false;
             }
             int[] coordinates = new int[count * 3];
@@ -2837,22 +2789,18 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 coordinates[i * 3 + 2] = point.zCoord;
             }
             // 只有本租约先前完整认证过的同一raw可跳过已消费前缀；新candidate/安装变换后新raw从0核
-            var diagnosticScope = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.current(world);
+            var diagnosticScope = CombatDiagnosticScope.current(world);
             Object diagnosticLog = diagnosticScope == null ? null : diagnosticScope.get(ModernFollowCoreActor.this);
             boolean diagnose = diagnosticScope != null
-                && (!(diagnosticLog instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDiagnosticScope.Log log)
-                    || log.hasCapacity(now));
-            var nativeCheck = diagnose
-                ? new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementSegment.NativeCheck()
-                : null;
+                && (!(diagnosticLog instanceof CombatDiagnosticScope.Log log) || log.hasCapacity(now));
+            var nativeCheck = diagnose ? new CombatMovementSegment.NativeCheck() : null;
             boolean passiveSuffix = passiveExit != null && installedAlignment
                 && path == raw
                 && path == passiveCertifiedRaw
                 && passiveCertifiedCoordinates != null;
             if (passiveSuffix) {
-                if (!q.spend(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.COLLISION, count))
-                    return false;
-                passiveSuffix = java.util.Arrays.equals(coordinates, passiveCertifiedCoordinates);
+                if (!q.spend(CombatWorkQuota.Work.COLLISION, count)) return false;
+                passiveSuffix = Arrays.equals(coordinates, passiveCertifiedCoordinates);
             }
             boolean suffix = path == raw && (!installedAlignment || passiveSuffix);
             boolean accepted = segment.acceptsNative(coordinates, count, suffix ? index : 0, q, nativeCheck);
@@ -2872,11 +2820,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 + "/suffix="
                 + suffix
                 + "/points="
-                + java.util.Arrays.toString(coordinates)
+                + Arrays.toString(coordinates)
                 + "/used="
-                + java.util.Arrays.toString(q.counts())
+                + Arrays.toString(q.counts())
                 + "/denied="
-                + java.util.Arrays.toString(q.denials());
+                + Arrays.toString(q.denials());
             else if (diagnosticScope != null) diagnosticReason = "NOT_EVALUATED_LOG_FULL";
             return accepted;
         }
@@ -2893,7 +2841,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 真实身体朝向与 LOOK 输入受转向角速度限制，防御机动严格遵守物理角限制 */
-    public void lookAtCombatPoint(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec point) {
+    public void lookAtCombatPoint(CombatSnapshot.Vec point) {
         guard();
         look = new Vec3(point.x, point.y + maid.getEyeHeight(), point.z);
         double yaw = Math.atan2(point.z - maid.posZ, point.x - maid.posX) * 180 / Math.PI - 90;
@@ -2973,19 +2921,19 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         hurtTarget(value, () -> true);
     }
 
-    public void hurtTarget(MaidCombatActor.Target value, java.util.function.BooleanSupplier permitted) {
+    public void hurtTarget(MaidCombatActor.Target value, BooleanSupplier permitted) {
         var view = attackTarget(value);
         var owner = maid.getOwner();
         var weapon = maid.getHeldItem();
         var before = weapon == null ? null : weapon.copy();
-        java.util.function.BooleanSupplier completion = () -> view.current() && view.entity.worldObj == world
+        BooleanSupplier completion = () -> view.current() && view.entity.worldObj == world
             && maid.getOwner() == owner
             && maid.getTask() == MaidTask.ATTACK
             && maid.getModernCombatMemory()
                 .target() == view.entity
             && maid.getHeldItem() == weapon
             && ItemStack.areItemStacksEqual(weapon, before);
-        java.util.function.BooleanSupplier admitted = () -> completion.getAsBoolean() && permitted.getAsBoolean()
+        BooleanSupplier admitted = () -> completion.getAsBoolean() && permitted.getAsBoolean()
             && view.entity.isEntityAlive()
             && (maid.isUnifiedCombat() || hasAssaultWeapon())
             && liveCombatTarget(view.entity)
@@ -3059,12 +3007,12 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return pathMemory == null ? null : new DoorPathView(pathMemory.raw);
     }
 
-    public java.util.Set<MaidDoorActor.Position> doorsToClose() {
+    public Set<MaidDoorActor.Position> doorsToClose() {
         guard();
         return doorsToClose;
     }
 
-    public void rememberDoors(java.util.Set<MaidDoorActor.Position> positions) {
+    public void rememberDoors(Set<MaidDoorActor.Position> positions) {
         guard();
         doorsToClose = positions;
     }
@@ -3096,16 +3044,14 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         if (pos.dimension != world.provider.dimensionId || !world.blockExists(p.x, p.y, p.z))
             return MaidDoorActor.Kind.NONE;
         var block = world.getBlock(p.x, p.y, p.z);
-        if (block instanceof net.minecraft.block.BlockDoor && block.getMaterial() == Material.wood)
-            return MaidDoorActor.Kind.WOOD_DOOR;
-        return block instanceof net.minecraft.block.BlockFenceGate ? MaidDoorActor.Kind.FENCE_GATE
-            : MaidDoorActor.Kind.NONE;
+        if (block instanceof BlockDoor && block.getMaterial() == Material.wood) return MaidDoorActor.Kind.WOOD_DOOR;
+        return block instanceof BlockFenceGate ? MaidDoorActor.Kind.FENCE_GATE : MaidDoorActor.Kind.NONE;
     }
 
     private Point nativeDoorPosition(MaidDoorActor.Position pos) {
         var p = pos.point;
-        if (world.getBlock(p.x, p.y, p.z) instanceof net.minecraft.block.BlockDoor
-            && (world.getBlockMetadata(p.x, p.y, p.z) & 8) != 0) return new Point(p.x, p.y - 1, p.z);
+        if (world.getBlock(p.x, p.y, p.z) instanceof BlockDoor && (world.getBlockMetadata(p.x, p.y, p.z) & 8) != 0)
+            return new Point(p.x, p.y - 1, p.z);
         return p;
     }
 
@@ -3168,12 +3114,11 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public boolean otherMaidsComingThrough(MaidDoorActor.Position pos) {
         guard();
-        String type = net.minecraft.entity.EntityList.getEntityString(maid);
+        String type = EntityList.getEntityString(maid);
         if (type == null) return false;
         var p = pos.point;
         for (var living : perception.nearby()) {
-            if (!(living instanceof EntityMaid other)
-                || !type.equals(net.minecraft.entity.EntityList.getEntityString(other))
+            if (!(living instanceof EntityMaid other) || !type.equals(EntityList.getEntityString(other))
                 || other.getDistanceSq(p.x + .5, p.y + .5, p.z + .5) >= 4) continue;
             var path = other.getBrainCoordinator()
                 .peekModernBrainPath();
@@ -3204,24 +3149,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         private final Token lease = token;
         private final Object behaviors = behaviorIdentity;
         private final long movementLease = combatMovementLeaseGeneration;
-        private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatMovementFact.Node node = combatNode;
+        private final CombatMovementFact.Node node = combatNode;
         private final int nextIndex;
-        private final com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDoorContext context;
+        private final CombatDoorContext context;
         private final long tick = worldTick;
         private final int age = entityTick;
 
         DoorPathView(PathEntity raw) {
             this.raw = raw;
             nextIndex = raw.getCurrentPathIndex();
-            context = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatDoorContext(
-                lease,
-                behaviors,
-                movementLease,
-                node,
-                raw,
-                nextIndex,
-                tick,
-                age);
+            context = new CombatDoorContext(lease, behaviors, movementLease, node, raw, nextIndex, tick, age);
         }
 
         private boolean sameContext(ModernFollowCoreActor expectedOwner) {
@@ -3398,8 +3335,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         fireRangedAttackForPolicy(value, charge, () -> true);
     }
 
-    public boolean fireRangedAttackForPolicy(MaidCombatActor.Target value, float charge,
-        java.util.function.BooleanSupplier permitted) {
+    public boolean fireRangedAttackForPolicy(MaidCombatActor.Target value, float charge, BooleanSupplier permitted) {
         var view = attackTarget(value);
         var item = maid.getHeldItem();
         var before = item == null ? null : item.copy();
@@ -3453,8 +3389,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void strafe(float forwards, float sideways) {
         guard();
-        ((com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl) maid.getMoveHelper())
-            .strafe(forwards, sideways);
+        ((MaidMoveControl) maid.getMoveHelper()).strafe(forwards, sideways);
     }
 
     public void stopRangedInPlace() {
@@ -3480,7 +3415,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return owner == null ? null : (double) target.getDistanceToEntity(owner);
     }
 
-    public com.tianluoqaq.tlmnh.common.combat.MaidBowAttack rangedBow() {
+    public MaidBowAttack rangedBow() {
         return rangedBow;
     }
 
@@ -3666,7 +3601,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     /** 增强动作在出生回调前后额外复核手部和本次动作身份；原F入口保持原条件 */
-    public void throwSnowballAt(MaidCombatActor.Target value, java.util.function.BooleanSupplier authorized) {
+    public void throwSnowballAt(MaidCombatActor.Target value, BooleanSupplier authorized) {
         var view = attackTarget(value);
         if (!authorized.getAsBoolean() || maid.getTask() != MaidTask.IDLE
             || maid.getModernCombatMemory()

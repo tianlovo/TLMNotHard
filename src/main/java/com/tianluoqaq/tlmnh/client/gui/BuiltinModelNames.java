@@ -17,6 +17,7 @@ import net.minecraft.util.StatCollector;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -86,7 +87,7 @@ public final class BuiltinModelNames implements IResourceManagerReloadListener {
     private void readLanguage(String code) {
         var packs = new LinkedHashSet<String>();
         for (var choice : BuiltinModelCatalog.choices()) packs.add(choice.getPackId());
-        for (var pack : com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs()) packs.add(pack.id);
+        for (var pack : BuiltinSoundCatalog.packs()) packs.add(pack.id);
         for (String pack : packs) {
             var location = new ResourceLocation(pack, "lang/" + code + ".json");
             try (var reader = new InputStreamReader(

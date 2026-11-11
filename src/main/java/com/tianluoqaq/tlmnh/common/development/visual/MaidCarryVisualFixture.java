@@ -13,6 +13,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
@@ -20,6 +21,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
@@ -40,7 +42,7 @@ public final class MaidCarryVisualFixture {
     private MaidCarryVisualFixture() {}
 
     public static void set(EntityPlayerMP observer, String action) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands required");
         require(
             action.equals("bedrock") || action.equals("gecko") || action.equals("clear") || action.equals("status"),
             "Unknown carry visual action");
@@ -234,7 +236,8 @@ public final class MaidCarryVisualFixture {
     }
 
     private static boolean matches(NBTTagCompound data, String key, ItemStack stack) {
-        return data.hasKey(key + "Present", 1) && data.getBoolean(key + "Present") == (stack != null)
+        return data.hasKey(key + "Present", Constants.NBT.TAG_BYTE)
+            && data.getBoolean(key + "Present") == (stack != null)
             && (stack == null || data.getCompoundTag(key)
                 .equals(ProtectedItemCodec.encode(stack)));
     }

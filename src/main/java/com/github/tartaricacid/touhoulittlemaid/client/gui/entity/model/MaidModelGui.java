@@ -8,8 +8,10 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
+import com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -73,8 +75,7 @@ public final class MaidModelGui extends AbstractModelGui {
 
     @Override
     protected void drawRightEntity(int x, int y, int modelIndex) {
-        if (com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager.INSTANCE
-            .draw(modelIndex, x, y)) return;
+        if (CacheIconManager.INSTANCE.draw(modelIndex, x, y)) return;
         var maid = previews.computeIfAbsent(modelIndex, index -> {
             var detached = new EntityMaid(mc.theWorld);
             detached.onGround = true;
@@ -88,7 +89,7 @@ public final class MaidModelGui extends AbstractModelGui {
         var choice = BuiltinModelCatalog.choices()
             .get(modelIndex);
         if (choice.isEasterEgg()) {
-            com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride.placeholder(maid, () -> {
+            MaidNamedModelOverride.placeholder(maid, () -> {
                 MaidGuiPreview.draw(maid, x, y, (int) (12 * choice.getItemScale()), -25, -20, 0, 0, width, height);
                 return null;
             });

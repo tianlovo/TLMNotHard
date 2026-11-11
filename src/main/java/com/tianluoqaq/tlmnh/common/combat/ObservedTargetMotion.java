@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.Arrays;
+
 /** 只拟合连续可见的位置样本；失去视野、换目标或瞬移后不沿用旧速度 */
 public final class ObservedTargetMotion {
 
@@ -56,7 +58,7 @@ public final class ObservedTargetMotion {
     }
 
     public void clear() {
-        java.util.Arrays.fill(positions, null);
+        Arrays.fill(positions, null);
         identity = null;
         count = 0;
     }

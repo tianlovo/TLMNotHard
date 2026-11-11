@@ -13,7 +13,9 @@ import org.lwjgl.opengl.GL13;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.client.render.MaidRenderProtection;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
@@ -30,7 +32,7 @@ public final class ClientProtectionProbe {
     private ClientProtectionProbe() {}
 
     public static JsonObject perform(String action) throws ReflectiveOperationException {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || Minecraft.getMinecraft().thePlayer == null)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || Minecraft.getMinecraft().thePlayer == null)
             throw new IllegalStateException("Development client player required");
         var result = new JsonObject();
         if (action.equals("missing_api")) {
@@ -100,8 +102,7 @@ public final class ClientProtectionProbe {
             var text = ((ChatLine) value).func_151461_a()
                 .getUnformattedText();
             if (injectedCode != null && text.contains(injectedCode)
-                && text.contains(ExternalFeature.CLIENT_RENDER_STATE.id))
-                messages.add(new com.google.gson.JsonPrimitive(text));
+                && text.contains(ExternalFeature.CLIENT_RENDER_STATE.id)) messages.add(new JsonPrimitive(text));
         }
         result.add("localWarnings", messages);
         return result;

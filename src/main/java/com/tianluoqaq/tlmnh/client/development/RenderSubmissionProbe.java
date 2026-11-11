@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.render.BuiltinMaidModel;
 import com.tianluoqaq.tlmnh.client.render.LegacyPoseStack;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -29,7 +30,7 @@ public final class RenderSubmissionProbe {
     private RenderSubmissionProbe() {}
 
     public static void arm(String request, String model, String fault) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development probe disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development probe disabled");
         if (pending != null) throw new IllegalStateException("Submission probe already pending");
         requireObserver();
         EntityMaid selected = null;

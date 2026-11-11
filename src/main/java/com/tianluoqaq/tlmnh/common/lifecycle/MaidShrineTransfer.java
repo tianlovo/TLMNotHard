@@ -8,6 +8,7 @@ import java.util.UUID;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
@@ -150,7 +151,7 @@ public final class MaidShrineTransfer {
             && player.getDistanceSq(shrine.xCoord + .5, shrine.yCoord + .5, shrine.zCoord + .5) <= 64;
     }
 
-    public static NBTTagCompound snapshot(net.minecraft.tileentity.TileEntity tile) {
+    public static NBTTagCompound snapshot(TileEntity tile) {
         var result = new NBTTagCompound();
         tile.writeToNBT(result);
         return (NBTTagCompound) result.copy();

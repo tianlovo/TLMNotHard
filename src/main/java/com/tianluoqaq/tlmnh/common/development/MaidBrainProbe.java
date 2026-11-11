@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.development;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.UUID;
 
 import net.minecraft.entity.item.EntityItem;
@@ -47,7 +48,7 @@ public final class MaidBrainProbe {
         for (int dx = -2; dx <= 7; dx++) for (int dz = -2; dz <= 4; dz++) for (int dy = -1; dy <= 3; dy++)
             require(world.isAirBlock(x + dx, y + dy, z + dz), "control fixture requires an empty bounded volume");
         long day = world.getWorldTime();
-        var existingEntities = new java.util.HashSet<>(world.loadedEntityList);
+        var existingEntities = new HashSet<>(world.loadedEntityList);
         int players = world.playerEntities.size();
         var owner = new EntityPlayerMP(
             MinecraftServer.getServer(),

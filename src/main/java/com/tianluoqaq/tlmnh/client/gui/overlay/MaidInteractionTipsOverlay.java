@@ -12,6 +12,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemPotion;
@@ -28,6 +29,7 @@ import org.lwjgl.opengl.GL11;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.render.MaidItemRenderScope;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
@@ -85,10 +87,7 @@ public final class MaidInteractionTipsOverlay extends Gui {
             var tip = tip(held);
             if (tip == null || !MaidClientPreferences.interactionTipEnabled(tip.configKey)) return;
             String text = StatCollector.translateToLocal(tip.translationKey)
-                .replace(
-                    "Shift",
-                    net.minecraft.client.settings.GameSettings
-                        .getKeyDisplayString(minecraft.gameSettings.keyBindSneak.getKeyCode()));
+                .replace("Shift", GameSettings.getKeyDisplayString(minecraft.gameSettings.keyBindSneak.getKeyCode()));
             draw(minecraft, held.copy(), text, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         } catch (Throwable failure) {
             IntegrationGuard.throwIfFatal(failure);
@@ -105,8 +104,7 @@ public final class MaidInteractionTipsOverlay extends Gui {
         if (item == Items.glass_bottle) return MaidInteractionTipsRules.Tip.GLASS_BOTTLE;
         if (item == Items.name_tag) return MaidInteractionTipsRules.Tip.NAME_TAG;
         if (item == Items.saddle) return MaidInteractionTipsRules.Tip.SADDLE;
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService.isEmpty(held))
-            return MaidInteractionTipsRules.Tip.EMPTY_SLAB;
+        if (MaidCaptureService.isEmpty(held)) return MaidInteractionTipsRules.Tip.EMPTY_SLAB;
         return null;
     }
 

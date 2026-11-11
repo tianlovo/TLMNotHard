@@ -6,6 +6,7 @@ import java.util.Map;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 /** 在本模组持有物品的存档边界使用；无法确认身份时原样封存，不返回空槽 */
 public final class ProtectedItemCodec {
@@ -69,7 +70,7 @@ public final class ProtectedItemCodec {
 
     public static ItemStack decodeField(NBTTagCompound parent, String key) {
         if (!parent.hasKey(key)) return null;
-        if (parent.hasKey(key, 10)) return decode(parent.getCompoundTag(key));
+        if (parent.hasKey(key, Constants.NBT.TAG_COMPOUND)) return decode(parent.getCompoundTag(key));
         var raw = new NBTTagCompound();
         raw.setTag(
             key,
@@ -81,22 +82,22 @@ public final class ProtectedItemCodec {
     /** 只读预检同样用于玩家显式拆包；不把新模组同数值ID当作原物品 */
     private static ItemStack resolve(NBTTagCompound source) {
         var data = (NBTTagCompound) source.copy();
-        if (!data.hasKey("id", 2) || !data.hasKey("Count", 1)
-            || !data.hasKey("Damage", 2)
-            || data.hasKey("tag") && !data.hasKey("tag", 10)) return seal(source, "item_type");
-        if (data.hasKey(META) && !data.hasKey(META, 10)) return seal(source, "schema");
+        if (!data.hasKey("id", Constants.NBT.TAG_SHORT) || !data.hasKey("Count", Constants.NBT.TAG_BYTE)
+            || !data.hasKey("Damage", Constants.NBT.TAG_SHORT)
+            || data.hasKey("tag") && !data.hasKey("tag", Constants.NBT.TAG_COMPOUND)) return seal(source, "item_type");
+        if (data.hasKey(META) && !data.hasKey(META, Constants.NBT.TAG_COMPOUND)) return seal(source, "schema");
         var meta = data.getCompoundTag(META);
         String name = meta.getString("Registry");
         int schema = meta.getInteger("Schema");
-        if (data.hasKey(META) && (!meta.hasKey("Schema", 3) || schema < 1
+        if (data.hasKey(META) && (!meta.hasKey("Schema", Constants.NBT.TAG_INT) || schema < 1
             || schema > 2
-            || !meta.hasKey("Registry", 8)
+            || !meta.hasKey("Registry", Constants.NBT.TAG_STRING)
             || name.isEmpty()
-            || !meta.hasKey("Dependency", 8))) return seal(source, "schema");
+            || !meta.hasKey("Dependency", Constants.NBT.TAG_STRING))) return seal(source, "schema");
         int count = data.getByte("Count"), damage = data.getShort("Damage");
         if (schema == 2) {
-            if (!meta.hasKey("ExactCount", 3) || !meta.hasKey("ExactDamage", 3)
-                || !meta.hasKey("Complete", 1)
+            if (!meta.hasKey("ExactCount", Constants.NBT.TAG_INT) || !meta.hasKey("ExactDamage", Constants.NBT.TAG_INT)
+                || !meta.hasKey("Complete", Constants.NBT.TAG_BYTE)
                 || !meta.getBoolean("Complete")) return seal(source, "incomplete_snapshot");
             count = meta.getInteger("ExactCount");
             damage = meta.getInteger("ExactDamage");
@@ -144,10 +145,10 @@ public final class ProtectedItemCodec {
             || parcel.stackSize != 1
             || !parcel.hasTagCompound()) return null;
         var payload = parcel.getTagCompound();
-        if (payload.getInteger("Schema") != 1 || !payload.hasKey("Original", 10)) return null;
+        if (payload.getInteger("Schema") != 1 || !payload.hasKey("Original", Constants.NBT.TAG_COMPOUND)) return null;
         var original = payload.getCompoundTag("Original");
         // 封存的旧数值ID在新环境可能被另一物品重用，缺少持久注册名时不自动拆包
-        if (!original.hasKey(META, 10)) return null;
+        if (!original.hasKey(META, Constants.NBT.TAG_COMPOUND)) return null;
         var resolved = decode(original);
         return resolved == null || resolved.getItem() == RecoveryParcel.ITEM ? null : resolved;
     }

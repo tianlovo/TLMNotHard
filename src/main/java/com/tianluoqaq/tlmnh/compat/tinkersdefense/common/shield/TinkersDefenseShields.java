@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.compat.tinkersdefense.common.shield;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.Status;
 import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
@@ -25,7 +26,7 @@ public final class TinkersDefenseShields {
             || HEATER.equals(id) && !hasInteger(data, "Extra")
             || !hasInteger(data, "TotalDurability")
             || !hasInteger(data, "Damage")
-            || !data.hasKey("Broken", 1)
+            || !data.hasKey("Broken", Constants.NBT.TAG_BYTE)
             || data.getInteger("TotalDurability") <= 0
             || data.getInteger("Damage") < 0
             || data.getInteger("Head") < 0
@@ -36,6 +37,6 @@ public final class TinkersDefenseShields {
     }
 
     private static boolean hasInteger(NBTTagCompound tag, String name) {
-        return tag.hasKey(name, 3);
+        return tag.hasKey(name, Constants.NBT.TAG_INT);
     }
 }

@@ -10,6 +10,7 @@ import net.minecraft.util.MathHelper;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.api.behavior.TransitionReason;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
@@ -51,7 +52,7 @@ public final class EnhancedCombatController {
     private long lastFullAt = Long.MIN_VALUE, attacks, releases, abandonedTargets;
     private long fullDecisions, lightDecisions, staleDecisions;
     private long bodyServices;
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status lastServiceResult = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status.NOT_GRANTED;
+    private CombatFullServiceReceipt.Status lastServiceResult = CombatFullServiceReceipt.Status.NOT_GRANTED;
 
     public EnhancedCombatController(EntityMaid maid, ModernFollowCoreActor actor, MaidModernPerception perception) {
         this.maid = maid;
@@ -402,7 +403,7 @@ public final class EnhancedCombatController {
         return bodyServices;
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatFullServiceReceipt.Status lastServiceResult() {
+    public CombatFullServiceReceipt.Status lastServiceResult() {
         return lastServiceResult;
     }
 

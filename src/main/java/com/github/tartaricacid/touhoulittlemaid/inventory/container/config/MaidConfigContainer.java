@@ -10,6 +10,7 @@ import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 
 public final class MaidConfigContainer extends AbstractMaidContainer {
@@ -30,12 +31,8 @@ public final class MaidConfigContainer extends AbstractMaidContainer {
         switch (action) {
             case FREQUENCY_DOWN -> config.setSoundFreq(config.getSoundFreq() - 0.1F);
             case FREQUENCY_UP -> config.setSoundFreq(config.getSoundFreq() + 0.1F);
-            case PICK_TYPE_PREVIOUS -> config.setPickupType(
-                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType
-                    .getPreviousPickType(config.getPickupType()));
-            case PICK_TYPE_NEXT -> config.setPickupType(
-                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType
-                    .getNextPickType(config.getPickupType()));
+            case PICK_TYPE_PREVIOUS -> config.setPickupType(PickType.getPreviousPickType(config.getPickupType()));
+            case PICK_TYPE_NEXT -> config.setPickupType(PickType.getNextPickType(config.getPickupType()));
             case TOGGLE_DOOR -> config.setOpenDoor(!config.isOpenDoor());
             case TOGGLE_FENCE_GATE -> config.setOpenFenceGate(!config.isOpenFenceGate());
             case TOGGLE_CLIMBING -> config.setActiveClimbing(!config.isActiveClimbing());

@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.common.entity;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 /** 固定现代LivingEntity事件46的128粒子；只由客户端实体事件调用，不消费服务端随机流 */
 public final class MaidTeleportParticles {
@@ -22,7 +24,7 @@ public final class MaidTeleportParticles {
                 + (random.nextDouble() - .5) * maid.width * 2;
             maid.worldObj.spawnParticle("portal", x, y, z, vx, vy, vz);
         }
-        if (Boolean.getBoolean("tlmnh.devCommands")) com.tianluoqaq.tlmnh.TLMNotHard.LOG
-            .info("TLMNH_RESTRICTION105_EVENT46 uuid={} particles=128", maid.getUniqueID());
+        if (DevelopmentFlags.isDevCommandsEnabled())
+            TLMNotHard.LOG.info("TLMNH_RESTRICTION105_EVENT46 uuid={} particles=128", maid.getUniqueID());
     }
 }

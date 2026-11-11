@@ -16,6 +16,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -134,39 +135,40 @@ final class MaidDeathIngress {
         for (Object field : receipt.func_150296_c()) if (!FIELDS.contains(field))
             throw new IllegalStateException("Unknown death ingress field retained: " + field);
         if (receipt.func_150296_c()
-            .size() != FIELDS.size() - (receipt.hasKey("Observed") ? 0 : 1) || !receipt.hasKey("Version", 3)
+            .size() != FIELDS.size() - (receipt.hasKey("Observed") ? 0 : 1)
+            || !receipt.hasKey("Version", Constants.NBT.TAG_INT)
             || receipt.getInteger("Version") != 1
-            || !receipt.hasKey("Token", 8)
+            || !receipt.hasKey("Token", Constants.NBT.TAG_STRING)
             || !token.toString()
                 .equals(receipt.getString("Token"))
-            || !receipt.hasKey("Stage", 8)
+            || !receipt.hasKey("Stage", Constants.NBT.TAG_STRING)
             || !(receipt.getString("Stage")
                 .equals("PREPARED")
                 || receipt.getString("Stage")
                     .equals("COMMITTED")
                 || receipt.getString("Stage")
                     .equals("HELD"))
-            || !receipt.hasKey("Source", 10)
-            || !receipt.hasKey("Cleared", 10)
-            || !receipt.hasKey("Items", 9)
-            || !receipt.hasKey("Experience", 3)
+            || !receipt.hasKey("Source", Constants.NBT.TAG_COMPOUND)
+            || !receipt.hasKey("Cleared", Constants.NBT.TAG_COMPOUND)
+            || !receipt.hasKey("Items", Constants.NBT.TAG_LIST)
+            || !receipt.hasKey("Experience", Constants.NBT.TAG_INT)
             || receipt.getInteger("Experience") < 0
-            || !receipt.hasKey("ReadyAt", 4)
+            || !receipt.hasKey("ReadyAt", Constants.NBT.TAG_LONG)
             || receipt.getLong("ReadyAt") < 0
-            || receipt.hasKey("Observed") && !receipt.hasKey("Observed", 10))
+            || receipt.hasKey("Observed") && !receipt.hasKey("Observed", Constants.NBT.TAG_COMPOUND))
             throw new IllegalStateException("Invalid death ingress receipt");
-        var items = receipt.getTagList("Items", 10);
+        var items = receipt.getTagList("Items", Constants.NBT.TAG_COMPOUND);
         if (items.tagCount() == 0 || items.tagCount() != ((NBTTagList) receipt.getTag("Items")).tagCount())
             throw new IllegalStateException("Invalid complete death materials");
         var source = receipt.getCompoundTag("Source");
         var cleared = receipt.getCompoundTag("Cleared");
-        if (!source.hasKey("UUIDMost", 4) || !source.hasKey("UUIDLeast", 4)
-            || !source.hasKey("OwnerUUID", 8)
+        if (!source.hasKey("UUIDMost", Constants.NBT.TAG_LONG) || !source.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
+            || !source.hasKey("OwnerUUID", Constants.NBT.TAG_STRING)
             || !subject.equals(new UUID(source.getLong("UUIDMost"), source.getLong("UUIDLeast")))
             || !owner.toString()
                 .equals(source.getString("OwnerUUID"))
-            || !source.hasKey("MaidExperience", 3)
-            || !source.hasKey("HealF", 5)
+            || !source.hasKey("MaidExperience", Constants.NBT.TAG_INT)
+            || !source.hasKey("HealF", Constants.NBT.TAG_FLOAT)
             || !Float.isFinite(source.getFloat("HealF"))
             || source.getFloat("HealF") > 0
             || source.getCompoundTag("ForgeData")
@@ -214,7 +216,8 @@ final class MaidDeathIngress {
             this.ledger = ledger;
             var data = maid.getEntityData();
             if (data.hasKey(TAG)) {
-                if (!data.hasKey(TAG, 10)) throw new IllegalStateException("Unknown death source marker preserved");
+                if (!data.hasKey(TAG, Constants.NBT.TAG_COMPOUND))
+                    throw new IllegalStateException("Unknown death source marker preserved");
                 marker = data.getCompoundTag(TAG);
                 token = UUID.fromString(marker.getString("Token"));
                 receipt = (NBTTagCompound) marker.copy();
@@ -308,8 +311,9 @@ final class MaidDeathIngress {
                 if (current == 0)
                     throw new IllegalStateException("Death source no longer matches its full owned snapshots");
                 var source = receipt.getCompoundTag("Source");
-                var position = source.getTagList("Pos", 6);
-                if (!source.hasKey("Dimension", 3) || source.getInteger("Dimension") != world.provider.dimensionId
+                var position = source.getTagList("Pos", Constants.NBT.TAG_DOUBLE);
+                if (!source.hasKey("Dimension", Constants.NBT.TAG_INT)
+                    || source.getInteger("Dimension") != world.provider.dimensionId
                     || position.tagCount() != 3)
                     throw new IllegalStateException("Unknown death source world or position");
                 ledger.prepareDeath(
@@ -317,7 +321,7 @@ final class MaidDeathIngress {
                     owner,
                     subject,
                     MaidFilmData.identity(source),
-                    receipt.getTagList("Items", 10),
+                    receipt.getTagList("Items", Constants.NBT.TAG_COMPOUND),
                     world.provider.dimensionId,
                     Math.floor(position.func_150309_d(0)) + .5,
                     Math.max(5, Math.min(world.getHeight() - 2, Math.floor(position.func_150309_d(1)))),
@@ -381,7 +385,7 @@ final class MaidDeathIngress {
                 .write()
                 .equals(
                     receipt.getCompoundTag("Source")
-                        .getTagList(RecoveryStore.TAG, 10)))
+                        .getTagList(RecoveryStore.TAG, Constants.NBT.TAG_COMPOUND)))
                 throw new IllegalStateException("Unknown recovery successor was not cleared");
             inventory.recovery()
                 .clear();

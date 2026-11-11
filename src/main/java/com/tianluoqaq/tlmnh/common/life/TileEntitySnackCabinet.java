@@ -1,19 +1,31 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.Arrays;
+
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
+
+import com.tianluoqaq.tlmnh.common.life.cabinet.CabinetOpeners;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 /** 上游最小 27 格零食柜，使用原生箱子界面，不增加厨房联动 */
 public final class TileEntitySnackCabinet extends TileEntity implements IInventory {
 
     private boolean displayChecked;
-    private net.minecraft.nbt.NBTBase customName;
-    private final com.tianluoqaq.tlmnh.common.life.cabinet.CabinetOpeners openers = new com.tianluoqaq.tlmnh.common.life.cabinet.CabinetOpeners(
-        this);
+    private NBTBase customName;
+    private final CabinetOpeners openers = new CabinetOpeners(this);
 
     @Override
     public void updateEntity() {
@@ -23,23 +35,21 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         if (!displayChecked) {
             displayChecked = true;
             // 旧占位柜加载时已有原版蛋糕，不等待一次额外的邻居事件才建立原玻璃罩
-            com.tianluoqaq.tlmnh.common.registry.MaidLifeContent.snackCabinet
-                .refreshDisplay(worldObj, xCoord, yCoord, zCoord);
+            MaidLifeContent.snackCabinet.refreshDisplay(worldObj, xCoord, yCoord, zCoord);
         }
         openers.tick();
     }
 
     @Override
-    public boolean shouldRefresh(net.minecraft.block.Block oldBlock, net.minecraft.block.Block newBlock, int oldMeta,
-        int newMeta, net.minecraft.world.World world, int x, int y, int z) {
+    public boolean shouldRefresh(Block oldBlock, Block newBlock, int oldMeta, int newMeta, World world, int x, int y,
+        int z) {
         // Forge默认非原生Tile在metadata变化时会被重建；方向/玻璃罩不能清空柜内物品
         return oldBlock != newBlock;
     }
 
-    private final com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery = new com.tianluoqaq.tlmnh.common.protection.RecoveryStore(
-        this);
+    private final RecoveryStore recovery = new RecoveryStore(this);
 
-    public com.tianluoqaq.tlmnh.common.protection.RecoveryStore recovery() {
+    public RecoveryStore recovery() {
         return recovery;
     }
 
@@ -57,7 +67,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public ItemStack decrStackSize(int slot, int count) {
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)) return null;
+        if (MaidTileReturns.isPrepared(this)) return null;
         if (count <= 0 || items[slot] == null) return null;
         ItemStack removed;
         if (items[slot].stackSize <= count) {
@@ -70,7 +80,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public ItemStack getStackInSlotOnClosing(int slot) {
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)) return null;
+        if (MaidTileReturns.isPrepared(this)) return null;
         var result = items[slot];
         items[slot] = null;
         markDirty();
@@ -79,35 +89,34 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
 
     @Override
     public void setInventorySlotContents(int slot, ItemStack stack) {
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this))
+        if (MaidTileReturns.isPrepared(this))
             throw new IllegalStateException("Cabinet material is already held for its original removal");
-        stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.admit(stack, getInventoryStackLimit());
+        stack = ProtectedItemCodec.admit(stack, getInventoryStackLimit());
         items[slot] = stack;
         markDirty();
     }
 
     void clearForReturn() {
-        if (!com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this))
-            throw new IllegalStateException("Original cabinet escrow required");
-        java.util.Arrays.fill(items, null);
+        if (!MaidTileReturns.isPrepared(this)) throw new IllegalStateException("Original cabinet escrow required");
+        Arrays.fill(items, null);
         recovery.clear();
         markDirty();
     }
 
     @Override
     public String getInventoryName() {
-        return hasCustomInventoryName() ? ((net.minecraft.nbt.NBTTagString) customName).func_150285_a_()
+        return hasCustomInventoryName() ? ((NBTTagString) customName).func_150285_a_()
             : "container.tlmnh.snack_cabinet";
     }
 
     @Override
     public boolean hasCustomInventoryName() {
-        return customName instanceof net.minecraft.nbt.NBTTagString name && !name.func_150285_a_()
+        return customName instanceof NBTTagString name && !name.func_150285_a_()
             .isEmpty();
     }
 
     public void setCustomInventoryName(String name) {
-        customName = new net.minecraft.nbt.NBTTagString(name);
+        customName = new NBTTagString(name);
         markDirty();
     }
 
@@ -119,7 +128,7 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
     @Override
     public boolean isUseableByPlayer(EntityPlayer player) {
         return worldObj != null && player != null
-            && !com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.isPrepared(this)
+            && !MaidTileReturns.isPrepared(this)
             && player.isEntityAlive()
             && player.worldObj == worldObj
             && worldObj.blockExists(xCoord, yCoord, zCoord)
@@ -147,12 +156,12 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         super.writeToNBT(tag);
         var contents = new NBTTagList();
         for (int slot = 0; slot < items.length; slot++) if (items[slot] != null) {
-            var item = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(items[slot]);
+            var item = ProtectedItemCodec.encode(items[slot]);
             item.setByte("Slot", (byte) slot);
             contents.appendTag(item);
         }
         tag.setTag("Items", contents);
-        tag.setTag(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, recovery.write());
+        tag.setTag(RecoveryStore.TAG, recovery.write());
         if (customName != null) tag.setTag("CustomName", customName.copy());
     }
 
@@ -163,20 +172,19 @@ public final class TileEntitySnackCabinet extends TileEntity implements IInvento
         openers.reset();
         customName = tag.hasKey("CustomName") ? tag.getTag("CustomName")
             .copy() : null;
-        java.util.Arrays.fill(items, null);
-        recovery.read(tag.getTagList(com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG, 10));
+        Arrays.fill(items, null);
+        recovery.read(tag.getTagList(RecoveryStore.TAG, Constants.NBT.TAG_COMPOUND));
         recovery.retainInvalidList(tag, "Items");
-        recovery.retainInvalidList(tag, com.tianluoqaq.tlmnh.common.protection.RecoveryStore.TAG);
-        var contents = tag.getTagList("Items", 10);
+        recovery.retainInvalidList(tag, RecoveryStore.TAG);
+        var contents = tag.getTagList("Items", Constants.NBT.TAG_COMPOUND);
         for (int index = 0; index < contents.tagCount(); index++) {
             var item = contents.getCompoundTagAt(index);
             int slot = item.getByte("Slot") & 255;
-            if (!item.hasKey("Slot", 1) || slot >= items.length || items[slot] != null) recovery.retain(item);
+            if (!item.hasKey("Slot", Constants.NBT.TAG_BYTE) || slot >= items.length || items[slot] != null)
+                recovery.retain(item);
             else {
-                var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(item);
-                items[slot] = stack == null
-                    ? com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.seal(item, "empty_entry")
-                    : stack;
+                var stack = ProtectedItemCodec.decode(item);
+                items[slot] = stack == null ? ProtectedItemCodec.seal(item, "empty_entry") : stack;
             }
         }
     }

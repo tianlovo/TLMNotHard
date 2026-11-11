@@ -1,10 +1,13 @@
 package com.tianluoqaq.tlmnh.client.development;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 /** 本地测试控制协议，只接受列出的操作和受限参数 */
 public final class ClientDevelopmentRequest {
@@ -111,7 +114,7 @@ public final class ClientDevelopmentRequest {
                     "authors_and_credits:wine_fox_maid",
                     "touhou_little_maid:hakurei_reimu")
                 .contains(model);
-            if (!reviewedFaultModel && !com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog.contains(model))
+            if (!reviewedFaultModel && !BuiltinModelCatalog.contains(model))
                 throw new IllegalArgumentException("Unknown builtin render probe model");
             if (json.has("fault")) fault = text(json, "fault");
             if (!Arrays.asList("none", "uv_offset", "wrong_texture", "drop_geometry")
@@ -177,7 +180,7 @@ public final class ClientDevelopmentRequest {
                 || action.equals("native_click")
                 || action.equals("native_sneak_click")) {
                 model = text(json, "model");
-                if (!java.util.UUID.fromString(model)
+                if (!UUID.fromString(model)
                     .toString()
                     .equals(model)) throw new IllegalArgumentException("Canonical maid UUID required");
             }
@@ -304,7 +307,7 @@ public final class ClientDevelopmentRequest {
             .getAsString();
     }
 
-    public static java.util.List<String> heldGpuActions() {
+    public static List<String> heldGpuActions() {
         return Arrays.asList(
             "shield_wood",
             "shield_hide",
@@ -319,7 +322,7 @@ public final class ClientDevelopmentRequest {
             "main_tool");
     }
 
-    public static java.util.List<String> heldGpuViews() {
+    public static List<String> heldGpuViews() {
         return Arrays.asList("positive_z", "negative_z", "positive_x", "negative_x");
     }
 

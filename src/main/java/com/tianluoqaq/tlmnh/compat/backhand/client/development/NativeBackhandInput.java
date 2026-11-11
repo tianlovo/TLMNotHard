@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.development.MaidCareInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -36,7 +37,7 @@ public final class NativeBackhandInput {
         var mc = Minecraft.getMinecraft();
         var player = mc.thePlayer;
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && AnimationLab.isLab(mc.theWorld)
+            DevelopmentFlags.isDevCommandsEnabled() && AnimationLab.isLab(mc.theWorld)
                 && player != null
                 && player.isEntityAlive()
                 && mc.currentScreen == null

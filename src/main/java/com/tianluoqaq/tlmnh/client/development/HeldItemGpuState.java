@@ -14,6 +14,8 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 
+import com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries;
+
 /** 复用GpuMatrixProbe已审计的FBO/PBO/attribute事务，不改旧实验的实现或结论 */
 final class HeldItemGpuState {
 
@@ -31,8 +33,7 @@ final class HeldItemGpuState {
     final int renderbuffer = GL11.glGetInteger(GL30.GL_RENDERBUFFER_BINDING),
         program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
     final int mode = GL11.glGetInteger(GL11.GL_MATRIX_MODE), active = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-    final int clientActive = com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries
-        .clientActiveTexture();
+    final int clientActive = AngelicaRenderQueries.clientActiveTexture();
     final int packBuffer = GL11.glGetInteger(GL21.GL_PIXEL_PACK_BUFFER_BINDING),
         unpackBuffer = GL11.glGetInteger(GL21.GL_PIXEL_UNPACK_BUFFER_BINDING);
     final int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING),

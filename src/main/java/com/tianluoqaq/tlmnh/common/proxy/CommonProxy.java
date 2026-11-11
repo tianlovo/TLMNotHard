@@ -8,12 +8,24 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
+import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
+import com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot;
+import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
+import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
+import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
 
 import cpw.mods.fml.common.network.IGuiHandler;
 
@@ -32,18 +44,16 @@ public class CommonProxy implements IGuiHandler {
 
     public void init() {
         MaidNamingNetwork.init();
-        com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.init();
-        com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork.init();
-        com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork.init();
+        MaidSoundNetwork.init();
+        MaidEffectNetwork.init();
+        MaidTaskConfigNetwork.init();
     }
 
-    public void enqueueMaidSound(
-        com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage message) {}
+    public void enqueueMaidSound(PlayMaidSoundMessage message) {}
 
-    public void enqueueMaidEffects(
-        com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage message) {}
+    public void enqueueMaidEffects(SendEffectMessage message) {}
 
-    public void enqueueMaidAttackSnapshot(com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot message) {}
+    public void enqueueMaidAttackSnapshot(MaidAttackSnapshot message) {}
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int entityId, int unusedY,
@@ -60,9 +70,9 @@ public class CommonProxy implements IGuiHandler {
         var entity = world.getEntityByID(entityId);
         if (!(entity instanceof EntityMaid maid)) return null;
         if (!MaidContainerAccess.canInteract(player, player, maid)) return null;
-        if ((id == GUI_MAID || id == GUI_MAID_MODELS) && !Boolean.getBoolean("tlmnh.devCommands")) return null;
+        if ((id == GUI_MAID || id == GUI_MAID_MODELS) && !DevelopmentFlags.isDevCommandsEnabled()) return null;
         // 原openMaidGui拒绝睡眠时新开普通菜单；命名牌有独立交互，继续沿其原条件
-        if (id != GUI_MAID_NAMING && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING)) return null;
+        if (id != GUI_MAID_NAMING && maid.hasPose(MaidPose.SLEEPING)) return null;
         var factory = maidMenuFactory(id, player, maid, unusedY, unusedZ);
         if (factory == null) return null;
         if (id != GUI_MAID_NAMING) maid.getNavigator()
@@ -76,23 +86,15 @@ public class CommonProxy implements IGuiHandler {
             long session = ((long) unusedY << 32) | (unusedZ & 0xFFFFFFFFL);
             boolean attack = id == GUI_MAID_ATTACK_CONFIG;
             if (session == 0 || player.inventory.getItemStack() != null
-                || !maid.worldObj.isRemote
-                    && (maid.getTask() != com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE) != attack)
-                return null;
-            return () -> new com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer(
-                player.inventory,
-                maid,
-                session,
-                attack);
+                || !maid.worldObj.isRemote && (maid.getTask() != MaidTask.IDLE) != attack) return null;
+            return () -> new TaskConfigContainer(player.inventory, maid, session, attack);
         }
-        if (id == GUI_MAID_CONFIG) return player.inventory.getItemStack() == null
-            ? () -> new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
-                player.inventory,
-                maid)
-            : null;
-        if (id == GUI_MAID_SOUNDS) return player.inventory.getItemStack() == null
-            ? () -> new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(player.inventory, maid)
-            : null;
+        if (id == GUI_MAID_CONFIG)
+            return player.inventory.getItemStack() == null ? () -> new MaidConfigContainer(player.inventory, maid)
+                : null;
+        if (id == GUI_MAID_SOUNDS)
+            return player.inventory.getItemStack() == null ? () -> new ContainerMaidSounds(player.inventory, maid)
+                : null;
         if (id == GUI_MAID_ORIGINAL) return () -> new EmptyBackpackContainer(player.inventory, maid);
         if (id == GUI_MAID_ORIGINAL_MODELS)
             return player.inventory.getItemStack() == null ? () -> new ContainerMaidModels(player.inventory, maid, true)

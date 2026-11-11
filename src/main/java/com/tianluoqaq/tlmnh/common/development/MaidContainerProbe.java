@@ -9,6 +9,7 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.FakePlayer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
@@ -153,9 +154,7 @@ public final class MaidContainerProbe {
 
     private static void verifyOriginalLayout(WorldServer world, EntityPlayer owner, EntityPlayer stranger,
         EntityMaid maid) {
-        var original = new com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer(
-            owner.inventory,
-            maid);
+        var original = new EmptyBackpackContainer(owner.inventory, maid);
         var inventory = maid.getMaidInventory();
         require(original.inventorySlots.size() == 48, "original slot count");
         for (int i = 0; i < 36; i++) {

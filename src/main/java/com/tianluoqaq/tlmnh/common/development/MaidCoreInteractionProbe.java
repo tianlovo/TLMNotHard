@@ -1,17 +1,32 @@
 package com.tianluoqaq.tlmnh.common.development;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoor;
+import net.minecraft.block.material.Material;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.entity.DataWatcher;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -19,24 +34,66 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
+import net.minecraft.network.PacketBuffer;
+import net.minecraft.network.play.server.S1CPacketEntityMetadata;
+import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.pathfinding.PathPoint;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
+import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.DamageSource;
+import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent;
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidPlaySoundEvent;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData;
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
+import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.MaidPathQuery;
+import com.tianluoqaq.tlmnh.common.ai.MaidTraversalController;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
+import com.tianluoqaq.tlmnh.common.config.MaidChatConfig;
+import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
+import com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
+import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
+import com.tianluoqaq.tlmnh.common.network.MaidBubbleCodec;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState;
+import com.tianluoqaq.tlmnh.compat.malisisdoors.development.block.MalisisDoorFixture;
+import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 
 /** 实际原生平台服务端夹具，使用隔离玩家和临时实体；不声称验证客户端点击或网络包顺序 */
 public final class MaidCoreInteractionProbe {
@@ -60,9 +117,7 @@ public final class MaidCoreInteractionProbe {
         try (var f = new Fixture(world)) {
             world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
             require(world.spawnEntityInWorld(f.maid), "registered config maid");
-            var menu = new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
-                f.owner.inventory,
-                f.maid);
+            var menu = new MaidConfigContainer(f.owner.inventory, f.maid);
             f.owner.openContainer = menu;
             require(menu.inventorySlots.size() == 36, "config contains only 36 player slots");
             require(
@@ -84,19 +139,16 @@ public final class MaidCoreInteractionProbe {
             require(!menu.enchantItem(f.stranger, 24), "foreign viewer denied");
             var config = f.maid.getConfigManager();
             require(
-                menu.enchantItem(f.owner, 27) && config.getPickupType()
-                    == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM,
+                menu.enchantItem(f.owner, 27) && config.getPickupType() == PickType.ONLY_ITEM,
                 "pickup type next wraps");
             f.maid.setPickup(false);
             require(
-                !f.maid.isPickup() && config.getPickupType()
-                    == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM,
+                !f.maid.isPickup() && config.getPickupType() == PickType.ONLY_ITEM,
                 "master switch preserves preferred type");
             f.maid.setPickup(true);
             require(f.maid.canPickupItems() && !f.maid.canPickupExperience(), "type effective after reenabling");
             require(
-                menu.enchantItem(f.owner, 26)
-                    && config.getPickupType() == com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL,
+                menu.enchantItem(f.owner, 26) && config.getPickupType() == PickType.ALL,
                 "pickup type previous wraps");
             for (int action = 28; action <= 30; action++)
                 require(menu.enchantItem(f.owner, action), "navigation setting toggle");
@@ -185,9 +237,7 @@ public final class MaidCoreInteractionProbe {
                     .getItemDamage() == 17,
                 "in-place durability refresh");
             var config = f.maid.getConfigManager();
-            var menu = new com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer(
-                f.owner.inventory,
-                f.maid);
+            var menu = new MaidConfigContainer(f.owner.inventory, f.maid);
             f.owner.openContainer = menu;
             require(
                 config.isShowBackItem() && menu.enchantItem(f.owner, 31) && !config.isShowBackItem(),
@@ -216,7 +266,7 @@ public final class MaidCoreInteractionProbe {
                 f.maid.getDataWatcher()
                     .getWatchableObjectItemStack(18) == null,
                 "cleared tracker item");
-            var proxy = new com.tianluoqaq.tlmnh.common.proxy.CommonProxy();
+            var proxy = new CommonProxy();
             var previous = System.getProperty("tlmnh.devCommands");
             try {
                 System.setProperty("tlmnh.devCommands", "false");
@@ -239,22 +289,22 @@ public final class MaidCoreInteractionProbe {
     }
 
     public static void runBubbles(WorldServer world) {
-        boolean enabled = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji;
-        int rate = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate;
-        int image = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight;
-        int text = com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight;
+        boolean enabled = MaidChatConfig.enableEmoji;
+        int rate = MaidChatConfig.checkRate;
+        int image = MaidChatConfig.imageWeight;
+        int text = MaidChatConfig.kaomojiWeight;
         try (var f = new Fixture(world)) {
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji = true;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate = 20;
+            MaidChatConfig.enableEmoji = true;
+            MaidChatConfig.checkRate = 20;
             f.maid.ticksExisted = (int) Math.floorMod(
                 -(f.maid.getUniqueID()
                     .getLeastSignificantBits() % 20),
                 20L);
             var manager = f.maid.getChatBubbleManager();
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = 1;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 0;
+            MaidChatConfig.imageWeight = 1;
+            MaidChatConfig.kaomojiWeight = 0;
             manager.tick();
-            var decoded = com.tianluoqaq.tlmnh.common.network.MaidBubbleCodec.decode(
+            var decoded = MaidBubbleCodec.decode(
                 f.maid.getDataWatcher()
                     .getWatchableObjectString(19));
             require(
@@ -264,8 +314,8 @@ public final class MaidCoreInteractionProbe {
                     .isImage(),
                 "native routine image metadata");
             manager.clear();
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = 0;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 1;
+            MaidChatConfig.imageWeight = 0;
+            MaidChatConfig.kaomojiWeight = 1;
             manager.tick();
             require(
                 manager.getChatBubbleDataCollection()
@@ -278,7 +328,7 @@ public final class MaidCoreInteractionProbe {
                         .isEmpty(),
                 "native routine kaomoji loaded");
             manager.clear();
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = 0;
+            MaidChatConfig.kaomojiWeight = 0;
             manager.tick();
             require(
                 manager.getChatBubbleDataCollection()
@@ -292,10 +342,7 @@ public final class MaidCoreInteractionProbe {
                 "actual native damage creates hurt bubble");
             manager.clear();
             manager.getChatBubbleDataCollection()
-                .put(
-                    System.currentTimeMillis() - 1,
-                    com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData
-                        .type2("expired"));
+                .put(System.currentTimeMillis() - 1, TextChatBubbleData.type2("expired"));
             manager.forceUpdateChatBubble();
             f.maid.ticksExisted = 5;
             manager.tick();
@@ -309,24 +356,23 @@ public final class MaidCoreInteractionProbe {
             TLMNotHard.LOG.info(
                 "TLMNH_BUBBLES_TEST_PASS routine=image-and-text zero-weights=disabled native-hurt=observed expired-metadata=cleared client=unverified");
         } finally {
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.enableEmoji = enabled;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.checkRate = rate;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.imageWeight = image;
-            com.tianluoqaq.tlmnh.common.config.MaidChatConfig.kaomojiWeight = text;
+            MaidChatConfig.enableEmoji = enabled;
+            MaidChatConfig.checkRate = rate;
+            MaidChatConfig.imageWeight = image;
+            MaidChatConfig.kaomojiWeight = text;
         }
     }
 
     public static void setVisualFixture(EntityPlayerMP player, String action) {
         var maid = AnimationLab.ownedSceneMaid(player);
         if (action.equals("snapshot")) {
-            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
+            MaidVisualFixtureState.capture(maid);
             return;
         }
         if (action.equals("restore") || action.equals("clear")) {
             require(player.inventory.getItemStack() == null, "Empty cursor required for visual fixture restore");
             player.closeScreen();
-            if (com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
-                com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.restore(maid);
+            if (MaidVisualFixtureState.exists(maid)) MaidVisualFixtureState.restore(maid);
             return;
         }
         if (action.equals("td-round-idle") || action.equals("td-round-block")
@@ -335,20 +381,18 @@ public final class MaidCoreInteractionProbe {
             require(
                 player.openContainer == player.inventoryContainer,
                 "Close the current menu before world shield input");
-            var construction = new com.google.gson.JsonObject();
+            var construction = new JsonObject();
             ItemStack shield;
             String id = action.startsWith("td-round-") ? "tinkersdefense:Round Shield" : "tinkersdefense:Heater Shield";
             try {
-                shield = com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures
-                    .createWoodShields(construction)
+                shield = MaidShieldFixtures.createWoodShields(construction)
                     .get(id);
             } catch (Exception failure) {
                 throw new IllegalStateException("Native world shield construction failed before staging", failure);
             }
             boolean blocking = action.endsWith("-block");
-            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState
-                .stageHeldShield(maid, shield, blocking);
-            var result = com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(maid);
+            MaidVisualFixtureState.stageHeldShield(maid, shield, blocking);
+            var result = MaidVisibleStateSnapshot.capture(maid);
             result.addProperty("action", action);
             result.addProperty(
                 "uuid",
@@ -363,10 +407,9 @@ public final class MaidCoreInteractionProbe {
         boolean accessories = action.equals("reimu-accessories") || action.equals("winefox-accessories");
         boolean headFixture = accessories || action.equals("reimu-head") || action.equals("winefox-head");
         require(headFixture || action.equals("reimu") || action.equals("winefox"), "Unknown visual fixture");
-        if (!com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.exists(maid))
-            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.capture(maid);
-        com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.verifyBackSlot(maid);
-        if (headFixture) com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.verifyHeadSlot(maid);
+        if (!MaidVisualFixtureState.exists(maid)) MaidVisualFixtureState.capture(maid);
+        MaidVisualFixtureState.verifyBackSlot(maid);
+        if (headFixture) MaidVisualFixtureState.verifyHeadSlot(maid);
         maid.getChatBubbleManager()
             .clear();
         maid.setModelId(action.startsWith("reimu") ? "touhou_little_maid:hakurei_reimu" : "geckolib:winefox_hanfu");
@@ -376,13 +419,11 @@ public final class MaidCoreInteractionProbe {
             .setInventorySlotContents(
                 5,
                 accessories ? new ItemStack(Items.compass)
-                    : headFixture ? new ItemStack(
-                        action.equals("reimu-head") ? net.minecraft.init.Blocks.pumpkin
-                            : net.minecraft.init.Blocks.red_flower)
+                    : headFixture ? new ItemStack(action.equals("reimu-head") ? Blocks.pumpkin : Blocks.red_flower)
                         : new ItemStack(Items.diamond_sword));
         if (headFixture) {
             maid.setCurrentItemOrArmor(4, new ItemStack(Items.skull, 1, 4));
-            com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.trackHeadSlot(maid);
+            MaidVisualFixtureState.trackHeadSlot(maid);
         }
         maid.getConfigManager()
             .setShowBackItem(true);
@@ -391,15 +432,11 @@ public final class MaidCoreInteractionProbe {
         long now = System.currentTimeMillis();
         var bubbles = maid.getChatBubbleManager()
             .getChatBubbleDataCollection();
-        bubbles.put(
-            now + 120000,
-            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData.type2("(๑>◡<๑)"));
-        bubbles.put(
-            now + 120001,
-            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.EmojiChatBubbleData.create());
+        bubbles.put(now + 120000, TextChatBubbleData.type2("(๑>◡<๑)"));
+        bubbles.put(now + 120001, EmojiChatBubbleData.create());
         maid.getChatBubbleManager()
             .forceUpdateChatBubble();
-        com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState.trackBackSlot(maid);
+        MaidVisualFixtureState.trackBackSlot(maid);
         TLMNotHard.LOG.info(
             "TLMNH_VISUAL_FIXTURE action={} bubbles={} back={}",
             action,
@@ -420,8 +457,7 @@ public final class MaidCoreInteractionProbe {
             player.inventory.setInventorySlotContents(slot, null);
             player.setSneaking(false);
             require(
-                maid.interact(player)
-                    && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer,
+                maid.interact(player) && player.openContainer instanceof EmptyBackpackContainer,
                 "actual owner right-click opens original main");
         } finally {
             player.inventory.setInventorySlotContents(slot, held);
@@ -438,7 +474,7 @@ public final class MaidCoreInteractionProbe {
         try (var f = new Fixture(world)) {
             f.maid.addPotionEffect(new PotionEffect(Potion.moveSpeed.id, 72000, 1));
             f.maid.addPotionEffect(new PotionEffect(Potion.moveSlowdown.id, 900, 0));
-            var message = new com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage(f.maid, 7);
+            var message = new SendEffectMessage(f.maid, 7);
             require(
                 message.effects()
                     .size() == 2,
@@ -453,7 +489,7 @@ public final class MaidCoreInteractionProbe {
             f.maid.removePotionEffect(Potion.moveSpeed.id);
             f.maid.removePotionEffect(Potion.moveSlowdown.id);
             require(
-                new com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage(f.maid, 7).effects()
+                new SendEffectMessage(f.maid, 7).effects()
                     .isEmpty(),
                 "empty native snapshot clears display");
             TLMNotHard.LOG.info(
@@ -494,7 +530,7 @@ public final class MaidCoreInteractionProbe {
         pendingPanic = probe;
         try {
             probe.begin();
-            cpw.mods.fml.common.FMLCommonHandler.instance()
+            FMLCommonHandler.instance()
                 .bus()
                 .register(probe);
         } catch (RuntimeException | Error failure) {
@@ -597,7 +633,7 @@ public final class MaidCoreInteractionProbe {
                 Item item = (Item) Item.itemRegistry.getObject("gregtech:gt.metaitem.02");
                 require(item != null, "actual native GT item exists");
                 var drink = new ItemStack(item, 2, 32000);
-                var food = com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile.inspect(drink);
+                var food = MaidFoodProfile.inspect(drink);
                 require(food != null && food.container() != null, "GT coffee nutrition and container");
                 var empty = food.container();
                 for (int slot = 0; slot < 6; slot++)
@@ -632,8 +668,8 @@ public final class MaidCoreInteractionProbe {
                         && maid.isPotionActive(Potion.fireResistance),
                     "golden apple effects on NPC");
                 require(
-                    com.tianluoqaq.tlmnh.common.config.MaidMealConfig.blocked(new ItemStack(Items.fish, 1, 3), true)
-                        && !com.tianluoqaq.tlmnh.common.config.MaidMealConfig.blocked(new ItemStack(Items.fish), true),
+                    MaidMealConfig.blocked(new ItemStack(Items.fish, 1, 3), true)
+                        && !MaidMealConfig.blocked(new ItemStack(Items.fish), true),
                     "only pufferfish blocked");
             } else throw new IllegalArgumentException("Unknown meal group: " + group);
             TLMNotHard.LOG.info(
@@ -642,11 +678,11 @@ public final class MaidCoreInteractionProbe {
         }
     }
 
-    private static int count(com.tianluoqaq.tlmnh.common.inventory.MaidInventory inv, Item item) {
+    private static int count(MaidInventory inv, Item item) {
         return count(inv, item, -1);
     }
 
-    private static int count(com.tianluoqaq.tlmnh.common.inventory.MaidInventory inv, Item item, int metadata) {
+    private static int count(MaidInventory inv, Item item, int metadata) {
         int count = 0;
         for (int slot = 0; slot < inv.getSizeInventory(); slot++) {
             var stack = inv.getStackInSlot(slot);
@@ -670,7 +706,7 @@ public final class MaidCoreInteractionProbe {
                     manager.add(1);
                     require(
                         manager.getLevel() == i + 1 && maid.getMaxHealth() == health[i]
-                            && maid.getEntityAttribute(net.minecraft.entity.SharedMonsterAttributes.attackDamage)
+                            && maid.getEntityAttribute(SharedMonsterAttributes.attackDamage)
                                 .getBaseValue() == damage[i]
                             && maid.getHealth() == 2,
                         "level changes base stats without free heal: " + i);
@@ -695,7 +731,7 @@ public final class MaidCoreInteractionProbe {
                 require(
                     maid.getHealth() == 20 && maid.getFavorability() == 2,
                     "sleep heal independent from reward cooldown");
-                manager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK);
+                manager.apply(Type.STEAL_EDIBLE_BLOCK);
                 require(maid.getFavorability() == 3, "steal independent cooldown");
                 maid.getMaidInventory()
                     .setInventorySlotContents(6, new ItemStack(Items.bread, 2));
@@ -762,11 +798,7 @@ public final class MaidCoreInteractionProbe {
                 try {
                     world.getGameRules()
                         .setOrCreateGameRule("doFireTick", "false");
-                    var bolt = new net.minecraft.entity.effect.EntityLightningBolt(
-                        world,
-                        restored.posX,
-                        restored.posY,
-                        restored.posZ);
+                    var bolt = new EntityLightningBolt(world, restored.posX, restored.posY, restored.posZ);
                     restored.setHealth(restored.getMaxHealth());
                     restored.onStruckByLightning(bolt);
                     float maximum = restored.getMaxHealth();
@@ -806,7 +838,7 @@ public final class MaidCoreInteractionProbe {
                 f.maid.setHealth(before);
                 int draws = 0;
                 while (spy.count == 0 && draws < 10000) {
-                    com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                    MaidSelfCare.tick(f.maid);
                     draws++;
                 }
                 require(
@@ -829,12 +861,12 @@ public final class MaidCoreInteractionProbe {
                             .getClass()
                             .getName());
                 f.maid.setHealth(f.maid.getMaxHealth());
-                com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                MaidSelfCare.tick(f.maid);
                 require(
                     f.maid.getHealth() == f.maid.getMaxHealth() && spy.count == 1,
                     "full health no extra heal event");
                 f.maid.setHealth(0);
-                com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(f.maid);
+                MaidSelfCare.tick(f.maid);
                 require(f.maid.getHealth() == 0, "no passive resurrection");
                 TLMNotHard.LOG.info(
                     "TLMNH_SELF_CARE_TEST_PASS one-health=restored full-health=no-extra-event dead=no-resurrection draws={} rng={} particles=client-unverified",
@@ -859,8 +891,8 @@ public final class MaidCoreInteractionProbe {
             this.maid = maid;
         }
 
-        @SubscribeEvent(priority = cpw.mods.fml.common.eventhandler.EventPriority.LOWEST, receiveCanceled = true)
-        public void heal(net.minecraftforge.event.entity.living.LivingHealEvent event) {
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public void heal(LivingHealEvent event) {
             if (event.entityLiving == maid) {
                 count++;
                 amount = event.amount;
@@ -873,10 +905,10 @@ public final class MaidCoreInteractionProbe {
     public static final class PanicRuntime {
 
         private final Fixture f;
-        private final java.util.Map<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block> blocks = new java.util.LinkedHashMap<>();
-        private final java.util.Map<net.minecraft.util.ChunkCoordinates, Integer> metadata = new java.util.HashMap<>();
-        private net.minecraft.entity.monster.EntityCreeper creeper;
-        private final net.minecraft.world.EnumDifficulty difficulty;
+        private final Map<ChunkCoordinates, Block> blocks = new LinkedHashMap<>();
+        private final Map<ChunkCoordinates, Integer> metadata = new HashMap<>();
+        private EntityCreeper creeper;
+        private final EnumDifficulty difficulty;
         private int ticks, phase, phaseStart;
         private boolean finished, rejectNextHurt;
         private double x, z, initialDistance;
@@ -888,7 +920,7 @@ public final class MaidCoreInteractionProbe {
 
         private void begin() {
             MinecraftForge.EVENT_BUS.register(this);
-            f.world.difficultySetting = net.minecraft.world.EnumDifficulty.NORMAL;
+            f.world.difficultySetting = EnumDifficulty.NORMAL;
             int bx = (int) Math.floor(f.maid.posX), bz = (int) Math.floor(f.maid.posZ);
             x = bx + .5;
             z = bz + .5;
@@ -896,22 +928,16 @@ public final class MaidCoreInteractionProbe {
                 for (int cz = (bz - 24) >> 4; cz <= (bz + 24) >> 4; cz++) f.world.getChunkFromChunkCoords(cx, cz);
             for (int px = bx - 16; px <= bx + 16; px++)
                 for (int pz = bz - 16; pz <= bz + 16; pz++) for (int py = 99; py <= 107; py++) {
-                    var point = new net.minecraft.util.ChunkCoordinates(px, py, pz);
+                    var point = new ChunkCoordinates(px, py, pz);
                     blocks.put(point, f.world.getBlock(px, py, pz));
                     metadata.put(point, f.world.getBlockMetadata(px, py, pz));
-                    f.world.setBlock(
-                        px,
-                        py,
-                        pz,
-                        py == 99 ? net.minecraft.init.Blocks.glowstone : net.minecraft.init.Blocks.air,
-                        0,
-                        2);
+                    f.world.setBlock(px, py, pz, py == 99 ? Blocks.glowstone : Blocks.air, 0, 2);
                 }
             f.maid.setPosition(x, 100, z);
             f.maid.onGround = true;
             f.maid.setSitting(true);
-            f.maid.setSchedule(com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.ALL);
-            creeper = new net.minecraft.entity.monster.EntityCreeper(f.world);
+            f.maid.setSchedule(MaidSchedule.ALL);
+            creeper = new EntityCreeper(f.world);
             creeper.tasks.taskEntries.clear();
             creeper.targetTasks.taskEntries.clear();
             creeper.func_110163_bv();
@@ -928,8 +954,8 @@ public final class MaidCoreInteractionProbe {
         }
 
         @SubscribeEvent
-        public void tick(cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent event) {
-            if (finished || event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
+        public void tick(TickEvent.ServerTickEvent event) {
+            if (finished || event.phase != TickEvent.Phase.END) return;
             try {
                 ticks++;
                 var brain = f.maid.getBrainCoordinator();
@@ -945,13 +971,13 @@ public final class MaidCoreInteractionProbe {
                     require(!f.maid.isSitting(), "panic stands from waiting");
                     require(
                         brain.getActionRunner()
-                            .getOwner() == com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                            .getOwner() == MaidActionRunner.Owner.PANIC,
                         "panic owns actual motion");
                     TLMNotHard.LOG.info(
                         "TLMNH_PANIC_PHASE_PASS phase=escape ticks={} distanceSq={}",
                         ticks,
                         f.maid.getDistanceSqToEntity(creeper));
-                    f.maid.setTask(com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK);
+                    f.maid.setTask(MaidTask.ATTACK);
                     f.maid.setPosition(x, 100, z);
                     f.maid.motionX = f.maid.motionZ = 0;
                     f.maid.setSitting(true);
@@ -961,9 +987,9 @@ public final class MaidCoreInteractionProbe {
                     require(
                         f.maid.isSitting() && controller.getThreat() == null
                             && brain.getActionRunner()
-                                .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                                .getOwner() != MaidActionRunner.Owner.PANIC,
                         "attack task disables panic");
-                    f.maid.setTask(com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE);
+                    f.maid.setTask(MaidTask.IDLE);
                     phase = 2;
                     phaseStart = ticks;
                 } else if (phase == 2 && f.maid.getDistanceSqToEntity(creeper) > initialDistance + 20) {
@@ -991,14 +1017,14 @@ public final class MaidCoreInteractionProbe {
                 } else if (phase == 5 && ticks - phaseStart >= 3) {
                     require(
                         controller.getThreat() == null && brain.getActionRunner()
-                            .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                            .getOwner() != MaidActionRunner.Owner.PANIC,
                         "removed threat releases panic");
                     rejectNextHurt = true;
                     require(
-                        !f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1) && !brain.hasRecentHurt(),
+                        !f.maid.attackEntityFrom(DamageSource.generic, 1) && !brain.hasRecentHurt(),
                         "LivingAttack cancellation does not create hurt memory");
                     require(
-                        f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1) && brain.hasRecentHurt(),
+                        f.maid.attackEntityFrom(DamageSource.generic, 1) && brain.hasRecentHurt(),
                         "accepted native attack records hurt memory");
                     phase = 6;
                     phaseStart = ticks;
@@ -1007,7 +1033,7 @@ public final class MaidCoreInteractionProbe {
                         f.maid.hurtTime == 0 && brain.hasRecentHurt()
                             && "hurt_pause".equals(controller.getStatus())
                             && brain.getActionRunner()
-                                .getOwner() == com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC
+                                .getOwner() == MaidActionRunner.Owner.PANIC
                             && f.maid.getNavigator()
                                 .noPath(),
                         "hurt memory interrupts activity beyond the native hurt animation without invented escape");
@@ -1015,9 +1041,9 @@ public final class MaidCoreInteractionProbe {
                 } else if (phase == 7 && ticks - phaseStart >= 43) {
                     require(
                         !brain.hasRecentHurt() && brain.getActionRunner()
-                            .getOwner() != com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner.PANIC,
+                            .getOwner() != MaidActionRunner.Owner.PANIC,
                         "expired hurt memory releases panic");
-                    require(f.maid.attackEntityFrom(net.minecraft.util.DamageSource.generic, 1), "new accepted attack");
+                    require(f.maid.attackEntityFrom(DamageSource.generic, 1), "new accepted attack");
                     require(brain.hasRecentHurt(), "new hurt memory before lifecycle cancellation");
                     brain.setSuspended(true);
                     require(!brain.hasRecentHurt(), "policy cancellation clears hurt memory");
@@ -1031,7 +1057,7 @@ public final class MaidCoreInteractionProbe {
         }
 
         @SubscribeEvent
-        public void rejectHurt(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+        public void rejectHurt(LivingAttackEvent event) {
             if (event.entityLiving == f.maid && rejectNextHurt) {
                 rejectNextHurt = false;
                 event.setCanceled(true);
@@ -1042,7 +1068,7 @@ public final class MaidCoreInteractionProbe {
             if (finished) return;
             finished = true;
             MinecraftForge.EVENT_BUS.unregister(this);
-            cpw.mods.fml.common.FMLCommonHandler.instance()
+            FMLCommonHandler.instance()
                 .bus()
                 .unregister(this);
             try {
@@ -1074,7 +1100,7 @@ public final class MaidCoreInteractionProbe {
         pendingPickup = probe;
         try {
             probe.begin();
-            cpw.mods.fml.common.FMLCommonHandler.instance()
+            FMLCommonHandler.instance()
                 .bus()
                 .register(probe);
         } catch (RuntimeException | Error failure) {
@@ -1087,8 +1113,8 @@ public final class MaidCoreInteractionProbe {
     public static final class PickupRuntime {
 
         private final Fixture fixture;
-        private final java.util.Map<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block> blocks = new java.util.LinkedHashMap<>();
-        private final java.util.Map<net.minecraft.util.ChunkCoordinates, Integer> metadata = new java.util.HashMap<>();
+        private final Map<ChunkCoordinates, Block> blocks = new LinkedHashMap<>();
+        private final Map<ChunkCoordinates, Integer> metadata = new HashMap<>();
         private EntityItem item;
         private int ticks, phase;
         private double startX, startZ, stoppedX, stoppedZ;
@@ -1105,20 +1131,14 @@ public final class MaidCoreInteractionProbe {
                 for (int cz = (z - 24) >> 4; cz <= (z + 24) >> 4; cz++) f.world.getChunkFromChunkCoords(cx, cz);
             for (int bx = x - 2; bx <= x + 7; bx++)
                 for (int bz = z - 2; bz <= z + 2; bz++) for (int by = 99; by <= 102; by++) {
-                    var p = new net.minecraft.util.ChunkCoordinates(bx, by, bz);
+                    var p = new ChunkCoordinates(bx, by, bz);
                     blocks.put(p, f.world.getBlock(bx, by, bz));
                     metadata.put(p, f.world.getBlockMetadata(bx, by, bz));
-                    f.world.setBlock(
-                        bx,
-                        by,
-                        bz,
-                        by == 99 ? net.minecraft.init.Blocks.glowstone : net.minecraft.init.Blocks.air,
-                        0,
-                        2);
+                    f.world.setBlock(bx, by, bz, by == 99 ? Blocks.glowstone : Blocks.air, 0, 2);
                 }
             f.maid.setPosition(x + 0.5, 100, z + 0.5);
             f.maid.onGround = true;
-            f.maid.setSchedule(com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule.ALL);
+            f.maid.setSchedule(MaidSchedule.ALL);
             require(
                 f.maid.getHomeArea()
                     .setEnabled(true),
@@ -1135,8 +1155,8 @@ public final class MaidCoreInteractionProbe {
         }
 
         @SubscribeEvent
-        public void onTick(cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent event) {
-            if (finished || event.phase != cpw.mods.fml.common.gameevent.TickEvent.Phase.END) return;
+        public void onTick(TickEvent.ServerTickEvent event) {
+            if (finished || event.phase != TickEvent.Phase.END) return;
             try {
                 ticks++;
                 var maid = fixture.maid;
@@ -1148,7 +1168,7 @@ public final class MaidCoreInteractionProbe {
                             .getTarget());
                 if (phase == 0 && item.isDead) {
                     int apples = 0;
-                    for (int i = 0; i <= com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND; i++) {
+                    for (int i = 0; i <= MaidInventory.OFF_HAND; i++) {
                         var stack = maid.getMaidInventory()
                             .getStackInSlot(i);
                         if (stack != null && stack.getItem() == Items.apple) apples += stack.stackSize;
@@ -1197,7 +1217,7 @@ public final class MaidCoreInteractionProbe {
                 Collections.reverse(points);
                 for (var p : points) fixture.world.setBlock(p.posX, p.posY, p.posZ, blocks.get(p), metadata.get(p), 2);
             } finally {
-                cpw.mods.fml.common.FMLCommonHandler.instance()
+                FMLCommonHandler.instance()
                     .bus()
                     .unregister(this);
                 pendingPickup = null;
@@ -1215,7 +1235,7 @@ public final class MaidCoreInteractionProbe {
         var maid = f.maid;
         var inv = maid.getMaidInventory();
         for (int i = 0; i < inv.getSizeInventory(); i++) inv.setInventorySlotContents(i, null);
-        for (int i = 0; i <= com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND; i++)
+        for (int i = 0; i <= MaidInventory.OFF_HAND; i++)
             inv.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
         var tagged = new ItemStack(Items.arrow, 62);
         tagged.setTagCompound(new NBTTagCompound());
@@ -1257,19 +1277,19 @@ public final class MaidCoreInteractionProbe {
             maid.pickupItem(item, false) && item.isDead && inv.getStackInSlot(1).stackSize == 3,
             "remaining stack inserted once");
         item.setDead();
-        var orb = new net.minecraft.entity.item.EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 7);
+        var orb = new EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 7);
         orb.ticksExisted = 3;
         maid.setExperience(0);
         maid.getConfigManager()
-            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_ITEM);
+            .setPickupType(PickType.ONLY_ITEM);
         maid.pickupXPOrb(orb);
         require(!orb.isDead && maid.getExperience() == 0, "item-only rejects XP");
         maid.getConfigManager()
-            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ONLY_XP);
+            .setPickupType(PickType.ONLY_XP);
         maid.pickupXPOrb(orb);
         require(orb.isDead && maid.getExperience() == 7, "XP-only collects orb");
-        net.minecraft.enchantment.Enchantment mending = null;
-        for (var enchantment : net.minecraft.enchantment.Enchantment.enchantmentsList)
+        Enchantment mending = null;
+        for (var enchantment : Enchantment.enchantmentsList)
             if (enchantment != null && "enchantment.mending".equals(enchantment.getName())) {
                 mending = enchantment;
                 break;
@@ -1279,16 +1299,16 @@ public final class MaidCoreInteractionProbe {
         tool.setItemDamage(10);
         tool.addEnchantment(mending, 1);
         maid.setOffhandItem(tool);
-        var repairOrb = new net.minecraft.entity.item.EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 8);
+        var repairOrb = new EntityXPOrb(f.world, maid.posX, maid.posY, maid.posZ, 8);
         repairOrb.ticksExisted = 3;
         maid.pickupXPOrb(repairOrb);
         require(
             repairOrb.isDead && tool.getItemDamage() == 0 && maid.getExperience() == 10,
             "offhand mending consumes five XP and stores three");
         maid.getConfigManager()
-            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL);
+            .setPickupType(PickType.ALL);
         inv.setInventorySlotContents(3, null);
-        var arrow = new net.minecraft.entity.projectile.EntityArrow(f.world);
+        var arrow = new EntityArrow(f.world);
         var arrowState = new NBTTagCompound();
         arrow.writeToNBT(arrowState);
         arrowState.setBoolean("inGround", true);
@@ -1307,7 +1327,7 @@ public final class MaidCoreInteractionProbe {
                     .getItem() == Items.arrow,
             "ground arrow recovered once");
         maid.getConfigManager()
-            .setPickupType(com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.ALL);
+            .setPickupType(PickType.ALL);
         inv.setInventorySlotContents(2, null);
         var contact = new EntityItem(f.world, maid.posX, maid.posY, maid.posZ, new ItemStack(Items.apple));
         contact.delayBeforeCanPickup = 0;
@@ -1324,23 +1344,17 @@ public final class MaidCoreInteractionProbe {
         var world = f.world;
         var maid = f.maid;
         int x = (int) Math.floor(maid.posX), z = (int) Math.floor(maid.posZ), y = 100;
-        var backup = new java.util.LinkedHashMap<net.minecraft.util.ChunkCoordinates, net.minecraft.block.Block>();
-        var metadata = new java.util.HashMap<net.minecraft.util.ChunkCoordinates, Integer>();
+        var backup = new LinkedHashMap<ChunkCoordinates, Block>();
+        var metadata = new HashMap<ChunkCoordinates, Integer>();
         try {
             for (int bx = x - 1; bx <= x + 5; bx++)
                 for (int bz = z - 1; bz <= z + 1; bz++) for (int by = y - 1; by <= y + 4; by++) {
-                    var p = new net.minecraft.util.ChunkCoordinates(bx, by, bz);
+                    var p = new ChunkCoordinates(bx, by, bz);
                     backup.put(p, world.getBlock(bx, by, bz));
                     metadata.put(p, world.getBlockMetadata(bx, by, bz));
-                    world.setBlock(
-                        bx,
-                        by,
-                        bz,
-                        by == y - 1 || bz != z ? net.minecraft.init.Blocks.stone : net.minecraft.init.Blocks.air,
-                        0,
-                        2);
+                    world.setBlock(bx, by, bz, by == y - 1 || bz != z ? Blocks.stone : Blocks.air, 0, 2);
                 }
-            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.fence_gate, 0, 2);
+            world.setBlock(x + 1, y, z, Blocks.fence_gate, 0, 2);
             maid.setPosition(x + 0.5, y, z + 0.5);
             maid.onGround = true;
             maid.getBrainCoordinator()
@@ -1349,10 +1363,9 @@ public final class MaidCoreInteractionProbe {
             config.setOpenDoor(true);
             config.setOpenFenceGate(true);
             config.setActiveClimbing(true);
-            var traversal = new com.tianluoqaq.tlmnh.common.ai.MaidTraversalController(maid);
+            var traversal = new MaidTraversalController(maid);
             traversal.configureNavigator();
-            var path = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
-                .create(maid, x + 5, y, z + 1, 8, true, true, false, true);
+            var path = MaidPathQuery.create(maid, x + 5, y, z + 1, 8, true, true, false, true);
             require(path != null && path.getFinalPathPoint().xCoord >= x + 3, "closed gate can be planned through");
             maid.getNavigator()
                 .setPath(path, 1);
@@ -1366,11 +1379,10 @@ public final class MaidCoreInteractionProbe {
             require((world.getBlockMetadata(x + 1, y, z) & 4) == 0, "passed gate closes");
             config.setOpenFenceGate(false);
             maid.setPosition(x + 0.5, y, z + 0.5);
-            var blocked = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery
-                .create(maid, x + 5, y, z + 1, 8, true, true, false, true);
+            var blocked = MaidPathQuery.create(maid, x + 5, y, z + 1, 8, true, true, false, true);
             require(blocked == null || blocked.getFinalPathPoint().xCoord <= x, "disabled gate blocks corridor");
-            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.wooden_door, 0, 2);
-            world.setBlock(x + 1, y + 1, z, net.minecraft.init.Blocks.wooden_door, 8, 2);
+            world.setBlock(x + 1, y, z, Blocks.wooden_door, 0, 2);
+            world.setBlock(x + 1, y + 1, z, Blocks.wooden_door, 8, 2);
             TLMNotHard.LOG.info(
                 "TLMNH_DOOR_FIXTURE block={} upper={} meta={}/{} wood={} enabled={} tame={} sitting={} riding={} leash={} sleep={}",
                 world.getBlock(x + 1, y, z),
@@ -1378,7 +1390,7 @@ public final class MaidCoreInteractionProbe {
                 world.getBlockMetadata(x + 1, y, z),
                 world.getBlockMetadata(x + 1, y + 1, z),
                 world.getBlock(x + 1, y, z)
-                    .getMaterial() == net.minecraft.block.material.Material.wood,
+                    .getMaterial() == Material.wood,
                 config.isOpenDoor(),
                 maid.isTamed(),
                 maid.isSitting(),
@@ -1386,19 +1398,10 @@ public final class MaidCoreInteractionProbe {
                 maid.getLeashed(),
                 maid.hasPose(MaidPose.SLEEPING));
             maid.getNavigator()
-                .setPath(
-                    new net.minecraft.pathfinding.PathEntity(
-                        new net.minecraft.pathfinding.PathPoint[] {
-                            new net.minecraft.pathfinding.PathPoint(x + 1, y, z) }),
-                    1);
+                .setPath(new PathEntity(new PathPoint[] { new PathPoint(x + 1, y, z) }), 1);
             traversal.tick();
             require(
-                com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
-                    (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
-                    world,
-                    x + 1,
-                    y,
-                    z),
+                NativeDoorState.isOpenOrOpening((BlockDoor) Blocks.wooden_door, world, x + 1, y, z),
                 "wood door opens on current path; actual=" + world.getBlock(x + 1, y, z)
                     + ";meta="
                     + world.getBlockMetadata(x + 1, y, z)
@@ -1409,49 +1412,32 @@ public final class MaidCoreInteractionProbe {
             maid.getNavigator()
                 .clearPathEntity();
             var animated = world.getTileEntity(x + 1, y, z);
-            if (com.tianluoqaq.tlmnh.compat.malisisdoors.development.block.MalisisDoorFixture.isAnimated(animated)) {
+            if (MalisisDoorFixture.isAnimated(animated)) {
                 traversal.tick();
                 require(
-                    com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
-                        (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
-                        world,
-                        x + 1,
-                        y,
-                        z),
+                    NativeDoorState.isOpenOrOpening((BlockDoor) Blocks.wooden_door, world, x + 1, y, z),
                     "pending open animation retained for later close");
                 // 本同步夹具用已读存档接口给定动画完成态，不在服务端命令中阻塞等待动画计时
-                com.tianluoqaq.tlmnh.compat.malisisdoors.development.block.MalisisDoorFixture.completeOpening(animated);
+                MalisisDoorFixture.completeOpening(animated);
             }
             traversal.tick();
             require(
-                !com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState.isOpenOrOpening(
-                    (net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.wooden_door,
-                    world,
-                    x + 1,
-                    y,
-                    z),
+                !NativeDoorState.isOpenOrOpening((BlockDoor) Blocks.wooden_door, world, x + 1, y, z),
                 "passed wood door closes");
             maid.setPosition(x + 0.5, y, z + 0.5);
-            world.setBlock(x + 1, y, z, net.minecraft.init.Blocks.iron_door, 0, 2);
-            world.setBlock(x + 1, y + 1, z, net.minecraft.init.Blocks.iron_door, 8, 2);
+            world.setBlock(x + 1, y, z, Blocks.iron_door, 0, 2);
+            world.setBlock(x + 1, y + 1, z, Blocks.iron_door, 8, 2);
             maid.getNavigator()
-                .setPath(
-                    new net.minecraft.pathfinding.PathEntity(
-                        new net.minecraft.pathfinding.PathPoint[] {
-                            new net.minecraft.pathfinding.PathPoint(x + 1, y, z) }),
-                    1);
+                .setPath(new PathEntity(new PathPoint[] { new PathPoint(x + 1, y, z) }), 1);
             traversal.tick();
-            require(
-                !((net.minecraft.block.BlockDoor) net.minecraft.init.Blocks.iron_door)
-                    .func_150015_f(world, x + 1, y, z),
-                "iron door never forced open");
+            require(!((BlockDoor) Blocks.iron_door).func_150015_f(world, x + 1, y, z), "iron door never forced open");
             for (int by = y; by <= y + 3; by++) {
-                world.setBlock(x + 1, by, z, net.minecraft.init.Blocks.stone, 0, 2);
-                world.setBlock(x, by, z, net.minecraft.init.Blocks.ladder, 4, 2);
+                world.setBlock(x + 1, by, z, Blocks.stone, 0, 2);
+                world.setBlock(x, by, z, Blocks.ladder, 4, 2);
             }
             maid.setPosition(x + 0.5, y, z + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
-            var up = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery.create(maid, x, y + 3, z, 8, true, true, false, true);
+            var up = MaidPathQuery.create(maid, x, y + 3, z, 8, true, true, false, true);
             require(up != null && up.getFinalPathPoint().yCoord == y + 3, "existing ladder column has vertical route");
             maid.getNavigator()
                 .setPath(up, 1);
@@ -1460,7 +1446,7 @@ public final class MaidCoreInteractionProbe {
             require(maid.posY > y, "ladder ascent reaches native movement");
             maid.setPosition(x + 0.5, y + 3, z + 0.5);
             maid.motionX = maid.motionY = maid.motionZ = 0;
-            var down = com.tianluoqaq.tlmnh.common.ai.MaidPathQuery.create(maid, x, y, z, 8, true, true, false, true);
+            var down = MaidPathQuery.create(maid, x, y, z, 8, true, true, false, true);
             require(down != null && down.getFinalPathPoint().yCoord == y, "ladder descent route");
             maid.getNavigator()
                 .setPath(down, 1);
@@ -1494,18 +1480,18 @@ public final class MaidCoreInteractionProbe {
         }
 
         @SubscribeEvent
-        public void before(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent.ItemResultPre event) {
+        public void before(MaidPickupEvent.ItemResultPre event) {
             if (event.getMaid() == maid) event.setCanceled(true);
         }
     }
 
     public static void runSound(WorldServer world) {
         try (var f = new Fixture(world)) {
-            var packs = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs();
+            var packs = BuiltinSoundCatalog.packs();
             require(packs.size() == 2, "two builtin sound packs");
             world.getChunkFromBlockCoords((int) Math.floor(f.maid.posX), (int) Math.floor(f.maid.posZ));
             require(world.spawnEntityInWorld(f.maid), "registered sound fixture");
-            var container = new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(f.owner.inventory, f.maid);
+            var container = new ContainerMaidSounds(f.owner.inventory, f.maid);
             f.owner.openContainer = container;
             for (int i = 0; i < packs.size(); i++) {
                 f.maid.ticksExisted++;
@@ -1536,7 +1522,7 @@ public final class MaidCoreInteractionProbe {
                 !container.enchantItem(f.owner, -1) && !container.enchantItem(f.owner, 2),
                 "out of catalog rejected");
             require(!container.enchantItem(f.stranger, 0), "other viewer rejected");
-            var stranger = new com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds(f.stranger.inventory, f.maid);
+            var stranger = new ContainerMaidSounds(f.stranger.inventory, f.maid);
             require(!stranger.enchantItem(f.stranger, 0), "nonowner rejected");
             f.owner.inventory.setItemStack(new ItemStack(Items.apple));
             require(!container.enchantItem(f.owner, 0), "cursor item rejected");
@@ -1592,13 +1578,11 @@ public final class MaidCoreInteractionProbe {
             config.setSoundFreq(0.3F);
             var bytes = io.netty.buffer.Unpooled.buffer();
             try {
-                var packet = new net.minecraft.network.PacketBuffer(bytes);
-                new net.minecraft.network.play.server.S1CPacketEntityMetadata(
-                    f.maid.getEntityId(),
-                    f.maid.getDataWatcher(),
-                    true).writePacketData(packet);
+                var packet = new PacketBuffer(bytes);
+                new S1CPacketEntityMetadata(f.maid.getEntityId(), f.maid.getDataWatcher(), true)
+                    .writePacketData(packet);
                 require(packet.readInt() == f.maid.getEntityId(), "metadata entity ID");
-                var values = net.minecraft.entity.DataWatcher.readWatchedListFromPacketBuffer(packet);
+                var values = DataWatcher.readWatchedListFromPacketBuffer(packet);
                 boolean found = false;
                 for (var value : values) if (value.getDataValueId() == 31) found = "1;0.3".equals(value.getObject());
                 require(found && packet.readableBytes() == 0, "string slot31 survives actual metadata end marker");
@@ -1611,7 +1595,7 @@ public final class MaidCoreInteractionProbe {
                     restored.getUniqueID()
                         .equals(f.maid.getUniqueID()),
                     "additional spawn UUID roundtrip");
-            } catch (java.io.IOException error) {
+            } catch (IOException error) {
                 throw new IllegalStateException("world sound metadata codec failed", error);
             } finally {
                 bytes.release();
@@ -1622,13 +1606,13 @@ public final class MaidCoreInteractionProbe {
                 require(state.hurt() == null, "initial player hurt cooldown");
                 for (int i = 0; i < 120; i++) state.tick();
                 require(
-                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt_player")
+                    SoundUtil.name("ai.hurt_player")
                         .equals(state.hurt()),
                     "player voice after120 ticks");
                 require(state.hurt() == null, "player voice resets120 cooldown");
                 var inner = state.beginDamage(DamageSource.onFire);
                 require(
-                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt_fire")
+                    SoundUtil.name("ai.hurt_fire")
                         .equals(state.hurt()),
                     "fire overrides player cooldown");
                 state.endDamage(inner);
@@ -1637,24 +1621,20 @@ public final class MaidCoreInteractionProbe {
                 state.endDamage(outer);
             }
             require(
-                com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt")
+                SoundUtil.name("ai.hurt")
                     .equals(state.hurt()),
                 "damage context restored");
             long previousTime = world.getWorldTime();
             try {
                 world.setWorldTime(1000);
                 require(
-                    com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("environment.morning")
-                        .equals(
-                            com.github.tartaricacid.touhoulittlemaid.util.SoundUtil
-                                .environmentSound(f.maid, "fallback", 1)),
+                    SoundUtil.name("environment.morning")
+                        .equals(SoundUtil.environmentSound(f.maid, "fallback", 1)),
                     "original morning branch and target biome adapter");
                 world.setWorldTime(27000);
                 require(
-                    !com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("environment.morning")
-                        .equals(
-                            com.github.tartaricacid.touhoulittlemaid.util.SoundUtil
-                                .environmentSound(f.maid, "fallback", 1)),
+                    !SoundUtil.name("environment.morning")
+                        .equals(SoundUtil.environmentSound(f.maid, "fallback", 1)),
                     "raw daytime remains unmodded");
             } finally {
                 world.setWorldTime(previousTime);
@@ -1682,7 +1662,7 @@ public final class MaidCoreInteractionProbe {
         }
 
         @SubscribeEvent
-        public void onSound(com.github.tartaricacid.touhoulittlemaid.api.event.MaidPlaySoundEvent event) {
+        public void onSound(MaidPlaySoundEvent event) {
             if (event.getMaid() == maid) event.setCanceled(true);
         }
     }
@@ -1836,9 +1816,7 @@ public final class MaidCoreInteractionProbe {
         require(f.click() && f.maid.getExperience() == 11 && f.held().stackSize == 2, "bulk floors XP");
         require(f.experienceDrops() == rewards + 2, "bulk reward conserved");
         // 不足经验会回退到正常主界面；直接业务分支可证明不扣瓶，也不触发离线玩家GUI网络
-        require(
-            !com.tianluoqaq.tlmnh.common.interaction.MaidInteractions.interactOwned(f.maid, f.owner, f.held()),
-            "insufficient XP falls through");
+        require(!MaidInteractions.interactOwned(f.maid, f.owner, f.held()), "insufficient XP falls through");
         require(f.maid.getExperience() == 11 && f.held().stackSize == 2, "insufficient XP conserved");
         f.maid.setExperience(Integer.MAX_VALUE);
         require(

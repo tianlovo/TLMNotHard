@@ -32,6 +32,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
@@ -122,7 +123,7 @@ public final class MaidBowRuntimeProbe {
     public static void start(WorldServer world, boolean recordingEnabled) {
         synchronized (MaidShieldRuntimeProbe.class) {
             require(
-                Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
+                DevelopmentFlags.isDevCommandsEnabled() && !world.isRemote && world.provider.dimensionId == 0,
                 "Dedicated test overworld required");
             require(!isFixtureReserved(), "Another natural bow experiment is active");
             require(

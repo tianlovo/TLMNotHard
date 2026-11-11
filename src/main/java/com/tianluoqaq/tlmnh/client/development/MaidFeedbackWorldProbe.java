@@ -1,8 +1,10 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -14,9 +16,14 @@ import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import cpw.mods.fml.relauncher.ReflectionHelper;
@@ -36,9 +43,8 @@ public final class MaidFeedbackWorldProbe {
 
     private MaidFeedbackWorldProbe() {}
 
-    public static JsonObject perform(String action, String value)
-        throws java.io.IOException, ReflectiveOperationException {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands required");
+    public static JsonObject perform(String action, String value) throws IOException, ReflectiveOperationException {
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands required");
         var mc = Minecraft.getMinecraft();
         var result = new JsonObject();
         result.addProperty("action", action);
@@ -182,7 +188,7 @@ public final class MaidFeedbackWorldProbe {
         return result;
     }
 
-    private static Path copyDirectory(Minecraft mc, String name) throws java.io.IOException {
+    private static Path copyDirectory(Minecraft mc, String name) throws IOException {
         require(
             name != null && COPY_NAME.matcher(name)
                 .matches(),
@@ -210,7 +216,7 @@ public final class MaidFeedbackWorldProbe {
         return copy;
     }
 
-    private static void requireWorld(Minecraft mc) throws java.io.IOException {
+    private static void requireWorld(Minecraft mc) throws IOException {
         require(
             admittedDirectory != null && admittedSubject != null
                 && mc.isIntegratedServerRunning()
@@ -301,9 +307,8 @@ public final class MaidFeedbackWorldProbe {
             mc.thePlayer.openContainer.getClass()
                 .getName());
         result.addProperty("windowId", mc.thePlayer.openContainer.windowId);
-        if (!(mc.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>gui)
-            || !(gui.inventorySlots instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer menu))
-            return result;
+        if (!(mc.currentScreen instanceof AbstractMaidContainerGui<?>gui)
+            || !(gui.inventorySlots instanceof AbstractMaidContainer menu)) return result;
         var maid = menu.getMaid();
         result.addProperty("screenContainerIsOpenContainer", mc.thePlayer.openContainer == menu);
         result.addProperty("subjectMatches", admittedSubject.equals(maid.getUniqueID()));
@@ -332,7 +337,7 @@ public final class MaidFeedbackWorldProbe {
         }
         result.add("receivedEffectCache", effects);
         var drawn = new JsonArray();
-        for (String line : gui.getDrawnEffectLines()) drawn.add(new com.google.gson.JsonPrimitive(line));
+        for (String line : gui.getDrawnEffectLines()) drawn.add(new JsonPrimitive(line));
         result.add("lastDrawnEffectLines", drawn);
         result.addProperty("clientReplicaOnly", true);
         return result;
@@ -340,15 +345,11 @@ public final class MaidFeedbackWorldProbe {
 
     private static void guiClick(Minecraft mc, String action, JsonObject result) throws ReflectiveOperationException {
         var maid = subject(mc);
+        require(mc.currentScreen instanceof AbstractMaidContainerGui<?>, "Actual original maid GUI required");
+        var gui = (AbstractMaidContainerGui<?>) mc.currentScreen;
         require(
-            mc.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>,
-            "Actual original maid GUI required");
-        var gui = (com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui<?>) mc.currentScreen;
-        require(
-            gui.inventorySlots == mc.thePlayer.openContainer
-                && gui.inventorySlots instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
-                && ((com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer) gui.inventorySlots)
-                    .getMaid() == maid
+            gui.inventorySlots == mc.thePlayer.openContainer && gui.inventorySlots instanceof AbstractMaidContainer
+                && ((AbstractMaidContainer) gui.inventorySlots).getMaid() == maid
                 && gui.inventorySlots.canInteractWith(mc.thePlayer)
                 && mc.thePlayer.inventory.getItemStack() == null,
             "Same native window, actual owned subject and empty cursor required");
@@ -360,8 +361,7 @@ public final class MaidFeedbackWorldProbe {
         }
         if (!"gui_tasks".equals(action)) {
             require(gui.isTaskListOpen(), "Actual task list did not open");
-            int button = "gui_attack".equals(action) ? com.tianluoqaq.tlmnh.common.inventory.ContainerMaid.ACTION_ATTACK
-                : com.tianluoqaq.tlmnh.common.inventory.ContainerMaid.ACTION_RANGED;
+            int button = "gui_attack".equals(action) ? ContainerMaid.ACTION_ATTACK : ContainerMaid.ACTION_RANGED;
             clickButton(mc, gui, button);
             clicks++;
         }
@@ -372,7 +372,7 @@ public final class MaidFeedbackWorldProbe {
     private static void clickButton(Minecraft mc, GuiScreen gui, int id) throws ReflectiveOperationException {
         var field = ReflectionHelper.findField(GuiScreen.class, "buttonList", "field_146292_n");
         field.setAccessible(true);
-        var buttons = (java.util.List<?>) field.get(gui);
+        var buttons = (List<?>) field.get(gui);
         GuiButton selected = null;
         for (Object value : buttons) if (value instanceof GuiButton button && button.id == id) {
             require(selected == null, "Duplicate actual GUI button identity");

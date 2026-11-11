@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.lifecycle;
 
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -10,6 +11,7 @@ import net.minecraft.entity.EntityList;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -24,12 +26,14 @@ import net.minecraft.util.IChatComponent;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
@@ -402,7 +406,7 @@ public final class MaidLifecycleRestartProbe {
             "native item/block path handled");
     }
 
-    private static ItemStack findItem(ProbePlayer player, net.minecraft.item.Item item) {
+    private static ItemStack findItem(ProbePlayer player, Item item) {
         ItemStack found = null;
         for (var stack : player.inventory.mainInventory) if (stack != null && stack.getItem() == item) {
             require(found == null, "one fixture item");
@@ -523,7 +527,7 @@ public final class MaidLifecycleRestartProbe {
         require(
             ItemStack.areItemStacksEqual(shrine.extract(), data.usedFilm),
             "remove only fixture's used-film clone before clearing block");
-        for (var entity : new java.util.ArrayList<>(world.loadedEntityList)) {
+        for (var entity : new ArrayList<>(world.loadedEntityList)) {
             var current = (Entity) entity;
             if (data.run.equals(
                 current.getEntityData()
@@ -559,7 +563,7 @@ public final class MaidLifecycleRestartProbe {
     }
 
     private static void guard(WorldServer world) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "development commands must be enabled");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "development commands must be enabled");
         require(world != null && !world.isRemote && !AnimationLab.isLab(world), "non-lab server world required");
     }
 
@@ -675,7 +679,7 @@ public final class MaidLifecycleRestartProbe {
         }
 
         private static UUID uuid(NBTTagCompound tag, String key) {
-            return tag.hasKey(key, 8) ? UUID.fromString(tag.getString(key)) : null;
+            return tag.hasKey(key, Constants.NBT.TAG_STRING) ? UUID.fromString(tag.getString(key)) : null;
         }
 
         private static void put(NBTTagCompound tag, String key, UUID value) {

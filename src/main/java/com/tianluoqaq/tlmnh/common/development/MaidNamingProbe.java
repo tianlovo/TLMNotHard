@@ -30,6 +30,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.network.MaidNameRequest;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
+import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -210,7 +211,7 @@ public final class MaidNamingProbe {
             "distant written tag cannot fall through to vanilla naming");
         f.owner.setPosition(f.maid.posX, f.maid.posY, f.maid.posZ);
         try {
-            int slot = com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess.offhandSlot(f.owner);
+            int slot = BackhandAccess.offhandSlot(f.owner);
             f.owner.inventory.setInventorySlotContents(slot, denied.copy());
             f.owner.inventory.currentItem = slot;
             require(

@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.MaidConfigButton;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
 
 import cpw.mods.fml.relauncher.Side;
@@ -60,8 +61,7 @@ public final class MaidConfigContainerGui extends AbstractMaidContainerGui<MaidC
             case 2 -> booleanValue(config.isChatBubbleShow());
             case 1 -> booleanValue(config.isShowBackItem());
             case 3 -> "§e" + Math.round(config.getSoundFreq() * 100) + "%";
-            case 4 -> "§4" + StatCollector.translateToLocal(
-                com.github.tartaricacid.touhoulittlemaid.entity.passive.PickType.getTransKey(config.getPickupType()));
+            case 4 -> "§4" + StatCollector.translateToLocal(PickType.getTransKey(config.getPickupType()));
             case 5 -> booleanValue(config.isOpenDoor());
             case 6 -> booleanValue(config.isOpenFenceGate());
             case 7 -> booleanValue(config.isActiveClimbing());

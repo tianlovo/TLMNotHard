@@ -33,6 +33,7 @@ import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -119,7 +120,7 @@ public final class MaidLifeRuntimeProbe {
 
     public static void start(WorldServer world, boolean recordingEnabled) {
         synchronized (MaidShieldRuntimeProbe.class) {
-            require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands must be enabled");
+            require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands must be enabled");
             require(!isFixtureReserved(), "Another life runtime probe is active");
             require(
                 !MaidShieldRuntimeProbe.isActive() && !MaidBowRuntimeProbe.isFixtureReserved(),

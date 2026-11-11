@@ -7,18 +7,21 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.pathfinding.PathEntity;
+import net.minecraft.pathfinding.PathPoint;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.WorldServer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -30,7 +33,10 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
 import com.tianluoqaq.tlmnh.common.ai.faithful.DryPlatformFollowTeleport;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 原版实际随机流驱动原生平台真实碰撞与传送，不执行Brain、导航sink或自然实体tick */
 public final class MaidFollowTeleportProbe {
@@ -39,7 +45,7 @@ public final class MaidFollowTeleportProbe {
 
     public static void run(WorldServer world, String name) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
+            DevelopmentFlags.isDevCommandsEnabled() && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated development overworld required");
         require(name.matches("[0-9a-f]{64}\\.json"), "Input name must be its SHA256 plus json extension");
         JsonObject output = new JsonObject();
@@ -172,13 +178,7 @@ public final class MaidFollowTeleportProbe {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var result = new StringBuilder();
-        for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) {
-            result.append(Character.forDigit((value & 255) >>> 4, 16));
-            result.append(Character.forDigit(value & 15, 16));
-        }
-        return result.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 
     private static void require(boolean condition, String message) {
@@ -225,10 +225,10 @@ public final class MaidFollowTeleportProbe {
 
         final EntityMaid maid;
         final MaidPolicyRuntime runtime;
-        final com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token token;
+        final MaidPolicyContext.Token token;
         boolean owned = true;
         boolean injectForeignPathOnClear;
-        net.minecraft.pathfinding.PathEntity foreignPath;
+        PathEntity foreignPath;
         int stops, clears;
 
         Lease(EntityMaid maid) {
@@ -263,12 +263,10 @@ public final class MaidFollowTeleportProbe {
         public void clearSuccessfulTeleportMemories() {
             clears++;
             if (injectForeignPathOnClear) {
-                int x = net.minecraft.util.MathHelper.floor_double(maid.posX);
-                int y = net.minecraft.util.MathHelper.floor_double(maid.posY);
-                int z = net.minecraft.util.MathHelper.floor_double(maid.posZ);
-                foreignPath = new net.minecraft.pathfinding.PathEntity(
-                    new net.minecraft.pathfinding.PathPoint[] { new net.minecraft.pathfinding.PathPoint(x, y, z),
-                        new net.minecraft.pathfinding.PathPoint(x + 1, y, z) });
+                int x = MathHelper.floor_double(maid.posX);
+                int y = MathHelper.floor_double(maid.posY);
+                int z = MathHelper.floor_double(maid.posZ);
+                foreignPath = new PathEntity(new PathPoint[] { new PathPoint(x, y, z), new PathPoint(x + 1, y, z) });
                 require(
                     maid.getNavigator()
                         .setPath(foreignPath, .5),
@@ -362,7 +360,7 @@ public final class MaidFollowTeleportProbe {
                 "Native fixture requires untouched air");
         }
 
-        void place(int x, int y, int z, net.minecraft.block.Block block) {
+        void place(int x, int y, int z, Block block) {
             require(
                 world.getBlock(x, y, z) == Blocks.air && world.getBlockMetadata(x, y, z) == 0
                     && world.getTileEntity(x, y, z) == null,
@@ -424,7 +422,7 @@ public final class MaidFollowTeleportProbe {
         }
 
         JsonObject rejectedGuard(DryPlatformFollowTeleport.Result result, Lease lease, JsonObject before,
-            net.minecraft.pathfinding.PathEntity pathBefore) {
+            PathEntity pathBefore) {
             var after = relativePosition();
             boolean pathUnchanged = maid.getNavigator()
                 .getPath() == pathBefore;
@@ -466,9 +464,9 @@ public final class MaidFollowTeleportProbe {
     private static final class Placed {
 
         final int x, y, z;
-        final net.minecraft.block.Block block;
+        final Block block;
 
-        Placed(int x, int y, int z, net.minecraft.block.Block block) {
+        Placed(int x, int y, int z, Block block) {
             this.x = x;
             this.y = y;
             this.z = z;

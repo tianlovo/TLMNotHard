@@ -4,6 +4,7 @@ import net.minecraft.network.NetworkManager;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 
 import cpw.mods.fml.common.network.handshake.NetworkDispatcher;
@@ -26,7 +27,7 @@ public final class IsolatedPlayerChannel {
             .values()) {
             String type = handler.getClass()
                 .getName();
-            handlers.add(new com.google.gson.JsonPrimitive(type));
+            handlers.add(new JsonPrimitive(type));
             if (handler == manager) ownsManager = true;
             else require(
                 type.startsWith("io.netty.channel.embedded."),

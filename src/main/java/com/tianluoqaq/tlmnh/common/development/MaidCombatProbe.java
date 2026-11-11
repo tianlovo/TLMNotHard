@@ -18,6 +18,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
@@ -29,7 +30,7 @@ public final class MaidCombatProbe {
     private MaidCombatProbe() {}
 
     public static void run(WorldServer world) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development commands are disabled");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development commands are disabled");
         require(!AnimationLab.isLab(world), "Combat core fixture uses the existing test overworld");
         var spawn = world.getSpawnPoint();
         require(

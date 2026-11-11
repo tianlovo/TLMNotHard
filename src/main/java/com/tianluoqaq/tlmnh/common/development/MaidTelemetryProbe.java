@@ -29,11 +29,13 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.development.telemetry.NativeCombatLedgerReader;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -48,7 +50,7 @@ public final class MaidTelemetryProbe {
     /** 失败也先输出完整机器报告，再抛异常，避免外层编排一直等待PASS */
     public static String run(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && !AnimationLab.isLab(world),
+            DevelopmentFlags.isDevCommandsEnabled() && !world.isRemote && !AnimationLab.isLab(world),
             "Explicit development test overworld required");
         var fixture = new Fixture(world);
         Throwable failure = null;
@@ -91,7 +93,7 @@ public final class MaidTelemetryProbe {
         result.addProperty("error", failure == null ? null : failure.toString());
         result.add("cases", fixture.cases);
         var errors = new JsonArray();
-        for (String error : fixture.cleanupErrors) errors.add(new com.google.gson.JsonPrimitive(error));
+        for (String error : fixture.cleanupErrors) errors.add(new JsonPrimitive(error));
         result.add("cleanupErrors", errors);
         String json = result.toString();
         TLMNotHard.LOG.info("TLMNH_TELEMETRY_NATIVE_{} {}", passed ? "PASS" : "FAIL", json);

@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.development.interaction;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -10,11 +11,13 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.play.server.S09PacketHeldItemChange;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldSettings.GameType;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
@@ -42,10 +45,10 @@ public final class MaidNamingInteractionFixture {
 
     public static void run(EntityPlayerMP player, String action) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && online(player) && AnimationLab.isLab(player.worldObj),
+            DevelopmentFlags.isDevCommandsEnabled() && online(player) && AnimationLab.isLab(player.worldObj),
             "Real connected development lab player required");
         require(
-            java.util.Arrays
+            Arrays
                 .asList(
                     "prepare",
                     "open",
@@ -172,7 +175,7 @@ public final class MaidNamingInteractionFixture {
             require(
                 player.openContainer == player.inventoryContainer
                     && session.count() == session.data.getInteger("ExpectedCount")
-                    && session.data.hasKey("OriginalSitting", 1),
+                    && session.data.hasKey("OriginalSitting", Constants.NBT.TAG_BYTE),
                 "Closed owned naming fixture with saved pose required");
             boolean sitting = action.equals("pose-sitting");
             session.maid.setSitting(sitting);
@@ -211,7 +214,7 @@ public final class MaidNamingInteractionFixture {
     private static Session recovered(EntityPlayerMP player) {
         require(
             player.getEntityData()
-                .hasKey(TAG, 10),
+                .hasKey(TAG, Constants.NBT.TAG_COMPOUND),
             "Naming fixture snapshot required");
         var data = player.getEntityData()
             .getCompoundTag(TAG);
@@ -282,27 +285,28 @@ public final class MaidNamingInteractionFixture {
 
         void validate() {
             require(
-                !data.hasKey("OriginalSitting")
-                    || data.hasKey("OriginalSitting", 1) && data.hasKey("ExpectedSitting", 1)
-                        && maid.isSitting() == data.getBoolean("ExpectedSitting"),
+                !data.hasKey("OriginalSitting") || data.hasKey("OriginalSitting", Constants.NBT.TAG_BYTE)
+                    && data.hasKey("ExpectedSitting", Constants.NBT.TAG_BYTE)
+                    && maid.isSitting() == data.getBoolean("ExpectedSitting"),
                 "Naming pose changed outside the owned sequence; original fixture retained");
             require(
-                !data.hasKey("OriginalModel") || data.hasKey("OriginalModel", 8) && data.getString("OriginalModel")
-                    .equals(maid.getModelId()),
+                !data.hasKey("OriginalModel")
+                    || data.hasKey("OriginalModel", Constants.NBT.TAG_STRING) && data.getString("OriginalModel")
+                        .equals(maid.getModelId()),
                 "Naming changed the stored model; original fixture retained");
             require(
                 player.getEntityData()
-                    .getTag(TAG) == data && data.hasKey("Schema", 3)
+                    .getTag(TAG) == data && data.hasKey("Schema", Constants.NBT.TAG_INT)
                     && data.getInteger("Schema") == 1
                     && data.getInteger("OriginalMode") == 3
-                    && data.hasKey("OriginalInventory", 9)
-                    && data.hasKey("OriginalHandPresent", 1)
-                    && data.hasKey("OriginalName", 8)
-                    && data.hasKey("OriginalAlways", 1)
-                    && data.hasKey("OriginalSlot", 3)
-                    && data.hasKey("ExpectedSlot", 3)
-                    && data.hasKey("OriginalHealth", 5)
-                    && data.hasKey("Run", 8)
+                    && data.hasKey("OriginalInventory", Constants.NBT.TAG_LIST)
+                    && data.hasKey("OriginalHandPresent", Constants.NBT.TAG_BYTE)
+                    && data.hasKey("OriginalName", Constants.NBT.TAG_STRING)
+                    && data.hasKey("OriginalAlways", Constants.NBT.TAG_BYTE)
+                    && data.hasKey("OriginalSlot", Constants.NBT.TAG_INT)
+                    && data.hasKey("ExpectedSlot", Constants.NBT.TAG_INT)
+                    && data.hasKey("OriginalHealth", Constants.NBT.TAG_FLOAT)
+                    && data.hasKey("Run", Constants.NBT.TAG_STRING)
                     && UUID.fromString(data.getString("Run"))
                         .toString()
                         .equals(data.getString("Run"))
@@ -381,7 +385,8 @@ public final class MaidNamingInteractionFixture {
                     player.inventory.currentItem == data.getInteger("ExpectedSlot"),
                     "Selected slot changed externally");
                 require(
-                    inventory(player, slot()).equals(withoutSlot(data.getTagList("OriginalInventory", 10), slot())),
+                    inventory(player, slot())
+                        .equals(withoutSlot(data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND), slot())),
                     "Other inventory data changed; existing inventory and original snapshot retained");
                 String name = maid.getCustomNameTag();
                 require(
@@ -402,9 +407,10 @@ public final class MaidNamingInteractionFixture {
                 select(slot());
                 maid.setCustomNameTag(data.getString("OriginalName"));
                 maid.setAlwaysRenderNameTag(data.getBoolean("OriginalAlways"));
-                if (data.hasKey("OriginalSitting", 1)) maid.setSitting(data.getBoolean("OriginalSitting"));
+                if (data.hasKey("OriginalSitting", Constants.NBT.TAG_BYTE))
+                    maid.setSitting(data.getBoolean("OriginalSitting"));
                 require(
-                    inventory(player, -1).equals(data.getTagList("OriginalInventory", 10)),
+                    inventory(player, -1).equals(data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND)),
                     "Complete original inventory restore differs");
                 player.setGameType(GameType.getByID(data.getInteger("OriginalMode")));
                 sync(player);
@@ -480,7 +486,7 @@ public final class MaidNamingInteractionFixture {
             result.addProperty("health", player.getHealth());
             result.addProperty(
                 "originalInventoryRestored",
-                inventory(player, -1).equals(data.getTagList("OriginalInventory", 10)));
+                inventory(player, -1).equals(data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND)));
             result.addProperty(
                 "originalNameRestored",
                 maid.getCustomNameTag()

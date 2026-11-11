@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.entity;
 
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 /** 原始任务数据与生产任务投影分开，开发参照仍可表示旧弓兵身份 */
 public final class MaidCombatTaskState {
@@ -70,23 +71,26 @@ public final class MaidCombatTaskState {
         futureState = null;
         var raw = entityTag.getTag(MaidCombatTaskSchema.TASK);
         loadedTask = raw == null ? null : raw.copy();
-        String id = entityTag.hasKey(MaidCombatTaskSchema.TASK, 8) ? entityTag.getString(MaidCombatTaskSchema.TASK)
+        String id = entityTag.hasKey(MaidCombatTaskSchema.TASK, Constants.NBT.TAG_STRING)
+            ? entityTag.getString(MaidCombatTaskSchema.TASK)
             : MaidTask.IDLE.getId();
-        boolean known = known(id) && (raw == null || entityTag.hasKey(MaidCombatTaskSchema.TASK, 8));
+        boolean known = known(id)
+            && (raw == null || entityTag.hasKey(MaidCombatTaskSchema.TASK, Constants.NBT.TAG_STRING));
         if (!known && raw != null) unresolvedTask = raw.copy();
         var extension = entityTag.getCompoundTag(MaidCombatTaskSchema.EXTENSION);
         var state = extension.getTag(MaidCombatTaskSchema.STATE);
         loadedState = state == null ? null : state.copy();
         persistedState = state != null;
         preserved = state instanceof NBTTagCompound compound ? (NBTTagCompound) compound.copy() : new NBTTagCompound();
-        if (state != null && (!(state instanceof NBTTagCompound) || !preserved.hasKey(MaidCombatTaskSchema.VERSION, 3)
+        if (state != null && (!(state instanceof NBTTagCompound)
+            || !preserved.hasKey(MaidCombatTaskSchema.VERSION, Constants.NBT.TAG_INT)
             || preserved.getInteger(MaidCombatTaskSchema.VERSION) != MaidCombatTaskSchema.CURRENT_VERSION))
             futureState = state.copy();
         if (futureState != null && raw != null) unresolvedTask = raw.copy();
-        originalId = preserved.hasKey(MaidCombatTaskSchema.ORIGINAL, 8)
+        originalId = preserved.hasKey(MaidCombatTaskSchema.ORIGINAL, Constants.NBT.TAG_STRING)
             ? preserved.getString(MaidCombatTaskSchema.ORIGINAL)
             : id;
-        referenceId = preserved.hasKey(MaidCombatTaskSchema.REFERENCE, 8)
+        referenceId = preserved.hasKey(MaidCombatTaskSchema.REFERENCE, Constants.NBT.TAG_STRING)
             ? preserved.getString(MaidCombatTaskSchema.REFERENCE)
             : id;
         String preferred = preserved.getString(MaidCombatTaskSchema.PREFERENCE);

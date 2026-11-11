@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
 
 import cpw.mods.fml.relauncher.Side;
@@ -21,7 +22,7 @@ public final class CabinetRenderObservation {
     private CabinetRenderObservation() {}
 
     public static void completed(TileEntitySnackCabinet cabinet, Object model, int type, boolean full, boolean half) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var frame = FRAMES.computeIfAbsent(cabinet, ignored -> new Frame());
         frame.calls++;
         if (frame.model != model) {
@@ -35,7 +36,7 @@ public final class CabinetRenderObservation {
 
     public static JsonArray snapshot(Minecraft minecraft) {
         var result = new JsonArray();
-        if (!Boolean.getBoolean("tlmnh.devCommands") || minecraft.theWorld == null) return result;
+        if (!DevelopmentFlags.isDevCommandsEnabled() || minecraft.theWorld == null) return result;
         for (Object tile : minecraft.theWorld.loadedTileEntityList)
             if (tile instanceof TileEntitySnackCabinet cabinet && !cabinet.isInvalid()) {
                 var value = new JsonObject();

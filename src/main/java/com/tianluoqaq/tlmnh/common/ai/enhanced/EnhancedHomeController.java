@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.function.BooleanSupplier;
+
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
@@ -67,7 +69,7 @@ public final class EnhancedHomeController {
             attempts++;
             double mx = maid.posX, my = maid.posY, mz = maid.posZ;
             float width = maid.width, height = maid.height;
-            java.util.function.BooleanSupplier authorized = () -> eligible(target) && home.settings() == settings
+            BooleanSupplier authorized = () -> eligible(target) && home.settings() == settings
                 && home.activity() == activity
                 && home.radius() == radius
                 && maid.posX == mx

@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import net.minecraft.block.Block;
+import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -17,6 +18,8 @@ import net.minecraft.world.WorldServer;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -41,7 +44,7 @@ public final class MaidBreathProbe {
 
     public static void start(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && world.provider.dimensionId == 0 && pending == null,
+            DevelopmentFlags.isDevCommandsEnabled() && world.provider.dimensionId == 0 && pending == null,
             "Dedicated test overworld and one episode required");
         var probe = new MaidBreathProbe(world);
         pending = probe;
@@ -96,7 +99,7 @@ public final class MaidBreathProbe {
     }
 
     private void verifyThresholdScope() {
-        var cow = new net.minecraft.entity.passive.EntityCow(world);
+        var cow = new EntityCow(world);
         cow.tasks.taskEntries.clear();
         cow.targetTasks.taskEntries.clear();
         cow.setPosition(x + .5, 108, z + .5);
@@ -118,9 +121,7 @@ public final class MaidBreathProbe {
     private void verifyFluidBounds() {
         var probe = new EntityMaid(world);
         try {
-            for (var pose : new com.tianluoqaq.tlmnh.common.entity.MaidEntityPose[] {
-                com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SWIMMING,
-                com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING }) {
+            for (var pose : new MaidEntityPose[] { MaidEntityPose.SWIMMING, MaidEntityPose.SLEEPING }) {
                 probe.setEntityPose(pose);
                 for (int fraction = 0; fraction < 10; fraction++) {
                     probe.setPosition(x + .5, 100 + fraction / 10.0, z + .5);
@@ -129,7 +130,7 @@ public final class MaidBreathProbe {
                 probe.setPosition(x + .5, 108, z + .5);
                 require(!probe.handleWaterMovement(), "Small dry body has no fabricated water");
             }
-            probe.setEntityPose(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING);
+            probe.setEntityPose(MaidEntityPose.STANDING);
             for (double feet : new double[] { 103.5, 103.75 }) {
                 probe.setPosition(x + .5, feet, z + .5);
                 require(probe.handleWaterMovement(), "Standing feet still contact shallow water below the surface");

@@ -1,5 +1,8 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.block.material.Material;
@@ -9,23 +12,32 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldProvider;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidCombatTargeting;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
+
+import cpw.mods.fml.relauncher.Side;
 
 /** 原生弓箭执行器：观察、拉弓、真实弹道安全检查和成功生成后的资源结算 */
 public final class MaidBowAttack {
@@ -78,8 +90,8 @@ public final class MaidBowAttack {
     }
 
     public MaidBowAttack(EntityMaid maid, ModernFlightProfile profile) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
-        modernFlightProfile = java.util.Objects.requireNonNull(profile, "profile");
+        this.maid = Objects.requireNonNull(maid, "maid");
+        modernFlightProfile = Objects.requireNonNull(profile, "profile");
     }
 
     public ModernFlightProfile flightProfile() {
@@ -212,23 +224,21 @@ public final class MaidBowAttack {
 
     /** 只供显式开发对照，不改变默认玩法的箭物理，也不代表完整忠实策略已经准入 */
     public void setFlightProfileForDevelopment(ModernFlightProfile profile) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || firing)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || firing)
             throw new IllegalStateException("Development flight profile cannot change in this context");
         interrupt();
-        modernFlightProfile = java.util.Objects.requireNonNull(profile, "profile");
+        modernFlightProfile = Objects.requireNonNull(profile, "profile");
     }
 
     private boolean release(EntityLivingBase target, ItemStack bow, int slot, BooleanSupplier admitted,
         boolean prototype, float charge) {
         if (bow == null || slot < 0 || !admitted.getAsBoolean()) return false;
         if (maid.isUnifiedCombat()) {
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
+            var quota = CombatWorldBudget
                 .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
-            var work = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.FINAL_CHECK;
-            if (!quota.spend(work, 3)
-                || !quota.spend(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.RAY, 6)
-                || !quota.spend(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work.BALLISTIC))
-                return reject(Status.SPAWN_REJECTED);
+            var work = CombatWorkQuota.Work.FINAL_CHECK;
+            if (!quota.spend(work, 3) || !quota.spend(CombatWorkQuota.Work.RAY, 6)
+                || !quota.spend(CombatWorkQuota.Work.BALLISTIC)) return reject(Status.SPAWN_REJECTED);
             var profile = maid.getCombatWeaponProfile();
             if (!profile.bow() || maid.getCombatHitReceipt()
                 .blocksTransfer()
@@ -367,7 +377,7 @@ public final class MaidBowAttack {
         if (arrow.isDead || arrow.shootingEntity != maid
             || arrow.getIsCritical() != criticalBefore
             || !arrowBefore.equals(arrowAfter)
-            || !java.util.Arrays.equals(boundsBefore, boundsAfter)
+            || !Arrays.equals(boundsBefore, boundsAfter)
             || !launch.isCurrent(arrow)
             || !current.getAsBoolean()
             || nativeAim != null && !stillSafe(nativeAim, arrow, target)) {
@@ -421,8 +431,8 @@ public final class MaidBowAttack {
                     if (!maid.worldObj.blockExists(x, y, z)) return Status.UNLOADED;
                     var block = medium.getBlock(x, y, z);
                     Material material = block.getMaterial();
-                    if (material.isLiquid() && block != net.minecraft.init.Blocks.water
-                        && block != net.minecraft.init.Blocks.flowing_water) return Status.LIQUID;
+                    if (material.isLiquid() && block != Blocks.water && block != Blocks.flowing_water)
+                        return Status.LIQUID;
                 }
             }
             var from = vec(state.position);
@@ -488,7 +498,7 @@ public final class MaidBowAttack {
                 && world.provider == provider
                 && maid.dimension == dimension
                 && identity.equals(maid.getUniqueID())
-                && java.util.Objects.equals(owner, maid.func_152113_b())
+                && Objects.equals(owner, maid.func_152113_b())
                 && world.getEntityByID(maid.getEntityId()) == maid
                 && maid.posX == x
                 && maid.posY == y
@@ -518,8 +528,7 @@ public final class MaidBowAttack {
     private NativeAim nativeAim(EntityArrow arrow, EntityLivingBase target, NativeArrowGravity.LaunchSample launch,
         BooleanSupplier current, boolean prototype) {
         var result = new NativeAim();
-        if (!com.tianluoqaq.tlmnh.common.protection.IntegrationGuard
-            .available(cpw.mods.fml.relauncher.Side.SERVER, NativeArrowMedium.GUARD)) return result;
+        if (!IntegrationGuard.available(Side.SERVER, NativeArrowMedium.GUARD)) return result;
         try {
             result.medium = new NativeArrowMedium(arrow, current);
             result.physics = ArrowPhysics.OVERWORLD_AIR.withGravity(launch.gravity)
@@ -570,13 +579,10 @@ public final class MaidBowAttack {
     }
 
     private void mediumFault(Throwable failure) {
-        com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.throwIfFatal(failure);
+        IntegrationGuard.throwIfFatal(failure);
         var owner = maid.getOwner();
-        com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
-            cpw.mods.fml.relauncher.Side.SERVER,
-            NativeArrowMedium.GUARD,
-            failure,
-            owner == null ? null : owner.getUniqueID());
+        IntegrationGuard
+            .report(Side.SERVER, NativeArrowMedium.GUARD, failure, owner == null ? null : owner.getUniqueID());
     }
 
     public Refusal lastRefusal() {
@@ -600,9 +606,9 @@ public final class MaidBowAttack {
         public final long at;
         private final EntityMaid maid;
         private final EntityLivingBase target;
-        private final net.minecraft.world.World world;
-        private final net.minecraft.world.WorldProvider provider;
-        private final java.util.UUID maidId, targetId;
+        private final World world;
+        private final WorldProvider provider;
+        private final UUID maidId, targetId;
         private final String owner;
         private final ItemStack bow, bowBefore, ammunition, ammoBefore;
         private final int slot, dimension;
@@ -642,7 +648,7 @@ public final class MaidBowAttack {
                 && provider.dimensionId == dimension
                 && maidId.equals(maid.getUniqueID())
                 && targetId.equals(target.getUniqueID())
-                && java.util.Objects.equals(owner, maid.func_152113_b())
+                && Objects.equals(owner, maid.func_152113_b())
                 && !maid.isDead
                 && maid.isEntityAlive()
                 && target.worldObj == world
@@ -665,7 +671,7 @@ public final class MaidBowAttack {
             return aim.medium != null && aim.medium.environmentUnchanged()
                 && (aim.blocker == null || !aim.blocker.isDead && aim.blocker.worldObj == world
                     && world.getEntityByID(aim.blocker.getEntityId()) == aim.blocker
-                    && java.util.Arrays.equals(blockerBounds, bounds(aim.blocker)));
+                    && Arrays.equals(blockerBounds, bounds(aim.blocker)));
         }
 
         private static double[] bounds(Entity entity) {

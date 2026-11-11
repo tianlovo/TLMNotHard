@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.compat.ysmu.client.animation;
 
+import java.util.Locale;
 import java.util.Set;
 
 import net.minecraft.entity.Entity;
@@ -7,6 +8,7 @@ import net.minecraft.entity.EntityList;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.protection.DependencyFingerprint;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
@@ -44,7 +46,7 @@ public final class MaidPassengerAlias {
             if (!PROVIDER.equals(DependencyFingerprint.mod("ysmu")))
                 throw new IllegalStateException("YSM passenger matcher provider differs from the inspected artifact");
             String clip = prefix + declaredId;
-            if (Boolean.getBoolean("tlmnh.devCommands")) {
+            if (DevelopmentFlags.isDevCommandsEnabled()) {
                 matches++;
                 var observed = new JsonObject();
                 observed.addProperty(
@@ -53,7 +55,7 @@ public final class MaidPassengerAlias {
                         .toString());
                 String registry = EntityList.getEntityString(maid);
                 observed.addProperty("actualRegistryId", registry);
-                String canonical = registry == null ? "" : registry.toLowerCase(java.util.Locale.US);
+                String canonical = registry == null ? "" : registry.toLowerCase(Locale.US);
                 if (!canonical.isEmpty() && canonical.indexOf(':') < 0) canonical = "minecraft:" + canonical;
                 observed.addProperty("canonicalActualId", canonical);
                 observed.addProperty("originalDoTest", original);

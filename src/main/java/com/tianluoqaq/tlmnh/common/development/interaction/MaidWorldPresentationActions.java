@@ -16,6 +16,7 @@ import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -23,9 +24,12 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.EnumSkyBlock;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -58,20 +62,20 @@ final class MaidWorldPresentationActions {
     static void validateSnapshot(NBTTagCompound data) {
         if (!data.hasKey(KEY)) return;
         require(
-            data.hasKey(KEY, 10) && data.getString("Phase")
+            data.hasKey(KEY, Constants.NBT.TAG_COMPOUND) && data.getString("Phase")
                 .equals("world-presentation"),
             "Unknown world presentation snapshot retained");
         var row = data.getCompoundTag(KEY);
         for (Object field : row.func_150296_c()) require(FIELDS.contains(field), "Unknown presentation field retained");
         require(
-            row.hasKey("Schema", 3) && row.getInteger("Schema") == 1
-                && row.hasKey("Kind", 8)
-                && row.hasKey("Stage", 8)
-                && row.hasKey("Inventory", 9)
-                && row.hasKey("Cells", 9),
+            row.hasKey("Schema", Constants.NBT.TAG_INT) && row.getInteger("Schema") == 1
+                && row.hasKey("Kind", Constants.NBT.TAG_STRING)
+                && row.hasKey("Stage", Constants.NBT.TAG_STRING)
+                && row.hasKey("Inventory", Constants.NBT.TAG_LIST)
+                && row.hasKey("Cells", Constants.NBT.TAG_LIST),
             "Incomplete presentation scope retained");
         if (row.hasKey("CakeBites")) require(
-            row.hasKey("CakeBites", 3) && row.getInteger("CakeBites") >= 0
+            row.hasKey("CakeBites", Constants.NBT.TAG_INT) && row.getInteger("CakeBites") >= 0
                 && row.getInteger("CakeBites") <= 6
                 && row.getString("Kind")
                     .equals("cake"),
@@ -158,12 +162,12 @@ final class MaidWorldPresentationActions {
             "Transient target/projectile context was not persisted; original scope retained");
         var restored = new Attempt(session, kind, row);
         restored.recoveryOnly = true;
-        var inventory = row.getTagList("Inventory", 10);
+        var inventory = row.getTagList("Inventory", Constants.NBT.TAG_COMPOUND);
         require(inventory.tagCount() == 12, "Complete original presentation inventory required");
         for (int index = 0; index < 12; index++) {
             var tag = inventory.getCompoundTagAt(index);
             require(
-                tag.hasKey("Slot", 3) && tag.getInteger("Slot") == index,
+                tag.hasKey("Slot", Constants.NBT.TAG_INT) && tag.getInteger("Slot") == index,
                 "Unknown original presentation slot retained");
             var item = (NBTTagCompound) tag.copy();
             item.removeTag("Slot");
@@ -186,7 +190,7 @@ final class MaidWorldPresentationActions {
             restored.equipment[5] != null && session.maid.getItemUseState()
                 .peek() == null,
             "Original empty-use presentation equipment required");
-        var cells = row.getTagList("Cells", 10);
+        var cells = row.getTagList("Cells", Constants.NBT.TAG_COMPOUND);
         require(cells.tagCount() > 0 && cells.tagCount() <= 160, "Bounded original presentation cells required");
         var positions = new HashSet<String>();
         for (int index = 0; index < cells.tagCount(); index++) {
@@ -196,7 +200,7 @@ final class MaidWorldPresentationActions {
                     .contains(field),
                 "Unknown original cell field retained");
             for (String field : new String[] { "X", "Y", "Z", "Block", "Metadata" })
-                require(tag.hasKey(field, 3), "Unknown original cell scalar retained");
+                require(tag.hasKey(field, Constants.NBT.TAG_INT), "Unknown original cell scalar retained");
             int x = tag.getInteger("X"), y = tag.getInteger("Y"), z = tag.getInteger("Z");
             require(
                 x >= -10 && x <= 10
@@ -214,7 +218,7 @@ final class MaidWorldPresentationActions {
             var cell = new Cell(x, y, z, block, tag.getInteger("Metadata"));
             cell.tile = session.maid.worldObj.getTileEntity(x, y, z);
             if (tag.hasKey("Tile")) {
-                require(tag.hasKey("Tile", 10), "Unknown original tile snapshot retained");
+                require(tag.hasKey("Tile", Constants.NBT.TAG_COMPOUND), "Unknown original tile snapshot retained");
                 cell.tileSnapshot = (NBTTagCompound) tag.getCompoundTag("Tile")
                     .copy();
             }
@@ -232,7 +236,9 @@ final class MaidWorldPresentationActions {
                     row.getInteger("CakeBites") == restored.expectedRecoveryCakeMetadata,
                     "Explicit recovery expectation differs from recorded native progress");
             } else {
-                require(row.hasKey("CakeBites", 3), "No original persisted cake progress; scope retained");
+                require(
+                    row.hasKey("CakeBites", Constants.NBT.TAG_INT),
+                    "No original persisted cake progress; scope retained");
                 restored.expectedRecoveryCakeMetadata = row.getInteger("CakeBites");
             }
         }
@@ -291,7 +297,7 @@ final class MaidWorldPresentationActions {
     }
 
     private static void verifyOriginalPlayerPlan(Session session) {
-        var original = session.data.getTagList("OriginalInventory", 10);
+        var original = session.data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND);
         var remaining = new NBTTagList();
         var hand = ProtectedItemCodec.decodeField(session.data, "OriginalHand");
         boolean present = false;
@@ -308,7 +314,7 @@ final class MaidWorldPresentationActions {
         }
         require(
             present == session.data.getBoolean("HandPresent") && (present || hand == null)
-                && remaining.equals(session.data.getTagList("ExpectedInventory", 10)),
+                && remaining.equals(session.data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND)),
             "Original full player inventory/selected-slot plan differs");
     }
 
@@ -588,7 +594,7 @@ final class MaidWorldPresentationActions {
         final Set<EntityArrow> registered = new HashSet<>();
         EntityCow cow;
         ModernFollowCoreActor faithful;
-        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain faithfulBrain;
+        MaidFaithfulBrain faithfulBrain;
         NBTTagCompound plan;
         double startX, startZ, startOwnerDistance;
         boolean followObserved, followMoveObserved, bowObserved, sleepObserved;
@@ -607,7 +613,7 @@ final class MaidWorldPresentationActions {
             return faithful;
         }
 
-        void equip(int slot, net.minecraft.item.Item item, int count) {
+        void equip(int slot, Item item, int count) {
             var stack = new ItemStack(item, count);
             stack.setTagCompound(new NBTTagCompound());
             stack.getTagCompound()
@@ -724,7 +730,7 @@ final class MaidWorldPresentationActions {
                 && row.getString("Stage")
                     .equals("running")) {
                 followMoveObserved |= faithfulBrain.getMoveState()
-                    .getStatus() == com.tianluoqaq.tlmnh.common.ai.faithful.FollowMoveState.Status.RUNNING;
+                    .getStatus() == FollowMoveState.Status.RUNNING;
                 followObserved |= followMoveObserved
                     && Math.hypot(session.maid.posX - startX, session.maid.posZ - startZ) > .5
                     && session.maid.getDistanceSqToEntity(session.player) + 1 < startOwnerDistance;

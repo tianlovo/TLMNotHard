@@ -12,6 +12,7 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -84,25 +85,16 @@ public final class MaidTombstoneTransfer {
                 planning.mainInventory = planned;
                 planning.currentItem = originalSelected;
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
-                    cpw.mods.fml.relauncher.Side.SERVER,
-                    "player_inventory/tombstone",
-                    failure,
-                    player.getUniqueID());
+                IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone", failure, player.getUniqueID());
                 return false;
             }
             for (int i = 0; i < source.tagCount(); i++) {
-                var stack = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
-                    .decode(source.getCompoundTagAt(i));
+                var stack = ProtectedItemCodec.decode(source.getCompoundTagAt(i));
                 if (stack == null) throw new IllegalStateException("Invalid tombstone stack");
                 try {
                     insert(planning, stack, player.inventory.getInventoryStackLimit());
                 } catch (RuntimeException | LinkageError | AssertionError failure) {
-                    com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.report(
-                        cpw.mods.fml.relauncher.Side.SERVER,
-                        "player_inventory/tombstone",
-                        failure,
-                        player.getUniqueID());
+                    IntegrationGuard.report(Side.SERVER, "player_inventory/tombstone", failure, player.getUniqueID());
                     return false;
                 }
                 if (stack.stackSize > 0) overflow.add(stack);

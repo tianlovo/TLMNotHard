@@ -8,6 +8,8 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.StatCollector;
 
+import org.lwjgl.input.Keyboard;
+
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.client.render.MaidIconCapture;
@@ -74,7 +76,7 @@ public final class CacheScreen extends GuiScreen {
 
     @Override
     protected void keyTyped(char character, int key) {
-        if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) mc.thePlayer.closeScreen();
+        if (key == Keyboard.KEY_ESCAPE) mc.thePlayer.closeScreen();
         else super.keyTyped(character, key);
     }
 

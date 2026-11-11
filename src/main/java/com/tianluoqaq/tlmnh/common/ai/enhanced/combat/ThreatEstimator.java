@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
 
+import java.util.Arrays;
+
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Geometry;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Projectile;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
@@ -70,7 +72,7 @@ public final class ThreatEstimator {
 
         private ProjectileOcclusion(int size) {
             blockedAt = new double[size];
-            java.util.Arrays.fill(blockedAt, Double.POSITIVE_INFINITY);
+            Arrays.fill(blockedAt, Double.POSITIVE_INFINITY);
         }
     }
 

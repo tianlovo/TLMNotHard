@@ -7,11 +7,13 @@ package com.github.tartaricacid.touhoulittlemaid.entity.ai.control;
 
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFence;
+import net.minecraft.block.material.Material;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityMoveHelper;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidMovementAngles;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathType;
@@ -30,7 +32,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
     private float forwards, right;
     private Operation operation = Operation.WAIT;
     private long combatSlotRevision;
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove combatOwnedCommand;
+    private CombatQueuedMove combatOwnedCommand;
 
     public MaidMoveControl(EntityMaid maid) {
         super(maid);
@@ -72,8 +74,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         return combatSlotRevision;
     }
 
-    public boolean ownsCombatCommand(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command,
-        long revision) {
+    public boolean ownsCombatCommand(CombatQueuedMove command, long revision) {
         return command != null && combatOwnedCommand == command && combatSlotRevision == revision;
     }
 
@@ -88,8 +89,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
                 .wantToSwim();
     }
 
-    public boolean setOwnedMoveTo(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove command, double x,
-        double y, double z, double speed) {
+    public boolean setOwnedMoveTo(CombatQueuedMove command, double x, double y, double z, double speed) {
         if (command == null || !combatGroundCommandAvailable() || !command.current()) return false;
         this.x = x;
         this.y = y;
@@ -101,7 +101,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         return true;
     }
 
-    public boolean cancelOwnedCommand(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatQueuedMove expected) {
+    public boolean cancelOwnedCommand(CombatQueuedMove expected) {
         if (expected == null || combatOwnedCommand != expected) return false;
         clearCombatInput();
         return true;
@@ -148,7 +148,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         if (maid.getAquaticController()
             .getManager()
             .wantToSwim()) {
-            if (maid.isInsideOfMaterial(net.minecraft.block.material.Material.water) && maid.getNavigator()
+            if (maid.isInsideOfMaterial(Material.water) && maid.getNavigator()
                 .noPath()) {
                 maid.setAIMoveSpeed(0);
                 return;

@@ -10,13 +10,19 @@ import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.ModelDetailsButton;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.tianluoqaq.tlmnh.client.development.MaidDetailsItemFixtures;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewEntity;
 import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -28,7 +34,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         "main_hand", "off_hand" };
     private final MaidPreviewSeat seat;
     private boolean walk;
-    private com.google.gson.JsonObject equipmentFixture = new com.google.gson.JsonObject();
+    private JsonObject equipmentFixture = new JsonObject();
 
     public MaidModelDetailsGui(ContainerMaidModels container, BuiltinModelCatalog.Choice info) {
         super(container, info);
@@ -72,8 +78,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     private static ItemStack previewShield() {
         return IntegrationGuard.call(Side.CLIENT, ExternalFeature.SHIELDS, () -> {
-            var shield = com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess
-                .woodenShieldItem();
+            var shield = BattlegearShieldAccess.woodenShieldItem();
             if (shield == null) throw new IllegalStateException("Native wood shield missing for model preview");
             return new ItemStack(shield);
         }, () -> null);
@@ -81,7 +86,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     /** 开发观测只改变未登记的预览实体，不发送装备或格挡状态到服务端 */
     public void previewShieldBlocking(boolean active) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
         boolean using = active && guiEntity.getOffhandItem() != null;
         guiEntity.setPose(MaidPose.USING_ITEM, using);
         guiEntity.setPose(MaidPose.USING_OFFHAND, using);
@@ -89,7 +94,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
 
     /** 开发装备输入只进入本窗口的独立预览，沿现有原生物品工厂及保护边界 */
     public boolean previewEquipment(String action) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
         if (action.equals("clear_offhand")) {
             guiEntity.setOffhandItem(null);
             previewShieldBlocking(false);
@@ -99,11 +104,11 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
             guiEntity.setCurrentItemOrArmor(0, null);
             return true;
         }
-        var construction = new com.google.gson.JsonObject();
+        var construction = new JsonObject();
         var stack = IntegrationGuard.call(
             Side.CLIENT,
             ExternalFeature.SHIELDS,
-            () -> com.tianluoqaq.tlmnh.client.development.MaidDetailsItemFixtures.create(action, construction),
+            () -> MaidDetailsItemFixtures.create(action, construction),
             () -> null);
         equipmentFixture = construction;
         if (stack == null) return false;
@@ -113,7 +118,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
     }
 
     public boolean previewAction(String action) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
         for (var value : buttonList) if (value instanceof ModelDetailsButton button && button.id >= 10
             && button.id < 10 + STATES.length
             && button.isSelected()) button.press();
@@ -124,7 +129,7 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
     }
 
     @Override
-    public com.google.gson.JsonObject observation() {
+    public JsonObject observation() {
         var result = super.observation();
         result.addProperty("previewWalk", walk);
         var preview = (MaidPreviewEntity) guiEntity;
@@ -135,13 +140,9 @@ public final class MaidModelDetailsGui extends AbstractModelDetailsGui {
         result.addProperty("previewHurtTime", preview.hurtTime);
         result.addProperty("previewAimingBow", preview.hasPose(MaidPose.AIMING_BOW));
         result.addProperty("previewSleeping", preview.hasPose(MaidPose.SLEEPING));
-        result.add("equipmentFixture", new com.google.gson.JsonParser().parse(equipmentFixture.toString()));
-        result.add(
-            "sourceVisibleState",
-            com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(container.getMaid()));
-        result.add(
-            "previewVisibleState",
-            com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(guiEntity));
+        result.add("equipmentFixture", new JsonParser().parse(equipmentFixture.toString()));
+        result.add("sourceVisibleState", MaidVisibleStateSnapshot.capture(container.getMaid()));
+        result.add("previewVisibleState", MaidVisibleStateSnapshot.capture(guiEntity));
         return result;
     }
 

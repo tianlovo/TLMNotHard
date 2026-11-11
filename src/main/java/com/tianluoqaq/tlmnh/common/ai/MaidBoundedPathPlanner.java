@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.Kind;
@@ -135,8 +136,7 @@ public final class MaidBoundedPathPlanner {
         }
         final boolean canNavigate;
         try {
-            canNavigate = navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
-                ? modern.canUpdatePath()
+            canNavigate = navigator instanceof MaidPathNavigator modern ? modern.canUpdatePath()
                 : NATIVE.canNavigate(navigator);
         } catch (RuntimeException failure) {
             return creation(
@@ -468,9 +468,7 @@ public final class MaidBoundedPathPlanner {
             identity = maid.getUniqueID();
             world = maid.worldObj;
             this.navigator = navigator;
-            navigationGeneration = navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
-                ? modern.generation()
-                : 0;
+            navigationGeneration = navigator instanceof MaidPathNavigator modern ? modern.generation() : 0;
             owner = maid.func_152113_b();
             command = maid.getTask();
             entityTick = maid.ticksExisted;
@@ -488,8 +486,7 @@ public final class MaidBoundedPathPlanner {
                 || candidate.isDead
                 || !candidate.isEntityAlive()
                 || candidate.getNavigator() != navigator
-                || navigator instanceof com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator modern
-                    && modern.generation() != navigationGeneration
+                || navigator instanceof MaidPathNavigator modern && modern.generation() != navigationGeneration
                 || !Objects.equals(owner, candidate.func_152113_b())
                 || candidate.getTask() != command
                 || candidate.ticksExisted != entityTick

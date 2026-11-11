@@ -18,11 +18,16 @@ import net.minecraft.world.WorldSettings.GameType;
 import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture;
+import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
@@ -45,7 +50,7 @@ public final class AnimationLab {
     private AnimationLab() {}
 
     public static void register() {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         require(DIMENSION > 1 && DIMENSION <= 32767, "Invalid animation lab dimension ID");
         require(!DimensionManager.isDimensionRegistered(DIMENSION), "Animation lab dimension is already registered");
         require(
@@ -61,7 +66,7 @@ public final class AnimationLab {
     }
 
     public static void validateAutoEntry() {
-        if (Boolean.getBoolean("tlmnh.devCommands") && Boolean.getBoolean("tlmnh.animationLabAutoEnter")) {
+        if (DevelopmentFlags.isDevCommandsEnabled() && Boolean.getBoolean("tlmnh.animationLabAutoEnter")) {
             spectator();
             TLMNotHard.LOG.info("TLMNH_ANIMATION_LAB_SPECTATOR_READY mode=3");
         }
@@ -80,7 +85,7 @@ public final class AnimationLab {
     }
 
     private static WorldServer world() {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Animation lab disabled");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Animation lab disabled");
         if (DimensionManager.getWorld(DIMENSION) == null) DimensionManager.initDimension(DIMENSION);
         var world = DimensionManager.getWorld(DIMENSION);
         require(isLab(world), "Unexpected animation lab provider");
@@ -196,7 +201,7 @@ public final class AnimationLab {
     public static void leave(EntityPlayerMP player) {
         require(
             isLab(player.worldObj) && player.getEntityData()
-                .hasKey(RETURN, 10),
+                .hasKey(RETURN, Constants.NBT.TAG_COMPOUND),
             "No lab return position saved");
         var saved = player.getEntityData()
             .getCompoundTag(RETURN);
@@ -302,7 +307,7 @@ public final class AnimationLab {
         if (event.phase == TickEvent.Phase.END && !event.player.worldObj.isRemote
             && event.player instanceof EntityPlayerMP player
             && pendingObservers.remove(player.getUniqueID())
-            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isActivePlayer(player)) {
+            && !MaidCareInteractionFixture.isActivePlayer(player)) {
             // 所有登录监听器先完成，再在正常服务端实体 tick 中切换维度
             enter(player, System.getProperty("tlmnh.labModel", DEFAULT_MODEL));
         }
@@ -310,8 +315,8 @@ public final class AnimationLab {
             && isLab(event.player.worldObj)
             && event.player instanceof EntityPlayerMP player
             && !MaidFollowRuntimeProbe.isActivePlayer(player)
-            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture.isActivePlayer(player)
-            && !com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isActivePlayer(player)
+            && !MaidNamingInteractionFixture.isActivePlayer(player)
+            && !MaidCareInteractionFixture.isActivePlayer(player)
             && player.theItemInWorldManager.getGameType()
                 .getID() != 3)
             player.setGameType(spectator());
@@ -321,9 +326,8 @@ public final class AnimationLab {
     public void rejectEntities(EntityJoinWorldEvent event) {
         if (!isLab(event.world) || event.world.isRemote) return;
         if (event.entity instanceof EntityPlayer) return;
-        if (com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture.isSpawning(event.entity)) return;
-        if (com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.isSpawning(event.entity))
-            return;
+        if (TombstoneVisualFixture.isSpawning(event.entity)) return;
+        if (MaidCareInteractionFixture.isSpawning(event.entity)) return;
         if (event.entity instanceof EntityMaid maid && (maid.getEntityData()
             .getBoolean(MAID_MARKER) || MaidPoseRuntimeProbe.isRegistered(maid))) return;
         event.setCanceled(true);

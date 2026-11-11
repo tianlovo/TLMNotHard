@@ -12,6 +12,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInsta
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -121,9 +122,7 @@ public final class MaidWorldSoundPlayer {
         var result = new JsonObject();
         result.addProperty("lastStoppedUuid", lastStoppedUuid);
         result.addProperty("retainedSoundEntity", lastSound != null);
-        result.addProperty(
-            "globalPercent",
-            com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.globalMaidSoundFrequency());
+        result.addProperty("globalPercent", MaidClientPreferences.globalMaidSoundFrequency());
         result.addProperty("received", received.get());
         result.addProperty("queued", queue.size());
         result.addProperty("overflow", overflow.get());

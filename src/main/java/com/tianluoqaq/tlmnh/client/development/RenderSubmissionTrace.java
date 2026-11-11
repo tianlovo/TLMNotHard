@@ -1,13 +1,13 @@
 package com.tianluoqaq.tlmnh.client.development;
 
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.render.LegacyVertexConsumer;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 同姿态的几何重放与实际适配器参数对照，不作为上游几何或GPU成像的独立判据 */
 public final class RenderSubmissionTrace {
@@ -101,17 +101,11 @@ public final class RenderSubmissionTrace {
     }
 
     private static String hex(byte[] bytes) {
-        var text = new StringBuilder();
-        for (byte value : bytes) text.append(String.format("%02x", value & 255));
-        return text.toString();
+        return Sha256Hex.formatHex(bytes);
     }
 
     private static MessageDigest digest() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException impossible) {
-            throw new AssertionError(impossible);
-        }
+        return Sha256Hex.newDigest();
     }
 
     private static void finite(float value) {

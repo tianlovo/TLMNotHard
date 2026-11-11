@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.client.render;
 
 import java.nio.FloatBuffer;
+import java.util.UUID;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.ItemRenderer;
@@ -23,6 +24,10 @@ import com.tianluoqaq.tlmnh.client.render.MaidHandAttachment.Attachment;
 import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Profile;
 import com.tianluoqaq.tlmnh.client.render.MaidHeldItemTransforms.Side;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.compat.battlegear2.client.render.BattlegearShieldRenderTransforms;
+import com.tianluoqaq.tlmnh.compat.tinkersdefense.client.render.TinkersDefenseShieldRenderTransforms;
 
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -144,18 +149,18 @@ public final class MaidHeldItemLayer {
 
     public static synchronized DevelopmentDrawGate installDevelopmentDrawGate(String actor, Side side,
         String transaction) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Held item gate disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item gate disabled");
         if (developmentDrawGate != null || actor == null
             || side == null
             || transaction == null
             || !transaction.matches("[A-Za-z0-9_-]{1,100}\\.json"))
             throw new IllegalStateException("Invalid or already active held item gate");
-        java.util.UUID.fromString(actor);
+        UUID.fromString(actor);
         return developmentDrawGate = new DevelopmentDrawGate(actor, side, transaction);
     }
 
     public static synchronized void setDevelopmentDrawSkip(DevelopmentDrawGate expected, boolean skipping) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || expected == null
+        if (!DevelopmentFlags.isDevCommandsEnabled() || expected == null
             || developmentDrawGate != expected
             || expected.owner != Thread.currentThread()) throw new IllegalStateException("Unowned held item gate");
         expected.skipping = skipping;
@@ -169,7 +174,7 @@ public final class MaidHeldItemLayer {
     }
 
     public static synchronized void setObserverForDevelopment(Observer next) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Held item observer disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item observer disabled");
         if (next == null) throw new IllegalArgumentException("Observer must not be null");
         if (observer != null && observer != next)
             throw new IllegalStateException("Held item observer already installed");
@@ -220,20 +225,17 @@ public final class MaidHeldItemLayer {
                 profile == Profile.FULL_3D && stack.getItem()
                     .shouldRotateAroundWhenRendering());
             if (side == Side.LEFT) {
-                bridge = com.tianluoqaq.tlmnh.compat.battlegear2.client.render.BattlegearShieldRenderTransforms.adapt(
+                bridge = BattlegearShieldRenderTransforms.adapt(
                     stack,
                     selectedRenderer,
-                    maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM)
-                        && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND),
+                    maid.hasPose(MaidPose.USING_ITEM) && maid.hasPose(MaidPose.USING_OFFHAND),
                     bridge);
                 if (bridge == null) return;
-                bridge = com.tianluoqaq.tlmnh.compat.tinkersdefense.client.render.TinkersDefenseShieldRenderTransforms
-                    .adapt(
-                        stack,
-                        selectedRenderer,
-                        maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM)
-                            && maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND),
-                        bridge);
+                bridge = TinkersDefenseShieldRenderTransforms.adapt(
+                    stack,
+                    selectedRenderer,
+                    maid.hasPose(MaidPose.USING_ITEM) && maid.hasPose(MaidPose.USING_OFFHAND),
+                    bridge);
                 if (bridge == null) return;
             }
             var entry = new Matrix4f(source).mul(bridge);
@@ -288,7 +290,7 @@ public final class MaidHeldItemLayer {
                 && gate.owner == Thread.currentThread()
                 && gate.actor.equals(call.hand.actor)
                 && gate.side == call.hand.attachment.side) {
-                if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Held item gate revoked");
+                if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Held item gate revoked");
                 gate.suppressed++;
                 if (observing != null) observing.skippedByDevelopmentGate(call, gate.transaction);
                 return;

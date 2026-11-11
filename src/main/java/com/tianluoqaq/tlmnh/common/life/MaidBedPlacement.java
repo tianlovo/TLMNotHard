@@ -2,6 +2,7 @@ package com.tianluoqaq.tlmnh.common.life;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import net.minecraft.block.BlockBed;
 import net.minecraft.entity.player.EntityPlayer;
@@ -11,6 +12,7 @@ import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectionEvents;
@@ -86,10 +88,11 @@ public final class MaidBedPlacement {
     }
 
     static void reportRetained(TileEntityMaidBed bed, NBTBase raw) {
-        java.util.UUID owner = null;
-        if (raw instanceof NBTTagCompound tag && tag.hasKey("Schema", 3) && tag.getInteger("Schema") == 1) {
+        UUID owner = null;
+        if (raw instanceof NBTTagCompound tag && tag.hasKey("Schema", Constants.NBT.TAG_INT)
+            && tag.getInteger("Schema") == 1) {
             try {
-                owner = java.util.UUID.fromString(tag.getString("Owner"));
+                owner = UUID.fromString(tag.getString("Owner"));
             } catch (IllegalArgumentException ignored) {
                 // 未知原值仍原样保留，不猜测主人或自动补物
             }
@@ -139,7 +142,7 @@ public final class MaidBedPlacement {
             marker.setInteger("Schema", 1);
             marker.setString(
                 "Token",
-                java.util.UUID.randomUUID()
+                UUID.randomUUID()
                     .toString());
             marker.setString(
                 "Owner",

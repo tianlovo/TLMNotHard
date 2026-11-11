@@ -15,6 +15,8 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlanner;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.common.Loader;
 
@@ -77,7 +79,7 @@ public final class CombatEffectPilotSession implements AutoCloseable {
             || maid.worldObj.getEntityByID(maid.getEntityId()) != maid
             || !maid.isUnifiedCombat()
             || !maid.isTamed()
-            || maid.getTask() != com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK
+            || maid.getTask() != MaidTask.ATTACK
             || !maid.getBrainCoordinator()
                 .isSuspended()
             || maid.getBrainCoordinator()
@@ -212,7 +214,7 @@ public final class CombatEffectPilotSession implements AutoCloseable {
     }
 
     private static void gate() {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !Boolean.getBoolean("tlmnh.qaCombatEffectPilot")
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !Boolean.getBoolean("tlmnh.qaCombatEffectPilot")
             || !Loader.isModLoaded("tlmnhqapilot"))
             throw new IllegalStateException("Explicit combat effect QA mode required");
     }

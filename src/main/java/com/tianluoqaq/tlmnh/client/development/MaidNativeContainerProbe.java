@@ -3,19 +3,23 @@ package com.tianluoqaq.tlmnh.client.development;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldSettings;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglContainerMouseInput;
 
+import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -30,7 +34,7 @@ public final class MaidNativeContainerProbe {
     public static JsonObject perform(String action, String spec) {
         var mc = Minecraft.getMinecraft();
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && AnimationLab.isLab(mc.theWorld)
+            DevelopmentFlags.isDevCommandsEnabled() && AnimationLab.isLab(mc.theWorld)
                 && mc.thePlayer != null
                 && mc.thePlayer.isEntityAlive()
                 && mc.getNetHandler() != null
@@ -169,12 +173,9 @@ public final class MaidNativeContainerProbe {
         result.addProperty("selected", player.inventory.currentItem);
         result.addProperty("canInteractWith", container.canInteractWith(player));
         result.addProperty("creativeController", mc.playerController.isInCreativeMode());
-        var nativeMode = cpw.mods.fml.common.ObfuscationReflectionHelper.getPrivateValue(
-            net.minecraft.client.multiplayer.PlayerControllerMP.class,
-            mc.playerController,
-            "currentGameType",
-            "field_78779_k");
-        result.addProperty("nativeControllerMode", ((net.minecraft.world.WorldSettings.GameType) nativeMode).getID());
+        var nativeMode = ObfuscationReflectionHelper
+            .getPrivateValue(PlayerControllerMP.class, mc.playerController, "currentGameType", "field_78779_k");
+        result.addProperty("nativeControllerMode", ((WorldSettings.GameType) nativeMode).getID());
         result
             .addProperty("cursorNativeNbtBase64", MaidCareInteractionProbe.nativeNbt(player.inventory.getItemStack()));
         if (container instanceof ContainerMaid maidContainer) {

@@ -1,9 +1,11 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
+import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.potion.Potion;
 import net.minecraftforge.event.world.WorldEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
@@ -82,12 +84,12 @@ public final class MaidEffectDisplay {
                 || !maid.getUniqueID()
                     .equals(message.entityUuid())
                 || !menu.canInteractWith(mc.thePlayer)) continue;
-            var resolved = new java.util.ArrayList<SendEffectMessage.EffectData>();
+            var resolved = new ArrayList<SendEffectMessage.EffectData>();
             for (var effect : message.effects()) {
                 int category = effect.category;
                 // 1.7.10 的 isBadEffect 被标为客户端专属，在这里用同一包体的药水注册表取色
-                if (effect.potionId >= 0 && effect.potionId < net.minecraft.potion.Potion.potionTypes.length) {
-                    var potion = net.minecraft.potion.Potion.potionTypes[effect.potionId];
+                if (effect.potionId >= 0 && effect.potionId < Potion.potionTypes.length) {
+                    var potion = Potion.potionTypes[effect.potionId];
                     if (potion != null && potion.getName()
                         .equals(effect.descriptionId)) category = potion.isBadEffect() ? 1 : 0;
                 }

@@ -1,7 +1,9 @@
 package com.tianluoqaq.tlmnh.client.render;
 
 import java.nio.FloatBuffer;
+import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoublePlant;
@@ -17,6 +19,7 @@ import net.minecraft.nbt.NBTUtil;
 import net.minecraft.tileentity.TileEntitySkull;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.IPlantable;
+import net.minecraftforge.common.util.Constants;
 
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -24,6 +27,8 @@ import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumBannerRenderAccess;
 import com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumSkullRenderAccess;
 
 import cpw.mods.fml.relauncher.Side;
@@ -34,11 +39,11 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class MaidHeadItemRenderer {
 
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
-    private static final java.util.Map<EntityMaid, Integer> LAST_DRAWN = new java.util.WeakHashMap<>();
-    private static final java.util.Map<EntityMaid, String> LAST_SKULL_RENDERER = new java.util.WeakHashMap<>();
+    private static final Map<EntityMaid, Integer> LAST_DRAWN = new WeakHashMap<>();
+    private static final Map<EntityMaid, String> LAST_SKULL_RENDERER = new WeakHashMap<>();
 
     public static void beginFrame(EntityMaid maid) {
-        if (Boolean.getBoolean("tlmnh.devCommands")) {
+        if (DevelopmentFlags.isDevCommandsEnabled()) {
             LAST_DRAWN.put(maid, 0);
             LAST_SKULL_RENDERER.put(maid, "");
         }
@@ -55,7 +60,7 @@ public final class MaidHeadItemRenderer {
     }
 
     private static void drawn(EntityMaid maid, int bit) {
-        if (Boolean.getBoolean("tlmnh.devCommands")) LAST_DRAWN.put(maid, drawnMask(maid) | bit);
+        if (DevelopmentFlags.isDevCommandsEnabled()) LAST_DRAWN.put(maid, drawnMask(maid) | bit);
     }
 
     private MaidHeadItemRenderer() {}
@@ -78,7 +83,7 @@ public final class MaidHeadItemRenderer {
                     ((TileEntitySkullRenderer) renderer)
                         .func_152674_a(-.5F, 0, -.5F, 1, 180, helmet.getItemDamage(), profile(helmet));
                 } else EtFuturumSkullRenderAccess.render(renderer, helmet.getItemDamage(), profile(helmet));
-                if (Boolean.getBoolean("tlmnh.devCommands")) LAST_SKULL_RENDERER.put(
+                if (DevelopmentFlags.isDevCommandsEnabled()) LAST_SKULL_RENDERER.put(
                     maid,
                     renderer.getClass()
                         .getName());
@@ -87,7 +92,7 @@ public final class MaidHeadItemRenderer {
         }
         ItemStack stack = maid.getBackpackShowItem();
         if (stack == null || stack.stackSize <= 0 || !(stack.getItem() instanceof ItemBlock)) return;
-        if (com.tianluoqaq.tlmnh.compat.etfuturum.client.render.EtFuturumBannerRenderAccess.isBanner(stack)) return;
+        if (EtFuturumBannerRenderAccess.isBanner(stack)) return;
         Block block = Block.getBlockFromItem(stack.getItem());
         // 1.20默认方块状态；旧平台用该物品公开的元数据入口，不借用玩家朝向
         int metadata = stack.getItem()
@@ -121,8 +126,9 @@ public final class MaidHeadItemRenderer {
     private static GameProfile profile(ItemStack stack) {
         if (!stack.hasTagCompound()) return null;
         var nbt = stack.getTagCompound();
-        if (nbt.hasKey("SkullOwner", 10)) return NBTUtil.func_152459_a(nbt.getCompoundTag("SkullOwner"));
-        if (nbt.hasKey("SkullOwner", 8) && !nbt.getString("SkullOwner")
+        if (nbt.hasKey("SkullOwner", Constants.NBT.TAG_COMPOUND))
+            return NBTUtil.func_152459_a(nbt.getCompoundTag("SkullOwner"));
+        if (nbt.hasKey("SkullOwner", Constants.NBT.TAG_STRING) && !nbt.getString("SkullOwner")
             .isEmpty()) return new GameProfile((UUID) null, nbt.getString("SkullOwner"));
         return null;
     }

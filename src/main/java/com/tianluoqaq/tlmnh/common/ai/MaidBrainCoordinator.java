@@ -4,10 +4,16 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.ai.EntityAIBase;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
+import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidHurtMemory;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidOwnerSensor;
@@ -22,6 +28,7 @@ import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 
 /** 唯一服务端任务入口，战斗优先打断生活动作，路径和目标由当前动作独占 */
@@ -44,7 +51,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private MaidBrainProfile requestedBrainProfile;
     private MaidBrainProfile configuredBrainProfile;
     private boolean developmentOverride, creatingPolicy;
-    private com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+    private MaidFaithfulFlightProfile requestedFaithfulFlight = MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
     private ModernFlightProfile requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
     private String observedOwner;
     private String lastPolicyState;
@@ -279,11 +286,9 @@ public final class MaidBrainCoordinator extends EntityAIBase {
             creatingPolicy = true;
             try {
                 if (requestedBrainProfile == MaidBrainProfile.FAITHFUL_TLM)
-                    afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain(
-                        maid,
-                        requestedFaithfulFlight);
+                    afterNavigationActions = new MaidFaithfulBrain(maid, requestedFaithfulFlight);
                 else if (requestedBrainProfile != null && requestedBrainProfile.isEnhanced())
-                    afterNavigationActions = new com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain(
+                    afterNavigationActions = new EnhancedCoreBrain(
                         maid,
                         requestedEnhancedFlight,
                         maid.copyBehaviorSaveData());
@@ -344,7 +349,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     /** 开发组件显式安装，不保存到NBT，不把窄组件注册成完整F或N */
     public void setAfterNavigationActionsForDevelopment(MaidPolicyRuntime.AfterNavigationActions actions) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
+        if (!DevelopmentFlags.isDevCommandsEnabled() || maid.worldObj == null
             || maid.worldObj.isRemote
             || !maid.isEntityAlive()
             || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
@@ -359,7 +364,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         policy = null;
         developmentOverride = true;
         requestedBrainProfile = null;
-        requestedFaithfulFlight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+        requestedFaithfulFlight = MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
         requestedEnhancedFlight = ModernFlightProfile.NATIVE_MOTION_COMPENSATION;
         afterNavigationActions = actions;
         var runtime = getPolicyRuntime();
@@ -371,18 +376,15 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     /** 显式开发选择；F/N 由本协调器统一创建并维护独立根 */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested) {
-        return selectProfileForDevelopment(
-            requested,
-            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
+        return selectProfileForDevelopment(requested, MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
     }
 
     /** 弹道合同在创建完整根之前选择，同对象NBT重建沿用原请求，不依赖观察器改写actor */
     public MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
-        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile flightProfile) {
+        MaidFaithfulFlightProfile flightProfile) {
         Objects.requireNonNull(requested, "requested");
         Objects.requireNonNull(flightProfile, "flightProfile");
-        if (requested != MaidBrainProfile.FAITHFUL_TLM
-            && flightProfile != com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL)
+        if (requested != MaidBrainProfile.FAITHFUL_TLM && flightProfile != MaidFaithfulFlightProfile.SOURCE_ORIGINAL)
             return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
         return selectProfileForDevelopment(requested, flightProfile, ModernFlightProfile.NATIVE_MOTION_COMPENSATION);
     }
@@ -392,19 +394,14 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         ModernFlightProfile flightProfile) {
         Objects.requireNonNull(requested, "requested");
         Objects.requireNonNull(flightProfile, "flightProfile");
-        if (requested != MaidBrainProfile.ENHANCED
-            || !com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain.supportsFlightProfile(flightProfile))
+        if (requested != MaidBrainProfile.ENHANCED || !EnhancedCoreBrain.supportsFlightProfile(flightProfile))
             return MaidPolicyRuntime.SelectionResult.UNAVAILABLE;
-        return selectProfileForDevelopment(
-            requested,
-            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL,
-            flightProfile);
+        return selectProfileForDevelopment(requested, MaidFaithfulFlightProfile.SOURCE_ORIGINAL, flightProfile);
     }
 
     private MaidPolicyRuntime.SelectionResult selectProfileForDevelopment(MaidBrainProfile requested,
-        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile faithfulFlight,
-        ModernFlightProfile enhancedFlight) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || maid.worldObj == null
+        MaidFaithfulFlightProfile faithfulFlight, ModernFlightProfile enhancedFlight) {
+        if (!DevelopmentFlags.isDevCommandsEnabled() || maid.worldObj == null
             || maid.worldObj.isRemote
             || !maid.isEntityAlive()
             || MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
@@ -441,22 +438,20 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     /** 观察当前已绑定的原版保留Brain，不创建状态或恢复失效策略 */
-    public com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain peekFaithfulBrain() {
+    public MaidFaithfulBrain peekFaithfulBrain() {
         return policy != null && policy.isReady()
             && (requestedBrainProfile == null || policyWorld == maid.worldObj)
             && policy.requiresAfterNativeNavigation()
-            && afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulBrain brain ? brain
-                : null;
+            && afterNavigationActions instanceof MaidFaithfulBrain brain ? brain : null;
     }
 
     /** 只观察当前已绑定的独立增强根，不创建或恢复实现 */
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain peekEnhancedCore() {
+    public EnhancedCoreBrain peekEnhancedCore() {
         return policy != null && policy.isReady()
             && policyWorld == maid.worldObj
             && policy.getProfile()
                 .isEnhanced()
-            && afterNavigationActions instanceof com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain brain ? brain
-                : null;
+            && afterNavigationActions instanceof EnhancedCoreBrain brain ? brain : null;
     }
 
     /** 元数据观察不创建或恢复策略，尚未创建时返回 null */
@@ -739,8 +734,8 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         flushingBehaviorData = true;
         try {
             var before = maid.copyBehaviorSaveData();
-            var after = actions.flushPersistentBehaviorData((net.minecraft.nbt.NBTTagCompound) before.copy());
-            if (!maid.commitBehaviorExtensionData(before, after)) com.tianluoqaq.tlmnh.TLMNotHard.LOG.warn(
+            var after = actions.flushPersistentBehaviorData((NBTTagCompound) before.copy());
+            if (!maid.commitBehaviorExtensionData(before, after)) TLMNotHard.LOG.warn(
                 "Behavior extension save rejected for maid {}: stale snapshot or invalid tag type",
                 maid.getUniqueID());
         } finally {
@@ -829,7 +824,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
         return legacy != null && legacy.breath.isActive();
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager.Target peekLegacySwimTarget() {
+    public MaidSwimManager.Target peekLegacySwimTarget() {
         return legacy == null ? null : legacy.breath.nextSwimTarget();
     }
 

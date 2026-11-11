@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.combat.weapon;
 
+import java.util.Objects;
+
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -16,7 +18,7 @@ public final class MaidCombatWeaponView {
     private MaidWeaponProfile profile;
 
     public MaidCombatWeaponView(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, "maid");
     }
 
     public MaidWeaponProfile current() {

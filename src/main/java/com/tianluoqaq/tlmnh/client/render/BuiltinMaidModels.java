@@ -22,6 +22,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.GeoBuilder;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.render.built.GeoModel;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
+import cpw.mods.fml.common.versioning.InvalidVersionSpecificationException;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -73,7 +74,7 @@ public final class BuiltinMaidModels implements IResourceManagerReloadListener {
                 public void setupAnim(EntityMaid entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                     float netHeadYaw, float headPitch) {}
             }, null, null);
-        } catch (RuntimeException | cpw.mods.fml.common.versioning.InvalidVersionSpecificationException error) {
+        } catch (RuntimeException | InvalidVersionSpecificationException error) {
             throw new IOException("Cannot build builtin geometry " + location, error);
         }
     }

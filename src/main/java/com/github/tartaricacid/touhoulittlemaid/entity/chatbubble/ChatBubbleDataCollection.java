@@ -7,6 +7,7 @@ package com.github.tartaricacid.touhoulittlemaid.entity.chatbubble;
 
 import java.util.Collections;
 import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.LongSupplier;
 
@@ -21,7 +22,7 @@ public final class ChatBubbleDataCollection {
     }
 
     public ChatBubbleDataCollection(LongSupplier clock) {
-        this.clock = java.util.Objects.requireNonNull(clock);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     public long add(IChatBubbleData data) {
@@ -77,7 +78,7 @@ public final class ChatBubbleDataCollection {
     public void put(long key, IChatBubbleData data) {
         if (!chatBubbles.containsKey(key) && size() >= MAX_SIZE)
             throw new IllegalArgumentException("Too many chat bubbles");
-        chatBubbles.put(key, java.util.Objects.requireNonNull(data));
+        chatBubbles.put(key, Objects.requireNonNull(data));
     }
 
     public NavigableMap<Long, IChatBubbleData> entries() {

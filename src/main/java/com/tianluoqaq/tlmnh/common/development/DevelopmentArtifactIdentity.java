@@ -2,9 +2,10 @@ package com.tianluoqaq.tlmnh.common.development;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 /** 开发探针的实际CodeSource与资源身份，不把资源字节冒充变换后类定义 */
 public final class DevelopmentArtifactIdentity {
@@ -12,7 +13,7 @@ public final class DevelopmentArtifactIdentity {
     private DevelopmentArtifactIdentity() {}
 
     public static JsonObject capture(Class<?>... types) throws Exception {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || types.length == 0)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || types.length == 0)
             throw new IllegalStateException("Explicit packaged development classes required");
         var identity = new JsonObject();
         var classes = new JsonObject();
@@ -43,13 +44,7 @@ public final class DevelopmentArtifactIdentity {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var result = new StringBuilder();
-        for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) {
-            result.append(Character.forDigit((value & 255) >>> 4, 16));
-            result.append(Character.forDigit(value & 15, 16));
-        }
-        return result.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 
     private static void require(boolean condition, String message) {

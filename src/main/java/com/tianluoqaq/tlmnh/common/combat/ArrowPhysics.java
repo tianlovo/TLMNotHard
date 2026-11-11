@@ -1,5 +1,8 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.Objects;
+import java.util.function.Function;
+
 /** 原生离散更新：当前身体盒水流先推力，随后移动、介质阻力及实际provider重力 */
 public final class ArrowPhysics {
 
@@ -7,13 +10,13 @@ public final class ArrowPhysics {
     public static final ArrowPhysics OVERWORLD_AIR = new ArrowPhysics((double) 0.99F, (double) 0.05F);
     public static final ArrowPhysics OVERWORLD_WATER = new ArrowPhysics((double) 0.8F, (double) 0.05F);
     public final double drag, gravity;
-    private final java.util.function.Function<BallisticVector, Medium> medium;
+    private final Function<BallisticVector, Medium> medium;
 
     public ArrowPhysics(double drag, double gravity) {
         this(drag, gravity, null);
     }
 
-    private ArrowPhysics(double drag, double gravity, java.util.function.Function<BallisticVector, Medium> medium) {
+    private ArrowPhysics(double drag, double gravity, Function<BallisticVector, Medium> medium) {
         if (!Double.isFinite(drag) || drag <= 0 || drag > 1 || !Double.isFinite(gravity) || gravity < 0)
             throw new IllegalArgumentException("Invalid arrow physics profile");
         this.drag = drag;
@@ -26,8 +29,8 @@ public final class ArrowPhysics {
         return new ArrowPhysics(drag, (double) actualGravity, medium);
     }
 
-    public ArrowPhysics withMedium(java.util.function.Function<BallisticVector, Medium> query) {
-        return new ArrowPhysics(drag, gravity, java.util.Objects.requireNonNull(query));
+    public ArrowPhysics withMedium(Function<BallisticVector, Medium> query) {
+        return new ArrowPhysics(drag, gravity, Objects.requireNonNull(query));
     }
 
     public boolean spatial() {
@@ -72,7 +75,7 @@ public final class ArrowPhysics {
             if (!Double.isFinite(drag) || drag <= 0 || drag > 1)
                 throw new IllegalArgumentException("Invalid medium drag");
             this.drag = drag;
-            this.push = java.util.Objects.requireNonNull(push);
+            this.push = Objects.requireNonNull(push);
         }
     }
 
@@ -81,8 +84,8 @@ public final class ArrowPhysics {
         public final BallisticVector position, velocity;
 
         public State(BallisticVector position, BallisticVector velocity) {
-            this.position = java.util.Objects.requireNonNull(position, "position");
-            this.velocity = java.util.Objects.requireNonNull(velocity, "velocity");
+            this.position = Objects.requireNonNull(position, "position");
+            this.velocity = Objects.requireNonNull(velocity, "velocity");
         }
     }
 }

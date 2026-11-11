@@ -10,6 +10,8 @@ import net.minecraft.world.World;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
+import cpw.mods.fml.common.Loader;
+
 /** 目标平台门API适配，保留Malisis动画和锁定规则，不直接改其TileEntity状态 */
 public final class MaidDoorAccess {
 
@@ -74,7 +76,7 @@ public final class MaidDoorAccess {
                 MaidDoorAccess.class.getClassLoader());
             return new Animated(tile.getMethod("getState"), tile.getMethod("openOrCloseDoor"));
         } catch (ClassNotFoundException absent) {
-            if (cpw.mods.fml.common.Loader.isModLoaded("malisisdoors"))
+            if (Loader.isModLoaded("malisisdoors"))
                 throw new IllegalStateException("Installed animated door class missing", absent);
             return null;
         } catch (NoSuchMethodException incompatible) {

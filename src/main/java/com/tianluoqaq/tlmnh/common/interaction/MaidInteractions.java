@@ -24,6 +24,8 @@ import net.minecraftforge.common.util.FakePlayer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
 
 /** 原版主人交互的原生平台适配，客户端只判断操作是否被接收 */
@@ -36,7 +38,7 @@ public final class MaidInteractions {
     public static boolean canInteract(EntityMaid maid, EntityPlayer player) {
         if (player == null || player instanceof FakePlayer
             || !maid.isEntityAlive()
-            || com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService.isPendingRedemption(maid)
+            || MaidLifecycleService.isPendingRedemption(maid)
             || !player.isEntityAlive()
             || player.worldObj != maid.worldObj
             || maid.getDistanceSqToEntity(player) > 64.0D) return false;
@@ -159,7 +161,7 @@ public final class MaidInteractions {
     private static void exchangeExperience(EntityMaid maid, EntityPlayer player, ItemStack held) {
         int count = player.isSneaking() ? Math.min(held.stackSize, maid.getExperience() / EXPERIENCE_PER_BOTTLE) : 1;
         count = Math.min(count, Items.experience_bottle.getItemStackLimit());
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer.publish(
+        if (MaidInteractionTransfer.publish(
             maid,
             player,
             held,
@@ -177,8 +179,7 @@ public final class MaidInteractions {
         }
         int remaining = held.stackSize - count;
         if (remaining > 0 && container != null && !player.inventory.addItemStackToInventory(container)) {
-            boolean delivered = com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer
-                .publish(maid, player, held, count, container, 0, effect);
+            boolean delivered = MaidInteractionTransfer.publish(maid, player, held, count, container, 0, effect);
             if (delivered) player.inventoryContainer.detectAndSendChanges();
             return delivered;
         }

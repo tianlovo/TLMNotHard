@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 
 import cpw.mods.fml.relauncher.Side;
@@ -21,7 +22,7 @@ public final class ShrineRenderObservation {
     private ShrineRenderObservation() {}
 
     public static void completed(MaidShrineTile shrine, Object model, boolean itemDrawn) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var frame = FRAMES.computeIfAbsent(shrine, ignored -> new Frame());
         frame.calls++;
         if (frame.model != model) {
@@ -33,7 +34,7 @@ public final class ShrineRenderObservation {
 
     public static JsonArray snapshot(Minecraft minecraft) {
         var result = new JsonArray();
-        if (!Boolean.getBoolean("tlmnh.devCommands") || minecraft.theWorld == null) return result;
+        if (!DevelopmentFlags.isDevCommandsEnabled() || minecraft.theWorld == null) return result;
         // loadedTileEntityList只登记canUpdate=true；神龛不tick，沿实际绘制记录核当前世界的同一Tile
         for (var shrine : FRAMES.keySet()) if (!shrine.isInvalid() && shrine.getWorldObj() == minecraft.theWorld
             && minecraft.theWorld.blockExists(shrine.xCoord, shrine.yCoord, shrine.zCoord)

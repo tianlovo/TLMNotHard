@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.client.render;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
@@ -7,9 +8,13 @@ import net.minecraft.entity.item.EntityBoat;
 import net.minecraft.entity.item.EntityMinecart;
 import net.minecraft.entity.passive.EntityHorse;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -32,7 +37,7 @@ public final class MaidAnimationState {
     public String task = "idle";
 
     public MaidAnimationState(UUID uuid) {
-        this.uuid = java.util.Objects.requireNonNull(uuid, "uuid");
+        this.uuid = Objects.requireNonNull(uuid, "uuid");
     }
 
     public static MaidAnimationState capture(EntityMaid maid, float partialTick) {
@@ -41,8 +46,7 @@ public final class MaidAnimationState {
         state.begging = maid.hasPose(MaidPose.BEGGING);
         var snowball = maid.getSnowballAnimation();
         if (!state.begging && snowball.pickingUp()
-            && System.currentTimeMillis() - snowball.startedAt()
-                > com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation.DURATION_MILLIS) {
+            && System.currentTimeMillis() - snowball.startedAt() > MaidSnowballAnimation.DURATION_MILLIS) {
             snowball.clear();
             state.snowballAnimationExpired = true;
         }
@@ -75,18 +79,18 @@ public final class MaidAnimationState {
         state.dimension = maid.dimension;
         state.dayTime = Math.floorMod(maid.worldObj.getWorldTime(), 24000L);
         var animationTask = maid.getTask();
-        if (maid.isUnifiedCombat() && animationTask == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK
+        if (maid.isUnifiedCombat() && animationTask == MaidTask.ATTACK
             && maid.getHeldItem() != null
             && maid.getHeldItem()
-                .getItem() == net.minecraft.init.Items.bow)
-            animationTask = com.tianluoqaq.tlmnh.common.entity.MaidTask.RANGED_ATTACK;
+                .getItem() == Items.bow)
+            animationTask = MaidTask.RANGED_ATTACK;
         var id = animationTask.getId();
         state.task = id.substring(id.indexOf(':') + 1);
         return state;
     }
 
     private static String animationEntityId(Entity entity) {
-        if (entity instanceof com.tianluoqaq.tlmnh.client.gui.MaidPreviewSeat) return "touhou_little_maid:chair";
+        if (entity instanceof MaidPreviewSeat) return "touhou_little_maid:chair";
         if (entity instanceof EntityPlayer) return "minecraft:player";
         if (entity instanceof EntityBoat) return "minecraft:boat";
         if (entity instanceof EntityMinecart) return "minecraft:minecart";

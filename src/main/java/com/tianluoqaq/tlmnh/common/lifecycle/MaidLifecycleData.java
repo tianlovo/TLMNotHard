@@ -1,8 +1,11 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -12,6 +15,7 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 /** 世界共享的一次性凭证账本；物品副本没有第二次兑现权 */
 public final class MaidLifecycleData extends WorldSavedData {
@@ -643,8 +647,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         reservations.remove(token);
     }
 
-    public java.util.List<UUID> pendingDeathExperience(int dimension, long now) {
-        var result = new java.util.ArrayList<UUID>();
+    public List<UUID> pendingDeathExperience(int dimension, long now) {
+        var result = new ArrayList<UUID>();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
             if (entry.kind == Kind.FILM && entry.delivered
@@ -656,7 +660,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         }
         if (result.size() > 1) {
             int cursor = experienceCursors.getOrDefault(dimension, 0);
-            java.util.Collections.rotate(result, -(cursor % result.size()));
+            Collections.rotate(result, -(cursor % result.size()));
             experienceCursors.put(dimension, cursor == Integer.MAX_VALUE ? 0 : cursor + 1);
         }
         return result;
@@ -825,8 +829,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         return entry;
     }
 
-    public java.util.List<UUID> pendingTombstones(int dimension) {
-        var result = new java.util.ArrayList<UUID>();
+    public List<UUID> pendingTombstones(int dimension) {
+        var result = new ArrayList<UUID>();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
             if (entry.kind == Kind.FILM && entry.delivered
@@ -994,8 +998,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         return id;
     }
 
-    public java.util.List<UUID> pendingReturnedFilms(int dimension) {
-        var result = new java.util.ArrayList<UUID>();
+    public List<UUID> pendingReturnedFilms(int dimension) {
+        var result = new ArrayList<UUID>();
         for (var item : returnedFilms.entrySet()) if (item.getValue().dimension == dimension) result.add(item.getKey());
         return result;
     }
@@ -1066,7 +1070,7 @@ public final class MaidLifecycleData extends WorldSavedData {
         var entry = returnedFilms.get(id);
         if (entry == null || !(entry.phase == ReturnedPhase.PREPARED || entry.phase == ReturnedPhase.READY)
             || !entry.context.equals(context)
-            || !entry.context.hasKey("Source", 10))
+            || !entry.context.hasKey("Source", Constants.NBT.TAG_COMPOUND))
             throw new IllegalStateException("Unknown material source observation retained");
         entry.context.getCompoundTag("Source")
             .setTag("UnconfirmedSource", observed.copy());
@@ -1105,7 +1109,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             throw new IllegalStateException("Cannot replace a ledger during durable material publication");
         healthy = false;
         int schema = tag.getInteger("Schema");
-        if (!tag.hasKey("Schema", 3) || schema < 1 || schema > 9)
+        if (!tag.hasKey("Schema", Constants.NBT.TAG_INT) || schema < 1 || schema > 9)
             throw new IllegalStateException("Unsupported maid lifecycle schema");
         knownFields(tag, ROOT_FIELDS);
         var restored = new HashMap<UUID, Entry>();
@@ -1123,7 +1127,7 @@ public final class MaidLifecycleData extends WorldSavedData {
             var owner = UUID.fromString(item.getString("Owner"));
             var subject = UUID.fromString(item.getString("Subject"));
             var kind = Kind.valueOf(item.getString("Kind"));
-            if (item.hasKey("Identity") && !item.hasKey("Identity", 10))
+            if (item.hasKey("Identity") && !item.hasKey("Identity", Constants.NBT.TAG_COMPOUND))
                 throw new IllegalStateException("Invalid lifecycle identity encoding");
             if (schema == 1 && kind == Kind.ACQUIRED)
                 throw new IllegalStateException("Acquired credential requires lifecycle schema 2");
@@ -1153,9 +1157,11 @@ public final class MaidLifecycleData extends WorldSavedData {
             entry.z = item.getDouble("Z");
             entry.name = item.getString("MaidName");
             entry.published = readFlag(item, "Published", true);
-            if (schema >= 3 && (!item.hasKey("DeathExperience", 3) || !item.hasKey("ExperienceReadyAt", 4))
-                || item.hasKey("DeathExperience") && !item.hasKey("DeathExperience", 3)
-                || item.hasKey("ExperienceReadyAt") && !item.hasKey("ExperienceReadyAt", 4))
+            if (schema >= 3
+                && (!item.hasKey("DeathExperience", Constants.NBT.TAG_INT)
+                    || !item.hasKey("ExperienceReadyAt", Constants.NBT.TAG_LONG))
+                || item.hasKey("DeathExperience") && !item.hasKey("DeathExperience", Constants.NBT.TAG_INT)
+                || item.hasKey("ExperienceReadyAt") && !item.hasKey("ExperienceReadyAt", Constants.NBT.TAG_LONG))
                 throw new IllegalStateException("Invalid death experience encoding");
             entry.experience = item.getInteger("DeathExperience");
             entry.experienceReadyAt = item.getLong("ExperienceReadyAt");
@@ -1165,7 +1171,8 @@ public final class MaidLifecycleData extends WorldSavedData {
             entry.tombstoneHeld = readHold(item, "TombstoneHeld", schema);
             entry.experienceHeld = readHold(item, "ExperienceHeld", schema);
             readAcquisition(entry, item, schema);
-            if (schema < 6 && item.hasKey("Redemption") || schema >= 6 && !item.hasKey("Redemption", 10))
+            if (schema < 6 && item.hasKey("Redemption")
+                || schema >= 6 && !item.hasKey("Redemption", Constants.NBT.TAG_COMPOUND))
                 throw new IllegalStateException("Invalid maid redemption encoding");
             entry.redemption = (NBTTagCompound) item.getCompoundTag("Redemption")
                 .copy();
@@ -1178,7 +1185,8 @@ public final class MaidLifecycleData extends WorldSavedData {
                     throw new IllegalStateException("Duplicate pending maid candidate");
             }
             if (schema >= 8) {
-                if (!item.hasKey("DeathIngress", 10) || !item.hasKey("TombstonePublication", 10))
+                if (!item.hasKey("DeathIngress", Constants.NBT.TAG_COMPOUND)
+                    || !item.hasKey("TombstonePublication", Constants.NBT.TAG_COMPOUND))
                     throw new IllegalStateException("Invalid death transfer records");
                 entry.deathIngress = (NBTTagCompound) item.getCompoundTag("DeathIngress")
                     .copy();
@@ -1201,7 +1209,8 @@ public final class MaidLifecycleData extends WorldSavedData {
                 throw new IllegalStateException("Death transfer records require lifecycle schema 8");
             }
             if (schema >= 9) {
-                if (!item.hasKey("Capture", 10)) throw new IllegalStateException("Missing capture record");
+                if (!item.hasKey("Capture", Constants.NBT.TAG_COMPOUND))
+                    throw new IllegalStateException("Missing capture record");
                 entry.capture = (NBTTagCompound) item.getCompoundTag("Capture")
                     .copy();
                 if (kind == Kind.CAPTURED) {
@@ -1234,12 +1243,13 @@ public final class MaidLifecycleData extends WorldSavedData {
                 || !Double.isFinite(x)
                 || !Double.isFinite(y)
                 || !Double.isFinite(z)
-                || !film.hasKey("Stack", 10)
-                || !film.hasKey("Id", 8)
-                || !film.hasKey("Dimension", 3)
-                || !film.hasKey("X", 6)
-                || !film.hasKey("Y", 6)
-                || !film.hasKey("Z", 6)) throw new IllegalStateException("Invalid returned film escrow");
+                || !film.hasKey("Stack", Constants.NBT.TAG_COMPOUND)
+                || !film.hasKey("Id", Constants.NBT.TAG_STRING)
+                || !film.hasKey("Dimension", Constants.NBT.TAG_INT)
+                || !film.hasKey("X", Constants.NBT.TAG_DOUBLE)
+                || !film.hasKey("Y", Constants.NBT.TAG_DOUBLE)
+                || !film.hasKey("Z", Constants.NBT.TAG_DOUBLE))
+                throw new IllegalStateException("Invalid returned film escrow");
             var entry = new ReturnedFilm(
                 (NBTTagCompound) film.getCompoundTag("Stack")
                     .copy(),
@@ -1248,7 +1258,8 @@ public final class MaidLifecycleData extends WorldSavedData {
                 y,
                 z);
             if (schema >= 7) {
-                if (!film.hasKey("Phase", 8) || !film.hasKey("Context", 10))
+                if (!film.hasKey("Phase", Constants.NBT.TAG_STRING)
+                    || !film.hasKey("Context", Constants.NBT.TAG_COMPOUND))
                     throw new IllegalStateException("Invalid returned material state");
                 entry.phase = ReturnedPhase.valueOf(film.getString("Phase"));
                 entry.context = (NBTTagCompound) film.getCompoundTag("Context")
@@ -1351,8 +1362,8 @@ public final class MaidLifecycleData extends WorldSavedData {
         if (context.hasNoTags() && phase != ReturnedPhase.PREPARED) return;
         knownFields(context, RETURN_CONTEXT_FIELDS);
         if (context.func_150296_c()
-            .size() != RETURN_CONTEXT_FIELDS.size() || !context.hasKey("Kind", 8)
-            || !context.hasKey("Source", 10)
+            .size() != RETURN_CONTEXT_FIELDS.size() || !context.hasKey("Kind", Constants.NBT.TAG_STRING)
+            || !context.hasKey("Source", Constants.NBT.TAG_COMPOUND)
             || context.getCompoundTag("Source")
                 .hasNoTags()
             || !Arrays.asList("tile_break", "shrine_insert", "shrine_extract", "recovery_player")
@@ -1361,8 +1372,8 @@ public final class MaidLifecycleData extends WorldSavedData {
     }
 
     private static boolean readFlag(NBTTagCompound entry, String key, boolean required) {
-        if (required && !entry.hasKey(key, 1)
-            || entry.hasKey(key) && (!entry.hasKey(key, 1) || entry.getByte(key) < 0 || entry.getByte(key) > 1))
+        if (required && !entry.hasKey(key, Constants.NBT.TAG_BYTE) || entry.hasKey(key)
+            && (!entry.hasKey(key, Constants.NBT.TAG_BYTE) || entry.getByte(key) < 0 || entry.getByte(key) > 1))
             throw new IllegalStateException("Invalid lifecycle flag encoding: " + key);
         return entry.getBoolean(key);
     }
@@ -1374,9 +1385,10 @@ public final class MaidLifecycleData extends WorldSavedData {
                 if (data.hasKey(key)) throw new IllegalStateException("Acquisition intent requires lifecycle schema 5");
             return;
         }
-        if (!data.hasKey(keys[0], 8) || !data.hasKey(keys[1], 10)
-            || !data.hasKey(keys[2], 10)
-            || !data.hasKey(keys[3], 10)) throw new IllegalStateException("Invalid acquisition intent encoding");
+        if (!data.hasKey(keys[0], Constants.NBT.TAG_STRING) || !data.hasKey(keys[1], Constants.NBT.TAG_COMPOUND)
+            || !data.hasKey(keys[2], Constants.NBT.TAG_COMPOUND)
+            || !data.hasKey(keys[3], Constants.NBT.TAG_COMPOUND))
+            throw new IllegalStateException("Invalid acquisition intent encoding");
         entry.acquisitionPhase = AcquisitionPhase.valueOf(data.getString(keys[0]));
         entry.acquisitionSource = (NBTTagCompound) data.getCompoundTag(keys[1])
             .copy();
@@ -1407,8 +1419,9 @@ public final class MaidLifecycleData extends WorldSavedData {
             if (required) throw new IllegalStateException("Missing lifecycle list: " + key);
             return new NBTTagList();
         }
-        if (!data.hasKey(key, 9)) throw new IllegalStateException("Invalid lifecycle list encoding: " + key);
-        var typed = data.getTagList(key, 10);
+        if (!data.hasKey(key, Constants.NBT.TAG_LIST))
+            throw new IllegalStateException("Invalid lifecycle list encoding: " + key);
+        var typed = data.getTagList(key, Constants.NBT.TAG_COMPOUND);
         if (((NBTTagList) data.getTag(key)).tagCount() != typed.tagCount())
             throw new IllegalStateException("Invalid lifecycle list entries: " + key);
         return typed;

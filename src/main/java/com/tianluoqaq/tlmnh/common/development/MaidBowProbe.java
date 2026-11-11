@@ -20,6 +20,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
@@ -32,7 +33,7 @@ public final class MaidBowProbe {
 
     public static void run(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !AnimationLab.isLab(world),
+            DevelopmentFlags.isDevCommandsEnabled() && !AnimationLab.isLab(world),
             "Dedicated test overworld required");
         var spawn = world.getSpawnPoint();
         double x = spawn.posX + .5, z = spawn.posZ + .5;

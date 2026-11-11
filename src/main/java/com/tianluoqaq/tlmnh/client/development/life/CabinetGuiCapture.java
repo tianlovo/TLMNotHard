@@ -6,6 +6,7 @@ import net.minecraft.inventory.ContainerChest;
 
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -18,7 +19,7 @@ public final class CabinetGuiCapture {
 
     public static ContainerChest requireScreen(Minecraft minecraft) {
         var player = minecraft.thePlayer;
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !AnimationLab.isLab(minecraft.theWorld)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isLab(minecraft.theWorld)
             || player == null
             || player.getHealth() <= 0
             || !player.capabilities.disableDamage

@@ -1,22 +1,49 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.util.ResourceLocation;
+
+import org.lwjgl.input.Mouse;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.detail.MaidModelDetailsGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.model.MaidModelGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui;
+import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.ChatBubbleRenderer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
+import com.google.common.hash.Hashing;
+import com.google.common.io.ByteStreams;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
+import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui;
+import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer;
+import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -28,7 +55,7 @@ public final class MaidModelUiProbe {
     private MaidModelUiProbe() {}
 
     public static JsonObject observe() {
-        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming)
+        if (Minecraft.getMinecraft().currentScreen instanceof GuiMaidNaming naming)
             return namingObservation(naming, "status", null);
         requireWindow();
         return snapshot();
@@ -36,13 +63,12 @@ public final class MaidModelUiProbe {
 
     public static JsonObject perform(String action, String model) {
         if (action.startsWith("container_")) return MaidNativeContainerProbe.perform(action, model);
-        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming)
+        if (Minecraft.getMinecraft().currentScreen instanceof GuiMaidNaming naming)
             return namingObservation(naming, action, model);
         requireWindow();
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
-        if (action.equals("target_close")
-            && minecraft.thePlayer.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer) {
+        if (action.equals("target_close") && minecraft.thePlayer.openContainer instanceof TaskConfigContainer) {
             var before = snapshot();
             minecraft.thePlayer.closeScreen();
             before.addProperty("actionRequested", true);
@@ -51,190 +77,178 @@ public final class MaidModelUiProbe {
             return before;
         }
         if (!action.equals("status")) {
-            if (minecraft.currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui global) {
+            if (minecraft.currentScreen instanceof MaidClientConfigGui global) {
                 requested = global.requestAction(action);
-            } else
-                if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds) {
-                    if (action.equals("pack")) {
-                        var packs = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.packs();
-                        for (int i = 0; i < packs.size(); i++)
-                            if (packs.get(i).id.equals(model)) requested = sounds.pressButton(1000 + i);
-                    } else if (action.equals("sound_apply")) {
-                        requested = sounds.pressButton(3);
+            } else if (minecraft.currentScreen instanceof MaidSoundPackGui sounds) {
+                if (action.equals("pack")) {
+                    var packs = BuiltinSoundCatalog.packs();
+                    for (int i = 0; i < packs.size(); i++)
+                        if (packs.get(i).id.equals(model)) requested = sounds.pressButton(1000 + i);
+                } else if (action.equals("sound_apply")) {
+                    requested = sounds.pressButton(3);
+                    network = requested;
+                } else if (action.equals("next")) requested = sounds.pressButton(7);
+                else if (action.equals("previous")) requested = sounds.pressButton(6);
+                else if (action.equals("sound_play")) {
+                    var state = sounds.observation();
+                    var pack = BuiltinSoundCatalog.get(
+                        state.get("selected")
+                            .getAsString());
+                    var ids = new ArrayList<>(pack.events.keySet());
+                    int index = ids.indexOf(model);
+                    if (index >= 0) requested = sounds.pressButton(2000 + index);
+                } else throw new IllegalArgumentException("Action does not apply to the sound screen");
+            } else if (minecraft.currentScreen instanceof AttackTaskConfigGui targets && action.startsWith("target_")) {
+                requested = TaskConfigUiProbe.perform(targets, action, model);
+            } else if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
+                switch (action) {
+                    case "back" -> requested = details.pressButton(2);
+                    case "details_shield_blocking" -> {
+                        if (!"on".equals(model) && !"off".equals(model))
+                            throw new IllegalArgumentException("Preview blocking requires on/off");
+                        details.previewShieldBlocking("on".equals(model));
+                        requested = true;
+                    }
+                    case "details_equipment" -> requested = details.previewEquipment(model);
+                    case "details_action" -> requested = details.previewAction(model);
+                    case "details_shield_fault" -> {
+                        // 仅开发协议：注入同一保护边界的链接错误，再由正常预览按钮验证停用回退
+                        IntegrationGuard.call(
+                            Side.CLIENT,
+                            ExternalFeature.SHIELDS,
+                            () -> { throw new NoSuchMethodError("Injected unavailable shield preview API"); },
+                            () -> null);
+                        requested = !IntegrationGuard.available(Side.CLIENT, ExternalFeature.SHIELDS);
+                    }
+                    case "details_toggle" -> {
+                        var keys = Arrays.asList(
+                            "beg",
+                            "walk",
+                            "sit",
+                            "ride",
+                            "helmet",
+                            "chest_plate",
+                            "leggings",
+                            "boots",
+                            "main_hand",
+                            "off_hand");
+                        int index = keys.indexOf(model);
+                        if (index < 0 && !"floor".equals(model))
+                            throw new IllegalArgumentException("Unknown details toggle");
+                        requested = details.pressButton(index < 0 ? 1 : 10 + index);
+                    }
+                    case "details_view" -> requested = switch (model) {
+                            case "rotate" -> details.dragView(200, 100, 0, 40, 10);
+                            case "pan" -> details.dragView(200, 100, 1, 15, -10);
+                            case "zoom_in" -> details.scrollView(200, 100, 1);
+                            case "zoom_min" -> details.scrollView(200, 100, -100);
+                            case "zoom_max" -> details.scrollView(200, 100, 1000);
+                            case "outside" -> details.dragView(132, 100, 0, 100, 100) || details.scrollView(200, 15, 1);
+                            default -> throw new IllegalArgumentException("Unknown details view fixture");
+                        };
+                    default -> throw new IllegalArgumentException("Action does not apply to the details screen");
+                }
+            } else if (minecraft.currentScreen instanceof MaidModelGui models) {
+                switch (action) {
+                    case "select", "details" -> {
+                        for (int index : models.getVisibleModelIndices()) if (BuiltinModelCatalog.choices()
+                            .get(index)
+                            .getId()
+                            .equals(model)) {
+                                requested = action.equals("details") ? models.openDetails(index)
+                                    : models.selectVisibleModel(index);
+                                network = requested && !action.equals("details");
+                                break;
+                            }
+                    }
+                    case "back" -> {
+                        requested = models.returnToMaid();
                         network = requested;
-                    } else if (action.equals("next")) requested = sounds.pressButton(7);
-                    else if (action.equals("previous")) requested = sounds.pressButton(6);
-                    else if (action.equals("sound_play")) {
-                        var state = sounds.observation();
-                        var pack = com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.get(
-                            state.get("selected")
-                                .getAsString());
-                        var ids = new java.util.ArrayList<>(pack.events.keySet());
-                        int index = ids.indexOf(model);
-                        if (index >= 0) requested = sounds.pressButton(2000 + index);
-                    } else throw new IllegalArgumentException("Action does not apply to the sound screen");
-                } else
-                    if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui targets
-                        && action.startsWith("target_")) {
-                            requested = TaskConfigUiProbe.perform(targets, action, model);
-                        } else if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
-                            switch (action) {
-                                case "back" -> requested = details.pressButton(2);
-                                case "details_shield_blocking" -> {
-                                    if (!"on".equals(model) && !"off".equals(model))
-                                        throw new IllegalArgumentException("Preview blocking requires on/off");
-                                    details.previewShieldBlocking("on".equals(model));
-                                    requested = true;
-                                }
-                                case "details_equipment" -> requested = details.previewEquipment(model);
-                                case "details_action" -> requested = details.previewAction(model);
-                                case "details_shield_fault" -> {
-                                    // 仅开发协议：注入同一保护边界的链接错误，再由正常预览按钮验证停用回退
-                                    com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
-                                        Side.CLIENT,
-                                        com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS,
-                                        () -> {
-                                            throw new NoSuchMethodError("Injected unavailable shield preview API");
-                                        },
-                                        () -> null);
-                                    requested = !com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.available(
-                                        Side.CLIENT,
-                                        com.tianluoqaq.tlmnh.common.protection.ExternalFeature.SHIELDS);
-                                }
-                                case "details_toggle" -> {
-                                    var keys = java.util.Arrays.asList(
-                                        "beg",
-                                        "walk",
-                                        "sit",
-                                        "ride",
-                                        "helmet",
-                                        "chest_plate",
-                                        "leggings",
-                                        "boots",
-                                        "main_hand",
-                                        "off_hand");
-                                    int index = keys.indexOf(model);
-                                    if (index < 0 && !"floor".equals(model))
-                                        throw new IllegalArgumentException("Unknown details toggle");
-                                    requested = details.pressButton(index < 0 ? 1 : 10 + index);
-                                }
-                                case "details_view" -> requested = switch (model) {
-                                        case "rotate" -> details.dragView(200, 100, 0, 40, 10);
-                                        case "pan" -> details.dragView(200, 100, 1, 15, -10);
-                                        case "zoom_in" -> details.scrollView(200, 100, 1);
-                                        case "zoom_min" -> details.scrollView(200, 100, -100);
-                                        case "zoom_max" -> details.scrollView(200, 100, 1000);
-                                        case "outside" -> details.dragView(132, 100, 0, 100, 100)
-                                            || details.scrollView(200, 15, 1);
-                                        default -> throw new IllegalArgumentException("Unknown details view fixture");
-                                    };
-                                default -> throw new IllegalArgumentException(
-                                    "Action does not apply to the details screen");
-                            }
-                        } else if (minecraft.currentScreen instanceof MaidModelGui models) {
-                            switch (action) {
-                                case "select", "details" -> {
-                                    for (int index : models.getVisibleModelIndices()) if (BuiltinModelCatalog.choices()
-                                        .get(index)
-                                        .getId()
-                                        .equals(model)) {
-                                            requested = action.equals("details") ? models.openDetails(index)
-                                                : models.selectVisibleModel(index);
-                                            network = requested && !action.equals("details");
-                                            break;
-                                        }
-                                }
-                                case "back" -> {
-                                    requested = models.returnToMaid();
+                    }
+                    case "next" -> requested = models.changeRow(1);
+                    case "previous" -> requested = models.changeRow(-1);
+                    case "pack" -> requested = models.selectPack(model);
+                    case "search" -> {
+                        models.search(model);
+                        requested = true;
+                    }
+                    case "cache" -> {
+                        models.toggleIconCache();
+                        requested = true;
+                    }
+                    case "pointer" -> {
+                        Mouse.setCursorPosition(0, 0);
+                        requested = true;
+                    }
+                    default -> throw new IllegalArgumentException("Action does not apply to the original model screen");
+                }
+            } else
+                if (minecraft.currentScreen instanceof MaidConfigContainerGui config && action.startsWith("config_")) {
+                    requested = config.requestFrequency(action);
+                    network = requested;
+                } else if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
+                    if (action.equals("pointer")) {
+                        // native lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
+                        Mouse.setCursorPosition(0, 0);
+                        requested = true;
+                    } else {
+                        requested = original.requestAction(action);
+                        network = requested && !action.equals("tasks") && !action.equals("global");
+                    }
+                } else if (minecraft.currentScreen instanceof GuiMaid main) {
+                    if (action.equals("open")) {
+                        requested = main.openModelSelector();
+                        network = requested;
+                    } else if (action.equals("home")) requested = main.openHomeSettings();
+                    else {
+                        int button = switch (action) {
+                            case "home_toggle" -> ContainerMaid.ACTION_HOME;
+                            case "home_work" -> ContainerMaid.ACTION_HOME_WORK;
+                            case "home_idle" -> ContainerMaid.ACTION_HOME_IDLE;
+                            case "home_rest" -> ContainerMaid.ACTION_HOME_REST;
+                            case "home_reset" -> ContainerMaid.ACTION_HOME_RESET;
+                            default -> throw new IllegalArgumentException(
+                                "Action does not apply to the main maid screen");
+                        };
+                        requested = main.requestHomeAction(button);
+                        network = requested;
+                    }
+                } else if (minecraft.currentScreen instanceof GuiMaidModels selector) {
+                    switch (action) {
+                        case "select":
+                            for (int index : selector.getVisibleModelIndices()) {
+                                if (BuiltinModelCatalog.choices()
+                                    .get(index)
+                                    .getId()
+                                    .equals(model)) {
+                                    requested = selector.selectVisibleModel(index);
                                     network = requested;
+                                    break;
                                 }
-                                case "next" -> requested = models.changeRow(1);
-                                case "previous" -> requested = models.changeRow(-1);
-                                case "pack" -> requested = models.selectPack(model);
-                                case "search" -> {
-                                    models.search(model);
-                                    requested = true;
-                                }
-                                case "cache" -> {
-                                    models.toggleIconCache();
-                                    requested = true;
-                                }
-                                case "pointer" -> {
-                                    org.lwjgl.input.Mouse.setCursorPosition(0, 0);
-                                    requested = true;
-                                }
-                                default -> throw new IllegalArgumentException(
-                                    "Action does not apply to the original model screen");
                             }
-                        } else
-                            if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui config
-                                && action.startsWith("config_")) {
-                                    requested = config.requestFrequency(action);
-                                    network = requested;
-                                } else if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
-                                    if (action.equals("pointer")) {
-                                        // native lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
-                                        org.lwjgl.input.Mouse.setCursorPosition(0, 0);
-                                        requested = true;
-                                    } else {
-                                        requested = original.requestAction(action);
-                                        network = requested && !action.equals("tasks") && !action.equals("global");
-                                    }
-                                } else if (minecraft.currentScreen instanceof GuiMaid main) {
-                                    if (action.equals("open")) {
-                                        requested = main.openModelSelector();
-                                        network = requested;
-                                    } else if (action.equals("home")) requested = main.openHomeSettings();
-                                    else {
-                                        int button = switch (action) {
-                                            case "home_toggle" -> ContainerMaid.ACTION_HOME;
-                                            case "home_work" -> ContainerMaid.ACTION_HOME_WORK;
-                                            case "home_idle" -> ContainerMaid.ACTION_HOME_IDLE;
-                                            case "home_rest" -> ContainerMaid.ACTION_HOME_REST;
-                                            case "home_reset" -> ContainerMaid.ACTION_HOME_RESET;
-                                            default -> throw new IllegalArgumentException(
-                                                "Action does not apply to the main maid screen");
-                                        };
-                                        requested = main.requestHomeAction(button);
-                                        network = requested;
-                                    }
-                                } else if (minecraft.currentScreen instanceof GuiMaidModels selector) {
-                                    switch (action) {
-                                        case "select":
-                                            for (int index : selector.getVisibleModelIndices()) {
-                                                if (BuiltinModelCatalog.choices()
-                                                    .get(index)
-                                                    .getId()
-                                                    .equals(model)) {
-                                                    requested = selector.selectVisibleModel(index);
-                                                    network = requested;
-                                                    break;
-                                                }
-                                            }
-                                            break;
-                                        case "back":
-                                            requested = selector.returnToMaid();
-                                            network = requested;
-                                            break;
-                                        case "next":
-                                            requested = selector.changePage(1);
-                                            break;
-                                        case "previous":
-                                            requested = selector.changePage(-1);
-                                            break;
-                                        case "winefox":
-                                            selector.setWinefoxOnly(true);
-                                            requested = true;
-                                            break;
-                                        case "all":
-                                            selector.setWinefoxOnly(false);
-                                            requested = true;
-                                            break;
-                                        default:
-                                            throw new IllegalArgumentException(
-                                                "Action does not apply to this model screen");
-                                    }
-                                } else throw new IllegalStateException("Open the maid model selector for this action");
+                            break;
+                        case "back":
+                            requested = selector.returnToMaid();
+                            network = requested;
+                            break;
+                        case "next":
+                            requested = selector.changePage(1);
+                            break;
+                        case "previous":
+                            requested = selector.changePage(-1);
+                            break;
+                        case "winefox":
+                            selector.setWinefoxOnly(true);
+                            requested = true;
+                            break;
+                        case "all":
+                            selector.setWinefoxOnly(false);
+                            requested = true;
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Action does not apply to this model screen");
+                    }
+                } else throw new IllegalStateException("Open the maid model selector for this action");
         }
         var response = snapshot();
         response.addProperty("action", action);
@@ -266,14 +280,14 @@ public final class MaidModelUiProbe {
         var resources = new JsonObject();
         for (String path : new String[] { "textures/font/ascii.png", "textures/font/unicode_page_00.png" }) {
             try (var input = minecraft.getResourceManager()
-                .getResource(new net.minecraft.util.ResourceLocation(path))
+                .getResource(new ResourceLocation(path))
                 .getInputStream()) {
                 resources.addProperty(
                     path,
-                    com.google.common.hash.Hashing.sha256()
-                        .hashBytes(com.google.common.io.ByteStreams.toByteArray(input))
+                    Hashing.sha256()
+                        .hashBytes(ByteStreams.toByteArray(input))
                         .toString());
-            } catch (java.io.IOException failure) {
+            } catch (IOException failure) {
                 resources.addProperty(path, failure.toString());
             }
         }
@@ -281,10 +295,9 @@ public final class MaidModelUiProbe {
         return result;
     }
 
-    private static JsonObject namingObservation(com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming, String action,
-        String value) {
+    private static JsonObject namingObservation(GuiMaidNaming naming, String action, String value) {
         var minecraft = Minecraft.getMinecraft();
-        if (!Boolean.getBoolean("tlmnh.devCommands") || minecraft.thePlayer == null
+        if (!DevelopmentFlags.isDevCommandsEnabled() || minecraft.thePlayer == null
             || !AnimationLab.isLab(minecraft.theWorld)
             || !minecraft.thePlayer.capabilities.disableDamage
             || !minecraft.thePlayer.capabilities.isFlying
@@ -313,7 +326,7 @@ public final class MaidModelUiProbe {
         var minecraft = Minecraft.getMinecraft();
         var container = minecraft.thePlayer.openContainer;
         EntityMaid maid = container instanceof ContainerMaid main ? main.getMaid()
-            : container instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds sounds ? sounds.getMaid()
+            : container instanceof ContainerMaidSounds sounds ? sounds.getMaid()
                 : ((ContainerMaidModels) container).getMaid();
         var response = new JsonObject();
         response.addProperty(
@@ -328,26 +341,18 @@ public final class MaidModelUiProbe {
                 .toString());
         response.addProperty("maidModel", maid.getModelId());
         response.addProperty("maidSitting", maid.isSitting());
-        response
-            .addProperty("headItemNativeMask", com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.drawnMask(maid));
-        response.addProperty(
-            "skullRendererClass",
-            com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.skullRendererClass(maid));
-        response.addProperty(
-            "globalSoundFrequency",
-            com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.globalMaidSoundFrequency());
-        response
-            .addProperty("globalChatBubbles", com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.showChatBubbles());
-        response.addProperty("globalIconCache", com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences.modelIconCache());
-        if (minecraft.currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui global)
+        response.addProperty("headItemNativeMask", MaidHeadItemRenderer.drawnMask(maid));
+        response.addProperty("skullRendererClass", MaidHeadItemRenderer.skullRendererClass(maid));
+        response.addProperty("globalSoundFrequency", MaidClientPreferences.globalMaidSoundFrequency());
+        response.addProperty("globalChatBubbles", MaidClientPreferences.showChatBubbles());
+        response.addProperty("globalIconCache", MaidClientPreferences.modelIconCache());
+        if (minecraft.currentScreen instanceof MaidClientConfigGui global)
             response.add("clientConfig", global.observation());
         response.addProperty("maidSoundPack", maid.getSoundPackId());
-        if (minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds)
-            response.add("sounds", sounds.observation());
+        if (minecraft.currentScreen instanceof MaidSoundPackGui sounds) response.add("sounds", sounds.observation());
         response.add("font", fontObservation());
         response.addProperty("clientReplicaOnly", true);
-        if (container instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer task)
-            response.add("taskConfig", TaskConfigUiProbe.snapshot(task));
+        if (container instanceof TaskConfigContainer task) response.add("taskConfig", TaskConfigUiProbe.snapshot(task));
         response.add("iconCache", CacheIconManager.INSTANCE.observation());
         if (minecraft.currentScreen instanceof MaidModelDetailsGui details) {
             response.add("details", details.observation());
@@ -377,16 +382,16 @@ public final class MaidModelUiProbe {
         }
         if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
             var infoLines = new JsonArray();
-            for (String line : original.informationTooltips()) infoLines.add(new com.google.gson.JsonPrimitive(line));
+            for (String line : original.informationTooltips()) infoLines.add(new JsonPrimitive(line));
             response.add("informationTooltip", infoLines);
             var scheduleLines = new JsonArray();
-            for (String line : original.scheduleTooltips()) scheduleLines.add(new com.google.gson.JsonPrimitive(line));
+            for (String line : original.scheduleTooltips()) scheduleLines.add(new JsonPrimitive(line));
             response.add("scheduleTooltip", scheduleLines);
             var effectLines = new JsonArray();
-            for (String line : original.getDrawnEffectLines()) effectLines.add(new com.google.gson.JsonPrimitive(line));
+            for (String line : original.getDrawnEffectLines()) effectLines.add(new JsonPrimitive(line));
             response.add("drawnEffects", effectLines);
             var effectValues = new JsonArray();
-            var actualMenu = (com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer) original.inventorySlots;
+            var actualMenu = (AbstractMaidContainer) original.inventorySlots;
             for (var effect : actualMenu.getDisplayedEffects()) {
                 var value = new JsonObject();
                 value.addProperty("key", effect.descriptionId);
@@ -402,8 +407,7 @@ public final class MaidModelUiProbe {
                     .isShowBackItem());
             response.addProperty(
                 "backItem",
-                maid.getBackpackShowItem() == null ? ""
-                    : com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems.itemId(maid.getBackpackShowItem()));
+                maid.getBackpackShowItem() == null ? "" : MaidShieldItems.itemId(maid.getBackpackShowItem()));
             response.addProperty(
                 "chatBubbles",
                 maid.getChatBubbleManager()
@@ -413,21 +417,14 @@ public final class MaidModelUiProbe {
                 "showChatBubble",
                 maid.getConfigManager()
                     .isChatBubbleShow());
-            response.addProperty(
-                "drawnChatBubbles",
-                com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.chatbubble.ChatBubbleRenderer
-                    .drawnCount(maid));
-            response.addProperty(
-                "backItemNativeCalls",
-                com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer.drawnCount(maid));
+            response.addProperty("drawnChatBubbles", ChatBubbleRenderer.drawnCount(maid));
+            response.addProperty("backItemNativeCalls", MaidBackItemRenderer.drawnCount(maid));
             response.addProperty("taskListOpen", original.isTaskListOpen());
             response.addProperty(
                 "maidSoundFrequency",
                 maid.getConfigManager()
                     .getSoundFreq());
-            response.addProperty(
-                "configPage",
-                original instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui);
+            response.addProperty("configPage", original instanceof MaidConfigContainerGui);
             response.addProperty("scaledWidth", original.width);
             response.addProperty("scaledHeight", original.height);
             response.addProperty("slotCount", original.inventorySlots.inventorySlots.size());
@@ -501,14 +498,13 @@ public final class MaidModelUiProbe {
     }
 
     public static void requireCaptureScreen() {
-        if (Minecraft.getMinecraft().currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming naming) {
+        if (Minecraft.getMinecraft().currentScreen instanceof GuiMaidNaming naming) {
             namingObservation(naming, "status", null);
             return;
         }
         requireWindow();
         var screen = Minecraft.getMinecraft().currentScreen;
-        if (!(screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui)
-            && !(screen instanceof com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui)
+        if (!(screen instanceof MaidSoundPackGui) && !(screen instanceof MaidClientConfigGui)
             && !(screen instanceof MaidModelDetailsGui)
             && !(screen instanceof CacheScreen)
             && !(screen instanceof MaidModelGui)
@@ -519,7 +515,7 @@ public final class MaidModelUiProbe {
     }
 
     private static void requireWindow() {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Model UI probe disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Model UI probe disabled");
         var minecraft = Minecraft.getMinecraft();
         var player = minecraft.thePlayer;
         if (!AnimationLab.isLab(minecraft.theWorld) || player == null
@@ -530,22 +526,20 @@ public final class MaidModelUiProbe {
             : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
                 : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer()
                     : minecraft.currentScreen instanceof MaidModelDetailsGui details ? details.getContainer()
-                        : minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui sounds
-                            ? sounds.getContainer()
-                            : minecraft.currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui global
-                                ? global.getContainer()
+                        : minecraft.currentScreen instanceof MaidSoundPackGui sounds ? sounds.getContainer()
+                            : minecraft.currentScreen instanceof MaidClientConfigGui global ? global.getContainer()
                                 : null;
         if (actual == null || actual != player.openContainer
             || !actual.canInteractWith(player)
             || !(minecraft.currentScreen instanceof AbstractMaidContainerGui<?>
-                && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
-                || minecraft.currentScreen instanceof com.tianluoqaq.tlmnh.client.gui.MaidClientConfigGui
-                    && player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer
+                && player.openContainer instanceof AbstractMaidContainer
+                || minecraft.currentScreen instanceof MaidClientConfigGui
+                    && player.openContainer instanceof AbstractMaidContainer
                 || (minecraft.currentScreen instanceof MaidModelGui || minecraft.currentScreen instanceof CacheScreen
                     || minecraft.currentScreen instanceof MaidModelDetailsGui)
                     && player.openContainer instanceof ContainerMaidModels
-                || minecraft.currentScreen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.sound.MaidSoundPackGui
-                    && player.openContainer instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidSounds
+                || minecraft.currentScreen instanceof MaidSoundPackGui
+                    && player.openContainer instanceof ContainerMaidSounds
                 || minecraft.currentScreen instanceof GuiMaid && player.openContainer instanceof ContainerMaid
                 || minecraft.currentScreen instanceof GuiMaidModels
                     && player.openContainer instanceof ContainerMaidModels))

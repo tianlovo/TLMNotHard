@@ -9,6 +9,7 @@ import net.minecraft.world.World;
 
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -37,12 +38,7 @@ public final class MaidFilmRecovery {
         if (world.isRemote || stack == null || stack.stackSize <= 0)
             throw new IllegalArgumentException("Server item required");
         var ledger = MaidLifecycleData.get(world);
-        var id = ledger.queueReturnedFilm(
-            com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack),
-            world.provider.dimensionId,
-            x,
-            y,
-            z);
+        var id = ledger.queueReturnedFilm(ProtectedItemCodec.encode(stack), world.provider.dimensionId, x, y, z);
         MaidLifecycleDurability.ledger(world, ledger);
         return id;
     }
@@ -70,7 +66,7 @@ public final class MaidFilmRecovery {
         MaidLifecycleDurability.Publication publication = null;
         boolean begun = false, delivered = false;
         try {
-            var expected = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(stored);
+            var expected = ProtectedItemCodec.decode(stored);
             if (expected == null) throw new IllegalStateException("Empty escrowed item retained");
             MaidLifecycleDurability.requireEntities(world);
             ledger.beginReturnedFilm(id);

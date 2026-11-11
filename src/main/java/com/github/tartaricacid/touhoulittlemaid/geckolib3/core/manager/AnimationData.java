@@ -11,6 +11,7 @@
 
 package com.github.tartaricacid.touhoulittlemaid.geckolib3.core.manager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.AnimationController;
@@ -18,7 +19,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.controller.Animat
 @SuppressWarnings("rawtypes")
 public class AnimationData {
 
-    private final List<AnimationController> animationControllers = new java.util.ArrayList<>(32);
+    private final List<AnimationController> animationControllers = new ArrayList<>(32);
     public double tick;
     public boolean isFirstTick = true;
     public double startTick = -1;

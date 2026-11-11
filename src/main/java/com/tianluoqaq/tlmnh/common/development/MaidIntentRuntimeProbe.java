@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -50,7 +51,7 @@ public final class MaidIntentRuntimeProbe {
 
     public static void start(WorldServer world) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && world.provider.dimensionId == 0 && pending == null,
+            DevelopmentFlags.isDevCommandsEnabled() && world.provider.dimensionId == 0 && pending == null,
             "Dedicated overworld and one episode required");
         var probe = new MaidIntentRuntimeProbe(world);
         pending = probe;

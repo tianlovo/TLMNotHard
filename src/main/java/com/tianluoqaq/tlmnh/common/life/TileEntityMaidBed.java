@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.Collections;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBed;
 import net.minecraft.item.ItemStack;
@@ -11,13 +13,20 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColorData;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 只有床头保存临时占用；睡眠动作每 tick 续租 */
 public final class TileEntityMaidBed extends TileEntity {
@@ -34,14 +43,14 @@ public final class TileEntityMaidBed extends TileEntity {
     private boolean queuedDuringThisLoad, warnedQueuedDrop;
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    @SideOnly(Side.CLIENT)
     public boolean shouldRenderInPass(int pass) {
         return pass == (getColor() == MaidBedColor.BLUE ? 1 : 0);
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
-    public net.minecraft.util.AxisAlignedBB getRenderBoundingBox() {
+    @SideOnly(Side.CLIENT)
+    public AxisAlignedBB getRenderBoundingBox() {
         // 原renderer.shouldRenderOffScreen=true；旧平台用无限渲染包围盒保留该选择
         return INFINITE_EXTENT_AABB;
     }
@@ -132,15 +141,15 @@ public final class TileEntityMaidBed extends TileEntity {
             || stack.getItem() != MaidLifeContent.maidBedItem
             || stack.stackSize <= 0)
             throw new IllegalStateException("Authoritative bed head required for item transfer");
-        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.prepare(this, java.util.Collections.singletonList(stack));
-        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.beforeClear(this);
-        var planned = com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTransfer.snapshot(this);
-        var token = com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.firstId(this);
+        MaidTileReturns.prepare(this, Collections.singletonList(stack));
+        MaidTileReturns.beforeClear(this);
+        var planned = MaidShrineTransfer.snapshot(this);
+        var token = MaidTileReturns.firstId(this);
         planned.setString(DROP_TAG, token.toString());
         queuedDrop = new NBTTagString(token.toString());
         queuedDuringThisLoad = true;
         markDirty();
-        com.tianluoqaq.tlmnh.common.lifecycle.MaidTileReturns.cleared(this, planned);
+        MaidTileReturns.cleared(this, planned);
     }
 
     @Override
@@ -245,7 +254,7 @@ public final class TileEntityMaidBed extends TileEntity {
                 worldObj.setBlockToAir(xCoord, yCoord, zCoord);
             } else if (!warnedQueuedDrop) {
                 warnedQueuedDrop = true;
-                com.tianluoqaq.tlmnh.TLMNotHard.LOG.warn(
+                TLMNotHard.LOG.warn(
                     "Reloaded bed item transfer state retained at {},{},{}",
                     xCoord,
                     yCoord,

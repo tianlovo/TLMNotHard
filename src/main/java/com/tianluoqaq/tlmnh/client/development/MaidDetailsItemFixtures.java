@@ -1,10 +1,14 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.util.Arrays;
+
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.tinkersdefense.development.shield.MaidShieldFixtures;
 
 /** 详情验收复用已登记物品和真实ToolBuilder，不生成手写匠魂成品或登记世界实体 */
@@ -13,9 +17,9 @@ public final class MaidDetailsItemFixtures {
     private MaidDetailsItemFixtures() {}
 
     public static ItemStack create(String action, JsonObject construction) throws Exception {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
         ItemStack stack;
-        if (java.util.Arrays
+        if (Arrays
             .asList(
                 "shield_wood",
                 "shield_hide",
@@ -38,8 +42,8 @@ public final class MaidDetailsItemFixtures {
             case "main_tool" -> new ItemStack(Items.iron_sword);
             default -> throw new IllegalArgumentException("Unknown native preview item");
         };
-        var raw = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(stack);
-        var admitted = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decode(raw);
+        var raw = ProtectedItemCodec.encode(stack);
+        var admitted = ProtectedItemCodec.decode(raw);
         if (!ItemStack.areItemStacksEqual(stack, admitted)) throw new IllegalStateException(
             "Native preview item did not survive its complete protected NBT round trip");
         construction.addProperty("action", action);

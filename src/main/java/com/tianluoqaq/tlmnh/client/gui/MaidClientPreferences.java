@@ -1,9 +1,13 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.config.Configuration;
+
+import com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsRules;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -16,7 +20,7 @@ public final class MaidClientPreferences {
     private static boolean modelIconCache;
     private static int globalMaidSoundFrequency = 100;
     private static boolean showChatBubbles = true;
-    private static final java.util.Map<String, Boolean> interactionTips = new java.util.HashMap<>();
+    private static final Map<String, Boolean> interactionTips = new HashMap<>();
 
     private MaidClientPreferences() {}
 
@@ -29,10 +33,9 @@ public final class MaidClientPreferences {
         showChatBubbles = configuration
             .getBoolean("GlobalMaidShowChatBubble", "render", true, "显示普通聊天气泡 / Show ordinary maid chat bubbles");
         interactionTips.clear();
-        for (var tip : com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsRules.Tip.values())
-            interactionTips.put(
-                tip.configKey,
-                configuration.getBoolean(tip.configKey, "render", true, "Show the maid interaction hint / 显示女仆交互提示"));
+        for (var tip : MaidInteractionTipsRules.Tip.values()) interactionTips.put(
+            tip.configKey,
+            configuration.getBoolean(tip.configKey, "render", true, "Show the maid interaction hint / 显示女仆交互提示"));
         if (configuration.hasChanged()) configuration.save();
     }
 

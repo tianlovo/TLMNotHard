@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public final class MaidVisibleLivingEntities {
         guard.run();
         var matches = new ArrayList<EntityLivingBase>();
         for (var entity : nearby) if (predicate.test(entity) && visible(entity)) matches.add(entity);
-        return java.util.Collections.unmodifiableList(matches);
+        return Collections.unmodifiableList(matches);
     }
 
     private boolean visible(EntityLivingBase entity) {

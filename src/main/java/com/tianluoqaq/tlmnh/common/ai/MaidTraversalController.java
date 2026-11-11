@@ -8,8 +8,10 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFenceGate;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.pathfinding.PathPoint;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -127,19 +129,17 @@ public final class MaidTraversalController {
                 continue;
             }
             if (usesDoor(path, p) || maid.boundingBox.intersectsWith(
-                net.minecraft.util.AxisAlignedBB
+                AxisAlignedBB
                     .getBoundingBox(p.posX - 0.25, p.posY, p.posZ - 0.25, p.posX + 1.25, p.posY + 2, p.posZ + 1.25)))
                 continue;
             var nearby = maid.worldObj.getEntitiesWithinAABB(
-                net.minecraft.entity.EntityLivingBase.class,
-                net.minecraft.util.AxisAlignedBB
-                    .getBoundingBox(p.posX - 2, p.posY - 1, p.posZ - 2, p.posX + 3, p.posY + 3, p.posZ + 3));
+                EntityLivingBase.class,
+                AxisAlignedBB.getBoundingBox(p.posX - 2, p.posY - 1, p.posZ - 2, p.posX + 3, p.posY + 3, p.posZ + 3));
             boolean occupied = false;
             for (Object value : nearby) {
-                if (value == maid || !(value instanceof net.minecraft.entity.EntityLivingBase other)
-                    || !other.isEntityAlive()) continue;
+                if (value == maid || !(value instanceof EntityLivingBase other) || !other.isEntityAlive()) continue;
                 if (other.boundingBox.intersectsWith(
-                    net.minecraft.util.AxisAlignedBB
+                    AxisAlignedBB
                         .getBoundingBox(p.posX - 0.25, p.posY, p.posZ - 0.25, p.posX + 1.25, p.posY + 2, p.posZ + 1.25))
                     || other instanceof EntityMaid following && usesDoor(
                         following.getNavigator()

@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.EntityLivingBase;
@@ -7,6 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -43,7 +45,7 @@ public final class CombatHitReceipt {
     private NBTBase retained;
 
     public CombatHitReceipt(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, "maid");
     }
 
     /** 真实栈规范化也可能回调；准备门只防重入，不表示已经发起命中 */
@@ -239,7 +241,7 @@ public final class CombatHitReceipt {
             .copy();
         stage = Stage.HELD;
         // 原调用栈和对象身份无法跨重载证明，已知版本同样不能自动续扣或重放
-        if (retained instanceof NBTTagCompound data && data.hasKey("Version", 3)
+        if (retained instanceof NBTTagCompound data && data.hasKey("Version", Constants.NBT.TAG_INT)
             && data.getInteger("Version") == VERSION) accepted = data.getBoolean("Accepted");
         IntegrationGuard.report(
             Side.SERVER,

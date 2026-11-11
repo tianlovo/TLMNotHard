@@ -1,10 +1,19 @@
 package com.tianluoqaq.tlmnh.common.life;
 
+import java.util.List;
+
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
+
+import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColorData;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 原生 ItemBed 把方块写死为 vanilla bed，因此保留独立的双格放置入口 */
 public final class ItemMaidBed extends Item {
@@ -17,16 +26,14 @@ public final class ItemMaidBed extends Item {
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
-    public void addInformation(ItemStack stack, EntityPlayer player, java.util.List<String> lines, boolean advanced) {
-        var color = com.tianluoqaq.tlmnh.common.life.bed.MaidBedColorData
-            .decode(com.tianluoqaq.tlmnh.common.life.bed.MaidBedColorData.read(stack.getTagCompound()));
-        String text = color == null
-            ? net.minecraft.util.StatCollector.translateToLocal("tooltip.tlmnh.maid_bed.unknown_color")
-            : net.minecraft.util.StatCollector.translateToLocalFormatted(
+    @SideOnly(Side.CLIENT)
+    public void addInformation(ItemStack stack, EntityPlayer player, List<String> lines, boolean advanced) {
+        var color = MaidBedColorData.decode(MaidBedColorData.read(stack.getTagCompound()));
+        String text = color == null ? StatCollector.translateToLocal("tooltip.tlmnh.maid_bed.unknown_color")
+            : StatCollector.translateToLocalFormatted(
                 "tooltip.tlmnh.maid_bed.color",
-                net.minecraft.util.StatCollector.translateToLocal("color.tlmnh.maid_bed." + color.resourceName));
-        lines.add(net.minecraft.util.EnumChatFormatting.GRAY + text);
+                StatCollector.translateToLocal("color.tlmnh.maid_bed." + color.resourceName));
+        lines.add(EnumChatFormatting.GRAY + text);
     }
 
     @Override

@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -40,6 +39,8 @@ import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.Tags;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.EvidenceGrade;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -85,7 +86,7 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
     }
 
     public static MaidEpisodeRecorder open(EntityMaid maid, String spec) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || maid == null || maid.worldObj.isRemote || ACTIVE.size() >= 32)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || maid == null || maid.worldObj.isRemote || ACTIVE.size() >= 32)
             throw new IllegalStateException("Development server recorder is unavailable");
         for (var active : ACTIVE) {
             if (active.maid == maid || active.actorId.equals(maid.getUniqueID()))
@@ -555,7 +556,7 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
             Path partial = null, written = null;
             boolean partialOwned = false;
             try {
-                if (!Boolean.getBoolean("tlmnh.devCommands") || fmlRegistered || forgeRegistered)
+                if (!DevelopmentFlags.isDevCommandsEnabled() || fmlRegistered || forgeRegistered)
                     throw new IllegalStateException("Episode export is unavailable or cleanup incomplete");
                 byte[] json = result.toString()
                     .getBytes(StandardCharsets.UTF_8);
@@ -664,12 +665,7 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
         var attrs = Files.readAttributes(target, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
         if (!attrs.isRegularFile() || attrs.isSymbolicLink() || attrs.isOther() || attrs.size() != expectedBytes)
             throw new IOException("Episode artifact is not the expected regular file");
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException unavailable) {
-            throw new IllegalStateException("SHA-256 unavailable", unavailable);
-        }
+        MessageDigest digest = Sha256Hex.newDigest();
         long read = 0;
         byte[] buffer = new byte[8192];
         try (var input = Files.newInputStream(target, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)) {
@@ -680,13 +676,7 @@ public final class MaidEpisodeRecorder implements AutoCloseable {
             }
         }
         if (read != expectedBytes) throw new IOException("Episode artifact changed during reading");
-        var hex = new StringBuilder(64);
-        for (byte value : digest.digest()) {
-            int number = value & 255;
-            hex.append(Character.forDigit(number >>> 4, 16))
-                .append(Character.forDigit(number & 15, 16));
-        }
-        return hex.toString();
+        return Sha256Hex.formatHex(digest.digest());
     }
 
     private static JsonObject copy(JsonObject value) {

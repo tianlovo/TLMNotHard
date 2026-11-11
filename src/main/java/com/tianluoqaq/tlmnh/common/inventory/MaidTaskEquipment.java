@@ -11,6 +11,7 @@ import net.minecraft.item.ItemBow;
 import net.minecraft.item.ItemStack;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
@@ -80,7 +81,7 @@ public final class MaidTaskEquipment {
 
     private static boolean acceptsFor(EntityMaid maid, MaidTask task, ItemStack stack) {
         if (!maid.isUnifiedCombat()) return accepts(task, stack);
-        var profile = com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog.inspect(stack);
+        var profile = MaidWeaponCatalog.inspect(stack);
         return task == MaidTask.RANGED_ATTACK ? profile.bow() : profile.melee();
     }
 

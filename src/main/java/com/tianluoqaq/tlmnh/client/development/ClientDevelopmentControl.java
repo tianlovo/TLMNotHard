@@ -18,20 +18,49 @@ import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.Container;
 import net.minecraft.util.IChatComponent;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.ScreenShotHelper;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 
 import org.lwjgl.opengl.GL11;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.Tags;
+import com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture;
+import com.tianluoqaq.tlmnh.client.development.life.CabinetRenderObservation;
+import com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation;
+import com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation;
+import com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation;
+import com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation;
+import com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidBannerRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidHeldItemLayer;
+import com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms;
+import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
+import com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose;
+import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.compat.angelica.client.development.ClientProtectionProbe;
+import com.tianluoqaq.tlmnh.compat.angelica.client.development.MaidWorldShaderProbe;
+import com.tianluoqaq.tlmnh.compat.ysmu.client.animation.MaidPassengerAlias;
 
 import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -61,7 +90,7 @@ public final class ClientDevelopmentControl {
     private HeldItemGpuProbe.Result unwrittenHeldGpu;
 
     public ClientDevelopmentControl(Minecraft minecraft) throws IOException {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development controls disabled");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development controls disabled");
         this.minecraft = minecraft;
         var root = minecraft.mcDataDir.toPath()
             .resolve("tlmnh-dev");
@@ -151,45 +180,31 @@ public final class ClientDevelopmentControl {
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
                 case STATUS:
-                    response.add(
-                        "ysmuMaidPassenger",
-                        com.tianluoqaq.tlmnh.compat.ysmu.client.animation.MaidPassengerAlias.observation());
-                    response
-                        .add("playerCarryArms", com.tianluoqaq.tlmnh.client.render.MaidPlayerCarryArms.observation());
-                    response.add(
-                        "loadedMaidRenderObservations",
-                        com.tianluoqaq.tlmnh.client.render.MaidRenderer.inspectLoadedForDevelopment());
+                    response.add("ysmuMaidPassenger", MaidPassengerAlias.observation());
+                    response.add("playerCarryArms", MaidPlayerCarryArms.observation());
+                    response.add("loadedMaidRenderObservations", MaidRenderer.inspectLoadedForDevelopment());
                     response.add("carePlayer", MaidCareInteractionProbe.playerState());
-                    var heldCounters = com.tianluoqaq.tlmnh.client.render.MaidHeldItemLayer.getNativeCounters();
+                    var heldCounters = MaidHeldItemLayer.getNativeCounters();
                     response.addProperty("heldItemNativeAttempts", heldCounters.attempts);
                     response.addProperty("heldItemNativeReturned", heldCounters.returnedNormally);
-                    var aquatic = new com.google.gson.JsonArray();
+                    var aquatic = new JsonArray();
                     if (AnimationLab.isLab(minecraft.theWorld))
                         for (Object entity : minecraft.theWorld.loadedEntityList) {
-                            if (!(entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid))
-                                continue;
+                            if (!(entity instanceof EntityMaid maid)) continue;
                             // 自定义NBT不由追踪器同步，范围限于实际展台中的女仆并列出UUID供服务器绑定
                             var shape = new JsonObject();
                             shape.add("care", MaidCareInteractionProbe.maidState(maid));
-                            shape.addProperty(
-                                "headItemNativeMask",
-                                com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.drawnMask(maid));
-                            shape.addProperty(
-                                "skullRendererClass",
-                                com.tianluoqaq.tlmnh.client.render.MaidHeadItemRenderer.skullRendererClass(maid));
-                            shape.addProperty(
-                                "backItemNativeCalls",
-                                com.tianluoqaq.tlmnh.client.render.MaidBackItemRenderer.drawnCount(maid));
-                            var renderer = net.minecraft.client.renderer.entity.RenderManager.instance
-                                .getEntityRenderObject(maid);
-                            if (renderer instanceof com.tianluoqaq.tlmnh.client.render.MaidRenderer maidRenderer) {
+                            shape.addProperty("headItemNativeMask", MaidHeadItemRenderer.drawnMask(maid));
+                            shape.addProperty("skullRendererClass", MaidHeadItemRenderer.skullRendererClass(maid));
+                            shape.addProperty("backItemNativeCalls", MaidBackItemRenderer.drawnCount(maid));
+                            var renderer = RenderManager.instance.getEntityRenderObject(maid);
+                            if (renderer instanceof MaidRenderer maidRenderer) {
                                 var diagnostic = maidRenderer.inspectPreviewForDevelopment(maid);
                                 shape.add("renderDiagnostic", diagnostic);
                                 shape.add("renderedPose", diagnostic);
                                 shape.add("renderObservation", diagnostic);
                             }
-                            for (var entry : com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot
-                                .capture(maid)
+                            for (var entry : MaidVisibleStateSnapshot.capture(maid)
                                 .entrySet()) shape.add(entry.getKey(), entry.getValue());
                             shape.addProperty(
                                 "uuid",
@@ -199,9 +214,7 @@ public final class ClientDevelopmentControl {
                                 "pose",
                                 maid.getEntityPose()
                                     .name());
-                            shape.addProperty(
-                                "swimming",
-                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SWIMMING));
+                            shape.addProperty("swimming", maid.hasPose(MaidPose.SWIMMING));
                             shape.addProperty("width", maid.width);
                             shape.addProperty("height", maid.height);
                             shape.addProperty("boxWidth", maid.boundingBox.maxX - maid.boundingBox.minX);
@@ -210,29 +223,20 @@ public final class ClientDevelopmentControl {
                             shape.addProperty("x", maid.posX);
                             shape.addProperty("y", maid.posY);
                             shape.addProperty("z", maid.posZ);
-                            int lightX = net.minecraft.util.MathHelper.floor_double(maid.posX);
-                            int lightY = net.minecraft.util.MathHelper.floor_double(maid.posY);
-                            int lightZ = net.minecraft.util.MathHelper.floor_double(maid.posZ);
+                            int lightX = MathHelper.floor_double(maid.posX);
+                            int lightY = MathHelper.floor_double(maid.posY);
+                            int lightZ = MathHelper.floor_double(maid.posZ);
                             shape.addProperty(
                                 "skyLight",
-                                maid.worldObj
-                                    .getSavedLightValue(net.minecraft.world.EnumSkyBlock.Sky, lightX, lightY, lightZ));
+                                maid.worldObj.getSavedLightValue(EnumSkyBlock.Sky, lightX, lightY, lightZ));
                             shape.addProperty(
                                 "blockLight",
-                                maid.worldObj.getSavedLightValue(
-                                    net.minecraft.world.EnumSkyBlock.Block,
-                                    lightX,
-                                    lightY,
-                                    lightZ));
+                                maid.worldObj.getSavedLightValue(EnumSkyBlock.Block, lightX, lightY, lightZ));
                             shape
                                 .addProperty("combinedLight", maid.worldObj.getBlockLightValue(lightX, lightY, lightZ));
                             shape.addProperty("canSeeSky", maid.worldObj.canBlockSeeTheSky(lightX, lightY, lightZ));
-                            shape.addProperty(
-                                "sleeping",
-                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.SLEEPING));
-                            shape.addProperty(
-                                "aimingBow",
-                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.AIMING_BOW));
+                            shape.addProperty("sleeping", maid.hasPose(MaidPose.SLEEPING));
+                            shape.addProperty("aimingBow", maid.hasPose(MaidPose.AIMING_BOW));
                             shape.addProperty("pitch", maid.rotationPitch);
                             shape.addProperty("model", maid.getModelId());
                             shape.addProperty("sitting", maid.isSitting());
@@ -244,21 +248,11 @@ public final class ClientDevelopmentControl {
                                 maid.ridingEntity == null ? ""
                                     : maid.ridingEntity.getUniqueID()
                                         .toString());
-                            shape.addProperty(
-                                "usingItem",
-                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_ITEM));
-                            shape.addProperty(
-                                "usingOffhand",
-                                maid.hasPose(com.tianluoqaq.tlmnh.common.entity.MaidPose.USING_OFFHAND));
-                            shape.addProperty(
-                                "swimPrevious",
-                                com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 0));
-                            shape.addProperty(
-                                "swimCurrent",
-                                com.tianluoqaq.tlmnh.client.render.MaidSwimRenderPose.amount(maid, 1));
-                            shape.addProperty(
-                                "bannerDrawCalls",
-                                com.tianluoqaq.tlmnh.client.render.MaidBannerRenderer.drawnCount(maid));
+                            shape.addProperty("usingItem", maid.hasPose(MaidPose.USING_ITEM));
+                            shape.addProperty("usingOffhand", maid.hasPose(MaidPose.USING_OFFHAND));
+                            shape.addProperty("swimPrevious", MaidSwimRenderPose.amount(maid, 0));
+                            shape.addProperty("swimCurrent", MaidSwimRenderPose.amount(maid, 1));
+                            shape.addProperty("bannerDrawCalls", MaidBannerRenderer.drawnCount(maid));
                             shape.addProperty(
                                 "showBackItem",
                                 maid.getConfigManager()
@@ -267,7 +261,7 @@ public final class ClientDevelopmentControl {
                             shape.addProperty(
                                 "backItemNbt",
                                 backItem == null ? ""
-                                    : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(backItem)
+                                    : ProtectedItemCodec.encode(backItem)
                                         .toString());
                             shape.addProperty("rideable", maid.isRideable());
                             shape.addProperty(
@@ -278,9 +272,7 @@ public final class ClientDevelopmentControl {
                                 maid.ridingEntity == null ? ""
                                     : maid.ridingEntity.getClass()
                                         .getName());
-                            shape.addProperty(
-                                "ridingPlayer",
-                                maid.ridingEntity instanceof net.minecraft.entity.player.EntityPlayer);
+                            shape.addProperty("ridingPlayer", maid.ridingEntity instanceof EntityPlayer);
                             shape.addProperty(
                                 "ridingEntityTracked",
                                 maid.ridingEntity != null
@@ -299,26 +291,13 @@ public final class ClientDevelopmentControl {
                             if (aquatic.size() >= 32) break;
                         }
                     response.add("labMaidShapes", aquatic);
-                    response.add(
-                        "tombstones",
-                        com.tianluoqaq.tlmnh.client.development.lifecycle.TombstoneRenderObservation
-                            .snapshot(minecraft));
-                    response.add(
-                        "beds",
-                        com.tianluoqaq.tlmnh.client.development.life.MaidBedRenderObservation.snapshot(minecraft));
-                    response.add(
-                        "shrines",
-                        com.tianluoqaq.tlmnh.client.development.life.ShrineRenderObservation.snapshot(minecraft));
-                    response.add(
-                        "cabinets",
-                        com.tianluoqaq.tlmnh.client.development.life.CabinetRenderObservation.snapshot(minecraft));
-                    response.add(
-                        "maidSleepRenders",
-                        com.tianluoqaq.tlmnh.client.development.life.MaidSleepRenderObservation.snapshot());
+                    response.add("tombstones", TombstoneRenderObservation.snapshot(minecraft));
+                    response.add("beds", MaidBedRenderObservation.snapshot(minecraft));
+                    response.add("shrines", ShrineRenderObservation.snapshot(minecraft));
+                    response.add("cabinets", CabinetRenderObservation.snapshot(minecraft));
+                    response.add("maidSleepRenders", MaidSleepRenderObservation.snapshot());
                     response.addProperty("vanillaProbePlaying", MaidWorldSoundProbe.vanillaPlaying());
-                    response.add(
-                        "worldSounds",
-                        com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer.INSTANCE.observation());
+                    response.add("worldSounds", MaidWorldSoundPlayer.INSTANCE.observation());
                     response.add("nativeWorldSound", NativeSoundPlaybackObservation.capture());
                     response.addProperty("worldLoaded", minecraft.theWorld != null);
                     response.addProperty("playerPresent", minecraft.thePlayer != null);
@@ -411,8 +390,7 @@ public final class ClientDevelopmentControl {
                     boolean modelsUi = request.command == ClientDevelopmentRequest.Command.MODELS_UI_CAPTURE;
                     boolean cabinetUi = request.command == ClientDevelopmentRequest.Command.CABINET_UI_CAPTURE;
                     if (modelsUi) MaidModelUiProbe.requireCaptureScreen();
-                    else if (cabinetUi)
-                        com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.requireScreen(minecraft);
+                    else if (cabinetUi) CabinetGuiCapture.requireScreen(minecraft);
                     else if (minecraft.currentScreen != null)
                         throw new IllegalStateException("Screenshot obscured by screen");
                     if (captures.size() >= MAX_PENDING_CAPTURES)
@@ -454,8 +432,7 @@ public final class ClientDevelopmentControl {
                     response.addProperty("status", "pending-render");
                     break;
                 case PROTECTION_PROBE:
-                    var protection = com.tianluoqaq.tlmnh.compat.angelica.client.development.ClientProtectionProbe
-                        .perform(request.action);
+                    var protection = ClientProtectionProbe.perform(request.action);
                     for (var entry : protection.entrySet()) response.add(entry.getKey(), entry.getValue());
                     break;
                 case WORLD_SOUND_PROBE:
@@ -468,10 +445,7 @@ public final class ClientDevelopmentControl {
                 case WORLD_SHADER_PROBE:
                     if (submissionPending || !captures.isEmpty())
                         throw new IllegalStateException("Finish the active submission or screenshot first");
-                    response.add(
-                        "worldShader",
-                        com.tianluoqaq.tlmnh.compat.angelica.client.development.MaidWorldShaderProbe
-                            .perform(request.action));
+                    response.add("worldShader", MaidWorldShaderProbe.perform(request.action));
                     break;
                 case MODELS_UI:
                     var observed = MaidModelUiProbe.perform(request.action, request.model);
@@ -484,7 +458,7 @@ public final class ClientDevelopmentControl {
                     response.addProperty("status", "pending-render");
                     break;
                 case GECKO_LIBRARY_PROBE:
-                    response.add("library", com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe.capture());
+                    response.add("library", MaidGeckoLibraryProbe.capture());
                     break;
                 case CARE_INTERACT:
                     response.add("care", MaidCareInteractionProbe.perform(request.action, request.model));
@@ -535,12 +509,10 @@ public final class ClientDevelopmentControl {
                     throw new IllegalStateException("Model selector window changed before capture");
                 response.add("modelUiAtCapture", MaidModelUiProbe.observe());
             } else if (capture.command == ClientDevelopmentRequest.Command.CABINET_UI_CAPTURE) {
-                var chest = com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.requireScreen(minecraft);
+                var chest = CabinetGuiCapture.requireScreen(minecraft);
                 if (chest != capture.expectedContainer || chest.windowId != capture.expectedWindow)
                     throw new IllegalStateException("Native cabinet window changed before capture");
-                response.add(
-                    "cabinetUiAtCapture",
-                    com.tianluoqaq.tlmnh.client.development.life.CabinetGuiCapture.observe(minecraft));
+                response.add("cabinetUiAtCapture", CabinetGuiCapture.observe(minecraft));
             } else
                 if (minecraft.currentScreen != null) throw new IllegalStateException("Screenshot obscured by screen");
             var path = minecraft.mcDataDir.toPath()
@@ -682,10 +654,10 @@ public final class ClientDevelopmentControl {
         private final String request, filename;
         private final ClientDevelopmentRequest.Command command;
         private final int expectedWindow;
-        private final net.minecraft.inventory.Container expectedContainer;
+        private final Container expectedContainer;
 
         private Capture(String request, String filename, ClientDevelopmentRequest.Command command, int expectedWindow,
-            net.minecraft.inventory.Container expectedContainer) {
+            Container expectedContainer) {
             this.request = request;
             this.filename = filename;
             this.command = command;

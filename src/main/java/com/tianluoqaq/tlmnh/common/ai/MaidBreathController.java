@@ -12,6 +12,7 @@ import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRun;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -45,13 +46,9 @@ public final class MaidBreathController {
         return active;
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager.Target nextSwimTarget() {
+    public MaidSwimManager.Target nextSwimTarget() {
         var point = route.peek();
-        return point == null ? null
-            : new com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidSwimManager.Target(
-                point.posX,
-                point.posY,
-                point.posZ);
+        return point == null ? null : new MaidSwimManager.Target(point.posX, point.posY, point.posZ);
     }
 
     public String getStatus() {

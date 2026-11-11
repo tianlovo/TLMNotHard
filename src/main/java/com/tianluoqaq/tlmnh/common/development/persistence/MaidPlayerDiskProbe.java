@@ -1,15 +1,18 @@
 package com.tianluoqaq.tlmnh.common.development.persistence;
 
 import java.lang.management.ManagementFactory;
+import java.util.Locale;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 /** 真实联网旁观玩家的原生player.dat保存/跨进程观察，不改库存或模拟登录 */
 public final class MaidPlayerDiskProbe {
@@ -19,7 +22,7 @@ public final class MaidPlayerDiskProbe {
     private MaidPlayerDiskProbe() {}
 
     public static void run(EntityPlayerMP player, String action, String runId) throws Exception {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !runId.matches("[0-9]{10,20}"))
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !runId.matches("[0-9]{10,20}"))
             throw new IllegalArgumentException("Explicit development disk run ID required");
         AnimationLab.verifyObserver(player);
         var server = MinecraftServer.getServer();
@@ -76,8 +79,8 @@ public final class MaidPlayerDiskProbe {
         players.saveAllPlayerData();
         var disk = players.getPlayerNBT(player);
         require(
-            disk != null && disk.hasKey("UUIDMost", 4)
-                && disk.hasKey("UUIDLeast", 4)
+            disk != null && disk.hasKey("UUIDMost", Constants.NBT.TAG_LONG)
+                && disk.hasKey("UUIDLeast", Constants.NBT.TAG_LONG)
                 && disk.getLong("UUIDMost") == player.getUniqueID()
                     .getMostSignificantBits()
                 && disk.getLong("UUIDLeast") == player.getUniqueID()
@@ -91,11 +94,11 @@ public final class MaidPlayerDiskProbe {
         data.markDirty();
         TLMNotHard.LOG.info(
             "TLMNH_PLAYER_DISK_{}_PASS run={} uuid={} candidate={} inventory_entries={} raw_inventory_and_persisted_match=true different_process={} full_player_nbt_equivalent=false",
-            action.toUpperCase(java.util.Locale.ROOT),
+            action.toUpperCase(Locale.ROOT),
             runId,
             data.owner,
             digest,
-            data.expected.getTagList("Inventory", 10)
+            data.expected.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
                 .tagCount(),
             action.equals("verify"));
     }
@@ -108,7 +111,8 @@ public final class MaidPlayerDiskProbe {
 
     private static NBTTagCompound stable(NBTTagCompound raw) {
         require(
-            raw.hasKey("Inventory", 9) && raw.hasKey("EnderItems", 9) && raw.hasKey("SelectedItemSlot", 3),
+            raw.hasKey("Inventory", Constants.NBT.TAG_LIST) && raw.hasKey("EnderItems", Constants.NBT.TAG_LIST)
+                && raw.hasKey("SelectedItemSlot", Constants.NBT.TAG_INT),
             "Native stable inventory fields unavailable");
         var selected = new NBTTagCompound();
         for (String key : new String[] { "Inventory", "EnderItems", "SelectedItemSlot" }) selected.setTag(
@@ -116,7 +120,7 @@ public final class MaidPlayerDiskProbe {
             raw.getTag(key)
                 .copy());
         if (raw.hasKey("ForgeData")) {
-            require(raw.hasKey("ForgeData", 10), "Opaque ForgeData must be retained");
+            require(raw.hasKey("ForgeData", Constants.NBT.TAG_COMPOUND), "Opaque ForgeData must be retained");
             var forge = raw.getCompoundTag("ForgeData");
             if (forge.hasKey("PlayerPersisted")) selected.setTag(
                 "PlayerPersisted",

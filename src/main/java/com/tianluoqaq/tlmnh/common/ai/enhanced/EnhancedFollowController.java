@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced;
 
+import java.util.function.BooleanSupplier;
+
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorId;
 import com.tianluoqaq.tlmnh.common.ai.faithful.FollowOwnerActor.Owner;
@@ -92,7 +94,7 @@ public final class EnhancedFollowController {
             double px = player.posX, py = player.posY, pz = player.posZ;
             double mx = maid.posX, my = maid.posY, mz = maid.posZ;
             float width = maid.width, height = maid.height;
-            java.util.function.BooleanSupplier authorized = () -> (requireAir ? airEmergency(owner) : eligible(owner))
+            BooleanSupplier authorized = () -> (requireAir ? airEmergency(owner) : eligible(owner))
                 && maid.getOwner() == player
                 && player.posX == px
                 && player.posY == py

@@ -10,6 +10,7 @@ import net.minecraftforge.client.event.sound.PlaySoundEvent17;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.MaidSoundInstance;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.sound.MaidSoundFrequency;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -28,7 +29,7 @@ public final class MaidSoundFreqEvent {
     @SubscribeEvent
     public void onPlaySoundEvent(PlaySoundEvent17 event) {
         if (!(event.sound instanceof MaidSoundInstance instance)) {
-            if (Boolean.getBoolean("tlmnh.devCommands") && event.sound != null) {
+            if (DevelopmentFlags.isDevCommandsEnabled() && event.sound != null) {
                 var location = event.sound.getPositionedSoundLocation();
                 if (location.getResourceDomain()
                     .equals("touhou_little_maid")

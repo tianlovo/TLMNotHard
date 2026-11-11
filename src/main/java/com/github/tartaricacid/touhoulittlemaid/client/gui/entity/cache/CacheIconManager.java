@@ -25,6 +25,7 @@ import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.client.gui.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.render.MaidIconCapture;
+import com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride;
 import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
@@ -78,7 +79,7 @@ public final class CacheIconManager implements IResourceManagerReloadListener {
             .get(index);
         preview.setModelId(choice.getId());
         try {
-            var texture = choice.isEasterEgg() ? com.tianluoqaq.tlmnh.client.render.MaidNamedModelOverride
+            var texture = choice.isEasterEgg() ? MaidNamedModelOverride
                 .placeholder(preview, () -> MaidIconCapture.capture(preview, choice.getItemScale(), location(index)))
                 : MaidIconCapture.capture(preview, choice.getItemScale(), location(index));
             if (texture == null) {

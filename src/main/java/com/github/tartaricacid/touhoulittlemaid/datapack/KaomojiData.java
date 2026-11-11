@@ -5,6 +5,7 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.datapack;
 
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public final class KaomojiData {
                     .addAll(core);
             KAOMOJI_MAP.clear();
             KAOMOJI_MAP.putAll(data);
-        } catch (java.io.IOException error) {
+        } catch (IOException error) {
             throw new IllegalStateException("Cannot load builtin kaomoji", error);
         }
     }

@@ -1,5 +1,8 @@
 package com.tianluoqaq.tlmnh.common.development.interaction;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
@@ -17,13 +20,18 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -36,8 +44,8 @@ public final class MaidCareInteractionFixture {
 
     static final String TAG = "TLMNHCareInteractionFixture";
     private static final String REIMU = "touhou_little_maid:hakurei_reimu", HANFU = "geckolib:winefox_hanfu";
-    private static final java.util.Set<String> FIELDS = new java.util.HashSet<>(
-        java.util.Arrays.asList(
+    private static final Set<String> FIELDS = new HashSet<>(
+        Arrays.asList(
             "Schema",
             "Run",
             "Owner",
@@ -130,7 +138,7 @@ public final class MaidCareInteractionFixture {
     }
 
     private static boolean currentLabWorld(World world) {
-        return Boolean.getBoolean("tlmnh.devCommands") && world instanceof WorldServer serverWorld
+        return DevelopmentFlags.isDevCommandsEnabled() && world instanceof WorldServer serverWorld
             && !world.isRemote
             && AnimationLab.isLab(world)
             && world.provider.dimensionId == AnimationLab.DIMENSION
@@ -139,7 +147,7 @@ public final class MaidCareInteractionFixture {
     }
 
     private static boolean recoveryIdentity(String owner, String actor, String run) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || owner == null || actor == null || run == null) return false;
+        if (!DevelopmentFlags.isDevCommandsEnabled() || owner == null || actor == null || run == null) return false;
         try {
             return UUID.fromString(owner)
                 .toString()
@@ -163,14 +171,14 @@ public final class MaidCareInteractionFixture {
             || player.theItemInWorldManager.getGameType()
                 .getID() != 3
             || !player.getEntityData()
-                .hasKey(TAG, 10))
+                .hasKey(TAG, Constants.NBT.TAG_COMPOUND))
             return false;
         var saved = player.getEntityData()
             .getCompoundTag(TAG);
-        return saved.hasKey("Schema", 3) && saved.getInteger("Schema") == 1
-            && saved.hasKey("Owner", 8)
-            && saved.hasKey("Actor", 8)
-            && saved.hasKey("Run", 8)
+        return saved.hasKey("Schema", Constants.NBT.TAG_INT) && saved.getInteger("Schema") == 1
+            && saved.hasKey("Owner", Constants.NBT.TAG_STRING)
+            && saved.hasKey("Actor", Constants.NBT.TAG_STRING)
+            && saved.hasKey("Run", Constants.NBT.TAG_STRING)
             && player.getUniqueID()
                 .toString()
                 .equals(saved.getString("Owner"))
@@ -179,7 +187,7 @@ public final class MaidCareInteractionFixture {
 
     public static void run(EntityPlayerMP player, String action) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && online(player) && currentLabWorld(player.worldObj),
+            DevelopmentFlags.isDevCommandsEnabled() && online(player) && currentLabWorld(player.worldObj),
             "Real connected development lab player required");
         if (action.equals("prepare")) {
             require(
@@ -280,7 +288,7 @@ public final class MaidCareInteractionFixture {
                 if (!loaded(maid) && player.getEntityData()
                     .getTag(TAG) == data
                     && player.worldObj == maid.worldObj
-                    && inventory(player).equals(data.getTagList("OriginalInventory", 10))
+                    && inventory(player).equals(data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND))
                     && player.getDistanceSq(
                         data.getDouble("ExpectedX"),
                         data.getDouble("ExpectedY"),
@@ -317,7 +325,7 @@ public final class MaidCareInteractionFixture {
             && (action.equals("restore") || action.equals("world-life-resume")
                 || action.equals("world-life-recover-long-finish"))
             && player.getEntityData()
-                .hasKey(TAG, 10)) {
+                .hasKey(TAG, Constants.NBT.TAG_COMPOUND)) {
             var saved = player.getEntityData()
                 .getCompoundTag(TAG);
             EntityMaid found = null;
@@ -452,7 +460,7 @@ public final class MaidCareInteractionFixture {
             case "verify-potion" -> {
                 session.requirePhase("potion-armed");
                 session.resultInventory();
-                var effects = session.data.getTagList("PotionEffects", 10);
+                var effects = session.data.getTagList("PotionEffects", Constants.NBT.TAG_COMPOUND);
                 for (int i = 0; i < effects.tagCount(); i++) {
                     var effect = PotionEffect.readCustomPotionEffectFromNBT(effects.getCompoundTagAt(i));
                     require(
@@ -477,7 +485,7 @@ public final class MaidCareInteractionFixture {
             case "verify-milk" -> {
                 session.requirePhase("milk-armed");
                 session.resultInventory();
-                var retained = session.data.getTagList("MilkRemaining", 10);
+                var retained = session.data.getTagList("MilkRemaining", Constants.NBT.TAG_COMPOUND);
                 require(
                     session.maid.getActivePotionEffects()
                         .size() == retained.tagCount(),
@@ -637,7 +645,7 @@ public final class MaidCareInteractionFixture {
             if (value == null || !currentLabWorld(value.worldObj)) return false;
             try {
                 for (String key : new String[] { "Owner", "Actor", "Run", "ExpectedOwner" })
-                    if (!data.hasKey(key, 8) || !UUID.fromString(data.getString(key))
+                    if (!data.hasKey(key, Constants.NBT.TAG_STRING) || !UUID.fromString(data.getString(key))
                         .toString()
                         .equals(data.getString(key))) return false;
                 return player.getUniqueID()
@@ -647,7 +655,7 @@ public final class MaidCareInteractionFixture {
                         .toString()
                         .equals(data.getString("Actor"))
                     && value.getEntityData()
-                        .hasKey(TAG, 8)
+                        .hasKey(TAG, Constants.NBT.TAG_STRING)
                     && data.getString("Run")
                         .equals(
                             value.getEntityData()
@@ -663,9 +671,9 @@ public final class MaidCareInteractionFixture {
             for (Object key : data.func_150296_c())
                 require(FIELDS.contains(key), "Unknown care snapshot field retained");
             for (String key : new String[] { "Schema", "OriginalMode", "Slot" })
-                require(data.hasKey(key, 3), "Invalid care integer");
+                require(data.hasKey(key, Constants.NBT.TAG_INT), "Invalid care integer");
             for (String key : new String[] { "Run", "Owner", "Actor", "ExpectedOwner", "ExpectedModel", "Phase" })
-                require(data.hasKey(key, 8), "Invalid care identity");
+                require(data.hasKey(key, Constants.NBT.TAG_STRING), "Invalid care identity");
             for (String key : new String[] { "Run", "Owner", "Actor", "ExpectedOwner" }) require(
                 UUID.fromString(data.getString(key))
                     .toString()
@@ -673,25 +681,30 @@ public final class MaidCareInteractionFixture {
                 "Invalid care UUID");
             for (String key : new String[] { "OriginalX", "OriginalY", "OriginalZ", "ExpectedX", "ExpectedY",
                 "ExpectedZ" })
-                require(data.hasKey(key, 6) && Double.isFinite(data.getDouble(key)), "Invalid care position");
+                require(
+                    data.hasKey(key, Constants.NBT.TAG_DOUBLE) && Double.isFinite(data.getDouble(key)),
+                    "Invalid care position");
             require(
-                data.hasKey("OriginalHealth", 5) && data.hasKey("OriginalYaw", 5)
-                    && data.hasKey("OriginalPitch", 5)
-                    && data.hasKey("HandPresent", 1)
+                data.hasKey("OriginalHealth", Constants.NBT.TAG_FLOAT)
+                    && data.hasKey("OriginalYaw", Constants.NBT.TAG_FLOAT)
+                    && data.hasKey("OriginalPitch", Constants.NBT.TAG_FLOAT)
+                    && data.hasKey("HandPresent", Constants.NBT.TAG_BYTE)
                     && data.getByte("HandPresent") >= 0
                     && data.getByte("HandPresent") <= 1
-                    && (!data.getBoolean("HandPresent") || data.hasKey("OriginalHand", 10)),
+                    && (!data.getBoolean("HandPresent") || data.hasKey("OriginalHand", Constants.NBT.TAG_COMPOUND)),
                 "Invalid original player snapshot");
             for (String key : new String[] { "OriginalInventory", "ExpectedInventory" }) require(
-                data.hasKey(key, 9) && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, 10)
-                    .tagCount(),
+                data.hasKey(key, Constants.NBT.TAG_LIST)
+                    && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                        .tagCount(),
                 "Invalid care inventory snapshot");
             for (String key : new String[] { "AwaitLogin", "Rejoined" }) require(
-                !data.hasKey(key) || data.hasKey(key, 1) && data.getByte(key) >= 0 && data.getByte(key) <= 1,
+                !data.hasKey(key)
+                    || data.hasKey(key, Constants.NBT.TAG_BYTE) && data.getByte(key) >= 0 && data.getByte(key) <= 1,
                 "Invalid care flag retained");
             for (String key : new String[] { "ResultInventory", "PotionEffects", "MilkRemaining" }) require(
-                !data.hasKey(key)
-                    || data.hasKey(key, 9) && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, 10)
+                !data.hasKey(key) || data.hasKey(key, Constants.NBT.TAG_LIST)
+                    && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, Constants.NBT.TAG_COMPOUND)
                         .tagCount(),
                 "Invalid care result snapshot");
             MaidNaturalWorldActions.validateSnapshot(data);
@@ -772,13 +785,14 @@ public final class MaidCareInteractionFixture {
             if (MaidPlayerInputActions.inventoryOwned(this)) return;
             var actual = inventory(player);
             require(
-                actual.equals(data.getTagList("ExpectedInventory", 10))
-                    || data.hasKey("ResultInventory", 9) && actual.equals(data.getTagList("ResultInventory", 10)),
+                actual.equals(data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND))
+                    || data.hasKey("ResultInventory", Constants.NBT.TAG_LIST)
+                        && actual.equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)),
                 "Unknown player inventory successor retained");
         }
 
         void hand(ItemStack input, ItemStack result) {
-            if (data.hasKey("ExpectedInventory", 9)) inventoryOwned();
+            if (data.hasKey("ExpectedInventory", Constants.NBT.TAG_LIST)) inventoryOwned();
             if (input != null) {
                 if (!input.hasTagCompound()) input.setTagCompound(new NBTTagCompound());
                 input.getTagCompound()
@@ -787,7 +801,7 @@ public final class MaidCareInteractionFixture {
             player.inventory.setInventorySlotContents(slot(), input);
             data.setTag("ExpectedInventory", inventory(player));
             var after = new NBTTagList();
-            var before = data.getTagList("ExpectedInventory", 10);
+            var before = data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND);
             boolean found = false;
             for (int i = 0; i < before.tagCount(); i++) {
                 var entry = before.getCompoundTagAt(i);
@@ -818,7 +832,7 @@ public final class MaidCareInteractionFixture {
 
         void resultInventory() {
             require(
-                inventory(player).equals(data.getTagList("ResultInventory", 10)),
+                inventory(player).equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)),
                 "Actual native material/container transaction differs");
         }
 
@@ -911,7 +925,7 @@ public final class MaidCareInteractionFixture {
                     && currentLabWorld(next.worldObj)
                     && next.dimension == AnimationLab.DIMENSION
                     && next.getEntityData()
-                        .hasKey(TAG, 10)
+                        .hasKey(TAG, Constants.NBT.TAG_COMPOUND)
                     && next.getEntityData()
                         .getCompoundTag(TAG)
                         .equals(data)
@@ -929,7 +943,7 @@ public final class MaidCareInteractionFixture {
                         data.getDouble("ExpectedX"),
                         data.getDouble("ExpectedY"),
                         data.getDouble("ExpectedZ")) < .01
-                    && inventory(next).equals(data.getTagList("ExpectedInventory", 10)),
+                    && inventory(next).equals(data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND)),
                 "Unknown relogin snapshot retained phase=" + data.getString("Phase")
                     + " mode="
                     + next.theItemInWorldManager.getGameType()
@@ -971,7 +985,7 @@ public final class MaidCareInteractionFixture {
                     .toString()
                     .equals(data.getString("Actor"))
                     || candidate.getEntityData()
-                        .hasKey(TAG, 8)
+                        .hasKey(TAG, Constants.NBT.TAG_STRING)
                         && candidate.getEntityData()
                             .getString(TAG)
                             .equals(data.getString("Run")))) {
@@ -1006,7 +1020,7 @@ public final class MaidCareInteractionFixture {
                     && player.worldObj == pendingActorWorld
                     && player.theItemInWorldManager.getGameType()
                         .getID() == 0
-                    && inventory(player).equals(data.getTagList("ExpectedInventory", 10)),
+                    && inventory(player).equals(data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND)),
                 "Unknown waiting player successor retained");
             require(
                 player.worldObj.getTotalWorldTime() <= pendingActorDeadline,
@@ -1017,12 +1031,12 @@ public final class MaidCareInteractionFixture {
         }
 
         ItemStack originalHand() {
-            var original = data.getTagList("OriginalInventory", 10);
+            var original = data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND);
             NBTTagCompound entry = null;
             var withoutHand = new NBTTagList();
             for (int i = 0; i < original.tagCount(); i++) {
                 var value = original.getCompoundTagAt(i);
-                require(value.hasKey("Slot", 1), "Unknown original inventory slot retained");
+                require(value.hasKey("Slot", Constants.NBT.TAG_BYTE), "Unknown original inventory slot retained");
                 if ((value.getByte("Slot") & 255) == slot()) {
                     require(entry == null, "Ambiguous original hand retained");
                     entry = (NBTTagCompound) value.copy();
@@ -1041,9 +1055,9 @@ public final class MaidCareInteractionFixture {
                 require(
                     !data.hasKey("OriginalHand") && data.getString("Phase")
                         .equals("prepared")
-                        && withoutHand.equals(data.getTagList("ExpectedInventory", 10))
-                        && data.hasKey("ResultInventory", 9)
-                        && withoutHand.equals(data.getTagList("ResultInventory", 10)),
+                        && withoutHand.equals(data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND))
+                        && data.hasKey("ResultInventory", Constants.NBT.TAG_LIST)
+                        && withoutHand.equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)),
                     "Inconsistent original hand snapshot retained");
                 hand = ItemStack.loadItemStackFromNBT((NBTTagCompound) entry.copy());
             }
@@ -1087,10 +1101,8 @@ public final class MaidCareInteractionFixture {
                     "Foreign camera move retained with original snapshot");
                 MaidPlayerInputActions.beforeClose(this);
                 if (player.openContainer != player.inventoryContainer) {
-                    boolean own = player.openContainer instanceof com.tianluoqaq.tlmnh.common.inventory.ContainerMaidModels models
-                        && models.getMaid() == maid
-                        || player.openContainer instanceof com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer main
-                            && main.getMaid() == maid;
+                    boolean own = player.openContainer instanceof ContainerMaidModels models && models.getMaid() == maid
+                        || player.openContainer instanceof AbstractMaidContainer main && main.getMaid() == maid;
                     require(own, "Foreign container retained");
                     player.closeScreen();
                     validate();
@@ -1101,7 +1113,7 @@ public final class MaidCareInteractionFixture {
                 MaidModelLifecycleActions.restore(this);
                 MaidNaturalWorldActions.restore(this);
                 var hand = originalHand();
-                var original = data.getTagList("OriginalInventory", 10);
+                var original = data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND);
                 var beforeHand = player.inventory.getStackInSlot(slot());
                 var handSnapshot = hand == null ? new NBTTagCompound()
                     : hand.copy()
@@ -1238,10 +1250,11 @@ public final class MaidCareInteractionFixture {
             result.addProperty("worldTime", maid.worldObj.getTotalWorldTime());
             result.addProperty(
                 "expectedInventoryMatches",
-                inventory(player).equals(data.getTagList("ExpectedInventory", 10)));
+                inventory(player).equals(data.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND)));
             result.addProperty(
                 "resultInventoryMatches",
-                data.hasKey("ResultInventory", 9) && inventory(player).equals(data.getTagList("ResultInventory", 10)));
+                data.hasKey("ResultInventory", Constants.NBT.TAG_LIST)
+                    && inventory(player).equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)));
             if (data.hasKey("WorldActions")) result.add("worldActions", MaidNaturalWorldActions.observation(this));
             if (data.hasKey("ModelLifecycle"))
                 result.add("modelLifecycle", MaidModelLifecycleActions.observation(this));
@@ -1255,7 +1268,7 @@ public final class MaidCareInteractionFixture {
                     .getID());
             result.addProperty(
                 "originalInventoryRestored",
-                inventory(player).equals(data.getTagList("OriginalInventory", 10)));
+                inventory(player).equals(data.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND)));
             var held = player.inventory.getStackInSlot(slot());
             result.addProperty(
                 "hand",
@@ -1265,7 +1278,7 @@ public final class MaidCareInteractionFixture {
                         .toString());
             var effects = new JsonArray();
             for (Object value : maid.getActivePotionEffects()) effects.add(
-                new com.google.gson.JsonPrimitive(
+                new JsonPrimitive(
                     ((PotionEffect) value).writeCustomPotionEffectToNBT(new NBTTagCompound())
                         .toString()));
             result.add("effects", effects);

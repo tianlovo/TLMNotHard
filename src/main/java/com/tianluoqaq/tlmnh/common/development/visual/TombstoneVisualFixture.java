@@ -1,13 +1,19 @@
 package com.tianluoqaq.tlmnh.common.development.visual;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 
@@ -15,17 +21,16 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 public final class TombstoneVisualFixture {
 
     private static final String TAG = "TLMNHVisualTombstone";
-    private static final java.util.Set<MaidTombstoneEntity> SPAWNING = java.util.Collections
-        .newSetFromMap(new java.util.IdentityHashMap<>());
+    private static final Set<MaidTombstoneEntity> SPAWNING = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    public static boolean isSpawning(net.minecraft.entity.Entity entity) {
-        return Boolean.getBoolean("tlmnh.devCommands") && SPAWNING.contains(entity);
+    public static boolean isSpawning(Entity entity) {
+        return DevelopmentFlags.isDevCommandsEnabled() && SPAWNING.contains(entity);
     }
 
     private TombstoneVisualFixture() {}
 
     public static void set(EntityPlayerMP player, String action) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || !(action.equals("open") || action.equals("clear")))
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !(action.equals("open") || action.equals("clear")))
             throw new IllegalStateException("Unknown development tombstone fixture");
         AnimationLab.ownedSceneMaid(player);
         var world = player.worldObj;
@@ -34,7 +39,7 @@ public final class TombstoneVisualFixture {
         var tracked = new ArrayList<MaidTombstoneEntity>();
         for (Object value : world.loadedEntityList) {
             if (!(value instanceof MaidTombstoneEntity tombstone) || !tombstone.getEntityData()
-                .hasKey(TAG, 10)) continue;
+                .hasKey(TAG, Constants.NBT.TAG_COMPOUND)) continue;
             var data = tombstone.getEntityData()
                 .getCompoundTag(TAG);
             if (!owner.equals(data.getString("Owner"))) continue;

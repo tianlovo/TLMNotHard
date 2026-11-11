@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.life;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -18,14 +19,17 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidTelemetryChannel;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeCandidate;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeIntent.Action;
@@ -290,7 +294,7 @@ public final class MaidLifeController {
         // 只补完本动作已走到的安全邻格，继续使用原生移动与碰撞，不扩大交互半径或传送
         if (action != Action.BED && approachPoint != null
             && ownedPath != null
-            && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+            && MaidPathOwnership.owns(
                 maid.getNavigator()
                     .getPath(),
                 ownedPath)
@@ -537,7 +541,7 @@ public final class MaidLifeController {
                 bites++;
                 if (executionCurrent(attempt)) maid.playSound("random.eat", 1.0F, 1.0F);
                 if (executionCurrent(attempt)) maid.getFavorabilityManager()
-                    .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.STEAL_EDIBLE_BLOCK, 1);
+                    .apply(Type.STEAL_EDIBLE_BLOCK, 1);
             }
         } else success = placeCake(x, y, z, attempt);
         boolean committed = attempt.finishCommit(success);
@@ -664,7 +668,7 @@ public final class MaidLifeController {
     private boolean safeStand(double x, double y, double z) {
         int ix = MathHelper.floor_double(x), iy = MathHelper.floor_double(y), iz = MathHelper.floor_double(z);
         if (!maid.worldObj.blockExists(ix, iy - 1, iz) || !maid.worldObj.blockExists(ix, iy + 2, iz)
-            || !net.minecraft.world.World.doesBlockHaveSolidTopSurface(maid.worldObj, ix, iy - 1, iz)) return false;
+            || !World.doesBlockHaveSolidTopSurface(maid.worldObj, ix, iy - 1, iz)) return false;
         double radius = maid.width / 2;
         return maid.worldObj
             .getCollidingBoundingBoxes(
@@ -703,7 +707,7 @@ public final class MaidLifeController {
                             : TerminalOutcome.CANCELLED;
                 telemetry().terminal(
                     "life/" + action.name()
-                        .toLowerCase(java.util.Locale.ROOT),
+                        .toLowerCase(Locale.ROOT),
                     tileId(target),
                     "stop_reason=" + reason,
                     outcome,
@@ -756,7 +760,7 @@ public final class MaidLifeController {
     }
 
     private void stopNavigation() {
-        if (ownedPath != null && com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathOwnership.owns(
+        if (ownedPath != null && MaidPathOwnership.owns(
             maid.getNavigator()
                 .getPath(),
             ownedPath))

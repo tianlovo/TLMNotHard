@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.inventory;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
@@ -219,7 +221,7 @@ public class ContainerMaid extends Container {
     protected void openTaskConfiguration(EntityPlayer player) {
         long session;
         do {
-            session = java.util.concurrent.ThreadLocalRandom.current()
+            session = ThreadLocalRandom.current()
                 .nextLong();
         } while (session == 0);
         player.openGui(

@@ -4,6 +4,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.passive.EntityOcelot;
 import net.minecraft.entity.passive.EntityWolf;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -167,10 +168,9 @@ public final class EnhancedAmbientController {
             && (target instanceof EntityPlayer || target instanceof EntityMaid
                 || target instanceof EntityWolf
                 || target instanceof EntityOcelot)
-            && (!(target instanceof EntityPlayer player)
-                || !player.isPlayerSleeping() && (!(player instanceof net.minecraft.entity.player.EntityPlayerMP mp)
-                    || mp.theItemInWorldManager.getGameType()
-                        .getID() != 3))
+            && (!(target instanceof EntityPlayer player) || !player.isPlayerSleeping()
+                && (!(player instanceof EntityPlayerMP mp) || mp.theItemInWorldManager.getGameType()
+                    .getID() != 3))
             && maid.getDistanceSqToEntity(target) < 25
             && maid.getHomeArea()
                 .withinRestriction(

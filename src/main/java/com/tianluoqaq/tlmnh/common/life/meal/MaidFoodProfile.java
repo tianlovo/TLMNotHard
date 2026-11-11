@@ -9,6 +9,7 @@ import java.util.Map;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.EnumAction;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemPotion;
 import net.minecraft.item.ItemStack;
@@ -19,6 +20,7 @@ import net.minecraft.world.World;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 
@@ -46,14 +48,14 @@ public final class MaidFoodProfile {
         if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return null;
         EnumAction action = stack.getItemUseAction();
         if (action != EnumAction.eat && action != EnumAction.drink) return null;
-        var values = com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition.values(stack);
+        var values = AppleCoreNutrition.values(stack);
         if (values == null || values[0] < 0 || !Float.isFinite(values[1])) return null;
         var profile = new MaidFoodProfile(stack, (int) values[0], values[1]);
         if (!Float.isFinite(profile.total) || profile.total < 0 || profile.duration <= 0 || profile.duration > 1200)
             return null;
         {
             if (stack.getItem() instanceof ItemFood food) {
-                String id = net.minecraft.item.Item.itemRegistry.getNameForObject(food);
+                String id = Item.itemRegistry.getNameForObject(food);
                 boolean vanilla = id != null && id.startsWith("minecraft:");
                 if (!vanilla && (!inherited(food.getClass(), "onEaten", "func_77654_b")
                     || !inherited(food.getClass(), "onFoodEaten", "func_77849_c"))) return null;

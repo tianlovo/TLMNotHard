@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.sound;
 
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public final class BuiltinSoundCatalog {
             var packs = new ArrayList<Pack>();
             for (var element : root.getAsJsonArray("packs")) packs.add(new Pack(element.getAsJsonObject()));
             return Collections.unmodifiableList(packs);
-        } catch (java.io.IOException error) {
+        } catch (IOException error) {
             throw new IllegalStateException("Cannot read sound catalog", error);
         }
     }

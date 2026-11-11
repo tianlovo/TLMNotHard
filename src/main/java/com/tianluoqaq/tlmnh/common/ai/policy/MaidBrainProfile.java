@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.policy;
 
+import java.util.Locale;
+
 /** 正常配置只开放旧策略和完整N；F参照与窄组件仍限定开发用途 */
 public enum MaidBrainProfile {
 
@@ -43,7 +45,7 @@ public enum MaidBrainProfile {
     public static MaidBrainProfile fromProductionId(String value) {
         if (value == null) return null;
         String id = value.trim()
-            .toLowerCase(java.util.Locale.ROOT);
+            .toLowerCase(Locale.ROOT);
         for (var profile : values())
             if (profile.available && !profile.developmentOnly && profile.id.equals(id)) return profile;
         return null;

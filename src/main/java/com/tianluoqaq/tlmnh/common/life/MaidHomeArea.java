@@ -3,6 +3,7 @@ package com.tianluoqaq.tlmnh.common.life;
 import net.minecraft.entity.DataWatcher;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.MathHelper;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
@@ -222,7 +223,7 @@ public final class MaidHomeArea {
         unreadSave = null;
         observedActivity = null;
         publish(MaidHomeSettings.EMPTY);
-        if (!tag.hasKey(SAVE_TAG, 10)) return;
+        if (!tag.hasKey(SAVE_TAG, Constants.NBT.TAG_COMPOUND)) return;
         var home = tag.getCompoundTag(SAVE_TAG);
         try {
             if (home.getInteger("Schema") != 1) throw new IllegalArgumentException("Unknown home schema");

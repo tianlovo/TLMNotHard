@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.command;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import net.minecraft.command.CommandBase;
@@ -14,12 +15,15 @@ import net.minecraft.world.WorldServer;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.BuiltinModelProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidArrowPhysicsProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBowProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidBrainProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidBreathProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCombatProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidContainerProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe;
@@ -28,16 +32,33 @@ import com.tianluoqaq.tlmnh.common.development.MaidFollowRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidFollowTeleportProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidGeckoLibraryProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidHomeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidIntentRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidInteractionProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidLifeRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNamingProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidNativePhaseProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidNavigationBudgetProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPersistenceProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidPolicyLifecycleProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidPoseRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidRangedMovementProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldNativeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidShieldRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.MaidTelemetryProbe;
+import com.tianluoqaq.tlmnh.common.development.MaidWorldSoundRuntimeProbe;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture;
+import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
+import com.tianluoqaq.tlmnh.common.development.life.CabinetVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.life.MaidBedVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.life.MaidSleepVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.life.ShrineVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.persistence.MaidPlayerDiskProbe;
+import com.tianluoqaq.tlmnh.common.development.visual.MaidBannerVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.visual.MaidCarryVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState;
+import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
@@ -198,7 +219,7 @@ public final class DevelopmentCommand extends CommandBase {
         }
         if (args.length == 2 && "lab-state".equals(args[0])) {
             var maid = AnimationLab.ownedSceneMaid(getPlayer(sender, args[1]));
-            var snapshot = com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot.capture(maid);
+            var snapshot = MaidVisibleStateSnapshot.capture(maid);
             snapshot.addProperty(
                 "uuid",
                 maid.getUniqueID()
@@ -207,13 +228,11 @@ public final class DevelopmentCommand extends CommandBase {
             return;
         }
         if (args.length == 3 && "lab-naming-fixture".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture
-                .run(getPlayer(sender, args[1]), args[2]);
+            MaidNamingInteractionFixture.run(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-care-fixture".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture
-                .run(getPlayer(sender, args[1]), args[2]);
+            MaidCareInteractionFixture.run(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-visual-hunger".equals(args[0])) {
@@ -223,8 +242,7 @@ public final class DevelopmentCommand extends CommandBase {
                 if (!"hungry".equals(args[2]) && !"full".equals(args[2]))
                     throw new WrongUsageException(getCommandUsage(sender));
                 var maid = AnimationLab.ownedSceneMaid(player);
-                com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState
-                    .stageHunger(maid, "full".equals(args[2]) ? 20 : 0);
+                MaidVisualFixtureState.stageHunger(maid, "full".equals(args[2]) ? 20 : 0);
             }
             TLMNotHard.LOG.info("TLMNH_VISUAL_HUNGER action={}", args[2]);
             return;
@@ -248,135 +266,115 @@ public final class DevelopmentCommand extends CommandBase {
             return;
         }
         if (args.length == 3 && "lab-world-sound".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidWorldSoundRuntimeProbe.run(getPlayer(sender, args[1]), args[2]);
+            MaidWorldSoundRuntimeProbe.run(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 1 && "config-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runConfig((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runConfig((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "back-item-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runBackItem((net.minecraft.world.WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runBackItem((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 2 && "favorability-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runFavorability((WorldServer) sender.getEntityWorld(), args[1]);
+            MaidCoreInteractionProbe.runFavorability((WorldServer) sender.getEntityWorld(), args[1]);
             return;
         }
         if (args.length == 2 && "meal-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runMeals((WorldServer) sender.getEntityWorld(), args[1]);
+            MaidCoreInteractionProbe.runMeals((WorldServer) sender.getEntityWorld(), args[1]);
             return;
         }
         if (args.length == 1 && "panic-runtime-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .startPanicRuntime((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.startPanicRuntime((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "breath-runtime-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidBreathProbe.start((WorldServer) sender.getEntityWorld());
+            MaidBreathProbe.start((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 3 && "aquatic-pose-stage".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidPoseRuntimeProbe
-                .stage(net.minecraft.command.CommandBase.getPlayer(sender, args[1]), args[2]);
+            MaidPoseRuntimeProbe.stage(CommandBase.getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 4 && "player-disk".equals(args[0])) {
             try {
-                com.tianluoqaq.tlmnh.common.development.persistence.MaidPlayerDiskProbe
-                    .run(getPlayer(sender, args[1]), args[2], args[3]);
+                MaidPlayerDiskProbe.run(getPlayer(sender, args[1]), args[2], args[3]);
             } catch (Exception failure) {
                 throw new IllegalStateException("Native player disk observation failed", failure);
             }
             return;
         }
         if (args.length == 1 && "ranged-movement-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidRangedMovementProbe
-                .start((WorldServer) sender.getEntityWorld());
+            MaidRangedMovementProbe.start((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "navigation-budget-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidNavigationBudgetProbe
-                .start((WorldServer) sender.getEntityWorld());
+            MaidNavigationBudgetProbe.start((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "intent-runtime-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidIntentRuntimeProbe.start((WorldServer) sender.getEntityWorld());
+            MaidIntentRuntimeProbe.start((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "self-care-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runSelfCare((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runSelfCare((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "bubbles-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runBubbles((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runBubbles((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 3 && "lab-visual-fixture".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .setVisualFixture(getPlayer(sender, args[1]), args[2]);
+            MaidCoreInteractionProbe.setVisualFixture(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-carry-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.visual.MaidCarryVisualFixture
-                .set(getPlayer(sender, args[1]), args[2]);
+            MaidCarryVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-banner-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.visual.MaidBannerVisualFixture
-                .set(getPlayer(sender, args[1]), args[2]);
+            MaidBannerVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-shrine-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.life.ShrineVisualFixture.set(getPlayer(sender, args[1]), args[2]);
+            ShrineVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-cabinet-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.life.CabinetVisualFixture.set(getPlayer(sender, args[1]), args[2]);
+            CabinetVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-sleep-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.life.MaidSleepVisualFixture
-                .set(getPlayer(sender, args[1]), args[2]);
+            MaidSleepVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-bed-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.life.MaidBedVisualFixture.set(getPlayer(sender, args[1]), args[2]);
+            MaidBedVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 3 && "lab-tombstone-visual".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture
-                .set(getPlayer(sender, args[1]), args[2]);
+            TombstoneVisualFixture.set(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 2 && "lab-open-default-gui".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe.openDefaultGui(getPlayer(sender, args[1]));
+            MaidCoreInteractionProbe.openDefaultGui(getPlayer(sender, args[1]));
             return;
         }
         if (args.length == 1 && "effects-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runEffects((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runEffects((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 3 && "lab-gui-effects".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .setGuiEffectFixture(getPlayer(sender, args[1]), args[2]);
+            MaidCoreInteractionProbe.setGuiEffectFixture(getPlayer(sender, args[1]), args[2]);
             return;
         }
         if (args.length == 1 && "pickup-traversal-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .runPickupAndTraversal((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.runPickupAndTraversal((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "pickup-runtime-test".equals(args[0])) {
-            com.tianluoqaq.tlmnh.common.development.MaidCoreInteractionProbe
-                .startPickupRuntime((WorldServer) sender.getEntityWorld());
+            MaidCoreInteractionProbe.startPickupRuntime((WorldServer) sender.getEntityWorld());
             return;
         }
         if (args.length == 1 && "world-sound-test".equals(args[0])) {
@@ -396,15 +394,14 @@ public final class DevelopmentCommand extends CommandBase {
             var entity = sender.getEntityWorld()
                 .getEntityByID(parseInt(sender, args[1]));
             if (!(entity instanceof EntityMaid maid)) throw new WrongUsageException(getCommandUsage(sender));
-            com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile selected = null;
-            for (var profile : com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.values()) if (profile.getId()
+            MaidBrainProfile selected = null;
+            for (var profile : MaidBrainProfile.values()) if (profile.getId()
                 .equals(args[2])) selected = profile;
             if (selected == null) throw new WrongUsageException(getCommandUsage(sender));
-            var flight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
+            var flight = MaidFaithfulFlightProfile.SOURCE_ORIGINAL;
             if (args.length == 4) {
                 try {
-                    flight = com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile
-                        .valueOf(args[3].toUpperCase(java.util.Locale.ROOT));
+                    flight = MaidFaithfulFlightProfile.valueOf(args[3].toUpperCase(Locale.ROOT));
                 } catch (IllegalArgumentException invalid) {
                     throw new WrongUsageException(getCommandUsage(sender));
                 }

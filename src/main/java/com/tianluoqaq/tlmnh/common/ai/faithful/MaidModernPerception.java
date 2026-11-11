@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
@@ -19,8 +20,11 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidHosti
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidNearestLivingEntitySensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.sensor.MaidPickupEntitiesSensor;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidSensingBudget.Kind;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
+import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
@@ -32,7 +36,7 @@ public final class MaidModernPerception {
     // Sensor使用独立的线程安全随机源，不消耗世界/女仆Behavior的随机流
     private static final Random RANDOM = new Random();
     private final EntityMaid maid;
-    private com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation combatObservation;
+    private CombatObservation combatObservation;
     private final BooleanSupplier current;
     private final Predicate<Kind> admission;
     private final MaidNearestLivingEntitySensor living = new MaidNearestLivingEntitySensor();
@@ -61,7 +65,7 @@ public final class MaidModernPerception {
         this.admission = admission;
     }
 
-    public void bindCombatObservation(com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation observation) {
+    public void bindCombatObservation(CombatObservation observation) {
         if (combatObservation != null && combatObservation != observation)
             throw new IllegalStateException("Combat observation already bound");
         combatObservation = Objects.requireNonNull(observation, "observation");
@@ -72,18 +76,16 @@ public final class MaidModernPerception {
     }
 
     /** 返回已缓存的诊断值，不补查询或续期 */
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.Readiness combatReadiness() {
+    public CombatObservation.Readiness combatReadiness() {
         return combatObservation == null ? null : combatObservation.readiness();
     }
 
     /** 只返回显式QA作用域已有的纯缓存；不要求或取得actor活帧许可 */
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.ObservationDiagnostic combatDiagnostic(
-        Object world) {
+    public CombatObservation.ObservationDiagnostic combatDiagnostic(Object world) {
         return combatObservation == null ? null : combatObservation.diagnostic(world);
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation.SampleDiagnostic combatSampleDiagnostic(
-        java.util.UUID id) {
+    public CombatObservation.SampleDiagnostic combatSampleDiagnostic(UUID id) {
         return combatObservation == null ? null : combatObservation.sampleDiagnostic(id);
     }
 
@@ -103,12 +105,10 @@ public final class MaidModernPerception {
             .target();
         if (livingDelay > 0) livingDelay--;
         if (unifiedCombatObservation()) {
-            var quota = com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorldBudget
+            var quota = CombatWorldBudget
                 .heartbeat(maid.worldObj, maid.getUniqueID(), maid.worldObj.getTotalWorldTime(), false);
-            var trial = com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.current(maid);
-            try (var measurement = com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.measure(
-                maid,
-                com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.Phase.OBSERVATION)) {
+            var trial = CombatEffectPilotSession.current(maid);
+            try (var measurement = CombatEffectPilotSession.measure(maid, CombatEffectPilotSession.Phase.OBSERVATION)) {
                 combatObservation.observe(maid, quota);
                 setNearby(combatObservation.boundedLiving());
             } finally {

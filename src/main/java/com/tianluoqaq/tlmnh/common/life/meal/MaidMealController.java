@@ -5,8 +5,13 @@ import java.util.function.BooleanSupplier;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
+import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -49,10 +54,7 @@ public final class MaidMealController {
         var policy = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         // 现代组件由对应行为显式开始物品使用，此处只推进已持有的使用生命周期
-        if (policy != null
-            && (policy.getProfile() != com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile.LEGACY_PROTOTYPE
-                || !policy.isReady()))
-            return;
+        if (policy != null && (policy.getProfile() != MaidBrainProfile.LEGACY_PROTOTYPE || !policy.isReady())) return;
         if (maid.getBrainCoordinator()
             .getBreathController()
             .isActive()) return;
@@ -62,7 +64,7 @@ public final class MaidMealController {
             .nextInt(50);
         boolean healing = maid.getMaxHealth() - maid.getHealth() >= 2;
         if (!healing && !maid.getFavorabilityManager()
-            .canAdd(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL.getTypeName())) return;
+            .canAdd(Type.WORK_MEAL.getTypeName())) return;
         for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
             if (start(slot, healing)) return;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) if (start(slot, healing)) return;
@@ -89,8 +91,8 @@ public final class MaidMealController {
             .peek() != null) return false;
         for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
             if (start(slot, true, true, current)) return true;
-        if (request) com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil
-            .findStackSlot(maid, stack -> MaidFoodProfile.inspectBreathing(stack) != null, -1, current);
+        if (request)
+            ItemsUtil.findStackSlot(maid, stack -> MaidFoodProfile.inspectBreathing(stack) != null, -1, current);
         if (!current.getAsBoolean()) return false;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
             if (start(slot, true, true, current)) return true;
@@ -106,8 +108,7 @@ public final class MaidMealController {
         if (active != null && (active != lease || breathing)) return false;
         for (int slot = MaidInventory.MAIN_HAND; slot <= MaidInventory.OFF_HAND; slot++)
             if (startModernMeal(slot, healing, current)) return true;
-        com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil
-            .findStackSlot(maid, stack -> mealProfile(stack, healing) != null, -1, current);
+        ItemsUtil.findStackSlot(maid, stack -> mealProfile(stack, healing) != null, -1, current);
         if (!current.getAsBoolean()) return false;
         for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++)
             if (startModernMeal(slot, healing, current)) return true;
@@ -186,13 +187,12 @@ public final class MaidMealController {
             int point = maid.getRNG()
                 .nextInt(100) < selected.total ? 0 : 1;
             maid.getFavorabilityManager()
-                .apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.WORK_MEAL, point);
+                .apply(Type.WORK_MEAL, point);
         }
     }
 
     private boolean permitted(boolean breathingUse) {
-        return maid.isEntityAlive()
-            && !com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
+        return maid.isEntityAlive() && !MaidBrainLifecycle.isWorldUnloading(maid.worldObj)
             && !maid.hasPose(MaidPose.SLEEPING)
             && !maid.getBrainCoordinator()
                 .isSuspended()
@@ -269,15 +269,15 @@ public final class MaidMealController {
         if (!ownsExchange(capturedLease, capturedFood, capturedDisplaced, source, hand)) return;
 
         // 原生NBT既用于持久保存，也用于外部只读查询；只归位输出副本，不终止活体使用
-        var backpack = tag.getTagList("MaidInventory", 10);
-        if (!tag.hasKey("MaidInventory", 9)
+        var backpack = tag.getTagList("MaidInventory", Constants.NBT.TAG_COMPOUND);
+        if (!tag.hasKey("MaidInventory", Constants.NBT.TAG_LIST)
             || backpack.tagCount() != ((NBTTagList) tag.getTag("MaidInventory")).tagCount()
             || backpack.func_150303_d() != 0 && backpack.func_150303_d() != 10) return;
         var sourceTag = new NBTTagCompound();
         int previous = -1;
         for (int i = 0; i < backpack.tagCount(); i++) {
             var entry = backpack.getCompoundTagAt(i);
-            if (!entry.hasKey("Slot", 1)) return;
+            if (!entry.hasKey("Slot", Constants.NBT.TAG_BYTE)) return;
             int slot = entry.getByte("Slot") & 255;
             if (slot <= previous || slot >= MaidInventory.BACKPACK_SIZE) return;
             previous = slot;
@@ -286,8 +286,8 @@ public final class MaidMealController {
                 sourceTag.removeTag("Slot");
             }
         }
-        var equipment = tag.getTagList("Equipment", 10);
-        if (!tag.hasKey("Equipment", 9) || equipment.tagCount() < 1
+        var equipment = tag.getTagList("Equipment", Constants.NBT.TAG_COMPOUND);
+        if (!tag.hasKey("Equipment", Constants.NBT.TAG_LIST) || equipment.tagCount() < 1
             || equipment.func_150303_d() != 10
             || equipment.tagCount() != ((NBTTagList) tag.getTag("Equipment")).tagCount()) return;
         var handTag = hand == MaidInventory.MAIN_HAND ? equipment.getCompoundTagAt(0)

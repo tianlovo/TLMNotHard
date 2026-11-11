@@ -3,11 +3,14 @@ package com.tianluoqaq.tlmnh.common.development.visual;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 
@@ -29,7 +32,7 @@ public final class MaidVisualFixtureState {
 
     private static void scope(EntityMaid maid) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !maid.worldObj.isRemote
+            DevelopmentFlags.isDevCommandsEnabled() && !maid.worldObj.isRemote
                 && AnimationLab.isLab(maid.worldObj)
                 && maid.worldObj.getEntityByID(maid.getEntityId()) == maid,
             "Registered server void-lab actor required");
@@ -92,18 +95,20 @@ public final class MaidVisualFixtureState {
     }
 
     private static boolean matches(NBTTagCompound data, String key, ItemStack stack) {
-        return data.hasKey(key + "Present", 1) && data.getBoolean(key + "Present") == (stack != null)
-            && (stack == null || data.hasKey(key, 10) && data.getCompoundTag(key)
+        return data.hasKey(key + "Present", Constants.NBT.TAG_BYTE)
+            && data.getBoolean(key + "Present") == (stack != null)
+            && (stack == null || data.hasKey(key, Constants.NBT.TAG_COMPOUND) && data.getCompoundTag(key)
                 .equals(ProtectedItemCodec.encode(stack)));
     }
 
     private static NBTTagCompound saved(EntityMaid maid) {
         scope(maid);
         var parent = maid.getEntityData();
-        require(parent.hasKey(TAG, 10), "Tracked visual fixture snapshot required");
+        require(parent.hasKey(TAG, Constants.NBT.TAG_COMPOUND), "Tracked visual fixture snapshot required");
         var data = parent.getCompoundTag(TAG);
         require(
-            data.hasKey("Schema", 3) && (data.getInteger("Schema") == 1 || data.getInteger("Schema") == 2)
+            data.hasKey("Schema", Constants.NBT.TAG_INT)
+                && (data.getInteger("Schema") == 1 || data.getInteger("Schema") == 2)
                 && maid.getUniqueID()
                     .toString()
                     .equals(data.getString("Actor"))
@@ -164,7 +169,9 @@ public final class MaidVisualFixtureState {
         require(ItemStack.areItemStacksEqual(shield, admitted), "Native shield protected round trip differs");
         if (!exists(maid)) capture(maid);
         var data = saved(maid);
-        require(!data.hasKey("HeldFixture") || data.hasKey("HeldFixture", 10), "Unknown held snapshot retained");
+        require(
+            !data.hasKey("HeldFixture") || data.hasKey("HeldFixture", Constants.NBT.TAG_COMPOUND),
+            "Unknown held snapshot retained");
         if (!data.hasKey("HeldFixture")) {
             require(poseFlags(maid) == 0, "Do not replace an existing action pose");
             var held = new NBTTagCompound();
@@ -179,12 +186,12 @@ public final class MaidVisualFixtureState {
         }
         var held = held(maid, data);
         require(
-            inventory(maid).equals(held.getTagList("ExpectedInventory", 10))
+            inventory(maid).equals(held.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND))
                 && poseFlags(maid) == held.getInteger("ExpectedPose"),
             "Foreign equipment or pose retained before shield staging");
         var expected = inventory(maid);
         var next = new NBTTagList();
-        int off = com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND;
+        int off = MaidInventory.OFF_HAND;
         for (int i = 0; i < expected.tagCount(); i++) {
             var entry = expected.getCompoundTagAt(i);
             if ((entry.getByte("Slot") & 255) != off) next.appendTag(entry.copy());
@@ -232,19 +239,19 @@ public final class MaidVisualFixtureState {
     }
 
     private static NBTTagCompound held(EntityMaid maid, NBTTagCompound data) {
-        require(data.hasKey("HeldFixture", 10), "Typed held snapshot required");
+        require(data.hasKey("HeldFixture", Constants.NBT.TAG_COMPOUND), "Typed held snapshot required");
         var held = data.getCompoundTag("HeldFixture");
         require(
-            held.hasKey("Schema", 3) && held.getInteger("Schema") == 1
-                && held.hasKey("OriginalInventory", 9)
-                && held.hasKey("ExpectedInventory", 9)
-                && held.hasKey("OriginalPose", 3)
+            held.hasKey("Schema", Constants.NBT.TAG_INT) && held.getInteger("Schema") == 1
+                && held.hasKey("OriginalInventory", Constants.NBT.TAG_LIST)
+                && held.hasKey("ExpectedInventory", Constants.NBT.TAG_LIST)
+                && held.hasKey("OriginalPose", Constants.NBT.TAG_INT)
                 && held.getInteger("OriginalPose") == 0
-                && held.hasKey("ExpectedPose", 3)
+                && held.hasKey("ExpectedPose", Constants.NBT.TAG_INT)
                 && (held.getInteger("ExpectedPose") == 0 || held.getInteger("ExpectedPose")
                     == (MaidPose.USING_ITEM.getMask() | MaidPose.USING_OFFHAND.getMask()))
-                && held.hasKey("OriginalMainPresent", 1)
-                && held.hasKey("OriginalOffPresent", 1)
+                && held.hasKey("OriginalMainPresent", Constants.NBT.TAG_BYTE)
+                && held.hasKey("OriginalOffPresent", Constants.NBT.TAG_BYTE)
                 && held.hasKey("OriginalMain") == held.getBoolean("OriginalMainPresent")
                 && held.hasKey("OriginalOff") == held.getBoolean("OriginalOffPresent")
                 && maid.getItemUseState()
@@ -254,11 +261,11 @@ public final class MaidVisualFixtureState {
     }
 
     private static boolean originalHandMatches(NBTTagCompound held, String key, int slot) {
-        var original = held.getTagList("OriginalInventory", 10);
+        var original = held.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND);
         NBTTagCompound entry = null;
         for (int i = 0; i < original.tagCount(); i++) {
             var item = original.getCompoundTagAt(i);
-            require(item.hasKey("Slot", 1), "Unknown original inventory slot retained");
+            require(item.hasKey("Slot", Constants.NBT.TAG_BYTE), "Unknown original inventory slot retained");
             if ((item.getByte("Slot") & 255) == slot) {
                 require(entry == null, "Ambiguous original hand retained");
                 entry = (NBTTagCompound) item.copy();
@@ -266,13 +273,13 @@ public final class MaidVisualFixtureState {
             }
         }
         return entry == null ? !held.getBoolean(key + "Present")
-            : held.hasKey(key, 10) && entry.equals(held.getCompoundTag(key));
+            : held.hasKey(key, Constants.NBT.TAG_COMPOUND) && entry.equals(held.getCompoundTag(key));
     }
 
     private static boolean heldRestored(EntityMaid maid, NBTTagCompound data) {
         if (!data.hasKey("HeldFixture")) return true;
         var held = held(maid, data);
-        return inventory(maid).equals(held.getTagList("OriginalInventory", 10))
+        return inventory(maid).equals(held.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND))
             && poseFlags(maid) == held.getInteger("OriginalPose");
     }
 
@@ -280,16 +287,13 @@ public final class MaidVisualFixtureState {
         if (!data.hasKey("HeldFixture")) return;
         var held = held(maid, data);
         require(
-            originalHandMatches(held, "OriginalMain", com.tianluoqaq.tlmnh.common.inventory.MaidInventory.MAIN_HAND)
-                && originalHandMatches(
-                    held,
-                    "OriginalOff",
-                    com.tianluoqaq.tlmnh.common.inventory.MaidInventory.OFF_HAND),
+            originalHandMatches(held, "OriginalMain", MaidInventory.MAIN_HAND)
+                && originalHandMatches(held, "OriginalOff", MaidInventory.OFF_HAND),
             "Original hand and complete inventory backups differ; retained");
         var actual = inventory(maid);
         require(
-            (actual.equals(held.getTagList("ExpectedInventory", 10))
-                || actual.equals(held.getTagList("OriginalInventory", 10)))
+            (actual.equals(held.getTagList("ExpectedInventory", Constants.NBT.TAG_COMPOUND))
+                || actual.equals(held.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND)))
                 && (poseFlags(maid) == held.getInteger("ExpectedPose")
                     || poseFlags(maid) == held.getInteger("OriginalPose")),
             "Foreign complete inventory or pose retained during held restore");
@@ -303,7 +307,7 @@ public final class MaidVisualFixtureState {
         maid.setPose(MaidPose.USING_ITEM, false);
         maid.setPose(MaidPose.USING_OFFHAND, false);
         require(
-            inventory(maid).equals(held.getTagList("OriginalInventory", 10))
+            inventory(maid).equals(held.getTagList("OriginalInventory", Constants.NBT.TAG_COMPOUND))
                 && poseFlags(maid) == held.getInteger("OriginalPose"),
             "Original complete inventory or pose restore differs; snapshot retained");
     }
@@ -324,7 +328,7 @@ public final class MaidVisualFixtureState {
             data.setInteger("ExpectedHunger", maid.getHunger());
         }
         require(
-            data.hasKey("OriginalHunger", 3) && data.hasKey("ExpectedHunger", 3)
+            data.hasKey("OriginalHunger", Constants.NBT.TAG_INT) && data.hasKey("ExpectedHunger", Constants.NBT.TAG_INT)
                 && maid.getHunger() == data.getInteger("ExpectedHunger"),
             "Foreign hunger change retained");
         maid.setHunger(hunger);
@@ -337,7 +341,8 @@ public final class MaidVisualFixtureState {
         boolean tracksHunger = data.hasKey("OriginalHunger");
         require(tracksHunger == data.hasKey("ExpectedHunger"), "Incomplete hunger snapshot retained");
         require(
-            !tracksHunger || data.hasKey("OriginalHunger", 3) && data.hasKey("ExpectedHunger", 3)
+            !tracksHunger || data.hasKey("OriginalHunger", Constants.NBT.TAG_INT)
+                && data.hasKey("ExpectedHunger", Constants.NBT.TAG_INT)
                 && maid.getHunger() == data.getInteger("ExpectedHunger"),
             "Foreign hunger change; snapshot retained");
         require(
@@ -353,13 +358,13 @@ public final class MaidVisualFixtureState {
                         .getStackInSlot(5)),
             "Back slot changed outside this visual fixture; original snapshot retained");
         require(
-            data.hasKey("Model", 8) && BuiltinModelCatalog.contains(data.getString("Model"))
-                && data.hasKey("Sitting", 1)
-                && data.hasKey("Sleeping", 1)
-                && data.hasKey("Suspended", 1)
-                && data.hasKey("ShowBack", 1)
-                && data.hasKey("ShowBubble", 1)
-                && data.hasKey("OriginalBackPresent", 1),
+            data.hasKey("Model", Constants.NBT.TAG_STRING) && BuiltinModelCatalog.contains(data.getString("Model"))
+                && data.hasKey("Sitting", Constants.NBT.TAG_BYTE)
+                && data.hasKey("Sleeping", Constants.NBT.TAG_BYTE)
+                && data.hasKey("Suspended", Constants.NBT.TAG_BYTE)
+                && data.hasKey("ShowBack", Constants.NBT.TAG_BYTE)
+                && data.hasKey("ShowBubble", Constants.NBT.TAG_BYTE)
+                && data.hasKey("OriginalBackPresent", Constants.NBT.TAG_BYTE),
             "Incomplete visual fixture snapshot retained");
         ItemStack original = data.getBoolean("OriginalBackPresent")
             ? ProtectedItemCodec.decodeField(data, "OriginalBack")
@@ -369,8 +374,9 @@ public final class MaidVisualFixtureState {
         ItemStack originalHead = null;
         if (tracksHead) {
             require(
-                data.hasKey("OriginalHeadPresent", 1) && (matches(data, "ExpectedHead", maid.getEquipmentInSlot(4))
-                    || matches(data, "OriginalHead", maid.getEquipmentInSlot(4))),
+                data.hasKey("OriginalHeadPresent", Constants.NBT.TAG_BYTE)
+                    && (matches(data, "ExpectedHead", maid.getEquipmentInSlot(4))
+                        || matches(data, "OriginalHead", maid.getEquipmentInSlot(4))),
                 "Head slot changed outside fixture; original snapshot retained");
             originalHead = data.getBoolean("OriginalHeadPresent") ? ProtectedItemCodec.decodeField(data, "OriginalHead")
                 : null;
@@ -382,7 +388,8 @@ public final class MaidVisualFixtureState {
         maid.setModelId(data.getString("Model"));
         if (tracksHunger) maid.setHunger(data.getInteger("OriginalHunger"));
         maid.setSitting(data.getBoolean("Sitting"));
-        maid.setSleepingBedDirection(data.hasKey("SleepDirection", 3) ? data.getInteger("SleepDirection") : -1);
+        maid.setSleepingBedDirection(
+            data.hasKey("SleepDirection", Constants.NBT.TAG_INT) ? data.getInteger("SleepDirection") : -1);
         maid.setPose(MaidPose.SLEEPING, data.getBoolean("Sleeping"));
         maid.getMaidInventory()
             .setInventorySlotContents(5, original);
@@ -407,7 +414,7 @@ public final class MaidVisualFixtureState {
                     .equals(data.getString("Model"))
                 && maid.isSitting() == data.getBoolean("Sitting")
                 && maid.hasPose(MaidPose.SLEEPING) == data.getBoolean("Sleeping")
-                && (!data.hasKey("SleepDirection", 3)
+                && (!data.hasKey("SleepDirection", Constants.NBT.TAG_INT)
                     || maid.getSleepingBedDirection() == data.getInteger("SleepDirection"))
                 && maid.getConfigManager()
                     .isShowBackItem() == data.getBoolean("ShowBack")

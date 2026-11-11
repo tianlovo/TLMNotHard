@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.EntityList;
 import net.minecraft.nbt.NBTTagCompound;
@@ -23,7 +25,7 @@ public final class MaidDimensionTravel {
     private boolean transferring;
 
     public MaidDimensionTravel(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, "maid");
     }
 
     public boolean travel(int requestedDimension) {
@@ -64,12 +66,8 @@ public final class MaidDimensionTravel {
             int sourceId = maid.getEntityId();
             var vehicle = maid.ridingEntity;
             var passenger = maid.riddenByEntity;
-            java.util.function.BooleanSupplier sourceCurrent = () -> sourceCurrent(
-                source,
-                sourceProvider,
-                origin,
-                identity,
-                original) && maid.getEntityId() == sourceId
+            BooleanSupplier sourceCurrent = () -> sourceCurrent(source, sourceProvider, origin, identity, original)
+                && maid.getEntityId() == sourceId
                 && maid.ridingEntity == vehicle
                 && maid.riddenByEntity == passenger;
             var created = EntityList.createEntityByName(EntityList.getEntityString(maid), destination);

@@ -4,15 +4,19 @@ import java.util.Collections;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldProvider;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+import com.tianluoqaq.tlmnh.compat.witchery.common.entity.WitcheryInitialSize;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -55,7 +59,7 @@ final class MaidRedemptionDelivery {
             var origin = Source.capture(player, source, shrine, x, y, z);
             MaidLifecycleDurability.requirePlayer(player);
             MaidLifecycleDurability.requireEntities(world);
-            com.tianluoqaq.tlmnh.compat.witchery.common.entity.WitcheryInitialSize.prepare(maid, player.getUniqueID());
+            WitcheryInitialSize.prepare(maid, player.getUniqueID());
             var expected = MaidLifecycleDurability.maidSnapshot(maid);
             publication = new MaidLifecycleDurability.Publication(maid, expected);
             var intent = origin.intent(expected);
@@ -176,11 +180,11 @@ final class MaidRedemptionDelivery {
         final World world;
         final MaidShrineTile shrine;
         final NBTTagCompound data;
-        final net.minecraft.entity.player.InventoryPlayer inventory;
+        final InventoryPlayer inventory;
         final ItemStack[] main, armor;
         final ItemStack cursor;
         final ItemStack credential;
-        final net.minecraft.world.WorldProvider provider;
+        final WorldProvider provider;
 
         Source(EntityPlayer player, NBTTagCompound data, MaidShrineTile shrine) {
             this.player = player;
@@ -275,7 +279,7 @@ final class MaidRedemptionDelivery {
 
         boolean original() {
             if (!context() || player.getHealth() != data.getFloat("Health")
-                || !data.getTagList("Inventory", 10)
+                || !data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList())))
                 return false;
             if (shrine != null) {
@@ -295,15 +299,15 @@ final class MaidRedemptionDelivery {
                     (int) data.getDouble("Y"),
                     (int) data.getDouble("Z"))
                 && context()
-                && data.getTagList("Inventory", 10)
+                && data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()));
         }
 
         boolean payable() {
             if (!context()) return false;
             var current = inventory.writeToNBT(new NBTTagList());
-            if (!current.equals(data.getTagList("Inventory", 10))
-                && !current.equals(data.getTagList("ResultInventory", 10))) return false;
+            if (!current.equals(data.getTagList("Inventory", Constants.NBT.TAG_COMPOUND))
+                && !current.equals(data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND))) return false;
             float health = player.getHealth();
             if (health != data.getFloat("Health") && health != paidHealth()) return false;
             if (shrine != null) {
@@ -322,7 +326,7 @@ final class MaidRedemptionDelivery {
         void pay() {
             if (!payable()) throw new IllegalStateException("Redemption source changed before costs");
             if (shrine == null) {
-                if (!data.getTagList("ResultInventory", 10)
+                if (!data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()))) {
                     var actual = player.getCurrentEquippedItem();
                     if (actual != credential || !ItemStack
@@ -341,7 +345,7 @@ final class MaidRedemptionDelivery {
             if (!settled()) throw new IllegalStateException("Redemption cost callback changed its exact destination");
             MaidLifecycleDurability.player(
                 player,
-                data.getTagList("ResultInventory", 10),
+                data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND),
                 inventory.currentItem,
                 shrine == null ? null : paidHealth());
             if (shrine != null)
@@ -351,7 +355,7 @@ final class MaidRedemptionDelivery {
 
         boolean settled() {
             return context() && player.getHealth() == paidHealth()
-                && data.getTagList("ResultInventory", 10)
+                && data.getTagList("ResultInventory", Constants.NBT.TAG_COMPOUND)
                     .equals(inventory.writeToNBT(new NBTTagList()))
                 && (shrine == null || data.getCompoundTag("ResultTile")
                     .equals(tile()));

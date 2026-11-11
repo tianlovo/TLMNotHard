@@ -1,9 +1,13 @@
 package com.tianluoqaq.tlmnh.client.gui;
 
+import java.util.Objects;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.inventory.Container;
 import net.minecraft.util.StatCollector;
+
+import org.lwjgl.input.Keyboard;
 
 import com.google.gson.JsonObject;
 
@@ -23,8 +27,8 @@ public final class MaidClientConfigGui extends GuiScreen {
     private GuiSlider slider;
 
     public MaidClientConfigGui(GuiScreen parent, Container container) {
-        this.parent = java.util.Objects.requireNonNull(parent);
-        this.container = java.util.Objects.requireNonNull(container);
+        this.parent = Objects.requireNonNull(parent);
+        this.container = Objects.requireNonNull(container);
     }
 
     public Container getContainer() {
@@ -105,8 +109,7 @@ public final class MaidClientConfigGui extends GuiScreen {
 
     @Override
     protected void keyTyped(char character, int key) {
-        if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE || key == mc.gameSettings.keyBindInventory.getKeyCode())
-            returnToParent();
+        if (key == Keyboard.KEY_ESCAPE || key == mc.gameSettings.keyBindInventory.getKeyCode()) returnToParent();
         else super.keyTyped(character, key);
     }
 

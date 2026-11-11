@@ -1,11 +1,22 @@
 package com.tianluoqaq.tlmnh.common.lifecycle;
 
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
+
+import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.RecoveryParcel;
+import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 神龛的唯一胶片槽，保存与网络同步均使用副本 */
 public final class MaidShrineTile extends TileEntity {
@@ -20,11 +31,10 @@ public final class MaidShrineTile extends TileEntity {
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
-    public net.minecraft.util.AxisAlignedBB getRenderBoundingBox() {
+    @SideOnly(Side.CLIENT)
+    public AxisAlignedBB getRenderBoundingBox() {
         // 原模型visible_bounds宽3/高2.5/中心Y.75，屋顶高于单方块碰撞，不能随碰撞盒被裁去
-        return net.minecraft.util.AxisAlignedBB
-            .getBoundingBox(xCoord - 1, yCoord - .5, zCoord - 1, xCoord + 2, yCoord + 2, zCoord + 2);
+        return AxisAlignedBB.getBoundingBox(xCoord - 1, yCoord - .5, zCoord - 1, xCoord + 2, yCoord + 2, zCoord + 2);
     }
 
     public ItemStack getFilm() {
@@ -35,8 +45,8 @@ public final class MaidShrineTile extends TileEntity {
     public ItemStack displayItem() {
         int kind = worldObj != null && worldObj.isRemote ? clientStorageKind : storageKind();
         return switch (kind) {
-            case 1 -> new ItemStack(com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.FILM);
-            case 2 -> new ItemStack(com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.ITEM);
+            case 1 -> new ItemStack(MaidResurrectionContent.FILM);
+            case 2 -> new ItemStack(RecoveryParcel.ITEM);
             default -> null;
         };
     }
@@ -46,8 +56,8 @@ public final class MaidShrineTile extends TileEntity {
     }
 
     @Override
-    public boolean shouldRefresh(net.minecraft.block.Block oldBlock, net.minecraft.block.Block newBlock, int oldMeta,
-        int newMeta, net.minecraft.world.World world, int x, int y, int z) {
+    public boolean shouldRefresh(Block oldBlock, Block newBlock, int oldMeta, int newMeta, World world, int x, int y,
+        int z) {
         return oldBlock != newBlock;
     }
 
@@ -118,18 +128,15 @@ public final class MaidShrineTile extends TileEntity {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
-        var stored = com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.decodeField(tag, "StorageItem");
-        film = stored == null || MaidLifecycleItems.isFilm(stored)
-            || stored.getItem() == com.tianluoqaq.tlmnh.common.protection.RecoveryParcel.ITEM ? stored
-                : com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec
-                    .seal(tag.getCompoundTag("StorageItem"), "shrine_slot");
+        var stored = ProtectedItemCodec.decodeField(tag, "StorageItem");
+        film = stored == null || MaidLifecycleItems.isFilm(stored) || stored.getItem() == RecoveryParcel.ITEM ? stored
+            : ProtectedItemCodec.seal(tag.getCompoundTag("StorageItem"), "shrine_slot");
     }
 
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
-        if (film != null)
-            tag.setTag("StorageItem", com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec.encode(film));
+        if (film != null) tag.setTag("StorageItem", ProtectedItemCodec.encode(film));
         else tag.removeTag("StorageItem");
     }
 
@@ -146,9 +153,9 @@ public final class MaidShrineTile extends TileEntity {
         // S35只更新客户端显示字段，绝不能作为服务端持久StorageItem输入
         if (worldObj == null || !worldObj.isRemote) return;
         var tag = packet.func_148857_g();
-        clientStorageKind = tag != null && tag.hasKey("DisplayVersion", 1)
+        clientStorageKind = tag != null && tag.hasKey("DisplayVersion", Constants.NBT.TAG_BYTE)
             && tag.getByte("DisplayVersion") == 1
-            && tag.hasKey("StorageKind", 1)
+            && tag.hasKey("StorageKind", Constants.NBT.TAG_BYTE)
             && tag.getByte("StorageKind") >= 0
             && tag.getByte("StorageKind") <= 2 ? tag.getByte("StorageKind") : 0;
     }

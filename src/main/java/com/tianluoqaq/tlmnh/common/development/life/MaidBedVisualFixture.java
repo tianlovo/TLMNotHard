@@ -8,9 +8,11 @@ import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.bed.MaidBedColor;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -23,7 +25,7 @@ public final class MaidBedVisualFixture {
     private MaidBedVisualFixture() {}
 
     public static void set(EntityPlayerMP player, String action) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development fixture required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development fixture required");
         AnimationLab.ownedSceneMaid(player);
         var world = player.worldObj;
         var journal = journal(world);
@@ -207,7 +209,9 @@ public final class MaidBedVisualFixture {
         @Override
         public void readFromNBT(NBTTagCompound tag) {
             raw = (NBTTagCompound) tag.copy();
-            require(tag.hasKey("Schema", 3) && tag.getInteger("Schema") == 1, "Unknown fixture schema retained");
+            require(
+                tag.hasKey("Schema", Constants.NBT.TAG_INT) && tag.getInteger("Schema") == 1,
+                "Unknown fixture schema retained");
             owner = tag.getString("Owner");
             kind = tag.getString("Kind");
             require(

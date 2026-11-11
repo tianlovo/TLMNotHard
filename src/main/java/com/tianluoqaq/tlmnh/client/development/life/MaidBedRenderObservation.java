@@ -5,9 +5,11 @@ import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.MinecraftForgeClient;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 
 import cpw.mods.fml.relauncher.Side;
@@ -22,7 +24,7 @@ public final class MaidBedRenderObservation {
     private MaidBedRenderObservation() {}
 
     public static void completed(TileEntityMaidBed bed, Object model, ResourceLocation texture) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var frame = FRAMES.computeIfAbsent(bed, ignored -> new Frame());
         if (frame.model != model) {
             frame.model = model;
@@ -30,7 +32,7 @@ public final class MaidBedRenderObservation {
         }
         frame.calls++;
         frame.texture = texture.toString();
-        frame.pass = net.minecraftforge.client.MinecraftForgeClient.getRenderPass();
+        frame.pass = MinecraftForgeClient.getRenderPass();
     }
 
     public static JsonArray snapshot(Minecraft minecraft) {

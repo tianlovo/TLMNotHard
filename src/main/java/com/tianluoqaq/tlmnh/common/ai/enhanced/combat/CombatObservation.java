@@ -6,18 +6,22 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.EntityCreeper;
+import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBow;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.chunk.Chunk;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
@@ -31,7 +35,9 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
+import com.tianluoqaq.tlmnh.common.config.MaidCombatConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidPerceptionConfig;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
 
 /** 唯一世界观测边界；区块实体列表增量游标，不先执行全量AABB查询 */
@@ -55,7 +61,7 @@ public final class CombatObservation {
         scanPending;
     private int chunksVisitedThisTick, geometryUnknownCells, geometryBudgetCells, refreshCursor;
     private int primaryRays, backgroundRays, secondaryRays;
-    private net.minecraft.world.chunk.Chunk scanChunk;
+    private Chunk scanChunk;
     private final Map<UUID, Entity> deferred = new LinkedHashMap<>();
     private final Map<UUID, SampleResult> sampled = new LinkedHashMap<>();
     private static final int MAX_DEFERRED = 32, MAX_SAMPLED = 128;
@@ -512,8 +518,8 @@ public final class CombatObservation {
                 maid.getUniqueID(),
                 entity.getUniqueID(),
                 range,
-                com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatAcquireRange,
-                com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatRetainRange);
+                MaidCombatConfig.ownerCombatAcquireRange,
+                MaidCombatConfig.ownerCombatRetainRange);
         double detection = entity.isSneaking() ? .8 : 1;
         if (entity.isInvisible()) {
             if (!quota.spendObservation(Work.ENTITY, 4)) return rejectObservation();
@@ -574,7 +580,7 @@ public final class CombatObservation {
         tracked.observedAt = tick;
         tracked.visible = true;
         // 外部生物血量依据基础属性范围与既有命中记录估算
-        if (tracked.health <= 0) tracked.health = entity instanceof net.minecraft.entity.monster.IMob ? 20 : 30;
+        if (tracked.health <= 0) tracked.health = entity instanceof IMob ? 20 : 30;
         tracked.width = entity.width * .5;
         tracked.height = entity.height;
         tracked.swinging = entity.isSwingInProgress;
@@ -834,8 +840,7 @@ public final class CombatObservation {
             for (int z = 0; z < CombatGeometryWindow.WIDTH; z++) for (int x = 0; x < CombatGeometryWindow.WIDTH; x++) {
                 int index = (y * CombatGeometryWindow.WIDTH + z) * CombatGeometryWindow.WIDTH + x, px = ox + x,
                     py = oy + y, pz = oz + z;
-                var mask = net.minecraft.util.AxisAlignedBB
-                    .getBoundingBox(px - .01, py - .01, pz - .01, px + 1.01, py + 2.01, pz + 1.01);
+                var mask = AxisAlignedBB.getBoundingBox(px - .01, py - .01, pz - .01, px + 1.01, py + 2.01, pz + 1.01);
                 CombatSpace.BlockShapes shapes = reader.block(px, py, pz, mask);
                 if (shapes.result != CombatSpace.Result.SAFE) {
                     cells[index] = Geometry.UNKNOWN;
@@ -1238,8 +1243,8 @@ public final class CombatObservation {
             id,
             owner.getDistanceSq(observed.x, observed.y, observed.z),
             maid.getDistanceSq(observed.x, observed.y, observed.z),
-            com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatAcquireRange,
-            com.tianluoqaq.tlmnh.common.config.MaidCombatConfig.ownerCombatRetainRange);
+            MaidCombatConfig.ownerCombatAcquireRange,
+            MaidCombatConfig.ownerCombatRetainRange);
     }
 
     private boolean legalVisible(EntityMaid maid, EntityLivingBase target, Vec observed) {
@@ -1251,15 +1256,14 @@ public final class CombatObservation {
             || !ATTACK.canAttack(maid, target)) return false;
         var home = maid.getHomeArea();
         if (home.enabled()) return home.sameDimension() && home.containsMaid()
-            && home.activity() == com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity.WORK
+            && home.activity() == MaidLifeRules.Activity.WORK
             && home.contains(observed.x, observed.y, observed.z);
         return targetInDomain(maid, target.getUniqueID(), observed);
     }
 
     private static boolean friendly(EntityMaid maid, EntityLivingBase entity) {
         if (entity == maid.getOwner() || maid.isOnSameTeam(entity)) return true;
-        return entity instanceof EntityMaid other
-            && java.util.Objects.equals(maid.func_152113_b(), other.func_152113_b());
+        return entity instanceof EntityMaid other && Objects.equals(maid.func_152113_b(), other.func_152113_b());
     }
 
     private static final class FriendTrack {

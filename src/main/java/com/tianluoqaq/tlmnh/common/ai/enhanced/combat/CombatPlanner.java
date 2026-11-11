@@ -1,9 +1,11 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.Macro;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatPlan.StageState;
@@ -12,6 +14,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Target;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatWorkQuota.Work;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
 /** 有限动作组合的纯预演；不构造实体、不查询物品、不调用世界或随机源 */
 public final class CombatPlanner {
@@ -24,7 +27,7 @@ public final class CombatPlanner {
     private long arrowDefenseStarted = Long.MIN_VALUE;
     private CombatPlan previous;
     private CombatPlan routeProposal;
-    private java.util.UUID proposalSelfId;
+    private UUID proposalSelfId;
     private CombatTerrain.Route followedRoute;
     private int followedNode;
     private static boolean traceEnabled;
@@ -66,14 +69,12 @@ public final class CombatPlanner {
             intentEligible = executable;
             List<CandidateTrace> values = new ArrayList<>(source.size());
             for (Candidate candidate : source) values.add(new CandidateTrace(candidate));
-            candidates = java.util.Collections.unmodifiableList(values);
+            candidates = Collections.unmodifiableList(values);
         }
     }
 
     static Trace reobservationTrace(int visited, int work) {
-        return traceEnabled
-            ? new Trace(visited, work, false, java.util.Collections.emptyList(), null, false, false, 0, 0)
-            : null;
+        return traceEnabled ? new Trace(visited, work, false, Collections.emptyList(), null, false, false, 0, 0) : null;
     }
 
     public static final class CandidateTrace {
@@ -84,7 +85,7 @@ public final class CombatPlanner {
         public final CombatSnapshot.DamageSource damageSource;
         public final double singleSelf, ownerRisk, singleOwner;
         public final int weaponSlot;
-        public final com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile.Family family;
+        public final MaidWeaponProfile.Family family;
         public final Vec destination;
         public final CombatTerrain.Route route;
         public final double utility, damage, risk;
@@ -101,8 +102,7 @@ public final class CombatPlanner {
             ownerRisk = source.ownerRisk;
             singleOwner = source.singleOwner;
             weaponSlot = source.weapon == null ? -2 : source.weapon.slot;
-            family = source.weapon == null ? com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile.Family.UNKNOWN
-                : source.weapon.profile.family;
+            family = source.weapon == null ? MaidWeaponProfile.Family.UNKNOWN : source.weapon.profile.family;
             destination = source.destination;
             route = source.route;
             utility = source.utility;
@@ -1365,13 +1365,13 @@ public final class CombatPlanner {
     private static final class Stage {
 
         final long id, entityEpoch, observationEpoch;
-        final java.util.UUID self, target;
+        final UUID self, target;
         final int targetEntityId;
         final Strategy strategy;
         final Macro firstMacro;
         final CombatTerrain.Route route;
         String weapon;
-        final com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile.Family family;
+        final MaidWeaponProfile.Family family;
         boolean escape, admitted;
         double risk, single, ownerRisk, ownerSingle;
         int cursor = 1;

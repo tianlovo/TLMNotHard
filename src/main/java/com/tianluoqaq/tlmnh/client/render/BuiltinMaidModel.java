@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.client.render;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.entity.Entity;
@@ -47,7 +49,7 @@ public final class BuiltinMaidModel extends ModelBase {
             : new BuiltinGeckoPlayer(
                 gecko,
                 animations,
-                java.util.concurrent.ThreadLocalRandom.current()
+                ThreadLocalRandom.current()
                     .nextLong());
     }
 

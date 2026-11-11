@@ -1,7 +1,10 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
+import java.util.Objects;
+
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
@@ -16,7 +19,7 @@ public final class CombatCadence {
     private NBTBase retained;
 
     public CombatCadence(EntityMaid maid) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
+        this.maid = Objects.requireNonNull(maid, "maid");
     }
 
     public boolean ready() {
@@ -86,9 +89,9 @@ public final class CombatCadence {
         deathFrozen = false;
         if (root.hasKey(TAG)) {
             var raw = root.getTag(TAG);
-            if (!(raw instanceof NBTTagCompound data) || !data.hasKey("Version", 3)
+            if (!(raw instanceof NBTTagCompound data) || !data.hasKey("Version", Constants.NBT.TAG_INT)
                 || data.getInteger("Version") != VERSION
-                || !data.hasKey("Remaining", 4)
+                || !data.hasKey("Remaining", Constants.NBT.TAG_LONG)
                 || data.getLong("Remaining") < 0
                 || data.func_150296_c()
                     .size() != 2) {

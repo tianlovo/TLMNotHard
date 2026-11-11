@@ -13,16 +13,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
@@ -30,8 +33,12 @@ import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraft.world.storage.SaveHandler;
 import net.minecraft.world.storage.ThreadedFileIOBase;
+import net.minecraftforge.common.util.Constants;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 import com.tianluoqaq.tlmnh.compat.endlessids.common.storage.EndlessIdsSectionData;
+import com.tianluoqaq.tlmnh.compat.hodgepodge.common.storage.HodgepodgeWorldDataBarrier;
 
 /** 两类出站保管的写前屏障与实际目标读回；不把原生吞掉IO异常的返回当作存盘成功 */
 final class MaidLifecycleDurability {
@@ -44,7 +51,7 @@ final class MaidLifecycleDurability {
             if (MaidLifecycleData.get(world) != ledger)
                 throw new IllegalStateException("Lifecycle storage no longer owns the active ledger");
             server.checkSessionLock();
-            com.tianluoqaq.tlmnh.compat.hodgepodge.common.storage.HodgepodgeWorldDataBarrier.beforeLedgerWrite();
+            HodgepodgeWorldDataBarrier.beforeLedgerWrite();
             var target = server.getSaveHandler()
                 .getMapFileFromName(MaidLifecycleData.NAME)
                 .getCanonicalFile();
@@ -119,15 +126,17 @@ final class MaidLifecycleDurability {
             store.writePlayerData(player);
             var file = playerFile(player);
             var saved = read(file);
-            if (!saved.hasKey("Inventory", 9) || !saved.hasKey("SelectedItemSlot", 3)
-                || !expectedInventory.equals(saved.getTagList("Inventory", 10))
+            if (!saved.hasKey("Inventory", Constants.NBT.TAG_LIST)
+                || !saved.hasKey("SelectedItemSlot", Constants.NBT.TAG_INT)
+                || !expectedInventory.equals(saved.getTagList("Inventory", Constants.NBT.TAG_COMPOUND))
                 || saved.getInteger("SelectedItemSlot") != selected
                 || !expectedInventory.equals(player.inventory.writeToNBT(new NBTTagList()))
                 || player.inventory.currentItem != selected
-                || health != null && (!saved.hasKey("HealF", 5) || saved.getFloat("HealF") != health
-                    || !saved.hasKey("Health", 2)
-                    || saved.getShort("Health") != (short) Math.ceil(health)
-                    || player.getHealth() != health))
+                || health != null
+                    && (!saved.hasKey("HealF", Constants.NBT.TAG_FLOAT) || saved.getFloat("HealF") != health
+                        || !saved.hasKey("Health", Constants.NBT.TAG_SHORT)
+                        || saved.getShort("Health") != (short) Math.ceil(health)
+                        || player.getHealth() != health))
                 throw new IllegalStateException("Native player inventory save was rejected or rewritten");
             try (var channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
                 channel.force(true);
@@ -143,7 +152,7 @@ final class MaidLifecycleDurability {
         loader(server(world));
     }
 
-    static void tile(net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+    static void tile(TileEntity tile, NBTTagCompound expected) {
         var world = server(tile.getWorldObj());
         int x = tile.xCoord, y = tile.yCoord, z = tile.zCoord;
         if (!world.getChunkProvider()
@@ -153,7 +162,7 @@ final class MaidLifecycleDurability {
         storeTileState(world, x, y, z, block, metadata, tile, expected);
     }
 
-    static void absentTile(World world, int x, int y, int z, net.minecraft.block.Block original) {
+    static void absentTile(World world, int x, int y, int z, Block original) {
         var actual = server(world);
         if (!actual.getChunkProvider()
             .chunkExists(x >> 4, z >> 4) || actual.getTileEntity(x, y, z) != null
@@ -162,8 +171,8 @@ final class MaidLifecycleDurability {
         storeTileState(actual, x, y, z, actual.getBlock(x, y, z), actual.getBlockMetadata(x, y, z), null, null);
     }
 
-    private static void storeTileState(WorldServer world, int x, int y, int z, net.minecraft.block.Block block,
-        int metadata, net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+    private static void storeTileState(WorldServer world, int x, int y, int z, Block block, int metadata,
+        TileEntity tile, NBTTagCompound expected) {
         try {
             expected = expected == null ? null : (NBTTagCompound) expected.copy();
             checkTileState(world, x, y, z, block, metadata, tile, expected);
@@ -176,37 +185,38 @@ final class MaidLifecycleDurability {
                 if (input == null) throw new IllegalStateException("No native saved source tile chunk");
                 var root = CompressedStreamTools.read(input);
                 var level = root.getCompoundTag("Level");
-                if (!root.hasKey("Level", 10) || !level.hasKey("xPos", 3)
-                    || !level.hasKey("zPos", 3)
+                if (!root.hasKey("Level", Constants.NBT.TAG_COMPOUND) || !level.hasKey("xPos", Constants.NBT.TAG_INT)
+                    || !level.hasKey("zPos", Constants.NBT.TAG_INT)
                     || level.getInteger("xPos") != x >> 4
                     || level.getInteger("zPos") != z >> 4
-                    || !level.hasKey("Sections", 9)
-                    || !level.hasKey("TileEntities", 9))
+                    || !level.hasKey("Sections", Constants.NBT.TAG_LIST)
+                    || !level.hasKey("TileEntities", Constants.NBT.TAG_LIST))
                     throw new IllegalStateException("Unknown native source tile chunk layout");
-                var sections = level.getTagList("Sections", 10);
+                var sections = level.getTagList("Sections", Constants.NBT.TAG_COMPOUND);
                 if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
                     throw new IllegalStateException("Unknown source block section entries");
                 int sectionCount = 0;
                 for (int i = 0; i < sections.tagCount(); i++) {
                     var section = sections.getCompoundTagAt(i);
-                    if (!section.hasKey("Y", 1)) throw new IllegalStateException("Unknown native section index");
+                    if (!section.hasKey("Y", Constants.NBT.TAG_BYTE))
+                        throw new IllegalStateException("Unknown native section index");
                     if (section.getByte("Y") != y >> 4) continue;
                     sectionCount++;
                     int index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
-                    if (EndlessIdsSectionData.blockId(section, index) != net.minecraft.block.Block.getIdFromBlock(block)
+                    if (EndlessIdsSectionData.blockId(section, index) != Block.getIdFromBlock(block)
                         || EndlessIdsSectionData.metadata(section, index) != metadata)
                         throw new IllegalStateException("Native source block or metadata changed during save");
                 }
-                if (sectionCount != 1
-                    && !(sectionCount == 0 && block == net.minecraft.init.Blocks.air && metadata == 0))
+                if (sectionCount != 1 && !(sectionCount == 0 && block == Blocks.air && metadata == 0))
                     throw new IllegalStateException("Native source block section is not unique");
-                var tiles = level.getTagList("TileEntities", 10);
+                var tiles = level.getTagList("TileEntities", Constants.NBT.TAG_COMPOUND);
                 if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
                     throw new IllegalStateException("Unknown source tile list");
                 int count = 0;
                 for (int i = 0; i < tiles.tagCount(); i++) {
                     var saved = tiles.getCompoundTagAt(i);
-                    if (!saved.hasKey("x", 3) || !saved.hasKey("y", 3) || !saved.hasKey("z", 3))
+                    if (!saved.hasKey("x", Constants.NBT.TAG_INT) || !saved.hasKey("y", Constants.NBT.TAG_INT)
+                        || !saved.hasKey("z", Constants.NBT.TAG_INT))
                         throw new IllegalStateException("Unknown saved tile position");
                     if (saved.getInteger("x") != x || saved.getInteger("y") != y || saved.getInteger("z") != z)
                         continue;
@@ -227,8 +237,8 @@ final class MaidLifecycleDurability {
         }
     }
 
-    private static void checkTileState(WorldServer world, int x, int y, int z, net.minecraft.block.Block block,
-        int metadata, net.minecraft.tileentity.TileEntity tile, NBTTagCompound expected) {
+    private static void checkTileState(WorldServer world, int x, int y, int z, Block block, int metadata,
+        TileEntity tile, NBTTagCompound expected) {
         if (!world.getChunkProvider()
             .chunkExists(x >> 4, z >> 4) || world.getBlock(x, y, z) != block
             || world.getBlockMetadata(x, y, z) != metadata
@@ -245,7 +255,7 @@ final class MaidLifecycleDurability {
         }
     }
 
-    static NBTTagCompound maidSnapshot(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid maid) {
+    static NBTTagCompound maidSnapshot(EntityMaid maid) {
         var result = new NBTTagCompound();
         var type = EntityList.getEntityString(maid);
         if (type == null || maid.ridingEntity != null || maid.riddenByEntity != null)
@@ -269,14 +279,15 @@ final class MaidLifecycleDurability {
                 if (input == null) throw new IllegalStateException("No saved shrine chunk");
                 var root = CompressedStreamTools.read(input);
                 var level = root.getCompoundTag("Level");
-                if (!root.hasKey("Level", 10) || !level.hasKey("TileEntities", 9)
-                    || !level.hasKey("xPos", 3)
-                    || !level.hasKey("zPos", 3)
+                if (!root.hasKey("Level", Constants.NBT.TAG_COMPOUND)
+                    || !level.hasKey("TileEntities", Constants.NBT.TAG_LIST)
+                    || !level.hasKey("xPos", Constants.NBT.TAG_INT)
+                    || !level.hasKey("zPos", Constants.NBT.TAG_INT)
                     || level.getInteger("xPos") != (shrine.xCoord >> 4)
                     || level.getInteger("zPos") != (shrine.zCoord >> 4))
                     throw new IllegalStateException("Unknown saved shrine chunk");
                 checkShrineBlock(level, shrine, metadata);
-                var tiles = level.getTagList("TileEntities", 10);
+                var tiles = level.getTagList("TileEntities", Constants.NBT.TAG_COMPOUND);
                 if (((NBTTagList) level.getTag("TileEntities")).tagCount() != tiles.tagCount())
                     throw new IllegalStateException("Unknown saved shrine tile list");
                 int count = 0;
@@ -305,8 +316,7 @@ final class MaidLifecycleDurability {
         if (shrine.isInvalid() || !world.getChunkProvider()
             .chunkExists(shrine.xCoord >> 4, shrine.zCoord >> 4)
             || world.getTileEntity(shrine.xCoord, shrine.yCoord, shrine.zCoord) != shrine
-            || world.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord)
-                != com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE
+            || world.getBlock(shrine.xCoord, shrine.yCoord, shrine.zCoord) != MaidResurrectionContent.SHRINE
             || world.getBlockMetadata(shrine.xCoord, shrine.yCoord, shrine.zCoord) != metadata)
             throw new IllegalStateException("Shrine identity changed during redemption");
         shrine.writeToNBT(actual);
@@ -314,20 +324,19 @@ final class MaidLifecycleDurability {
     }
 
     private static void checkShrineBlock(NBTTagCompound level, MaidShrineTile shrine, int metadata) {
-        if (!level.hasKey("Sections", 9)) throw new IllegalStateException("Unknown native shrine block sections");
-        var sections = level.getTagList("Sections", 10);
+        if (!level.hasKey("Sections", Constants.NBT.TAG_LIST))
+            throw new IllegalStateException("Unknown native shrine block sections");
+        var sections = level.getTagList("Sections", Constants.NBT.TAG_COMPOUND);
         if (((NBTTagList) level.getTag("Sections")).tagCount() != sections.tagCount())
             throw new IllegalStateException("Unknown native shrine section entries");
         int count = 0;
         for (int i = 0; i < sections.tagCount(); i++) {
             var section = sections.getCompoundTagAt(i);
-            if (!section.hasKey("Y", 1) || section.getByte("Y") != shrine.yCoord >> 4) continue;
+            if (!section.hasKey("Y", Constants.NBT.TAG_BYTE) || section.getByte("Y") != shrine.yCoord >> 4) continue;
             count++;
             int index = ((shrine.yCoord & 15) << 8) | ((shrine.zCoord & 15) << 4) | (shrine.xCoord & 15);
             int id = EndlessIdsSectionData.blockId(section, index);
-            if (id
-                != net.minecraft.block.Block
-                    .getIdFromBlock(com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent.SHRINE)
+            if (id != Block.getIdFromBlock(MaidResurrectionContent.SHRINE)
                 || EndlessIdsSectionData.metadata(section, index) != metadata)
                 throw new IllegalStateException("Native shrine block or facing changed during save");
         }
@@ -355,14 +364,15 @@ final class MaidLifecycleDurability {
                     .getChunkInputStream(loader.chunkSaveLocation, chunk.xPosition, chunk.zPosition)) {
                     if (input == null) throw new IllegalStateException("No saved native chunk for delivery");
                     var raw = CompressedStreamTools.read(input);
-                    if (!raw.hasKey("Level", 10)) throw new IllegalStateException("Unknown native chunk data root");
+                    if (!raw.hasKey("Level", Constants.NBT.TAG_COMPOUND))
+                        throw new IllegalStateException("Unknown native chunk data root");
                     var level = raw.getCompoundTag("Level");
-                    if (!level.hasKey("xPos", 3) || !level.hasKey("zPos", 3)
+                    if (!level.hasKey("xPos", Constants.NBT.TAG_INT) || !level.hasKey("zPos", Constants.NBT.TAG_INT)
                         || level.getInteger("xPos") != chunk.xPosition
                         || level.getInteger("zPos") != chunk.zPosition
-                        || !level.hasKey("Entities", 9))
+                        || !level.hasKey("Entities", Constants.NBT.TAG_LIST))
                         throw new IllegalStateException("Unknown native chunk entity storage");
-                    var list = level.getTagList("Entities", 10);
+                    var list = level.getTagList("Entities", Constants.NBT.TAG_COMPOUND);
                     if (((NBTTagList) level.getTag("Entities")).tagCount() != list.tagCount())
                         throw new IllegalStateException("Invalid native chunk entity list");
                     for (int i = 0; i < list.tagCount(); i++) stored.add(list.getCompoundTagAt(i));
@@ -452,14 +462,12 @@ final class MaidLifecycleDurability {
             this(entity, null, expected);
         }
 
-        Publication(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid entity,
-            NBTTagCompound expected) {
+        Publication(EntityMaid entity, NBTTagCompound expected) {
             this(entity, null, 0);
             maid = (NBTTagCompound) expected.copy();
         }
 
-        Publication(com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid entity, NBTTagCompound expected,
-            boolean deathSource) {
+        Publication(EntityMaid entity, NBTTagCompound expected, boolean deathSource) {
             this(entity, expected);
             this.deathSource = deathSource;
         }
@@ -499,8 +507,7 @@ final class MaidLifecycleDurability {
                 && (maid != null
                     ? entity instanceof MaidTombstoneEntity || deathSource
                         ? maid.equals(MaidDeathIngress.snapshot(entity))
-                        : entity instanceof com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid actual
-                            && maid.equals(maidSnapshot(actual))
+                        : entity instanceof EntityMaid actual && maid.equals(maidSnapshot(actual))
                     : item == null ? entity instanceof EntityXPOrb orb && orb.xpValue == experience
                         : entity instanceof EntityItem drop
                             && ItemStack.areItemStacksEqual(item, drop.getEntityItem()));
@@ -515,14 +522,15 @@ final class MaidLifecycleDurability {
         }
 
         private boolean matches(NBTTagCompound saved) {
-            var position = saved.getTagList("Pos", 6);
+            var position = saved.getTagList("Pos", Constants.NBT.TAG_DOUBLE);
             if (maid != null) return maid.equals(saved);
-            return saved.hasKey("Pos", 9) && position.tagCount() == 3
+            return saved.hasKey("Pos", Constants.NBT.TAG_LIST) && position.tagCount() == 3
                 && position.func_150309_d(0) == x
                 && position.func_150309_d(1) == y
                 && position.func_150309_d(2) == z
                 && type.equals(saved.getString("id"))
-                && (item == null ? saved.hasKey("Value", 2) && saved.getShort("Value") == experience
+                && (item == null
+                    ? saved.hasKey("Value", Constants.NBT.TAG_SHORT) && saved.getShort("Value") == experience
                     : item.writeToNBT(new NBTTagCompound())
                         .equals(saved.getCompoundTag("Item")));
         }

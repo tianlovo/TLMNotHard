@@ -8,6 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 
 import cpw.mods.fml.relauncher.Side;
@@ -66,7 +67,7 @@ public final class MaidPreviewEntity extends EntityMaid {
 
     /** 受控输入只属于未登记的预览实体，各动作独立开始并沿生产动画读取字段绘制 */
     public void setDevelopmentAction(String name) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) throw new IllegalStateException("Development preview required");
+        if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Development preview required");
         var action = PreviewAction.valueOf(name.toUpperCase(Locale.ROOT));
         previewPoses.clear();
         setSitting(false);

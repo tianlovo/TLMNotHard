@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.ai.enhanced.combat;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -300,7 +301,7 @@ public final class CombatWorldBudget {
         }
 
         private static UUID[] ids(List<UUID> rows) {
-            java.util.Collections.sort(rows);
+            Collections.sort(rows);
             return rows.toArray(new UUID[0]);
         }
     }

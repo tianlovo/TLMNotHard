@@ -8,6 +8,7 @@ import net.minecraft.util.ResourceLocation;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 
 import cpw.mods.fml.relauncher.Side;
@@ -22,7 +23,7 @@ public final class TombstoneRenderObservation {
     private TombstoneRenderObservation() {}
 
     public static void completed(MaidTombstoneEntity tombstone, Object model, ResourceLocation texture, int nameLines) {
-        if (!Boolean.getBoolean("tlmnh.devCommands")) return;
+        if (!DevelopmentFlags.isDevCommandsEnabled()) return;
         var frame = FRAMES.computeIfAbsent(tombstone, ignored -> new Frame());
         if (frame.model != model) {
             frame.model = model;

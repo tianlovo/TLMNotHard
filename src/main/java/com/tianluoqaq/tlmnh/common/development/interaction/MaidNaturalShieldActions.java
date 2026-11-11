@@ -23,6 +23,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
 import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
 import com.google.gson.Gson;
@@ -87,27 +88,27 @@ final class MaidNaturalShieldActions {
     static void validateSnapshot(NBTTagCompound data) {
         if (!data.hasKey(KEY)) return;
         require(
-            data.hasKey(KEY, 10) && data.getString("Phase")
+            data.hasKey(KEY, Constants.NBT.TAG_COMPOUND) && data.getString("Phase")
                 .equals("natural-shield"),
             "Unknown natural shield record retained");
         var record = data.getCompoundTag(KEY);
         for (Object field : record.func_150296_c())
             require(FIELDS.contains(field), "Unknown natural shield field retained");
         require(
-            record.hasKey("Schema", 3) && record.getInteger("Schema") == 1
-                && record.hasKey("Stage", 8)
+            record.hasKey("Schema", Constants.NBT.TAG_INT) && record.getInteger("Schema") == 1
+                && record.hasKey("Stage", Constants.NBT.TAG_STRING)
                 && STAGES.contains(record.getString("Stage"))
-                && record.hasKey("Kind", 8)
+                && record.hasKey("Kind", Constants.NBT.TAG_STRING)
                 && (record.getString("Kind")
                     .equals("bg")
                     || record.getString("Kind")
                         .equals("td")),
             "Unknown natural shield version or stage retained");
         require(
-            record.hasKey("Movement", 6) && Double.isFinite(record.getDouble("Movement"))
-                && record.hasKey("Knockback", 6)
+            record.hasKey("Movement", Constants.NBT.TAG_DOUBLE) && Double.isFinite(record.getDouble("Movement"))
+                && record.hasKey("Knockback", Constants.NBT.TAG_DOUBLE)
                 && Double.isFinite(record.getDouble("Knockback"))
-                && record.hasKey("BeforeShield", 10),
+                && record.hasKey("BeforeShield", Constants.NBT.TAG_COMPOUND),
             "Unknown natural shield source retained");
         list(record, "Inventory");
         var variants = list(record, "Variants");
@@ -116,28 +117,28 @@ final class MaidNaturalShieldActions {
             for (Object key : variant.func_150296_c())
                 require(key.equals("Wear") || key.equals("Inventory"), "Unknown native shield result retained");
             require(
-                variant.hasKey("Wear", 3) && variant.getInteger("Wear") == i - 1,
+                variant.hasKey("Wear", Constants.NBT.TAG_INT) && variant.getInteger("Wear") == i - 1,
                 "Unknown native shield wear result retained");
             list(variant, "Inventory");
         }
         for (String key : new String[] { "Threat", "Arrow" }) if (record.hasKey(key)) require(
-            record.hasKey(key, 8) && UUID.fromString(record.getString(key))
+            record.hasKey(key, Constants.NBT.TAG_STRING) && UUID.fromString(record.getString(key))
                 .toString()
                 .equals(record.getString(key)),
             "Unknown natural projectile identity retained");
         for (String key : new String[] { "StartBlock", "StartCaught", "LaunchTime" }) require(
-            !record.hasKey(key) || record.hasKey(key, 4) && record.getLong(key) >= 0,
+            !record.hasKey(key) || record.hasKey(key, Constants.NBT.TAG_LONG) && record.getLong(key) >= 0,
             "Unknown shield clock retained");
         require(
             !record.hasKey("StartBodyArrows")
-                || record.hasKey("StartBodyArrows", 3) && record.getInteger("StartBodyArrows") >= 0,
+                || record.hasKey("StartBodyArrows", Constants.NBT.TAG_INT) && record.getInteger("StartBodyArrows") >= 0,
             "Unknown shield body count retained");
         require(
-            !record.hasKey("BeforeHealth")
-                || record.hasKey("BeforeHealth", 5) && Float.isFinite(record.getFloat("BeforeHealth")),
+            !record.hasKey("BeforeHealth") || record.hasKey("BeforeHealth", Constants.NBT.TAG_FLOAT)
+                && Float.isFinite(record.getFloat("BeforeHealth")),
             "Unknown shield health input retained");
         for (String key : new String[] { "ActiveObserved", "FrontObserved", "RearObserved" }) require(
-            record.hasKey(key, 1) && record.getByte(key) >= 0 && record.getByte(key) <= 1,
+            record.hasKey(key, Constants.NBT.TAG_BYTE) && record.getByte(key) >= 0 && record.getByte(key) <= 1,
             "Unknown natural shield observation retained");
     }
 
@@ -151,7 +152,7 @@ final class MaidNaturalShieldActions {
             require(
                 attempt.session == session && session.maid.getOffhandItem() == attempt.shield,
                 "Unknown natural shield object successor retained");
-        if (actual.equals(record.getTagList("Inventory", 10))) return;
+        if (actual.equals(record.getTagList("Inventory", Constants.NBT.TAG_COMPOUND))) return;
         require(
             attempt != null && attempt.session == session
                 && record.getString("Stage")
@@ -169,7 +170,9 @@ final class MaidNaturalShieldActions {
             prepare(session, action.endsWith("td"));
             return;
         }
-        require(session.data.hasKey(KEY, 10), "Prepare an independent natural shield case first");
+        require(
+            session.data.hasKey(KEY, Constants.NBT.TAG_COMPOUND),
+            "Prepare an independent natural shield case first");
         verifyInventory(session);
         var attempt = ATTEMPTS.get(session.data.getString("Run"));
         require(
@@ -263,7 +266,7 @@ final class MaidNaturalShieldActions {
                             .getSnapshot().caughtArrows == record.getLong("StartCaught")
                         && session.maid.getArrowCountInEntity() == record.getInteger("StartBodyArrows") + 1
                         && session.maid.getHealth() < record.getFloat("BeforeHealth")
-                        && inventory(session).equals(record.getTagList("Inventory", 10)),
+                        && inventory(session).equals(record.getTagList("Inventory", Constants.NBT.TAG_COMPOUND)),
                     "Actual rear collision did not reject capture/wear and retain native damage");
                 record.setBoolean("RearObserved", true);
                 record.setString("Stage", "rear-verified");
@@ -371,7 +374,9 @@ final class MaidNaturalShieldActions {
             candidate.setTagCompound(changed);
             var variant = new NBTTagCompound();
             variant.setInteger("Wear", wear);
-            variant.setTag("Inventory", replaceOffhand(record.getTagList("Inventory", 10), candidate));
+            variant.setTag(
+                "Inventory",
+                replaceOffhand(record.getTagList("Inventory", Constants.NBT.TAG_COMPOUND), candidate));
             variants.appendTag(variant);
         }
         record.setTag("Variants", variants);
@@ -486,10 +491,10 @@ final class MaidNaturalShieldActions {
                     .getSnapshot().caughtArrows == record.getLong("StartCaught") + 1,
             "Exact native front shield settlement required");
         int wear = result.requestedWear + 1;
-        var variants = record.getTagList("Variants", 10);
+        var variants = record.getTagList("Variants", Constants.NBT.TAG_COMPOUND);
         require(wear >= 0 && wear < variants.tagCount(), "Unplanned native wear retained without equipment cleanup");
         return (NBTTagList) variants.getCompoundTagAt(wear)
-            .getTagList("Inventory", 10)
+            .getTagList("Inventory", Constants.NBT.TAG_COMPOUND)
             .copy();
     }
 
@@ -542,7 +547,7 @@ final class MaidNaturalShieldActions {
         return entity.worldObj == attempt.session.maid.worldObj && AnimationLab.isLab(entity.worldObj)
             && DimensionManager.getWorld(entity.dimension) == entity.worldObj
             && entity.getEntityData()
-                .hasKey(ENTITY_KEY, 10)
+                .hasKey(ENTITY_KEY, Constants.NBT.TAG_COMPOUND)
             && identity(attempt.session).equals(
                 entity.getEntityData()
                     .getCompoundTag(ENTITY_KEY));
@@ -695,10 +700,11 @@ final class MaidNaturalShieldActions {
 
     private static NBTTagList list(NBTTagCompound data, String key) {
         require(
-            data.hasKey(key, 9) && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, 10)
-                .tagCount(),
+            data.hasKey(key, Constants.NBT.TAG_LIST)
+                && ((NBTTagList) data.getTag(key)).tagCount() == data.getTagList(key, Constants.NBT.TAG_COMPOUND)
+                    .tagCount(),
             "Unknown native shield inventory retained");
-        return data.getTagList(key, 10);
+        return data.getTagList(key, Constants.NBT.TAG_COMPOUND);
     }
 
     private static void stage(NBTTagCompound record, String expected) {

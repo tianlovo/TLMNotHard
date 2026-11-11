@@ -1,13 +1,18 @@
 package com.tianluoqaq.tlmnh.common.development.life;
 
+import java.util.UUID;
+
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
@@ -20,7 +25,7 @@ public final class ShrineVisualFixture {
     private ShrineVisualFixture() {}
 
     public static void set(EntityPlayerMP player, String action) {
-        require(Boolean.getBoolean("tlmnh.devCommands"), "Development fixture required");
+        require(DevelopmentFlags.isDevCommandsEnabled(), "Development fixture required");
         AnimationLab.ownedSceneMaid(player);
         require(
             player.openContainer == player.inventoryContainer,
@@ -97,8 +102,7 @@ public final class ShrineVisualFixture {
                 var film = shrine.getFilm();
                 require(
                     !shrine.isInvalid() && (i == 0 ? film == null
-                        : net.minecraft.item.ItemStack.areItemStacksEqual(film, fixtureFilm())
-                            || !ready && film == null),
+                        : ItemStack.areItemStacksEqual(film, fixtureFilm()) || !ready && film == null),
                     "Unexpected shrine inventory retained");
             }
             require(
@@ -107,8 +111,8 @@ public final class ShrineVisualFixture {
         }
     }
 
-    private static net.minecraft.item.ItemStack fixtureFilm() {
-        var stack = new net.minecraft.item.ItemStack(MaidResurrectionContent.FILM);
+    private static ItemStack fixtureFilm() {
+        var stack = new ItemStack(MaidResurrectionContent.FILM);
         var tag = new NBTTagCompound();
         tag.setString("TLMNHFixture", "ShrineVisualFixture");
         stack.setTagCompound(tag);
@@ -132,10 +136,14 @@ public final class ShrineVisualFixture {
         @Override
         public void readFromNBT(NBTTagCompound tag) {
             raw = (NBTTagCompound) tag.copy();
-            require(tag.hasKey("Schema", 3) && tag.getInteger("Schema") == 1, "Unknown shrine fixture schema retained");
-            require(tag.hasKey("Owner", 8) && tag.hasKey("Ready", 1), "Incomplete shrine fixture journal retained");
+            require(
+                tag.hasKey("Schema", Constants.NBT.TAG_INT) && tag.getInteger("Schema") == 1,
+                "Unknown shrine fixture schema retained");
+            require(
+                tag.hasKey("Owner", Constants.NBT.TAG_STRING) && tag.hasKey("Ready", Constants.NBT.TAG_BYTE),
+                "Incomplete shrine fixture journal retained");
             owner = tag.getString("Owner");
-            if (!owner.isEmpty()) java.util.UUID.fromString(owner);
+            if (!owner.isEmpty()) UUID.fromString(owner);
             ready = tag.getBoolean("Ready");
             require(!ready || !owner.isEmpty(), "Ready shrine fixture has no owner; retained");
             readComplete = true;

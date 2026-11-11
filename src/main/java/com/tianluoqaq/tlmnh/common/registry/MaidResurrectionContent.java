@@ -1,5 +1,7 @@
 package com.tianluoqaq.tlmnh.common.registry;
 
+import java.util.Arrays;
+
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.item.Item;
@@ -10,6 +12,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionDiagnostics;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCoreItem;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmItem;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleEvents;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineBlock;
@@ -33,7 +36,7 @@ public final class MaidResurrectionContent {
         .setUnlocalizedName("tlmnh.smart_slab_empty")
         .setTextureName("touhou_little_maid:smart_slab_empty")
         .setCreativeTab(CreativeTabs.tabMisc);
-    public static final Item FILM = new com.tianluoqaq.tlmnh.common.lifecycle.MaidFilmItem().setMaxStackSize(1)
+    public static final Item FILM = new MaidFilmItem().setMaxStackSize(1)
         .setUnlocalizedName("tlmnh.film")
         .setTextureName("touhou_little_maid:film")
         .setCreativeTab(CreativeTabs.tabMisc);
@@ -79,8 +82,8 @@ public final class MaidResurrectionContent {
         TLMNotHard.LOG.info(
             "Natural maid spawning registered: usableBiomes={} configuredBiomes={} weight={} dimensions={}",
             biomes.length,
-            java.util.Arrays.toString(MaidAcquisitionConfig.naturalBiomes),
+            Arrays.toString(MaidAcquisitionConfig.naturalBiomes),
             MaidAcquisitionConfig.naturalWeight,
-            java.util.Arrays.toString(MaidAcquisitionConfig.naturalDimensions));
+            Arrays.toString(MaidAcquisitionConfig.naturalDimensions));
     }
 }

@@ -4,6 +4,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
@@ -206,7 +207,8 @@ public final class MaidInventory implements IInventory {
         for (int index = 0; index < items.tagCount(); index++) {
             var item = items.getCompoundTagAt(index);
             int slot = item.getByte("Slot") & 255;
-            if (!item.hasKey("Slot", 1) || slot >= BACKPACK_SIZE || backpack[slot] != null) recovery.retain(item);
+            if (!item.hasKey("Slot", Constants.NBT.TAG_BYTE) || slot >= BACKPACK_SIZE || backpack[slot] != null)
+                recovery.retain(item);
             else {
                 var stack = ProtectedItemCodec.decode(item);
                 backpack[slot] = stack == null ? ProtectedItemCodec.seal(item, "empty_entry") : stack;

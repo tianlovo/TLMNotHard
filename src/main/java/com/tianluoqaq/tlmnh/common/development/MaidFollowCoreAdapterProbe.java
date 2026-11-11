@@ -7,8 +7,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +51,8 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopSource;
 import com.tianluoqaq.tlmnh.common.ai.faithful.NativeNavigationStopState;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
@@ -89,7 +91,7 @@ public final class MaidFollowCoreAdapterProbe {
 
     private static void run(WorldServer world, boolean fallback, boolean watchdog) {
         require(
-            Boolean.getBoolean("tlmnh.devCommands") && !world.isRemote && world.provider.dimensionId == 0,
+            DevelopmentFlags.isDevCommandsEnabled() && !world.isRemote && world.provider.dimensionId == 0,
             "Dedicated development overworld required");
         var output = new JsonObject();
         output.addProperty(
@@ -116,7 +118,7 @@ public final class MaidFollowCoreAdapterProbe {
         Platform platform = null;
         try {
             var identityClasses = new ArrayList<Class<?>>();
-            java.util.Collections.addAll(
+            Collections.addAll(
                 identityClasses,
                 MaidFollowCoreAdapterProbe.class,
                 StageMaid.class,
@@ -1360,12 +1362,6 @@ public final class MaidFollowCoreAdapterProbe {
     }
 
     private static String sha(byte[] bytes) throws Exception {
-        var result = new StringBuilder();
-        for (byte value : MessageDigest.getInstance("SHA-256")
-            .digest(bytes)) {
-            result.append(Character.forDigit((value & 255) >>> 4, 16));
-            result.append(Character.forDigit(value & 15, 16));
-        }
-        return result.toString();
+        return Sha256Hex.ofBytes(bytes);
     }
 }

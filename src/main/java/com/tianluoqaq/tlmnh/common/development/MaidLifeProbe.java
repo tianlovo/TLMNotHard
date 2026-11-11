@@ -1,5 +1,6 @@
 package com.tianluoqaq.tlmnh.common.development;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -28,7 +29,9 @@ import com.tianluoqaq.tlmnh.common.ai.perception.MaidLifeSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidLifeSelector;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeController;
 import com.tianluoqaq.tlmnh.common.life.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.TileEntitySnackCabinet;
@@ -44,7 +47,7 @@ public final class MaidLifeProbe {
     private MaidLifeProbe() {}
 
     public static void run(WorldServer world) {
-        require(Boolean.getBoolean("tlmnh.devCommands") && !AnimationLab.isLab(world), "Test overworld required");
+        require(DevelopmentFlags.isDevCommandsEnabled() && !AnimationLab.isLab(world), "Test overworld required");
         var spawn = world.getSpawnPoint();
         int x = (spawn.posX >> 4 << 4) + 8, z = (spawn.posZ >> 4 << 4) + 8;
         int y = Math.min(world.getHeight() - 6, Math.max(90, spawn.posY + 8));
@@ -115,7 +118,7 @@ public final class MaidLifeProbe {
             cabinet.setInventorySlotContents(26, null);
             world.setBlock(x, y + 1, z, Blocks.cake, 0, 3);
             int nativePortions = 0;
-            var nativeMetadata = new java.util.ArrayList<Integer>();
+            var nativeMetadata = new ArrayList<Integer>();
             while (world.getBlock(x, y + 1, z) == Blocks.cake && nativePortions < 16) {
                 nativeMetadata.add(world.getBlockMetadata(x, y + 1, z));
                 var hunger = new NBTTagCompound();
@@ -336,7 +339,7 @@ public final class MaidLifeProbe {
                     failure = remember(failure, error);
                 }
                 try {
-                    for (Object value : new java.util.ArrayList<>(world.loadedEntityList)) {
+                    for (Object value : new ArrayList<>(world.loadedEntityList)) {
                         if (value instanceof EntityItem item && !existingEntities.contains(item)
                             && Math.abs(item.posX - x) < 5
                             && Math.abs(item.posZ - z) < 7
@@ -453,7 +456,7 @@ public final class MaidLifeProbe {
     private static void verifyIntentSelection(WorldServer world, EntityMaid maid, EntityPlayerMP owner, int x, int y,
         int z) {
         double px = maid.posX, py = maid.posY, pz = maid.posZ;
-        var controllers = new java.util.ArrayList<MaidLifeController>();
+        var controllers = new ArrayList<MaidLifeController>();
         var saved = new MaidLifeIntent[1];
         try {
             require(world.setBlock(x, y + 1, z, Blocks.cake, 0, 2), "Intent near cake setup");
@@ -550,7 +553,7 @@ public final class MaidLifeProbe {
 
     private static int cakeCount(EntityMaid maid) {
         int total = 0;
-        for (int slot = 0; slot < com.tianluoqaq.tlmnh.common.inventory.MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
             var stack = maid.getMaidInventory()
                 .getStackInSlot(slot);
             if (stack != null && stack.getItem() == Items.cake) total += stack.stackSize;

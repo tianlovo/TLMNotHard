@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.common.combat;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.WeakHashMap;
 
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -41,9 +42,9 @@ public final class MaidCombatFeedback {
 
         final Item item;
         final int metadata;
-        final java.util.UUID owner;
+        final UUID owner;
 
-        Notice(Item item, int metadata, java.util.UUID owner) {
+        Notice(Item item, int metadata, UUID owner) {
             this.item = item;
             this.metadata = metadata;
             this.owner = owner;

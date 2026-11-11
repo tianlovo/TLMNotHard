@@ -6,40 +6,95 @@
  */
 package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 
+import java.util.Objects;
 import java.util.UUID;
 
+import net.minecraft.block.BlockLadder;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.effect.EntityLightningBolt;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityTameable;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.RandomEmoji;
+import com.github.tartaricacid.touhoulittlemaid.entity.data.inner.AttackListData;
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager;
+import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
+import com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage;
+import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.tianluoqaq.tlmnh.TLMNotHard;
+import com.tianluoqaq.tlmnh.common.ai.MaidAquaticController;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.ai.MaidMeleeAttack;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory;
+import com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
+import com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.combat.CombatCadence;
+import com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt;
+import com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch;
+import com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
+import com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState;
+import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions;
+import com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.entity.MaidTeleportParticles;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
+import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidPickupService;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
+import com.tianluoqaq.tlmnh.common.life.meal.MaidMealController;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
+import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
+import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
+import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
+import com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection;
 import com.tianluoqaq.tlmnh.common.protection.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.RecoveryStore;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
+import com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState;
+import com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator;
+
+import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** 原实体的核心状态移植，渲染、交互和行为由独立适配模块接入 */
-public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.registry.IEntityAdditionalSpawnData {
+public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawnData {
 
     public static final String DEFAULT_MODEL_ID = "touhou_little_maid:hakurei_reimu";
     public static final String MODEL_ID_TAG = "ModelId";
@@ -60,7 +115,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final int ENTITY_POSE_MASK = 3 << ENTITY_POSE_SHIFT;
     private static final int SLEEP_DIRECTION_SHIFT = 10;
     private static final int SLEEP_DIRECTION_MASK = 7 << SLEEP_DIRECTION_SHIFT;
-    private com.tianluoqaq.tlmnh.common.entity.MaidEntityPose appliedEntityPose = com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING;
+    private MaidEntityPose appliedEntityPose = MaidEntityPose.STANDING;
     private float poseEyeHeight = 1.5F * .85F;
     // 29 由 MaidHomeArea 使用，声音占用 30
     private static final int DATA_SOUND_PACK = 30;
@@ -73,45 +128,33 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     private static final String OFFHAND_TAG = "TLMNHOffhand";
 
     private final MaidConfigManager configManager = new MaidConfigManager(dataWatcher);
-    private final com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState worldSounds = new com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState(
-        this);
-    private final com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager favorabilityManager = new com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager(
-        this);
+    private final MaidWorldSoundState worldSounds = new MaidWorldSoundState(this);
+    private final FavorabilityManager favorabilityManager = new FavorabilityManager(this);
     private final MaidInventory inventory = new MaidInventory(this);
-    private final com.tianluoqaq.tlmnh.common.inventory.MaidPickupService pickup = new com.tianluoqaq.tlmnh.common.inventory.MaidPickupService(
-        this);
+    private final MaidPickupService pickup = new MaidPickupService(this);
     private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
-    private final com.tianluoqaq.tlmnh.common.life.meal.MaidMealController meals = new com.tianluoqaq.tlmnh.common.life.meal.MaidMealController(
-        this);
+    private final MaidMealController meals = new MaidMealController(this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
-    private final com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation snowballAnimation = new com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation();
-    private final com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory modernCombatMemory = new com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory();
-    private final com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings attackSettings = new com.tianluoqaq.tlmnh.common.combat.MaidAttackSettings();
-    private final com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState combatTaskState = new com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState();
-    private final com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView combatWeaponView = new com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView(
-        this);
-    private final com.tianluoqaq.tlmnh.common.combat.CombatCadence combatCadence = new com.tianluoqaq.tlmnh.common.combat.CombatCadence(
-        this);
-    private final com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt combatHitReceipt = new com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt(
-        this);
-    private final com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch equipmentEpoch = new com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch(
-        this);
+    private final MaidSnowballAnimation snowballAnimation = new MaidSnowballAnimation();
+    private final MaidCombatMemory modernCombatMemory = new MaidCombatMemory();
+    private final MaidAttackSettings attackSettings = new MaidAttackSettings();
+    private final MaidCombatTaskState combatTaskState = new MaidCombatTaskState();
+    private final MaidCombatWeaponView combatWeaponView = new MaidCombatWeaponView(this);
+    private final CombatCadence combatCadence = new CombatCadence(this);
+    private final CombatHitReceipt combatHitReceipt = new CombatHitReceipt(this);
+    private final EquipmentEpoch equipmentEpoch = new EquipmentEpoch(this);
     private final MaidBrainCoordinator brain = new MaidBrainCoordinator(this);
-    private final com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection behaviorProtection = new com.tianluoqaq.tlmnh.common.protection.MaidBehaviorProtection(
-        this);
-    private final com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel dimensionTravel = new com.tianluoqaq.tlmnh.common.lifecycle.MaidDimensionTravel(
-        this);
+    private final MaidBehaviorProtection behaviorProtection = new MaidBehaviorProtection(this);
+    private final MaidDimensionTravel dimensionTravel = new MaidDimensionTravel(this);
     private final Runnable nativeAiTick = () -> super.updateAITasks();
     private final Runnable brainAfterLiving = () -> brain.afterLivingUpdate();
-    private final com.tianluoqaq.tlmnh.common.ai.MaidAquaticController aquatic = new com.tianluoqaq.tlmnh.common.ai.MaidAquaticController(
-        this);
+    private final MaidAquaticController aquatic = new MaidAquaticController(this);
     private final Runnable aquaticBeforeLiving = () -> aquatic.beforeLivingUpdate();
     private final Runnable aquaticAfterLiving = () -> aquatic.afterLivingUpdate();
-    private final com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager chatBubbleManager = new com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager(
-        this);
+    private final ChatBubbleManager chatBubbleManager = new ChatBubbleManager(this);
     private ItemStack offhand;
-    private final com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory damageHistory = new com.tianluoqaq.tlmnh.common.ai.perception.MaidDamageHistory();
+    private final MaidDamageHistory damageHistory = new MaidDamageHistory();
     public boolean guiOpening;
     private Object maidContainer;
     private boolean canClimb;
@@ -125,11 +168,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         // 原版真实实体沿用0.6的迈步高度，1.7.10 LivingEntity的默认值仅为0.5
         stepHeight = 0.6F;
         func_110163_bv();
-        ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
-            .tlmnh$setNavigator(new com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator(this, world));
+        ((MixinEntityNavigator) this).tlmnh$setNavigator(new MaidPathNavigator(this, world));
         getNavigator().setCanSwim(true);
-        ((com.tianluoqaq.tlmnh.mixin.MixinEntityNavigator) this)
-            .tlmnh$setMoveHelper(new com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl(this));
+        ((MixinEntityNavigator) this).tlmnh$setMoveHelper(new MaidMoveControl(this));
         tasks.addTask(0, brain);
     }
 
@@ -150,7 +191,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.addObject(DATA_SOUND_PACK, DefaultMaidSoundPack.getInitSoundPackId());
         MaidHomeArea.register(dataWatcher);
         MaidConfigManager.defineSynchedData(dataWatcher);
-        com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager.defineSynchedData(dataWatcher);
+        ChatBubbleManager.defineSynchedData(dataWatcher);
     }
 
     @Override
@@ -162,7 +203,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         getEntityAttribute(SharedMonsterAttributes.followRange).setBaseValue(64.0D);
         getAttributeMap().registerAttribute(SharedMonsterAttributes.attackDamage)
             .setBaseValue(2.0D);
-        com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.register(getAttributeMap());
+        MaidCombatAttributes.register(getAttributeMap());
     }
 
     @Override
@@ -176,28 +217,21 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     /** 开发选择也进入实体保护边界，工厂或旧清理失败时不重试并保留物品 */
-    public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
-        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile) {
-        return selectBrainProfileForDevelopment(
-            profile,
-            com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
+    public MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(MaidBrainProfile profile) {
+        return selectBrainProfileForDevelopment(profile, MaidFaithfulFlightProfile.SOURCE_ORIGINAL);
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
-        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile,
-        com.tianluoqaq.tlmnh.common.ai.faithful.MaidFaithfulFlightProfile flightProfile) {
-        var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
-            com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
+    public MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(MaidBrainProfile profile,
+        MaidFaithfulFlightProfile flightProfile) {
+        var result = new MaidPolicyRuntime.SelectionResult[] { MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
         behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
         syncCombatProfileFlag();
         return result[0];
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(
-        com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile profile,
-        com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile flightProfile) {
-        var result = new com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult[] {
-            com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
+    public MaidPolicyRuntime.SelectionResult selectBrainProfileForDevelopment(MaidBrainProfile profile,
+        MaidBowAttack.ModernFlightProfile flightProfile) {
+        var result = new MaidPolicyRuntime.SelectionResult[] { MaidPolicyRuntime.SelectionResult.REFUSED_LIFECYCLE };
         behaviorProtection.run(() -> result[0] = brain.selectProfileForDevelopment(profile, flightProfile));
         syncCombatProfileFlag();
         return result[0];
@@ -221,9 +255,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         updateArmSwingProgress();
         if (!worldObj.isRemote && equipmentEpoch != null) equipmentEpoch.afterNativeEquipmentUpdate();
         syncCombatProfileFlag();
-        if (!worldObj.isRemote && itemUses != null) itemUses.advanceUse(
-            (int) getEntityAttribute(com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes.USE_ITEM_SPEED)
-                .getAttributeValue());
+        if (!worldObj.isRemote && itemUses != null)
+            itemUses.advanceUse((int) getEntityAttribute(MaidCombatAttributes.USE_ITEM_SPEED).getAttributeValue());
         if (aquatic != null) behaviorProtection.run(aquaticBeforeLiving);
         super.onLivingUpdate();
         if (aquatic != null) behaviorProtection.run(aquaticAfterLiving);
@@ -236,7 +269,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             syncOffhand();
             syncBackpackShowItem();
             chatBubbleManager.tick();
-            com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare.tick(this);
+            MaidSelfCare.tick(this);
         }
     }
 
@@ -248,13 +281,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     /** 固定上游EntityMixin.positionRider公式；1.7本地玩家眼高原点先转为脚底 */
-    public static net.minecraft.util.Vec3 playerCarryPosition(double x, double y, double z, float playerYOffset,
-        float bodyYaw, boolean descending) {
+    public static Vec3 playerCarryPosition(double x, double y, double z, float playerYOffset, float bodyYaw,
+        boolean descending) {
         float radians = (float) -Math.toRadians(bodyYaw);
-        double offsetX = .75 * net.minecraft.util.MathHelper.sin(radians);
-        double offsetZ = .75 * net.minecraft.util.MathHelper.cos(radians);
-        return net.minecraft.util.Vec3
-            .createVectorHelper(x + offsetX, y - playerYOffset + .15 - (descending ? .3 : 0), z + offsetZ);
+        double offsetX = .75 * MathHelper.sin(radians);
+        double offsetZ = .75 * MathHelper.cos(radians);
+        return Vec3.createVectorHelper(x + offsetX, y - playerYOffset + .15 - (descending ? .3 : 0), z + offsetZ);
     }
 
     /** 原rideTick在原生骑乘更新之后对齐头部/身体，保留上游两个可选Create类型排除 */
@@ -274,7 +306,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                 player.isSneaking());
             setPosition(position.xCoord, position.yCoord, position.zCoord);
         }
-        var id = com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities.id(vehicle);
+        var id = MaidCombatEntities.id(vehicle);
         String type = id == null ? null : id.toString();
         if (!"create:carriage_contraption".equals(type) && !"create:seat".equals(type)) {
             rotationYawHead = vehicle.rotationYaw;
@@ -308,7 +340,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             .wantToSwim()) && super.isPushedByWater();
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.MaidAquaticController getAquaticController() {
+    public MaidAquaticController getAquaticController() {
         return aquatic;
     }
 
@@ -320,12 +352,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (!worldObj.isRemote) configManager.setRideable(value);
     }
 
-    public com.tianluoqaq.tlmnh.common.entity.MaidEntityPose getEntityPose() {
-        return com.tianluoqaq.tlmnh.common.entity.MaidEntityPose
+    public MaidEntityPose getEntityPose() {
+        return MaidEntityPose
             .decode((byte) ((dataWatcher.getWatchableObjectInt(DATA_POSE) & ENTITY_POSE_MASK) >>> ENTITY_POSE_SHIFT));
     }
 
-    public void setEntityPose(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose pose) {
+    public void setEntityPose(MaidEntityPose pose) {
         if (!worldObj.isRemote) dataWatcher.updateObject(
             DATA_POSE,
             (dataWatcher.getWatchableObjectInt(DATA_POSE) & ~ENTITY_POSE_MASK) | pose.ordinal() << ENTITY_POSE_SHIFT);
@@ -336,7 +368,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super.func_145781_i(index);
         if (index == DATA_POSE && appliedEntityPose != getEntityPose()) {
             appliedEntityPose = getEntityPose();
-            com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions.refresh(this, appliedEntityPose);
+            MaidPoseDimensions.refresh(this, appliedEntityPose);
         }
     }
 
@@ -349,23 +381,20 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     public void setScaleForAge(boolean child) {
         var pose = getEntityPose();
-        if (width != pose.width || height != pose.height)
-            com.tianluoqaq.tlmnh.common.entity.MaidPoseDimensions.refresh(this, pose);
+        if (width != pose.width || height != pose.height) MaidPoseDimensions.refresh(this, pose);
     }
 
     /** 现代引擎在 refreshDimensions 时缓存眼高，单改坐姿标志不刷新 */
-    public void refreshPoseEyeHeight(com.tianluoqaq.tlmnh.common.entity.MaidEntityPose pose) {
-        poseEyeHeight = pose == com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING ? .2F
-            : pose.height * (isSitting() ? .65F : .85F);
+    public void refreshPoseEyeHeight(MaidEntityPose pose) {
+        poseEyeHeight = pose == MaidEntityPose.SLEEPING ? .2F : pose.height * (isSitting() ? .65F : .85F);
     }
 
     @Override
-    @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
+    @SideOnly(Side.CLIENT)
     public void handleHealthUpdate(byte state) {
         if (state >= 100 && state <= 102) spawnRestoreHealthParticle(state - 100 + 7);
-        else if (state == 46) com.tianluoqaq.tlmnh.common.entity.MaidTeleportParticles.show(this);
-        else if (state == com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation.STATUS)
-            snowballAnimation.start(this);
+        else if (state == 46) MaidTeleportParticles.show(this);
+        else if (state == MaidSnowballAnimation.STATUS) snowballAnimation.start(this);
         else super.handleHealthUpdate(state);
     }
 
@@ -391,7 +420,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         super.damageEntity(source, amount);
         // 目标版没有LivingDamageEvent，在原生护甲/吸收处理完成后响应实际扣血
         if (worldObj != null && !worldObj.isRemote && chatBubbleManager != null && getHealth() < before)
-            com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.RandomEmoji.addHurtChatText(this);
+            RandomEmoji.addHurtChatText(this);
     }
 
     @Override
@@ -430,7 +459,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return configManager;
     }
 
-    public com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState getWorldSoundState() {
+    public MaidWorldSoundState getWorldSoundState() {
         return worldSounds;
     }
 
@@ -486,9 +515,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             }
         }
         if (!vertical) return false;
-        int x = net.minecraft.util.MathHelper.floor_double(posX);
-        int y = net.minecraft.util.MathHelper.floor_double(boundingBox.minY);
-        int z = net.minecraft.util.MathHelper.floor_double(posZ);
+        int x = MathHelper.floor_double(posX);
+        int y = MathHelper.floor_double(boundingBox.minY);
+        int z = MathHelper.floor_double(posZ);
         // 固定现代Forge默认只判当前格；目标整包运行时可能强制全身体扫描，不能继承其提前触发
         boolean ladder = modernLadderAt(x, y, z);
         int ladderY = y;
@@ -498,7 +527,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         }
         if (ladder) {
             climbFallDelayTicks = 30;
-            if (worldObj.getBlock(x, ladderY, z) instanceof net.minecraft.block.BlockLadder) {
+            if (worldObj.getBlock(x, ladderY, z) instanceof BlockLadder) {
                 int meta = worldObj.getBlockMetadata(x, ladderY, z);
                 int yaw = switch (meta) {
                     case 2 -> 0;
@@ -528,14 +557,12 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     @Override
     protected String getHurtSound() {
-        return worldObj.isRemote ? com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.hurt")
-            : worldSounds == null ? null : worldSounds.hurt();
+        return worldObj.isRemote ? SoundUtil.name("ai.hurt") : worldSounds == null ? null : worldSounds.hurt();
     }
 
     @Override
     protected String getDeathSound() {
-        return worldObj.isRemote ? com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.death")
-            : worldSounds == null ? null : worldSounds.death();
+        return worldObj.isRemote ? SoundUtil.name("ai.death") : worldSounds == null ? null : worldSounds.death();
     }
 
     @Override
@@ -550,11 +577,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (name.startsWith(prefix + "maid.")) {
             // 旧版受伤状态包也会在客户端调用，女仆语音只由服务端消息负责，避免重复
             String event = name.substring(prefix.length());
-            if (!worldObj.isRemote && com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.events()
-                .contains(event))
-                com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork.send(
-                    this,
-                    new com.github.tartaricacid.touhoulittlemaid.network.message.PlayMaidSoundMessage(this, event));
+            if (!worldObj.isRemote && BuiltinSoundCatalog.events()
+                .contains(event)) MaidSoundNetwork.send(this, new PlayMaidSoundMessage(this, event));
             return;
         }
         if (!isSilent()) super.playSound(name, volume, pitch);
@@ -564,11 +588,11 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         if (!worldObj.isRemote) worldSounds.tryPickup();
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.ChatBubbleManager getChatBubbleManager() {
+    public ChatBubbleManager getChatBubbleManager() {
         return chatBubbleManager;
     }
 
-    public com.tianluoqaq.tlmnh.common.life.meal.MaidMealController getMealController() {
+    public MaidMealController getMealController() {
         return meals;
     }
 
@@ -615,7 +639,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return brain;
     }
 
-    public com.tianluoqaq.tlmnh.common.entity.MaidSnowballAnimation getSnowballAnimation() {
+    public MaidSnowballAnimation getSnowballAnimation() {
         return snowballAnimation;
     }
 
@@ -657,9 +681,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         int updated = active ? flags | pose.getMask() : flags & ~pose.getMask();
         if (pose == MaidPose.SLEEPING && !active) updated &= ~SLEEP_DIRECTION_MASK;
         dataWatcher.updateObject(DATA_POSE, updated);
-        if (pose == MaidPose.SLEEPING && ((flags & pose.getMask()) != 0) != active) setEntityPose(
-            active ? com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.SLEEPING
-                : com.tianluoqaq.tlmnh.common.entity.MaidEntityPose.STANDING);
+        if (pose == MaidPose.SLEEPING && ((flags & pose.getMask()) != 0) != active)
+            setEntityPose(active ? MaidEntityPose.SLEEPING : MaidEntityPose.STANDING);
     }
 
     /** 0..3沿旧床metadata方向；-1为无已确认床，不把未知值猜成南向 */
@@ -678,10 +701,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     public boolean interact(EntityPlayer player) {
         var held = player == null ? null
-            : com.tianluoqaq.tlmnh.common.protection.IntegrationGuard.call(
-                com.tianluoqaq.tlmnh.common.protection.ExternalFeature.PLAYER_OFFHAND,
-                () -> player.getCurrentEquippedItem(),
-                () -> null);
+            : IntegrationGuard.call(ExternalFeature.PLAYER_OFFHAND, () -> player.getCurrentEquippedItem(), () -> null);
         boolean nameTag = held != null && held.getItem() == Items.name_tag;
         // 返回未处理会进入ItemNameTag原生分支，拒绝时也要阻止它绕过女仆权限
         if (!MaidInteractions.canInteract(this, player)) return nameTag;
@@ -692,14 +712,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                 getNavigator().clearPathEntity();
                 setAttackTarget(null);
                 worldObj.setEntityState(this, (byte) 7);
-                playSound(com.github.tartaricacid.touhoulittlemaid.util.SoundUtil.name("ai.tamed"), 1, 1);
+                playSound(SoundUtil.name("ai.tamed"), 1, 1);
             }
             return true;
         }
         if (!isOwner(player)) return nameTag;
         // 上游主人交互仅使用主手；Backhand 仍可从实际副手槽进行野生驯服
         if (!MaidInteractions.isMainHand(player)) return nameTag;
-        if (com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService.interact(this, player, held)) return true;
+        if (MaidCaptureService.interact(this, player, held)) return true;
         if (MaidInteractions.interactOwned(this, player, held)) return true;
         if (!worldObj.isRemote) {
             if (player.isSneaking() && held == null) {
@@ -745,7 +765,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     /** Forge先构造新窗口再关闭旧窗口，旧会话只能释放自身 */
     public void openMaidContainer(Object container) {
-        maidContainer = java.util.Objects.requireNonNull(container, "container");
+        maidContainer = Objects.requireNonNull(container, "container");
         guiOpening = true;
     }
 
@@ -799,23 +819,23 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         return profile.bow() ? MaidTask.RANGED_ATTACK : profile.melee() ? MaidTask.ATTACK : MaidTask.IDLE;
     }
 
-    public com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState getCombatTaskState() {
+    public MaidCombatTaskState getCombatTaskState() {
         return combatTaskState;
     }
 
-    public com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile getCombatWeaponProfile() {
+    public MaidWeaponProfile getCombatWeaponProfile() {
         return combatWeaponView.current();
     }
 
-    public com.tianluoqaq.tlmnh.common.combat.CombatCadence getCombatCadence() {
+    public CombatCadence getCombatCadence() {
         return combatCadence;
     }
 
-    public com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt getCombatHitReceipt() {
+    public CombatHitReceipt getCombatHitReceipt() {
         return combatHitReceipt;
     }
 
-    public com.tianluoqaq.tlmnh.common.combat.EquipmentEpoch getEquipmentEpoch() {
+    public EquipmentEpoch getEquipmentEpoch() {
         return equipmentEpoch;
     }
 
@@ -845,7 +865,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         dataWatcher.updateObject(DATA_HUNGER, Math.max(0, value));
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.favorability.FavorabilityManager getFavorabilityManager() {
+    public FavorabilityManager getFavorabilityManager() {
         return favorabilityManager;
     }
 
@@ -858,7 +878,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     @Override
-    public void onStruckByLightning(net.minecraft.entity.effect.EntityLightningBolt lightning) {
+    public void onStruckByLightning(EntityLightningBolt lightning) {
         super.onStruckByLightning(lightning);
         if (!worldObj.isRemote && !isStruckByLightning()) {
             var health = getEntityAttribute(SharedMonsterAttributes.maxHealth);
@@ -869,14 +889,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
 
     public void onMaidStartSleeping() {
         setHealth(getMaxHealth());
-        favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.SLEEP);
+        favorabilityManager.apply(Type.SLEEP);
     }
 
-    public com.tianluoqaq.tlmnh.common.ai.faithful.MaidCombatMemory getModernCombatMemory() {
+    public MaidCombatMemory getModernCombatMemory() {
         return modernCombatMemory;
     }
 
-    public com.github.tartaricacid.touhoulittlemaid.entity.data.inner.AttackListData getAttackListData() {
+    public AttackListData getAttackListData() {
         return attackSettings.data();
     }
 
@@ -909,15 +929,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         setPickupExperience(enabled);
     }
 
-    public boolean pickupItem(net.minecraft.entity.item.EntityItem item, boolean simulate) {
+    public boolean pickupItem(EntityItem item, boolean simulate) {
         return pickup.pickupItem(item, simulate);
     }
 
-    public void pickupXPOrb(net.minecraft.entity.item.EntityXPOrb orb) {
+    public void pickupXPOrb(EntityXPOrb orb) {
         pickup.pickupExperience(orb);
     }
 
-    public boolean pickupArrow(net.minecraft.entity.projectile.EntityArrow arrow, boolean simulate) {
+    public boolean pickupArrow(EntityArrow arrow, boolean simulate) {
         return pickup.pickupArrow(arrow, simulate);
     }
 
@@ -943,8 +963,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     }
 
     public void setSoundPackId(String id) {
-        if (com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog.get(id) != null)
-            dataWatcher.updateObject(DATA_SOUND_PACK, id);
+        if (BuiltinSoundCatalog.get(id) != null) dataWatcher.updateObject(DATA_SOUND_PACK, id);
     }
 
     /** 原版背包第六格的显示副本，随实体元数据同步给全部追踪玩家 */
@@ -999,8 +1018,8 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
         var previous = before.getTag("BehaviorExt");
         var current = extraSaveData.getTag("BehaviorExt");
         var proposed = after.getTag("BehaviorExt");
-        if (!java.util.Objects.equals(previous, current)) return false;
-        if (java.util.Objects.equals(current, proposed)) return true;
+        if (!Objects.equals(previous, current)) return false;
+        if (Objects.equals(current, proposed)) return true;
         if (current != null && !(current instanceof NBTTagCompound)) return false;
         if (proposed != null && !(proposed instanceof NBTTagCompound)) return false;
         if (proposed == null || ((NBTTagCompound) proposed).hasNoTags()) extraSaveData.removeTag("BehaviorExt");
@@ -1041,7 +1060,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             RecoveryStore.TAG,
             inventory.recovery()
                 .write());
-        var equipment = new net.minecraft.nbt.NBTTagList();
+        var equipment = new NBTTagList();
         for (int slot = 0; slot < 5; slot++) {
             var stack = getEquipmentInSlot(slot);
             equipment.appendTag(stack == null ? new NBTTagCompound() : ProtectedItemCodec.encode(stack));
@@ -1084,14 +1103,14 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             sanitized.removeTag("Equipment");
             super.readEntityFromNBT(sanitized);
             inventory.recovery()
-                .read(tag.getTagList(RecoveryStore.TAG, 10));
+                .read(tag.getTagList(RecoveryStore.TAG, Constants.NBT.TAG_COMPOUND));
             inventory.recovery()
                 .retainInvalidList(tag, "Equipment");
             inventory.recovery()
                 .retainInvalidList(tag, MAID_INVENTORY_TAG);
             inventory.recovery()
                 .retainInvalidList(tag, RecoveryStore.TAG);
-            var equipment = tag.getTagList("Equipment", 10);
+            var equipment = tag.getTagList("Equipment", Constants.NBT.TAG_COMPOUND);
             for (int slot = 0; slot < 5; slot++) setCurrentItemOrArmor(
                 slot,
                 slot < equipment.tagCount() ? ProtectedItemCodec.decode(equipment.getCompoundTagAt(slot)) : null);
@@ -1105,13 +1124,15 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
                     getUniqueID(),
                     extraSaveData.getInteger("Schema"));
             }
-            setModelId(tag.hasKey(MODEL_ID_TAG, 8) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
-            if (tag.hasKey(SOUND_PACK_ID_TAG, 8)) setSoundPackId(tag.getString(SOUND_PACK_ID_TAG));
+            setModelId(
+                tag.hasKey(MODEL_ID_TAG, Constants.NBT.TAG_STRING) ? tag.getString(MODEL_ID_TAG) : DEFAULT_MODEL_ID);
+            if (tag.hasKey(SOUND_PACK_ID_TAG, Constants.NBT.TAG_STRING))
+                setSoundPackId(tag.getString(SOUND_PACK_ID_TAG));
             setSilent(tag.getBoolean("Silent"));
             configManager.readAdditionalSaveData(tag);
             dataWatcher.updateObject(DATA_TASK, combatTaskState.load(tag));
-            hadCombatCadenceData = tag.hasKey(com.tianluoqaq.tlmnh.common.combat.CombatCadence.TAG);
-            hadCombatReceiptData = tag.hasKey(com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt.TAG);
+            hadCombatCadenceData = tag.hasKey(CombatCadence.TAG);
+            hadCombatReceiptData = tag.hasKey(CombatHitReceipt.TAG);
             combatCadence.load(tag);
             combatHitReceipt.load(tag);
             equipmentEpoch.invalidate();
@@ -1129,9 +1150,9 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
             favorabilityManager.refreshAttributes();
             if (tag.hasKey("PickupItems")) setPickupItems(tag.getBoolean("PickupItems"));
             if (tag.hasKey("PickupExperience")) setPickupExperience(tag.getBoolean("PickupExperience"));
-            if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience") && tag.hasKey("MaidIsPickup", 1))
-                setPickup(tag.getBoolean("MaidIsPickup"));
-            inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, 10));
+            if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience")
+                && tag.hasKey("MaidIsPickup", Constants.NBT.TAG_BYTE)) setPickup(tag.getBoolean("MaidIsPickup"));
+            inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, Constants.NBT.TAG_COMPOUND));
             setOffhandItem(ProtectedItemCodec.decodeField(tag, OFFHAND_TAG));
             home.load(tag);
             attackSettings.load(tag);
@@ -1162,7 +1183,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     public void onDeath(DamageSource source) {
         super.onDeath(source);
         if (!worldObj.isRemote && dead) {
-            favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.DEATH);
+            favorabilityManager.apply(Type.DEATH);
             MaidDeathService.preserve(this);
             brain.resetTask();
         }
@@ -1188,8 +1209,7 @@ public class EntityMaid extends EntityTameable implements cpw.mods.fml.common.re
     @Override
     protected void dropEquipment(boolean recentlyHit, int looting) {
         meals.cancel();
-        if (!worldObj.isRemote && dead)
-            favorabilityManager.apply(com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type.DEATH);
+        if (!worldObj.isRemote && dead) favorabilityManager.apply(Type.DEATH);
         if (MaidDeathService.preserve(this)) return;
         MaidDeathService.dropUnowned(this);
     }

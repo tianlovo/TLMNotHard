@@ -1,5 +1,11 @@
 package com.tianluoqaq.tlmnh.common.ai.faithful;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import net.minecraft.pathfinding.PathEntity;
+
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.ride.MaidRideBegTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidAwaitTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidBedTask;
@@ -25,8 +31,10 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidSwimJum
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidUpdateActivityFromSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidWorkMealTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 /** 固定原版首版保留活动的Brain实现；原版对照和完整测评准入另行验收 */
 public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulActions {
@@ -73,10 +81,10 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
         workStealMove = new MaidStealEdibleMoveBlockTask(.6F);
     private final MaidStealEdibleUseTask idleStealUse = new MaidStealEdibleUseTask(2),
         workStealUse = new MaidStealEdibleUseTask(2);
-    private final com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos schedulePos = new com.github.tartaricacid.touhoulittlemaid.entity.passive.SchedulePos();
-    private final java.util.Map<String, MaidActivityState.Activity> priority99 = new java.util.HashMap<>();
-    private final java.util.Map<String, MaidActivityState.Activity> priority5 = new java.util.HashMap<>();
-    private final java.util.Map<String, MaidActivityState.Activity> priority20 = new java.util.HashMap<>();
+    private final SchedulePos schedulePos = new SchedulePos();
+    private final Map<String, MaidActivityState.Activity> priority99 = new HashMap<>();
+    private final Map<String, MaidActivityState.Activity> priority5 = new HashMap<>();
+    private final Map<String, MaidActivityState.Activity> priority20 = new HashMap<>();
     private boolean climbRunning;
     private long climbDeadline;
     private FollowCoreLookDriver.State lookState = new FollowCoreLookDriver.State();
@@ -90,8 +98,8 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     }
 
     public MaidFaithfulBrain(EntityMaid maid, MaidFaithfulFlightProfile flightProfile) {
-        this.maid = java.util.Objects.requireNonNull(maid, "maid");
-        this.flightProfile = java.util.Objects.requireNonNull(flightProfile, "flightProfile");
+        this.maid = Objects.requireNonNull(maid, "maid");
+        this.flightProfile = Objects.requireNonNull(flightProfile, "flightProfile");
         actor = new ModernFollowCoreActor(maid, flightProfile.bowProfile());
         perception = new MaidModernPerception(maid, actor::isCurrent);
         actor.bindPerception(perception);
@@ -204,10 +212,10 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                         if (!actor.isCurrent()) return;
                     }
                 } else if (group == MaidActivityState.Activity.WORK || group == MaidActivityState.Activity.RIDE_WORK) {
-                    if (maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.ATTACK) {
+                    if (maid.getTask() == MaidTask.ATTACK) {
                         combat.startTasks(actor, group == MaidActivityState.Activity.RIDE_WORK);
                         if (!actor.isCurrent()) return;
-                    } else if (maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.RANGED_ATTACK) {
+                    } else if (maid.getTask() == MaidTask.RANGED_ATTACK) {
                         (group == MaidActivityState.Activity.RIDE_WORK ? rangedRide : rangedWork)
                             .startTasks(actor, actor.hasVisibleLivingMemory());
                         if (!actor.isCurrent()) return;
@@ -225,8 +233,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             if (activities.active() == MaidActivityState.Activity.RIDE_IDLE) rideIdleLook.tryStart(actor, true);
             if (activities.active() == MaidActivityState.Activity.IDLE) absentContent
                 .visitFindHomeMeal(!actor.hasLifeWalkTarget() && actor.workTarget() == null, actor::nextWorldInt);
-            if (activities.active() == MaidActivityState.Activity.WORK
-                && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE
+            if (activities.active() == MaidActivityState.Activity.WORK && maid.getTask() == MaidTask.IDLE
                 && actor.attackTarget() == null
                 && snowFind.checkExtraStartConditions(actor)) {
                 actor.nextWorldInt(1);
@@ -242,8 +249,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                 rideWorkBegRunning = true;
                 actor.nextWorldInt(1);
             }
-            if (activities.active() == MaidActivityState.Activity.WORK
-                && maid.getTask() == com.tianluoqaq.tlmnh.common.entity.MaidTask.IDLE
+            if (activities.active() == MaidActivityState.Activity.WORK && maid.getTask() == MaidTask.IDLE
                 && !snowRunning
                 && snowThrow.checkExtraStartConditions(actor)) {
                 snowRunning = true;
@@ -365,9 +371,9 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
     }
 
     @Override
-    public net.minecraft.pathfinding.PathEntity peekActivePath() {
+    public PathEntity peekActivePath() {
         var path = actor.peekPathMemory();
-        return path == null ? null : (net.minecraft.pathfinding.PathEntity) path.getIdentity();
+        return path == null ? null : (PathEntity) path.getIdentity();
     }
 
     @Override

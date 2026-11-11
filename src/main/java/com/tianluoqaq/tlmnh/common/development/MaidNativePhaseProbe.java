@@ -23,6 +23,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidAfterNavigationGate;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
+import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 
 /** 真实原生AI调用栈的阶段组件，不登记实体、不冒充世界自然tick或跟随成绩 */
 public final class MaidNativePhaseProbe {
@@ -34,7 +35,7 @@ public final class MaidNativePhaseProbe {
     }
 
     public static void run(WorldServer world, boolean earlyDispatchFault) {
-        if (!Boolean.getBoolean("tlmnh.devCommands") || world == null || world.isRemote)
+        if (!DevelopmentFlags.isDevCommandsEnabled() || world == null || world.isRemote)
             throw new IllegalArgumentException("Development server required");
         var output = new JsonObject();
         output.addProperty("schema", "tlmnh-native-ai-phase-v1");
