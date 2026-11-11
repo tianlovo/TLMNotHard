@@ -94,7 +94,8 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
 
     public void acceptSnapshot(MaidAttackListPayload payload) {
         if (!maid.worldObj.isRemote || !payload.matchesIdentity(this)
-            || (payload.task() != MaidTask.IDLE) != attackPage) return;
+            || payload.task()
+                .isCombatTask() != attackPage) return;
         if (!ready) {
             openedTask = payload.task();
             baseline.clear();
@@ -135,9 +136,10 @@ public final class TaskConfigContainer extends AbstractMaidContainer {
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
         boolean accepted = super.enchantItem(player, action);
-        if (accepted && action >= MaidContainerProtocol.ACTION_IDLE
-            && action <= MaidContainerProtocol.ACTION_RANGED
-            && player.openContainer == this) openTaskConfiguration(player);
+        if (accepted && (action >= MaidContainerProtocol.ACTION_IDLE && action <= MaidContainerProtocol.ACTION_RANGED
+            || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
+            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING) && player.openContainer == this)
+            openTaskConfiguration(player);
         return accepted;
     }
 

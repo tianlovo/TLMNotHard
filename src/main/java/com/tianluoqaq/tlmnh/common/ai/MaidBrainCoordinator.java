@@ -31,10 +31,12 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReaso
 import com.tianluoqaq.tlmnh.common.ai.telemetry.MaidTelemetryEvent.WorkComponent;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.foundation.ModContext;
 import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
+import com.tianluoqaq.tlmnh.common.work.coordinator.MaidWorkModeCoordinator;
 
 /** 唯一服务端任务入口，战斗优先打断生活动作，路径和目标由当前动作独占 */
 public final class MaidBrainCoordinator extends EntityAIBase {
@@ -48,6 +50,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     private final MaidOwnerSensor ownerSensor;
     private final MaidDangerSensor dangerSensor;
     private final MaidHurtMemory hurtMemory = new MaidHurtMemory();
+    private final MaidWorkModeCoordinator workModeCoordinator = new MaidWorkModeCoordinator(
+        CompatServices::maintenanceHatch,
+        CompatServices::cropsNhBreeding,
+        EntityMaid::getBreedingTaskConfig);
     private MaidPolicyRuntime policy;
     private final MaidAfterNavigationGate afterNavigationGate = new MaidAfterNavigationGate();
     private final MaidAfterNavigationGate afterLivingGate = new MaidAfterNavigationGate();
@@ -624,6 +630,7 @@ public final class MaidBrainCoordinator extends EntityAIBase {
     }
 
     private void cancelControllers() {
+        workModeCoordinator.reset();
         if (legacy != null) legacy.clearOrdinaryIntents();
         MaidWorldNavigationBudget.cancel(maid);
         traversal.clear();
@@ -724,6 +731,10 @@ public final class MaidBrainCoordinator extends EntityAIBase {
 
     public MaidOwnerSensor getOwnerSensor() {
         return ownerSensor;
+    }
+
+    public MaidWorkModeCoordinator getWorkModeCoordinator() {
+        return workModeCoordinator;
     }
 
     public MaidBoundedPathPlanner.Attempt getLastCombatPathAttempt() {

@@ -5,8 +5,10 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
+import com.tianluoqaq.tlmnh.common.work.coordinator.MaidWorkItems;
 
 import gregtech.api.enums.ItemList;
 import gregtech.api.objects.OreDictItemStack;
@@ -22,7 +24,8 @@ final class GregTechProgression {
     static void register() {
         for (var ore : new String[] { ProgressionIds.ID_PLATESTEEL, ProgressionIds.ID_PLATEBRONZE,
             ProgressionIds.ID_GEMLAPIS, ProgressionIds.ID_PLANKWOOD, ProgressionIds.ID_BLOCKWOOL,
-            ProgressionIds.ID_CIRCUITBASIC, ProgressionIds.ID_BEDWOOD })
+            ProgressionIds.ID_CIRCUITBASIC, ProgressionIds.ID_BEDWOOD, ProgressionIds.ID_STICKWOOD,
+            ProgressionIds.ID_PLATEGOLD, ProgressionIds.ID_NUGGETGOLD })
             if (OreDictionary.getOres(ore)
                 .isEmpty()) throw new IllegalStateException(ProgressionDiagnostics.MSG_MISSING_PROGRESSION_INPUT + ore);
         var cake = ItemList.Food_Baked_Cake.get(ProgressionTuning.GET_SINGLE_UNIT);
@@ -69,6 +72,24 @@ final class GregTechProgression {
             new ItemStack(MaidLifeContent.snackCabinet),
             new Object[] { ProgressionIds.KEY_PPP, ProgressionIds.KEY_SCS, ProgressionIds.KEY_PPP, 'P',
                 ProgressionIds.ID_PLANKWOOD, 'S', ProgressionIds.ID_PLATESTEEL, 'C', new ItemStack(Blocks.chest) });
+        if (MaidWorkItems.maintenanceBell != null) {
+            add(
+                new ItemStack(MaidWorkItems.maintenanceBell),
+                new Object[] { ProgressionIds.KEY_TOP_STICK, ProgressionIds.KEY_MID_BELL, ProgressionIds.KEY_BOT_NUGGET,
+                    'S', ProgressionIds.ID_STICKWOOD, 'P', ProgressionIds.ID_PLATESTEEL, 'G',
+                    ProgressionIds.ID_PLATEGOLD, 'N', ProgressionIds.ID_NUGGETGOLD });
+        }
+        if (MaidWorkItems.breedingBell != null) {
+            var cropIcon = CompatServices.cropsNhBreeding()
+                .createCropSticksStack(ProgressionTuning.GET_SINGLE_UNIT);
+            var cropIngredient = cropIcon != null && cropIcon.getItem() != null && cropIcon.stackSize > 0 ? cropIcon
+                : new ItemStack(Items.wheat_seeds);
+            add(
+                new ItemStack(MaidWorkItems.breedingBell),
+                new Object[] { ProgressionIds.KEY_TOP_STICK, ProgressionIds.KEY_MID_BELL, ProgressionIds.KEY_BOT_CROP,
+                    'S', ProgressionIds.ID_STICKWOOD, 'P', ProgressionIds.ID_PLATEBRONZE, 'G',
+                    ProgressionIds.ID_PLATEGOLD, 'C', cropIngredient });
+        }
     }
 
     private static void add(ItemStack output, Object[] input) {

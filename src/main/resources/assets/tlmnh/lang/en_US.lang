@@ -179,3 +179,68 @@ gui.touhou_little_maid.bauble_button.open.desc=Open Bauble Inventory
 gui.touhou_little_maid.bauble_button.close.desc=Return to Maid Backpack
 gui.touhou_little_maid.bauble_button.need_favorability_level=Requires Favorability Level %d
 container.tlmnh.maid_baubles=Maid Baubles
+
+# === Wave B (Stage 3 & 4: Maintenance/Breeding Bells, Maintenance Hatch, CropsNH Breeding & Alerts) ===
+item.tlmnh.maintenance_bell.name=Maintenance Bell
+item.tlmnh.breeding_bell.name=Breeding Bell
+
+task.touhou_little_maid.maintenance_hatch=Maintenance Hatch
+task.touhou_little_maid.maintenance_hatch.desc=Patrols chunks bound to the Maintenance Bell and repairs ordinary GregTech Maintenance Hatches without side effects
+task.touhou_little_maid.cropsnh_breeding=Crop Breeding
+task.touhou_little_maid.cropsnh_breeding.desc=Crossbreeds CropsNH crops, replaces wrong soil/subsoil with real tools, and purifies seed stats on a bound 3x3 plot
+task.tlmnh.maintenance_hatch=Maintenance Hatch
+task.tlmnh.cropsnh_breeding=Crop Breeding
+
+tooltip.tlmnh.bell.unbound=§7Unbound (Sneak + Right-Click ground to bind)
+tooltip.tlmnh.bell.clear_hint=§8Place alone in a crafting grid to clear bindings
+tooltip.tlmnh.bell.maintenance.summary=§bDim %d §7| §eBound Chunks: %d / %d
+tooltip.tlmnh.bell.maintenance.chunk=§7  - Chunk [%d, %d]
+tooltip.tlmnh.bell.hold_shift=§8  ...and %d more chunk(s)
+tooltip.tlmnh.bell.breeding.summary=§aDim %d §7| §e3x3 Center Soil: (%d, %d, %d)
+
+message.tlmnh.bell.maintenance.bound=§a[Maintenance Bell] Bound chunk [%d, %d] (%d / %d).
+message.tlmnh.bell.maintenance.unbound=§e[Maintenance Bell] Unbound chunk [%d, %d] (%d / %d).
+message.tlmnh.bell.maintenance.cleared=§e[Maintenance Bell] Removed last chunk; bell is now unbound.
+message.tlmnh.bell.maintenance.limit=§c[Maintenance Bell] Cannot bind more than %d chunks!
+message.tlmnh.bell.maintenance.span=§c[Maintenance Bell] Chunk span exceeded (max %d, candidate %d x %d)!
+message.tlmnh.bell.maintenance.wrong_dim=§c[Maintenance Bell] Already bound to dimension %d; clear in crafting grid first.
+
+message.tlmnh.bell.breeding.bound=§a[Breeding Bell] Bound 3x3 plot [(%d, %d, %d) ~ (%d, %d)].
+message.tlmnh.bell.breeding.unbound=§e[Breeding Bell] Unbound 3x3 plot at (%d, %d, %d).
+message.tlmnh.bell.breeding.unloaded=§c[Breeding Bell] Target 3x3 plot overlaps unloaded chunks.
+message.tlmnh.bell.breeding.invalid_soil=§c[Breeding Bell] (%d, %d, %d) is not an acceptable CropsNH soil or tillable dirt.
+message.tlmnh.bell.breeding.above_blocked=§c[Breeding Bell] Crop space at (%d, %d, %d) is obstructed.
+message.tlmnh.bell.breeding.no_mod=§c[Breeding Bell] CropsNH is not loaded.
+
+chat.tlmnh.maid.missing_condition=§e[%s]§r Master, I cannot continue [%s] work: %s.
+chat.tlmnh.maid.missing_separator=; 
+chat.tlmnh.missing.maintenance_bell=missing Maintenance Bell in baubles
+chat.tlmnh.missing.unbound_maintenance_bell=equipped Maintenance Bell has no bound chunks
+chat.tlmnh.missing.wrong_dim_maintenance_bell=Maintenance Bell is bound to dimension %s
+chat.tlmnh.missing.gt_wrench_offhand=missing GregTech Wrench in offhand
+chat.tlmnh.missing.breeding_bell=missing Breeding Bell in baubles
+chat.tlmnh.missing.unbound_breeding_bell=equipped Breeding Bell has no bound 3x3 plot
+chat.tlmnh.missing.wrong_dim_breeding_bell=Breeding Bell is bound to dimension %s
+chat.tlmnh.missing.plot_obstructed=plot block (%s) is obstructed or unbreakable
+chat.tlmnh.missing.breeding_target_config=no target crop or mutation pool selected in Task Config
+chat.tlmnh.missing.unsupported_in_world_crop=target [%s] cannot be bred or grown on in-world crop sticks
+chat.tlmnh.missing.cropsnh_spade=missing CropsNH Spade in hands or backpack
+chat.tlmnh.missing.crop_sticks=need %s more Crop Sticks
+chat.tlmnh.missing.parent_seeds=missing parent/mother seeds for [%s] (viable parents: %s)
+chat.tlmnh.missing.soil_block=missing required soil block (%s)
+chat.tlmnh.missing.subsoil_block=missing required under-block/ore (%s)
+chat.tlmnh.missing.harvest_tool=missing harvest tool for [%s] (requires %s)
+message.tlmnh.breeding_config_denied=§cCould not save breeding config: session expired or maid state changed.
+
+gui.tlmnh.breeding_config.title=CropsNH Breeding Config
+gui.tlmnh.breeding_config.mode_crop=Mode: Single Crop
+gui.tlmnh.breeding_config.mode_pool=Mode: Mutation Pool
+gui.tlmnh.breeding_config.logic_and=Stats: All Meet (AND)
+gui.tlmnh.breeding_config.logic_or=Stats: Any Meets (OR)
+gui.tlmnh.breeding_config.max31_on=Max-31 Mode: ON
+gui.tlmnh.breeding_config.max31_off=Max-31 Mode: OFF
+gui.tlmnh.breeding_config.stat_growth=Growth (Gr)
+gui.tlmnh.breeding_config.stat_gain=Gain (Ga)
+gui.tlmnh.breeding_config.stat_resistance=Resist (Re)
+gui.tlmnh.breeding_config.save=Apply
+gui.tlmnh.maintenance_task_config.desc=Maintenance Hatch mode needs no extra settings: equip a bound Maintenance Bell in baubles and a GregTech Wrench in offhand.

@@ -72,6 +72,9 @@ public final class MaidTaskConfigNetwork {
 
     public static boolean navigates(int action) {
         return action >= MaidContainerProtocol.ACTION_IDLE && action <= MaidContainerProtocol.ACTION_RANGED
+            || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
+            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING
+            || action == MaidContainerProtocol.ACTION_BAUBLE
             || action == MaidContainerProtocol.ACTION_ORIGINAL_MAIN
             || action == MaidContainerProtocol.ACTION_CONFIG
             || action == MaidContainerProtocol.ACTION_MODELS

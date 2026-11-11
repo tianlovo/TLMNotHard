@@ -28,6 +28,8 @@ import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
+import com.tianluoqaq.tlmnh.common.work.container.BreedingTaskConfigContainer;
+import com.tianluoqaq.tlmnh.common.work.container.MaidBreedingConfigNetwork;
 
 import cpw.mods.fml.common.network.IGuiHandler;
 
@@ -40,6 +42,7 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
         MaidSoundNetwork.init();
         MaidEffectNetwork.init();
         MaidTaskConfigNetwork.init();
+        MaidBreedingConfigNetwork.init();
     }
 
     @Override
@@ -62,7 +65,8 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
             && id != CommonProxyProtocol.GUI_MAID_CONFIG
             && id != CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG
             && id != CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG
-            && id != CommonProxyProtocol.GUI_MAID_BAUBLE) || world == null
+            && id != CommonProxyProtocol.GUI_MAID_BAUBLE
+            && id != CommonProxyProtocol.GUI_MAID_BREEDING_CONFIG) || world == null
             || player == null
             || world != player.worldObj) return null;
         var entity = world.getEntityByID(entityId);
@@ -87,8 +91,20 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
                 | (unusedZ & CommonProxyProtocol.UNSIGNED_INT_BIT_MASK);
             boolean attack = id == CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG;
             if (session == 0 || player.inventory.getItemStack() != null
-                || !maid.worldObj.isRemote && (maid.getTask() != MaidTask.IDLE) != attack) return null;
+                || !maid.worldObj.isRemote && maid.getTask()
+                    .isCombatTask() != attack) return null;
             return () -> new TaskConfigContainer(player.inventory, maid, session, attack);
+        }
+        if (id == CommonProxyProtocol.GUI_MAID_BREEDING_CONFIG) {
+            long session = ((long) unusedY << CommonProxyProtocol.UPPER_WORD_SHIFT)
+                | (unusedZ & CommonProxyProtocol.UNSIGNED_INT_BIT_MASK);
+            if (session == 0 || player.inventory.getItemStack() != null
+                || !maid.worldObj.isRemote && maid.getTask() != MaidTask.CROPSNH_BREEDING) return null;
+            return () -> new BreedingTaskConfigContainer(
+                player.inventory,
+                maid,
+                session,
+                EntityMaid::getBreedingTaskConfig);
         }
         if (id == CommonProxyProtocol.GUI_MAID_CONFIG)
             return player.inventory.getItemStack() == null ? () -> new MaidConfigContainer(player.inventory, maid)

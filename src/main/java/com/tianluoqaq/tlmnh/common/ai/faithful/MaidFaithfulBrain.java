@@ -194,8 +194,11 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
             await.start(actor);
             doors.trigger(actor);
             if (!actor.isCurrent()) return;
+            boolean bellWork = maid.getBrainCoordinator()
+                .getWorkModeCoordinator()
+                .shouldSuppressOwnerFollowAndHome(maid);
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
-            if (!followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
+            if (!bellWork && !followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
                 actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT); // 默认Behavior 60 +
                                                                                  // nextInt(1)，本任务canStillUse=false
@@ -243,6 +246,12 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                         (group == MaidActivityState.Activity.RIDE_WORK ? rangedRide : rangedWork)
                             .startTasks(actor, actor.hasVisibleLivingMemory());
                         if (!actor.isCurrent()) return;
+                    } else if (maid.getTask()
+                        .isWorkTask() && group == MaidActivityState.Activity.WORK) {
+                            maid.getBrainCoordinator()
+                                .getWorkModeCoordinator()
+                                .tickStandalone(maid);
+                            if (!actor.isCurrent()) return;
                     }
                 } else {
                     actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
@@ -314,10 +323,11 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                 pickup.start(maid, perception, actor);
             }
             for (var group : priority20.values()) {
-                if (activities.active() == group) randomFor(group).tryStart(
-                    actor,
-                    group == MaidActivityState.Activity.REST || group == MaidActivityState.Activity.RIDE_WORK
-                        || !actor.isGoingToBreath());
+                if (activities.active() == group && !(bellWork && group == MaidActivityState.Activity.WORK))
+                    randomFor(group).tryStart(
+                        actor,
+                        group == MaidActivityState.Activity.REST || group == MaidActivityState.Activity.RIDE_WORK
+                            || !actor.isGoingToBreath());
             }
             for (var entry : priority99.entrySet()) {
                 if (entry.getValue() == null) {

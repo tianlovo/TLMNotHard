@@ -46,6 +46,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.work.coordinator.MaidWorkModeCoordinator;
 
 /** 增强策略单活跃会话协调根；按固定五阶段收集类型化提案并隔离外部扩展模块 */
 public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedActions {
@@ -253,8 +254,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             var home = maid.getHomeArea();
             boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
             if (home.enabled() && !home.sameDimension()
-                || maid.getTask() != MaidTask.IDLE && maid.getTask() != MaidTask.ATTACK
-                    && maid.getTask() != MaidTask.RANGED_ATTACK) {
+                || maid.getTask() != MaidTask.IDLE && !maid.getTask()
+                    .isCombatTask()
+                    && !maid.getTask()
+                        .isWorkTask()) {
                 stopAllActiveSessions(TransitionReason.POSTURE_CHANGED, runtime, token);
                 return;
             }
@@ -270,14 +273,19 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             if (!offerExternalStage(MaidBehaviorStage.SURVIVAL_AND_DANGER, frame, runtime, token)) return;
 
             boolean vehicle = ride.offer(frame);
-            homeReturn.offer(frame, vehicle);
-            follow.offer(frame, vehicle, selectedKind);
+            var workModes = maid.getBrainCoordinator()
+                .getWorkModeCoordinator();
+            if (!workModes.shouldSuppressOwnerFollowAndHome(maid)) {
+                homeReturn.offer(frame, vehicle);
+                follow.offer(frame, vehicle, selectedKind);
+            }
             if (!offerExternalStage(MaidBehaviorStage.COMMAND_AND_POSTURE, frame, runtime, token)) return;
 
             combat.offer(frame);
             meal.offer(frame);
             if (!offerExternalStage(MaidBehaviorStage.COMBAT_AND_RECOVERY, frame, runtime, token)) return;
 
+            workModes.offerEnhanced(maid, frame);
             life.offer(frame, runtime.getContext());
             pickup.offer(frame);
             if (!offerExternalStage(MaidBehaviorStage.CARE_AND_AUTONOMOUS, frame, runtime, token)) return;
@@ -340,7 +348,9 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                 if (selected.kind == Kind.HEAL || selected.kind == Kind.MEAL) ride.look();
             }
             if (actor.hasLookTarget()) actor.lookAtCurrentTargetIfPresent();
-            navigation.tick();
+            boolean builtInWork = MaidWorkModeCoordinator.MAINTENANCE_MODULE_ID.equals(activeModuleId)
+                || MaidWorkModeCoordinator.BREEDING_MODULE_ID.equals(activeModuleId);
+            if (!builtInWork) navigation.tick();
             if (actor.isCurrent()) climb.tick();
             if (actor.isCurrent()) doors.trigger(actor);
             if (actor.isCurrent()) buoyancy.tick();
@@ -407,6 +417,11 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             snowball.onDeselected(reason);
         } else if (EnhancedAmbientController.ID.equals(moduleId)) {
             ambient.onDeselected(reason);
+        } else if (MaidWorkModeCoordinator.MAINTENANCE_MODULE_ID.equals(moduleId)
+            || MaidWorkModeCoordinator.BREEDING_MODULE_ID.equals(moduleId)) {
+                maid.getBrainCoordinator()
+                    .getWorkModeCoordinator()
+                    .reset();
         } else {
             var extSlot = externalById.get(moduleId);
             if (extSlot != null) {
@@ -429,6 +444,9 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
         pickup.cancel();
         breathing.cancel();
         meal.cancel();
+        maid.getBrainCoordinator()
+            .getWorkModeCoordinator()
+            .reset();
         sensing.cancel(MaidSensingBudget.Kind.AIR);
         try {
             try {

@@ -32,7 +32,7 @@ public final class MaidCombatTaskState {
         explicitlySelected = true;
         unresolvedTask = null;
         referenceId = requested.getId();
-        if (requested != MaidTask.IDLE) {
+        if (requested.isCombatTask()) {
             preference = requested;
             preferencePending = true;
         }
@@ -94,10 +94,11 @@ public final class MaidCombatTaskState {
             ? preserved.getString(MaidEntityNbtKeys.REFERENCE)
             : id;
         String preferred = preserved.getString(MaidEntityNbtKeys.PREFERENCE);
-        preference = known(preferred) && !preferred.equals(MaidTask.IDLE.getId()) ? MaidTask.fromId(preferred)
-            : referenceId.equals(MaidTask.RANGED_ATTACK.getId()) ? MaidTask.RANGED_ATTACK : MaidTask.ATTACK;
-        preferencePending = state == null ? known && !id.equals(MaidTask.IDLE.getId())
-            : preserved.getBoolean(MaidEntityNbtKeys.PENDING);
+        preference = known(preferred) && MaidTask.fromId(preferred)
+            .isCombatTask() ? MaidTask.fromId(preferred)
+                : referenceId.equals(MaidTask.RANGED_ATTACK.getId()) ? MaidTask.RANGED_ATTACK : MaidTask.ATTACK;
+        preferencePending = state == null ? known && MaidTask.fromId(id)
+            .isCombatTask() : preserved.getBoolean(MaidEntityNbtKeys.PENDING);
         revision++;
         return known ? id : MaidTask.IDLE.getId();
     }

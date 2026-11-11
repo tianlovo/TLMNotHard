@@ -203,12 +203,14 @@ final class MaidLegacyBrainHost {
 
     void tickOrdinaryIntents(MaidPolicyContext context, MaidPolicyContext.Token token, boolean permitted) {
         var frame = new MaidIntentFrame(context, token, maid.worldObj.getTotalWorldTime());
-        if (home.wantsReturn()) frame
+        var workModes = coordinator.getWorkModeCoordinator();
+        boolean bellBoundWork = workModes.shouldSuppressOwnerFollowAndHome(maid);
+        if (!bellBoundWork && home.wantsReturn()) frame
             .offer(Group.COMMAND, Kind.HOME, MaidAiIds.ID_HOME, MaidAiTuning.MAX_PERSISTENT_READ_DEPTH_THRESHOLD, null);
         var owner = ownerSensor.findOwner();
         var lifeOptions = permitted ? life.prepareIntents(context, token) : Collections.<MaidLifeIntent>emptyList();
         // 合法生活保留现有委托范围，不用5格跟随起距截断8格食物活动
-        if (lifeOptions.isEmpty() && !maid.getHomeArea()
+        if (!bellBoundWork && lifeOptions.isEmpty() && !maid.getHomeArea()
             .enabled()
             && MaidOwnerSensor.isValid(maid, owner)
             && !coordinator.isSuspended()
@@ -231,6 +233,7 @@ final class MaidLegacyBrainHost {
                 null);
         }
         if (permitted) {
+            workModes.offerEnhanced(maid, frame);
             for (var intent : lifeOptions) {
                 var candidate = intent.getCandidate();
                 boolean bed = intent.getAction() == MaidLifeIntent.Action.BED;
@@ -281,6 +284,7 @@ final class MaidLegacyBrainHost {
             case PICKUP -> pickup.tickSelected((Entity) selected.payload);
             case FOLLOW -> follow.tick();
             case HOME -> home.tick();
+            case EXTENSION -> selected.execute();
         }
     }
 

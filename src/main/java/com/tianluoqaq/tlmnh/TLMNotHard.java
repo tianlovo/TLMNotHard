@@ -26,6 +26,7 @@ import com.tianluoqaq.tlmnh.common.registry.EventBuses;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 import com.tianluoqaq.tlmnh.common.registry.ModEntities;
+import com.tianluoqaq.tlmnh.common.work.coordinator.MaidWorkItems;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
@@ -68,6 +69,7 @@ public final class TLMNotHard {
         KaomojiData.load();
         ModEntities.register(this);
         MaidLifeContent.register();
+        MaidWorkItems.register(CompatServices::cropsNhBreeding);
         RecoveryParcel.register();
         ProtectionEvents.register();
         MaidResurrectionContent.register();

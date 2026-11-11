@@ -92,6 +92,7 @@ import com.tianluoqaq.tlmnh.common.protection.runtime.MaidBehaviorProtection;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
 import com.tianluoqaq.tlmnh.common.sound.MaidWorldSoundState;
+import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData;
 
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import cpw.mods.fml.relauncher.Side;
@@ -144,6 +145,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     private final MaidSnowballAnimation snowballAnimation = new MaidSnowballAnimation();
     private final MaidCombatMemory modernCombatMemory = new MaidCombatMemory();
     private final MaidAttackSettings attackSettings = new MaidAttackSettings();
+    private final BreedingTaskConfigData breedingTaskConfig = new BreedingTaskConfigData();
     private final MaidCombatTaskState combatTaskState = new MaidCombatTaskState();
     private final MaidCombatWeaponView combatWeaponView = new MaidCombatWeaponView(this);
     private final CombatCadence combatCadence = new CombatCadence(this);
@@ -847,6 +849,10 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         return combatTaskState;
     }
 
+    public BreedingTaskConfigData getBreedingTaskConfig() {
+        return breedingTaskConfig;
+    }
+
     public MaidWeaponProfile getCombatWeaponProfile() {
         return combatWeaponView.current();
     }
@@ -1094,6 +1100,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         if (offhand != null) tag.setTag(OFFHAND_TAG, ProtectedItemCodec.encode(offhand));
         else tag.removeTag(OFFHAND_TAG);
         meals.save(tag);
+        breedingTaskConfig.writeToEntityNbt(tag);
     }
 
     @Override
@@ -1183,6 +1190,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             home.load(tag);
             attackSettings.load(tag);
             meals.load(tag);
+            breedingTaskConfig.readFromEntityNbt(tag);
             func_110163_bv();
             successful = true;
         } finally {

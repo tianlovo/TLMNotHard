@@ -131,11 +131,13 @@ public class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < MaidContainerProtocol.ACTION_IDLE
-            || action > MaidContainerProtocol.ACTION_BAUBLE
+            || action > MaidContainerProtocol.ACTION_CROPSNH_BREEDING
             || lastActionTick == maid.ticksExisted) return false;
         if (!isReadOnlyNavigation(action) && !canModifyWith(player)) return false;
-        if (action <= MaidContainerProtocol.ACTION_RANGED && !maid.getCombatTaskState()
-            .canSelect()) {
+        if ((action <= MaidContainerProtocol.ACTION_RANGED
+            || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
+            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING) && !maid.getCombatTaskState()
+                .canSelect()) {
             player.addChatMessage(new ChatComponentTranslation(MaidContainerIds.I18N_MESSAGE_TLMNH_COMBAT_FUTURE_TASK));
             return false;
         }
@@ -160,6 +162,8 @@ public class ContainerMaid extends Container {
                 maid.setTask(MaidTask.RANGED_ATTACK);
                 if (!maid.isUnifiedCombat()) MaidTaskEquipment.equip(player, maid, MaidTask.RANGED_ATTACK);
             }
+            case MaidContainerProtocol.ACTION_MAINTENANCE_HATCH -> maid.setTask(MaidTask.MAINTENANCE_HATCH);
+            case MaidContainerProtocol.ACTION_CROPSNH_BREEDING -> maid.setTask(MaidTask.CROPSNH_BREEDING);
             case MaidContainerProtocol.ACTION_DAY -> maid.setSchedule(MaidSchedule.DAY);
             case MaidContainerProtocol.ACTION_NIGHT -> maid.setSchedule(MaidSchedule.NIGHT);
             case MaidContainerProtocol.ACTION_ALL_DAY -> maid.setSchedule(MaidSchedule.ALL);
@@ -262,10 +266,13 @@ public class ContainerMaid extends Container {
             session = ThreadLocalRandom.current()
                 .nextLong();
         } while (session == 0);
+        int guiId = maid.getTask() == MaidTask.CROPSNH_BREEDING ? CommonProxyProtocol.GUI_MAID_BREEDING_CONFIG
+            : maid.getTask()
+                .isCombatTask() ? CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG
+                    : CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG;
         player.openGui(
             ModContext.modInstance(),
-            maid.getTask() == MaidTask.IDLE ? CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG
-                : CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG,
+            guiId,
             maid.worldObj,
             maid.getEntityId(),
             (int) (session >>> MaidContainerLayout.UPPER_WORD_SHIFT),

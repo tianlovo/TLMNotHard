@@ -1753,3 +1753,9 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
   `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的对应路径，保留包名和 MIT 许可头，适配 1.7.10 的物品栏、伤害和界面接口。
 - `textures/gui/maid_gui_bauble.png` 从同一上游版本逐字节引入，使用既有 TLM MIT 许可。饰品栏保留上游 30 格容量及好感度分档布局。
 - `MaidMainContainer` 与 `EmptyBackpackContainerScreen` 接入默认 36 格背包。实体、好感度和生命周期链接入独立饰品存储，既有死亡收据及胶片保全规则继续生效。
+
+## 0.1.0 维护铃铛、育种铃铛与工作模式适配
+
+- `assets/touhou_little_maid/textures/items/maintenance_bell.png` 与 `breeding_bell.png` 基于固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `servant_bell.png` 按区分色相派生，沿用既有 TLM MIT 许可。
+- 上游移植类 `entity/passive/EntityMaid.java` 与 `inventory/container/task/TaskConfigContainer.java` 接入育种任务配置持久化及非战斗工作模式的界面会话跳转，原包名、MIT 许可头与既有存档键保持原样。
+- 维护铃铛、育种铃铛、维护仓工作控制器、CropsNH 育种工作控制器、缺失条件通知器及三脑工作调度均位于 `com.tianluoqaq.tlmnh.common.work` 下，属于本工程独立实现；GregTech 维护仓与 CropsNH 提供方适配分别收口在 `src/compat/java/com/tianluoqaq/tlmnh/compat/{gregtech,cropsnh}/`。

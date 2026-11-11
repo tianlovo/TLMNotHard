@@ -178,3 +178,68 @@ gui.touhou_little_maid.bauble_button.open.desc=打开饰品栏
 gui.touhou_little_maid.bauble_button.close.desc=返回女仆背包
 gui.touhou_little_maid.bauble_button.need_favorability_level=需要好感度等级达到 %d 级解锁
 container.tlmnh.maid_baubles=女仆饰品
+
+# === Wave B (Stage 3 & 4: 维护铃铛/育种铃铛、维护仓模式、CropsNH 育种模式与女仆缺件提醒) ===
+item.tlmnh.maintenance_bell.name=维护铃铛
+item.tlmnh.breeding_bell.name=育种铃铛
+
+task.touhou_little_maid.maintenance_hatch=维护仓
+task.touhou_little_maid.maintenance_hatch.desc=巡检维护铃铛绑定的区块，自动为存在故障的普通格雷维护仓执行无损检修
+task.touhou_little_maid.cropsnh_breeding=作物育种
+task.touhou_little_maid.cropsnh_breeding.desc=在育种铃铛绑定的 3x3 田块内开展 CropsNH 跨种杂交、换底块与属性提纯
+task.tlmnh.maintenance_hatch=维护仓
+task.tlmnh.cropsnh_breeding=作物育种
+
+tooltip.tlmnh.bell.unbound=§7未绑定区域（手持潜行右键地面方块进行绑定）
+tooltip.tlmnh.bell.clear_hint=§8单格放入合成栏可一键清空全部绑定
+tooltip.tlmnh.bell.maintenance.summary=§b维度 %d §7| §e已绑定区块：%d / %d
+tooltip.tlmnh.bell.maintenance.chunk=§7  - 区块 [%d, %d]
+tooltip.tlmnh.bell.hold_shift=§8  …其余 %d 个区块已折叠
+tooltip.tlmnh.bell.breeding.summary=§a维度 %d §7| §e3x3 中心土壤：(%d, %d, %d)
+
+message.tlmnh.bell.maintenance.bound=§a[维护铃铛] 已绑定区块 [%d, %d]（当前 %d / %d）。
+message.tlmnh.bell.maintenance.unbound=§e[维护铃铛] 已移除区块 [%d, %d]（剩余 %d / %d）。
+message.tlmnh.bell.maintenance.cleared=§e[维护铃铛] 已解绑最后一个区块，铃铛恢复未绑定状态。
+message.tlmnh.bell.maintenance.limit=§c[维护铃铛] 最多只能绑定 %d 个区块！
+message.tlmnh.bell.maintenance.span=§c[维护铃铛] 区块跨度超出上限（最大跨度 %d，当前候选跨度 %d x %d）！
+message.tlmnh.bell.maintenance.wrong_dim=§c[维护铃铛] 该铃铛已绑定在维度 %d，请先在合成栏清空后再绑定新维度。
+
+message.tlmnh.bell.breeding.bound=§a[育种铃铛] 已绑定 3x3 育种田 [(%d, %d, %d) ~ (%d, %d)]。
+message.tlmnh.bell.breeding.unbound=§e[育种铃铛] 已解绑 (%d, %d, %d) 处的 3x3 育种田。
+message.tlmnh.bell.breeding.unloaded=§c[育种铃铛] 目标 3x3 区域包含未加载区块，无法绑定。
+message.tlmnh.bell.breeding.invalid_soil=§c[育种铃铛] (%d, %d, %d) 不是 CropsNH 可接受的土壤或可耕作泥土。
+message.tlmnh.bell.breeding.above_blocked=§c[育种铃铛] (%d, %d, %d) 种植空间被方块遮挡。
+message.tlmnh.bell.breeding.no_mod=§c[育种铃铛] 当前环境未加载 CropsNH 模组。
+
+chat.tlmnh.maid.missing_condition=§e[%s]§r 主人，我暂时没法开展「%s」工作：%s。
+chat.tlmnh.maid.missing_separator=；
+chat.tlmnh.missing.maintenance_bell=饰品栏缺少维护铃铛
+chat.tlmnh.missing.unbound_maintenance_bell=佩戴的维护铃铛还没绑定任何区块
+chat.tlmnh.missing.wrong_dim_maintenance_bell=维护铃铛绑定在维度 %s，和当前维度不一致
+chat.tlmnh.missing.gt_wrench_offhand=副手缺少格雷科技扳手
+chat.tlmnh.missing.breeding_bell=饰品栏缺少育种铃铛
+chat.tlmnh.missing.unbound_breeding_bell=佩戴的育种铃铛还没绑定 3x3 田块
+chat.tlmnh.missing.wrong_dim_breeding_bell=育种铃铛绑定在维度 %s，和当前维度不一致
+chat.tlmnh.missing.plot_obstructed=田块坐标 (%s) 被不可破坏或遮挡方块阻拦
+chat.tlmnh.missing.breeding_target_config=还没在任务配置页指定目标作物或变异池
+chat.tlmnh.missing.unsupported_in_world_crop=目标「%s」不支持在世界作物架内育种或生长
+chat.tlmnh.missing.cropsnh_spade=背包与双手中缺少 CropsNH 园艺铲
+chat.tlmnh.missing.crop_sticks=还缺少 %s 根作物架
+chat.tlmnh.missing.parent_seeds=缺少「%s」的母本或亲本种子（可用亲本：%s）
+chat.tlmnh.missing.soil_block=缺少目标作物所需的表层土壤方块（%s）
+chat.tlmnh.missing.subsoil_block=缺少目标作物所需的底层底块/矿石（%s）
+chat.tlmnh.missing.harvest_tool=挖掘旧方块「%s」缺少匹配工具（需 %s）
+message.tlmnh.breeding_config_denied=§c育种配置未能保存：会话已过期或女仆状态已变更。
+
+gui.tlmnh.breeding_config.title=CropsNH 育种目标配置
+gui.tlmnh.breeding_config.mode_crop=目标：单品作物
+gui.tlmnh.breeding_config.mode_pool=目标：变异池
+gui.tlmnh.breeding_config.logic_and=条件：三项全达标(AND)
+gui.tlmnh.breeding_config.logic_or=条件：任一达标(OR)
+gui.tlmnh.breeding_config.max31_on=满 31 模式：开启
+gui.tlmnh.breeding_config.max31_off=满 31 模式：关闭
+gui.tlmnh.breeding_config.stat_growth=生长(Gr)
+gui.tlmnh.breeding_config.stat_gain=产量(Ga)
+gui.tlmnh.breeding_config.stat_resistance=抗性(Re)
+gui.tlmnh.breeding_config.save=保存应用
+gui.tlmnh.maintenance_task_config.desc=维护仓模式无需额外参数：为女仆饰品栏佩戴已绑定区块的维护铃铛、副手配备格雷科技扳手即可自动巡检检修。
