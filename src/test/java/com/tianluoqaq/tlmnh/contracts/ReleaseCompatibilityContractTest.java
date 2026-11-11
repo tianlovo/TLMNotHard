@@ -158,10 +158,15 @@ public class ReleaseCompatibilityContractTest {
             if (writer.has("delegates")) {
                 var expected = new TreeSet<String>();
                 for (var delegate : writer.getAsJsonArray("delegates")) expected.add(delegate.getAsString());
-                if (owner.name.equals("com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid"))
+                if (owner.name.equals("com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid")) {
                     expected.add(
                         "com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleInventory#write(" + TAG_ARGUMENT
                             + ")V");
+                    expected.add(
+                        "com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData#writeToEntityNbt("
+                            + TAG_ARGUMENT
+                            + ")V");
+                }
                 assertEquals(owner.name, strings(expected), strings(delegates));
             }
         }

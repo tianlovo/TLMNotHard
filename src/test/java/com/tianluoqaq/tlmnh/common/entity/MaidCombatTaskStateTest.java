@@ -112,4 +112,35 @@ public class MaidCombatTaskStateTest {
         reference.save(input, raw, false);
         assertEquals(expected, input);
     }
+
+    @Test
+    public void workTasksRoundTripWithoutOverwritingCombatPreference() {
+        var state = new MaidCombatTaskState();
+        state.selected(MaidTask.RANGED_ATTACK);
+        assertEquals(MaidTask.RANGED_ATTACK, state.preferredTask());
+        state.consumePreference();
+
+        state.selected(MaidTask.MAINTENANCE_HATCH);
+        assertEquals(MaidTask.RANGED_ATTACK, state.preferredTask());
+        assertFalse(state.preferencePending());
+
+        var saved = new NBTTagCompound();
+        state.save(saved, MaidTask.MAINTENANCE_HATCH.getId(), true);
+        assertEquals(MaidTask.MAINTENANCE_HATCH.getId(), saved.getString("MaidTask"));
+
+        var reloaded = new MaidCombatTaskState();
+        String loadedRaw = reloaded.load(saved);
+        assertEquals(MaidTask.MAINTENANCE_HATCH, reloaded.task(loadedRaw, true));
+        assertEquals(MaidTask.MAINTENANCE_HATCH, reloaded.task(loadedRaw, false));
+        assertEquals(MaidTask.RANGED_ATTACK, reloaded.preferredTask());
+
+        reloaded.selected(MaidTask.CROPSNH_BREEDING);
+        var savedBreeding = new NBTTagCompound();
+        reloaded.save(savedBreeding, MaidTask.CROPSNH_BREEDING.getId(), true);
+        var reloadedBreeding = new MaidCombatTaskState();
+        String breedingRaw = reloadedBreeding.load(savedBreeding);
+        assertEquals(MaidTask.CROPSNH_BREEDING, reloadedBreeding.task(breedingRaw, true));
+        assertEquals(MaidTask.CROPSNH_BREEDING, reloadedBreeding.task(breedingRaw, false));
+        assertEquals(MaidTask.RANGED_ATTACK, reloadedBreeding.preferredTask());
+    }
 }
