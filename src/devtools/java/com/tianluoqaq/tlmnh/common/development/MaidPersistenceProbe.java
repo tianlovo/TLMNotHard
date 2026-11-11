@@ -13,7 +13,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 /** 开发服务器中的真实区块保存夹具，期望值由独立 WorldSavedData 保存 */
 public final class MaidPersistenceProbe {
@@ -44,17 +44,17 @@ public final class MaidPersistenceProbe {
         maid.setPickupItems(false);
         maid.setPickupExperience(false);
         var inventory = maid.getMaidInventory();
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = new ItemStack(Items.arrow, slot + 1);
             stack.setStackDisplayName("persistent-slot-" + slot);
             inventory.setInventorySlotContents(slot, stack);
         }
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.bow, 1, 11));
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, new ItemStack(Items.golden_apple, 3));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START, new ItemStack(Items.iron_boots, 1, 4));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 1, new ItemStack(Items.iron_leggings));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 2, new ItemStack(Items.iron_chestplate));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 3, new ItemStack(Items.iron_helmet));
+        inventory.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.bow, 1, 11));
+        inventory.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, new ItemStack(Items.golden_apple, 3));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START, new ItemStack(Items.iron_boots, 1, 4));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 1, new ItemStack(Items.iron_leggings));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 2, new ItemStack(Items.iron_chestplate));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 3, new ItemStack(Items.iron_helmet));
         var tag = new NBTTagCompound();
         maid.writeToNBT(tag);
         tag.setBoolean("Invulnerable", true);
@@ -108,7 +108,7 @@ public final class MaidPersistenceProbe {
             "TLMNH_PERSISTENCE_CHECK_PASS uuid={} fields={} slots={}",
             data.entityId,
             STABLE_KEYS.length,
-            MaidInventory.TOTAL_SIZE);
+            MaidInventoryLayout.TOTAL_SIZE);
     }
 
     private static void require(boolean condition, String name) {

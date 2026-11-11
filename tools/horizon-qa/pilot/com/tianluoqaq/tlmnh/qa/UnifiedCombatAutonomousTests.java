@@ -27,13 +27,14 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan.Macro;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -803,8 +804,8 @@ public final class UnifiedCombatAutonomousTests {
                 // snapshot在doors.trigger之前；只用本次World START已moving的前置证据核新采样
                 if (woodOrder.provesMovingBefore(cached, now)) {
                     h.assertTrue(
-                        (cached.geometry.at(f.x + 6, f.y + 1, f.z + 4) & CombatSnapshot.Geometry.UNKNOWN) != 0
-                            && (cached.geometry.at(f.x + 6, f.y + 2, f.z + 4) & CombatSnapshot.Geometry.UNKNOWN) != 0,
+                        (cached.geometry.at(f.x + 6, f.y + 1, f.z + 4) & CombatTerrainTuning.UNKNOWN) != 0
+                            && (cached.geometry.at(f.x + 6, f.y + 2, f.z + 4) & CombatTerrainTuning.UNKNOWN) != 0,
                         "Snapshot sampled after a witnessed moving door accepted known geometry");
                     woodMovingUnknown[0] = true;
                 }
@@ -1227,7 +1228,7 @@ public final class UnifiedCombatAutonomousTests {
 
     private static int count(EntityMaid maid, ItemStack expected) {
         int found = 0;
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) if (maid.getMaidInventory()
+        for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) if (maid.getMaidInventory()
             .getStackInSlot(slot) == expected) found++;
         return found;
     }

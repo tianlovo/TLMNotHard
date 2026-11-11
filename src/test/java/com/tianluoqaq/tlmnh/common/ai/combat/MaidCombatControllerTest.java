@@ -236,7 +236,7 @@ public class MaidCombatControllerTest {
         private boolean target, path, suppressed, valid = true, visible = true, hit = true, breakWeapon, ranged;
         private double distance = 36;
         private int releases;
-        private int preparation, requiredPreparation, interval = MaidCombatController.ATTACK_INTERVAL;
+        private int preparation, requiredPreparation, interval = AiCombatTuning.ATTACK_INTERVAL;
         private Status blocked;
         private PathResult pathResult = PathResult.STARTED;
 

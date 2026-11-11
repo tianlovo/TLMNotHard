@@ -52,8 +52,8 @@ public class BuiltinModelSelectionTest {
 
     @Test
     public void returnAndInvalidActionsCannotAliasAModel() {
-        assertEquals(-2, BuiltinModelSelection.wireAction(BuiltinModelSelection.BACK));
-        assertEquals(BuiltinModelSelection.BACK, BuiltinModelSelection.decodeAction(-2));
+        assertEquals(-2, BuiltinModelSelection.wireAction(BuiltinModelDataTuning.BACK));
+        assertEquals(BuiltinModelDataTuning.BACK, BuiltinModelSelection.decodeAction(-2));
         assertNull(BuiltinModelSelection.choiceForAction(-2));
         assertNull(BuiltinModelSelection.choiceForAction(-1));
         for (int invalid : new int[] { -129, 128, 254, 255, 256, Integer.MIN_VALUE, Integer.MAX_VALUE }) {

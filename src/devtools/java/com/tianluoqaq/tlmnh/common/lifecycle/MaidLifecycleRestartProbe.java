@@ -34,7 +34,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
@@ -136,7 +136,7 @@ public final class MaidLifecycleRestartProbe {
             stored.setCustomNameTag(name(data, "stored"));
             mark(stored, data);
             stored.setLocationAndAngles(data.x + 2.5D, data.y + 1, data.z + 0.5D, 0, 0);
-            for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) {
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
                 var stack = new ItemStack(Items.arrow, slot + 1);
                 stack.setStackDisplayName(slotName(data, slot));
                 stored.getMaidInventory()
@@ -301,7 +301,7 @@ public final class MaidLifecycleRestartProbe {
                     found = tombstone;
                 }
         require(found != null, "native death published tombstone");
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) require(
+        for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) require(
             maid.getMaidInventory()
                 .getStackInSlot(slot) == null,
             "dead inventory transferred");
@@ -358,7 +358,7 @@ public final class MaidLifecycleRestartProbe {
     }
 
     private static int slot(ItemStack stack, ProbeData data) {
-        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) if (stack.getDisplayName()
+        for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) if (stack.getDisplayName()
             .equals(slotName(data, i))) return i;
         throw new IllegalStateException("Unexpected restart inventory stack");
     }

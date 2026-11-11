@@ -35,6 +35,7 @@ import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
 /** 完整工厂根的代表入口；不替换决策回调、不手动tick、不重置随机源 */
@@ -59,8 +60,8 @@ public final class CompleteBehaviorEntryTests {
         food[0].setStackDisplayName("native-query-soup-0");
         var nutrition = MaidFoodProfile.inspect(food[0]);
         h.assertTrue(nutrition != null && nutrition.duration > 1, "Actual native soup profile required");
-        inv.setInventorySlotContents(MaidInventory.MAIN_HAND, main);
-        inv.setInventorySlotContents(MaidInventory.OFF_HAND, food[0]);
+        inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, main);
+        inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, food[0]);
         s.report
             .addProperty("mealInput", "natural full F; direct offhand, borrowed empty main, borrowed occupied offhand");
         s.report.addProperty(
@@ -85,8 +86,8 @@ public final class CompleteBehaviorEntryTests {
             if (phase[0] == 3) {
                 h.assertTrue(
                     count(f, Items.mushroom_stew) == 0 && count(f, Items.bowl) == 3
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off,
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off,
                     "Later natural tick repeated settlement or changed either restored hand");
                 return s.finishWhen(age >= finished[0] + 4);
             }
@@ -98,7 +99,7 @@ public final class CompleteBehaviorEntryTests {
                         .peek();
                     s.event("natural meal started, phase=" + phase[0]);
                 }
-                int hand = phase[0] == 1 ? MaidInventory.MAIN_HAND : MaidInventory.OFF_HAND;
+                int hand = phase[0] == 1 ? MaidInventoryLayout.MAIN_HAND : MaidInventoryLayout.OFF_HAND;
                 h.assertTrue(
                     inv.getStackInSlot(hand) == food[0] && count(f, Items.bowl) == phase[0],
                     "Natural hand use consumed early or replaced its finite food");
@@ -117,7 +118,7 @@ public final class CompleteBehaviorEntryTests {
                             && f.maid.getItemUseState()
                                 .getUsedTicks() == used
                             && f.maid.hasPose(MaidPose.USING_ITEM)
-                            && f.maid.hasPose(MaidPose.USING_OFFHAND) == (hand == MaidInventory.OFF_HAND)
+                            && f.maid.hasPose(MaidPose.USING_OFFHAND) == (hand == MaidInventoryLayout.OFF_HAND)
                             && f.maid.getHealth() == health
                             && inv.getStackInSlot(hand) == food[0]
                             && (phase[0] == 0 || inv.getStackInSlot(0) == (phase[0] == 1 ? null : off)),
@@ -138,10 +139,10 @@ public final class CompleteBehaviorEntryTests {
                         h.assertTrue(
                             ItemStack.areItemStacksEqual(loaded.getStackInSlot(phase[0] == 0 ? hand : 0), food[0])
                                 && ItemStack.areItemStacksEqual(
-                                    loaded.getStackInSlot(MaidInventory.MAIN_HAND),
+                                    loaded.getStackInSlot(MaidInventoryLayout.MAIN_HAND),
                                     phase[0] == 1 ? null : main)
                                 && ItemStack.areItemStacksEqual(
-                                    loaded.getStackInSlot(MaidInventory.OFF_HAND),
+                                    loaded.getStackInSlot(MaidInventoryLayout.OFF_HAND),
                                     phase[0] == 0 ? food[0] : off),
                             "Reloaded snapshot failed complete logical food/source/hand restoration");
                         restored.getBrainCoordinator()
@@ -157,8 +158,8 @@ public final class CompleteBehaviorEntryTests {
                     && count(f, Items.bowl) == phase[0] + 1
                     && f.maid.getItemUseState()
                         .peek() == null
-                    && inv.getStackInSlot(MaidInventory.MAIN_HAND) == (phase[0] == 1 ? null : main)
-                    && inv.getStackInSlot(MaidInventory.OFF_HAND) == (phase[0] == 0 ? null : off),
+                    && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == (phase[0] == 1 ? null : main)
+                    && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == (phase[0] == 0 ? null : off),
                 "Native queries interrupted natural duration or finite food/container settlement");
             s.event("natural meal completed once, phase=" + phase[0]);
             phase[0]++;
@@ -171,10 +172,10 @@ public final class CompleteBehaviorEntryTests {
             inv.setInventorySlotContents(phase[0], inv.getStackInSlot(0));
             if (phase[0] == 1) {
                 inv.setInventorySlotContents(3, main);
-                inv.setInventorySlotContents(MaidInventory.MAIN_HAND, null);
-                inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, null);
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, off);
             } else {
-                inv.setInventorySlotContents(MaidInventory.MAIN_HAND, inv.getStackInSlot(3));
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, inv.getStackInSlot(3));
                 inv.setInventorySlotContents(3, null);
             }
             food[0] = new ItemStack(Items.mushroom_stew);
@@ -207,8 +208,8 @@ public final class CompleteBehaviorEntryTests {
             profile != null && profile.total > 0 && profile.duration > 1,
             "Actual soup nutrition and native use duration required");
         var inv = f.maid.getMaidInventory();
-        inv.setInventorySlotContents(MaidInventory.MAIN_HAND, main);
-        inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
+        inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, main);
+        inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, off);
         inv.setInventorySlotContents(0, food);
         s.report.addProperty("mealInput", "sitting=true, ALL schedule, health=10, one backpack soup, occupied hands");
         s.report.addProperty("actualNutrition", profile.total);
@@ -235,13 +236,13 @@ public final class CompleteBehaviorEntryTests {
                     count(f, Items.mushroom_stew) == 1 && count(f, Items.bowl) == 0,
                     "First natural start consumed food before its duration");
                 // 菜单可交换的真实库存输入；不暂停根、不调用cancel或重置检查计数器
-                inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, off);
                 inv.setInventorySlotContents(0, food);
                 s.event("controlled inventory swap returns borrowed food to backpack and restores original off hand");
                 h.assertTrue(
                     !f.maid.getMealController()
-                        .isEating() && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off
+                        .isEating() && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off
                         && ItemStack.areItemStacksEqual(foodBefore, inv.getStackInSlot(0))
                         && count(f, Items.bowl) == 0,
                     "Inventory revocation lost food, created a container or changed either restored hand");
@@ -253,8 +254,8 @@ public final class CompleteBehaviorEntryTests {
                     .isEating()) {
                     h.assertTrue(
                         f.maid.getItemUseState()
-                            .peek() == null && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                            && inv.getStackInSlot(MaidInventory.OFF_HAND) == off
+                            .peek() == null && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                            && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off
                             && ItemStack.areItemStacksEqual(foodBefore, inv.getStackInSlot(0))
                             && count(f, Items.bowl) == 0,
                         "Natural cancellation overwrote the independent swap or consumed the revoked food");
@@ -279,8 +280,8 @@ public final class CompleteBehaviorEntryTests {
                 h.assertTrue(
                     age - restarted[0] + 1 == profile.duration && count(f, Items.mushroom_stew) == 0
                         && count(f, Items.bowl) == 1
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off
                         && f.maid.getItemUseState()
                             .peek() == null,
                     "Natural completion changed the native duration, hands or one-container settlement");
@@ -290,8 +291,8 @@ public final class CompleteBehaviorEntryTests {
             }
             h.assertTrue(
                 count(f, Items.mushroom_stew) == 0 && count(f, Items.bowl) == 1
-                    && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                    && inv.getStackInSlot(MaidInventory.OFF_HAND) == off,
+                    && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                    && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off,
                 "A later natural tick repeated food/container settlement or overwrote restored hands");
             return s.finishWhen(age >= finished[0] + 4);
         });
@@ -530,8 +531,8 @@ public final class CompleteBehaviorEntryTests {
         h.assertTrue(
             use != null && use.getKind() == MaidItemUseState.Kind.FOOD
                 && use.getHand() == MaidItemUseState.Hand.OFF
-                && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
-                && inv.getStackInSlot(MaidInventory.OFF_HAND) == food
+                && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
+                && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == food
                 && inv.getStackInSlot(0) == off,
             "Complete F did not naturally borrow the fallback hand from the real backpack");
     }

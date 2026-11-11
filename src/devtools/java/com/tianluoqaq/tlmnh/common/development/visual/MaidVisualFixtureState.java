@@ -10,7 +10,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
@@ -191,7 +191,7 @@ public final class MaidVisualFixtureState {
             "Foreign equipment or pose retained before shield staging");
         var expected = inventory(maid);
         var next = new NBTTagList();
-        int off = MaidInventory.OFF_HAND;
+        int off = MaidInventoryLayout.OFF_HAND;
         for (int i = 0; i < expected.tagCount(); i++) {
             var entry = expected.getCompoundTagAt(i);
             if ((entry.getByte("Slot") & 255) != off) next.appendTag(entry.copy());
@@ -287,8 +287,8 @@ public final class MaidVisualFixtureState {
         if (!data.hasKey("HeldFixture")) return;
         var held = held(maid, data);
         require(
-            originalHandMatches(held, "OriginalMain", MaidInventory.MAIN_HAND)
-                && originalHandMatches(held, "OriginalOff", MaidInventory.OFF_HAND),
+            originalHandMatches(held, "OriginalMain", MaidInventoryLayout.MAIN_HAND)
+                && originalHandMatches(held, "OriginalOff", MaidInventoryLayout.OFF_HAND),
             "Original hand and complete inventory backups differ; retained");
         var actual = inventory(maid);
         require(

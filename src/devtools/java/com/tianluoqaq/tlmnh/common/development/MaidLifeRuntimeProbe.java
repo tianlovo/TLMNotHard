@@ -36,8 +36,8 @@ import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
+import com.tianluoqaq.tlmnh.common.life.MaidLifeTuning;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
@@ -385,7 +385,7 @@ public final class MaidLifeRuntimeProbe {
                 }
                 if (placeSelection < 0) placeSelection = ticks;
                 require(
-                    ticks - firstSnackSelection >= MaidLifeRules.SNACK_INTERVAL && life.getPlacements() == 1
+                    ticks - firstSnackSelection >= MaidLifeTuning.SNACK_INTERVAL && life.getPlacements() == 1
                         && cakeCount() == 0
                         && world.getBlock(x + 4, Y + 1, z) == Blocks.cake
                         && world.getBlockMetadata(x + 4, Y + 1, z) == 0
@@ -398,7 +398,7 @@ public final class MaidLifeRuntimeProbe {
                 if (life.getBites() == 1) return;
                 require(
                     life.getBites() == 2 && life.getPlacements() == 1
-                        && ticks - placeSelection >= MaidLifeRules.SNACK_INTERVAL
+                        && ticks - placeSelection >= MaidLifeTuning.SNACK_INTERVAL
                         && world.getBlock(x + 4, Y + 1, z) == Blocks.cake
                         && world.getBlockMetadata(x + 4, Y + 1, z) == 1,
                     "Placed cake eaten through another real cooldown");
@@ -528,7 +528,7 @@ public final class MaidLifeRuntimeProbe {
 
     private int cakeCount() {
         int result = 0;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = maid.getMaidInventory()
                 .getStackInSlot(slot);
             if (stack != null && stack.getItem() == Items.cake) result += stack.stackSize;
@@ -554,7 +554,7 @@ public final class MaidLifeRuntimeProbe {
         switch (phase) {
             case PLACE:
             case EAT:
-                return MaidLifeRules.SNACK_INTERVAL + 220;
+                return MaidLifeTuning.SNACK_INTERVAL + 220;
             case STEAL:
             case APPROACH_BED:
             case RESLEEP:

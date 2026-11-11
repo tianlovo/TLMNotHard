@@ -32,8 +32,8 @@ import com.tianluoqaq.tlmnh.common.protection.CompatibilityLedger;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryParcel;
-import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -349,7 +349,7 @@ public final class ProtectionTests {
         });
         var filmIdentity = ledger.reserve(token, MaidLifecycleData.Kind.FILM);
         helper.assertTrue(
-            !filmIdentity.hasKey(RecoveryStore.TAG) && !filmIdentity.hasKey("TLMNHOffhand"),
+            !filmIdentity.hasKey(ProtectionRecoveryNbtKeys.TAG) && !filmIdentity.hasKey("TLMNHOffhand"),
             "Film duplicates death inventory");
         ledger.rollback(token);
         helper.assertTrue(

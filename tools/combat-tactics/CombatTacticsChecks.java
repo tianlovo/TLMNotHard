@@ -316,7 +316,7 @@ public final class CombatTacticsChecks {
         var q = CombatWorkQuota.isolated(frame.tick, true);
         var risk = new ThreatEstimator.Risk();
         var occlusion = ThreatEstimator.occlusion(frame, q);
-        for (int elapsed = 2; elapsed <= CombatWorkQuota.HORIZON; elapsed += CombatWorkQuota.STEP) {
+        for (int elapsed = 2; elapsed <= CombatBudgetTuning.HORIZON; elapsed += CombatBudgetTuning.STEP) {
             double value = ThreatEstimator
                 .damage(frame, frame.self.position, frame.self.position, elapsed, 0, false, q, occlusion, risk);
             check(Double.isFinite(value), "Owner risk exhausted the unchanged FULL budget");
@@ -442,7 +442,7 @@ public final class CombatTacticsChecks {
                     && candidate(stale, CombatPlan.Macro.STRAFE_RIGHT) == null,
                 "Stale projectile opened a fresh lateral reaction window");
             var blockedTerrain = new TerrainFixture();
-            blockedTerrain.box(3, 0, 0, 1, Geometry.SOLID);
+            blockedTerrain.box(3, 0, 0, 1, CombatTerrainTuning.SOLID);
             var protectedFrame = replaceGeometry(
                 frame,
                 new Geometry(-4, -2, -4, 9, 6, 9, 100, true, blockedTerrain.cells, blockedTerrain.bounds));
@@ -452,7 +452,7 @@ public final class CombatTacticsChecks {
                 blockedRetreat != null && blockedRetreat.risk < retreat.risk,
                 "Known intervening wall did not reduce arrow risk");
             var unknownTerrain = new TerrainFixture();
-            unknownTerrain.box(3, 0, 0, 1, Geometry.UNKNOWN);
+            unknownTerrain.box(3, 0, 0, 1, CombatTerrainTuning.UNKNOWN);
             var unknownFrame = replaceGeometry(
                 frame,
                 new Geometry(-4, -2, -4, 9, 6, 9, 100, false, unknownTerrain.cells, unknownTerrain.bounds));
@@ -1067,26 +1067,27 @@ public final class CombatTacticsChecks {
 
     private static Geometry floorGeometry(boolean wall, boolean lowCeiling) {
         byte[] cells = new byte[9 * 6 * 9];
-        for (int y = 0; y < 2; y++)
-            for (int z = 0; z < 9; z++) for (int x = 0; x < 9; x++) cells[(y * 9 + z) * 9 + x] = Geometry.SOLID;
-        if (wall) for (int y = 2; y <= 4; y++) for (int z = 0; z < 9; z++) cells[(y * 9 + z) * 9 + 5] = Geometry.SOLID;
-        if (lowCeiling)
-            for (int z = 0; z < 9; z++) for (int x = 0; x < 9; x++) cells[(4 * 9 + z) * 9 + x] = Geometry.SOLID;
+        for (int y = 0; y < 2; y++) for (int z = 0; z < 9; z++)
+            for (int x = 0; x < 9; x++) cells[(y * 9 + z) * 9 + x] = CombatTerrainTuning.SOLID;
+        if (wall) for (int y = 2; y <= 4; y++)
+            for (int z = 0; z < 9; z++) cells[(y * 9 + z) * 9 + 5] = CombatTerrainTuning.SOLID;
+        if (lowCeiling) for (int z = 0; z < 9; z++)
+            for (int x = 0; x < 9; x++) cells[(4 * 9 + z) * 9 + x] = CombatTerrainTuning.SOLID;
         return new Geometry(-4, -2, -4, 9, 6, 9, 100, true, cells);
     }
 
     private static void terrainRouteTurnsAndUsesOnlyRealHalfSteps() {
         TerrainFixture wall = new TerrainFixture();
-        wall.box(1, 0, 0, 1, Geometry.SOLID);
-        wall.box(1, 1, 0, 2, Geometry.SOLID);
+        wall.box(1, 0, 0, 1, CombatTerrainTuning.SOLID);
+        wall.box(1, 1, 0, 2, CombatTerrainTuning.SOLID);
         var route = CombatTerrain.find(wall.snapshot(), wall.target, CombatWorkQuota.isolated(100, true)).approach;
         check(
             route != null && route.nodes.stream()
                 .anyMatch(p -> Math.abs(p.z - .5) > .5),
             "Known reachable route did not turn around the blocking wall");
         TerrainFixture steps = new TerrainFixture();
-        steps.box(1, 0, 0, .5, Geometry.SOLID);
-        steps.box(2, 0, 0, 1, Geometry.SOLID);
+        steps.box(1, 0, 0, .5, CombatTerrainTuning.SOLID);
+        steps.box(2, 0, 0, 1, CombatTerrainTuning.SOLID);
         steps.target = target(new Vec(3.5, 1, .5), 200);
         var elevated = CombatTerrain.find(steps.snapshot(), steps.target, CombatWorkQuota.isolated(100, true)).approach;
         check(
@@ -1101,8 +1102,8 @@ public final class CombatTacticsChecks {
 
     private static void coverHasExitActualOcclusionAndFullForecast() {
         TerrainFixture fixture = new TerrainFixture();
-        fixture.box(1, 0, 1, 1, Geometry.SOLID);
-        fixture.box(1, 0, 2, 1, Geometry.SOLID);
+        fixture.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
         fixture.target = new Target(
             TARGET,
             2,
@@ -1128,8 +1129,9 @@ public final class CombatTacticsChecks {
                 + "/"
                 + choices.work);
         TerrainFixture deadEnd = new TerrainFixture();
-        for (int z = -3; z <= 3; z++) for (int x = -3; x <= 3; x++)
-            if (!(x == 0 && (z == 0 || z == 1)) && !(x == 1 && z == 0)) deadEnd.box(x, 0, z, 1, Geometry.SOLID);
+        for (int z = -3; z <= 3; z++)
+            for (int x = -3; x <= 3; x++) if (!(x == 0 && (z == 0 || z == 1)) && !(x == 1 && z == 0))
+                deadEnd.box(x, 0, z, 1, CombatTerrainTuning.SOLID);
         deadEnd.target = new Target(
             TARGET,
             2,
@@ -1193,8 +1195,8 @@ public final class CombatTacticsChecks {
 
     private static void conditionalGateAndUnknownNeverBecomeFreeSpace() {
         TerrainFixture gate = new TerrainFixture();
-        for (int z = -4; z <= 4; z++) for (int y = 0; y <= 1; y++) gate.box(1, y, z, y + 1, Geometry.SOLID);
-        for (int y = 0; y <= 1; y++) gate.box(1, y, 0, y + 1, Geometry.SOLID | Geometry.OPENABLE);
+        for (int z = -4; z <= 4; z++) for (int y = 0; y <= 1; y++) gate.box(1, y, z, y + 1, CombatTerrainTuning.SOLID);
+        for (int y = 0; y <= 1; y++) gate.box(1, y, 0, y + 1, CombatTerrainTuning.SOLID | CombatTerrainTuning.OPENABLE);
         var choices = CombatTerrain.find(gate.snapshot(), gate.target, CombatWorkQuota.isolated(100, true));
         check(
             choices.approach != null && choices.approach.conditionalDoor,
@@ -1204,12 +1206,12 @@ public final class CombatTacticsChecks {
                 .distance(gate.snapshot().self.position) < .01,
             "Forecast walked through a gate which has not actually opened");
         check(choices.approach.next(1).x > 2, "Native route was not allowed to request the existing door actor");
-        for (int y = 0; y <= 1; y++) gate.box(1, y, 0, y + 1, Geometry.SOLID);
+        for (int y = 0; y <= 1; y++) gate.box(1, y, 0, y + 1, CombatTerrainTuning.SOLID);
         var denied = CombatTerrain.find(gate.snapshot(), gate.target, CombatWorkQuota.isolated(100, true));
         check(
             denied.approach == null || denied.approach.destination.x < 1,
             "Unpermitted gate became a traversable route");
-        gate.box(1, 0, 0, 1, Geometry.OPENABLE | Geometry.RAY_UNKNOWN);
+        gate.box(1, 0, 0, 1, CombatTerrainTuning.OPENABLE | CombatTerrainTuning.RAY_UNKNOWN);
         check(
             CombatTerrain
                 .sight(gate.snapshot(), new Vec(.5, .5, .5), new Vec(3.5, .5, .5), CombatWorkQuota.isolated(100, true))
@@ -1221,7 +1223,7 @@ public final class CombatTacticsChecks {
             CombatTerrain.sight(gate.snapshot(), new Vec(.5, .5, .5), new Vec(3.5, .5, .5), exhausted)
                 == CombatTerrain.Sight.BUDGET,
             "No collision budget was treated as a clear shot");
-        gate.box(1, 0, 0, 1, Geometry.UNKNOWN);
+        gate.box(1, 0, 0, 1, CombatTerrainTuning.UNKNOWN);
         check(
             CombatTerrain
                 .sight(gate.snapshot(), new Vec(.5, .5, .5), new Vec(3.5, .5, .5), CombatWorkQuota.isolated(100, true))
@@ -1231,7 +1233,7 @@ public final class CombatTacticsChecks {
 
     private static void arrowOcclusionKeepsHitOrderingAndPrefix() {
         TerrainFixture fixture = new TerrainFixture();
-        fixture.box(-1, 0, 0, 1, Geometry.SOLID);
+        fixture.box(-1, 0, 0, 1, CombatTerrainTuning.SOLID);
         var base = fixture.snapshot();
         var snapshot = new CombatSnapshot(
             100,
@@ -1263,7 +1265,7 @@ public final class CombatTacticsChecks {
                 == 0,
             "Arrow reappeared behind the block in a later forecast interval");
         // 多片碰撞外包不能冒充填满空隙的实体掩体
-        fixture.cells[((2 * 9 + 4) * 9 + 3)] &= ~Geometry.RAY_BLOCKING;
+        fixture.cells[((2 * 9 + 4) * 9 + 3)] &= ~CombatTerrainTuning.RAY_BLOCKING;
         base = fixture.snapshot();
         snapshot = new CombatSnapshot(
             100,
@@ -1292,7 +1294,7 @@ public final class CombatTacticsChecks {
                 ThreatEstimator.occlusion(snapshot, quota)) >= 6,
             "Uncertified multi-shape envelope provided phantom cover");
         fixture.box(-1, 0, 0, 1, 0);
-        fixture.box(1, 0, 0, 1, Geometry.SOLID);
+        fixture.box(1, 0, 0, 1, CombatTerrainTuning.SOLID);
         base = fixture.snapshot();
         snapshot = new CombatSnapshot(
             100,
@@ -1334,12 +1336,12 @@ public final class CombatTacticsChecks {
     private static void nativeSizedCoverSurvivesLightOnlyWithinItsProof() {
         TerrainFixture fixture = new TerrainFixture();
         for (int y = -2; y <= 3; y++) for (int x = -4; x <= 4; x++)
-            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? Geometry.SOLID : 0);
-        fixture.box(-1, 0, 0, 1, Geometry.SOLID);
-        fixture.box(-1, 1, 0, 2, Geometry.SOLID);
-        fixture.box(1, 0, 1, 1, Geometry.SOLID);
-        fixture.box(1, 0, 2, 1, Geometry.SOLID);
-        fixture.box(3, 0, 0, .5, Geometry.SOLID);
+            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? CombatTerrainTuning.SOLID : 0);
+        fixture.box(-1, 0, 0, 1, CombatTerrainTuning.SOLID);
+        fixture.box(-1, 1, 0, 2, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
+        fixture.box(3, 0, 0, .5, CombatTerrainTuning.SOLID);
         fixture.target = new Target(
             TARGET,
             2,
@@ -1413,7 +1415,7 @@ public final class CombatTacticsChecks {
             "Equipment/entity epoch change retained a previous route commitment");
         planner = new CombatPlanner();
         planner.decide(snapshot, CombatWorkQuota.isolated(100, true));
-        fixture.box(0, 0, 1, 1, Geometry.SOLID);
+        fixture.box(0, 0, 1, 1, CombatTerrainTuning.SOLID);
         var blockedGeometry = new Geometry(-4, -2, -4, 9, 6, 9, 101, true, fixture.cells, fixture.bounds);
         var blocked = planner
             .decide(continuationFrame(base, self, 101, 1, blockedGeometry, true), CombatWorkQuota.isolated(101, false));
@@ -1482,12 +1484,12 @@ public final class CombatTacticsChecks {
     private static void fullCoverRetainsItsGoalAndRejectsTheObservedCorner() {
         TerrainFixture fixture = new TerrainFixture();
         for (int y = -2; y <= 3; y++) for (int x = -4; x <= 4; x++)
-            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? Geometry.SOLID : 0);
-        fixture.box(-1, 0, 0, 1, Geometry.SOLID);
-        fixture.box(-1, 1, 0, 2, Geometry.SOLID);
-        fixture.box(1, 0, 1, 1, Geometry.SOLID);
-        fixture.box(1, 0, 2, 1, Geometry.SOLID);
-        fixture.box(3, 0, 0, .5, Geometry.SOLID);
+            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? CombatTerrainTuning.SOLID : 0);
+        fixture.box(-1, 0, 0, 1, CombatTerrainTuning.SOLID);
+        fixture.box(-1, 1, 0, 2, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
+        fixture.box(3, 0, 0, .5, CombatTerrainTuning.SOLID);
         fixture.target = new Target(
             TARGET,
             2,
@@ -1549,7 +1551,7 @@ public final class CombatTacticsChecks {
             check(
                 kept && next.simulated
                     && quota.used(Work.ADVANCE) > 0
-                    && quota.used(Work.ADVANCE) <= CombatWorkQuota.MAX_ADVANCES
+                    && quota.used(Work.ADVANCE) <= CombatBudgetTuning.MAX_ADVANCES
                     && quota.used(Work.COLLISION) <= 40000,
                 "Full scoring replaced the committed goal merely because the actor had already gained partial cover");
             check(
@@ -1579,7 +1581,7 @@ public final class CombatTacticsChecks {
                 (int) Math.floor(oldEntrance.y),
                 (int) Math.floor(oldEntrance.z),
                 oldEntrance.y + 1,
-                Geometry.SOLID);
+                CombatTerrainTuning.SOLID);
             var closedEntrance = continuationFrame(
                 base,
                 nativeEnvironmentSelf(first.destination, 10),
@@ -1607,7 +1609,7 @@ public final class CombatTacticsChecks {
                 (int) Math.floor(oldEntrance.y),
                 (int) Math.floor(oldEntrance.z),
                 oldEntrance.y + 1,
-                Geometry.UNKNOWN);
+                CombatTerrainTuning.UNKNOWN);
             var unknownEntrance = continuationFrame(
                 base,
                 nativeEnvironmentSelf(first.destination, 10),
@@ -1665,12 +1667,12 @@ public final class CombatTacticsChecks {
     private static void coverageGapAndNativeAttackPulseDoNotRenewOrDropTheProposal() {
         TerrainFixture fixture = new TerrainFixture();
         for (int y = -2; y <= 3; y++) for (int x = -4; x <= 4; x++)
-            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? Geometry.SOLID : 0);
-        fixture.box(-1, 0, 0, 1, Geometry.SOLID);
-        fixture.box(-1, 1, 0, 2, Geometry.SOLID);
-        fixture.box(1, 0, 1, 1, Geometry.SOLID);
-        fixture.box(1, 0, 2, 1, Geometry.SOLID);
-        fixture.box(3, 0, 0, .5, Geometry.SOLID);
+            for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, y < 0 || z == -2 ? CombatTerrainTuning.SOLID : 0);
+        fixture.box(-1, 0, 0, 1, CombatTerrainTuning.SOLID);
+        fixture.box(-1, 1, 0, 2, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
+        fixture.box(3, 0, 0, .5, CombatTerrainTuning.SOLID);
         fixture.target = new Target(
             TARGET,
             2,
@@ -1860,7 +1862,7 @@ public final class CombatTacticsChecks {
             CombatPlanner.setTraceEnabled(traced);
         }
         check(
-            fullQuota.used(Work.ADVANCE) > 0 && fullQuota.used(Work.ADVANCE) <= CombatWorkQuota.MAX_ADVANCES
+            fullQuota.used(Work.ADVANCE) > 0 && fullQuota.used(Work.ADVANCE) <= CombatBudgetTuning.MAX_ADVANCES
                 && fullQuota.used(Work.COLLISION) <= 40000,
             "Proposal resumption bypassed the real FULL quota");
         System.out.println(
@@ -2023,8 +2025,7 @@ public final class CombatTacticsChecks {
     private static void visibleTargetWindowRestoresNativeExitWithoutChangingTheQuota() {
         int origin = CombatGeometryWindow.horizontalOrigin(79.4835082455, 74.5, true, .3);
         check(
-            origin == 74
-                && CombatGeometryWindow.WIDTH * CombatGeometryWindow.HEIGHT * CombatGeometryWindow.WIDTH == 486,
+            origin == 74 && CombatBudgetTuning.WIDTH * CombatBudgetTuning.HEIGHT * CombatBudgetTuning.WIDTH == 486,
             "Visible-target reallocation changed the fixed observation volume");
         check(
             CombatGeometryWindow.horizontalOrigin(79.4835082455, 74.5, false, .3) == 75
@@ -2092,7 +2093,7 @@ public final class CombatTacticsChecks {
                 && plan.family == MaidWeaponProfile.Family.VANILLA_SWORD
                 && plan.route != null
                 && plan.expectedDamage > 0
-                && quota.used(Work.ADVANCE) <= CombatWorkQuota.MAX_ADVANCES
+                && quota.used(Work.ADVANCE) <= CombatBudgetTuning.MAX_ADVANCES
                 && quota.used(Work.COLLISION) <= 40000,
             "Actual zero-arrow native input failed to choose the owned sword and proved exit route");
         System.out.println(
@@ -2203,7 +2204,7 @@ public final class CombatTacticsChecks {
                 || px == 78 && pz == 2 && (py == 101 || py == 102)
                 || px == 80 && (pz == 3 || pz == 4) && py == 101
                 || px == 82 && pz == 2 && py == 101;
-            if (solid) cells[index] = (byte) (Geometry.SOLID | Geometry.RAY_BLOCKING);
+            if (solid) cells[index] = (byte) (CombatTerrainTuning.SOLID | CombatTerrainTuning.RAY_BLOCKING);
             double[] box = { px, py, pz, px + 1, top, pz + 1 };
             System.arraycopy(box, 0, bounds, index * 6, 6);
         }
@@ -2520,7 +2521,7 @@ public final class CombatTacticsChecks {
                     "Sustained current arrows forced the interrupted task stage to resume");
             }
             var exhausted = CombatWorkQuota.isolated(100, true);
-            exhausted.spend(Work.ADVANCE, CombatWorkQuota.MAX_ADVANCES - 20);
+            exhausted.spend(Work.ADVANCE, CombatBudgetTuning.MAX_ADVANCES - 20);
             var partial = new CombatPlanner().decide(normal, exhausted);
             check(
                 !partial.normalProgressAdmitted && !partial.simulated,
@@ -2542,8 +2543,8 @@ public final class CombatTacticsChecks {
 
     private static CombatSnapshot returnScene() {
         TerrainFixture fixture = new TerrainFixture();
-        fixture.box(1, 0, 1, 1, Geometry.SOLID);
-        fixture.box(1, 0, 2, 1, Geometry.SOLID);
+        fixture.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        fixture.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
         fixture.target = new Target(
             TARGET,
             2,
@@ -3101,7 +3102,7 @@ public final class CombatTacticsChecks {
             for (int b = 0; b < 6; b++) bounds[i * 6 + b] = g.bound(px, py, pz, b);
             if (px == (int) Math.floor(node.foot.x) && py == (int) Math.floor(node.foot.y)
                 && pz == (int) Math.floor(node.foot.z)) {
-                cells[i] = (byte) (Geometry.SOLID | Geometry.RAY_BLOCKING);
+                cells[i] = (byte) (CombatTerrainTuning.SOLID | CombatTerrainTuning.RAY_BLOCKING);
                 double[] box = { px, py, pz, px + 1, py + 1, pz + 1 };
                 System.arraycopy(box, 0, bounds, i * 6, 6);
             }
@@ -3555,7 +3556,8 @@ public final class CombatTacticsChecks {
     }
 
     private static void reobsUnknownWorldAndDoorCannotBecomeOrdinary() {
-        for (int flags : new int[] { Geometry.UNKNOWN, Geometry.HAZARD, Geometry.OPENABLE | Geometry.SOLID }) {
+        for (int flags : new int[] { CombatTerrainTuning.UNKNOWN, CombatTerrainTuning.HAZARD,
+            CombatTerrainTuning.OPENABLE | CombatTerrainTuning.SOLID }) {
             var fixture = new TerrainFixture();
             for (int y = 0; y <= 2; y++)
                 for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) fixture.box(x, y, z, y + 1, flags);
@@ -3738,7 +3740,7 @@ public final class CombatTacticsChecks {
         var old = CombatTerrain.find(open, open.targets.get(0), CombatWorkQuota.isolated(100, true)).approach;
         check(old != null, "Connector old task route witness missing");
         var fixture = new TerrainFixture();
-        fixture.box(1, 0, 0, 1, Geometry.SOLID);
+        fixture.box(1, 0, 0, 1, CombatTerrainTuning.SOLID);
         var changed = fixture.snapshot();
         var q = CombatWorkQuota.isolated(100, true);
         Vec exact = old.destination;
@@ -3765,9 +3767,9 @@ public final class CombatTacticsChecks {
         long parentIndex = prepared.plan.movementNode.index;
         Vec parentNext = prepared.plan.movementNode.foot;
         var wall = new TerrainFixture();
-        wall.box(1, 0, 1, 1, Geometry.SOLID);
-        wall.box(1, 0, 2, 1, Geometry.SOLID);
-        wall.box(1, 0, 3, 1, Geometry.SOLID);
+        wall.box(1, 0, 1, 1, CombatTerrainTuning.SOLID);
+        wall.box(1, 0, 2, 1, CombatTerrainTuning.SOLID);
+        wall.box(1, 0, 3, 1, CombatTerrainTuning.SOLID);
         var displaced = progressFrame(prepared.base, new Vec(2.5, 0, 3.5), ++prepared.tick, 40, null, true);
         var wallGeometry = progressFrame(
             wall.snapshot(),
@@ -3864,13 +3866,13 @@ public final class CombatTacticsChecks {
 
         TerrainFixture() {
             for (int y = -2; y <= 3; y++) for (int z = -4; z <= 4; z++)
-                for (int x = -4; x <= 4; x++) box(x, y, z, y + 1, y < 0 ? Geometry.SOLID : 0);
+                for (int x = -4; x <= 4; x++) box(x, y, z, y + 1, y < 0 ? CombatTerrainTuning.SOLID : 0);
         }
 
         void box(int x, int y, int z, double top, int flags) {
             int i = ((y + 2) * 9 + z + 4) * 9 + x + 4;
-            cells[i] = (byte) ((flags & Geometry.SOLID) != 0 && (flags & Geometry.OPENABLE) == 0
-                ? flags | Geometry.RAY_BLOCKING
+            cells[i] = (byte) ((flags & CombatTerrainTuning.SOLID) != 0 && (flags & CombatTerrainTuning.OPENABLE) == 0
+                ? flags | CombatTerrainTuning.RAY_BLOCKING
                 : flags);
             double[] value = { x, y, z, x + 1, top, z + 1 };
             System.arraycopy(value, 0, bounds, i * 6, 6);

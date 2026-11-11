@@ -30,7 +30,7 @@ import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
-import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -182,12 +182,18 @@ public final class AnimationLab {
         var maid = sceneMaid(world());
         require(MaidContainerAccess.canInteract(player, player, maid), "Owner lab maid must be in reach");
         require(player.inventory.getItemStack() == null, "Empty cursor required for GUI fixture");
-        player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID, player.worldObj, maid.getEntityId(), 0, 0);
+        player.openGui(TLMNotHard.INSTANCE, CommonProxyProtocol.GUI_MAID, player.worldObj, maid.getEntityId(), 0, 0);
     }
 
     public static void openOriginalGui(EntityPlayerMP player) {
         var maid = ownedSceneMaid(player);
-        player.openGui(TLMNotHard.INSTANCE, CommonProxy.GUI_MAID_ORIGINAL, player.worldObj, maid.getEntityId(), 0, 0);
+        player.openGui(
+            TLMNotHard.INSTANCE,
+            CommonProxyProtocol.GUI_MAID_ORIGINAL,
+            player.worldObj,
+            maid.getEntityId(),
+            0,
+            0);
     }
 
     public static EntityMaid ownedSceneMaid(EntityPlayerMP player) {

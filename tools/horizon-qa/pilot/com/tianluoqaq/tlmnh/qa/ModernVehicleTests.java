@@ -19,6 +19,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidPlayerVehicleState;
 import com.tianluoqaq.tlmnh.common.ai.faithful.locomotion.MaidVehicleActor.Vehicle;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ModernVehicleTests {
@@ -117,11 +118,11 @@ public final class ModernVehicleTests {
                 var menu = new ContainerMaid(f.owner.inventory, f.maid);
                 f.owner.inventory.setItemStack(new ItemStack(Items.diamond));
                 helper.assertFalse(
-                    menu.enchantItem(f.owner, ContainerMaid.ACTION_RIDEABLE),
+                    menu.enchantItem(f.owner, MaidContainerProtocol.ACTION_RIDEABLE),
                     "Cursor-occupied ride command was accepted");
                 f.owner.inventory.setItemStack(null);
                 helper.assertTrue(
-                    menu.enchantItem(f.owner, ContainerMaid.ACTION_RIDEABLE) && !f.maid.isRideable(),
+                    menu.enchantItem(f.owner, MaidContainerProtocol.ACTION_RIDEABLE) && !f.maid.isRideable(),
                     "Owner ride permission command failed");
                 var config = f.maid.getConfigManager();
                 helper.assertTrue(
@@ -168,8 +169,8 @@ public final class ModernVehicleTests {
                 helper.assertTrue(f.maid.ridingEntity != null, "Expired owner window still forced a dismount");
                 f.owner.setPosition(v.boat.posX + 1, f.maid.posY, v.boat.posZ);
                 helper.assertTrue(
-                    new ContainerMaid(f.owner.inventory, f.maid).enchantItem(f.owner, ContainerMaid.ACTION_RIDEABLE)
-                        && !f.maid.isRideable()
+                    new ContainerMaid(f.owner.inventory, f.maid)
+                        .enchantItem(f.owner, MaidContainerProtocol.ACTION_RIDEABLE) && !f.maid.isRideable()
                         && f.maid.ridingEntity == null,
                     "Menu permission-off did not disembark the current maid");
                 done[0] = true;

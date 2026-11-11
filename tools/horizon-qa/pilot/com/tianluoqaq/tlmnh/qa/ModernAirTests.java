@@ -15,7 +15,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ModernAirTests {
@@ -185,8 +185,8 @@ public final class ModernAirTests {
             new PotionEffect(Potion.waterBreathing.id, 600, 0).writeCustomPotionEffectToNBT(new NBTTagCompound()));
         potion.setTagInfo("CustomPotionEffects", effects);
         var inventory = f.maid.getMaidInventory();
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.diamond_sword));
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, new ItemStack(Items.stick));
+        inventory.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.diamond_sword));
+        inventory.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, new ItemStack(Items.stick));
         inventory.setInventorySlotContents(0, potion);
         f.maid.setAir(95);
     }

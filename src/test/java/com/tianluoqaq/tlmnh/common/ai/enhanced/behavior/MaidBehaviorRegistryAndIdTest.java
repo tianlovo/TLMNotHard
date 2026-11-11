@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Modifier;
 import java.util.List;
 
 import org.junit.Test;
@@ -20,6 +21,16 @@ import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorRegistry;
 import com.tianluoqaq.tlmnh.api.behavior.MaidBehaviorStage;
 
 public class MaidBehaviorRegistryAndIdTest {
+
+    @Test
+    public void builtinNamespaceRetainsItsPublishedFieldContract() throws ReflectiveOperationException {
+        var field = MaidBehaviorId.class.getField("BUILTIN_NAMESPACE");
+        assertEquals(String.class, field.getType());
+        assertTrue(Modifier.isPublic(field.getModifiers()));
+        assertTrue(Modifier.isStatic(field.getModifiers()));
+        assertTrue(Modifier.isFinal(field.getModifiers()));
+        assertEquals("touhou_little_maid", field.get(null));
+    }
 
     @Test
     public void validCanonicalModuleIdentifiersParseAndMaintainValueEquality() {

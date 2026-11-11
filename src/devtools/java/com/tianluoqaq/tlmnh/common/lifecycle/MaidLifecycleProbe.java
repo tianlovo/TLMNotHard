@@ -32,7 +32,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.config.MaidAcquisitionConfig;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidFilmData;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
@@ -63,7 +63,7 @@ public final class MaidLifecycleProbe {
             maid.setModelId("geckolib:winefox_hanfu");
             maid.setExperience(155);
             maid.setFavorability(23);
-            for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) maid.getMaidInventory()
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) maid.getMaidInventory()
                 .setInventorySlotContents(slot, new ItemStack(Items.arrow, slot + 1));
             registration(f, maid, "death-input-ready");
             var tombstone = death(f, maid, true);
@@ -268,7 +268,7 @@ public final class MaidLifecycleProbe {
             maid.setHealth(0);
             maid.onDeath(DamageSource.outOfWorld);
             require(MaidDeathService.preserve(maid), "death already handled on repeated callback");
-            for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) require(
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) require(
                 maid.getMaidInventory()
                     .getStackInSlot(slot) == null,
                 "death inventory transferred once");
@@ -401,7 +401,7 @@ public final class MaidLifecycleProbe {
         require(
             revived.getExperience() == 0 && revived.getHealth() == revived.getMaxHealth(),
             "resurrection clears XP and restores health");
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) require(
+        for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) require(
             revived.getMaidInventory()
                 .getStackInSlot(slot) == null,
             "film never clones death inventory");

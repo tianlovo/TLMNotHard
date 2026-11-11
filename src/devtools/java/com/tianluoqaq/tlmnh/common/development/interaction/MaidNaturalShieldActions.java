@@ -36,7 +36,7 @@ import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.tconstruct.common.tool.TConstructToolData;
@@ -689,9 +689,9 @@ final class MaidNaturalShieldActions {
         for (int i = 0; i < source.tagCount(); i++) {
             var raw = (NBTTagCompound) source.getCompoundTagAt(i)
                 .copy();
-            if ((raw.getByte("Slot") & 255) == MaidInventory.OFF_HAND) {
+            if ((raw.getByte("Slot") & 255) == MaidInventoryLayout.OFF_HAND) {
                 raw = ProtectedItemCodec.encode(stack);
-                raw.setByte("Slot", (byte) MaidInventory.OFF_HAND);
+                raw.setByte("Slot", (byte) MaidInventoryLayout.OFF_HAND);
             }
             result.appendTag(raw);
         }

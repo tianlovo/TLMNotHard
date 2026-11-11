@@ -26,6 +26,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -71,14 +72,14 @@ public final class MaidHomeProbe {
             var container = new ContainerMaid(owner.inventory, maid);
             var denied = new ContainerMaid(stranger.inventory, maid);
             require(
-                !denied.enchantItem(stranger, ContainerMaid.ACTION_HOME) && !maid.getHomeArea()
+                !denied.enchantItem(stranger, MaidContainerProtocol.ACTION_HOME) && !maid.getHomeArea()
                     .enabled(),
                 "non-owner home command refused");
-            action(container, owner, maid, ContainerMaid.ACTION_HOME);
+            action(container, owner, maid, MaidContainerProtocol.ACTION_HOME);
             maid.setPosition(x + 8.5, y, z + 0.5);
-            action(container, owner, maid, ContainerMaid.ACTION_HOME_IDLE);
+            action(container, owner, maid, MaidContainerProtocol.ACTION_HOME_IDLE);
             maid.setPosition(x + 2.5, y, z + 3.5);
-            action(container, owner, maid, ContainerMaid.ACTION_HOME_REST);
+            action(container, owner, maid, MaidContainerProtocol.ACTION_HOME_REST);
             var saved = new NBTTagCompound();
             maid.writeToNBT(saved);
             copy.readFromNBT(saved);

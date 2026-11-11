@@ -80,6 +80,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.interaction.MaidInteractions;
 import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidSounds;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 import com.tianluoqaq.tlmnh.common.network.MaidBubbleCodec;
@@ -1168,7 +1169,7 @@ public final class MaidCoreInteractionProbe {
                             .getTarget());
                 if (phase == 0 && item.isDead) {
                     int apples = 0;
-                    for (int i = 0; i <= MaidInventory.OFF_HAND; i++) {
+                    for (int i = 0; i <= MaidInventoryLayout.OFF_HAND; i++) {
                         var stack = maid.getMaidInventory()
                             .getStackInSlot(i);
                         if (stack != null && stack.getItem() == Items.apple) apples += stack.stackSize;
@@ -1235,7 +1236,7 @@ public final class MaidCoreInteractionProbe {
         var maid = f.maid;
         var inv = maid.getMaidInventory();
         for (int i = 0; i < inv.getSizeInventory(); i++) inv.setInventorySlotContents(i, null);
-        for (int i = 0; i <= MaidInventory.OFF_HAND; i++)
+        for (int i = 0; i <= MaidInventoryLayout.OFF_HAND; i++)
             inv.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
         var tagged = new ItemStack(Items.arrow, 62);
         tagged.setTagCompound(new NBTTagCompound());

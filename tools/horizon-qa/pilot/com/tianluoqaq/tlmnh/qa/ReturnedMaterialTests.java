@@ -40,7 +40,7 @@ import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
-import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
+import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectionRecoveryNbtKeys;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 import com.tianluoqaq.tlmnh.common.registry.MaidResurrectionContent;
 
@@ -285,7 +285,8 @@ public final class ReturnedMaterialTests {
                 .returnedPhase(ids.get(0)) == MaidLifecycleData.ReturnedPhase.HELD
                 && ProtectedItemCodec.encode(original)
                     .equals(diskRow(f, ids.get(0)).getCompoundTag("Stack"))
-                && diskTile(f, cabinet.xCoord, cabinet.yCoord, cabinet.zCoord).getTagList(RecoveryStore.TAG, 10)
+                && diskTile(f, cabinet.xCoord, cabinet.yCoord, cabinet.zCoord)
+                    .getTagList(ProtectionRecoveryNbtKeys.TAG, 10)
                     .tagCount() == 0,
             "Unknown player destination did not preserve raw escrow and durably debited cabinet");
 
@@ -308,7 +309,7 @@ public final class ReturnedMaterialTests {
                     .recovery()
                     .size() == 0
                 && ItemStack.areItemStacksEqual(original, f.owner.inventory.mainInventory[0])
-                && diskEntity(f, maid).getTagList(RecoveryStore.TAG, 10)
+                && diskEntity(f, maid).getTagList(ProtectionRecoveryNbtKeys.TAG, 10)
                     .tagCount() == 0,
             "Normal owner recovery did not persist both native NPC source and complete player destination");
         System.out.println(

@@ -23,7 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
-import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
 import cpw.mods.fml.relauncher.ReflectionHelper;
@@ -361,7 +361,8 @@ public final class MaidFeedbackWorldProbe {
         }
         if (!"gui_tasks".equals(action)) {
             require(gui.isTaskListOpen(), "Actual task list did not open");
-            int button = "gui_attack".equals(action) ? ContainerMaid.ACTION_ATTACK : ContainerMaid.ACTION_RANGED;
+            int button = "gui_attack".equals(action) ? MaidContainerProtocol.ACTION_ATTACK
+                : MaidContainerProtocol.ACTION_RANGED;
             clickButton(mc, gui, button);
             clicks++;
         }

@@ -20,7 +20,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.diagnostic.DiagnosticIds;
 import com.tianluoqaq.tlmnh.common.protection.Sha256Hex;
 
 public class DevelopmentArtifactIdentityTest {
@@ -241,13 +241,13 @@ public class DevelopmentArtifactIdentityTest {
     }
 
     private static void withDevCommandsEnabled(CheckedAction action) throws Exception {
-        String previous = System.getProperty(DevelopmentFlags.DEV_COMMANDS);
+        String previous = System.getProperty(DiagnosticIds.DEV_COMMANDS);
         try {
-            System.setProperty(DevelopmentFlags.DEV_COMMANDS, "true");
+            System.setProperty(DiagnosticIds.DEV_COMMANDS, "true");
             action.run();
         } finally {
-            if (previous == null) System.clearProperty(DevelopmentFlags.DEV_COMMANDS);
-            else System.setProperty(DevelopmentFlags.DEV_COMMANDS, previous);
+            if (previous == null) System.clearProperty(DiagnosticIds.DEV_COMMANDS);
+            else System.setProperty(DiagnosticIds.DEV_COMMANDS, previous);
         }
     }
 }

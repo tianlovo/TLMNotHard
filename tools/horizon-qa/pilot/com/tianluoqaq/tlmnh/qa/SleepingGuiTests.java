@@ -27,6 +27,7 @@ import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidNaming;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
@@ -46,7 +47,7 @@ public final class SleepingGuiTests {
         // 会话错误和持光标时拒绝，不能在返回null之前清掉原路径或注册GUI
         helper.assertTrue(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_DEFAULT_TASK_CONFIG,
+                CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG,
                 f.owner,
                 helper.getWorld(),
                 f.maid.getEntityId(),
@@ -57,7 +58,7 @@ public final class SleepingGuiTests {
         f.owner.inventory.setItemStack(cursor);
         helper.assertTrue(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_CONFIG,
+                CommonProxyProtocol.GUI_MAID_CONFIG,
                 f.owner,
                 helper.getWorld(),
                 f.maid.getEntityId(),
@@ -77,7 +78,7 @@ public final class SleepingGuiTests {
             "Sleeping maid opened a new ordinary container");
         helper.assertTrue(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_ORIGINAL_MODELS,
+                CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS,
                 f.owner,
                 helper.getWorld(),
                 f.maid.getEntityId(),

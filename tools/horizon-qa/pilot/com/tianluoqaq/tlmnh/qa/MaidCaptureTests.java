@@ -16,7 +16,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
@@ -257,7 +257,7 @@ public final class MaidCaptureTests {
         maid.setSoundPackId("PECO");
         maid.setExperience(37);
         maid.setCustomNameTag("capture-full-native");
-        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) {
+        for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) {
             var stack = new ItemStack(Items.diamond, i + 1);
             stack.setTagCompound(new NBTTagCompound());
             stack.getTagCompound()

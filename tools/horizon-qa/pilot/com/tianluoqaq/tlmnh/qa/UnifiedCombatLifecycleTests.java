@@ -41,14 +41,14 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
-import com.tianluoqaq.tlmnh.common.combat.CombatCadence;
 import com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatNbtKeys;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
@@ -284,7 +284,7 @@ public final class UnifiedCombatLifecycleTests {
             .getCompoundTag("Source")
             .copy();
         h.assertTrue(
-            source.getCompoundTag(CombatCadence.TAG)
+            source.getCompoundTag(MaidCombatNbtKeys.TAG)
                 .getLong("Remaining") == beforeCapture,
             "Capture reset a nonzero known cadence");
         state.data.setTag("CapturedSource", source);
@@ -372,7 +372,7 @@ public final class UnifiedCombatLifecycleTests {
         verifyUnknown(h, state, watch.negative);
         h.assertTrue(
             watch.positiveJoin != null && watch.positiveJoin.getLong("Remaining") == saved.getCompoundTag("Positive")
-                .getCompoundTag(CombatCadence.TAG)
+                .getCompoundTag(MaidCombatNbtKeys.TAG)
                 .getLong("Remaining"),
             "Native disk load did not retain the actual saved nonzero cadence at Join");
         long joinedAt = watch.positiveJoin.getLong("Tick"), joinedRemaining = watch.positiveJoin.getLong("Remaining");
@@ -433,13 +433,13 @@ public final class UnifiedCombatLifecycleTests {
         cadence.setInteger("Version", unknown ? 99 : 1);
         cadence.setLong("Remaining", SAVED_INPUT_REMAINING);
         if (unknown) cadence.setTag(OPAQUE, opaque("cadence"));
-        input.setTag(CombatCadence.TAG, cadence);
-        input.removeTag(CombatHitReceipt.TAG);
+        input.setTag(MaidCombatNbtKeys.TAG, cadence);
+        input.removeTag(MaidCombatNbtKeys.TAG_2);
         if (unknown) {
             var receipt = opaque("receipt");
             receipt.setInteger("Version", 99);
             receipt.setString("Stage", "FUTURE_HELD");
-            input.setTag(CombatHitReceipt.TAG, receipt);
+            input.setTag(MaidCombatNbtKeys.TAG_2, receipt);
         }
         var maps = input.getCompoundTag("MaidTaskDataMaps");
         var attacks = maps.getCompoundTag("touhou_little_maid:maid_attack_list");
@@ -460,17 +460,17 @@ public final class UnifiedCombatLifecycleTests {
         h.assertTrue(
             input.getCompoundTag("TLMNH")
                 .equals(migrated.getCompoundTag("TLMNH")) && maps.equals(migrated.getCompoundTag("MaidTaskDataMaps"))
-                && input.getTag(CombatCadence.TAG)
-                    .equals(migrated.getTag(CombatCadence.TAG)),
+                && input.getTag(MaidCombatNbtKeys.TAG)
+                    .equals(migrated.getTag(MaidCombatNbtKeys.TAG)),
             "Initial production migration already lost opaque task/attack/cadence input");
         if (unknown) h.assertTrue(
-            input.getTag(CombatHitReceipt.TAG)
-                .equals(migrated.getTag(CombatHitReceipt.TAG))
+            input.getTag(MaidCombatNbtKeys.TAG_2)
+                .equals(migrated.getTag(MaidCombatNbtKeys.TAG_2))
                 && maid.getCombatHitReceipt()
                     .stage() == CombatHitReceipt.Stage.HELD,
             "Initial unknown receipt was cleared or replayed before lifecycle verification");
         else h.assertTrue(
-            !migrated.hasKey(CombatHitReceipt.TAG) && maid.getCombatCadence()
+            !migrated.hasKey(MaidCombatNbtKeys.TAG_2) && maid.getCombatCadence()
                 .formatSupported(),
             "Positive known state was not transferable after production migration");
         for (int i = 0; i < values.length; i++) h.assertTrue(
@@ -497,7 +497,7 @@ public final class UnifiedCombatLifecycleTests {
                     .remainingTicks() > 0
                 && !maid.getCombatHitReceipt()
                     .blocksTransfer()
-                && !current.hasKey(CombatHitReceipt.TAG),
+                && !current.hasKey(MaidCombatNbtKeys.TAG_2),
             "Known projected combat state/opaque fields/cadence changed or gained an unresolved receipt");
     }
 
@@ -516,10 +516,10 @@ public final class UnifiedCombatLifecycleTests {
                     .equals(input.getTag("MaidTask"))
                 && current.getCompoundTag("TLMNH")
                     .equals(input.getCompoundTag("TLMNH"))
-                && current.getTag(CombatCadence.TAG)
-                    .equals(input.getTag(CombatCadence.TAG))
-                && current.getTag(CombatHitReceipt.TAG)
-                    .equals(input.getTag(CombatHitReceipt.TAG)),
+                && current.getTag(MaidCombatNbtKeys.TAG)
+                    .equals(input.getTag(MaidCombatNbtKeys.TAG))
+                && current.getTag(MaidCombatNbtKeys.TAG_2)
+                    .equals(input.getTag(MaidCombatNbtKeys.TAG_2)),
             "Unknown task/cadence/receipt was cleared, rewritten, activated or replayed");
     }
 
@@ -786,7 +786,7 @@ public final class UnifiedCombatLifecycleTests {
 
     private static NBTTagList slots(EntityMaid maid) {
         var result = new NBTTagList();
-        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) {
+        for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) {
             var slot = new NBTTagCompound();
             slot.setInteger("Slot", i);
             ItemStack stack = maid.getMaidInventory()
@@ -800,7 +800,7 @@ public final class UnifiedCombatLifecycleTests {
 
     private static int count(EntityMaid maid, ItemStack item) {
         int n = 0;
-        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) if (maid.getMaidInventory()
+        for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) if (maid.getMaidInventory()
             .getStackInSlot(i) == item) n++;
         return n;
     }

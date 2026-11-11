@@ -20,10 +20,12 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackListPayload;
+import com.tianluoqaq.tlmnh.common.network.MaidNetworkProtocol;
 import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 import cpw.mods.fml.common.network.internal.FMLNetworkHandler;
 import io.netty.buffer.ByteBuf;
@@ -61,7 +63,7 @@ public final class TaskConfigTests {
                 MaidTaskConfigNetwork.apply(f.owner, decode(wrongUuid)),
                 "Wrong entity UUID wrote target data");
             var oversize = encoded.copy();
-            oversize.setShort(39, MaidAttackListPayload.MAX_ENTRIES + 1);
+            oversize.setShort(39, MaidNetworkProtocol.MAX_ENTRIES + 1);
             rejects(helper, oversize, "Oversize target count was decoded");
             var wrongEnum = encoded.copy();
             wrongEnum.setByte(wrongEnum.writerIndex() - 1, 127);
@@ -185,7 +187,7 @@ public final class TaskConfigTests {
         var groups = Collections.singletonMap(cow, MonsterType.HOSTILE);
         var transaction = new SetAttackListMessage(
             MaidAttackListPayload.from(menu, groups, true),
-            ContainerMaid.ACTION_IDLE);
+            MaidContainerProtocol.ACTION_IDLE);
         helper.assertTrue(
             MaidTaskConfigNetwork.apply(f.owner, decode(encode(transaction))) && f.maid.getTask() == MaidTask.IDLE
                 && f.maid.getAttackListData()
@@ -196,7 +198,7 @@ public final class TaskConfigTests {
         FMLNetworkHandler.openGui(
             f.owner,
             TLMNotHard.INSTANCE,
-            CommonProxy.GUI_MAID_DEFAULT_TASK_CONFIG,
+            CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG,
             f.maid.worldObj,
             f.maid.getEntityId(),
             0,
@@ -210,7 +212,7 @@ public final class TaskConfigTests {
         var proxy = new CommonProxy();
         helper.assertTrue(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_ATTACK_CONFIG,
+                CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG,
                 f.owner,
                 f.maid.worldObj,
                 f.maid.getEntityId(),
@@ -219,7 +221,7 @@ public final class TaskConfigTests {
             "Idle task opened the attack-only settings factory");
         helper.assertTrue(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_DEFAULT_TASK_CONFIG,
+                CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG,
                 f.owner,
                 f.maid.worldObj,
                 f.maid.getEntityId(),
@@ -246,7 +248,7 @@ public final class TaskConfigTests {
         FMLNetworkHandler.openGui(
             f.owner,
             TLMNotHard.INSTANCE,
-            CommonProxy.GUI_MAID_ATTACK_CONFIG,
+            CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG,
             f.maid.worldObj,
             f.maid.getEntityId(),
             (int) (session >>> 32),

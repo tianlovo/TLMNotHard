@@ -19,6 +19,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa" })
 public final class ModernRefreshTests {
@@ -80,7 +81,7 @@ public final class ModernRefreshTests {
                     cpw.mods.fml.common.network.internal.FMLNetworkHandler.openGui(
                         f.owner,
                         com.tianluoqaq.tlmnh.TLMNotHard.INSTANCE,
-                        com.tianluoqaq.tlmnh.common.proxy.CommonProxy.GUI_MAID_ORIGINAL,
+                        CommonProxyProtocol.GUI_MAID_ORIGINAL,
                         f.maid.worldObj,
                         f.maid.getEntityId(),
                         0,

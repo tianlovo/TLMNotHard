@@ -35,7 +35,7 @@ import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
-import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.compat.backhand.development.player.BackhandAccess;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
@@ -214,10 +214,10 @@ final class MaidPlayerInputActions {
             if (!value.row.getString("Stage")
                 .startsWith("xp-")
                 || !maid.getEntityData()
-                    .hasKey(MaidInteractionTransfer.TAG, Constants.NBT.TAG_COMPOUND))
+                    .hasKey(MaidLifecycleNbtKeys.TAG_2, Constants.NBT.TAG_COMPOUND))
                 continue;
             var hold = maid.getEntityData()
-                .getCompoundTag(MaidInteractionTransfer.TAG);
+                .getCompoundTag(MaidLifecycleNbtKeys.TAG_2);
             if (!hold.getString("Player")
                 .equals(
                     value.session.player.getUniqueID()
@@ -571,7 +571,7 @@ final class MaidPlayerInputActions {
             "Wait for native main-hand restoration before cleanup");
         require(
             !session.maid.getEntityData()
-                .hasKey(MaidInteractionTransfer.TAG),
+                .hasKey(MaidLifecycleNbtKeys.TAG_2),
             "Original native payout hold retained");
         value.clearGenerated();
         if (value.wild != null) {
@@ -1365,7 +1365,7 @@ final class MaidPlayerInputActions {
             validateMaterials();
             require(
                 !session.maid.getEntityData()
-                    .hasKey(MaidInteractionTransfer.TAG),
+                    .hasKey(MaidLifecycleNbtKeys.TAG_2),
                 "Native pending payout remains held");
             for (var player : new EntityPlayerMP[] { session.player, secondary }) {
                 for (int slot = 0; slot < player.inventory.mainInventory.length; slot++) {

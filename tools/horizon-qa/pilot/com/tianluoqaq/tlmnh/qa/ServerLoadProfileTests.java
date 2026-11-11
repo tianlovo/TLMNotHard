@@ -55,7 +55,7 @@ import com.tianluoqaq.tlmnh.common.development.IsolatedPlayerChannel;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
@@ -409,7 +409,7 @@ public final class ServerLoadProfileTests {
                         world.spawnEntityInWorld(pig) && MaidSpawnChecks.present(pig),
                         "Actual combat target join failed");
                     maid.getMaidInventory()
-                        .setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.iron_sword));
+                        .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.iron_sword));
                     maid.getAttackListData()
                         .attackGroups()
                         .put(MaidCombatEntities.id(pig), MonsterType.HOSTILE);
@@ -989,7 +989,7 @@ public final class ServerLoadProfileTests {
                     var stack = maid.getMaidInventory()
                         .getStackInSlot(i);
                     h.assertTrue(
-                        stack == null || i == MaidInventory.MAIN_HAND && stack.getItem() == Items.iron_sword
+                        stack == null || i == MaidInventoryLayout.MAIN_HAND && stack.getItem() == Items.iron_sword
                             && stack.stackSize == 1
                             && !stack.hasTagCompound(),
                         "Unknown actor inventory retained");

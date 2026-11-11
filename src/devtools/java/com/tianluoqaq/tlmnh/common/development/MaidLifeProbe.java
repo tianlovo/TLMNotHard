@@ -31,7 +31,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.life.runtime.MaidLifeController;
@@ -553,7 +553,7 @@ public final class MaidLifeProbe {
 
     private static int cakeCount(EntityMaid maid) {
         int total = 0;
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = maid.getMaidInventory()
                 .getStackInSlot(slot);
             if (stack != null && stack.getItem() == Items.cake) total += stack.stackSize;

@@ -11,11 +11,11 @@ public class DevelopmentFlagsTest {
 
     @Test
     public void subFeatureRequiresMasterDevCommandsFlag() {
-        String prevMaster = System.getProperty(DevelopmentFlags.DEV_COMMANDS);
-        String prevImpact = System.getProperty(DevelopmentFlags.QA_PROJECTILE_IMPACT_FALLBACK);
+        String prevMaster = System.getProperty(DiagnosticIds.DEV_COMMANDS);
+        String prevImpact = System.getProperty(DiagnosticIds.QA_PROJECTILE_IMPACT_FALLBACK);
         try {
-            System.clearProperty(DevelopmentFlags.DEV_COMMANDS);
-            System.setProperty(DevelopmentFlags.QA_PROJECTILE_IMPACT_FALLBACK, "true");
+            System.clearProperty(DiagnosticIds.DEV_COMMANDS);
+            System.setProperty(DiagnosticIds.QA_PROJECTILE_IMPACT_FALLBACK, "true");
             assertFalse(DevelopmentFlags.isDevCommandsEnabled());
             assertFalse(DevelopmentFlags.isQaProjectileImpactFallback());
             try {
@@ -27,13 +27,13 @@ public class DevelopmentFlagsTest {
                         .contains("Development command required"));
             }
 
-            System.setProperty(DevelopmentFlags.DEV_COMMANDS, "true");
+            System.setProperty(DiagnosticIds.DEV_COMMANDS, "true");
             assertTrue(DevelopmentFlags.isDevCommandsEnabled());
             assertTrue(DevelopmentFlags.isQaProjectileImpactFallback());
             DevelopmentFlags.requireDevCommands();
         } finally {
-            restore(DevelopmentFlags.DEV_COMMANDS, prevMaster);
-            restore(DevelopmentFlags.QA_PROJECTILE_IMPACT_FALLBACK, prevImpact);
+            restore(DiagnosticIds.DEV_COMMANDS, prevMaster);
+            restore(DiagnosticIds.QA_PROJECTILE_IMPACT_FALLBACK, prevImpact);
         }
     }
 

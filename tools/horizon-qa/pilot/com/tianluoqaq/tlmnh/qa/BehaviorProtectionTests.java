@@ -23,7 +23,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
@@ -76,8 +76,8 @@ public final class BehaviorProtectionTests {
                 "OpaqueData",
                 UUID.randomUUID()
                     .toString());
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, apple);
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.diamond, 2));
+        inventory.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, apple);
+        inventory.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.diamond, 2));
         inventory.setInventorySlotContents(2, new ItemStack(Items.emerald, 9));
         var expected = new ItemStack[inventory.getSizeInventory()];
         for (int slot = 0; slot < expected.length; slot++) {

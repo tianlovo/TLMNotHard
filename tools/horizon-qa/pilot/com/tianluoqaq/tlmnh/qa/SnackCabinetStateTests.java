@@ -13,6 +13,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.life.cabinet.BlockSnackCabinet;
+import com.tianluoqaq.tlmnh.common.life.cabinet.SnackCabinetLayout;
 import com.tianluoqaq.tlmnh.common.life.cabinet.TileEntitySnackCabinet;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
@@ -51,7 +52,7 @@ public final class SnackCabinetStateTests {
             BlockSnackCabinet.cabinetType(
                 helper.getWorld()
                     .getBlockMetadata(f.x, f.y, f.z))
-                == BlockSnackCabinet.TYPE_FULL,
+                == SnackCabinetLayout.TYPE_FULL,
             "Native neighbor notification did not establish the full glass display");
         f.unchanged();
         f.base.owner.displayGUIChest(f.cabinet);
@@ -67,7 +68,7 @@ public final class SnackCabinetStateTests {
             BlockSnackCabinet.cabinetType(
                 helper.getWorld()
                     .getBlockMetadata(f.x, f.y, f.z))
-                == BlockSnackCabinet.TYPE_FULL,
+                == SnackCabinetLayout.TYPE_FULL,
             "Removing cake reset the original persistent glass type");
         f.unchanged();
         helper.succeedWhen(() -> {
@@ -94,7 +95,7 @@ public final class SnackCabinetStateTests {
             BlockSnackCabinet.cabinetType(
                 helper.getWorld()
                     .getBlockMetadata(f.x, f.y, f.z))
-                == BlockSnackCabinet.TYPE_FULL,
+                == SnackCabinetLayout.TYPE_FULL,
             "Loaded original cake did not initialize the glass display");
         f.unchanged();
         helper.getWorld()

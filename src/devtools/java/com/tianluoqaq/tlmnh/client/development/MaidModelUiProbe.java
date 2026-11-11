@@ -40,6 +40,7 @@ import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidSounds;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -202,11 +203,11 @@ public final class MaidModelUiProbe {
                     } else if (action.equals("home")) requested = main.openHomeSettings();
                     else {
                         int button = switch (action) {
-                            case "home_toggle" -> ContainerMaid.ACTION_HOME;
-                            case "home_work" -> ContainerMaid.ACTION_HOME_WORK;
-                            case "home_idle" -> ContainerMaid.ACTION_HOME_IDLE;
-                            case "home_rest" -> ContainerMaid.ACTION_HOME_REST;
-                            case "home_reset" -> ContainerMaid.ACTION_HOME_RESET;
+                            case "home_toggle" -> MaidContainerProtocol.ACTION_HOME;
+                            case "home_work" -> MaidContainerProtocol.ACTION_HOME_WORK;
+                            case "home_idle" -> MaidContainerProtocol.ACTION_HOME_IDLE;
+                            case "home_rest" -> MaidContainerProtocol.ACTION_HOME_REST;
+                            case "home_reset" -> MaidContainerProtocol.ACTION_HOME_RESET;
                             default -> throw new IllegalArgumentException(
                                 "Action does not apply to the main maid screen");
                         };

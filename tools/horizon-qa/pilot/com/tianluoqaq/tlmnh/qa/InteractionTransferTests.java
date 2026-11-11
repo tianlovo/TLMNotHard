@@ -29,6 +29,7 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidInteractionTransfer;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
+import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleNbtKeys;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneTransfer;
@@ -78,7 +79,7 @@ public final class InteractionTransferTests {
                     && !maid.isPotionActive(Potion.moveSpeed)
                     && events.live() == 0
                     && !maid.getEntityData()
-                        .hasKey(MaidInteractionTransfer.TAG),
+                        .hasKey(MaidLifecycleNbtKeys.TAG_2),
                 "Safely retractable potion callback consumed the source/effect or left a permanent lock: " + canceled);
             if (!canceled) helper.assertTrue(
                 f.owner.inventory.mainInventory[5].getItem() == Items.gold_ingot
@@ -97,7 +98,7 @@ public final class InteractionTransferTests {
                         .getDuration() == 333
                     && events.live() == 1
                     && !maid.getEntityData()
-                        .hasKey(MaidInteractionTransfer.TAG),
+                        .hasKey(MaidLifecycleNbtKeys.TAG_2),
                 "Same ordinary potion source could not retry exactly once after safe cancellation");
             maid.removePotionEffect(Potion.moveSpeed.id);
             events.clearOwnedOutputs();
@@ -133,7 +134,7 @@ public final class InteractionTransferTests {
                 && maid.getExperience() == 24
                 && MaidInteractionTransfer.availableExperience(maid) == 12
                 && maid.getEntityData()
-                    .hasKey(MaidInteractionTransfer.TAG, 10),
+                    .hasKey(MaidLifecycleNbtKeys.TAG_2, 10),
             "Unknown native reward successor was erased/refunded or remained independently redeemable");
         captureControlledFault(f, maid);
         events.callback = null;
@@ -147,19 +148,19 @@ public final class InteractionTransferTests {
         ThreadedFileIOBase.threadedIOInstance.waitForFinish();
         var raw = diskEntity(loader, maid);
         var held = (NBTTagCompound) raw.getCompoundTag("ForgeData")
-            .getCompoundTag(MaidInteractionTransfer.TAG)
+            .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)
             .copy();
         helper.assertTrue(
             held.equals(
                 maid.getEntityData()
-                    .getCompoundTag(MaidInteractionTransfer.TAG)),
+                    .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)),
             "Actual MCA did not retain the complete interaction hold");
         world.removePlayerEntityDangerously(maid);
         var restored = (EntityMaid) EntityList.createEntityFromNBT(raw, world);
         f.owned.add(restored);
         helper.assertTrue(
             world.spawnEntityInWorld(restored) && restored.getEntityData()
-                .getCompoundTag(MaidInteractionTransfer.TAG)
+                .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)
                 .equals(held) && MaidInteractionTransfer.availableExperience(restored) == 12,
             "Native full NBT reload lost escrow/XP lock");
         events.interact(restored);
@@ -188,7 +189,7 @@ public final class InteractionTransferTests {
                 .remainingDeathExperience(token) == 0,
             "Locked XP became ordinary death XP or lost its independent film right");
         var deathHold = identity.getCompoundTag("ForgeData")
-            .getCompoundTag(MaidInteractionTransfer.TAG);
+            .getCompoundTag(MaidLifecycleNbtKeys.TAG_2);
         var balances = deathHold.getTagList("DeathBalances", 10);
         helper.assertTrue(
             deathHold.getCompoundTag("OriginalMaid")
@@ -222,7 +223,7 @@ public final class InteractionTransferTests {
                 && revived != restored
                 && revived.getExperience() == 0
                 && revived.getEntityData()
-                    .getCompoundTag(MaidInteractionTransfer.TAG)
+                    .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)
                     .equals(deathHold)
                 && MaidInteractionTransfer.availableExperience(revived) == 0
                 && successor.getEntityItem().stackSize == 2
@@ -242,11 +243,11 @@ public final class InteractionTransferTests {
         maid.setExperience(24);
         f.owner.inventory.mainInventory[0] = new ItemStack(Items.glass_bottle, 2);
         events.onSound = () -> maid.getEntityData()
-            .getCompoundTag(MaidInteractionTransfer.TAG)
+            .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)
             .setString("UnknownPaidBalance", "callback-owned");
         events.interact(maid);
         var hold = maid.getEntityData()
-            .getCompoundTag(MaidInteractionTransfer.TAG);
+            .getCompoundTag(MaidLifecycleNbtKeys.TAG_2);
         helper.assertTrue(
             events.soundCalls == 1 && events.calls == 1
                 && events.live() == 1
@@ -269,7 +270,7 @@ public final class InteractionTransferTests {
         ThreadedFileIOBase.threadedIOInstance.waitForFinish();
         helper.assertTrue(
             diskEntity(loader, maid).getCompoundTag("ForgeData")
-                .getCompoundTag(MaidInteractionTransfer.TAG)
+                .getCompoundTag(MaidLifecycleNbtKeys.TAG_2)
                 .equals(hold),
             "Native save discarded the exact opaque paid-hold successor");
         System.out.println(

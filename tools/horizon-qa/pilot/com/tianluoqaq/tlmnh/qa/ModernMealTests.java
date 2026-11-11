@@ -21,7 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -39,9 +39,9 @@ public final class ModernMealTests {
         var nutrition = MaidFoodProfile.inspect(food);
         helper.assertTrue(nutrition != null && nutrition.total > 0, "Actual supported soup profile required");
         f.maid.getMaidInventory()
-            .setInventorySlotContents(MaidInventory.MAIN_HAND, food);
+            .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, food);
         f.maid.getMaidInventory()
-            .setInventorySlotContents(MaidInventory.OFF_HAND, new ItemStack(Items.stick));
+            .setInventorySlotContents(MaidInventoryLayout.OFF_HAND, new ItemStack(Items.stick));
         f.maid.getMaidInventory()
             .setInventorySlotContents(0, new ItemStack(Items.cooked_beef, 2));
         f.maid.setHealth(14);
@@ -125,8 +125,8 @@ public final class ModernMealTests {
         var sword = new ItemStack(Items.diamond_sword);
         var stick = new ItemStack(Items.stick);
         var inv = f.maid.getMaidInventory();
-        inv.setInventorySlotContents(MaidInventory.MAIN_HAND, sword);
-        inv.setInventorySlotContents(MaidInventory.OFF_HAND, stick);
+        inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, sword);
+        inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, stick);
         inv.setInventorySlotContents(0, new ItemStack(Items.mushroom_stew));
         inv.setInventorySlotContents(1, new ItemStack(Items.rotten_flesh));
         int[] started = { -1 };
@@ -167,7 +167,7 @@ public final class ModernMealTests {
                 helper.assertTrue(
                     age <= 210 && use != null
                         && use.getHand() == MaidItemUseState.Hand.OFF
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == sword
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == sword
                         && inv.getStackInSlot(0) == stick,
                     "Delayed heal missed source check window or did not swap the fallback off hand");
             }
@@ -176,8 +176,8 @@ public final class ModernMealTests {
             if (started[0] > 0 && !eating) {
                 helper.assertTrue(
                     count(f, Items.mushroom_stew) == 0 && count(f, Items.bowl) == 1
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == sword
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == stick,
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == sword
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == stick,
                     "Backpack completion did not restore both original hands/container");
                 done[0] = true;
                 System.out.println("TLMNH_MEAL106_RATE_SLEEP_PASS tick=" + age + " started=" + started[0]);
@@ -229,7 +229,7 @@ public final class ModernMealTests {
                     "Cancelled request continued using food or lost the independently transferred inventory");
                 var stick = new ItemStack(Items.stick);
                 f.maid.getMaidInventory()
-                    .setInventorySlotContents(MaidInventory.OFF_HAND, stick);
+                    .setInventorySlotContents(MaidInventoryLayout.OFF_HAND, stick);
                 var foreign = f.maid.getItemUseState()
                     .tryAcquire(new Object(), stick, MaidItemUseState.Hand.OFF, MaidItemUseState.Kind.FOOD, () -> true);
                 helper.assertTrue(foreign != null, "Foreign successor use required");

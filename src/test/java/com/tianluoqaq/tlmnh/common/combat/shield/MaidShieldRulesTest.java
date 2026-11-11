@@ -43,7 +43,7 @@ public class MaidShieldRulesTest {
 
     @Test
     public void passiveOneBoundaryMatchesOriginalRatherThanFiveSecondComment() {
-        int remaining = MaidShieldRules.PASSIVE_TICKS;
+        int remaining = ShieldCombatTuning.PASSIVE_TICKS;
         for (int i = 0; i < 98; i++) remaining = MaidShieldRules.maintainPassive(remaining, true);
         assertEquals(2, remaining);
         remaining = MaidShieldRules.maintainPassive(remaining, true);

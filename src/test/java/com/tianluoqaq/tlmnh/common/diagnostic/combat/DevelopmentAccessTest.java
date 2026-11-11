@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
+import com.tianluoqaq.tlmnh.common.diagnostic.DiagnosticIds;
 import com.tianluoqaq.tlmnh.common.diagnostic.combat.DevelopmentHooks.CombatPhase;
 
 /** 验证公共开发观察点单次挂载约束、无操作默认实例与双条件激活门禁 */
@@ -22,19 +22,19 @@ public class DevelopmentAccessTest {
 
     @Before
     public void setUp() {
-        originalDevCommands = System.getProperty(DevelopmentFlags.DEV_COMMANDS);
+        originalDevCommands = System.getProperty(DiagnosticIds.DEV_COMMANDS);
         DevelopmentAccess.resetForTesting();
     }
 
     @After
     public void tearDown() {
-        restore(DevelopmentFlags.DEV_COMMANDS, originalDevCommands);
+        restore(DiagnosticIds.DEV_COMMANDS, originalDevCommands);
         DevelopmentAccess.resetForTesting();
     }
 
     @Test
     public void defaultHooksStayNoopEvenWhenPropertyIsRequested() {
-        System.setProperty(DevelopmentFlags.DEV_COMMANDS, "true");
+        System.setProperty(DiagnosticIds.DEV_COMMANDS, "true");
         assertFalse(DevelopmentAccess.isEnabled());
         assertSame(DevelopmentHooks.NONE, DevelopmentAccess.hooks());
         try (var scope = DevelopmentAccess.hooks()
@@ -56,11 +56,11 @@ public class DevelopmentAccessTest {
                 return () -> closed.set(true);
             }
         };
-        System.clearProperty(DevelopmentFlags.DEV_COMMANDS);
+        System.clearProperty(DiagnosticIds.DEV_COMMANDS);
         DevelopmentAccess.install(impl);
         assertFalse(DevelopmentAccess.isEnabled());
 
-        System.setProperty(DevelopmentFlags.DEV_COMMANDS, "true");
+        System.setProperty(DiagnosticIds.DEV_COMMANDS, "true");
         assertTrue(DevelopmentAccess.isEnabled());
         try (var ignored = DevelopmentAccess.hooks()
             .measureCombat(null, CombatPhase.SUBMIT)) {

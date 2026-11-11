@@ -533,7 +533,7 @@ public class MaidLifecycleDataTest {
             record.setTag("Observed", new NBTTagCompound());
             var receipt = new NBTTagCompound();
             var receiptTag = new NBTTagCompound();
-            receiptTag.setString(MaidCaptureService.RECEIPT, token.toString());
+            receiptTag.setString(MaidLifecycleNbtKeys.RECEIPT_2, token.toString());
             receipt.setTag("tag", receiptTag);
             record.setTag("Receipt", receipt);
             var credential = new NBTTagCompound();

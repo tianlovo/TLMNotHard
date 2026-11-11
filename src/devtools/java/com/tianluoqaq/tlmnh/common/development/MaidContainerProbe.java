@@ -13,12 +13,14 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.Emp
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelSelection;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.proxy.CommonProxyProtocol;
 
 /** 在实际模组环境中检查容器移动守恒和逐次权限，临时物品只存在于夹具 */
 public final class MaidContainerProbe {
@@ -52,7 +54,7 @@ public final class MaidContainerProbe {
             var proxy = new CommonProxy();
             require(
                 proxy.getServerGuiElement(
-                    CommonProxy.GUI_MAID,
+                    CommonProxyProtocol.GUI_MAID,
                     owner,
                     world,
                     maid.getEntityId(),
@@ -60,29 +62,30 @@ public final class MaidContainerProbe {
                     0) instanceof ContainerMaid,
                 "server GUI owner routing");
             require(
-                proxy.getServerGuiElement(CommonProxy.GUI_MAID, stranger, world, maid.getEntityId(), 0, 0) == null,
+                proxy.getServerGuiElement(CommonProxyProtocol.GUI_MAID, stranger, world, maid.getEntityId(), 0, 0)
+                    == null,
                 "server GUI non-owner denial");
             require(
                 proxy.getServerGuiElement(127, owner, world, maid.getEntityId(), 0, 0) == null,
                 "unknown GUI denial");
             require(
-                proxy.getClientGuiElement(CommonProxy.GUI_MAID, owner, world, maid.getEntityId(), 0, 0) == null,
+                proxy.getClientGuiElement(CommonProxyProtocol.GUI_MAID, owner, world, maid.getEntityId(), 0, 0) == null,
                 "common side has no client GUI");
             inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 63));
             inventory.setInventorySlotContents(1, new ItemStack(Items.arrow, 64));
-            for (int slot = 2; slot < MaidInventory.BACKPACK_SIZE; slot++)
+            for (int slot = 2; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++)
                 inventory.setInventorySlotContents(slot, new ItemStack(Items.stick, 64));
             owner.inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 64));
             int before = countArrows(maid, owner);
-            int hotbarZero = MaidInventory.TOTAL_SIZE + 27;
+            int hotbarZero = MaidInventoryLayout.TOTAL_SIZE + 27;
             require(container.transferStackInSlot(owner, hotbarZero) != null, "partial backpack merge");
             require(
                 inventory.getStackInSlot(0).stackSize == 64 && owner.inventory.getStackInSlot(0).stackSize == 63,
                 "partial merge sizes");
             require(countArrows(maid, owner) == before, "partial merge conservation");
             require(
-                inventory.getStackInSlot(MaidInventory.MAIN_HAND) == null
-                    && inventory.getStackInSlot(MaidInventory.OFF_HAND) == null,
+                inventory.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == null
+                    && inventory.getStackInSlot(MaidInventoryLayout.OFF_HAND) == null,
                 "no hidden hand insertion");
             require(
                 container.transferStackInSlot(owner, hotbarZero) == null && countArrows(maid, owner) == before,
@@ -97,20 +100,20 @@ public final class MaidContainerProbe {
             owner.inventory.setInventorySlotContents(0, new ItemStack(Items.iron_boots));
             container.transferStackInSlot(owner, hotbarZero);
             require(
-                inventory.getStackInSlot(MaidInventory.ARMOR_START)
+                inventory.getStackInSlot(MaidInventoryLayout.ARMOR_START)
                     .getItem() == Items.iron_boots && owner.inventory.getStackInSlot(0) == null,
                 "boots slot");
             owner.inventory.setInventorySlotContents(0, new ItemStack(Items.iron_helmet));
             container.transferStackInSlot(owner, hotbarZero);
             require(
-                inventory.getStackInSlot(MaidInventory.ARMOR_START + 3)
+                inventory.getStackInSlot(MaidInventoryLayout.ARMOR_START + 3)
                     .getItem() == Items.iron_helmet,
                 "helmet slot");
-            require(inventory.getStackInSlot(MaidInventory.ARMOR_START + 1) == null, "armor validity");
+            require(inventory.getStackInSlot(MaidInventoryLayout.ARMOR_START + 1) == null, "armor validity");
             owner.inventory.setInventorySlotContents(0, new ItemStack(Items.bow));
             container.transferStackInSlot(owner, hotbarZero);
             require(
-                inventory.getStackInSlot(MaidInventory.MAIN_HAND)
+                inventory.getStackInSlot(MaidInventoryLayout.MAIN_HAND)
                     .getItem() == Items.bow,
                 "main-hand bow");
 
@@ -123,20 +126,20 @@ public final class MaidContainerProbe {
                 inventory.getStackInSlot(0).stackSize == 63 && owner.inventory.getStackInSlot(0).stackSize == 64,
                 "reverse partial sizes");
             require(countArrows(maid, owner) == before, "reverse merge conservation");
-            require(!container.enchantItem(stranger, ContainerMaid.ACTION_ATTACK), "denied command");
+            require(!container.enchantItem(stranger, MaidContainerProtocol.ACTION_ATTACK), "denied command");
             require(!container.enchantItem(owner, 127), "unknown command");
             require(
-                container.enchantItem(owner, ContainerMaid.ACTION_ATTACK) && maid.getTask() == MaidTask.ATTACK,
+                container.enchantItem(owner, MaidContainerProtocol.ACTION_ATTACK) && maid.getTask() == MaidTask.ATTACK,
                 "owner command");
-            require(!container.enchantItem(owner, ContainerMaid.ACTION_RANGED), "same-tick command bound");
+            require(!container.enchantItem(owner, MaidContainerProtocol.ACTION_RANGED), "same-tick command bound");
             owner.setPosition(x + 100.0D, y, z);
             require(
                 !container.canInteractWith(owner) && container.transferStackInSlot(owner, 0) == null,
                 "distance revocation");
             maid.ticksExisted++;
-            require(!container.enchantItem(owner, ContainerMaid.ACTION_RANGED), "distant command denial");
+            require(!container.enchantItem(owner, MaidContainerProtocol.ACTION_RANGED), "distant command denial");
             owner.setPosition(x + 0.5D, y, z + 0.5D);
-            require(container.enchantItem(owner, ContainerMaid.ACTION_RANGED), "valid next-tick command");
+            require(container.enchantItem(owner, MaidContainerProtocol.ACTION_RANGED), "valid next-tick command");
             verifyModelSelection(world, owner, stranger, maid, container, proxy);
             world.removeEntity(maid);
             require(!container.canInteractWith(owner), "removed entity revocation");
@@ -174,23 +177,26 @@ public final class MaidContainerProbe {
                 "original maid coordinates");
         }
         require(
-            new CommonProxy().getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL, owner, world, maid.getEntityId(), 0, 0)
+            new CommonProxy()
+                .getServerGuiElement(CommonProxyProtocol.GUI_MAID_ORIGINAL, owner, world, maid.getEntityId(), 0, 0)
                 != null,
             "original owner route");
         require(
             new CommonProxy()
-                .getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL, stranger, world, maid.getEntityId(), 0, 0) == null,
+                .getServerGuiElement(CommonProxyProtocol.GUI_MAID_ORIGINAL, stranger, world, maid.getEntityId(), 0, 0)
+                == null,
             "original stranger route");
         owner.inventory.setInventorySlotContents(0, new ItemStack(Items.iron_helmet));
         original.transferStackInSlot(owner, 27);
         require(
-            inventory.getStackInSlot(MaidInventory.ARMOR_START + 3) != null
+            inventory.getStackInSlot(MaidInventoryLayout.ARMOR_START + 3) != null
                 && owner.inventory.getStackInSlot(0) == null,
             "original helmet logical mapping");
         owner.inventory.setInventorySlotContents(0, new ItemStack(Items.bow));
         original.transferStackInSlot(owner, 27);
         require(
-            inventory.getStackInSlot(MaidInventory.MAIN_HAND) != null && owner.inventory.getStackInSlot(0) == null,
+            inventory.getStackInSlot(MaidInventoryLayout.MAIN_HAND) != null
+                && owner.inventory.getStackInSlot(0) == null,
             "original main-hand mapping");
         inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 63));
         for (int i = 1; i < 6; i++) inventory.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
@@ -203,7 +209,7 @@ public final class MaidContainerProbe {
             "original bounded shift conservation");
         require(
             original.transferStackInSlot(stranger, 42) == null && original.slotClick(42, 0, 0, stranger) == null
-                && !original.enchantItem(stranger, ContainerMaid.ACTION_HOME),
+                && !original.enchantItem(stranger, MaidContainerProtocol.ACTION_HOME),
             "original stranger operations");
         original.transferStackInSlot(owner, 42);
         require(
@@ -213,15 +219,15 @@ public final class MaidContainerProbe {
         maid.setPickupItems(true);
         maid.setPickupExperience(false);
         require(
-            original.enchantItem(owner, ContainerMaid.ACTION_PICKUP_ALL) && !maid.canPickupItems()
+            original.enchantItem(owner, MaidContainerProtocol.ACTION_PICKUP_ALL) && !maid.canPickupItems()
                 && !maid.canPickupExperience(),
             "original combined pickup off");
         maid.ticksExisted++;
         require(
-            original.enchantItem(owner, ContainerMaid.ACTION_PICKUP_ALL) && maid.canPickupItems()
+            original.enchantItem(owner, MaidContainerProtocol.ACTION_PICKUP_ALL) && maid.canPickupItems()
                 && maid.canPickupExperience(),
             "original combined pickup on");
-        for (int i = 0; i < MaidInventory.TOTAL_SIZE; i++) inventory.setInventorySlotContents(i, null);
+        for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) inventory.setInventorySlotContents(i, null);
         for (int i = 0; i < 36; i++) owner.inventory.setInventorySlotContents(i, null);
         TLMNotHard.LOG.info(
             "TLMNH_ORIGINAL_CONTAINER_TEST_PASS slots=48 mapping=original shifts=conserved permissions=checked pickup=authoritative");
@@ -233,7 +239,7 @@ public final class MaidContainerProbe {
         require(models.canInteractWith(owner) && !models.canInteractWith(stranger), "model owner access");
         require(
             proxy.getServerGuiElement(
-                CommonProxy.GUI_MAID_MODELS,
+                CommonProxyProtocol.GUI_MAID_MODELS,
                 owner,
                 world,
                 maid.getEntityId(),
@@ -241,20 +247,27 @@ public final class MaidContainerProbe {
                 0) instanceof ContainerMaidModels,
             "model GUI owner routing");
         require(
-            proxy.getServerGuiElement(CommonProxy.GUI_MAID_MODELS, stranger, world, maid.getEntityId(), 0, 0) == null,
+            proxy.getServerGuiElement(CommonProxyProtocol.GUI_MAID_MODELS, stranger, world, maid.getEntityId(), 0, 0)
+                == null,
             "model GUI non-owner denial");
         require(
-            proxy.getClientGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
+            proxy.getClientGuiElement(CommonProxyProtocol.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0)
+                == null,
             "model common side has no client GUI");
         var original = proxy
-            .getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, owner, world, maid.getEntityId(), 0, 0);
+            .getServerGuiElement(CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS, owner, world, maid.getEntityId(), 0, 0);
         require(
             original instanceof ContainerMaidModels && ((ContainerMaidModels) original).isOriginalView()
                 && !models.isOriginalView(),
             "original model route and isolated prototype");
         require(
-            proxy.getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, stranger, world, maid.getEntityId(), 0, 0)
-                == null,
+            proxy.getServerGuiElement(
+                CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS,
+                stranger,
+                world,
+                maid.getEntityId(),
+                0,
+                0) == null,
             "original model stranger route");
         String before = maid.getModelId();
         require(!models.enchantItem(stranger, 0) && before.equals(maid.getModelId()), "model non-owner change denial");
@@ -264,14 +277,20 @@ public final class MaidContainerProbe {
         maid.ticksExisted++;
         owner.inventory.setItemStack(new ItemStack(Items.stick, 3));
         try {
-            require(!main.enchantItem(owner, ContainerMaid.ACTION_MODELS), "model entry cursor denial");
+            require(!main.enchantItem(owner, MaidContainerProtocol.ACTION_MODELS), "model entry cursor denial");
             require(
-                proxy.getServerGuiElement(CommonProxy.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0) == null,
+                proxy.getServerGuiElement(CommonProxyProtocol.GUI_MAID_MODELS, owner, world, maid.getEntityId(), 0, 0)
+                    == null,
                 "model routed cursor denial");
             require(!models.enchantItem(owner, 0), "model selection cursor denial");
             require(
-                proxy.getServerGuiElement(CommonProxy.GUI_MAID_ORIGINAL_MODELS, owner, world, maid.getEntityId(), 0, 0)
-                    == null,
+                proxy.getServerGuiElement(
+                    CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS,
+                    owner,
+                    world,
+                    maid.getEntityId(),
+                    0,
+                    0) == null,
                 "original model routed cursor denial");
             require(
                 models.slotClick(-999, 0, 0, owner) == null && models.transferStackInSlot(owner, 0) == null
@@ -316,7 +335,7 @@ public final class MaidContainerProbe {
 
     private static int countArrows(EntityMaid maid, EntityPlayer player) {
         int count = 0;
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
             var stack = maid.getMaidInventory()
                 .getStackInSlot(slot);
             if (stack != null && stack.getItem() == Items.arrow) count += stack.stackSize;

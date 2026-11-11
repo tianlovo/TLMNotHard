@@ -52,12 +52,13 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.ProjectileCombatNbtKeys;
 import com.tianluoqaq.tlmnh.common.config.MaidBehaviorConfig;
 import com.tianluoqaq.tlmnh.common.config.MaidHomeConfig;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
@@ -230,13 +231,13 @@ public final class NativeChunkLifecycleTests {
                 "Native home input rejected");
             for (int i = 0; i < maid.getMaidInventory()
                 .getSizeInventory(); i++) {
-                var item = i >= MaidInventory.ARMOR_START ? new ItemStack(
+                var item = i >= MaidInventoryLayout.ARMOR_START ? new ItemStack(
                     new Item[] { Items.iron_boots, Items.iron_leggings, Items.iron_chestplate, Items.iron_helmet }[i
-                        - MaidInventory.ARMOR_START])
+                        - MaidInventoryLayout.ARMOR_START])
                     : new ItemStack(Items.diamond, i + 1);
-                if (i == MaidInventory.MAIN_HAND)
+                if (i == MaidInventoryLayout.MAIN_HAND)
                     item = new ItemStack(kind.equals("shooter") ? Items.bow : Items.iron_axe, 1, 3);
-                if (i == MaidInventory.OFF_HAND) item = new ItemStack(Items.stick, 2);
+                if (i == MaidInventoryLayout.OFF_HAND) item = new ItemStack(Items.stick, 2);
                 if (i == 0 && kind.equals("food")) item = new ItemStack(Items.mushroom_stew);
                 if (i == 0 && kind.equals("shooter")) item = new ItemStack(Items.arrow, 4);
                 var tag = (NBTTagCompound) opaque.copy();
@@ -550,7 +551,7 @@ public final class NativeChunkLifecycleTests {
                                     entity.getEntityData()
                                         .getString("TLMNHChunkRun"))
                                     || entity instanceof EntityArrow
-                                        && cycle.savedEntity.getTag(MaidProjectileSource.TAG)
+                                        && cycle.savedEntity.getTag(ProjectileCombatNbtKeys.TAG)
                                             .equals(((MaidArrowSourceState) entity).tlmnh$source())),
                             "Unknown or duplicate reconstructed subject retained");
                         cycle.reloaded = entity;
@@ -791,7 +792,7 @@ public final class NativeChunkLifecycleTests {
                         output instanceof MaidArrowSourceState && ((MaidArrowSourceState) output).tlmnh$sourceStopped()
                             && cycle != null
                             && cycle.savedEntity != null
-                            && cycle.savedEntity.getTag(MaidProjectileSource.TAG)
+                            && cycle.savedEntity.getTag(ProjectileCombatNbtKeys.TAG)
                                 .equals(((MaidArrowSourceState) output).tlmnh$source()),
                         "Unknown active/rewritten arrow successor retained during cleanup");
                     if (entity instanceof EntityPig) require(

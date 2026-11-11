@@ -16,7 +16,8 @@ import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack.ModernFlightProfile;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowImpactState;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidArrowSourceState;
 import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileImpactProtection;
-import com.tianluoqaq.tlmnh.common.combat.projectile.MaidProjectileSource;
+import com.tianluoqaq.tlmnh.common.combat.projectile.ProjectileCombatIds;
+import com.tianluoqaq.tlmnh.common.combat.projectile.ProjectileCombatNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.protection.runtime.ProtectionEvents;
 import com.tianluoqaq.tlmnh.qa.ProjectileImpactTests.Environment;
@@ -79,7 +80,7 @@ public final class ArrowSourceTests {
             helper.assertTrue(
                 actor.getHealth() == 20 && !actor.isBurning()
                     && ((MaidArrowImpactState) e.arrow).tlmnh$ignoredImpacts() > 0
-                    && saved[0].getTag(MaidProjectileSource.TAG)
+                    && saved[0].getTag(ProjectileCombatNbtKeys.TAG)
                         .equals(((MaidArrowSourceState) e.arrow).tlmnh$source()),
                 "Restored flame arrow harmed its ally, skipped no collision, or rewrote its source record");
             e.items();
@@ -108,12 +109,12 @@ public final class ArrowSourceTests {
             raw.setLong("UUIDMost", id.getMostSignificantBits());
             raw.setLong("UUIDLeast", id.getLeastSignificantBits());
             if (index == 1) {
-                raw.getCompoundTag(MaidProjectileSource.TAG)
+                raw.getCompoundTag(ProjectileCombatNbtKeys.TAG)
                     .setInteger("Schema", 91);
-                raw.getCompoundTag(MaidProjectileSource.TAG)
+                raw.getCompoundTag(ProjectileCombatNbtKeys.TAG)
                     .setByteArray("FutureOpaque", new byte[] { 7, 2, 9 });
             }
-            if (index == 2) raw.setTag(MaidProjectileSource.TAG, new NBTTagString("future noncompound source"));
+            if (index == 2) raw.setTag(ProjectileCombatNbtKeys.TAG, new NBTTagString("future noncompound source"));
             var arrow = restore(raw, helper);
             originals.add(raw);
             arrows.add(arrow);
@@ -133,7 +134,7 @@ public final class ArrowSourceTests {
                     helper.assertTrue(
                         !arrow.isDead && source.tlmnh$sourceStopped()
                             && originals.get(index)
-                                .getTag(MaidProjectileSource.TAG)
+                                .getTag(ProjectileCombatNbtKeys.TAG)
                                 .equals(source.tlmnh$source()),
                         "Missing shooter or unknown original NBT was discarded/rewritten");
                 }
@@ -167,8 +168,8 @@ public final class ArrowSourceTests {
                 "Reload automatically resumed a stopped arrow or lost its native persisted data");
             for (int index = 1; index < arrows.size(); index++) helper.assertTrue(
                 originals.get(index)
-                    .getTag(MaidProjectileSource.TAG)
-                    .equals(save(arrows.get(index), helper).getTag(MaidProjectileSource.TAG)),
+                    .getTag(ProjectileCombatNbtKeys.TAG)
+                    .equals(save(arrows.get(index), helper).getTag(ProjectileCombatNbtKeys.TAG)),
                 "Opaque unsupported source record changed during stopped world ticks");
             return true;
         });
@@ -257,8 +258,8 @@ public final class ArrowSourceTests {
                 reflectThroughActualTinkerCallback(helper, e);
                 var sameTick = save(e.arrow, helper);
                 helper.assertTrue(
-                    sameTick.hasKey(MaidProjectileSource.HANDOFF_TAG, 10)
-                        && originalSource.equals(sameTick.getTag(MaidProjectileSource.TAG))
+                    sameTick.hasKey(ProjectileCombatIds.HANDOFF_TAG, 10)
+                        && originalSource.equals(sameTick.getTag(ProjectileCombatNbtKeys.TAG))
                         && e.arrow.shootingEntity == e.ally,
                     "Same-tick native save lost the new player handoff before its next arrow update");
                 phase[0] = 1;
@@ -293,7 +294,7 @@ public final class ArrowSourceTests {
                         && reloaded[0].shootingEntity == null
                         && !state.tlmnh$sourceStopped()
                         && originalSource.equals(state.tlmnh$source())
-                        && transferredNbt[0].getTag(MaidProjectileSource.HANDOFF_TAG)
+                        && transferredNbt[0].getTag(ProjectileCombatIds.HANDOFF_TAG)
                             .equals(state.tlmnh$sourceHandoff()),
                     "Natural reload rebound the old maid, invented a new player, stopped native flight or changed handoff provenance");
                 reloaded[0].setDead();
@@ -303,22 +304,22 @@ public final class ArrowSourceTests {
                     raw.setLong("UUIDMost", id.getMostSignificantBits());
                     raw.setLong("UUIDLeast", id.getLeastSignificantBits());
                     if (i == 0) {
-                        raw.getCompoundTag(MaidProjectileSource.HANDOFF_TAG)
+                        raw.getCompoundTag(ProjectileCombatIds.HANDOFF_TAG)
                             .setInteger("Schema", 91);
-                        raw.getCompoundTag(MaidProjectileSource.HANDOFF_TAG)
+                        raw.getCompoundTag(ProjectileCombatIds.HANDOFF_TAG)
                             .setByteArray("FutureOpaque", new byte[] { 4, 7, 2 });
-                    } else raw.setTag(MaidProjectileSource.HANDOFF_TAG, new NBTTagString("future noncompound handoff"));
+                    } else raw.setTag(ProjectileCombatIds.HANDOFF_TAG, new NBTTagString("future noncompound handoff"));
                     var unknown = restore(raw, helper);
                     unknown.setPosition(e.f.maid.posX + 3, e.f.maid.posY + 2, e.f.maid.posZ + 2);
                     rejectedMarkers.add(
-                        raw.getTag(MaidProjectileSource.HANDOFF_TAG)
+                        raw.getTag(ProjectileCombatIds.HANDOFF_TAG)
                             .copy());
                     rejected.add(unknown);
                     helper.afterTest(unknown::setDead);
                     spawn(unknown, helper);
                 }
                 var unverifiedRaw = (NBTTagCompound) transferredNbt[0].copy();
-                unverifiedRaw.removeTag(MaidProjectileSource.HANDOFF_TAG);
+                unverifiedRaw.removeTag(ProjectileCombatIds.HANDOFF_TAG);
                 var unverifiedId = UUID.randomUUID();
                 unverifiedRaw.setLong("UUIDMost", unverifiedId.getMostSignificantBits());
                 unverifiedRaw.setLong("UUIDLeast", unverifiedId.getLeastSignificantBits());
@@ -337,9 +338,9 @@ public final class ArrowSourceTests {
                 unverifiedArrow.shootingEntity = unregistered;
                 unverifiedSaved[0] = save(unverifiedArrow, helper);
                 helper.assertTrue(
-                    unverifiedSaved[0].hasKey(MaidProjectileSource.STOPPED_TAG)
-                        && !unverifiedSaved[0].hasKey(MaidProjectileSource.HANDOFF_TAG)
-                        && originalSource.equals(unverifiedSaved[0].getTag(MaidProjectileSource.TAG))
+                    unverifiedSaved[0].hasKey(ProjectileCombatIds.STOPPED_TAG)
+                        && !unverifiedSaved[0].hasKey(ProjectileCombatIds.HANDOFF_TAG)
+                        && originalSource.equals(unverifiedSaved[0].getTag(ProjectileCombatNbtKeys.TAG))
                         && unverifiedArrow.shootingEntity == unregistered,
                     "Same-tick save laundered an unverified player takeover or changed its original data");
                 unverifiedArrow.setDead();

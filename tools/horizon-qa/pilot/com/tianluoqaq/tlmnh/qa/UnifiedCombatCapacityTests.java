@@ -32,7 +32,7 @@ import com.google.gson.JsonObject;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
-import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatObservation;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.EnhancedCombatTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
@@ -309,7 +309,7 @@ public final class UnifiedCombatCapacityTests {
                     "Hidden friend movement refreshed its historical position or timestamp");
                 h.assertTrue(
                     !sample.current && !ready.friendsComplete
-                        && (ready.blockedMask & CombatObservation.Readiness.FRIENDS_INCOMPLETE) != 0,
+                        && (ready.blockedMask & EnhancedCombatTuning.FRIENDS_INCOMPLETE) != 0,
                     "Unresolved known friend was treated as safe");
                 var snapshot = core.combat()
                     .lastSnapshot();
@@ -324,7 +324,7 @@ public final class UnifiedCombatCapacityTests {
                     ready.friendSamples.size() <= 12 && !ready.friendsComplete,
                     "Friend overflow exceeded output capacity or became safe");
                 h.assertTrue(
-                    (ready.blockedMask & CombatObservation.Readiness.FRIENDS_INCOMPLETE) != 0,
+                    (ready.blockedMask & EnhancedCombatTuning.FRIENDS_INCOMPLETE) != 0,
                     "Overflow omitted its UNKNOWN completeness reason");
                 var snapshot = core.combat()
                     .lastSnapshot();
@@ -765,7 +765,7 @@ public final class UnifiedCombatCapacityTests {
                         row.grantedWithoutCurrentCapture++;
                         if (!sustained) {
                             observed.addProperty("currentCapture", false);
-                            observed.addProperty("blockedMask", CombatObservation.Readiness.NO_CAPTURE);
+                            observed.addProperty("blockedMask", EnhancedCombatTuning.NO_CAPTURE);
                         }
                     } else {
                         boolean currentCapture = ready.captured && snapshot != null && snapshot.tick == now;

@@ -17,6 +17,7 @@ import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input.LwjglContainerMouseInput;
 
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
@@ -88,7 +89,8 @@ public final class MaidNativeContainerProbe {
                 } else if (action.equals("container_button")) {
                     int button = integers(spec, 1)[0];
                     require(
-                        button >= ContainerMaid.ACTION_IDLE && button <= ContainerMaid.ACTION_TASK_CONFIG,
+                        button >= MaidContainerProtocol.ACTION_IDLE
+                            && button <= MaidContainerProtocol.ACTION_TASK_CONFIG,
                         "Declared native maid container action required");
                     mc.playerController.sendEnchantPacket(container.windowId, button);
                     lastButton = new ButtonInput(mc, container, button);

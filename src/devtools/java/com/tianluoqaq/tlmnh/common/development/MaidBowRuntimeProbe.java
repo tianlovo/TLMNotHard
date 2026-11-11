@@ -30,7 +30,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.TLMNotHard;
-import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidEpisodeRecorder;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
@@ -323,7 +323,7 @@ public final class MaidBowRuntimeProbe {
                 change(Phase.INTERRUPT_DRAW);
                 return;
             case INTERRUPT_DRAW:
-                if (attack.getDrawTicks() < 5 || attack.getDrawTicks() >= MaidBowAttack.DRAW_TICKS) return;
+                if (attack.getDrawTicks() < 5 || attack.getDrawTicks() >= MaidCombatTuning.DRAW_TICKS) return;
                 clearArrows();
                 phaseShots = attack.getShots();
                 baselineAmmo = ammo();

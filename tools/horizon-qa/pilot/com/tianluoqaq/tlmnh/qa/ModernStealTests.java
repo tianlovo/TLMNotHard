@@ -13,7 +13,7 @@ import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.registry.MaidLifeContent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -141,8 +141,8 @@ public final class ModernStealTests {
         var main = new ItemStack(Items.cake);
         var off = new ItemStack(Items.cake);
         var bag = new ItemStack(Items.cake);
-        inv.setInventorySlotContents(MaidInventory.MAIN_HAND, main);
-        inv.setInventorySlotContents(MaidInventory.OFF_HAND, off);
+        inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, main);
+        inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, off);
         inv.setInventorySlotContents(0, bag);
         var hook = new PlaceHook(f);
         MinecraftForge.EVENT_BUS.register(hook);
@@ -165,9 +165,9 @@ public final class ModernStealTests {
                     hook.events == 1 && helper.getWorld()
                         .getBlock(f.x + 2, f.y + 2, f.z + 4) == Blocks.air
                         && actor.cakePlacements() == 0
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
                         && main.stackSize == 1
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off
                         && inv.getStackInSlot(0) == bag,
                     "Cancelled PlaceEvent changed finite resources");
                 changed[0] = age;
@@ -181,7 +181,7 @@ public final class ModernStealTests {
                         .getBlock(f.x + 2, f.y + 2, f.z + 4) == Blocks.air
                         && actor.cakePlacements() == 0
                         && main.stackSize == 1
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == main,
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main,
                     "Revoked policy paid or left an unpaid native cake");
                 changed[0] = age;
                 phase[0] = 2;
@@ -198,8 +198,8 @@ public final class ModernStealTests {
                     hook.events == 3 && helper.getWorld()
                         .getBlock(f.x + 2, f.y + 2, f.z + 4) == Blocks.cake
                         && actor.cakePlacements() == 1
-                        && inv.getStackInSlot(MaidInventory.MAIN_HAND) == null
-                        && inv.getStackInSlot(MaidInventory.OFF_HAND) == off
+                        && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == null
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == off
                         && off.stackSize == 1
                         && inv.getStackInSlot(0) == bag
                         && bag.stackSize == 1,

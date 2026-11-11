@@ -30,6 +30,8 @@ import com.tianluoqaq.tlmnh.api.behavior.MaidHandAccess;
 import com.tianluoqaq.tlmnh.api.behavior.MaidObservationView;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidExternalBehaviorSlot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.session.MaidSessionCallbackScope;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedSupportNbtKeys;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.support.EnhancedSupportTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidBehaviorExtensionData;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidBehaviorExtensionData.ModulePersistentAdapter;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.support.MaidTargetCooldowns;
@@ -93,12 +95,12 @@ public class MaidTargetCooldownsAndExtensionDataTest {
 
         var flushed = MaidBehaviorExtensionData.flush(base, Collections.emptyList());
         assertEquals(1, flushed.getInteger("Schema"));
-        assertFalse(flushed.hasKey(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT));
+        assertFalse(flushed.hasKey(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT));
 
         var emptyModule = adapter(MaidBehaviorId.of("mod_a", "empty"), false, tag -> {});
         var flushedWithEmpty = MaidBehaviorExtensionData.flush(base, Collections.singletonList(emptyModule));
-        assertFalse(flushedWithEmpty.hasKey(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT));
-        assertFalse(base.hasKey(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT));
+        assertFalse(flushedWithEmpty.hasKey(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT));
+        assertFalse(base.hasKey(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT));
     }
 
     @Test
@@ -111,7 +113,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         var existingModA = new NBTTagCompound();
         existingModA.setInteger("Counter", 9);
         ext.setTag("mod_a:counter", existingModA);
-        base.setTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT, ext);
+        base.setTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT, ext);
 
         var idA = MaidBehaviorId.of("mod_a", "counter");
         var slice = MaidBehaviorExtensionData.extractModuleTag(base, idA);
@@ -121,7 +123,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         slice.tag.setInteger("Counter", 999);
         assertEquals(
             9,
-            base.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT)
+            base.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT)
                 .getCompoundTag("mod_a:counter")
                 .getInteger("Counter"));
 
@@ -135,7 +137,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         leakedWriteRef.get()
             .setInteger("Counter", 777);
 
-        var savedExt = saved.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT);
+        var savedExt = saved.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT);
         assertEquals(
             10,
             savedExt.getCompoundTag("mod_a:counter")
@@ -147,7 +149,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         // Input base must remain at 9
         assertEquals(
             9,
-            base.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT)
+            base.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT)
                 .getCompoundTag("mod_a:counter")
                 .getInteger("Counter"));
     }
@@ -160,7 +162,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         var prior = new NBTTagCompound();
         prior.setInteger("SafeVersion", 3);
         ext.setTag(id.toString(), prior);
-        base.setTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT, ext);
+        base.setTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT, ext);
 
         // 1. Oversized (> 16 KB) rejection
         var faultedOversize = new AtomicBoolean();
@@ -178,7 +180,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
 
             @Override
             public void writePersistentData(NBTTagCompound candidate) {
-                candidate.setByteArray("Huge", new byte[MaidBehaviorExtensionData.MAX_MODULE_BYTES + 128]);
+                candidate.setByteArray("Huge", new byte[EnhancedSupportTuning.MAX_MODULE_BYTES + 128]);
             }
 
             @Override
@@ -190,7 +192,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         assertTrue(faultedOversize.get());
         assertEquals(
             3,
-            afterOversize.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT)
+            afterOversize.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT)
                 .getCompoundTag(id.toString())
                 .getInteger("SafeVersion"));
 
@@ -253,7 +255,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         assertTrue(cyclicFaulted.get());
         assertEquals(
             3,
-            afterCyclic.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT)
+            afterCyclic.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT)
                 .getCompoundTag(id.toString())
                 .getInteger("SafeVersion"));
     }
@@ -321,7 +323,7 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         var malformedChild = new NBTTagCompound();
         var ext = new NBTTagCompound();
         ext.setTag(id.toString(), new NBTTagString("corrupted-string"));
-        malformedChild.setTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT, ext);
+        malformedChild.setTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT, ext);
 
         slot.loadPersistentData(malformedChild);
         assertTrue(slot.isHealthy());
@@ -330,15 +332,15 @@ public class MaidTargetCooldownsAndExtensionDataTest {
         var flushedChild = MaidBehaviorExtensionData.flush(malformedChild, Arrays.asList(slot));
         assertEquals(
             "corrupted-string",
-            flushedChild.getCompoundTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT)
+            flushedChild.getCompoundTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT)
                 .getString(id.toString()));
 
         // Case B: parent BehaviorExt itself is a string instead of NBTTagCompound
         var malformedParent = new NBTTagCompound();
-        malformedParent.setTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT, new NBTTagString("parent-corrupted"));
+        malformedParent.setTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT, new NBTTagString("parent-corrupted"));
         var flushedParent = MaidBehaviorExtensionData.flush(malformedParent, Arrays.asList(slot));
-        assertNotNull(flushedParent.getTag(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT));
-        assertEquals("parent-corrupted", flushedParent.getString(MaidBehaviorExtensionData.TAG_BEHAVIOR_EXT));
+        assertNotNull(flushedParent.getTag(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT));
+        assertEquals("parent-corrupted", flushedParent.getString(EnhancedSupportNbtKeys.TAG_BEHAVIOR_EXT));
     }
 
     private static NBTTagCompound buildCompoundChain(int totalCompoundDepth) {

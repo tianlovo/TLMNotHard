@@ -83,7 +83,7 @@ import com.tianluoqaq.tlmnh.common.development.combat.CombatEffectPilotSession.A
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.development.telemetry.NativeCombatLedgerReader;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
@@ -1194,7 +1194,7 @@ public final class UnifiedCombatEffectPilotTests {
             weaponWear = 0;
             shieldWear = 0;
             var inventory = new JsonArray();
-            for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) {
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
                 var stack = maid.getMaidInventory()
                     .getStackInSlot(slot);
                 inventory.add(new com.google.gson.JsonPrimitive(item(stack)));

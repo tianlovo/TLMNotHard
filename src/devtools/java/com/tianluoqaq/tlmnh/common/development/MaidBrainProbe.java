@@ -24,7 +24,7 @@ import com.tianluoqaq.tlmnh.common.ai.MaidBoundedPathPlanner;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainCoordinator;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.PathResult;
 import com.tianluoqaq.tlmnh.common.ai.MaidFollowController.Status;
-import com.tianluoqaq.tlmnh.common.ai.combat.MaidCombatController;
+import com.tianluoqaq.tlmnh.common.ai.combat.AiCombatTuning;
 import com.tianluoqaq.tlmnh.common.ai.perception.MaidDangerSensor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidActionRunner.Owner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime.InvalidationReason;
@@ -89,12 +89,12 @@ public final class MaidBrainProbe {
                     .getPath() != null,
                 "life control must own bed and path");
             var oldLife = runner.getCurrentRun();
-            int phase = Math.floorMod(maid.getEntityId(), MaidCombatController.SCAN_INTERVAL) + 1;
+            int phase = Math.floorMod(maid.getEntityId(), AiCombatTuning.SCAN_INTERVAL) + 1;
             for (int i = 0; Math.floorMod(
                 brain.getCombatController()
                     .getTicks() + 1
                     - phase,
-                MaidCombatController.SCAN_INTERVAL) != 0 && i < 10; i++) brain.updateTask();
+                AiCombatTuning.SCAN_INTERVAL) != 0 && i < 10; i++) brain.updateTask();
             require(runner.getOwner() == Owner.LIFE, "life must still own control immediately before combat scan");
             target.setPosition(x + 4.5, y, z + 0.5);
             require(world.spawnEntityInWorld(target), "control fixture target spawn");

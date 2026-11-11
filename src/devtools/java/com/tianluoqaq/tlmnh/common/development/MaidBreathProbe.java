@@ -20,7 +20,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -78,9 +78,9 @@ public final class MaidBreathProbe {
         main = new ItemStack(Items.iron_sword);
         off = new ItemStack(Items.stick);
         maid.getMaidInventory()
-            .setInventorySlotContents(MaidInventory.MAIN_HAND, main);
+            .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, main);
         maid.getMaidInventory()
-            .setInventorySlotContents(MaidInventory.OFF_HAND, off);
+            .setInventorySlotContents(MaidInventoryLayout.OFF_HAND, off);
         var potion = new ItemStack(Items.potionitem);
         var tag = new NBTTagCompound();
         var effects = new NBTTagList();
@@ -272,9 +272,9 @@ public final class MaidBreathProbe {
     private void hands() {
         require(
             maid.getMaidInventory()
-                .getStackInSlot(MaidInventory.MAIN_HAND) == main
+                .getStackInSlot(MaidInventoryLayout.MAIN_HAND) == main
                 && maid.getMaidInventory()
-                    .getStackInSlot(MaidInventory.OFF_HAND) == off,
+                    .getStackInSlot(MaidInventoryLayout.OFF_HAND) == off,
             "Original hands conserved");
     }
 

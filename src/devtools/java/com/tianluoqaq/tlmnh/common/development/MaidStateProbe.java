@@ -13,7 +13,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 
 /** 验证女仆主人绑定、姿态标志、背包槽位与 NBT 往返容错的自检探针 */
 public final class MaidStateProbe {
@@ -43,19 +43,19 @@ public final class MaidStateProbe {
         original.setPickupItems(false);
         original.setPickupExperience(true);
         var inventory = original.getMaidInventory();
-        for (int slot = 0; slot < MaidInventory.BACKPACK_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = new ItemStack(Items.arrow, slot + 1);
             stack.setStackDisplayName("slot-" + slot);
             inventory.setInventorySlotContents(slot, stack);
         }
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, new ItemStack(Items.bow, 1, 11));
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, new ItemStack(Items.golden_apple, 3));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START, new ItemStack(Items.iron_boots, 1, 4));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 1, new ItemStack(Items.iron_leggings));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 2, new ItemStack(Items.iron_chestplate));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START + 3, new ItemStack(Items.iron_helmet));
+        inventory.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.bow, 1, 11));
+        inventory.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, new ItemStack(Items.golden_apple, 3));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START, new ItemStack(Items.iron_boots, 1, 4));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 1, new ItemStack(Items.iron_leggings));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 2, new ItemStack(Items.iron_chestplate));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START + 3, new ItemStack(Items.iron_helmet));
         require(
-            !inventory.isItemValidForSlot(MaidInventory.ARMOR_START, new ItemStack(Items.iron_helmet)),
+            !inventory.isItemValidForSlot(MaidInventoryLayout.ARMOR_START, new ItemStack(Items.iron_helmet)),
             "armor slot restriction");
 
         var snapshot = new NBTTagCompound();
@@ -88,7 +88,7 @@ public final class MaidStateProbe {
             restored.getExperience() == 155 && restored.getHunger() == 17 && restored.getFavorability() == 23,
             "life state");
         require(!restored.canPickupItems() && restored.canPickupExperience(), "pickup flags");
-        for (int slot = 0; slot < MaidInventory.TOTAL_SIZE; slot++) {
+        for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
             require(
                 ItemStack.areItemStacksEqual(
                     inventory.getStackInSlot(slot),
@@ -124,7 +124,7 @@ public final class MaidStateProbe {
             "unknown extension retention");
         TLMNotHard.LOG.info(
             "TLMNH_STATE_TEST_PASS slots={} owner=immutable offhand=dirty-tracked nbt=roundtrip",
-            MaidInventory.TOTAL_SIZE);
+            MaidInventoryLayout.TOTAL_SIZE);
         sender.addChatMessage(new ChatComponentTranslation("commands.tlmnhdev.passed"));
     }
 

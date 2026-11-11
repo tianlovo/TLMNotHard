@@ -17,8 +17,8 @@ import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
-import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
 
 /** 原生原版窗口的服务端任务按钮；不将此记录称为真实客户端鼠标或自然战斗 */
@@ -65,9 +65,10 @@ public final class MaidTaskEquipmentTests {
         inventory.setInventorySlotContents(1, new ItemStack(Items.spider_eye));
         inventory.setInventorySlotContents(2, new ItemStack(Blocks.sapling));
         inventory.setInventorySlotContents(5, sword);
-        inventory.setInventorySlotContents(MaidInventory.MAIN_HAND, bow);
-        inventory.setInventorySlotContents(MaidInventory.OFF_HAND, tagged(new ItemStack(Items.stick), "off-hand"));
-        inventory.setInventorySlotContents(MaidInventory.ARMOR_START, new ItemStack(Items.iron_boots));
+        inventory.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, bow);
+        inventory
+            .setInventorySlotContents(MaidInventoryLayout.OFF_HAND, tagged(new ItemStack(Items.stick), "off-hand"));
+        inventory.setInventorySlotContents(MaidInventoryLayout.ARMOR_START, new ItemStack(Items.iron_boots));
         var expected = contents(maid);
         var playerBefore = f.player.inventory.writeToNBT(new NBTTagList())
             .copy();
@@ -80,7 +81,7 @@ public final class MaidTaskEquipmentTests {
         maid.getItemUseState()
             .tryAcquire(new Object(), bow, MaidItemUseState.Hand.MAIN, MaidItemUseState.Kind.BOW, () -> true);
         helper.assertTrue(
-            container.enchantItem(f.player, ContainerMaid.ACTION_ATTACK),
+            container.enchantItem(f.player, MaidContainerProtocol.ACTION_ATTACK),
             "Actual task attack button rejected its legitimate owner");
         swapExpected(expected);
         assertContents(helper, maid, expected);
@@ -93,7 +94,7 @@ public final class MaidTaskEquipmentTests {
             .thenIdle(1)
             .thenExecute(() -> {
                 helper.assertTrue(
-                    container.enchantItem(f.player, ContainerMaid.ACTION_ATTACK),
+                    container.enchantItem(f.player, MaidContainerProtocol.ACTION_ATTACK),
                     "Repeated same task button was rejected");
                 assertContents(helper, maid, expected);
                 helper.assertTrue(maid.getHeldItem() == sword, "Suitable current weapon was needlessly replaced");
@@ -101,7 +102,7 @@ public final class MaidTaskEquipmentTests {
             .thenIdle(1)
             .thenExecute(() -> {
                 helper.assertTrue(
-                    container.enchantItem(f.player, ContainerMaid.ACTION_RANGED),
+                    container.enchantItem(f.player, MaidContainerProtocol.ACTION_RANGED),
                     "Actual ranged task button was rejected");
                 swapExpected(expected);
                 assertContents(helper, maid, expected);
@@ -113,7 +114,7 @@ public final class MaidTaskEquipmentTests {
             .thenExecute(() -> {
                 f.player.setPosition(f.x + 20.5, f.y + 1, f.z + 3.5);
                 helper.assertTrue(
-                    !container.enchantItem(f.player, ContainerMaid.ACTION_ATTACK)
+                    !container.enchantItem(f.player, MaidContainerProtocol.ACTION_ATTACK)
                         && maid.getTask() == MaidTask.RANGED_ATTACK,
                     "Distant player changed task or equipment");
                 assertContents(helper, maid, expected);
@@ -123,7 +124,7 @@ public final class MaidTaskEquipmentTests {
                 inventory.setInventorySlotContents(5, null);
                 expected[5] = null;
                 helper.assertTrue(
-                    container.enchantItem(f.player, ContainerMaid.ACTION_ATTACK),
+                    container.enchantItem(f.player, MaidContainerProtocol.ACTION_ATTACK),
                     "Missing weapon must not prevent choosing the task itself");
                 assertContents(helper, maid, expected);
                 helper.assertTrue(maid.getHeldItem() == bow, "Missing weapon path lost the original held item");
@@ -146,7 +147,7 @@ public final class MaidTaskEquipmentTests {
     }
 
     private static ItemStack[] contents(EntityMaid maid) {
-        var result = new ItemStack[MaidInventory.TOTAL_SIZE];
+        var result = new ItemStack[MaidInventoryLayout.TOTAL_SIZE];
         for (int slot = 0; slot < result.length; slot++) result[slot] = ItemStack.copyItemStack(
             maid.getMaidInventory()
                 .getStackInSlot(slot));
@@ -154,8 +155,8 @@ public final class MaidTaskEquipmentTests {
     }
 
     private static void swapExpected(ItemStack[] expected) {
-        var held = expected[MaidInventory.MAIN_HAND];
-        expected[MaidInventory.MAIN_HAND] = expected[5];
+        var held = expected[MaidInventoryLayout.MAIN_HAND];
+        expected[MaidInventoryLayout.MAIN_HAND] = expected[5];
         expected[5] = held;
     }
 

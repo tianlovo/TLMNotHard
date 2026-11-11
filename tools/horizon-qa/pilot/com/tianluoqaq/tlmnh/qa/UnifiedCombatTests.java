@@ -34,15 +34,15 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
-import com.tianluoqaq.tlmnh.common.combat.CombatCadence;
 import com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatEntities;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatNbtKeys;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
-import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
@@ -64,17 +64,17 @@ public final class UnifiedCombatTests {
     @GameTest(template = "modern_core_cell", timeoutTicks = 60, batch = "unified_combat_1_migration")
     public static void migrationRoundTripPreservesRawFAndCanonicalProduction(GameTestHelper h) {
         var f = fixture(h);
-        ItemStack[] items = new ItemStack[MaidInventory.TOTAL_SIZE];
+        ItemStack[] items = new ItemStack[MaidInventoryLayout.TOTAL_SIZE];
         for (int slot = 0; slot < items.length; slot++) {
             items[slot] = tagged(
-                new ItemStack(Items.stick, slot < MaidInventory.MAIN_HAND ? slot + 1 : 1),
+                new ItemStack(Items.stick, slot < MaidInventoryLayout.MAIN_HAND ? slot + 1 : 1),
                 "slot-" + slot);
             f.maid.getMaidInventory()
                 .setInventorySlotContents(slot, items[slot]);
         }
         var source = snapshot(f.maid);
-        source.removeTag(CombatCadence.TAG);
-        source.removeTag(CombatHitReceipt.TAG);
+        source.removeTag(MaidCombatNbtKeys.TAG);
+        source.removeTag(MaidCombatNbtKeys.TAG_2);
         source.getCompoundTag("TLMNH")
             .removeTag("CombatTask");
         source.getCompoundTag("TLMNH")
@@ -224,7 +224,7 @@ public final class UnifiedCombatTests {
                             .getItemDamage() == 0,
                     "Stale read replaced ownership, lost accepted fact or blindly settled unknown successor");
                 var preserved = snapshot(heldMaid);
-                var fact = preserved.getCompoundTag(CombatHitReceipt.TAG);
+                var fact = preserved.getCompoundTag(MaidCombatNbtKeys.TAG_2);
                 h.assertTrue(
                     fact.getBoolean("Accepted") && "HELD".equals(fact.getString("Stage")),
                     "HELD save lost accepted native outcome");
@@ -235,23 +235,23 @@ public final class UnifiedCombatTests {
                 h.assertTrue(
                     reload.getCombatHitReceipt()
                         .blocksTransfer()
-                        && snapshot(reload).getTag(CombatHitReceipt.TAG)
+                        && snapshot(reload).getTag(MaidCombatNbtKeys.TAG_2)
                             .equals(fact)
                         && heldTarget.getHealth() == health,
                     "Known unclosed receipt replayed or changed during native reload");
                 reload.setDead();
                 var unknown = (NBTTagCompound) preserved.copy();
-                unknown.getCompoundTag(CombatHitReceipt.TAG)
+                unknown.getCompoundTag(MaidCombatNbtKeys.TAG_2)
                     .setInteger("Version", Integer.MAX_VALUE);
-                unknown.getCompoundTag(CombatHitReceipt.TAG)
+                unknown.getCompoundTag(MaidCombatNbtKeys.TAG_2)
                     .setTag(OPAQUE, old.copy());
                 var future = new EntityMaid(h.getWorld());
                 future.readFromNBT(unknown);
                 h.assertTrue(
                     future.getCombatHitReceipt()
                         .blocksTransfer()
-                        && snapshot(future).getTag(CombatHitReceipt.TAG)
-                            .equals(unknown.getTag(CombatHitReceipt.TAG)),
+                        && snapshot(future).getTag(MaidCombatNbtKeys.TAG_2)
+                            .equals(unknown.getTag(MaidCombatNbtKeys.TAG_2)),
                     "Unknown receipt schema was activated or rewritten");
                 future.setDead();
                 phase[0] = 2;
