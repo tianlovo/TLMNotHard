@@ -256,6 +256,7 @@ public final class ClientDevelopmentRequest {
                     "pack",
                     "search",
                     "task_config",
+                    "bauble",
                     "target_add",
                     "target_remove",
                     "target_previous",

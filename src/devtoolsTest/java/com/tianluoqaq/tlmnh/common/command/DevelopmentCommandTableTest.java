@@ -11,10 +11,11 @@ public class DevelopmentCommandTableTest {
     @Test
     public void subcommandTableKeepsAllExpectedEntries() {
         var names = DevelopmentCommand.registeredSubcommands();
-        assertEquals(76, names.size());
+        assertEquals(77, names.size());
         assertTrue(names.contains("shield-runtime-status"));
         assertTrue(names.contains("shield-runtime-abort"));
         assertTrue(names.contains("lab-world-test"));
+        assertTrue(names.contains("lab-inventory-fixture"));
         assertTrue(names.contains("state-test"));
         assertTrue(names.contains("persist-check"));
     }

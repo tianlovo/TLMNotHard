@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
@@ -132,7 +133,7 @@ final class MaidNaturalWorldActions {
             maid.setLocationAndAngles(4.5, 65, .5, 180, 0);
             maid.rotationYawHead = maid.prevRotationYawHead = maid.renderYawOffset = maid.prevRenderYawOffset = 180;
             maid.getMaidInventory()
-                .setInventorySlotContents(6, owned(session, Items.iron_sword));
+                .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, owned(session, Items.iron_sword));
             maid.getMaidInventory()
                 .setInventorySlotContents(5, owned(session, Items.compass));
             maid.getConfigManager()
@@ -197,7 +198,7 @@ final class MaidNaturalWorldActions {
                 session.hand(null, null);
                 maid.setHealth(10);
                 maid.getMaidInventory()
-                    .setInventorySlotContents(7, owned(session, Items.mushroom_stew));
+                    .setInventorySlotContents(MaidInventoryLayout.OFF_HAND, owned(session, Items.mushroom_stew));
                 world.setTag("Inventory", inventory(session));
                 var after = new NBTTagList();
                 var intermediate = new NBTTagList();

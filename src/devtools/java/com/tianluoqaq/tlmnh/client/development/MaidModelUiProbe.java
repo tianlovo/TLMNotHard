@@ -519,10 +519,12 @@ public final class MaidModelUiProbe {
         if (!DevelopmentFlags.isDevCommandsEnabled()) throw new IllegalStateException("Model UI probe disabled");
         var minecraft = Minecraft.getMinecraft();
         var player = minecraft.thePlayer;
-        if (!AnimationLab.isLab(minecraft.theWorld) || player == null
+        if ((!AnimationLab.isLab(minecraft.theWorld) || player == null
             || !player.capabilities.disableDamage
             || !player.capabilities.isFlying
-            || !player.capabilities.allowFlying) throw new IllegalStateException("Protected lab player required");
+            || !player.capabilities.allowFlying)
+            && !MaidNativeContainerProbe.isProtectedSurvivalInventoryWindow(minecraft))
+            throw new IllegalStateException("Protected lab player required");
         var actual = minecraft.currentScreen instanceof GuiContainer screen ? screen.inventorySlots
             : minecraft.currentScreen instanceof MaidModelGui models ? models.getContainer()
                 : minecraft.currentScreen instanceof CacheScreen cache ? cache.getContainer()

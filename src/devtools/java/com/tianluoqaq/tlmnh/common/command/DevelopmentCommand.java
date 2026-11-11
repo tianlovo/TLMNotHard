@@ -53,6 +53,7 @@ import com.tianluoqaq.tlmnh.common.development.MaidWorldSoundRuntimeProbe;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidVisibleStateSnapshot;
+import com.tianluoqaq.tlmnh.common.development.inventory.MaidInventoryUiFixture;
 import com.tianluoqaq.tlmnh.common.development.life.CabinetVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.life.MaidBedVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.life.MaidSleepVisualFixture;
@@ -211,6 +212,7 @@ public final class DevelopmentCommand extends CommandBase {
         }));
         register(map, "lab-naming-fixture", playerArg(MaidNamingInteractionFixture::run));
         register(map, "lab-care-fixture", playerArg(MaidCareInteractionFixture::run));
+        register(map, "lab-inventory-fixture", playerArg(MaidInventoryUiFixture::run));
         register(map, "lab-visual-hunger", DevelopmentCommand::handleLabVisualHunger);
         register(map, "lab-open-original-gui", playerOnly(AnimationLab::openOriginalGui));
         register(map, "lab-open-gui", playerOnly(AnimationLab::openOwnerGui));

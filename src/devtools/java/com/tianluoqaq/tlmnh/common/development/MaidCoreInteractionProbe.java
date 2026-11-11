@@ -556,8 +556,8 @@ public final class MaidCoreInteractionProbe {
             if ("complete".equals(group)) {
                 var sword = new ItemStack(Items.iron_sword);
                 var spare = new ItemStack(Items.diamond, 3);
-                inv.setInventorySlotContents(6, sword);
-                inv.setInventorySlotContents(7, spare);
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, sword);
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, spare);
                 inv.setInventorySlotContents(0, new ItemStack(Items.mushroom_stew));
                 maid.setHealth(2);
                 meal.tick();
@@ -565,7 +565,8 @@ public final class MaidCoreInteractionProbe {
                 require(inv.getStackInSlot(0) == spare && maid.getHealth() > 2, "swap conserves old hand and heals");
                 for (int i = 0; i < 32; i++) meal.tick();
                 require(
-                    !meal.isEating() && inv.getStackInSlot(6) == sword && inv.getStackInSlot(7) == spare,
+                    !meal.isEating() && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == sword
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == spare,
                     "hands restored");
                 require(count(inv, Items.mushroom_stew) == 0 && count(inv, Items.bowl) == 1, "one soup one bowl");
                 require(
@@ -575,8 +576,8 @@ public final class MaidCoreInteractionProbe {
             } else if ("cancel".equals(group)) {
                 var sword = new ItemStack(Items.iron_sword);
                 var oldOff = new ItemStack(Items.diamond, 2);
-                inv.setInventorySlotContents(6, sword);
-                inv.setInventorySlotContents(7, oldOff);
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, sword);
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, oldOff);
                 inv.setInventorySlotContents(0, new ItemStack(Items.apple, 4));
                 maid.setHealth(2);
                 meal.tick();
@@ -584,7 +585,8 @@ public final class MaidCoreInteractionProbe {
                 f.maid.getBrainCoordinator()
                     .setSuspended(true);
                 require(
-                    !meal.isEating() && inv.getStackInSlot(7) == oldOff && count(inv, Items.apple) == 4,
+                    !meal.isEating() && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == oldOff
+                        && count(inv, Items.apple) == 4,
                     "pause restores without consuming");
                 f.maid.getBrainCoordinator()
                     .setSuspended(false);
@@ -594,13 +596,13 @@ public final class MaidCoreInteractionProbe {
                 require(meal.isEating(), "save eating started");
                 var savingLease = maid.getItemUseState()
                     .peek();
-                var savingFood = inv.getStackInSlot(7);
+                var savingFood = inv.getStackInSlot(MaidInventoryLayout.OFF_HAND);
                 var saved = new NBTTagCompound();
                 maid.writeEntityToNBT(saved);
                 require(
                     meal.isEating() && maid.getItemUseState()
                         .peek() == savingLease
-                        && inv.getStackInSlot(7) == savingFood
+                        && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == savingFood
                         && inv.getStackInSlot(0) == oldOff
                         && maid.hasPose(MaidPose.USING_OFFHAND),
                     "native serialization preserves live meal lease and exchanged slots");
@@ -615,7 +617,7 @@ public final class MaidCoreInteractionProbe {
                             savingFood)
                         && ItemStack.areItemStacksEqual(
                             restored.getMaidInventory()
-                                .getStackInSlot(7),
+                                .getStackInSlot(MaidInventoryLayout.OFF_HAND),
                             oldOff),
                     "serialized/reloaded logical slots conserve complete items without changing the live actor");
                 meal.load(new NBTTagCompound());
@@ -623,11 +625,12 @@ public final class MaidCoreInteractionProbe {
                 meal.tick();
                 require(meal.isEating(), "mutation eating started");
                 var replacement = new ItemStack(Items.emerald);
-                f.owner.inventory.setInventorySlotContents(20, inv.getStackInSlot(7));
-                inv.setInventorySlotContents(7, replacement);
+                f.owner.inventory.setInventorySlotContents(20, inv.getStackInSlot(MaidInventoryLayout.OFF_HAND));
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, replacement);
                 meal.tick();
                 require(
-                    !meal.isEating() && inv.getStackInSlot(7) == replacement && inv.getStackInSlot(0) == oldOff,
+                    !meal.isEating() && inv.getStackInSlot(MaidInventoryLayout.OFF_HAND) == replacement
+                        && inv.getStackInSlot(0) == oldOff,
                     "menu changes not overwritten");
                 require(f.owner.inventory.getStackInSlot(20).stackSize == 4, "removed food retained by viewer");
             } else if ("native-items".equals(group)) {
@@ -637,15 +640,17 @@ public final class MaidCoreInteractionProbe {
                 var food = MaidFoodProfile.inspect(drink);
                 require(food != null && food.container() != null, "GT coffee nutrition and container");
                 var empty = food.container();
-                for (int slot = 0; slot < 6; slot++)
+                for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++)
                     inv.setInventorySlotContents(slot, new ItemStack(Items.diamond, 64));
-                inv.setInventorySlotContents(7, new ItemStack(Items.diamond, 64));
-                inv.setInventorySlotContents(6, drink);
+                inv.setInventorySlotContents(MaidInventoryLayout.OFF_HAND, new ItemStack(Items.diamond, 64));
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, drink);
                 maid.setHealth(2);
                 meal.tick();
                 require(meal.isEating() && !maid.hasPose(MaidPose.USING_OFFHAND), "existing main hand drink");
                 for (int i = 0; i < food.duration; i++) meal.tick();
-                require(drink.stackSize == 1 && inv.getStackInSlot(6) == drink, "one GT drink consumed");
+                require(
+                    drink.stackSize == 1 && inv.getStackInSlot(MaidInventoryLayout.MAIN_HAND) == drink,
+                    "one GT drink consumed");
                 int dropped = 0;
                 for (Object entity : world.loadedEntityList)
                     if (entity instanceof EntityItem drop && !f.originalEntities.contains(drop)) {
@@ -658,7 +663,7 @@ public final class MaidCoreInteractionProbe {
                     "full inventory returns exactly one real dropped thermos");
                 // 必定生效的原版附魔金苹果，检查NPC药效路径且不借用玩家回调
                 meal.load(new NBTTagCompound());
-                inv.setInventorySlotContents(6, new ItemStack(Items.golden_apple, 1, 1));
+                inv.setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.golden_apple, 1, 1));
                 maid.setHealth(2);
                 meal.tick();
                 require(meal.isEating(), "golden apple started");
@@ -735,7 +740,7 @@ public final class MaidCoreInteractionProbe {
                 manager.apply(Type.STEAL_EDIBLE_BLOCK);
                 require(maid.getFavorability() == 3, "steal independent cooldown");
                 maid.getMaidInventory()
-                    .setInventorySlotContents(6, new ItemStack(Items.bread, 2));
+                    .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, new ItemStack(Items.bread, 2));
                 maid.getBrainCoordinator()
                     .setSuspended(false);
                 maid.getMealController()

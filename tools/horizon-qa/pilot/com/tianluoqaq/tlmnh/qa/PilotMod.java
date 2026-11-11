@@ -11,10 +11,12 @@ import cpw.mods.fml.common.Mod;
 public final class PilotMod {
 
     public static final ProtectionCanary PROTECTION_CANARY = new ProtectionCanary();
+    public static final InventoryExpansionTests.BaubleItem INVENTORY_BAUBLE = new InventoryExpansionTests.BaubleItem();
 
     @Mod.EventHandler
     public void preInit(cpw.mods.fml.common.event.FMLPreInitializationEvent event) {
         cpw.mods.fml.common.registry.GameRegistry.registerItem(PROTECTION_CANARY, "protection_canary");
+        cpw.mods.fml.common.registry.GameRegistry.registerItem(INVENTORY_BAUBLE, "inventory_bauble");
         EffectEmptyWorldFixture.register();
         if (Boolean.getBoolean("tlmnh.qaLifecycleFreeze")) net.minecraftforge.common.MinecraftForge.EVENT_BUS
             .register(new LifecycleUpgradeTests.PersistenceEnvironment());

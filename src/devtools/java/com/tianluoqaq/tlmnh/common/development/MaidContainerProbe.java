@@ -159,7 +159,7 @@ public final class MaidContainerProbe {
         EntityMaid maid) {
         var original = new EmptyBackpackContainer(owner.inventory, maid);
         var inventory = maid.getMaidInventory();
-        require(original.inventorySlots.size() == 48, "original slot count");
+        require(original.inventorySlots.size() == 78, "full backpack slot count");
         for (int i = 0; i < 36; i++) {
             var slot = original.inventorySlots.get(i);
             require(slot.inventory == owner.inventory, "original player-first inventory");
@@ -168,13 +168,22 @@ public final class MaidContainerProbe {
                     && slot.yDisplayPosition == (i < 27 ? 174 + 18 * (i / 9) : 232),
                 "original player coordinates");
         }
-        int[] x = { 94, 114, 94, 114, 87, 121, 143, 161, 179, 197, 215, 233 };
-        int[] y = { 37, 37, 57, 57, 77, 77, 37, 37, 37, 37, 37, 37 };
-        for (int i = 0; i < 12; i++) {
+        int[] x = { 94, 114, 94, 114, 87, 121 };
+        int[] y = { 37, 37, 57, 57, 77, 77 };
+        for (int i = 0; i < x.length; i++) {
             var slot = original.inventorySlots.get(36 + i);
             require(
                 slot.inventory == inventory && slot.xDisplayPosition == x[i] && slot.yDisplayPosition == y[i],
                 "original maid coordinates");
+        }
+        int[] backpackRows = { 37, 59, 82, 100, 123, 141 };
+        for (int i = 0; i < 36; i++) {
+            var slot = original.inventorySlots.get(42 + i);
+            require(
+                slot.inventory == inventory && slot.getSlotIndex() == i
+                    && slot.xDisplayPosition == 143 + 18 * (i % 6)
+                    && slot.yDisplayPosition == backpackRows[i / 6],
+                "full backpack logical mapping");
         }
         require(
             new CommonProxy()
@@ -199,7 +208,8 @@ public final class MaidContainerProbe {
                 && owner.inventory.getStackInSlot(0) == null,
             "original main-hand mapping");
         inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 63));
-        for (int i = 1; i < 6; i++) inventory.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
+        for (int i = 1; i < MaidInventoryLayout.BACKPACK_SIZE; i++)
+            inventory.setInventorySlotContents(i, new ItemStack(Items.stick, 64));
         owner.inventory.setInventorySlotContents(0, new ItemStack(Items.arrow, 64));
         int before = countArrows(maid, owner);
         original.transferStackInSlot(owner, 27);
@@ -230,7 +240,7 @@ public final class MaidContainerProbe {
         for (int i = 0; i < MaidInventoryLayout.TOTAL_SIZE; i++) inventory.setInventorySlotContents(i, null);
         for (int i = 0; i < 36; i++) owner.inventory.setInventorySlotContents(i, null);
         TLMNotHard.LOG.info(
-            "TLMNH_ORIGINAL_CONTAINER_TEST_PASS slots=48 mapping=original shifts=conserved permissions=checked pickup=authoritative");
+            "TLMNH_ORIGINAL_CONTAINER_TEST_PASS slots=78 mapping=original shifts=conserved permissions=checked pickup=authoritative");
     }
 
     private static void verifyModelSelection(WorldServer world, EntityPlayer owner, EntityPlayer stranger,

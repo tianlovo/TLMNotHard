@@ -26,6 +26,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.TLMNotHard;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidNamingInteractionFixture;
+import com.tianluoqaq.tlmnh.common.development.inventory.MaidInventoryUiFixture;
 import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
 import com.tianluoqaq.tlmnh.common.diagnostic.DevelopmentFlags;
 import com.tianluoqaq.tlmnh.common.inventory.MaidContainerAccess;
@@ -82,6 +83,16 @@ public final class AnimationLab {
 
     public static boolean isLab(World world) {
         return world != null && world.provider instanceof WorldProviderAnimationLab;
+    }
+
+    public static boolean isOverPlatform(Entity entity) {
+        return entity != null && isLab(entity.worldObj)
+            && Math.abs(entity.posX) < RADIUS - 1
+            && Math.abs(entity.posZ) < RADIUS - 1
+            && entity.posY >= FLOOR + 1
+            && entity.posY <= FLOOR + 6
+            && entity.worldObj.getBlock((int) Math.floor(entity.posX), FLOOR, (int) Math.floor(entity.posZ))
+                == Blocks.wool;
     }
 
     private static WorldServer world() {
@@ -247,7 +258,7 @@ public final class AnimationLab {
         player.playerNetServerHandler.setPlayerLocation(x, y, z, yaw, pitch);
     }
 
-    private static EntityMaid sceneMaid(WorldServer world) {
+    public static EntityMaid sceneMaid(WorldServer world) {
         EntityMaid found = null;
         for (var entity : world.loadedEntityList) if (entity instanceof EntityMaid maid && maid.getEntityData()
             .getBoolean(MAID_MARKER) && !maid.isDead) {
@@ -310,9 +321,12 @@ public final class AnimationLab {
 
     @SubscribeEvent
     public void tick(TickEvent.PlayerTickEvent event) {
+        if (event.phase == TickEvent.Phase.START && !event.player.worldObj.isRemote
+            && event.player instanceof EntityPlayerMP player) MaidInventoryUiFixture.protectActivePlayer(player);
         if (event.phase == TickEvent.Phase.END && !event.player.worldObj.isRemote
             && event.player instanceof EntityPlayerMP player
             && pendingObservers.remove(player.getUniqueID())
+            && !MaidInventoryUiFixture.isActivePlayer(player)
             && !MaidCareInteractionFixture.isActivePlayer(player)) {
             // 所有登录监听器先完成，再在正常服务端实体 tick 中切换维度
             enter(player, System.getProperty("tlmnh.labModel", DEFAULT_MODEL));
@@ -322,6 +336,7 @@ public final class AnimationLab {
             && event.player instanceof EntityPlayerMP player
             && !MaidFollowRuntimeProbe.isActivePlayer(player)
             && !MaidNamingInteractionFixture.isActivePlayer(player)
+            && !MaidInventoryUiFixture.isActivePlayer(player)
             && !MaidCareInteractionFixture.isActivePlayer(player)
             && player.theItemInWorldManager.getGameType()
                 .getID() != 3)

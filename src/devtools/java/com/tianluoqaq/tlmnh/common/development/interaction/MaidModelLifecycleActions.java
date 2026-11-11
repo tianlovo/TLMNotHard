@@ -40,6 +40,7 @@ import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFi
 import com.tianluoqaq.tlmnh.common.development.telemetry.MaidServerLoadProbe;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.life.bed.TileEntityMaidBed;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
@@ -1379,7 +1380,7 @@ final class MaidModelLifecycleActions {
                 require(soupCopies + bowls == 1, "Exactly one original soup or its native bowl must remain");
             if (activity().equals("melee")) require(
                 session.maid.getMaidInventory()
-                    .getStackInSlot(6) != null,
+                    .getStackInSlot(MaidInventoryLayout.MAIN_HAND) != null,
                 "Original finite weapon cannot disappear");
         }
 
@@ -1445,7 +1446,7 @@ final class MaidModelLifecycleActions {
                     maid.setHealth(maid.getMaxHealth());
                     record.setString("Activity", "melee");
                     maid.getMaidInventory()
-                        .setInventorySlotContents(6, sword.copy());
+                        .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, sword.copy());
                     target = new EntityCow(maid.worldObj);
                     target.getEntityData()
                         .setString(KEY, session.data.getString("Run"));
@@ -1505,7 +1506,7 @@ final class MaidModelLifecycleActions {
                         target = null;
                         targetData = null;
                         maid.getMaidInventory()
-                            .setInventorySlotContents(6, null);
+                            .setInventorySlotContents(MaidInventoryLayout.MAIN_HAND, null);
                         record.setInteger("MeleeCount", record.getInteger("MeleeCount") + 1);
                     } else throw new IllegalStateException("No complete activity to acknowledge");
                     record.setString("Activity", "idle");

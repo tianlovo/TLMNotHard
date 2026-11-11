@@ -34,6 +34,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.development.AnimationLab;
 import com.tianluoqaq.tlmnh.common.development.interaction.MaidCareInteractionFixture.Session;
+import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleNbtKeys;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
@@ -265,13 +266,13 @@ final class MaidPlayerInputActions {
                 for (String label : new String[] { "sword", "shield", "helmet", "chest", "legs", "boots", "compass",
                     "stone" }) {
                     int slot = switch (label) {
-                        case "sword" -> 6;
-                        case "shield" -> 7;
-                        case "helmet" -> 11;
-                        case "chest" -> 10;
-                        case "legs" -> 9;
-                        case "boots" -> 8;
-                        case "compass" -> 5;
+                        case "sword" -> MaidInventoryLayout.MAIN_HAND;
+                        case "shield" -> MaidInventoryLayout.OFF_HAND;
+                        case "helmet" -> MaidInventoryLayout.ARMOR_START + 3;
+                        case "chest" -> MaidInventoryLayout.ARMOR_START + 2;
+                        case "legs" -> MaidInventoryLayout.ARMOR_START + 1;
+                        case "boots" -> MaidInventoryLayout.ARMOR_START;
+                        case "compass" -> MaidInventoryLayout.BACKPACK_SHOW_SLOT;
                         default -> 0;
                     };
                     require(

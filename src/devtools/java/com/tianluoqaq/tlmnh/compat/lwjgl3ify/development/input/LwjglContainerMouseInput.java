@@ -1,7 +1,9 @@
 package com.tianluoqaq.tlmnh.compat.lwjgl3ify.development.input;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +32,7 @@ import cpw.mods.fml.common.eventhandler.ListenerList;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-/** 实装后端的鼠标事件进入完整GuiScreen.handleInput，不修改任何模组的取槽准入标记 */
+/** 实装后端的键鼠事件进入完整GuiScreen.handleInput，不修改任何模组的取槽准入标记 */
 @SideOnly(Side.CLIENT)
 public final class LwjglContainerMouseInput {
 
@@ -46,16 +48,17 @@ public final class LwjglContainerMouseInput {
                 && mc.thePlayer.openContainer == gui.inventorySlots,
             "Actual development GUI/container required");
         require(
-            button >= 0 && button <= 1 && mode == 0,
-            "Only ordinary native mouse clicks are supported; no synthetic Shift key state");
+            button >= 0 && button <= 1 && (mode == 0 || mode == 1),
+            "Only mode 0 (ordinary) or mode 1 (Left-Shift) native clicks are supported");
         var api = new Api();
         var trace = new Trace(gui);
         int window = gui.inventorySlots.windowId;
         int oldX = Mouse.getX(), oldY = Mouse.getY();
-        boolean released = true, inputStarted = false;
+        boolean released = true, shiftHeld = false, inputStarted = false;
         var diagnostics = new JsonObject();
         diagnostics.addProperty("window", window);
         diagnostics.addProperty("slot", slot.slotNumber);
+        diagnostics.addProperty("mode", mode);
         Throwable inputFailure = null;
         JsonObject result = null;
         TraceRegistration registration = null;
@@ -63,7 +66,8 @@ public final class LwjglContainerMouseInput {
         try {
             diagnostics.addProperty("phase", "listener-registration");
             registration = new TraceRegistration(trace);
-            diagnostics.addProperty("listenerRegistration", "concrete-MouseInputEvent-Pre-and-Post");
+            diagnostics
+                .addProperty("listenerRegistration", "concrete-MouseInputEvent-and-KeyboardInputEvent-Pre-and-Post");
             diagnostics.addProperty("phase", "preflight");
             boolean grabbed = Mouse.isGrabbed();
             int keyboardEvents = Keyboard.getNumKeyboardEvents();
@@ -77,6 +81,8 @@ public final class LwjglContainerMouseInput {
                 "Unqueued ordinary GUI input required");
             diagnostics.addProperty("phase", "held-keys");
             for (int key = 1; key < 256; key++) require(!Keyboard.isKeyDown(key), "Foreign held key retained");
+            require(!GuiScreen.isShiftKeyDown(), "Foreign Shift state retained");
+            require(api.sdlModState() == 0, "Foreign SDL modifier state retained");
             diagnostics.addProperty("phase", "held-mouse-buttons");
             for (int mouse = 0; mouse < Mouse.getButtonCount(); mouse++)
                 require(!Mouse.isButtonDown(mouse), "Foreign held mouse button retained");
@@ -92,6 +98,29 @@ public final class LwjglContainerMouseInput {
             int pixelX = (int) ((x + .5) * mc.displayWidth / gui.width);
             int pixelTop = (int) ((y + .5) * mc.displayHeight / gui.height);
             inputStarted = true;
+            if (mode == 1) {
+                trace.phase = "shift-press";
+                diagnostics.addProperty("phase", "enqueue-shift-press");
+                shiftHeld = true;
+                api.leftShift(true);
+                require(
+                    Keyboard.getNumKeyboardEvents() == 2 && Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                        && GuiScreen.isShiftKeyDown(),
+                    "Left-Shift press state or queue entry was not established");
+                diagnostics.addProperty("phase", "dispatch-shift-press");
+                gui.handleInput();
+                require(
+                    Keyboard.getNumKeyboardEvents() == 1 && api.pending() == 0
+                        && trace.keyPressPre == 1
+                        && trace.keyPressPost == 1
+                        && trace.finalKeyCanceled() == 0
+                        && mc.currentScreen == gui
+                        && mc.thePlayer.openContainer == gui.inventorySlots
+                        && Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                        && GuiScreen.isShiftKeyDown(),
+                    "Complete native Left-Shift press KeyboardInputEvent chain was not observed");
+            }
+            trace.phase = "input";
             diagnostics.addProperty("phase", "enqueue-move");
             api.move(pixelX, mc.displayHeight - pixelTop);
             diagnostics.addProperty("phase", "enqueue-press");
@@ -110,6 +139,7 @@ public final class LwjglContainerMouseInput {
             diagnostics.addProperty("preEvents", trace.pre);
             diagnostics.addProperty("postEvents", trace.post);
             diagnostics.addProperty("canceledEvents", trace.finalCanceled());
+            diagnostics.addProperty("shiftObservedAcrossMouseInput", trace.allInputMouseObservedShift(mode == 1));
             diagnostics.addProperty("traceFailure", trace.failure);
             int remainingEvents = api.pending();
             diagnostics.addProperty("remainingEvents", remainingEvents);
@@ -117,8 +147,32 @@ public final class LwjglContainerMouseInput {
                 remainingEvents == 0 && trace.failure == null
                     && trace.pre >= 3
                     && trace.post >= 3
-                    && trace.finalCanceled() == 0,
-                "Actual complete native GUI mouse event chain was not observed");
+                    && trace.finalCanceled() == 0
+                    && trace.allInputMouseObservedShift(mode == 1),
+                "Actual complete native GUI mouse event chain with expected Shift state was not observed");
+            if (mode == 1) {
+                trace.phase = "shift-release";
+                diagnostics.addProperty("phase", "enqueue-shift-release");
+                api.leftShift(false);
+                shiftHeld = false;
+                require(
+                    Keyboard.getNumKeyboardEvents() == 2 && !Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                        && !GuiScreen.isShiftKeyDown()
+                        && api.sdlModState() == 0,
+                    "Left-Shift release state or queue entry was not established");
+                diagnostics.addProperty("phase", "dispatch-shift-release");
+                gui.handleInput();
+                require(
+                    Keyboard.getNumKeyboardEvents() == 1 && api.pending() == 0
+                        && trace.keyReleasePre == 1
+                        && trace.keyReleasePost == 1
+                        && trace.finalKeyCanceled() == 0
+                        && !Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)
+                        && !GuiScreen.isShiftKeyDown(),
+                    "Complete native Left-Shift release KeyboardInputEvent chain was not observed");
+                for (int key = 1; key < 256; key++)
+                    require(!Keyboard.isKeyDown(key), "Held key retained after Left-Shift release");
+            }
             diagnostics.addProperty("phase", "window-postcondition");
             require(
                 mc.currentScreen == gui && mc.thePlayer.openContainer == gui.inventorySlots
@@ -127,15 +181,27 @@ public final class LwjglContainerMouseInput {
                 "Native GUI/slot/window changed during input; no alternate click issued");
             result = new JsonObject();
             result.addProperty("provider", PROVIDER);
+            result.addProperty("mode", mode);
             result.addProperty(
                 "nativeEntry",
-                "LWJGL addMoveEvent/addButtonEvent -> GuiScreen.handleInput -> ModularUI MouseInputEvent.Pre -> native mouse handler -> Post");
+                mode == 0
+                    ? "LWJGL addMoveEvent/addButtonEvent -> GuiScreen.handleInput -> ModularUI MouseInputEvent.Pre -> native mouse handler -> Post"
+                    : "LWJGL Keyboard.addSdlKeyEvent(PRESS)/SDL_GetKeyboardState(LSHIFT) -> GuiScreen.handleInput(KeyboardInputEvent) -> addMoveEvent/addButtonEvent -> GuiScreen.handleInput(MouseInputEvent with GuiScreen.isShiftKeyDown()==true) -> Keyboard.addSdlKeyEvent(RELEASE) -> GuiScreen.handleInput");
             result.addProperty("guiX", x);
             result.addProperty("guiY", y);
             result.addProperty("nativeMousePreEvents", trace.pre);
             result.addProperty("nativeMousePostEvents", trace.post);
             result.addProperty("nativeMouseCanceledEvents", trace.finalCanceled());
-            result.addProperty("shiftKeySynthesized", false);
+            result.addProperty("nativeKeyboardPressPreEvents", trace.keyPressPre);
+            result.addProperty("nativeKeyboardPressPostEvents", trace.keyPressPost);
+            result.addProperty("nativeKeyboardReleasePreEvents", trace.keyReleasePre);
+            result.addProperty("nativeKeyboardReleasePostEvents", trace.keyReleasePost);
+            result.addProperty("nativeKeyboardCanceledEvents", trace.finalKeyCanceled());
+            result.addProperty("leftShiftChainDispatched", mode == 1);
+            result.addProperty("sdlKeyStateBacked", mode == 1);
+            result.addProperty("shiftDownDuringMouseInput", mode == 1);
+            result.addProperty("shiftReleasedAfterInput", !GuiScreen.isShiftKeyDown());
+            result.addProperty("shiftKeySynthesized", mode == 1);
             result.addProperty("serverAcknowledged", false);
             result.add("probeArtifact", DevelopmentArtifactIdentity.capture(LwjglContainerMouseInput.class));
         } catch (Exception | LinkageError failure) {
@@ -144,6 +210,25 @@ public final class LwjglContainerMouseInput {
             diagnostics.add("afterInputAttempt", frame(mc, gui));
             // Event references are read only after EventBus.post has returned, including same-priority listeners.
             diagnostics.add("inputTrace", trace.snapshot());
+            if (shiftHeld) {
+                trace.phase = "shift-emergency-restore";
+                try {
+                    if (mc.thePlayer != null && mc.currentScreen == gui
+                        && mc.thePlayer.openContainer == gui.inventorySlots
+                        && Keyboard.getNumKeyboardEvents() == 1) {
+                        api.leftShift(false);
+                        gui.handleInput();
+                    } else {
+                        api.forceClearLeftShiftState();
+                        while (Keyboard.getNumKeyboardEvents() > 1) Keyboard.next();
+                    }
+                    shiftHeld = false;
+                } catch (RuntimeException cleanupFailure) {
+                    api.forceClearLeftShiftStateQuietly();
+                    if (inputFailure == null) inputFailure = cleanupFailure;
+                    else inputFailure.addSuppressed(cleanupFailure);
+                }
+            }
             trace.phase = "pointer-restore";
             try {
                 if (!released) api.button(button, false);
@@ -209,6 +294,8 @@ public final class LwjglContainerMouseInput {
             "currentContainerIdentity",
             mc.thePlayer == null ? "null" : identity(mc.thePlayer.openContainer));
         result.addProperty("currentWindowId", mc.thePlayer == null ? -1 : mc.thePlayer.openContainer.windowId);
+        result.addProperty("shiftKeyDown", GuiScreen.isShiftKeyDown());
+        result.addProperty("lshiftKeyDown", Keyboard.isKeyDown(Keyboard.KEY_LSHIFT));
         result.addProperty(
             "cursorNativeNbtBase64",
             mc.thePlayer == null ? "" : MaidCareInteractionProbe.nativeNbt(mc.thePlayer.inventory.getItemStack()));
@@ -249,6 +336,7 @@ public final class LwjglContainerMouseInput {
         final GuiContainer gui;
         final List<ObservedEvent> events = new ArrayList<>();
         int pre, post, allPre, allPost;
+        int keyPressPre, keyPressPost, keyReleasePre, keyReleasePost;
         String phase = "input";
         String failure;
 
@@ -259,19 +347,32 @@ public final class LwjglContainerMouseInput {
         public void input(Event event) {
             String name = event.getClass()
                 .getName();
-            if (!name.equals("com.cleanroommc.modularui.api.event.MouseInputEvent$Pre")
-                && !name.equals("com.cleanroommc.modularui.api.event.MouseInputEvent$Post")) return;
+            boolean mouseEvent = name.equals("com.cleanroommc.modularui.api.event.MouseInputEvent$Pre")
+                || name.equals("com.cleanroommc.modularui.api.event.MouseInputEvent$Post");
+            boolean keyEvent = name.equals("com.cleanroommc.modularui.api.event.KeyboardInputEvent$Pre")
+                || name.equals("com.cleanroommc.modularui.api.event.KeyboardInputEvent$Post");
+            if (!mouseEvent && !keyEvent) return;
             try {
                 Object eventGui = event.getClass()
                     .getField("gui")
                     .get(event);
-                events.add(new ObservedEvent(event, eventGui, phase, gui));
-                if (name.endsWith("$Pre")) {
-                    allPre++;
-                    if (phase.equals("input") && eventGui == gui) pre++;
-                } else {
-                    allPost++;
-                    if (phase.equals("input") && eventGui == gui) post++;
+                events.add(new ObservedEvent(event, eventGui, phase, gui, mouseEvent));
+                if (mouseEvent) {
+                    if (name.endsWith("$Pre")) {
+                        allPre++;
+                        if (phase.equals("input") && eventGui == gui) pre++;
+                    } else {
+                        allPost++;
+                        if (phase.equals("input") && eventGui == gui) post++;
+                    }
+                } else if (eventGui == gui) {
+                    if (phase.equals("shift-press")) {
+                        if (name.endsWith("$Pre")) keyPressPre++;
+                        else keyPressPost++;
+                    } else if (phase.equals("shift-release")) {
+                        if (name.endsWith("$Pre")) keyReleasePre++;
+                        else keyReleasePost++;
+                    }
                 }
             } catch (ReflectiveOperationException invalid) {
                 failure = invalid.toString();
@@ -280,12 +381,35 @@ public final class LwjglContainerMouseInput {
 
         int finalCanceled() {
             int count = 0;
-            for (var observed : events) if (observed.phase.equals("input") && observed.gui == gui
+            for (var observed : events) if (observed.mouseEvent && observed.phase.equals("input")
+                && observed.gui == gui
                 && observed.event.getClass()
                     .getName()
                     .endsWith("$Pre")
                 && observed.event.isCanceled()) count++;
             return count;
+        }
+
+        int finalKeyCanceled() {
+            int count = 0;
+            for (var observed : events) if (!observed.mouseEvent
+                && (observed.phase.equals("shift-press") || observed.phase.equals("shift-release"))
+                && observed.gui == gui
+                && observed.event.getClass()
+                    .getName()
+                    .endsWith("$Pre")
+                && observed.event.isCanceled()) count++;
+            return count;
+        }
+
+        boolean allInputMouseObservedShift(boolean expected) {
+            int matched = 0;
+            for (var observed : events) {
+                if (!observed.mouseEvent || !observed.phase.equals("input") || observed.gui != gui) continue;
+                matched++;
+                if (observed.shiftDownAtCallback != expected || observed.lshiftDownAtCallback != expected) return false;
+            }
+            return matched >= 6;
         }
 
         JsonObject snapshot() {
@@ -295,6 +419,11 @@ public final class LwjglContainerMouseInput {
             result.addProperty("allGuiPre", allPre);
             result.addProperty("allGuiPost", allPost);
             result.addProperty("matchingInputPreFinallyCanceled", finalCanceled());
+            result.addProperty("keyPressPre", keyPressPre);
+            result.addProperty("keyPressPost", keyPressPost);
+            result.addProperty("keyReleasePre", keyReleasePre);
+            result.addProperty("keyReleasePost", keyReleasePost);
+            result.addProperty("keyPreFinallyCanceled", finalKeyCanceled());
             result.addProperty("failure", failure);
             var rows = new JsonArray();
             for (var observed : events) rows.add(observed.snapshot());
@@ -305,7 +434,7 @@ public final class LwjglContainerMouseInput {
 
     private static final class TraceRegistration {
 
-        final ListenerList pre, post;
+        final ListenerList pre, post, keyPre, keyPost;
         final IEventListener listener;
         final int busId;
 
@@ -318,15 +447,21 @@ public final class LwjglContainerMouseInput {
             busField.setAccessible(true);
             busId = busField.getInt(MinecraftForge.EVENT_BUS);
             require(busId >= 0, "Native Forge event bus ID unavailable");
-            pre = listeners("Pre", trace.gui);
-            post = listeners("Post", trace.gui);
-            require(pre != post, "Native GUI Pre/Post listener lists must be distinct");
+            pre = listeners("MouseInputEvent$Pre", trace.gui);
+            post = listeners("MouseInputEvent$Post", trace.gui);
+            keyPre = listeners("KeyboardInputEvent$Pre", trace.gui);
+            keyPost = listeners("KeyboardInputEvent$Post", trace.gui);
+            require(
+                pre != post && keyPre != keyPost && pre != keyPre && post != keyPost,
+                "Native GUI Pre/Post listener lists must be distinct");
             listener = trace::input;
             try {
                 // A temporary parent-Event subscription leaves sibling caches stale after Pre rebuilds its parent.
-                // Register both concrete lists so each native cache is independently invalidated, including Post.
+                // Register concrete lists so each native cache is independently invalidated, including Post.
                 pre.register(busId, EventPriority.LOWEST, listener);
                 post.register(busId, EventPriority.LOWEST, listener);
+                keyPre.register(busId, EventPriority.LOWEST, listener);
+                keyPost.register(busId, EventPriority.LOWEST, listener);
             } catch (RuntimeException | LinkageError failure) {
                 try {
                     close();
@@ -337,8 +472,8 @@ public final class LwjglContainerMouseInput {
             }
         }
 
-        private static ListenerList listeners(String suffix, GuiScreen gui) throws Exception {
-            var eventType = Class.forName("com.cleanroommc.modularui.api.event.MouseInputEvent$" + suffix)
+        private static ListenerList listeners(String typeSuffix, GuiScreen gui) throws Exception {
+            var eventType = Class.forName("com.cleanroommc.modularui.api.event." + typeSuffix)
                 .asSubclass(Event.class);
             require(
                 DependencyFingerprint.source(
@@ -355,16 +490,14 @@ public final class LwjglContainerMouseInput {
 
         void close() {
             Throwable failure = null;
-            try {
-                pre.unregister(busId, listener);
-            } catch (RuntimeException | LinkageError cleanupFailure) {
-                failure = cleanupFailure;
-            }
-            try {
-                post.unregister(busId, listener);
-            } catch (RuntimeException | LinkageError cleanupFailure) {
-                if (failure == null) failure = cleanupFailure;
-                else failure.addSuppressed(cleanupFailure);
+            for (ListenerList list : new ListenerList[] { pre, post, keyPre, keyPost }) {
+                if (list == null) continue;
+                try {
+                    list.unregister(busId, listener);
+                } catch (RuntimeException | LinkageError cleanupFailure) {
+                    if (failure == null) failure = cleanupFailure;
+                    else failure.addSuppressed(cleanupFailure);
+                }
             }
             if (failure instanceof RuntimeException) throw (RuntimeException) failure;
             if (failure != null) throw (LinkageError) failure;
@@ -376,19 +509,24 @@ public final class LwjglContainerMouseInput {
         final Event event;
         final Object gui, dispatchGui;
         final String phase, currentGuiAtCallback;
-        final boolean canceledAtCallback;
-        final int button;
-        final boolean buttonState;
+        final boolean mouseEvent, canceledAtCallback;
+        final int button, eventKey;
+        final boolean buttonState, eventKeyState, shiftDownAtCallback, lshiftDownAtCallback;
 
-        ObservedEvent(Event event, Object gui, String phase, Object dispatchGui) {
+        ObservedEvent(Event event, Object gui, String phase, Object dispatchGui, boolean mouseEvent) {
             this.event = event;
             this.gui = gui;
             this.phase = phase;
             this.dispatchGui = dispatchGui;
+            this.mouseEvent = mouseEvent;
             currentGuiAtCallback = identity(Minecraft.getMinecraft().currentScreen);
             canceledAtCallback = event.isCanceled();
-            button = Mouse.getEventButton();
-            buttonState = Mouse.getEventButtonState();
+            button = mouseEvent ? Mouse.getEventButton() : -1;
+            buttonState = mouseEvent && Mouse.getEventButtonState();
+            eventKey = mouseEvent ? 0 : Keyboard.getEventKey();
+            eventKeyState = !mouseEvent && Keyboard.getEventKeyState();
+            shiftDownAtCallback = GuiScreen.isShiftKeyDown();
+            lshiftDownAtCallback = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT);
         }
 
         JsonObject snapshot() {
@@ -407,33 +545,60 @@ public final class LwjglContainerMouseInput {
             result.addProperty("cancelable", event.isCancelable());
             result.addProperty("canceledAtCallback", canceledAtCallback);
             result.addProperty("canceledAfterDispatch", event.isCanceled());
-            result.addProperty("button", button);
-            result.addProperty("buttonState", buttonState);
+            result.addProperty("shiftDownAtCallback", shiftDownAtCallback);
+            result.addProperty("lshiftDownAtCallback", lshiftDownAtCallback);
+            if (mouseEvent) {
+                result.addProperty("button", button);
+                result.addProperty("buttonState", buttonState);
+            } else {
+                result.addProperty("eventKey", eventKey);
+                result.addProperty("eventKeyState", eventKeyState);
+            }
             return result;
         }
     }
 
     private static final class Api {
 
-        final Class<?> mouse, motion;
-        final Method addMove, addButton;
-        final Object queue;
+        private static final int SDL_SCANCODE_LSHIFT_EXPECTED = 225;
+
+        final Class<?> mouse, motion, keyboard, sdlKeyboard, sys, inputEvents;
+        final Method addMove, addButton, addSdlKeyEvent, injectKeyEvent, nanoTime;
+        final Method getModState, setModState, nGetKeyName;
+        final Constructor<?> keyEventCtor;
+        final Object queue, actionPressed, actionReleased;
         final Method eventCount;
+        final ByteBuffer sdlKeyPressedArray;
+        final int lshiftScancode, sdlkLshift;
+        final short sdlKmodLshift;
 
         Api() {
             try {
                 require(
                     PROVIDER.equals(DependencyFingerprint.mod("lwjgl3ify")),
-                    "Reviewed native mouse provider required");
+                    "Reviewed native mouse/keyboard provider required");
                 mouse = Class.forName("org.lwjglx.input.Mouse");
+                keyboard = Class.forName("org.lwjglx.input.Keyboard");
+                var keyCodes = Class.forName("org.lwjglx.input.KeyCodes");
+                sys = Class.forName("org.lwjglx.Sys");
+                inputEvents = Class.forName("me.eigenraven.lwjgl3ify.api.InputEvents");
+                var keyAction = Class.forName("me.eigenraven.lwjgl3ify.api.InputEvents$KeyAction");
+                var keyEventType = Class.forName("me.eigenraven.lwjgl3ify.api.InputEvents$KeyEvent");
                 motion = Class.forName("org.lwjgl.sdl.SDL_MouseMotionEvent");
+                sdlKeyboard = Class.forName("org.lwjgl.sdl.SDLKeyboard");
+                var sdlKeycode = Class.forName("org.lwjgl.sdl.SDLKeycode");
                 require(
                     DependencyFingerprint.source(
                         PackagedClassResourceResolver.artifactOf(mouse)
                             .toFile(),
                         "3.0.42")
-                        .equals(PROVIDER),
-                    "Actual mouse backend artifact differs from the reviewed provider");
+                        .equals(PROVIDER)
+                        && DependencyFingerprint.source(
+                            PackagedClassResourceResolver.artifactOf(keyboard)
+                                .toFile(),
+                            "3.0.42")
+                            .equals(PROVIDER),
+                    "Actual mouse/keyboard backend artifact differs from the reviewed provider");
                 addMove = mouse.getMethod("addMoveEvent", motion);
                 addButton = mouse.getMethod("addButtonEvent", int.class, boolean.class);
                 var field = mouse.getDeclaredField("queue");
@@ -442,8 +607,51 @@ public final class LwjglContainerMouseInput {
                 eventCount = queue.getClass()
                     .getDeclaredMethod("getEventCount");
                 eventCount.setAccessible(true);
+
+                addSdlKeyEvent = keyboard
+                    .getMethod("addSdlKeyEvent", int.class, int.class, keyAction, int.class, int.class, long.class);
+                injectKeyEvent = inputEvents.getMethod("injectKeyEvent", keyEventType);
+                keyEventCtor = keyEventType.getConstructor(
+                    int.class,
+                    int.class,
+                    int.class,
+                    int.class,
+                    int.class,
+                    keyAction,
+                    short.class,
+                    long.class);
+                actionPressed = keyAction.getField("PRESSED")
+                    .get(null);
+                actionReleased = keyAction.getField("RELEASED")
+                    .get(null);
+                nanoTime = sys.getMethod("getNanoTime");
+                getModState = sdlKeyboard.getMethod("SDL_GetModState");
+                setModState = sdlKeyboard.getMethod("SDL_SetModState", short.class);
+                nGetKeyName = sdlKeyboard.getMethod("nSDL_GetKeyName", int.class);
+                lshiftScancode = (Integer) keyCodes.getMethod("lwjglToSdlScancode", int.class)
+                    .invoke(null, Keyboard.KEY_LSHIFT);
+                sdlkLshift = sdlKeycode.getField("SDLK_LSHIFT")
+                    .getInt(null);
+                sdlKmodLshift = (short) sdlKeycode.getField("SDL_KMOD_LSHIFT")
+                    .getInt(null);
+                var pressedField = keyboard.getField("sdlKeyPressedArray");
+                sdlKeyPressedArray = (ByteBuffer) pressedField.get(null);
+                var sdlState = (ByteBuffer) sdlKeyboard.getMethod("SDL_GetKeyboardState")
+                    .invoke(null);
+                var memoryUtil = Class.forName("org.lwjgl.system.MemoryUtil");
+                long boundAddress = (Long) memoryUtil.getMethod("memAddress", ByteBuffer.class)
+                    .invoke(null, sdlKeyPressedArray);
+                long sdlAddress = (Long) memoryUtil.getMethod("memAddress", ByteBuffer.class)
+                    .invoke(null, sdlState);
+                require(
+                    lshiftScancode == SDL_SCANCODE_LSHIFT_EXPECTED && sdlKeyPressedArray != null
+                        && !sdlKeyPressedArray.isReadOnly()
+                        && lshiftScancode < sdlKeyPressedArray.limit()
+                        && boundAddress != 0L
+                        && boundAddress == sdlAddress,
+                    "Reviewed SDL keyboard state buffer unavailable or mismatched");
             } catch (Exception failure) {
-                throw new IllegalStateException("Native mouse provider shape unavailable", failure);
+                throw new IllegalStateException("Native mouse/keyboard provider shape unavailable", failure);
             }
         }
 
@@ -452,6 +660,62 @@ public final class LwjglContainerMouseInput {
                 return (Integer) eventCount.invoke(queue);
             } catch (ReflectiveOperationException failure) {
                 throw new IllegalStateException("Native mouse queue diagnosis failed", failure);
+            }
+        }
+
+        short sdlModState() {
+            try {
+                return (Short) getModState.invoke(null);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Native SDL modifier diagnosis failed", failure);
+            }
+        }
+
+        /**
+         * SDL3 does not export SDL_SendKeyboardKey, so SDLEvents.SDL_PushEvent and SDL_SetModState alone do not flip
+         * SDL_GetKeyboardState()[225], which org.lwjglx.input.Keyboard.isKeyDown(42) (GuiScreen.isShiftKeyDown) reads.
+         * Pair the exact public SDL_GetKeyboardState scancode slot + SDL_SetModState with Lwjgl3ifyEventLoop's own
+         * InputEvents.injectKeyEvent + Keyboard.addSdlKeyEvent dispatch.
+         */
+        void leftShift(boolean down) {
+            try {
+                short mod = down ? sdlKmodLshift : (short) 0;
+                Object action = down ? actionPressed : actionReleased;
+                long timestamp = (Long) nanoTime.invoke(null);
+                long keyNamePtr = (Long) nGetKeyName.invoke(null, sdlkLshift);
+                setModState.invoke(null, mod);
+                sdlKeyPressedArray.put(lshiftScancode, (byte) (down ? 1 : 0));
+                Object keyEvent = keyEventCtor.newInstance(
+                    Keyboard.KEY_LSHIFT,
+                    Keyboard.KEY_LSHIFT,
+                    sdlkLshift,
+                    lshiftScancode,
+                    sdlkLshift,
+                    action,
+                    mod,
+                    keyNamePtr);
+                injectKeyEvent.invoke(null, keyEvent);
+                addSdlKeyEvent.invoke(null, sdlkLshift, lshiftScancode, action, (int) mod, 0, timestamp);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Native Left-Shift transition failed", failure);
+            }
+        }
+
+        void forceClearLeftShiftState() {
+            try {
+                sdlKeyPressedArray.put(lshiftScancode, (byte) 0);
+                setModState.invoke(null, (short) 0);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Native Left-Shift state clear failed", failure);
+            }
+        }
+
+        void forceClearLeftShiftStateQuietly() {
+            try {
+                sdlKeyPressedArray.put(lshiftScancode, (byte) 0);
+                setModState.invoke(null, (short) 0);
+            } catch (Exception ignored) {
+                // Emergency fallback inside catch of cleanup block.
             }
         }
 

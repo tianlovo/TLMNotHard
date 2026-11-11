@@ -10,6 +10,8 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.BaubleContainerScreen;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -41,7 +43,7 @@ public final class MaidNativeContainerProbe {
                 && mc.getNetHandler() != null
                 && mc.thePlayer.capabilities.disableDamage
                 && mc.thePlayer.capabilities.allowFlying
-                && mc.thePlayer.capabilities.isFlying,
+                && mc.thePlayer.capabilities.isFlying || isProtectedSurvivalInventoryWindow(mc),
             "Connected protected development lab player required");
         if (lastButton != null && !lastButton.sameConnection(mc)) lastButton = null;
         var result = new JsonObject();
@@ -76,8 +78,11 @@ public final class MaidNativeContainerProbe {
                     var values = integers(spec, 3);
                     int slot = values[0], button = values[1], mode = values[2];
                     require(
-                        slot >= 0 && slot < container.inventorySlots.size() && button >= 0 && button <= 1 && mode == 0,
-                        "Actual in-window slot and ordinary left/right native mouse click required; Shift is not synthesized");
+                        slot >= 0 && slot < container.inventorySlots.size()
+                            && button >= 0
+                            && button <= 1
+                            && (mode == 0 || mode == 1),
+                        "Actual in-window slot and mode 0/1 left/right native container click required");
                     result.add(
                         "nativeMouse",
                         LwjglContainerMouseInput
@@ -89,8 +94,7 @@ public final class MaidNativeContainerProbe {
                 } else if (action.equals("container_button")) {
                     int button = integers(spec, 1)[0];
                     require(
-                        button >= MaidContainerProtocol.ACTION_IDLE
-                            && button <= MaidContainerProtocol.ACTION_TASK_CONFIG,
+                        button >= MaidContainerProtocol.ACTION_IDLE && button <= MaidContainerProtocol.ACTION_BAUBLE,
                         "Declared native maid container action required");
                     mc.playerController.sendEnchantPacket(container.windowId, button);
                     lastButton = new ButtonInput(mc, container, button);
@@ -127,6 +131,27 @@ public final class MaidNativeContainerProbe {
                 && tracked(mc, container.getMaid()),
             "Current native GUI and its registered maid must match the same player container");
         return container;
+    }
+
+    static boolean isProtectedSurvivalInventoryWindow(Minecraft mc) {
+        var player = mc.thePlayer;
+        if (!DevelopmentFlags.isDevCommandsEnabled() || !AnimationLab.isOverPlatform(player)
+            || !player.isEntityAlive()
+            || !player.capabilities.disableDamage
+            || mc.getNetHandler() == null
+            || mc.playerController == null
+            || !(player.openContainer instanceof ContainerMaid container)
+            || !(mc.currentScreen instanceof GuiContainer screen)
+            || screen.inventorySlots != container
+            || !(screen instanceof EmptyBackpackContainerScreen || screen instanceof BaubleContainerScreen)
+            || !container.canInteractWith(player)
+            || !tracked(mc, container.getMaid())
+            || !container.getMaid()
+                .isOwner(player))
+            return false;
+        var mode = ObfuscationReflectionHelper
+            .getPrivateValue(PlayerControllerMP.class, mc.playerController, "currentGameType", "field_78779_k");
+        return mode == WorldSettings.GameType.SURVIVAL;
     }
 
     private static boolean tracked(Minecraft mc, EntityMaid maid) {
@@ -178,9 +203,18 @@ public final class MaidNativeContainerProbe {
         var nativeMode = ObfuscationReflectionHelper
             .getPrivateValue(PlayerControllerMP.class, mc.playerController, "currentGameType", "field_78779_k");
         result.addProperty("nativeControllerMode", ((WorldSettings.GameType) nativeMode).getID());
+        result.addProperty("invulnerable", player.capabilities.disableDamage);
+        result.addProperty("allowFlying", player.capabilities.allowFlying);
+        result.addProperty("flying", player.capabilities.isFlying);
+        result.addProperty("onGround", player.onGround);
         result
             .addProperty("cursorNativeNbtBase64", MaidCareInteractionProbe.nativeNbt(player.inventory.getItemStack()));
         if (container instanceof ContainerMaid maidContainer) {
+            result.addProperty(
+                "favorabilityLevel",
+                maidContainer.getMaid()
+                    .getFavorabilityManager()
+                    .getLevel());
             result.addProperty(
                 "maidUUID",
                 maidContainer.getMaid()
