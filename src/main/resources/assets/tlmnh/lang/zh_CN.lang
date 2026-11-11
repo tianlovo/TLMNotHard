@@ -173,3 +173,8 @@ tooltips.tlmnh.smart_slab_has_maid.release=对方块顶面右键放出女仆，�
 message.tlmnh.lifecycle.cooldown=请稍候再使用魂符
 tooltips.tlmnh.info.name=名称
 tooltips.tlmnh.info.food_level=饱食度
+
+gui.touhou_little_maid.bauble_button.open.desc=打开饰品栏
+gui.touhou_little_maid.bauble_button.close.desc=返回女仆背包
+gui.touhou_little_maid.bauble_button.need_favorability_level=需要好感度等级达到 %d 级解锁
+container.tlmnh.maid_baubles=女仆饰品

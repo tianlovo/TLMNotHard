@@ -33,7 +33,8 @@ public final class ProjectRedBackpackContainer {
 
     public static ItemStack insert(ItemStack containerStack, ItemStack input, boolean simulate) {
         if (input == null || input.stackSize <= 0) return null;
-        if (!isSupported(containerStack) || CompatServices.backpacks().isSupportedBackpack(input)) {
+        if (!isSupported(containerStack) || CompatServices.backpacks()
+            .isSupportedBackpack(input)) {
             return input.copy();
         }
         Class<?> cls = backpackClass();
@@ -83,13 +84,13 @@ public final class ProjectRedBackpackContainer {
 
     private static ItemStack[] readSlots(NBTTagCompound root) {
         ItemStack[] slots = new ItemStack[ProjectRedBackpackTuning.SLOT_COUNT];
-        if (root == null || !root.hasKey(ProjectRedBackpackNbtKeys.BAG_INV, ProjectRedBackpackTuning.NBT_COMPOUND_TAG_TYPE)) {
+        if (root == null
+            || !root.hasKey(ProjectRedBackpackNbtKeys.BAG_INV, ProjectRedBackpackTuning.NBT_COMPOUND_TAG_TYPE)) {
             return slots;
         }
         NBTTagCompound bagInv = root.getCompoundTag(ProjectRedBackpackNbtKeys.BAG_INV);
-        NBTTagList list = bagInv.getTagList(
-            ProjectRedBackpackNbtKeys.ITEMS,
-            ProjectRedBackpackTuning.NBT_COMPOUND_TAG_TYPE);
+        NBTTagList list = bagInv
+            .getTagList(ProjectRedBackpackNbtKeys.ITEMS, ProjectRedBackpackTuning.NBT_COMPOUND_TAG_TYPE);
         for (int i = 0; i < list.tagCount(); i++) {
             NBTTagCompound entry = list.getCompoundTagAt(i);
             int index = entry.getInteger(ProjectRedBackpackNbtKeys.INDEX);

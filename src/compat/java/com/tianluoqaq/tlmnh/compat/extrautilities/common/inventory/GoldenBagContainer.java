@@ -32,7 +32,8 @@ public final class GoldenBagContainer {
 
     public static ItemStack insert(ItemStack containerStack, ItemStack input, boolean simulate) {
         if (input == null || input.stackSize <= 0) return null;
-        if (!isSupported(containerStack) || CompatServices.backpacks().isSupportedBackpack(input)) {
+        if (!isSupported(containerStack) || CompatServices.backpacks()
+            .isSupportedBackpack(input)) {
             return input.copy();
         }
         Class<?> cls = bagClass();

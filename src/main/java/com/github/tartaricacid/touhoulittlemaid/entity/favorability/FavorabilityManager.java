@@ -138,6 +138,8 @@ public class FavorabilityManager {
 
     public void onFavorabilityLevelChange(int oldLevel, int newLevel) {
         MinecraftForge.EVENT_BUS.post(new MaidFavorabilityLevelChangeEvent(maid, oldLevel, newLevel));
+        if (maid.worldObj != null && !maid.worldObj.isRemote) maid.getMaidBaubleInventory()
+            .fireEvent((bauble, stack) -> bauble.onFavorabilityLevelChange(maid, stack, oldLevel, newLevel));
     }
 
     public void addAdditionalSaveData(NBTTagCompound tag) {

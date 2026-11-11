@@ -9,8 +9,6 @@ package com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack
 import net.minecraft.client.gui.Gui;
 import net.minecraft.util.ResourceLocation;
 
-import org.lwjgl.opengl.GL11;
-
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 
@@ -30,14 +28,6 @@ public final class EmptyBackpackContainerScreen extends AbstractMaidContainerGui
         mc.getTextureManager()
             .bindTexture(BACKPACK);
         drawTexturedModalRect(guiLeft + 85, guiTop + 36, 0, 0, 165, 128);
-        int[] top = { 58, 81, 122 }, bottom = { 76, 117, 158 }, iconY = { 62, 92, 133 };
-        for (int index = 0; index < 3; index++) {
-            drawRect(guiLeft + 142, guiTop + top[index], guiLeft + 250, guiTop + bottom[index], 0xaa222222);
-            mc.getTextureManager()
-                .bindTexture(BACKPACK);
-            GL11.glColor4f(1, 1, 1, 1);
-            drawTexturedModalRect(guiLeft + 190, guiTop + iconY[index], 165, 0, 11, 11);
-        }
         if (!inventorySlots.inventorySlots.get(47)
             .getHasStack()) {
             mc.getTextureManager()

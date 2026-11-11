@@ -29,11 +29,7 @@ public final class BackpackSlotMergeHelper {
         return ItemStack.areItemStackTagsEqual(existing, incoming);
     }
 
-    public static MergeResult mergeIntoArray(
-        ItemStack[] slots,
-        int slotLimit,
-        int maxStackLimit,
-        ItemStack input,
+    public static MergeResult mergeIntoArray(ItemStack[] slots, int slotLimit, int maxStackLimit, ItemStack input,
         boolean simulate) {
         if (input == null || input.stackSize <= 0) {
             return new MergeResult(null, false);
@@ -77,12 +73,8 @@ public final class BackpackSlotMergeHelper {
         return new MergeResult(rem.stackSize <= 0 ? null : rem, changed);
     }
 
-    public static MergeResult mergeIntoInventory(
-        IInventory inv,
-        int slotCount,
-        ItemStack input,
-        IntPredicate slotValidator,
-        boolean simulate) {
+    public static MergeResult mergeIntoInventory(IInventory inv, int slotCount, ItemStack input,
+        IntPredicate slotValidator, boolean simulate) {
         Objects.requireNonNull(inv);
         if (input == null || input.stackSize <= 0) {
             return new MergeResult(null, false);

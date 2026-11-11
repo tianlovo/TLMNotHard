@@ -39,7 +39,8 @@ public final class AdventureBackpackContainer {
 
     public static ItemStack insert(ItemStack containerStack, ItemStack input, boolean simulate) {
         if (input == null || input.stackSize <= 0) return null;
-        if (!isSupported(containerStack) || CompatServices.backpacks().isSupportedBackpack(input)) {
+        if (!isSupported(containerStack) || CompatServices.backpacks()
+            .isSupportedBackpack(input)) {
             return input.copy();
         }
         Api api = api();
@@ -53,12 +54,8 @@ public final class AdventureBackpackContainer {
                 target.setTagCompound(new NBTTagCompound());
             }
             IInventory inv = (IInventory) api.inventoryCtor.newInstance(target);
-            BackpackSlotMergeHelper.MergeResult result = BackpackSlotMergeHelper.mergeIntoInventory(
-                inv,
-                AdventureBackpackTuning.STORAGE_SLOT_COUNT,
-                input,
-                null,
-                simulate);
+            BackpackSlotMergeHelper.MergeResult result = BackpackSlotMergeHelper
+                .mergeIntoInventory(inv, AdventureBackpackTuning.STORAGE_SLOT_COUNT, input, null, simulate);
             if (!simulate && result.changed) {
                 inv.markDirty();
             }
@@ -110,13 +107,13 @@ public final class AdventureBackpackContainer {
 
     private static ItemStack[] readStorageSlots(NBTTagCompound root) {
         ItemStack[] slots = new ItemStack[AdventureBackpackTuning.STORAGE_SLOT_COUNT];
-        if (root == null || !root.hasKey(AdventureBackpackNbtKeys.WEARABLE_DATA, AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE)) {
+        if (root == null
+            || !root.hasKey(AdventureBackpackNbtKeys.WEARABLE_DATA, AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE)) {
             return slots;
         }
         NBTTagCompound wearable = root.getCompoundTag(AdventureBackpackNbtKeys.WEARABLE_DATA);
-        NBTTagList list = wearable.getTagList(
-            AdventureBackpackNbtKeys.INVENTORY,
-            AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE);
+        NBTTagList list = wearable
+            .getTagList(AdventureBackpackNbtKeys.INVENTORY, AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE);
         for (int i = 0; i < list.tagCount(); i++) {
             NBTTagCompound entry = list.getCompoundTagAt(i);
             int slot = entry.getByte(AdventureBackpackNbtKeys.SLOT) & AdventureBackpackTuning.UNSIGNED_BYTE_MASK;
@@ -128,14 +125,12 @@ public final class AdventureBackpackContainer {
     }
 
     private static void writeStorageSlots(NBTTagCompound root, ItemStack[] storageSlots) {
-        NBTTagCompound wearable = root.hasKey(
-            AdventureBackpackNbtKeys.WEARABLE_DATA,
-            AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE)
+        NBTTagCompound wearable = root
+            .hasKey(AdventureBackpackNbtKeys.WEARABLE_DATA, AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE)
                 ? root.getCompoundTag(AdventureBackpackNbtKeys.WEARABLE_DATA)
                 : new NBTTagCompound();
-        NBTTagList existingList = wearable.getTagList(
-            AdventureBackpackNbtKeys.INVENTORY,
-            AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE);
+        NBTTagList existingList = wearable
+            .getTagList(AdventureBackpackNbtKeys.INVENTORY, AdventureBackpackTuning.NBT_COMPOUND_TAG_TYPE);
         NBTTagList updatedList = new NBTTagList();
 
         for (int i = 0; i < AdventureBackpackTuning.STORAGE_SLOT_COUNT; i++) {
@@ -169,9 +164,8 @@ public final class AdventureBackpackContainer {
                 Class<?> invCls = Class.forName(AdventureBackpackReflectionSpec.INVENTORY_CLASS, false, cl);
                 Class<?> slotCls = Class.forName(AdventureBackpackReflectionSpec.SLOT_CLASS, false, cl);
                 Constructor<?> invCtor = invCls.getConstructor(ItemStack.class);
-                Method isValid = slotCls.getMethod(
-                    AdventureBackpackReflectionSpec.METHOD_IS_VALID_ITEM,
-                    ItemStack.class);
+                Method isValid = slotCls
+                    .getMethod(AdventureBackpackReflectionSpec.METHOD_IS_VALID_ITEM, ItemStack.class);
                 cachedApi = new Api(itemCls, invCtor, isValid);
             } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
                 IntegrationGuard.report(Side.SERVER, AdventureBackpackInventoryIds.FEATURE, failure);

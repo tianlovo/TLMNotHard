@@ -8,6 +8,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.client.event.MaidSoundFreqEvent;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.cache.CacheIconManager;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.BaubleContainerScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.config.MaidConfigContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.task.AttackTaskConfigGui;
@@ -19,6 +20,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileE
 import com.github.tartaricacid.touhoulittlemaid.client.renderer.tileentity.TileEntitySnackCabinetRenderer;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.listener.EmojiReloadListener;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.BaubleContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
@@ -132,6 +134,7 @@ public final class ClientProxy extends CommonProxy {
         int unusedZ) {
         var container = getServerGuiElement(id, player, world, entityId, unusedY, unusedZ);
         if (container instanceof EmptyBackpackContainer original) return new EmptyBackpackContainerScreen(original);
+        if (container instanceof BaubleContainer baubles) return new BaubleContainerScreen(baubles);
         if (container instanceof ContainerMaidSounds sounds) return new MaidSoundPackGui(sounds);
         if (container instanceof MaidConfigContainer config) return new MaidConfigContainerGui(config);
         if (container instanceof TaskConfigContainer task)

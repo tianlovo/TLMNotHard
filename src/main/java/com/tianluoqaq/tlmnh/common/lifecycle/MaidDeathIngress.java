@@ -20,6 +20,7 @@ import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
+import com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleNbtKeys;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidFilmData;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
@@ -202,6 +203,7 @@ final class MaidDeathIngress {
     private static NBTTagCompound cleared(NBTTagCompound source) {
         var result = (NBTTagCompound) source.copy();
         result.setTag(MaidLifecycleNbtKeys.KEY_MAID_INVENTORY, new NBTTagList());
+        if (source.hasKey(MaidBaubleNbtKeys.ITEMS)) result.setTag(MaidBaubleNbtKeys.ITEMS, new NBTTagList());
         result.setTag(ProtectionRecoveryNbtKeys.TAG, new NBTTagList());
         result.setInteger(MaidLifecycleNbtKeys.KEY_MAID_EXPERIENCE, MaidLifecycleTuning.CORE_INITIAL_VALUE);
         var equipment = new NBTTagList();
@@ -270,6 +272,12 @@ final class MaidDeathIngress {
                 var recovery = maid.getMaidInventory()
                     .recovery()
                     .write();
+                for (int slot = 0; slot < maid.getMaidBaubleInventory()
+                    .getSizeInventory(); slot++) {
+                    var stack = maid.getMaidBaubleInventory()
+                        .getStackInSlot(slot);
+                    if (stack != null) items.appendTag(ProtectedItemCodec.encode(stack));
+                }
                 for (int i = 0; i < recovery.tagCount(); i++) items.appendTag(
                     recovery.getCompoundTagAt(i)
                         .copy());
@@ -408,6 +416,13 @@ final class MaidDeathIngress {
 
         void clear() {
             var inventory = maid.getMaidInventory();
+            var baubles = maid.getMaidBaubleInventory();
+            var baubleReferences = new ItemStack[baubles.getSizeInventory()];
+            var baubleValues = new ItemStack[baubleReferences.length];
+            for (int slot = 0; slot < baubleReferences.length; slot++) {
+                baubleReferences[slot] = baubles.getStackInSlot(slot);
+                baubleValues[slot] = ItemStack.copyItemStack(baubleReferences[slot]);
+            }
             var references = new ItemStack[inventory.getSizeInventory()];
             var values = new ItemStack[references.length];
             for (int slot = 0; slot < references.length; slot++) {
@@ -421,6 +436,12 @@ final class MaidDeathIngress {
                     || !ItemStack.areItemStacksEqual(references[slot], values[slot]))
                     throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_DEATH_INVENTORY_SUCCESSOR_WAS);
                 inventory.setInventorySlotContents(slot, null);
+            }
+            for (int slot = 0; slot < baubleReferences.length; slot++) {
+                if (!identity(true) || baubles.getStackInSlot(slot) != baubleReferences[slot]
+                    || !ItemStack.areItemStacksEqual(baubleReferences[slot], baubleValues[slot]))
+                    throw new IllegalStateException(MaidLifecycleDiagnostics.MSG_UNKNOWN_DEATH_INVENTORY_SUCCESSOR_WAS);
+                baubles.setInventorySlotContents(slot, null);
             }
             if (!inventory.recovery()
                 .write()

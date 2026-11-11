@@ -29,7 +29,7 @@ public final class ExtraUtilitiesCompat implements CompatDescriptor {
 
     @Override
     public SideScope sideScope() {
-        return SideScope.SERVER;
+        return SideScope.COMMON;
     }
 
     @Override

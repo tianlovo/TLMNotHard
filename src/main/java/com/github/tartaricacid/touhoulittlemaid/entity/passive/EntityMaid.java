@@ -76,6 +76,7 @@ import com.tianluoqaq.tlmnh.common.interaction.MaidSelfCare;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventory;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.MaidPickupService;
+import com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleInventory;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidMealController;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
@@ -133,6 +134,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     private final MaidConfigManager configManager = new MaidConfigManager(dataWatcher);
     private final MaidWorldSoundState worldSounds = new MaidWorldSoundState(this);
     private final FavorabilityManager favorabilityManager = new FavorabilityManager(this);
+    private final MaidBaubleInventory baubleInventory = new MaidBaubleInventory(this);
     private final MaidInventory inventory = new MaidInventory(this);
     private final MaidPickupService pickup = new MaidPickupService(this);
     private final MaidHomeArea home = new MaidHomeArea(this);
@@ -273,6 +275,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             syncBackpackShowItem();
             chatBubbleManager.tick();
             MaidSelfCare.tick(this);
+            if (isEntityAlive()) baubleInventory.fireEvent((bauble, stack) -> bauble.onTick(this, stack));
         }
     }
 
@@ -431,6 +434,11 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         // Forge构造事件发生在本类字段初始化之前，仍让原生伤害入口正常处理
         var previous = worldSounds == null ? null : worldSounds.beginDamage(source);
         try {
+            if (baubleInventory != null && worldObj != null && !worldObj.isRemote && isEntityAlive()) {
+                float[] adjusted = { amount };
+                baubleInventory.fireEvent((bauble, stack) -> bauble.onInjured(this, stack, source, adjusted));
+                if (Float.isFinite(adjusted[0]) && adjusted[0] >= 0) amount = adjusted[0];
+            }
             if (shield != null && worldObj != null && !worldObj.isRemote) shield.beforeIncoming(source, amount);
             boolean accepted = super.attackEntityFrom(source, amount);
             if (accepted && damageHistory != null && worldObj != null && !worldObj.isRemote)
@@ -634,6 +642,10 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         return inventory;
     }
 
+    public MaidBaubleInventory getMaidBaubleInventory() {
+        return baubleInventory;
+    }
+
     public MaidHomeArea getHomeArea() {
         return home;
     }
@@ -671,7 +683,10 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
 
     @Override
     public boolean attackEntityAsMob(Entity target) {
-        return MaidMeleeAttack.attack(this, target);
+        boolean accepted = MaidMeleeAttack.attack(this, target);
+        if (accepted && worldObj != null && !worldObj.isRemote)
+            baubleInventory.fireEvent((bauble, stack) -> bauble.onMeleeAttack(this, stack, target));
+        return accepted;
     }
 
     public boolean hasPose(MaidPose pose) {
@@ -1065,6 +1080,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         home.save(tag);
         attackSettings.save(tag);
         tag.setTag(MAID_INVENTORY_TAG, inventory.writeBackpack());
+        baubleInventory.write(tag);
         tag.setTag(
             ProtectionRecoveryNbtKeys.TAG,
             inventory.recovery()
@@ -1162,6 +1178,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             if (!tag.hasKey("PickupItems") && !tag.hasKey("PickupExperience")
                 && tag.hasKey("MaidIsPickup", Constants.NBT.TAG_BYTE)) setPickup(tag.getBoolean("MaidIsPickup"));
             inventory.readBackpack(tag.getTagList(MAID_INVENTORY_TAG, Constants.NBT.TAG_COMPOUND));
+            baubleInventory.read(tag);
             setOffhandItem(ProtectedItemCodec.decodeField(tag, OFFHAND_TAG));
             home.load(tag);
             attackSettings.load(tag);
@@ -1190,6 +1207,8 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
 
     @Override
     public void onDeath(DamageSource source) {
+        if (!worldObj.isRemote && !dead && baubleInventory != null)
+            baubleInventory.fireEvent((bauble, stack) -> bauble.onDeath(this, stack, source));
         super.onDeath(source);
         if (!worldObj.isRemote && dead) {
             favorabilityManager.apply(Type.DEATH);

@@ -12,6 +12,7 @@ public final class CommonProxyProtocol {
     public static final int GUI_MAID_CONFIG = 6;
     public static final int GUI_MAID_ATTACK_CONFIG = 7;
     public static final int GUI_MAID_DEFAULT_TASK_CONFIG = 8;
+    public static final int GUI_MAID_BAUBLE = 9;
     public static final int UPPER_WORD_SHIFT = 32;
     public static final long UNSIGNED_INT_BIT_MASK = 0xFFFFFFFFL;
 

@@ -28,6 +28,8 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaid
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectMessage;
 import com.tianluoqaq.tlmnh.Tags;
 import com.tianluoqaq.tlmnh.client.gui.BuiltinModelNames;
+import com.tianluoqaq.tlmnh.client.gui.bauble.MaidBaubleGuiIds;
+import com.tianluoqaq.tlmnh.client.gui.bauble.MaidBaubleGuiLayout;
 import com.tianluoqaq.tlmnh.client.gui.config.MaidClientConfigGui;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
@@ -108,6 +110,10 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         return false;
     }
 
+    protected boolean isBaublePage() {
+        return false;
+    }
+
     private void add(int id, int x, int y, int width, int height, ResourceLocation atlas, int u, int v, int hover,
         int selected, String key) {
         buttonList
@@ -130,10 +136,11 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             if (maid.isUnifiedCombat() && button.id == MaidContainerProtocol.ACTION_RANGED) button.visible = false;
             if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
-                case DOWNLOAD, BOOK, BAUBLE, 113, 114 -> false;
+                case DOWNLOAD, BOOK, 113, 114 -> false;
+                case BAUBLE -> !isConfigPage() && !isTaskConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case GLOBAL -> mc.thePlayer.inventory.getItemStack() == null;
                 case RIDE -> mc.thePlayer.inventory.getItemStack() == null;
-                case MAIN_TAB -> (isConfigPage() || isTaskConfigPage())
+                case MAIN_TAB -> (isConfigPage() || isTaskConfigPage() || isBaublePage())
                     && mc.thePlayer.inventory.getItemStack() == null;
                 case TASK_TAB -> !isTaskConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
                 case CONFIG_TAB -> !isConfigPage() && mc.thePlayer.inventory.getItemStack() == null;
@@ -145,6 +152,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             button.sideTab = button.id == BOOK || button.id == GLOBAL;
             button.offsetV = button.id == SCHEDULE ? 14 * maid.getSchedule()
                 .ordinal() : 0;
+            if (button.id == BAUBLE && isBaublePage()) button.offsetV = MaidBaubleGuiLayout.OPEN_BUTTON_TEXTURE_OFFSET;
             button.selected = switch (button.id) {
                 case MAIN_TAB -> !isConfigPage() && !isTaskConfigPage();
                 case TASK_TAB -> isTaskConfigPage();
@@ -171,6 +179,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case MAIN_TAB -> send(MaidContainerProtocol.ACTION_ORIGINAL_MAIN);
             case CONFIG_TAB -> send(MaidContainerProtocol.ACTION_CONFIG);
             case TASK_TAB -> send(MaidContainerProtocol.ACTION_TASK_CONFIG);
+            case BAUBLE -> send(
+                isBaublePage() ? MaidContainerProtocol.ACTION_ORIGINAL_MAIN : MaidContainerProtocol.ACTION_BAUBLE);
             case SCHEDULE -> send(
                 MaidContainerProtocol.ACTION_DAY + (maid.getSchedule()
                     .ordinal() + 1) % 3);
@@ -223,6 +233,7 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "main_tab" -> MAIN_TAB;
             case "task_config" -> TASK_TAB;
             case "global" -> GLOBAL;
+            case "bauble" -> BAUBLE;
             default -> throw new IllegalArgumentException("Unknown original GUI action");
         };
         for (var button : buttonList) if (button.id == id && button.visible && button.enabled) {
@@ -424,7 +435,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     }
 
     private List<String> tooltip(MaidAtlasButton button) {
-        if (button.id == BAUBLE) return Collections.singletonList(text("gui.tlmnh.original.bauble_excluded"));
+        if (button.id == BAUBLE)
+            return Collections.singletonList(text(isBaublePage() ? MaidBaubleGuiIds.CLOSE : MaidBaubleGuiIds.OPEN));
         if (button.id <= MaidContainerProtocol.ACTION_RANGED) return Collections.emptyList();
         var lines = new ArrayList<String>();
         if (button.id == TASK_SWITCH || button.id == TASK_CLOSE || button.id == 113 || button.id == 114) {

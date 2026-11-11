@@ -7,10 +7,11 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 import com.tianluoqaq.tlmnh.common.protection.recovery.RecoveryStore;
 
-/** 六格背包、双手与护甲的统一槽位视图，装备仍只有实体中的一份存储 */
+/** 完整背包、双手与护甲的统一槽位视图，装备仍只有实体中的一份存储 */
 public final class MaidInventory implements IInventory {
 
     private final EntityMaid maid;
@@ -131,10 +132,11 @@ public final class MaidInventory implements IInventory {
         maid.syncBackpackShowItem();
     }
 
-    /** 按上游顺序合并背包和双手，再占空位；不自动穿甲，不修改输入物品 */
+    /** 优先存入携带的背包容器，再合并自身背包和双手并占空位 */
     public ItemStack insertAvailable(ItemStack input, boolean simulate) {
         if (input == null || input.getItem() == null || input.stackSize <= 0) return null;
-        var remaining = input.copy();
+        var remaining = insertIntoBackpacks(input, simulate);
+        if (remaining == null) return null;
         for (int pass = 0; pass < MaidInventoryLayout.MIN_PASS_THRESHOLD && remaining.stackSize > 0; pass++) {
             for (int slot = 0; slot <= MaidInventoryLayout.OFF_HAND && remaining.stackSize > 0; slot++) {
                 var existing = getStackInSlot(slot);
@@ -161,6 +163,23 @@ public final class MaidInventory implements IInventory {
         }
         if (!simulate && remaining.stackSize != input.stackSize) markDirty();
         return remaining.stackSize > 0 ? remaining : null;
+    }
+
+    /** 供拾取与原版 Shift 转移共享的背包容器优先入口，不修改待存入物品 */
+    public ItemStack insertIntoBackpacks(ItemStack input, boolean simulate) {
+        if (input == null || input.getItem() == null || input.stackSize <= 0) return null;
+        var remaining = input.copy();
+        var provider = CompatServices.backpacks();
+        if (provider.isSupportedBackpack(input)) return remaining;
+        for (int slot = 0; slot <= MaidInventoryLayout.OFF_HAND; slot++) {
+            if (slot == MaidInventoryLayout.MAIN_HAND) continue;
+            var backpackStack = getStackInSlot(slot);
+            if (!provider.isSupportedBackpack(backpackStack)) continue;
+            remaining = provider.insertIntoBackpack(backpackStack, remaining, simulate);
+            if (remaining == null) break;
+        }
+        if (!simulate && (remaining == null || remaining.stackSize != input.stackSize)) markDirty();
+        return remaining;
     }
 
     @Override

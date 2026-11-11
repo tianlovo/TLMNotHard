@@ -161,6 +161,19 @@ public final class MaidDeathService {
                         MaidLifecycleDiagnostics.MSG_UNKNOWN_NATIVE_WILD_EQUIPMENT_SUCCESSOR);
                 inventory.setInventorySlotContents(slot, null);
             }
+            var baubles = maid.getMaidBaubleInventory();
+            for (int slot = 0; slot < baubles.getSizeInventory(); slot++) {
+                var stack = baubles.getStackInSlot(slot);
+                if (stack == null) continue;
+                var expected = stack.copy();
+                var drop = maid.entityDropItem(expected.copy(), MaidLifecycleTuning.CORE_INITIAL_VALUE);
+                if (drop == null || !ItemStack.areItemStacksEqual(drop.getEntityItem(), expected)
+                    || baubles.getStackInSlot(slot) != stack
+                    || !ItemStack.areItemStacksEqual(stack, expected))
+                    throw new IllegalStateException(
+                        MaidLifecycleDiagnostics.MSG_UNKNOWN_NATIVE_WILD_EQUIPMENT_SUCCESSOR);
+                baubles.setInventorySlotContents(slot, null);
+            }
             while (inventory.recovery()
                 .size() > 0) {
                 var actual = inventory.recovery()

@@ -41,8 +41,10 @@ public class ContainerMaid extends Container {
         for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             addMaidSlot(
                 slot,
-                MaidContainerLayout.CONTAINER_ADD_MAID_SLOT_SECOND_PARAM + slot * MaidContainerLayout.SLOT_CELL_STRIDE,
-                MaidContainerLayout.CONTAINER_ADD_MAID_SLOT_THIRD_PARAM);
+                MaidContainerLayout.CONTAINER_ADD_MAID_SLOT_SECOND_PARAM
+                    + (slot % MaidContainerLayout.MIN_COLUMN_THRESHOLD) * MaidContainerLayout.SLOT_CELL_STRIDE,
+                MaidContainerLayout.CONTAINER_ADD_MAID_SLOT_THIRD_PARAM
+                    + (slot / MaidContainerLayout.MIN_COLUMN_THRESHOLD) * MaidContainerLayout.SLOT_CELL_STRIDE);
         }
         addMaidSlot(
             MaidInventoryLayout.MAIN_HAND,
@@ -129,7 +131,7 @@ public class ContainerMaid extends Container {
     public boolean enchantItem(EntityPlayer player, int action) {
         if (maid.worldObj.isRemote || !canInteractWith(player)
             || action < MaidContainerProtocol.ACTION_IDLE
-            || action > MaidContainerProtocol.ACTION_TASK_CONFIG
+            || action > MaidContainerProtocol.ACTION_BAUBLE
             || lastActionTick == maid.ticksExisted) return false;
         if (!isReadOnlyNavigation(action) && !canModifyWith(player)) return false;
         if (action <= MaidContainerProtocol.ACTION_RANGED && !maid.getCombatTaskState()
@@ -142,7 +144,8 @@ public class ContainerMaid extends Container {
         if ((action == MaidContainerProtocol.ACTION_MODELS || action == MaidContainerProtocol.ACTION_SOUNDS
             || action == MaidContainerProtocol.ACTION_CONFIG
             || action == MaidContainerProtocol.ACTION_TASK_CONFIG
-            || action == MaidContainerProtocol.ACTION_ORIGINAL_MAIN) && player.inventory.getItemStack() != null) {
+            || action == MaidContainerProtocol.ACTION_ORIGINAL_MAIN
+            || action == MaidContainerProtocol.ACTION_BAUBLE) && player.inventory.getItemStack() != null) {
             player.addChatMessage(new ChatComponentTranslation(MaidContainerIds.I18N_GUI_TLMNH_MODELS_PUT_DOWN_ITEM));
             return false;
         }
@@ -205,6 +208,13 @@ public class ContainerMaid extends Container {
                 MaidContainerLayout.OPEN_GUI_INITIAL_VALUE,
                 MaidContainerLayout.OPEN_GUI_INITIAL_VALUE);
             case MaidContainerProtocol.ACTION_TASK_CONFIG -> openTaskConfiguration(player);
+            case MaidContainerProtocol.ACTION_BAUBLE -> player.openGui(
+                ModContext.modInstance(),
+                CommonProxyProtocol.GUI_MAID_BAUBLE,
+                maid.worldObj,
+                maid.getEntityId(),
+                MaidContainerLayout.OPEN_GUI_INITIAL_VALUE,
+                MaidContainerLayout.OPEN_GUI_INITIAL_VALUE);
             case MaidContainerProtocol.ACTION_HOME -> {
                 return maid.getHomeArea()
                     .setEnabled(
@@ -238,6 +248,7 @@ public class ContainerMaid extends Container {
         return action == MaidContainerProtocol.ACTION_MODELS || action == MaidContainerProtocol.ACTION_SOUNDS
             || action == MaidContainerProtocol.ACTION_CONFIG
             || action == MaidContainerProtocol.ACTION_ORIGINAL_MAIN
+            || action == MaidContainerProtocol.ACTION_BAUBLE
             || action == MaidContainerProtocol.ACTION_TASK_CONFIG;
     }
 

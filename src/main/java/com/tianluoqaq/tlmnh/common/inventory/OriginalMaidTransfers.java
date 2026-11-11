@@ -6,43 +6,40 @@ import net.minecraft.item.ItemBow;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.MaidMainContainer;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.BaubleContainer;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidMainLayout;
+
 /** 原版页面的玩家先行槽号；复用当前背包/装备存储，不增加重复显示槽对应的第二份数据 */
 public final class OriginalMaidTransfers {
 
     private OriginalMaidTransfers() {}
 
     public static ItemStack transfer(Container container, EntityPlayer player, int index) {
-        if (index < 0 || index >= container.inventorySlots.size()
-            || container.inventorySlots.size() != MaidInventoryLayout.TARGET_SIZE_THRESHOLD) return null;
+        if (!(container instanceof MaidMainContainer main) || index < 0 || index >= container.inventorySlots.size())
+            return null;
         var slot = container.inventorySlots.get(index);
         if (!slot.getHasStack()) return null;
         var stack = slot.getStack();
         var before = stack.copy();
-        if (index >= MaidInventoryLayout.MAX_INDEX_THRESHOLD) merge(
-            container,
-            stack,
-            MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE,
-            MaidInventoryLayout.MAX_INDEX_THRESHOLD,
-            true);
+        if (index >= MaidMainLayout.PLAYER_END)
+            merge(container, stack, MaidMainLayout.PLAYER_START, MaidMainLayout.PLAYER_END, true);
         else {
-            merge(
-                container,
-                stack,
-                MaidInventoryLayout.MAX_INDEX_THRESHOLD,
-                MaidInventoryLayout.ORIGINAL_TRANSFERS_MERGE_FOURTH_PARAM,
-                false);
-            if (stack.getItem() instanceof ItemBow || stack.getItem() instanceof ItemSword) merge(
-                container,
-                stack,
-                MaidInventoryLayout.ORIGINAL_TRANSFERS_MERGE_FOURTH_PARAM,
-                MaidInventoryLayout.ORIGINAL_TRANSFERS_MERGE_FOURTH_PARAM_2,
-                false);
-            merge(
-                container,
-                stack,
-                MaidInventoryLayout.ORIGINAL_TRANSFERS_MERGE_THIRD_PARAM,
-                MaidInventoryLayout.TARGET_SIZE_THRESHOLD,
-                false);
+            boolean baublePage = container instanceof BaubleContainer;
+            if (baublePage)
+                merge(container, stack, MaidMainLayout.BACKPACK_START, container.inventorySlots.size(), false);
+            if (stack.stackSize == before.stackSize || !baublePage) {
+                merge(container, stack, MaidMainLayout.PLAYER_END, MaidMainLayout.ARMOR_END, false);
+                if (stack.getItem() instanceof ItemBow || stack.getItem() instanceof ItemSword)
+                    merge(container, stack, MaidMainLayout.ARMOR_END, MaidMainLayout.MAIN_HAND_END, false);
+                if (!baublePage && stack.stackSize > 0) {
+                    var remaining = main.getMaid()
+                        .getMaidInventory()
+                        .insertIntoBackpacks(stack, false);
+                    stack.stackSize = remaining == null ? MaidMainLayout.EMPTY_STACK_COUNT : remaining.stackSize;
+                    merge(container, stack, MaidMainLayout.BACKPACK_START, MaidMainLayout.BACKPACK_END, false);
+                }
+            }
         }
         if (stack.stackSize == before.stackSize) return null;
         if (stack.stackSize <= 0) slot.putStack(null);

@@ -9,6 +9,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.util.Constants;
 
 import com.tianluoqaq.tlmnh.common.foundation.ModContext;
+import com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleNbtKeys;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeSettings;
 
 /** 复活只恢复身份和女仆设置，死亡库存保持独立的一份 */
@@ -17,7 +18,7 @@ public final class MaidFilmData {
     private static final String[] REMOVED = { LifecycleItemIds.ID_ID, LifecycleItemNbtKeys.KEY_UUID_MOST,
         LifecycleItemNbtKeys.KEY_UUID_LEAST, LifecycleItemNbtKeys.KEY_PERSISTENT_IDMSB,
         LifecycleItemNbtKeys.KEY_PERSISTENT_IDLSB, LifecycleItemNbtKeys.KEY_TLMNH_RECOVERY,
-        LifecycleItemNbtKeys.KEY_MAID_INVENTORY, LifecycleItemNbtKeys.KEY_MAID_EXPERIENCE,
+        LifecycleItemNbtKeys.KEY_MAID_INVENTORY, MaidBaubleNbtKeys.ITEMS, LifecycleItemNbtKeys.KEY_MAID_EXPERIENCE,
         LifecycleItemNbtKeys.KEY_TLMNH_OFFHAND, LifecycleItemNbtKeys.KEY_EQUIPMENT,
         LifecycleItemNbtKeys.KEY_DROP_CHANCES, LifecycleItemNbtKeys.KEY_HEALTH, LifecycleItemNbtKeys.KEY_HEAL_F,
         LifecycleItemNbtKeys.KEY_HURT_TIME, LifecycleItemNbtKeys.KEY_DEATH_TIME, LifecycleItemNbtKeys.KEY_ATTACK_TIME,

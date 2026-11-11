@@ -46,7 +46,8 @@ public final class EydamosBackpackContainer {
 
     public static ItemStack insert(ItemStack containerStack, ItemStack input, boolean simulate) {
         if (input == null || input.stackSize <= 0) return null;
-        if (!isSupported(containerStack) || CompatServices.backpacks().isSupportedBackpack(input)) {
+        if (!isSupported(containerStack) || CompatServices.backpacks()
+            .isSupportedBackpack(input)) {
             return input.copy();
         }
         Api api = api();
@@ -124,16 +125,14 @@ public final class EydamosBackpackContainer {
 
     private static boolean hasInitializedUid(ItemStack stack) {
         NBTTagCompound tag = stack.getTagCompound();
-        return tag != null && !tag.getString(EydamosBackpackNbtKeys.BACKPACK_UID).isEmpty();
+        return tag != null && !tag.getString(EydamosBackpackNbtKeys.BACKPACK_UID)
+            .isEmpty();
     }
 
     private static boolean isSlotItemValid(Api api, IInventory inv, int slot, ItemStack input) {
         try {
-            Slot slotInst = (Slot) api.slotCtor.newInstance(
-                inv,
-                slot,
-                EydamosBackpackTuning.VIRTUAL_SLOT_X,
-                EydamosBackpackTuning.VIRTUAL_SLOT_Y);
+            Slot slotInst = (Slot) api.slotCtor
+                .newInstance(inv, slot, EydamosBackpackTuning.VIRTUAL_SLOT_X, EydamosBackpackTuning.VIRTUAL_SLOT_Y);
             return slotInst.isItemValid(input);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
             IntegrationGuard.report(Side.SERVER, EydamosBackpackIds.FEATURE, failure);
@@ -157,9 +156,8 @@ public final class EydamosBackpackContainer {
                 Method isEnder = utilCls.getMethod(EydamosBackpackReflectionSpec.METHOD_IS_ENDER, ItemStack.class);
                 Constructor<?> saveCtor = saveCls.getConstructor(ItemStack.class);
                 Method getUuid = saveCls.getMethod(EydamosBackpackReflectionSpec.METHOD_GET_UUID);
-                Method getSizeStatic = saveCls.getDeclaredMethod(
-                    EydamosBackpackReflectionSpec.METHOD_GET_SIZE,
-                    ItemStack.class);
+                Method getSizeStatic = saveCls
+                    .getDeclaredMethod(EydamosBackpackReflectionSpec.METHOD_GET_SIZE, ItemStack.class);
                 getSizeStatic.setAccessible(true);
                 Method saveMethod = saveCls.getMethod(EydamosBackpackReflectionSpec.METHOD_SAVE);
                 Constructor<?> invCtor = invCls.getConstructor(String.class, String.class);
@@ -206,18 +204,9 @@ public final class EydamosBackpackContainer {
         final Constructor<?> slotCtor;
         final Method isOpenedByOther;
 
-        Api(
-            Class<?> itemBaseClass,
-            Method isEnderBackpack,
-            Constructor<?> saveCtor,
-            Method getUuid,
-            Method getSizeStatic,
-            Method saveMethod,
-            Constructor<?> inventoryCtor,
-            Method readFromNbt,
-            Method writeToNbt,
-            Constructor<?> slotCtor,
-            Method isOpenedByOther) {
+        Api(Class<?> itemBaseClass, Method isEnderBackpack, Constructor<?> saveCtor, Method getUuid,
+            Method getSizeStatic, Method saveMethod, Constructor<?> inventoryCtor, Method readFromNbt,
+            Method writeToNbt, Constructor<?> slotCtor, Method isOpenedByOther) {
             this.itemBaseClass = itemBaseClass;
             this.isEnderBackpack = isEnderBackpack;
             this.saveCtor = saveCtor;

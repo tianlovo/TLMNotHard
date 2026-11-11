@@ -794,11 +794,11 @@ public final class MaidBowAttack {
     /** 原availableInv(true)按主手、副手、背包顺序查找基础箭 */
     public static int modernArrowSlot(EntityMaid maid) {
         var inventory = maid.getMaidInventory();
-        int[] slots = { MaidInventoryLayout.MAIN_HAND, MaidInventoryLayout.OFF_HAND, MaidCombatTuning.MAX_INITIAL_VALUE,
-            MaidCombatTuning.MAX_SINGLE_UNIT, MaidCombatTuning.TARGET_SIZE_THRESHOLD,
-            MaidCombatTuning.BOW_ATTACK_SPEND_SECOND_PARAM, MaidCombatTuning.CHUNK_SECTION_SHIFT,
-            MaidCombatTuning.MIN_SLOT_THRESHOLD };
-        for (int slot : slots) {
+        for (int slot : new int[] { MaidInventoryLayout.MAIN_HAND, MaidInventoryLayout.OFF_HAND }) {
+            var stack = inventory.getStackInSlot(slot);
+            if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.arrow) return slot;
+        }
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
             var stack = inventory.getStackInSlot(slot);
             if (stack != null && stack.stackSize > 0 && stack.getItem() == Items.arrow) return slot;
         }

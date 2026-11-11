@@ -15,6 +15,7 @@ import net.minecraft.util.IIcon;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.clienthook.HandSlotIconHook;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
+import com.tianluoqaq.tlmnh.common.inventory.container.MaidMainLayout;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -29,7 +30,19 @@ public abstract class MaidMainContainer extends AbstractMaidContainer {
         }
         addMaidSlot(MaidInventoryLayout.MAIN_HAND, 87, 77, -1);
         addMaidSlot(MaidInventoryLayout.OFF_HAND, 121, 77, -1);
-        for (int i = 0; i < MaidInventoryLayout.BACKPACK_SIZE; i++) addMaidSlot(i, 143 + 18 * i, 37, -1);
+        addBackpackSlots();
+    }
+
+    protected void addBackpackSlots() {
+        for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) {
+            int column = slot % MaidMainLayout.BACKPACK_COLUMNS;
+            int row = slot / MaidMainLayout.BACKPACK_COLUMNS;
+            addMaidSlot(
+                slot,
+                MaidMainLayout.BACKPACK_X + MaidMainLayout.CELL_STRIDE * column,
+                MaidMainLayout.backpackY(row),
+                -1);
+        }
     }
 
     private void addMaidSlot(int index, int x, int y, int armorType) {

@@ -1746,3 +1746,10 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
   `CompatServices.shields()` 与 `ClientCompatServices.itemRender()` 查询预览盾牌及维度墓碑纹理；三份上游文件的原包名、MIT 许可头与交互行为保持不变。
 - 公开扩展包 `com.tianluoqaq.tlmnh.api.behavior` 移除对 `common.*` 内部实现类的直接引用，新增公开纯值分组 `MaidBehaviorGroup`
   并将手部租约与只读感知视图收敛在 `api.behavior` 内部，由 `MaidPlatformBehaviorContext`、`MaidExternalOfferSink` 与 `MaidItemUseState` 在会话内部桥接。
+
+## 0.1.0 完整背包与女仆饰品栏
+
+- `IMaidBauble`、`BaubleContainer` 与 `BaubleContainerScreen` 来自固定上游
+  `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的对应路径，保留包名和 MIT 许可头，适配 1.7.10 的物品栏、伤害和界面接口。
+- `textures/gui/maid_gui_bauble.png` 从同一上游版本逐字节引入，使用既有 TLM MIT 许可。饰品栏保留上游 30 格容量及好感度分档布局。
+- `MaidMainContainer` 与 `EmptyBackpackContainerScreen` 接入默认 36 格背包。实体、好感度和生命周期链接入独立饰品存储，既有死亡收据及胶片保全规则继续生效。

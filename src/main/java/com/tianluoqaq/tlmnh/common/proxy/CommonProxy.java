@@ -7,6 +7,7 @@ import net.minecraft.inventory.Container;
 import net.minecraft.world.World;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.BaubleContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.backpack.EmptyBackpackContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.config.MaidConfigContainer;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
@@ -60,7 +61,8 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
             && id != CommonProxyProtocol.GUI_MAID_SOUNDS
             && id != CommonProxyProtocol.GUI_MAID_CONFIG
             && id != CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG
-            && id != CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG) || world == null
+            && id != CommonProxyProtocol.GUI_MAID_DEFAULT_TASK_CONFIG
+            && id != CommonProxyProtocol.GUI_MAID_BAUBLE) || world == null
             || player == null
             || world != player.worldObj) return null;
         var entity = world.getEntityByID(entityId);
@@ -96,6 +98,8 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
                 : null;
         if (id == CommonProxyProtocol.GUI_MAID_ORIGINAL)
             return () -> new EmptyBackpackContainer(player.inventory, maid);
+        if (id == CommonProxyProtocol.GUI_MAID_BAUBLE)
+            return player.inventory.getItemStack() == null ? () -> new BaubleContainer(player.inventory, maid) : null;
         if (id == CommonProxyProtocol.GUI_MAID_ORIGINAL_MODELS)
             return player.inventory.getItemStack() == null ? () -> new ContainerMaidModels(player.inventory, maid, true)
                 : null;

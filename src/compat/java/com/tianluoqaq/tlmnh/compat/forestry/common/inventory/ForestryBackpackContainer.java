@@ -39,7 +39,8 @@ public final class ForestryBackpackContainer {
 
     public static ItemStack insert(ItemStack containerStack, ItemStack input, boolean simulate) {
         if (input == null || input.stackSize <= 0) return null;
-        if (!isSupported(containerStack) || CompatServices.backpacks().isSupportedBackpack(input)) {
+        if (!isSupported(containerStack) || CompatServices.backpacks()
+            .isSupportedBackpack(input)) {
             return input.copy();
         }
         if (containerStack.getItemDamage() == ForestryBackpackTuning.LOCKED_MODE_DAMAGE) {
@@ -85,12 +86,8 @@ public final class ForestryBackpackContainer {
             return input.copy();
         }
         ItemStack[] slots = readSlots(containerStack.getTagCompound(), backpackSize);
-        BackpackSlotMergeHelper.MergeResult result = BackpackSlotMergeHelper.mergeIntoArray(
-            slots,
-            backpackSize,
-            CompatInventoryTuning.DEFAULT_SLOT_STACK_LIMIT,
-            input,
-            simulate);
+        BackpackSlotMergeHelper.MergeResult result = BackpackSlotMergeHelper
+            .mergeIntoArray(slots, backpackSize, CompatInventoryTuning.DEFAULT_SLOT_STACK_LIMIT, input, simulate);
         if (!simulate && result.changed) {
             NBTTagCompound root = containerStack.getTagCompound();
             if (root == null) {
@@ -127,9 +124,8 @@ public final class ForestryBackpackContainer {
             return slots;
         }
         if (root.hasKey(ForestryBackpackNbtKeys.LEGACY_ITEMS)) {
-            NBTTagList legacy = root.getTagList(
-                ForestryBackpackNbtKeys.LEGACY_ITEMS,
-                ForestryBackpackTuning.NBT_COMPOUND_TAG_TYPE);
+            NBTTagList legacy = root
+                .getTagList(ForestryBackpackNbtKeys.LEGACY_ITEMS, ForestryBackpackTuning.NBT_COMPOUND_TAG_TYPE);
             for (int i = 0; i < legacy.tagCount(); i++) {
                 NBTTagCompound entry = legacy.getCompoundTagAt(i);
                 int slot = entry.getByte(ForestryBackpackNbtKeys.LEGACY_SLOT)
@@ -144,7 +140,8 @@ public final class ForestryBackpackContainer {
 
     private static void writeSlots(NBTTagCompound root, ItemStack[] slots, int size) {
         if (root.getInteger(ForestryBackpackNbtKeys.UID) == 0) {
-            int generated = ThreadLocalRandom.current().nextInt();
+            int generated = ThreadLocalRandom.current()
+                .nextInt();
             root.setInteger(
                 ForestryBackpackNbtKeys.UID,
                 generated == 0 ? ForestryBackpackTuning.FALLBACK_UID : generated);

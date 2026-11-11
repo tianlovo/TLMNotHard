@@ -24,6 +24,7 @@ public final class MaidContainerProtocol {
     public static final int ACTION_ORIGINAL_MAIN = 18;
     public static final int ACTION_RIDEABLE = 19;
     public static final int ACTION_TASK_CONFIG = 20;
+    public static final int ACTION_BAUBLE = 21;
 
     private MaidContainerProtocol() {}
 }

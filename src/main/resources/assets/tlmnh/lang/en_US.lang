@@ -174,3 +174,8 @@ tooltips.tlmnh.smart_slab_has_maid.release=Right-click the top of a block to rel
 message.tlmnh.lifecycle.cooldown=Please wait before using the slab again
 tooltips.tlmnh.info.name=Name
 tooltips.tlmnh.info.food_level=Food level
+
+gui.touhou_little_maid.bauble_button.open.desc=Open Bauble Inventory
+gui.touhou_little_maid.bauble_button.close.desc=Return to Maid Backpack
+gui.touhou_little_maid.bauble_button.need_favorability_level=Requires Favorability Level %d
+container.tlmnh.maid_baubles=Maid Baubles
