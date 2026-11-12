@@ -389,7 +389,13 @@ public final class FollowMechanismPortTests {
                     .spawnEntityInWorld(maid),
                 "Natural maid join rejected");
             var selected = maid.selectBrainProfileForDevelopment(profile);
-            helper.assertTrue(selected == MaidPolicyRuntime.SelectionResult.SELECTED, "Full root selection refused");
+            helper.assertTrue(
+                (selected == MaidPolicyRuntime.SelectionResult.SELECTED
+                    || selected == MaidPolicyRuntime.SelectionResult.UNCHANGED)
+                    && maid.getBrainCoordinator()
+                        .peekPolicyRuntime()
+                        .getProfile() == profile,
+                "Full root selection refused or actual profile differs");
             runtime = maid.getBrainCoordinator()
                 .peekPolicyRuntime();
             livingTicks = previousAge = 0;

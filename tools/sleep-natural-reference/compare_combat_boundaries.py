@@ -331,7 +331,11 @@ def main():
     args = parser.parse_args()
     raw = (args.original_tool / "combat-boundaries-contract.json").read_bytes()
     contract = json.loads(raw)
-    require(contract["contract"] == "COMBAT_BOUNDARIES_V1" and contract["inputRevision"] == 1
+    require(contract["schema"] == "combat-boundaries-contract-v3"
+            and contract["contract"] == "COMBAT_BOUNDARIES_V2" and contract["inputRevision"] == 1
+            and contract.get("nutritionInputMapping", {}).get("originalRawHunger") == 0
+            and contract.get("nutritionInputMapping", {}).get("portFood") == 20
+            and contract.get("nutritionInputMapping", {}).get("naturalRegeneration") is False
             and contract["target"]["health"] == 1000 and contract["noninferiorityDelta"] is None
             and contract["repetitions"] == contract["independentSamples"] == 1
             and tuple(scene["id"] for scene in contract["mechanisms"]) == MECHANISMS,

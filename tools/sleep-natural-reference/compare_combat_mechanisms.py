@@ -257,7 +257,11 @@ def main():
     args = parser.parse_args()
     raw = (args.original_tool / "combat-mechanisms-contract.json").read_bytes()
     contract = json.loads(raw)
-    require(contract["contract"] == "COMBAT_MECHANISMS_V2" and contract["inputRevision"] == 2
+    require(contract["schema"] == "combat-mechanisms-contract-v3"
+            and contract["contract"] == "COMBAT_MECHANISMS_V3" and contract["inputRevision"] == 2
+            and contract.get("nutritionInputMapping", {}).get("originalRawHunger") == 0
+            and contract.get("nutritionInputMapping", {}).get("portFood") == 20
+            and contract.get("nutritionInputMapping", {}).get("naturalRegeneration") is False
             and contract["target"]["health"] == 1000 and contract["noninferiorityDelta"] is None
             and contract["repetitions"] == 1 and [s["id"] for s in contract["mechanisms"]] == ["melee", "motion", "safety", "withdraw"],
             "unapproved combat/statistical contract")

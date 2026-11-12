@@ -720,6 +720,9 @@ public final class BehaviorConvergencePortTests {
 
     public static final class PantryCollector extends TerrainLifeMechanismPortTests.PantryCollector {
 
+        final boolean stableNutrition = Boolean.getBoolean("tlmnh.qaStablePantryNutrition");
+        float stablePrimaryHealth, stableSecondaryHealth;
+
         int firstBite = -1, sleepAt = -1, commandAt = -1, releasedAt = -1, resumedAt = -1, resleptAt = -1;
         int firstWaitAt = -1, restAt = -1, restoredRestAt = -1;
         int lastMouths, firstWaitMouths, commandMouths, releaseMouths = -1, initialFavorability;
@@ -753,12 +756,86 @@ public final class BehaviorConvergencePortTests {
         @Override
         void beforeSpawn() {
             super.beforeSpawn();
+            if (stableNutrition) {
+                helper.assertTrue(
+                    profile == MaidBrainProfile.ENHANCED && frameLimit() == 2200,
+                    "Stable nutrition binding requires single N 2200-frame pantry contract");
+                for (var actor : new EntityMaid[] { maid, second }) {
+                    actor.getHungerState()
+                        .setFood(16);
+                    actor.getHungerState()
+                        .setSaturation(4.0F);
+                    helper.assertTrue(
+                        actor.getHungerState()
+                            .getExhaustion() == 0.0F,
+                        "Fresh native pantry actor has unexpected exhaustion");
+                }
+                output.add("secondInitial", raw(second));
+                output.add("secondAttributeInputs", SleepAttributePortSnapshot.capture(second));
+                stablePrimaryHealth = maid.getHealth();
+                stableSecondaryHealth = second.getHealth();
+                output.add("stablePrimaryNutritionInput", nutritionState(maid));
+                output.add("stableSecondaryNutritionInput", nutritionState(second));
+                output.addProperty(
+                    "stableNutritionInputPolicy",
+                    "once in synchronous beforeSpawn; food16/saturation4/exhaustion0; no later resets");
+                output.addProperty(
+                    "cakeNutritionScope",
+                    "world cake mouths change block and favorability only; upstream and port do not add hunger stats");
+                output.addProperty(
+                    "hungerPolicyProvider",
+                    com.tianluoqaq.tlmnh.common.compat.CompatServices.hungerPolicy()
+                        .getClass()
+                        .getName());
+                output.addProperty(
+                    "actualMinHungerToHeal",
+                    com.tianluoqaq.tlmnh.common.compat.CompatServices.hungerPolicy()
+                        .minHungerToHeal(18));
+            }
             initialFavorability = maid.getFavorability();
             boolean cold = maid.getFavorabilityManager()
                 .canAdd("StealEdibleBlock");
             output.addProperty("initialPrimaryFavorability", initialFavorability);
             output.addProperty("initialPrimaryStealRewardCold", cold);
             helper.assertTrue(initialFavorability == 0 && cold, "Fresh primary steal reward input is not cold");
+        }
+
+        JsonObject nutritionState(EntityMaid actor) {
+            var state = new JsonObject();
+            var hunger = actor.getHungerState();
+            state.addProperty("food", hunger.getFood());
+            state.addProperty("saturation", hunger.getSaturation());
+            state.addProperty("exhaustion", hunger.getExhaustion());
+            state.addProperty("regenTicks", hunger.getRegenTicks());
+            state.addProperty("starveTicks", hunger.getStarveTicks());
+            state.addProperty("paused", hunger.isPaused());
+            state.addProperty("health", actor.getHealth());
+            return state;
+        }
+
+        void verifyNutrition(EntityMaid actor, float health) {
+            var hunger = actor.getHungerState();
+            var previous = frames.size() > 1 ? frames.get(frames.size() - 2)
+                .getAsJsonObject()
+                .getAsJsonObject(actor == maid ? "primaryNutrition" : "secondaryNutrition")
+                : output
+                    .getAsJsonObject(actor == maid ? "stablePrimaryNutritionInput" : "stableSecondaryNutritionInput");
+            helper.assertTrue(
+                actor.isEntityAlive() && actor.getHealth() == health
+                    && !hunger.isPaused()
+                    && hunger.getFood() > 0
+                    && hunger.getFood() <= 16
+                    && hunger.getFood() <= previous.get("food")
+                        .getAsInt()
+                    && hunger.getSaturation() >= 0.0F
+                    && hunger.getSaturation() <= previous.get("saturation")
+                        .getAsFloat()
+                    && Float.isFinite(hunger.getExhaustion())
+                    && hunger.getExhaustion() >= 0.0F
+                    && hunger.getExhaustion() <= com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerTuning.MAX_EXHAUSTION
+                    && hunger.getRegenTicks() == 0
+                    && hunger.getStarveTicks() == 0,
+                "Pantry acquired healing/starvation or credited cake mouths as meal nutrition");
         }
 
         void queueCommand(int observedAt, String kind) {
@@ -873,7 +950,19 @@ public final class BehaviorConvergencePortTests {
         @Override
         void afterFrame(int index) {
             super.afterFrame(index);
+            if (stableNutrition) {
+                verifyNutrition(maid, stablePrimaryHealth);
+                verifyNutrition(second, stableSecondaryHealth);
+                var frame = frames.get(index)
+                    .getAsJsonObject();
+                frame.add("primaryNutrition", nutritionState(maid));
+                frame.add("secondaryNutrition", nutritionState(second));
+            }
             if (index + 1 != frameLimit()) return;
+            if (stableNutrition) helper.assertTrue(
+                firstBite >= 0 && sleepAt >= 0 && releasedAt >= 0 && resumedAt >= 0 && resleptAt >= 0,
+                "Stable N failed original preemption/recovery gates");
+            output.addProperty("stableNutritionBound", stableNutrition);
             output.addProperty("firstBiteFrame", firstBite);
             output.addProperty("naturalSleepFrame", sleepAt);
             output.addProperty("ownerWaitFrame", commandAt);

@@ -121,6 +121,8 @@ public final class ServerLoadProfileTests {
     public static final class Attempt {
 
         static final int WARMUP = 100, SAMPLES = 400;
+        static final int CAKE_INITIAL_FOOD = 16, OTHER_INITIAL_FOOD = 20;
+        static final float CAKE_INITIAL_SATURATION = 4.0F, OTHER_INITIAL_SATURATION = 5.0F;
         static final int[] COUNTS = { 0, 1, 10, 30, 1, 10, 30, 0 };
         final GameTestHelper h;
         final WorldServer world;
@@ -257,6 +259,14 @@ public final class ServerLoadProfileTests {
                 "Shared actor WORK_TARGET peeks describe F work memory. Enhanced SNACK selection is recorded separately; an empty shared target is not proof of no Enhanced life intent");
             report.addProperty("warmupTicksPerStage", WARMUP);
             report.addProperty("sampleTicksPerStage", SAMPLES);
+            report.addProperty("nutritionInputSchema", "stable-real-nutrition-v1");
+            report.addProperty("cakeInitialFood", CAKE_INITIAL_FOOD);
+            report.addProperty("cakeInitialSaturation", CAKE_INITIAL_SATURATION);
+            report.addProperty("otherInitialFood", OTHER_INITIAL_FOOD);
+            report.addProperty("otherInitialSaturation", OTHER_INITIAL_SATURATION);
+            report.addProperty(
+                "nutritionScope",
+                "Food and saturation are set once before natural ticks; no replenishment. World-cake stealing grants favor, not ItemFood nutrition. Starvation is not an admitted workload.");
             report.addProperty("capacityStages", cakeDiagnostic ? 1 : 40);
             report.addProperty("fairnessWindowTicks", cakeDiagnostic ? 0 : 240);
             report.addProperty("serverCanSpawnAnimalsBefore", oldAnimals);
@@ -324,7 +334,15 @@ public final class ServerLoadProfileTests {
                     activity() == Activity.SLEEP ? MaidSchedule.NIGHT
                         : activity() == Activity.IDLE ? MaidSchedule.DAY : MaidSchedule.ALL);
                 maid.setPickup(false);
-                maid.setHunger(activity() == Activity.CAKE ? 0 : 100);
+                maid.setHunger(activity() == Activity.CAKE ? CAKE_INITIAL_FOOD : OTHER_INITIAL_FOOD);
+                maid.getHungerState()
+                    .setSaturation(activity() == Activity.CAKE ? CAKE_INITIAL_SATURATION : OTHER_INITIAL_SATURATION);
+                h.assertTrue(
+                    maid.getHungerState()
+                        .getExhaustion() == 0.0F
+                        && maid.getHungerState()
+                            .getStarveTicks() == 0,
+                    "Fresh native nutrition input differs");
                 maid.setSitting(
                     !fairness && (activity() == Activity.CAKE || activity() == Activity.SLEEP
                         || activity() == Activity.COMBAT));
@@ -369,12 +387,25 @@ public final class ServerLoadProfileTests {
                     maid.getUniqueID()
                         .toString());
                 input.add("nativeInput", SleepAttributePortSnapshot.capture(maid));
+                input.add("nutrition", nutrition(maid));
                 inputs.add(input);
             }
         }
 
         int cellX(int i) {
             return x + 12 + i % 6 * 9;
+        }
+
+        JsonObject nutrition(EntityMaid maid) {
+            var row = new JsonObject();
+            var value = maid.getHungerState();
+            row.addProperty("food", value.getFood());
+            row.addProperty("saturation", value.getSaturation());
+            row.addProperty("exhaustion", value.getExhaustion());
+            row.addProperty("regenTicks", value.getRegenTicks());
+            row.addProperty("starveTicks", value.getStarveTicks());
+            row.addProperty("health", maid.getHealth());
+            return row;
         }
 
         int cellZ(int i) {
@@ -428,6 +459,7 @@ public final class ServerLoadProfileTests {
                 var raw = new NBTTagCompound();
                 maid.writeToNBT(raw);
                 admitted.add("actorNativeNbt", SleepAttributePortSnapshot.binaryNbt((NBTTagCompound) raw.copy()));
+                admitted.add("nutrition", nutrition(maid));
                 if (activity() == Activity.COMBAT) {
                     var threat = targets.get(targets.size() - 1);
                     var threatRaw = new NBTTagCompound();
@@ -752,6 +784,12 @@ public final class ServerLoadProfileTests {
 
             void observe() {
                 ticks++;
+                h.assertTrue(
+                    maid.getHungerState()
+                        .getFood() > 0
+                        && maid.getHungerState()
+                            .getStarveTicks() == 0,
+                    "Starvation would change the admitted activity workload");
                 if (activity() == Activity.CAKE) observeCakeWork();
                 double delta = Math.pow(maid.posX - px, 2) + Math.pow(maid.posY - py, 2) + Math.pow(maid.posZ - pz, 2);
                 boolean moved = delta > 1e-8, sleep = maid.hasPose(MaidPose.SLEEPING);
@@ -816,6 +854,7 @@ public final class ServerLoadProfileTests {
                 row.addProperty("nativeAge", maid.ticksExisted);
                 row.addProperty("measuredActorTicks", ticks);
                 row.addProperty("hunger", maid.getHunger());
+                row.add("nutrition", nutrition(maid));
                 row.addProperty(
                     "schedule",
                     maid.getSchedule()

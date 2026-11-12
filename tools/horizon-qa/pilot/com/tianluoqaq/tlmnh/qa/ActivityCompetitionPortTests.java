@@ -177,9 +177,14 @@ public final class ActivityCompetitionPortTests {
                         .getAsString());
                 DeterministicMaidSpawn.freezeInitialState(second);
                 helper.spawnEntity(second, 15.5, 1, 12.5);
+                var selected = second.selectBrainProfileForDevelopment(profile);
                 helper.assertTrue(
-                    second.selectBrainProfileForDevelopment(profile) == MaidPolicyRuntime.SelectionResult.SELECTED,
-                    "Second complete root selection failed");
+                    (selected == MaidPolicyRuntime.SelectionResult.SELECTED
+                        || selected == MaidPolicyRuntime.SelectionResult.UNCHANGED)
+                        && second.getBrainCoordinator()
+                            .peekPolicyRuntime()
+                            .getProfile() == profile,
+                    "Second complete root selection failed or actual profile differs");
                 output.add("secondInitial", raw(second));
                 output.add("secondAttributeInputs", SleepAttributePortSnapshot.capture(second));
             }
