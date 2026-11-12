@@ -2,12 +2,12 @@
 
 将 Touhou Little Maid 移植到 GTNH 2.9.0，保留女仆核心玩法并重做非生成式行为 AI。
 
-**Beta**：当前公开测试版本为 `0.1.0-beta.2`（首个测试版 `0.1.0-beta.1` 已归档保留），正式稳定版仍在推进。
+**0.1.0 发布准备**：本页介绍首个稳定版的功能范围。当前公开版本为 `0.1.0-beta.2`，正式版产物与最终验收记录将在发布时补齐。
 
 简体中文 | [English](README.en.md)
 
 本仓库将 Minecraft 1.20.1 版 Touhou Little Maid 移植到 GTNH 2.9.0，同时支持客户端与独立专用服务端。
-本页介绍当前测试版的玩法范围、构建方式与协作规范；完整的稳定版安装升级指南将在 `0.1.0` 正式发布前补齐。
+玩法、装备和工作模式的操作步骤见 [使用说明](docs/USER_GUIDE.md)，本轮变更见 [0.1.0 发布说明](docs/releases/0.1.0.md)。
 
 ## 目录
 
@@ -25,38 +25,39 @@
 上游源码取自 [Touhou Little Maid 的 1.20 分支](https://github.com/TartaricAcid/TouhouLittleMaid/tree/1.20)。
 源码采用现代 Java 语法编写，经 Jabel 编译为 Java 8 字节码，客户端与服务端均运行在 Java 25 上。
 
-首版规划覆盖以下能力，各项实际完成度与验证进度见 [开发进度](PROGRESS.md)：
+首版包含以下玩法：
 
-- 女仆本体、原版玩家交互、六格背包与双手装备、内置模型切换，以及酒狐全系列模型与贴图逐项验收。
-- 可配置的自然生成与初始绑定魂符，神龛复活并保留上游生命代价。
-- 偷吃与最小零食柜、睡觉与女仆床，以及贴合 GTNH 蒸汽与 LV 阶段的核心合成配方。
-- 改进的非生成式行为 AI，涵盖感知记忆、指令约束、动作抢占、组件化会话扩展与失败恢复，并与原版 TLM 1.20.1 对照评测。
-- 非魔法远程武器预瞄，首版支持弓箭，结合 2.9.0 实际维度重力与介质阻力补偿移动靶提前量和箭矢下坠。
+- 女仆获取与首次绑定、原版玩家交互、神龛复活、睡觉与女仆床、偷吃与最小零食柜，以及蒸汽和 LV 阶段配方。
+- 默认开放全部 36 格背包、独立双手和护甲、按好感分级开放的 30 格饰品栏，以及五类携带背包的优先收纳与工作取用。
+- 普通 GregTech 维护仓巡检、铃铛绑定和范围预览，以及 CropsNH 真实世界育种、目标作物与变异池、属性提纯和缺件提醒。
+- 真实饥饿、食物与饱和度恢复、治愈之斧、热物品灼伤与丢弃，以及飞行装备、特殊护甲、供氧、隔热和坠落自救适配。
+- 默认 Enhanced 非生成式行为 AI、统一战斗和弓箭预瞄，按实际维度重力、介质阻力与目标移动补偿弹道；已有显式 Legacy 配置继续兼容。
+- 254 项内置模型选择、酒狐 21 个基础条目与 14 个额外纹理选择、435 个配音文件和 10 个基础音效。
 
-首版不包含 LLM、空闲与战斗之外的工作模式、其他非核心 TLM 物品、更换主人或 YSM 深度内容联动。
-GTNH 维护仓与 CropsNH 育种留作后续扩展；界面文本以简体中文为主，英文补齐。
+外部模型导入、YSM 联动、LLM 和更换主人不在本版范围内。各功能实测与未决验收见 [开发进度](PROGRESS.md)。
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.2) 下载
-`tlmnh-0.1.0-beta.2.jar`，并对照随附的 `SHA256SUMS.txt` 核验摘要。
-正常停止客户端和服务端，完整备份存档、两端配置及旧版 JAR 后，将同一份新 JAR 放入两端 `mods/` 目录并移出旧版 JAR。
-本版架构调整、已知问题与后续待办见 [Beta.2 发布说明](docs/releases/0.1.0-beta.2.md)。
-操作按键、配置说明与双端成对回滚步骤见 [使用说明](docs/USER_GUIDE.md)。
-新生成的配置文件默认启用 Enhanced 行为策略；已有配置中显式指定的 Legacy 会原样保留，切换策略后需重启服务端。
-Enhanced 默认启用动态索敌，非家园状态下的目标获取与保持半径默认分别为 20 格和 24 格，可在服务端配置中调整。
-双端本地验证增量包工具见 [打包与更新说明](scripts/distribution/README.md)。
-如需从源码自行构建，可在 Windows PowerShell 中执行：
+正式版发布后，从 [GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases) 下载 `tlmnh-0.1.0.jar`，
+并对照同一发布页的 `SHA256SUMS.txt` 核验摘要。发布前的公开下载仍以 `0.1.0-beta.2` 为准。
+正常停止客户端和服务端，备份完整存档、两端配置及旧 JAR，再将同一份新 JAR 放入两端 `mods/` 并移出旧版。
+普通游玩安装主包即可，开发诊断附属模组 `tlmnhdevtools` 供开发与验证使用。
+
+操作、服务端配置与成对回滚步骤见 [使用说明](docs/USER_GUIDE.md)。新配置默认使用 `enhanced`，
+已有显式 `legacy_prototype` 设置继续生效；修改服务端策略后重启服务端。
+Enhanced 的非家园目标获取、保持半径默认分别为 20 格、24 格，实际行为还受主人活动域、视线和预算限制。
+本地验证增量包工具见 [打包与更新说明](scripts/distribution/README.md)。
+
+从源码构建时，在 Windows PowerShell 中执行：
 
 ```powershell
 git clone https://github.com/tianlovo/TLMNotHard.git
 Set-Location TLMNotHard
-$env:VERSION = "0.1.0-beta.2"
+$env:VERSION = "0.1.0"
 ./gradlew.bat build
 ```
 
-主模组产物位于 `build/libs/`，独立开发诊断附属模组位于 `build/devtools/`（普通游玩无需安装 `tlmnhdevtools`）。
-部署到独立的 2.9.0 测试服与客户端时，两端必须使用同一构建产物；正式版验收完成前，建议不要直接改动日常游玩的 Prism 实例。
+主模组产物位于 `build/libs/`，独立开发工具位于 `build/devtools/`。客户端与服务端使用同一构建产物。
 
 ### 依赖
 
@@ -75,7 +76,7 @@ $env:VERSION = "0.1.0-beta.2"
 ```powershell
 ./gradlew.bat test
 ./gradlew.bat build
-python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.2.jar
+python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0.jar
 npx --yes markdownlint-cli2@0.24.0
 ```
 
@@ -88,9 +89,9 @@ npx --yes markdownlint-cli2@0.24.0
 
 ## 开发状态
 
-项目目前处于公开 Beta 阶段，`0.1.0-beta.2` 完成了源码分层、独立 `:kernel:molang` 子模块、`client` / `compat` 源集物理隔离与
-`tlmnhdevtools` 开发工具拆包，首个稳定版剩余生存适配与发布验收仍在继续推进。
-各模块实现进度、实机验证记录与待决问题统一维护在 [开发进度](PROGRESS.md)，每次验证均绑定具体源码提交与产物摘要。
+`0.1.0` 在 Beta.2 分层架构上加入完整背包、饰品、两类工作模式与生存装备适配。
+正式发布前仍需完成最终统计、跨模块组合、双端联机与玩家终验，并登记最终提交、产物摘要和 CI 结果。
+当前公开版本、已通过项目及保留失败以 [开发进度](PROGRESS.md) 和 [发布说明](docs/releases/0.1.0.md) 为准。
 
 更多实现背景与实验细节见 [开发说明](DEVELOPMENT.md)、[移植记录](SOURCE_PROVENANCE.md) 和
 [动画对照实验](tools/animation-reference-1.20.1/DESIGN.md)。
@@ -119,3 +120,6 @@ Copyright (c) 2026 tianlovo and contributors
 移植的上游代码保留 MIT 等原有许可声明；模型、贴图、动画及相关资产保留 CC BY-NC-SA 4.0 许可与原作者署名。
 由原资产脚本改写的 `BuiltinBedrockAnimations.java` 继续按 CC BY-NC-SA 4.0 提供。
 配音与基础音效继续遵循各自原作者条款，详细范围、权利人与许可全文见 [第三方来源与许可](THIRD_PARTY_NOTICES.md) 和 [许可目录](licenses/)。
+
+Voice: Amitaro's Voice Material Studio (<https://amitaro.net/>).
+LittleMaid_PEKO/PECO: CV 秋野かえで, Tamemaru (<https://booth.pm/ja/items/1903163>).

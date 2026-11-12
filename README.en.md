@@ -2,14 +2,15 @@
 
 A Touhou Little Maid port for GTNH 2.9.0, retaining core maid gameplay and rebuilding non-generative behaviour AI
 
-**Beta**: the current public test release is `0.1.0-beta.2` (`0.1.0-beta.1` remains archived). Work continues towards `0.1.0`.
+**Preparing 0.1.0**: this page describes the first stable release scope. The current public release is `0.1.0-beta.2`;
+final artifacts and acceptance records will be added at publication.
 
 [简体中文](README.md) | English
 
 This repository ports the Minecraft 1.20.1 version of Touhou Little Maid to GTNH 2.9.0,
 supporting both the client and the dedicated server.
-This page covers the current Beta scope, build commands and contribution rules;
-complete stable-release installation and upgrade guides will be finalised before `0.1.0`.
+See the [user guide](docs/USER_GUIDE.en.md) for gameplay, equipment and work modes,
+and the [0.1.0 release notes](docs/releases/0.1.0.md) for this release scope.
 
 ## Table of Contents
 
@@ -24,52 +25,56 @@ complete stable-release installation and upgrade guides will be finalised before
 ## Background
 
 The build is based on [GTNH ExampleMod1.7.10](https://github.com/GTNewHorizons/ExampleMod1.7.10),
-and upstream code comes from [Touhou Little Maid's 1.20 branch](https://github.com/TartaricAcid/TouhouLittleMaid/tree/1.20).
+and upstream code comes from [Touhou Little Maid's 1.20
+branch](https://github.com/TartaricAcid/TouhouLittleMaid/tree/1.20).
 Sources use modern Java syntax compiled to Java 8 bytecode via Jabel; both client and server run on Java 25.
 
-The first stable release is planned around the capabilities below; see [Development progress](PROGRESS.md) for current status:
+The first release includes:
 
-- Core maid gameplay, original player interactions, six-slot backpack and dual-hand equipment, built-in model switching,
-  and item-by-item acceptance checks for the full wine-fox series
-- Configurable natural spawning and an initial owner-bound soul spell, plus shrine revival with the upstream health cost
-- Snack stealing with a minimal snack cabinet, sleeping with a maid bed, and progression recipes tailored to GTNH
-  Steam and LV tiers
-- Rebuilt non-generative behaviour AI covering perception, memory, command constraints, preemption, modular session
-  extensions and failure recovery, benchmarked against upstream TLM 1.20.1
-- Predictive aiming for non-magical ranged weapons, starting with bows and compensating for target motion, dimension
-  gravity and fluid drag in 2.9.0
+- Maid acquisition and initial binding, original player interactions, shrine revival, sleeping and maid beds,
+  snack stealing and the minimal snack cabinet, with Steam and LV progression recipes.
+- All 36 backpack slots by default, separate hands and armour, 30 favourability-gated bauble slots,
+  and priority storage and work-material extraction through five backpack integrations.
+- Ordinary GregTech maintenance-hatch patrols, bound bells and range previews, and real-world CropsNH breeding
+  with crop or mutation-pool targets, stat purification and missing-material reminders.
+- Actual hunger, food and saturation restoration, the Healing Axe, hot-item damage and dropping,
+  plus flight equipment, special armour, oxygen, thermal protection and fall rescue.
+- Enhanced non-generative behaviour AI by default, unified combat and predictive bow aiming accounting for
+  dimension gravity, drag and target movement. Existing explicit Legacy settings remain supported.
+- 254 built-in model choices, 21 base wine-fox entries and 14 additional texture choices,
+  435 voice files and 10 base sound effects.
 
-The first release excludes LLMs, jobs beyond idle and combat, other non-core TLM items, ownership transfer,
-and deep content integrations with mods such as YSM.
-GTNH maintenance hatches and CropsNH breeding are left for future extensions.
-Simplified Chinese is primary, with English support.
+External model imports, YSM integration, LLMs and ownership transfer are outside this release.
+See [Development progress](PROGRESS.md) for test evidence and outstanding acceptance work.
 
 ## Install
 
-Download `tlmnh-0.1.0-beta.2.jar` from
-[GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases/tag/0.1.0-beta.2)
-and verify it against `SHA256SUMS.txt`.
-Stop both client and server cleanly, back up the full world, configurations and previous JARs,
-then place the identical new JAR into `mods/` on both sides and remove the old JAR.
-See the [Beta.2 release notes](docs/releases/0.1.0-beta.2.md) for architecture changes, known issues and remaining work.
-See the [user guide](docs/USER_GUIDE.en.md) for controls, configuration options and paired world rollback.
-Fresh configurations default to Enhanced; existing explicit Legacy settings are preserved,
-and changing the profile requires a server restart.
-Enhanced uses dynamic target detection with default non-home acquisition and retention radii of 20 and 24 blocks.
-The [overlay packaging and update guide](scripts/distribution/README.md) documents local-validation-only bundles.
-To build from source in Windows PowerShell:
+Once the stable release is published, download `tlmnh-0.1.0.jar` from
+[GitHub Releases](https://github.com/tianlovo/TLMNotHard/releases) and verify it against that release's
+`SHA256SUMS.txt`.
+Until publication, the available public release remains `0.1.0-beta.2`.
+Stop both sides, back up the complete world, configurations and old JARs, then place the identical new JAR in
+both `mods/` directories and remove the previous version. Normal play needs the main mod only;
+`tlmnhdevtools` is a separate development and verification addon.
+
+See the [user guide](docs/USER_GUIDE.en.md) for controls, server configuration and paired rollback.
+New configurations use `enhanced`; existing explicit `legacy_prototype` settings remain effective.
+Restart the server after changing its behaviour profile.
+Enhanced defaults to 20-block target acquisition and 24-block retention outside home mode,
+subject to owner-domain limits, visibility and budgets.
+The [overlay packaging guide](scripts/distribution/README.md) covers local verification bundles.
+
+Build from source in Windows PowerShell:
 
 ```powershell
 git clone https://github.com/tianlovo/TLMNotHard.git
 Set-Location TLMNotHard
-$env:VERSION = "0.1.0-beta.2"
+$env:VERSION = "0.1.0"
 ./gradlew.bat build
 ```
 
-Release mod archives are written to `build/libs/`, while the standalone development diagnostics addon is written to
-`build/devtools/` (`tlmnhdevtools` is not needed for normal play).
-Deploy the exact same candidate JAR on the dedicated 2.9.0 test server and client,
-and keep regular-play Prism instances untouched until stable release acceptance is complete.
+The main mod is written to `build/libs/`; the separate development addon is written to `build/devtools/`.
+Use the same build artifact on the client and server.
 
 ### Dependencies
 
@@ -88,7 +93,7 @@ Run unit tests, full builds and archive checks from the source root:
 ```powershell
 ./gradlew.bat test
 ./gradlew.bat build
-python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0-beta.2.jar
+python scripts/verify_bytecode.py build/libs/tlmnh-0.1.0.jar
 npx --yes markdownlint-cli2@0.24.0
 ```
 
@@ -102,11 +107,11 @@ Local 2.9.0 test server and client run configurations are documented in [IDEA se
 
 ## Development status
 
-The project is in public Beta. `0.1.0-beta.2` completes the multi-source-set architecture refactoring (`:kernel:molang`,
-isolated `client` and `compat` source sets, and the standalone `tlmnhdevtools` addon), while remaining survival/equipment
-adaptations and final acceptance continue towards `0.1.0`.
-Module progress, native test evidence and open issues are tracked in [Development progress](PROGRESS.md),
-bound to exact source commits and artifact digests.
+`0.1.0` extends the Beta.2 source-set architecture with the complete inventory, baubles, two work modes
+and survival/equipment integrations. Final statistical work, combined scenarios, two-sided networking and player
+acceptance remain to be completed before publication, alongside final commit, artifact and CI records.
+See [Development progress](PROGRESS.md) and the [release notes](docs/releases/0.1.0.md) for the current public version,
+accepted cases and preserved failures.
 
 See [Development notes](DEVELOPMENT.md), [Source provenance](SOURCE_PROVENANCE.md) and the
 [animation comparison experiment](tools/animation-reference-1.20.1/DESIGN.md) for further technical context.
@@ -142,5 +147,9 @@ Existing source, author and file-level licence notices remain in effect.
 Ported upstream code retains MIT and other original notices; models, textures, animations and related assets retain
 CC BY-NC-SA 4.0 and original author attribution.
 `BuiltinBedrockAnimations.java`, translated from original asset scripts, remains under CC BY-NC-SA 4.0.
-Voice packs and base sound effects retain their respective authors' terms; see [Third-party notices](THIRD_PARTY_NOTICES.md)
+Voice packs and base sound effects retain their respective authors' terms; see [Third-party
+notices](THIRD_PARTY_NOTICES.md)
 and the [licence directory](licenses/) for scope, rights holders and full texts.
+
+Voice: Amitaro's Voice Material Studio (<https://amitaro.net/>).
+LittleMaid_PEKO/PECO: CV 秋野かえで, Tamemaru (<https://booth.pm/ja/items/1903163>).
