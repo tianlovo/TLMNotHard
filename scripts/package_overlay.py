@@ -103,7 +103,7 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
             docs["provenance/" + name] = archive.read(name)
         for name in ("assets/tlmnh/builtin-models.json", "assets/tlmnh/builtin-sounds.json"):
             docs["provenance/" + name] = archive.read(name)
-        audio_cleared = json.loads(archive.read("assets/tlmnh/builtin-sounds-provenance.json"))["audio_distribution_cleared"]
+        audio_source_status = json.loads(archive.read("assets/tlmnh/builtin-sounds-provenance.json"))["audio_distribution_cleared"]
     if channel == "release":
         decision = report["release_approval"]
         docs["release-decision.json"] = update.encoded(decision)
@@ -132,7 +132,8 @@ def packages(artifact, expected_sha, snapshot_path, source_root, previous_jars=(
                         status="local-validation" if channel == "local-validation" else "ready",
                         distributable=channel == "release", version=version, minecraft="1.7.10", target_environment="GTNH 2.9.0",
                         jar=dict(path=jar_path, sha256=expected_sha), files={name: update.digest(content) for name, content in payload.items()},
-                        patches={}, remove_files=remove, replace_files=replace, audio_distribution_cleared=audio_cleared,
+                        patches={}, remove_files=remove, replace_files=replace, audio_distribution_cleared=channel == "release",
+                        audio_source_distribution_cleared=audio_source_status,
                         release_blockers=report["release_blockers"], source_input_snapshot_sha256=binding["snapshot_sha256"],
                         source_reference_scope="Included checkout attribution reference; exact src/main input hashes recorded separately",
                         client_server_jar_identical=True)

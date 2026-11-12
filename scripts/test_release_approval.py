@@ -3,6 +3,7 @@
 import copy
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,7 +16,11 @@ import package_overlay as packaging
 
 class ReleaseApprovalTests(unittest.TestCase):
     def setUp(self):
-        self.test_root = Path(__file__).resolve().parents[2] / "cache/validation/release-approval-tests"
+        clock = mock.patch.object(audit, "utc_today", return_value=audit.date(2026, 11, 4))
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.test_root = Path(os.environ.get("TLMNH_RELEASE_TEST_ROOT",
+                              str(Path(__file__).resolve().parents[2] / "cache/validation/release-approval-tests")))
         self.test_root.mkdir(parents=True, exist_ok=True)
         self.temporary = tempfile.TemporaryDirectory(prefix="synthetic-only-", dir=self.test_root)
         self.root = Path(self.temporary.name).resolve()
@@ -35,11 +40,14 @@ class ReleaseApprovalTests(unittest.TestCase):
                 "license": "GPL-3.0-only"}]}).encode(),
             "META-INF/THIRD_PARTY_NOTICES.md": b"TLMNH original code license: GPL-3.0-only\nSynthetic attribution only\n",
             audit.ORIGINAL_LICENSE_MEMBER: self.gpl,
-            "assets/tlmnh/builtin-sounds-provenance.json": b'{"audio_distribution_cleared":true}',
+            "assets/tlmnh/builtin-sounds-provenance.json": b'{"audio_distribution_cleared":false}',
             "assets/tlmnh/builtin-models.json": b"{}", "assets/tlmnh/builtin-sounds.json": b"{}",
         }
         for name in audit.LICENSES:
             self.members["META-INF/licenses/" + name] = b"synthetic retained third-party text"
+        authority = mock.patch.object(audit, "SOUND_MANIFEST_SHA256", audit.digest(self.members[audit.SOUND_MANIFEST]))
+        authority.start()
+        self.addCleanup(authority.stop)
         self.data = self.archive(self.members)
         self.binding = {"candidate_sha256": audit.digest(self.data), "snapshot_sha256": "2" * 64,
                         "main_source_files": 1}
@@ -60,8 +68,8 @@ class ReleaseApprovalTests(unittest.TestCase):
                            "licenses_and_source_anchors": {"passed": True, "observed": {
                                "provenance_manifests": ["assets/tlmnh/builtin-sounds-provenance.json"]}}},
                        "original_source_license": audit.PROJECT_LICENSE,
-                       "release_blockers": [{"code": "audio_distribution_not_cleared"}]}
-        self.approval = {"schema": "tlmnh-release-approval-v1", "decision": "approved",
+                       "release_blockers": [{"code": "audio_publication_not_evaluated"}]}
+        self.approval = {"schema": "tlmnh-release-approval-v2", "decision": "approved",
                          "approved_by": "SYNTHETIC_UNIT_TEST_NOT_A_PERSON", "approved_on": "2026-11-04",
                          "candidate": {"version": "1.0.0", "sha256": audit.digest(self.data),
                                        "source_snapshot_sha256": self.binding["snapshot_sha256"]},
@@ -79,7 +87,29 @@ class ReleaseApprovalTests(unittest.TestCase):
                              for name in audit.RELEASE_ACCEPTANCE}}
         self.approval["acceptance"]["benchmark"].update(
             covered_classes=["B%02d" % n for n in range(1, 15)], noninferiority_delta=None)
+        self.audio_receipts = {}
+        for name in audit.AUDIO_PACKS:
+            receipt = {"schema": "tlmnh-audio-publication-evidence-v1", "decision": "approved", "pack": name,
+                       "candidate": dict(self.approval["candidate"]),
+                       "provenance_sha256": audit.digest(self.members[audit.SOUND_MANIFEST]),
+                       "terms": {"url": "https://example.invalid/SYNTHETIC_ONLY", "revision": "synthetic",
+                           "language": "en", "document": self.evidence, "extractable_archives": "permitted",
+                           "applicability": {"decision": "applicable", "assessment": "Synthetic test only",
+                                             "evidence": self.evidence}},
+                       "authorization": {"decision": "authorized", "evidence": self.evidence},
+                       "attribution": {"decision": "completed", "evidence": self.evidence},
+                       "obligations": [{"id": "synthetic-credit", "action": "Synthetic credit check",
+                           "clause": "Synthetic clause", "timing": "before_release", "status": "completed",
+                           "completed_on": "2026-11-04", "evidence": self.evidence}]}
+            self.audio_receipts[name] = receipt
+            self.write_audio_receipt(name, receipt)
         self.path = self.root / "synthetic-approval.json"
+
+    def write_audio_receipt(self, name, receipt, approval=None):
+        target = self.root / (name + "-synthetic-audio.json")
+        target.write_text(json.dumps(receipt), encoding="utf-8")
+        selected = self.approval if approval is None else approval
+        selected["audio_packs"][name]["evidence"] = {"path": target.name, "sha256": audit.digest(target.read_bytes())}
 
     @staticmethod
     def archive(members):
@@ -136,7 +166,7 @@ class ReleaseApprovalTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.evaluate(report=report)
         members = dict(self.members)
-        members["assets/tlmnh/builtin-sounds-provenance.json"] = b'{"audio_distribution_cleared":false}'
+        members["assets/tlmnh/builtin-sounds-provenance.json"] = b'{"audio_distribution_cleared":true}'
         data = self.archive(members)
         approval = copy.deepcopy(self.approval)
         approval["candidate"]["sha256"] = audit.digest(data)
@@ -151,6 +181,108 @@ class ReleaseApprovalTests(unittest.TestCase):
         approval["attribution"]["provenance_sha256"] = {}
         with self.assertRaises(ValueError):
             self.evaluate(approval)
+
+    def test_fixed_false_source_is_approved_only_by_candidate_bound_audio_receipts(self):
+        self.assertFalse(json.loads(self.members[audit.SOUND_MANIFEST])["audio_distribution_cleared"])
+        self.assertTrue(self.evaluate()["distributable"])
+        approval = copy.deepcopy(self.approval)
+        for decision in approval["audio_packs"].values():
+            decision["evidence"] = self.evidence
+        with self.assertRaisesRegex(ValueError, "Structured approved audio"):
+            self.evaluate(approval)
+        approval["schema"] = "tlmnh-release-approval-v1"
+        with self.assertRaisesRegex(ValueError, "unrecognized"):
+            self.evaluate(approval)
+
+    def test_audio_receipt_candidate_source_state_and_proofs_cannot_be_substituted(self):
+        name = "touhou_little_maid"
+        original = self.audio_receipts[name]
+        changes = ("candidate", "source", "pack", "decision", "terms", "applicability", "authorization",
+                   "attribution", "terms_proof", "applicability_proof", "authorization_proof", "attribution_proof")
+        for change in changes:
+            with self.subTest(change=change):
+                receipt = copy.deepcopy(original)
+                if change == "candidate":
+                    receipt["candidate"]["sha256"] = "0" * 64
+                elif change == "source":
+                    receipt["provenance_sha256"] = "0" * 64
+                elif change in ("pack", "decision"):
+                    receipt[change] = "wrong"
+                elif change == "terms":
+                    receipt["terms"]["extractable_archives"] = "pending"
+                elif change == "applicability":
+                    receipt["terms"]["applicability"]["decision"] = "pending"
+                elif change in ("authorization", "attribution"):
+                    receipt[change]["decision"] = "pending"
+                else:
+                    field = change.removesuffix("_proof")
+                    if field == "terms":
+                        proof = receipt["terms"]["document"]
+                    elif field == "applicability":
+                        proof = receipt["terms"]["applicability"]["evidence"]
+                    else:
+                        proof = receipt[field]["evidence"]
+                    proof["sha256"] = "0" * 64
+                self.write_audio_receipt(name, receipt)
+                with self.assertRaises(ValueError):
+                    self.evaluate()
+        self.write_audio_receipt(name, original)
+        receipt_path = self.root / self.approval["audio_packs"][name]["evidence"]["path"]
+        receipt_path.write_bytes(b"changed audio receipt")
+        with self.assertRaises(ValueError):
+            self.evaluate()
+        receipt_path.unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.evaluate()
+
+    def test_japanese_terms_require_actual_language_qualification(self):
+        name = "touhou_little_maid"
+        receipt = copy.deepcopy(self.audio_receipts[name])
+        receipt["terms"].update(url="https://amitaro.net/voice/voice_rule/", language="ja")
+        self.write_audio_receipt(name, receipt)
+        with self.assertRaisesRegex(ValueError, "Japanese comprehension"):
+            self.evaluate()
+        receipt["terms"]["applicability"]["japanese_comprehension"] = "confirmed"
+        self.write_audio_receipt(name, receipt)
+        self.assertTrue(self.evaluate()["distributable"])
+        receipt["terms"]["language"] = "en"
+        self.write_audio_receipt(name, receipt)
+        with self.assertRaisesRegex(ValueError, "Japanese comprehension"):
+            self.evaluate()
+
+    def test_before_release_obligations_and_post_publication_deadlines_are_enforced(self):
+        name = "touhou_little_maid"
+        receipt = copy.deepcopy(self.audio_receipts[name])
+        pending = {"id": "synthetic-report", "action": "Synthetic unsent report", "clause": "Synthetic post-publication clause",
+                   "timing": "after_publication", "status": "pending", "due_within_days": 30, "published_on": None}
+        receipt["obligations"].append(pending)
+        self.write_audio_receipt(name, receipt)
+        result = self.evaluate()
+        steps = result["release_approval"]["audio_publication"][name]["obligations"]
+        self.assertEqual(steps[-1]["status"], "pending")
+        self.assertNotIn("evidence_sha256", steps[-1])
+        pending["published_on"] = "2026-11-01"
+        self.write_audio_receipt(name, receipt)
+        self.assertTrue(self.evaluate()["distributable"])
+        for change in ("before_release", "overdue", "future_publication", "no_deadline", "invented_sent", "future_completion"):
+            with self.subTest(change=change):
+                changed = copy.deepcopy(receipt)
+                obligation = changed["obligations"][-1]
+                if change == "before_release":
+                    obligation["timing"] = "before_release"
+                elif change == "overdue":
+                    obligation["published_on"] = "2026-01-01"
+                elif change == "future_publication":
+                    obligation["published_on"] = "2027-01-01"
+                elif change == "no_deadline":
+                    obligation["due_within_days"] = 0
+                elif change == "invented_sent":
+                    obligation["evidence"] = self.evidence
+                else:
+                    changed["obligations"][0]["completed_on"] = "2027-01-01"
+                self.write_audio_receipt(name, changed)
+                with self.assertRaises(ValueError):
+                    self.evaluate()
 
     def test_missing_changed_evidence_and_incomplete_acceptance_are_rejected(self):
         approval = copy.deepcopy(self.approval)
@@ -168,7 +300,36 @@ class ReleaseApprovalTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.evaluate()
 
+    def test_old_approval_cannot_publish_after_pending_obligation_expires(self):
+        name = "touhou_little_maid"
+        receipt = copy.deepcopy(self.audio_receipts[name])
+        receipt["obligations"].append({"id": "synthetic-unsent-report", "action": "Synthetic unsent report",
+            "clause": "Synthetic post-publication clause", "timing": "after_publication", "status": "pending",
+            "due_within_days": 30, "published_on": "2026-11-01"})
+        self.write_audio_receipt(name, receipt)
+        # The original approval was timely. The actual evaluation clock governs every later package attempt.
+        with mock.patch.object(audit, "utc_today", return_value=audit.date(2026, 12, 1)):
+            self.assertTrue(self.evaluate()["distributable"])
+        approval = copy.deepcopy(self.approval)
+        approval["evaluated_on"] = "2026-11-04"
+        with mock.patch.object(audit, "utc_today", return_value=audit.date(2026, 12, 2)):
+            with self.assertRaisesRegex(ValueError, "overdue on the actual UTC evaluation day"):
+                self.evaluate(approval)
+
+    def test_future_approval_date_cannot_override_actual_utc_evaluation_day(self):
+        approval = copy.deepcopy(self.approval)
+        approval["approved_on"] = "2026-11-05"
+        approval["evaluated_on"] = "2026-11-05"
+        with self.assertRaisesRegex(ValueError, "later than the actual UTC evaluation day"):
+            self.evaluate(approval)
+
     def test_bound_synthetic_approval_connects_release_and_keeps_local_output_unapproved(self):
+        name = "touhou_little_maid"
+        receipt = copy.deepcopy(self.audio_receipts[name])
+        receipt["obligations"].append({"id": "synthetic-unsent-report", "action": "Synthetic unsent report",
+            "clause": "Synthetic post-publication clause", "timing": "after_publication", "status": "pending",
+            "due_within_days": 30, "published_on": None})
+        self.write_audio_receipt(name, receipt)
         before = copy.deepcopy(self.report)
         result = self.evaluate()
         self.assertTrue(result["distributable"])
@@ -197,6 +358,18 @@ class ReleaseApprovalTests(unittest.TestCase):
                     self.assertIn(".tlmnh-distribution/" + kind + "/licenses/" + license_name, names)
                 manifest = json.loads(archive.read("manifest.json"))
                 self.assertTrue(manifest["distributable"])
+                packed_decision = json.loads(archive.read(".tlmnh-distribution/" + kind + "/release-decision.json"))
+                pending = packed_decision["audio_publication"]["touhou_little_maid"]["obligations"][-1]
+                self.assertEqual(pending["status"], "pending")
+                self.assertIsNone(pending["published_on"])
+                self.assertNotIn("evidence_sha256", pending)
+                self.assertNotIn(str(self.root), json.dumps(packed_decision))
+                self.assertTrue(manifest["audio_distribution_cleared"])
+                self.assertFalse(manifest["audio_source_distribution_cleared"])
+                packed_jar = archive.read(manifest["jar"]["path"])
+                self.assertEqual(packed_jar, self.data)
+                self.assertEqual(archive.read(".tlmnh-distribution/" + kind + "/provenance/" + audit.SOUND_MANIFEST),
+                                 self.members[audit.SOUND_MANIFEST])
             with zipfile.ZipFile(io.BytesIO(local[kind][1])) as archive:
                 self.assertFalse(json.loads(archive.read("manifest.json"))["distributable"])
                 self.assertNotIn(".tlmnh-distribution/" + kind + "/release-decision.json", archive.namelist())
