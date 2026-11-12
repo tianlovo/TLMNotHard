@@ -12,21 +12,24 @@ import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
-import net.minecraft.world.World;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.gtnewhorizons.horizonqa.HorizonQAProperties;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTest;
 import com.gtnewhorizons.horizonqa.api.annotation.GameTestHolder;
@@ -34,8 +37,10 @@ import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 
 /** 在已注册外星世界中观察正常实体 tick 的供氧、窒息事件及温度传播 */
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa", "GalacticraftCore", "GalaxySpace" })
@@ -51,7 +56,7 @@ public final class SpaceEnvironmentNativeTests {
     private static final String LINING = "galaxyspace.core.item.ItemThermalPaddingTier2";
     private static final String OXYGEN_EVENT = "micdoodle8.mods.galacticraft.api.event.oxygen.GCCoreOxygenSuffocationEvent";
     private static final int FLOOR_Y = 240;
-    private static final Map<World, int[]> RULE_LEASES = new IdentityHashMap<>();
+    private static final Map<GameRules, int[]> RULE_LEASES = new IdentityHashMap<>();
     private static int animalLeases;
     private static boolean previousAnimals;
 
@@ -89,6 +94,21 @@ public final class SpaceEnvironmentNativeTests {
         var fixture = new PlanetFixture(h, "thermal");
         var insulated = fixture.spawn("four-parts", 4, true, false, true);
         var exposed = fixture.spawn("no-lining", 12, true, false, false);
+        var missingMask = fixture.spawn("missing-mask-long", 8, false, false, true, 200);
+        var provider = CompatServices.spaceSurvival();
+        int cooldown = Math.max(1, provider.suffocationCooldown());
+        int baseDamage = Math.max(1, provider.suffocationDamageBase());
+        boolean hardMode = provider.hardModeSuffocation();
+        missingMask.expectedCooldown = cooldown;
+        missingMask.expectedBase = baseDamage;
+        missingMask.expectedHardMode = hardMode;
+        int spacing = nativeDrainSpacing(insulated.tank);
+        fixture.report.addProperty("longProbeInitialHealth", missingMask.initialHealth);
+        fixture.report.addProperty("longProbeMaxHealth", missingMask.maid.getMaxHealth());
+        fixture.report.addProperty("actualSuffocationCooldown", cooldown);
+        fixture.report.addProperty("actualSuffocationDamageBase", baseDamage);
+        fixture.report.addProperty("actualHardModeSuffocation", hardMode);
+        fixture.report.addProperty("nativeTankDrainSpacing", spacing);
         h.onEachTick("real planet thermal protection", () -> {
             fixture.observe();
             if (exposed.maid.ticksExisted < 220) return;
@@ -106,12 +126,47 @@ public final class SpaceEnvironmentNativeTests {
                     && exposed.maid.getHealth() < exposed.initialHealth,
                 "Uninsulated maid did not suffer the real planet thermal source");
             h.assertTrue(
-                insulated.pre == 0 && exposed.pre == 0 && insulated.oxygenHurts == 0 && exposed.oxygenHurts == 0,
+                insulated.uncanceledPre == 0 && exposed.uncanceledPre == 0
+                    && insulated.post == 0
+                    && exposed.post == 0
+                    && insulated.oxygenHurts == 0
+                    && exposed.oxygenHurts == 0,
                 "Oxygen failure contaminated the paired thermal observation");
             h.assertTrue(
                 insulated.tank.getItemDamage() > insulated.initialTankDamage
                     && exposed.tank.getItemDamage() > exposed.initialTankDamage,
                 "Thermal actors did not consume actual oxygen");
+            int nativeMobAttempts = exposed.maid.ticksExisted / 100;
+            h.assertTrue(
+                insulated.canceledPre == nativeMobAttempts && exposed.canceledPre == nativeMobAttempts
+                    && missingMask.canceledPre == nativeMobAttempts,
+                "Native 100/200-tick mob checks were not retained as canceled duplicate Pre events");
+            int expectedHurts = 1 + (missingMask.maid.ticksExisted - 1) / cooldown;
+            float expectedAmount = 0;
+            for (int hit = 0; hit < expectedHurts; hit++)
+                expectedAmount += baseDamage * (2 + (hardMode ? hit : 0)) / 2.0F;
+            fixture.report.addProperty("longProbeExpectedHurtCount", expectedHurts);
+            fixture.report.addProperty("longProbeExpectedRawDamage", expectedAmount);
+            fixture.report.addProperty("longProbeDamageOnlyExpectedHealth", missingMask.initialHealth - expectedAmount);
+            fixture.report.addProperty("longProbeAcceptedNativeHealing", missingMask.acceptedHealing);
+            fixture.report.addProperty(
+                "longProbeExpectedHealth",
+                missingMask.initialHealth - expectedAmount + missingMask.acceptedHealing);
+            int expectedDrain = 1 + (missingMask.maid.ticksExisted - 1) / spacing;
+            fixture.report.addProperty("longProbeExpectedTankDrain", expectedDrain);
+            h.assertTrue(
+                missingMask.oxygenHurts == expectedHurts && missingMask.post == expectedHurts
+                    && missingMask.oxygenAmount == expectedAmount
+                    && missingMask.damageSequenceMatches
+                    && missingMask.maid.getHealth()
+                        == missingMask.initialHealth - expectedAmount + missingMask.acceptedHealing
+                    && missingMask.thermalHurts == 0,
+                "Missing-mask long probe changed actual suffocation cadence/damage or suffered duplicate mob damage");
+            h.assertTrue(
+                insulated.tank.getItemDamage() - insulated.initialTankDamage == expectedDrain
+                    && exposed.tank.getItemDamage() - exposed.initialTankDamage == expectedDrain
+                    && missingMask.tank.getItemDamage() - missingMask.initialTankDamage == expectedDrain,
+                "Native oxygen drain differs or was charged twice");
             for (int part = 0; part < 4; part++) {
                 var actual = insulated.maid.getMaidBaubleInventory()
                     .getStackInSlot(3 + part);
@@ -126,6 +181,22 @@ public final class SpaceEnvironmentNativeTests {
             fixture.save();
             h.succeed();
         });
+    }
+
+    private static int nativeDrainSpacing(ItemStack tank) {
+        try {
+            var oxygen = Class.forName("micdoodle8.mods.galacticraft.core.util.OxygenUtil");
+            int spacing = (int) MethodHandles.publicLookup()
+                .findStatic(
+                    oxygen,
+                    "getDrainSpacing",
+                    MethodType.methodType(int.class, ItemStack.class, ItemStack.class))
+                .invoke(tank, null);
+            if (spacing <= 0) throw new IllegalStateException("Native oxygen tank spacing must be positive");
+            return spacing;
+        } catch (Throwable failure) {
+            throw new IllegalStateException("Cannot bind native oxygen tank spacing", failure);
+        }
     }
 
     private static void assertSuffocation(GameTestHelper h, Actor actor) {
@@ -166,11 +237,12 @@ public final class SpaceEnvironmentNativeTests {
     }
 
     private static void acquireRules(WorldServer world) {
-        var lease = RULE_LEASES.get(world);
+        var rules = world.getGameRules();
+        var lease = RULE_LEASES.get(rules);
         if (lease == null) {
             lease = new int[] { 0, world.getGameRules()
                 .getGameRuleBooleanValue("naturalRegeneration") ? 1 : 0 };
-            RULE_LEASES.put(world, lease);
+            RULE_LEASES.put(rules, lease);
         }
         lease[0]++;
         world.getGameRules()
@@ -181,11 +253,12 @@ public final class SpaceEnvironmentNativeTests {
     }
 
     private static void releaseRules(WorldServer world) {
-        var lease = RULE_LEASES.get(world);
+        var rules = world.getGameRules();
+        var lease = RULE_LEASES.get(rules);
         if (--lease[0] == 0) {
             world.getGameRules()
                 .setOrCreateGameRule("naturalRegeneration", Boolean.toString(lease[1] != 0));
-            RULE_LEASES.remove(world);
+            RULE_LEASES.remove(rules);
         }
         if (--animalLeases == 0) MinecraftServer.getServer()
             .setCanSpawnAnimals(previousAnimals);
@@ -200,11 +273,19 @@ public final class SpaceEnvironmentNativeTests {
         final float initialHealth;
         int updates;
         int pre;
+        int canceledPre;
+        int uncanceledPre;
         int post;
         int oxygenHurts;
         int thermalHurts;
         float oxygenAmount;
         float thermalAmount;
+        float acceptedHealing;
+        int healEvents;
+        int expectedCooldown;
+        int expectedBase;
+        boolean expectedHardMode;
+        boolean damageSequenceMatches = true;
         int previousAge;
         boolean observed;
 
@@ -235,6 +316,9 @@ public final class SpaceEnvironmentNativeTests {
         boolean rulesAcquired;
         boolean assertionsCompleted;
         boolean closed;
+        int nativeWorldEndTicks;
+        int previousWorldEndTicks;
+        boolean worldObserved;
 
         PlanetFixture(GameTestHelper h, String scenario) {
             this.h = h;
@@ -249,7 +333,7 @@ public final class SpaceEnvironmentNativeTests {
             x = (8192 + h.getOriginX() * 4) & ~15;
             z = (8192 + h.getOriginZ() * 4) & ~15;
             h.afterTest(this::close);
-            report.addProperty("schema", "real-planet-survival-natural-tick-v2");
+            report.addProperty("schema", "real-planet-survival-natural-tick-v3");
             report.addProperty("scenario", scenario);
             report.addProperty("dimension", world.provider.dimensionId);
             report.addProperty(
@@ -265,10 +349,24 @@ public final class SpaceEnvironmentNativeTests {
                 "gameRuleBeforeLease",
                 world.getGameRules()
                     .getGameRuleBooleanValue("naturalRegeneration"));
+            report.addProperty("gameRulesIdentity", System.identityHashCode(world.getGameRules()));
+            report.addProperty("hqaMode", HorizonQAProperties.modeName());
+            report.addProperty(
+                "effectiveAllowOtherDimensions",
+                MinecraftServer.getServer()
+                    .getAllowNether());
             report.addProperty("fakePlayersCreated", 0);
             report.addProperty("manualEntityOrControllerTicks", 0);
             report.add("frames", frames);
             report.add("events", events);
+            save();
+            h.assertTrue(
+                HorizonQAProperties.isInteractive() && HorizonQAProperties.autoRunTests()
+                    && HorizonQAProperties.stopServerAfterRun()
+                    && HorizonQAProperties.turboMultiplier() == 1
+                    && MinecraftServer.getServer()
+                        .getAllowNether(),
+                "Native non-headless dimension ticking policy required");
             acquireRules(world);
             rulesAcquired = true;
             var provider = CompatServices.spaceSurvival();
@@ -295,10 +393,17 @@ public final class SpaceEnvironmentNativeTests {
                 floor.add(new int[] { x + dx, FLOOR_Y, z + dz });
             }
             MinecraftForge.EVENT_BUS.register(this);
+            FMLCommonHandler.instance()
+                .bus()
+                .register(this);
             save();
         }
 
         Actor spawn(String label, int dx, boolean mask, boolean finalUnit, boolean lining) {
+            return spawn(label, dx, mask, finalUnit, lining, 20);
+        }
+
+        Actor spawn(String label, int dx, boolean mask, boolean finalUnit, boolean lining, float initialHealth) {
             var maid = new EntityMaid(world);
             h.assertTrue(maid.bindTo(UUID.randomUUID()), "Planet maid initial binding failed");
             maid.setSitting(true);
@@ -318,6 +423,9 @@ public final class SpaceEnvironmentNativeTests {
                 padding.setItemDamage(part);
                 baubles.setInventorySlotContents(3 + part, padding);
             }
+            maid.getEntityAttribute(SharedMonsterAttributes.maxHealth)
+                .setBaseValue(initialHealth);
+            maid.setHealth(initialHealth);
             var actor = new Actor(label, maid, baubles.getStackInSlot(2));
             actors.add(actor);
             h.assertTrue(
@@ -379,12 +487,39 @@ public final class SpaceEnvironmentNativeTests {
         }
 
         void observe() {
+            var row = new JsonObject();
+            row.addProperty("worldTime", world.getTotalWorldTime());
+            row.addProperty("nativeWorldEndTicks", nativeWorldEndTicks);
+            row.addProperty("gameRulesIdentity", System.identityHashCode(world.getGameRules()));
+            row.addProperty(
+                "naturalRegeneration",
+                world.getGameRules()
+                    .getGameRuleBooleanValue("naturalRegeneration"));
+            row.addProperty("registeredWorldSame", DimensionManager.getWorld(world.provider.dimensionId) == world);
+            row.addProperty(
+                "effectiveAllowOtherDimensions",
+                MinecraftServer.getServer()
+                    .getAllowNether());
+            var attempts = new JsonArray();
+            for (var actor : actors) {
+                var attempt = new JsonObject();
+                attempt.addProperty("label", actor.label);
+                attempt.addProperty("age", actor.maid.ticksExisted);
+                attempt.addProperty("livingUpdates", actor.updates);
+                attempts.add(attempt);
+            }
+            row.add("attemptedActorTicks", attempts);
+            report.add("lastObservationAttempt", row);
+            save();
             h.assertTrue(
                 DimensionManager.getWorld(world.provider.dimensionId) == world && !world.getGameRules()
                     .getGameRuleBooleanValue("naturalRegeneration"),
                 "Planet world/rule binding changed");
-            var row = new JsonObject();
-            row.addProperty("worldTime", world.getTotalWorldTime());
+            if (worldObserved) h.assertTrue(
+                nativeWorldEndTicks == previousWorldEndTicks + 1,
+                "Actual planet did not receive exactly one normal WorldTick.END per server tick");
+            previousWorldEndTicks = nativeWorldEndTicks;
+            worldObserved = true;
             var samples = new JsonArray();
             for (var actor : actors) {
                 var maid = actor.maid;
@@ -410,6 +545,18 @@ public final class SpaceEnvironmentNativeTests {
                 sample.addProperty("age", maid.ticksExisted);
                 sample.addProperty("naturalLivingUpdates", actor.updates);
                 sample.addProperty("health", maid.getHealth());
+                sample.addProperty("initialHealth", actor.initialHealth);
+                sample.addProperty("maxHealth", maid.getMaxHealth());
+                sample.addProperty("healEvents", actor.healEvents);
+                sample.addProperty("acceptedNativeHealing", actor.acceptedHealing);
+                sample.addProperty("damageSequenceMatches", actor.damageSequenceMatches);
+                float expectedHealth = actor.initialHealth - actor.oxygenAmount
+                    - actor.thermalAmount
+                    + actor.acceptedHealing;
+                sample.addProperty("eventLedgerExpectedHealth", expectedHealth);
+                h.assertTrue(
+                    maid.getHealth() == expectedHealth,
+                    "Actual planet health differs from accepted native damage/heal event order: " + actor.label);
                 sample.addProperty("oxygenTankDamage", actor.tank.getItemDamage());
                 sample.addProperty("oxygenTankMaxDamage", actor.tank.getMaxDamage());
                 sample.addProperty(
@@ -417,6 +564,8 @@ public final class SpaceEnvironmentNativeTests {
                     maid.getSpaceSurvival()
                         .getThermalLevel());
                 sample.addProperty("suffocationPre", actor.pre);
+                sample.addProperty("canceledSuffocationPre", actor.canceledPre);
+                sample.addProperty("uncanceledSuffocationPre", actor.uncanceledPre);
                 sample.addProperty("suffocationPost", actor.post);
                 sample.addProperty("oxygenHurtEvents", actor.oxygenHurts);
                 sample.addProperty("thermalHurtEvents", actor.thermalHurts);
@@ -437,10 +586,19 @@ public final class SpaceEnvironmentNativeTests {
                 }
                 String name = event.getClass()
                     .getName();
-                if (name.equals(OXYGEN_EVENT + "$Pre")) actor.pre++;
-                else if (name.equals(OXYGEN_EVENT + "$Post")) actor.post++;
+                if (name.equals(OXYGEN_EVENT + "$Pre")) {
+                    actor.pre++;
+                    if (event.isCanceled()) actor.canceledPre++;
+                    else actor.uncanceledPre++;
+                } else if (name.equals(OXYGEN_EVENT + "$Post")) actor.post++;
                 else if (event instanceof LivingHurtEvent hurt) {
                     if (!hurt.isCanceled() && hurt.source == oxygen) {
+                        if (actor.expectedCooldown > 0) {
+                            int index = actor.oxygenHurts;
+                            actor.damageSequenceMatches &= actor.maid.ticksExisted == 1 + index * actor.expectedCooldown
+                                && hurt.ammount
+                                    == actor.expectedBase * (2 + (actor.expectedHardMode ? index : 0)) / 2.0F;
+                        }
                         actor.oxygenHurts++;
                         actor.oxygenAmount += hurt.ammount;
                     }
@@ -448,8 +606,14 @@ public final class SpaceEnvironmentNativeTests {
                         actor.thermalHurts++;
                         actor.thermalAmount += hurt.ammount;
                     }
+                } else if (event instanceof LivingHealEvent heal) {
+                    actor.healEvents++;
+                    if (!heal.isCanceled() && heal.amount > 0 && actor.maid.getHealth() > 0)
+                        actor.acceptedHealing += Math
+                            .min(heal.amount, actor.maid.getMaxHealth() - actor.maid.getHealth());
                 } else return;
                 var record = new JsonObject();
+                record.addProperty("eventOrder", events.size());
                 record.addProperty("actor", actor.label);
                 record.addProperty("age", actor.maid.ticksExisted);
                 record.addProperty("event", name);
@@ -464,8 +628,33 @@ public final class SpaceEnvironmentNativeTests {
                     record.addProperty("amount", hurt.ammount);
                     record.addProperty("healthBefore", actor.maid.getHealth());
                 }
+                if (event instanceof LivingHealEvent heal) {
+                    record.addProperty("amount", heal.amount);
+                    record.addProperty("healthBefore", actor.maid.getHealth());
+                    record.addProperty("maxHealth", actor.maid.getMaxHealth());
+                    float accepted = !heal.isCanceled() && heal.amount > 0 && actor.maid.getHealth() > 0
+                        ? Math.min(heal.amount, actor.maid.getMaxHealth() - actor.maid.getHealth())
+                        : 0;
+                    record.addProperty("acceptedAmountAtObservation", accepted);
+                    record.addProperty("verificationBoundary", "after native tick exact event-ledger health equality");
+                    var origin = new JsonArray();
+                    for (var frame : Thread.currentThread()
+                        .getStackTrace())
+                        if (frame.getClassName()
+                            .startsWith("com.tianluoqaq.tlmnh.common.")
+                            || frame.getClassName()
+                                .startsWith("com.github.tartaricacid.touhoulittlemaid."))
+                            origin.add(
+                                new com.google.gson.JsonPrimitive(frame.getClassName() + "." + frame.getMethodName()));
+                    record.add("sourceCallFrames", origin);
+                }
                 events.add(record);
             }
+        }
+
+        @SubscribeEvent
+        public void onWorldTick(TickEvent.WorldTickEvent event) {
+            if (event.world == world && event.phase == TickEvent.Phase.END) nativeWorldEndTicks++;
         }
 
         void save() {
@@ -491,6 +680,9 @@ public final class SpaceEnvironmentNativeTests {
             if (closed) return;
             closed = true;
             MinecraftForge.EVENT_BUS.unregister(this);
+            FMLCommonHandler.instance()
+                .bus()
+                .unregister(this);
             try {
                 for (var actor : actors) {
                     Entity actual = world.getEntityByID(actor.maid.getEntityId());
