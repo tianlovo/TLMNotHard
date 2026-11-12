@@ -102,7 +102,8 @@ import io.netty.util.ReferenceCountUtil;
 @GameTestHolder(value = "tlmnhqapilot", requiredMods = { "tlmnh", "horizonqa", "battlegear2", "etfuturum" })
 public final class UnifiedCombatEffectPilotTests {
 
-    private static final long SEED = 0x20901L;
+    private static final TacticsInputs TACTICS = TacticsInputs.open();
+    private static final long SEED = TACTICS == null ? 0x20901L : TACTICS.seed;
     private static final int OWNER_ENCHANTMENT_SEED = (int) (SEED + 1);
     private static final int WARMUP = 40, ACTIVE_TICKS = 400;
     private static final int TARGET_PREPARATION_LIMIT = 8, TARGET_STABLE_SAMPLES = 2;
@@ -182,6 +183,20 @@ public final class UnifiedCombatEffectPilotTests {
         timeoutTicks = EffectSaveBoundary.TIMEOUT,
         batch = "unified_combat_effect_seed1_serial")
     public static void firstSeedCanariesAndTwelvePairedNativeRuns(GameTestHelper h) throws Exception {
+        require(TACTICS == null, "Original fixed first-seed selector cannot accept tactics inputs");
+        begin(h);
+    }
+
+    @GameTest(
+        template = "modern_core_cell",
+        timeoutTicks = EffectSaveBoundary.TIMEOUT,
+        batch = "tactics_cross_seed_serial")
+    public static void crossSeedSamePhysicsThreeTacticalArms(GameTestHelper h) throws Exception {
+        require(TACTICS != null, "Explicit frozen tactics block inputs required");
+        begin(h);
+    }
+
+    private static void begin(GameTestHelper h) throws Exception {
         var methodCost = new EffectSaveBoundary.MethodCost();
         Runner runner;
         try {
@@ -222,8 +237,9 @@ public final class UnifiedCombatEffectPilotTests {
         final EffectEmptyWorldFixture emptyWorld = EffectEmptyWorldFixture.enabled() ? EffectEmptyWorldFixture.current()
             : null;
         final EffectSaveBoundary saveWindow;
-        final String[] specs = { "0:A:0", "0:B:0", "0:C:0", "1:B:0", "1:C:0", "1:A:0", "0:C:1", "0:B:1", "0:A:1",
-            "1:A:1", "1:C:1", "1:B:1" };
+        final String[] originalSpecs = { "0:A:0", "0:B:0", "0:C:0", "1:B:0", "1:C:0", "1:A:0", "0:C:1", "0:B:1",
+            "0:A:1", "1:A:1", "1:C:1", "1:B:1" };
+        final String[] specs = TACTICS == null ? originalSpecs : TACTICS.specs;
         final Path output;
         final int x, y, z;
         final int oldWorkRange = MaidHomeConfig.workRange, oldNonHomeRange = MaidHomeConfig.nonHomeRange;
@@ -298,6 +314,12 @@ public final class UnifiedCombatEffectPilotTests {
             }
             summary.add("emptyRingBoundaries", emptyBoundaries);
             summary.addProperty("seed", SEED);
+            if (TACTICS != null) {
+                summary.addProperty("schema", "tlmnh-tactics-block-capture-v1");
+                summary.add("tacticsInputs", TACTICS.input);
+                summary.addProperty("tacticsInputSha256", TACTICS.inputSha);
+                summary.addProperty("tacticsContractSha256", TACTICS.contractSha);
+            }
             summary.addProperty("statisticalAdmission", false);
             summary.add("noninferiorityDelta", JsonNull.INSTANCE);
             summary.addProperty(
@@ -321,6 +343,18 @@ public final class UnifiedCombatEffectPilotTests {
             MaidHomeConfig.nonHomeRange = 20;
             for (String rule : rules.keySet()) world.getGameRules()
                 .setOrCreateGameRule(rule, "false");
+            if (TACTICS != null) {
+                require(world.getSeed() == 207710291837918000L, "Actual controlled world seed differs");
+                summary.addProperty("actualWorldSeed", Long.toString(world.getSeed()));
+                summary.addProperty(
+                    "actualNaturalRegeneration",
+                    world.getGameRules()
+                        .getGameRuleBooleanValue("naturalRegeneration"));
+                require(
+                    !world.getGameRules()
+                        .getGameRuleBooleanValue("naturalRegeneration"),
+                    "Actual nutrition-neutral world rule differs");
+            }
             world.setWorldTime(6000);
             world.difficultySetting = EnumDifficulty.HARD;
             world.getWorldInfo()
@@ -397,7 +431,7 @@ public final class UnifiedCombatEffectPilotTests {
                         "maidPreviewStatus",
                         normalMaidPreviews == 0 ? "NOT_EXERCISED" : "CERTIFIED_NATIVE_PATH");
                     summary.add("normalArrowInputCoverage", coverage);
-                    require(
+                    if (TACTICS == null) require(
                         normalTargetLaunches > 0 && normalMaidLaunches > 0,
                         "NOT_EXERCISED: normal target and maid launch sources both required");
                     summary.addProperty("normalRuns", completed.size());
@@ -465,19 +499,39 @@ public final class UnifiedCombatEffectPilotTests {
                 "V6 constructor-receipt repetition mismatch " + pair + "; no expansion");
             if (value.arm == Arm.REACTIVE) firstWeapon.put(value.terrain + ":A", value.firstSelectedWeapon);
             if (value.arm == Arm.WEAPON_SELECTION) firstWeapon.put(value.terrain + ":B", value.firstSelectedWeapon);
-            if (firstWeapon.containsKey(value.terrain + ":A") && firstWeapon.containsKey(value.terrain + ":B")) require(
-                !firstWeapon.get(value.terrain + ":A")
-                    .equals(firstWeapon.get(value.terrain + ":B")),
-                "NOT_EXERCISED: static weapon arm did not differ from reactive arm");
-            if (value.arm == Arm.THREAT_ROLLOUTS) require(
-                value.session.snapshot()
-                    .get("fullDecisions")
-                    .getAsLong() > 0,
-                "NOT_EXERCISED: production arm never completed a full forecast");
-            if (value.arm == Arm.THREAT_ROLLOUTS && value.terrain == 1) require(
-                value.knownCoverFrames > 0,
-                "NOT_EXERCISED: side cover never entered the actual bounded collision snapshot");
-            normalTargetLaunches += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.TARGET_LAUNCH);
+            if (TACTICS == null) {
+                if (firstWeapon.containsKey(value.terrain + ":A") && firstWeapon.containsKey(value.terrain + ":B"))
+                    require(
+                        !firstWeapon.get(value.terrain + ":A")
+                            .equals(firstWeapon.get(value.terrain + ":B")),
+                        "NOT_EXERCISED: static weapon arm did not differ from reactive arm");
+                if (value.arm == Arm.THREAT_ROLLOUTS) require(
+                    value.session.snapshot()
+                        .get("fullDecisions")
+                        .getAsLong() > 0,
+                    "NOT_EXERCISED: production arm never completed a full forecast");
+                if (value.arm == Arm.THREAT_ROLLOUTS && value.terrain == 1) require(
+                    value.knownCoverFrames > 0,
+                    "NOT_EXERCISED: side cover never entered the actual bounded collision snapshot");
+                normalTargetLaunches += value.arrowInput
+                    .certifiedAttempts(EffectArrowRandomInput.Purpose.TARGET_LAUNCH);
+            } else {
+                var coverage = new JsonObject();
+                coverage.addProperty("run", value.name);
+                coverage.addProperty(
+                    "weaponDifference",
+                    firstWeapon.containsKey(value.terrain + ":A") && firstWeapon.containsKey(value.terrain + ":B")
+                        && !firstWeapon.get(value.terrain + ":A")
+                            .equals(firstWeapon.get(value.terrain + ":B")));
+                coverage.addProperty(
+                    "fullForecast",
+                    value.session.snapshot()
+                        .get("fullDecisions")
+                        .getAsLong() > 0);
+                coverage.addProperty("knownCover", value.knownCoverFrames > 0);
+                coverage.addProperty("actualPlannerProjectile", value.plannerProjectileFrames > 0);
+                value.report.add("tacticsCoverage", coverage);
+            }
             normalMaidLaunches += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.MAID_LAUNCH);
             normalMaidPreviews += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.MAID_PREVIEW);
             var row = new JsonObject();
@@ -598,6 +652,9 @@ public final class UnifiedCombatEffectPilotTests {
         int pre, accepted, posts, outgoingRequests, goalCompletedAt = -1, maidDiedAt = -1, ownerDiedAt = -1;
         long lastShieldSequence;
         float previousMaid = 20, previousOwner = 20, previousTarget = 40, maidLost, ownerLost, maidHealed, ownerHealed;
+        int plannerProjectileFrames, queueWaitFrames;
+        long maximumQueueAge;
+        final JsonArray passiveTacticsObservations = new JsonArray();
         ItemStack lastHeld;
         String firstSelectedWeapon = "NONE";
         final UUID expectedMaidIdentity;
@@ -619,7 +676,7 @@ public final class UnifiedCombatEffectPilotTests {
                 : parts[1].equals("B") ? Arm.WEAPON_SELECTION : Arm.THREAT_ROLLOUTS;
             name = methodCase > 0 ? "method-v6-" + methodCase
                 : inputCanary ? "input-canary"
-                    : waitCanary ? "wait-canary" : "s20901-g" + terrain + "-" + parts[1] + "-r" + repetition;
+                    : waitCanary ? "wait-canary" : trialPrefix() + "-g" + terrain + "-" + parts[1] + "-r" + repetition;
             expectedMaidIdentity = IdentityInputs.maid(name);
             initialFaultCount = IntegrationGuard.faults(Side.SERVER)
                 .size();
@@ -1031,7 +1088,8 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty("targetPreparationDamageRequests", preparationDamageRequests);
             report.addProperty("targetPreparationOffensiveArrows", arrows.size());
             report.add("targetFrozenBeforeActivity", SleepAttributePortSnapshot.binaryNbt(entityNbt(enemy)));
-            enemy.setAttackTarget(owner);
+            enemy.setAttackTarget(TACTICS != null && terrain == 1 ? maid : owner);
+            if (TACTICS != null) report.addProperty("actualTargetIntent", terrain == 1 ? "maid" : "owner");
             maid.getAttackListData()
                 .attackGroups()
                 .put(MaidCombatEntities.id(enemy), MonsterType.HOSTILE);
@@ -1264,6 +1322,48 @@ public final class UnifiedCombatEffectPilotTests {
                             .name());
             var snapshot = core.combat()
                 .lastSnapshot();
+            if (TACTICS != null) {
+                var projectiles = new JsonArray();
+                if (snapshot != null) for (var projectile : snapshot.projectiles) {
+                    var threat = new JsonObject();
+                    threat.addProperty("observedAtRelative", projectile.observedAt - activeAt);
+                    threat.addProperty("damageSource", projectile.damageSource.name());
+                    projectiles.add(threat);
+                }
+                if (projectiles.size() > 0) plannerProjectileFrames++;
+                row.add("actualPlannerProjectiles", projectiles);
+                var passive = new JsonObject();
+                passive.addProperty("frame", frame);
+                var nativeIds = new JsonArray();
+                if (snapshot != null) for (var projectile : snapshot.projectiles) nativeIds
+                    .add(new com.google.gson.JsonPrimitive(projectile.id == null ? "" : projectile.id.toString()));
+                passive.add("nativeProjectileIds", nativeIds);
+                long now = r.world.getTotalWorldTime();
+                for (var request : CombatWorldBudget.diagnostics(r.world, now).entries)
+                    if (request.id.equals(maid.getUniqueID())) {
+                        row.addProperty("budgetPhase", request.phase.name());
+                        row.addProperty("budgetPending", request.pending);
+                        row.addProperty("budgetRequestSinceActive", request.since - activeAt);
+                        passive.addProperty("budgetRequestSerial", request.requestSerial);
+                        if (request.pending && request.phase != CombatWorldBudget.Phase.FULL) {
+                            queueWaitFrames++;
+                            maximumQueueAge = Math.max(maximumQueueAge, now - request.since);
+                        }
+                    }
+                passiveTacticsObservations.add(passive);
+                row.addProperty(
+                    "actualFood",
+                    maid.getHungerState()
+                        .getFood());
+                row.addProperty(
+                    "actualSaturation",
+                    maid.getHungerState()
+                        .getSaturation());
+                row.addProperty(
+                    "actualExhaustion",
+                    maid.getHungerState()
+                        .getExhaustion());
+            }
             boolean coverKnown = terrain == 1 && snapshot != null
                 && snapshot.geometry != null
                 && (snapshot.geometry.at(r.x + COVER_X, r.y + 1, r.z + 5) & 1) != 0;
@@ -1541,6 +1641,14 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty("arrowsRemainingObserved", arrowsRemaining);
             report.addProperty("nativeOwnerControlCpuNanos", ownerCpu);
             report.addProperty("qaEndObserverCpuNanos", observerCpu);
+            if (TACTICS != null) {
+                report.addProperty("plannerProjectileFrames", plannerProjectileFrames);
+                report.addProperty("queueWaitFrames", queueWaitFrames);
+                report.addProperty("maximumQueueAge", maximumQueueAge);
+                report.add("tacticsInputs", TACTICS.input);
+                report.addProperty("tacticsContractSha256", TACTICS.contractSha);
+                report.add("passiveTacticsObservations", passiveTacticsObservations);
+            }
             retain("complete");
         }
 
@@ -1997,8 +2105,83 @@ public final class UnifiedCombatEffectPilotTests {
             throw new IllegalStateException("Initial typed NBT mismatch; pairing refused before first active tick");
     }
 
+    private static String trialPrefix() {
+        return TACTICS == null ? "s20901" : "tactics-" + Long.toHexString(SEED);
+    }
+
+    private static final class TacticsInputs {
+
+        final JsonObject input;
+        final long seed;
+        final String[] specs;
+        final String inputSha, contractSha;
+
+        private TacticsInputs(JsonObject input, String inputSha, String contractSha) {
+            this.input = input;
+            this.inputSha = inputSha;
+            this.contractSha = contractSha;
+            require(
+                "tlmnh-tactics-block-v1".equals(
+                    input.get("schema")
+                        .getAsString()),
+                "Wrong tactics input schema");
+            seed = Long.parseLong(
+                input.get("logicalSeed")
+                    .getAsString());
+            require(seed > 0 && seed < Long.MAX_VALUE - 4 && seed != 0x20902L, "Invalid sealed tactics seed");
+            require(
+                contractSha.equals(
+                    input.get("contractSha256")
+                        .getAsString()),
+                "Tactics contract binding differs");
+            String mode = input.get("samplingMode")
+                .getAsString();
+            require(mode.equals("calibration") || mode.equals("formal"), "Wrong tactics sampling mode");
+            var order = input.getAsJsonArray("specs");
+            require(order.size() == 12, "Twelve frozen within-block runs required");
+            specs = new String[12];
+            var unique = new HashSet<String>();
+            for (int index = 0; index < specs.length; index++) {
+                specs[index] = order.get(index)
+                    .getAsString();
+                require(
+                    specs[index].matches("[01]:[ABC]:[01]") && unique.add(specs[index]),
+                    "Frozen tactics order contains missing or duplicate cells");
+            }
+        }
+
+        static TacticsInputs open() {
+            if (!Boolean.getBoolean("tlmnh.qaTactics")) return null;
+            try {
+                Path input = Paths.get(System.getProperty("tlmnh.qaTacticsInput"));
+                String text = new String(Files.readAllBytes(input), StandardCharsets.UTF_8);
+                String hash = digest(text);
+                require(hash.equals(System.getProperty("tlmnh.qaTacticsInputSha256")), "Tactics block input drift");
+                Path contract = Paths.get(System.getProperty("tlmnh.qaTacticsContract"));
+                String contractText = new String(Files.readAllBytes(contract), StandardCharsets.UTF_8);
+                String contractSha = digest(contractText);
+                require(
+                    contractSha.equals(System.getProperty("tlmnh.qaTacticsContractSha256")),
+                    "Tactics contract drift");
+                var parser = new com.google.gson.JsonParser();
+                JsonObject actual = parser.parse(text)
+                    .getAsJsonObject();
+                JsonObject policy = parser.parse(contractText)
+                    .getAsJsonObject();
+                require(
+                    actual.get("samplingMode")
+                        .equals(policy.get("samplingMode")),
+                    "Tactics mode binding differs");
+                return new TacticsInputs(actual, hash, contractSha);
+            } catch (Exception problem) {
+                throw new IllegalStateException("Cannot bind frozen tactics inputs", problem);
+            }
+        }
+    }
+
     private static UUID id(String role) {
-        return UUID.nameUUIDFromBytes(("tlmnh-effect-20901-" + role).getBytes(StandardCharsets.UTF_8));
+        String namespace = TACTICS == null ? "tlmnh-effect-20901-" : "tlmnh-tactics-" + Long.toHexString(SEED) + "-";
+        return UUID.nameUUIDFromBytes((namespace + role).getBytes(StandardCharsets.UTF_8));
     }
 
     /** 原18格的公开构造期身份，保持完整UUID唯一；不拥有RNG或运行期身份变更 */
@@ -2048,7 +2231,7 @@ public final class UnifiedCombatEffectPilotTests {
             names.add("wait-canary");
             for (String spec : specs) {
                 String[] parts = spec.split(":");
-                names.add("s20901-g" + parts[0] + "-" + parts[1] + "-r" + parts[2]);
+                names.add(trialPrefix() + "-g" + parts[0] + "-" + parts[1] + "-r" + parts[2]);
             }
             var all = new HashSet<UUID>();
             var maids = new HashSet<UUID>();

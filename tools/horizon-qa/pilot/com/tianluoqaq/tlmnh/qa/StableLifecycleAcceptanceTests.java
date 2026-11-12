@@ -47,6 +47,7 @@ import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleLayout;
 import com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerNbtKeys;
+import com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerTuning;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleData;
 import com.tianluoqaq.tlmnh.common.lifecycle.item.MaidLifecycleItems;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidSpawnChecks;
@@ -104,6 +105,7 @@ public final class StableLifecycleAcceptanceTests {
         negative.setPosition(X + 8.5, Y + 1, Z + .5);
         var state = new State(NAME);
         state.data.setInteger("Schema", 1);
+        state.data.setInteger("NutritionBoundaryVersion", 1);
         state.data.setString("Phase", "setup");
         state.data.setLong("SetupProcess", PROCESS);
         state.data.setString(
@@ -126,6 +128,8 @@ public final class StableLifecycleAcceptanceTests {
         state.data.setTag("NegativeSlots", slots(negative));
         state.data.setTag("PositiveInput", snapshot(positive));
         state.data.setTag("NegativeInput", snapshot(negative));
+        verifyInitialNutrition(h, positive);
+        verifyInitialNutrition(h, negative);
         h.getWorld().mapStorage.setData(NAME, state);
         state.markDirty();
         var watch = lifecycleWatch(h, state, owner, "setup");
@@ -152,6 +156,7 @@ public final class StableLifecycleAcceptanceTests {
         owner.setPosition(positive.posX + 1, positive.posY, positive.posZ);
         long beforeCapture = positive.getCombatCadence()
             .remainingTicks();
+        state.data.setTag("PositiveCaptureInput", snapshot(positive));
         h.assertTrue(beforeCapture > 0 && positive.interact(owner), "Ordinary positive capture interaction failed");
         var filled = owner.getCurrentEquippedItem();
         UUID token = MaidLifecycleItems.token(filled);
@@ -168,6 +173,7 @@ public final class StableLifecycleAcceptanceTests {
             source.getCompoundTag(MaidCombatNbtKeys.TAG)
                 .getLong("Remaining") == beforeCapture,
             "Capture reset a nonzero known cadence");
+        verifyNutritionBoundary(h, state.data.getCompoundTag("PositiveCaptureInput"), source, "capture commit");
         state.data.setTag("CapturedSource", source);
         state.data.setLong("CapturedRemaining", beforeCapture);
         long capturedAt = h.getWorld()
@@ -187,6 +193,11 @@ public final class StableLifecycleAcceptanceTests {
                     .getItem() == MaidResurrectionContent.EMPTY_SLAB,
                 "Ordinary release did not exchange the consumed capture credential");
             verifyPositive(h, state, restored);
+            verifyNutritionBoundary(
+                h,
+                state.data.getCompoundTag("CapturedSource"),
+                snapshot(restored),
+                "release before first native tick");
             h.assertTrue(
                 restored.getCombatCadence()
                     .remainingTicks() == beforeCapture && beforeCapture > 0,
@@ -256,6 +267,20 @@ public final class StableLifecycleAcceptanceTests {
                 .getCompoundTag(MaidCombatNbtKeys.TAG)
                 .getLong("Remaining"),
             "Native disk load did not retain the actual saved nonzero cadence at Join");
+        var setupNutrition = new NBTTagCompound();
+        for (String role : new String[] { "Positive", "Negative" }) setupNutrition.setTag(
+            role,
+            saved.getCompoundTag(role)
+                .getCompoundTag(MaidHungerNbtKeys.ROOT_TAG)
+                .copy());
+        state.data.setTag("SetupSaveNutrition", setupNutrition);
+        state.data.setTag("NegativeResumeJoin", watch.negativeJoin);
+        verifyNutritionBoundary(
+            h,
+            saved.getCompoundTag("Positive"),
+            watch.positiveJoin.getCompoundTag("RawEntity"),
+            "positive disk Join");
+        verifyNutritionBoundary(h, saved.getCompoundTag("Negative"), watch.negativeJoin, "negative disk Join");
         verifyJoinStable(h, watch.positiveJoin.getCompoundTag("RawEntity"), saved.getCompoundTag("Positive"));
         verifyJoinStable(h, watch.negativeJoin, saved.getCompoundTag("Negative"));
         long joinedAt = watch.positiveJoin.getLong("Tick"), joinedRemaining = watch.positiveJoin.getLong("Remaining");
@@ -534,6 +559,8 @@ public final class StableLifecycleAcceptanceTests {
                 verifyUnknown(h, state, negative);
                 row.setTag("Positive", snapshot(positive));
                 row.setTag("Negative", snapshot(negative));
+                row.setTag("PositiveNutritionAtSave", liveNutrition(positive));
+                row.setTag("NegativeNutritionAtSave", liveNutrition(negative));
                 row.setTag("PositiveSlots", slots(positive));
                 row.setTag("NegativeSlots", slots(negative));
                 row.setTag("Ledger", ledger(h));
@@ -653,16 +680,7 @@ public final class StableLifecycleAcceptanceTests {
                         .getLevel())
                     == 10,
             "All thirty baubles including twenty locked entries must retain complete NBT");
-        h.assertTrue(
-            input.getCompoundTag(MaidHungerNbtKeys.ROOT_TAG)
-                .equals(current.getCompoundTag(MaidHungerNbtKeys.ROOT_TAG))
-                && maid.getHungerState()
-                    .getFood() == 13
-                && maid.getHungerState()
-                    .getSaturation() == 2.25F
-                && maid.getHungerState()
-                    .getExhaustion() == 1.25F,
-            "Inactive seated lifecycle changed food/saturation/exhaustion or hunger codec payload");
+        verifyLiveNutrition(h, maid);
         h.assertTrue(
             input.getCompoundTag(BreedingConfigNbtKeys.ROOT)
                 .equals(current.getCompoundTag(BreedingConfigNbtKeys.ROOT)),
@@ -684,6 +702,77 @@ public final class StableLifecycleAcceptanceTests {
                     maid.getMaidInventory()
                         .getStackInSlot(35)),
             "Restored raw35 stack lost its actual provider identity");
+    }
+
+    private static void verifyInitialNutrition(GameTestHelper h, EntityMaid maid) {
+        verifyLiveNutrition(h, maid);
+        var hunger = maid.getHungerState();
+        h.assertTrue(
+            hunger.getFood() == 13 && hunger.getSaturation() == 2.25F
+                && hunger.getExhaustion() == 1.25F
+                && hunger.getRegenTicks() == 0
+                && hunger.getStarveTicks() == 0,
+            "Original lifecycle nutrition input changed: " + snapshot(maid).getTag(MaidHungerNbtKeys.ROOT_TAG));
+    }
+
+    private static void verifyLiveNutrition(GameTestHelper h, EntityMaid maid) {
+        var hunger = maid.getHungerState();
+        h.assertTrue(
+            hunger.isActivated() && !hunger.isPaused()
+                && hunger.getFood() >= 0
+                && hunger.getFood() <= MaidHungerTuning.MAX_FOOD
+                && Float.isFinite(hunger.getSaturation())
+                && hunger.getSaturation() >= 0.0F
+                && hunger.getSaturation() <= hunger.getFood()
+                && Float.isFinite(hunger.getExhaustion())
+                && hunger.getExhaustion() >= 0.0F
+                && hunger.getExhaustion() <= MaidHungerTuning.MAX_EXHAUSTION
+                && hunger.getRegenTicks() >= 0
+                && hunger.getStarveTicks() >= 0,
+            "Invalid live lifecycle nutrition at tick " + h.getWorld()
+                .getTotalWorldTime()
+                + ", health="
+                + maid.getHealth()
+                + "/"
+                + maid.getMaxHealth()
+                + ", state="
+                + snapshot(maid).getTag(MaidHungerNbtKeys.ROOT_TAG));
+        h.assertTrue(
+            liveNutrition(maid).equals(snapshot(maid).getCompoundTag(MaidHungerNbtKeys.ROOT_TAG)),
+            "Live nutrition getters and serialized payload differ at tick " + h.getWorld()
+                .getTotalWorldTime());
+    }
+
+    private static NBTTagCompound liveNutrition(EntityMaid maid) {
+        var hunger = maid.getHungerState();
+        var state = new NBTTagCompound();
+        state.setInteger(MaidHungerNbtKeys.VERSION, MaidHungerTuning.SCHEMA_VERSION);
+        state.setInteger(MaidHungerNbtKeys.FOOD, hunger.getFood());
+        state.setFloat(MaidHungerNbtKeys.SATURATION, hunger.getSaturation());
+        state.setFloat(MaidHungerNbtKeys.EXHAUSTION, hunger.getExhaustion());
+        state.setInteger(MaidHungerNbtKeys.REGEN_TICKS, hunger.getRegenTicks());
+        state.setInteger(MaidHungerNbtKeys.STARVE_TICKS, hunger.getStarveTicks());
+        return state;
+    }
+
+    private static void verifyNutritionBoundary(GameTestHelper h, NBTTagCompound expected, NBTTagCompound actual,
+        String boundary) {
+        h.assertTrue(
+            expected.hasKey(MaidHungerNbtKeys.ROOT_TAG, 10) && actual.hasKey(MaidHungerNbtKeys.ROOT_TAG, 10)
+                && expected.getTag(MaidHungerNbtKeys.ROOT_TAG)
+                    .equals(actual.getTag(MaidHungerNbtKeys.ROOT_TAG)),
+            "Nutrition changed across " + boundary
+                + ": expected="
+                + expected.getTag(MaidHungerNbtKeys.ROOT_TAG)
+                + ", actual="
+                + actual.getTag(MaidHungerNbtKeys.ROOT_TAG));
+        System.out.println(
+            "TLMNH_LIFECYCLE_NUTRITION_BOUNDARY boundary=" + boundary
+                + " tick="
+                + h.getWorld()
+                    .getTotalWorldTime()
+                + " state="
+                + actual.getTag(MaidHungerNbtKeys.ROOT_TAG));
     }
 
     private static void verifyJoinStable(GameTestHelper h, NBTTagCompound joined, NBTTagCompound saved) {
