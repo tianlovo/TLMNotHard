@@ -513,8 +513,6 @@ public final class UnifiedCombatEffectPilotTests {
                 if (value.arm == Arm.THREAT_ROLLOUTS && value.terrain == 1) require(
                     value.knownCoverFrames > 0,
                     "NOT_EXERCISED: side cover never entered the actual bounded collision snapshot");
-                normalTargetLaunches += value.arrowInput
-                    .certifiedAttempts(EffectArrowRandomInput.Purpose.TARGET_LAUNCH);
             } else {
                 var coverage = new JsonObject();
                 coverage.addProperty("run", value.name);
@@ -532,6 +530,7 @@ public final class UnifiedCombatEffectPilotTests {
                 coverage.addProperty("actualPlannerProjectile", value.plannerProjectileFrames > 0);
                 value.report.add("tacticsCoverage", coverage);
             }
+            normalTargetLaunches += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.TARGET_LAUNCH);
             normalMaidLaunches += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.MAID_LAUNCH);
             normalMaidPreviews += value.arrowInput.certifiedAttempts(EffectArrowRandomInput.Purpose.MAID_PREVIEW);
             var row = new JsonObject();
