@@ -84,6 +84,8 @@ public final class TLMNotHard {
     public void init(FMLInitializationEvent event) {
         NetworkRegistry.INSTANCE.registerGuiHandler(this, PROXY);
         PROXY.init();
+        CompatServices.spaceSurvival()
+            .registerNativeEvents();
         MaidResurrectionContent.registerSpawns();
         LOG.info(ModBootstrapDiagnostics.MSG_TLMNH_BOOTSTRAP_READY_SIDE_VERSION, event.getSide(), Tags.VERSION);
     }

@@ -51,6 +51,9 @@ public interface SpaceSurvivalCompatProvider {
         }
     }
 
+    /** 仅由 FML 初始化回调安装原生事件监听，ServiceLoader 发现保持只装配实现 */
+    default void registerNativeEvents() {}
+
     default boolean isAvailable() {
         return false;
     }

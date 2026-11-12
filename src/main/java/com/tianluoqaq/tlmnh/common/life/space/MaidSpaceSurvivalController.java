@@ -95,8 +95,7 @@ public final class MaidSpaceSurvivalController {
                 int base = Math.max(SpaceSurvivalTuning.MIN_POSITIVE_ONE, active.suffocationDamageBase());
                 float dmg = base * (SpaceSurvivalTuning.SUFFOCATION_BASE_FACTOR + incrementalDamage)
                     / SpaceSurvivalTuning.SUFFOCATION_DIVISOR;
-                active.applySuffocationDamage(maid, dmg);
-                active.postSuffocationPost(maid);
+                if (active.applySuffocationDamage(maid, dmg)) active.postSuffocationPost(maid);
                 if (active.hardModeSuffocation()) incrementalDamage++;
             }
         }

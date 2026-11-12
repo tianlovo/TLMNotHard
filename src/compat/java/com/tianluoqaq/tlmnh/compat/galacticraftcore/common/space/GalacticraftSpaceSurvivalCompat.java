@@ -29,10 +29,16 @@ public final class GalacticraftSpaceSurvivalCompat implements SpaceSurvivalCompa
 
     public static final GalacticraftSpaceSurvivalCompat INSTANCE = new GalacticraftSpaceSurvivalCompat();
 
+    private static final ThreadLocal<EntityLivingBase> CONTROLLER_PRE = new ThreadLocal<>();
     private static volatile Api cachedApi;
     private static volatile boolean resolved;
 
     private GalacticraftSpaceSurvivalCompat() {}
+
+    @Override
+    public void registerNativeEvents() {
+        GalacticraftMaidOxygenEvents.register();
+    }
 
     @Override
     public boolean isAvailable() {
@@ -211,11 +217,22 @@ public final class GalacticraftSpaceSurvivalCompat implements SpaceSurvivalCompa
         if (!isAvailable() || maid == null) return false;
         try {
             Event pre = (Event) api().suffocationPreCtor.newInstance(maid);
-            return MinecraftForge.EVENT_BUS.post(pre);
+            EntityLivingBase previous = CONTROLLER_PRE.get();
+            CONTROLLER_PRE.set(maid);
+            try {
+                return MinecraftForge.EVENT_BUS.post(pre);
+            } finally {
+                if (previous == null) CONTROLLER_PRE.remove();
+                else CONTROLLER_PRE.set(previous);
+            }
         } catch (Exception | LinkageError failure) {
             IntegrationGuard.report(Side.SERVER, GalacticraftSpaceIds.GUARD, failure);
             return false;
         }
+    }
+
+    static boolean isControllerPre(EntityLivingBase entity) {
+        return CONTROLLER_PRE.get() == entity;
     }
 
     @Override
