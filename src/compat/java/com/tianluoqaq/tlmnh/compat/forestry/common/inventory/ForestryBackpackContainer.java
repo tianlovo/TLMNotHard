@@ -3,6 +3,8 @@ package com.tianluoqaq.tlmnh.compat.forestry.common.inventory;
 import java.lang.reflect.Method;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -20,7 +22,7 @@ import cpw.mods.fml.relauncher.Side;
 /**
  * 林业背包适配：
  * 不实例化 ItemInventoryBackpack（规避无玩家环境下 ItemLocation.UNKNOWN 触发 IncompatibleClassChangeError），
- * 直接通过 IBackpackDefinition 校验准入并按原生基 36 Slots 标签读写
+ * 直接通过 IBackpackDefinition 校验准入并按原生基 36 Slots 标签读写；锁定模式（damage=1）同时阻止自动存入与自动取用
  */
 public final class ForestryBackpackContainer {
 
@@ -64,6 +66,22 @@ public final class ForestryBackpackContainer {
         }
     }
 
+    public static ItemStack extract(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (maxCount <= 0 || filter == null || !isSupported(containerStack)) return null;
+        if (containerStack.getItemDamage() == ForestryBackpackTuning.LOCKED_MODE_DAMAGE) return null;
+        Api api = api();
+        if (api == null) return null;
+        try {
+            int size = (Integer) api.getBackpackSize.invoke(containerStack.getItem());
+            if (size <= 0) return null;
+            return extractNbt(containerStack, size, filter, scorer, maxCount, simulate);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            IntegrationGuard.report(Side.SERVER, ForestryBackpackIds.FEATURE, failure);
+            return null;
+        }
+    }
+
     public static boolean forEachStored(ItemStack containerStack, Consumer<ItemStack> visitor) {
         if (!isSupported(containerStack)) return false;
         Api api = api();
@@ -76,6 +94,12 @@ public final class ForestryBackpackContainer {
             IntegrationGuard.report(Side.SERVER, ForestryBackpackIds.FEATURE, failure);
             return false;
         }
+    }
+
+    public static boolean forEachExtractable(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        if (!isSupported(containerStack)) return false;
+        if (containerStack.getItemDamage() == ForestryBackpackTuning.LOCKED_MODE_DAMAGE) return false;
+        return forEachStored(containerStack, visitor);
     }
 
     /** 原生基 36 Slots + 旧版 Items 兼容读写入口（可供单测直接验证） */
@@ -97,6 +121,26 @@ public final class ForestryBackpackContainer {
             writeSlots(root, slots, backpackSize);
         }
         return result.remaining;
+    }
+
+    public static ItemStack extractNbt(ItemStack containerStack, int backpackSize, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (containerStack == null || containerStack.getTagCompound() == null
+            || backpackSize <= 0
+            || filter == null
+            || maxCount <= 0) {
+            return null;
+        }
+        if (containerStack.getItemDamage() == ForestryBackpackTuning.LOCKED_MODE_DAMAGE) {
+            return null;
+        }
+        ItemStack[] slots = readSlots(containerStack.getTagCompound(), backpackSize);
+        BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper
+            .extractFromArray(slots, backpackSize, filter, scorer, maxCount, simulate);
+        if (!simulate && result.changed) {
+            writeSlots(containerStack.getTagCompound(), slots, backpackSize);
+        }
+        return result.extracted;
     }
 
     public static void forEachStoredNbt(ItemStack containerStack, int backpackSize, Consumer<ItemStack> visitor) {

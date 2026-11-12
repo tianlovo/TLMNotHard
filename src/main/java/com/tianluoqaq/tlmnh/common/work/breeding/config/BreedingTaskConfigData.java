@@ -6,7 +6,8 @@ import net.minecraft.nbt.NBTTagCompound;
 
 /**
  * 育种模式持久化配置：
- * 支持单品作物或变异池目标、Gain/Growth/Resistance 三维目标值、AND/OR 逻辑与满 31 属性模式
+ * 支持单品作物或变异池目标、Gain/Growth/Resistance 三维目标值、AND/OR 逻辑与满 31 属性模式。
+ * 未配置的新旧存档女仆在写盘时不追加空根键，保证死亡赎回快照等既有实体标签保持原样
  */
 public final class BreedingTaskConfigData {
 
@@ -27,6 +28,7 @@ public final class BreedingTaskConfigData {
     private int targetResistance = BreedingConfigTuning.MIN_STAT;
     private StatLogic statLogic = StatLogic.AND;
     private boolean max31Mode;
+    private boolean persistent;
 
     public BreedingTaskConfigData() {}
 
@@ -41,13 +43,14 @@ public final class BreedingTaskConfigData {
             clear();
             return;
         }
-        this.targetMode = other.targetMode;
+        this.targetMode = other.targetMode == null ? TargetMode.CROP : other.targetMode;
         this.targetId = sanitizeId(other.targetId);
         this.targetGain = clampStat(other.targetGain);
         this.targetGrowth = clampStat(other.targetGrowth);
         this.targetResistance = clampStat(other.targetResistance);
         this.statLogic = other.statLogic == null ? StatLogic.AND : other.statLogic;
         this.max31Mode = other.max31Mode;
+        this.persistent = other.persistent || !isDefault();
     }
 
     public void clear() {
@@ -58,6 +61,24 @@ public final class BreedingTaskConfigData {
         this.targetResistance = BreedingConfigTuning.MIN_STAT;
         this.statLogic = StatLogic.AND;
         this.max31Mode = false;
+        this.persistent = false;
+    }
+
+    public boolean isDefault() {
+        return targetMode == TargetMode.CROP && targetId.isEmpty()
+            && targetGain == BreedingConfigTuning.MIN_STAT
+            && targetGrowth == BreedingConfigTuning.MIN_STAT
+            && targetResistance == BreedingConfigTuning.MIN_STAT
+            && statLogic == StatLogic.AND
+            && !max31Mode;
+    }
+
+    public boolean isPersistent() {
+        return persistent;
+    }
+
+    public void markPersistent() {
+        this.persistent = true;
     }
 
     public boolean hasTarget() {
@@ -161,7 +182,11 @@ public final class BreedingTaskConfigData {
 
     public void writeToEntityNbt(NBTTagCompound entityTag) {
         if (entityTag == null) return;
-        entityTag.setTag(BreedingConfigNbtKeys.ROOT, toCompound());
+        if (persistent || !isDefault()) {
+            entityTag.setTag(BreedingConfigNbtKeys.ROOT, toCompound());
+        } else {
+            entityTag.removeTag(BreedingConfigNbtKeys.ROOT);
+        }
     }
 
     public void readFromEntityNbt(NBTTagCompound entityTag) {
@@ -170,13 +195,15 @@ public final class BreedingTaskConfigData {
             return;
         }
         fromCompound(entityTag.getCompoundTag(BreedingConfigNbtKeys.ROOT));
+        this.persistent = true;
     }
 
     public NBTTagCompound toCompound() {
         NBTTagCompound tag = new NBTTagCompound();
         tag.setString(
             BreedingConfigNbtKeys.TARGET_MODE,
-            targetMode == TargetMode.MUTATION_POOL ? BreedingConfigIds.MODE_MUTATION_POOL : BreedingConfigIds.MODE_CROP);
+            targetMode == TargetMode.MUTATION_POOL ? BreedingConfigIds.MODE_MUTATION_POOL
+                : BreedingConfigIds.MODE_CROP);
         tag.setString(BreedingConfigNbtKeys.TARGET_ID, targetId);
         tag.setByte(BreedingConfigNbtKeys.TARGET_GAIN, (byte) targetGain);
         tag.setByte(BreedingConfigNbtKeys.TARGET_GROWTH, (byte) targetGrowth);
@@ -231,7 +258,6 @@ public final class BreedingTaskConfigData {
 
     @Override
     public int hashCode() {
-        return Objects
-            .hash(targetMode, targetId, targetGain, targetGrowth, targetResistance, statLogic, max31Mode);
+        return Objects.hash(targetMode, targetId, targetGain, targetGrowth, targetResistance, statLogic, max31Mode);
     }
 }

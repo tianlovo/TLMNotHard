@@ -8,9 +8,7 @@ import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Group;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame.Kind;
-import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules.Activity;
-import com.tianluoqaq.tlmnh.common.life.meal.MaidFoodProfile;
 
 /** 增强进食会话模块；每帧只评估一次，按原顺序提交自疗进食或工作餐提案 */
 public final class EnhancedMealController {
@@ -92,8 +90,8 @@ public final class EnhancedMealController {
         var inventory = maid.getMaidInventory();
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             var stack = inventory.getStackInSlot(slot);
-            if (stack != null && !MaidMealConfig.blocked(stack, healing) && MaidFoodProfile.inspect(stack) != null)
-                return true;
+            if (maid.getMealController()
+                .canEatMeal(stack, healing)) return true;
         }
         return false;
     }

@@ -13,6 +13,7 @@ import net.minecraft.item.ItemSword;
 import net.minecraft.util.DamageSource;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.combat.spi.HealingAxeSpiTuning;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
@@ -35,6 +36,40 @@ public final class MaidWeaponCatalog {
         }
     };
 
+    private static final MaidWeaponStrike.HitEffects HEALING_EFFECTS = new MaidWeaponStrike.HitEffects() {
+
+        @Override
+        public DamageSource damageSource(EntityMaid maid, EntityLivingBase target) {
+            return DamageSource.causeMobDamage(maid);
+        }
+
+        @Override
+        public void settleAcceptedHit(ItemStack original, EntityLivingBase target, EntityMaid maid) {}
+    };
+
+    private static MaidWeaponProfile healingAxeProfile() {
+        return new MaidWeaponProfile(
+            MaidWeaponProfile.Kind.MELEE,
+            MaidWeaponProfile.Family.HEALING_AXE,
+            HealingAxeSpiTuning.SUPPORTED,
+            HealingAxeSpiTuning.DEPENDENCY,
+            HealingAxeSpiTuning.ZERO_DAMAGE,
+            HealingAxeSpiTuning.UNIT_MULTIPLIER,
+            HealingAxeSpiTuning.UNDEAD_DAMAGE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            HealingAxeSpiTuning.UNLIMITED_DURABILITY,
+            HealingAxeSpiTuning.UNIT_MULTIPLIER,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            WeaponCombatTuning.WEAPON_CATALOG_INSPECT_ZERO_BASE,
+            false,
+            false);
+    }
+
     private MaidWeaponCatalog() {}
 
     /** 只在复制栈上提取能力，返回值可以交给不接触世界的规划器 */
@@ -43,6 +78,8 @@ public final class MaidWeaponCatalog {
             || stack.stackSize != WeaponCombatTuning.TARGET_STACK_SIZE_THRESHOLD)
             return MaidWeaponProfile.unknown(WeaponCombatIds.ID_MISSING_OR_INVALID_STACK);
         Item item = stack.getItem();
+        if (CompatServices.healingAxe()
+            .isHealingAxe(stack)) return healingAxeProfile();
         if (CompatServices.weapons()
             .handles(item))
             return CompatServices.weapons()
@@ -91,7 +128,11 @@ public final class MaidWeaponCatalog {
                 .prepareMelee(maid, stack);
         var profile = inspect(stack);
         if (!profile.melee() || maid.getHeldItem() != stack) return null;
-        return new MaidWeaponStrike(stack, profile, false, VANILLA_EFFECTS);
+        return new MaidWeaponStrike(
+            stack,
+            profile,
+            false,
+            profile.family == MaidWeaponProfile.Family.HEALING_AXE ? HEALING_EFFECTS : VANILLA_EFFECTS);
     }
 
     /** 只供已核查的提供方在其复制栈上构造能力快照 */

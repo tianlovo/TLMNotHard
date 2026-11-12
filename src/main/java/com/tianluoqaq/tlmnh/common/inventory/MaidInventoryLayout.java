@@ -24,5 +24,7 @@ public final class MaidInventoryLayout {
     public static final int ORIGINAL_TRANSFERS_MERGE_FOURTH_PARAM_2 = 41;
     public static final int ORIGINAL_TRANSFERS_MERGE_THIRD_PARAM = 42;
 
+    public static final int ARMOR_CHEST_OFFSET = 2;
+
     private MaidInventoryLayout() {}
 }

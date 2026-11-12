@@ -134,9 +134,9 @@ public class ContainerMaid extends Container {
             || action > MaidContainerProtocol.ACTION_CROPSNH_BREEDING
             || lastActionTick == maid.ticksExisted) return false;
         if (!isReadOnlyNavigation(action) && !canModifyWith(player)) return false;
-        if ((action <= MaidContainerProtocol.ACTION_RANGED
-            || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
-            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING) && !maid.getCombatTaskState()
+        if ((action <= MaidContainerProtocol.ACTION_RANGED || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
+            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING)
+            && !maid.getCombatTaskState()
                 .canSelect()) {
             player.addChatMessage(new ChatComponentTranslation(MaidContainerIds.I18N_MESSAGE_TLMNH_COMBAT_FUTURE_TASK));
             return false;

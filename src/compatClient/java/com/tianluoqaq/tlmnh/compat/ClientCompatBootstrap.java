@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.compat;
 
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -16,6 +17,7 @@ import com.tianluoqaq.tlmnh.client.compat.spi.RenderPlatformCompat;
 import com.tianluoqaq.tlmnh.common.clienthook.HandSlotIconHook;
 import com.tianluoqaq.tlmnh.common.protection.OptionalApi;
 import com.tianluoqaq.tlmnh.compat.angelica.client.render.MaidRenderPlatformState;
+import com.tianluoqaq.tlmnh.compat.backhand.client.BackhandPlayerItems;
 import com.tianluoqaq.tlmnh.compat.battlegear2.Battlegear2Compat;
 import com.tianluoqaq.tlmnh.compat.battlegear2.client.gui.BattlegearSlotIcons;
 import com.tianluoqaq.tlmnh.compat.battlegear2.client.render.BattlegearShieldRenderTransforms;
@@ -59,6 +61,11 @@ public final class ClientCompatBootstrap implements ClientCompatRegistrar {
     }
 
     private static final class ClientItemRenderImpl implements ClientItemRenderCompat {
+
+        @Override
+        public ItemStack playerOffhandStack(EntityPlayer player) {
+            return BackhandPlayerItems.offhand(player);
+        }
 
         @Override
         public ResourceLocation resolveTombstoneTexture(World world) {

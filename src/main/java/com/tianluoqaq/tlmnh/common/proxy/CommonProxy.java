@@ -28,6 +28,7 @@ import com.tianluoqaq.tlmnh.common.network.MaidEffectNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidNamingNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidSoundNetwork;
 import com.tianluoqaq.tlmnh.common.network.MaidTaskConfigNetwork;
+import com.tianluoqaq.tlmnh.common.work.bell.MaidBellPreviewNetwork;
 import com.tianluoqaq.tlmnh.common.work.container.BreedingTaskConfigContainer;
 import com.tianluoqaq.tlmnh.common.work.container.MaidBreedingConfigNetwork;
 
@@ -43,6 +44,7 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
         MaidEffectNetwork.init();
         MaidTaskConfigNetwork.init();
         MaidBreedingConfigNetwork.init();
+        MaidBellPreviewNetwork.init();
     }
 
     @Override
@@ -92,7 +94,8 @@ public class CommonProxy implements IGuiHandler, MaidClientPackets.Sink {
             boolean attack = id == CommonProxyProtocol.GUI_MAID_ATTACK_CONFIG;
             if (session == 0 || player.inventory.getItemStack() != null
                 || !maid.worldObj.isRemote && maid.getTask()
-                    .isCombatTask() != attack) return null;
+                    .isCombatTask() != attack)
+                return null;
             return () -> new TaskConfigContainer(player.inventory, maid, session, attack);
         }
         if (id == CommonProxyProtocol.GUI_MAID_BREEDING_CONFIG) {

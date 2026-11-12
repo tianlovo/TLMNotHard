@@ -24,6 +24,9 @@ public final class TextChatBubbleRenderer implements IChatBubbleRenderer {
     private final ResourceLocation bg;
 
     public TextChatBubbleRenderer(String text, ResourceLocation bg, Position position) {
+        text = net.minecraft.util.StatCollector.canTranslate(text)
+            ? net.minecraft.util.StatCollector.translateToLocal(text)
+            : text;
         var font = Minecraft.getMinecraft().fontRenderer;
         split = font.listFormattedStringToWidth(text, position == Position.CENTER ? 200 : 120);
         int w = 0;

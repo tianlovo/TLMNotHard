@@ -58,16 +58,15 @@ public final class MaintenanceBellItem extends Item implements IMaidBauble {
                     res.boundCount,
                     BellTuning.MAX_BOUND_CHUNKS));
             case CLEARED_ALL -> player.addChatMessage(new ChatComponentTranslation(BellIds.MSG_MAINT_CLEARED));
-            case REJECTED_CHUNK_LIMIT -> player.addChatMessage(
-                new ChatComponentTranslation(BellIds.MSG_MAINT_LIMIT, BellTuning.MAX_BOUND_CHUNKS));
+            case REJECTED_CHUNK_LIMIT -> player
+                .addChatMessage(new ChatComponentTranslation(BellIds.MSG_MAINT_LIMIT, BellTuning.MAX_BOUND_CHUNKS));
             case REJECTED_SPAN_EXCEEDED -> player.addChatMessage(
-                new ChatComponentTranslation(
-                    BellIds.MSG_MAINT_SPAN,
-                    BellTuning.MAX_CHUNK_SPAN,
-                    res.spanX,
-                    res.spanZ));
+                new ChatComponentTranslation(BellIds.MSG_MAINT_SPAN, BellTuning.MAX_CHUNK_SPAN, res.spanX, res.spanZ));
             case REJECTED_WRONG_DIMENSION -> player.addChatMessage(
-                new ChatComponentTranslation(BellIds.MSG_MAINT_WRONG_DIM, MaintenanceBellData.read(stack).dimension()));
+                new ChatComponentTranslation(
+                    BellIds.MSG_MAINT_WRONG_DIM,
+                    MaintenanceBellData.read(stack)
+                        .dimension()));
         }
         player.inventoryContainer.detectAndSendChanges();
         return true;

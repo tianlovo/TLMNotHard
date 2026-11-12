@@ -210,8 +210,9 @@ final class MaidLegacyBrainHost {
         var owner = ownerSensor.findOwner();
         var lifeOptions = permitted ? life.prepareIntents(context, token) : Collections.<MaidLifeIntent>emptyList();
         // 合法生活保留现有委托范围，不用5格跟随起距截断8格食物活动
-        if (!bellBoundWork && lifeOptions.isEmpty() && !maid.getHomeArea()
-            .enabled()
+        if (!bellBoundWork && lifeOptions.isEmpty()
+            && !maid.getHomeArea()
+                .enabled()
             && MaidOwnerSensor.isValid(maid, owner)
             && !coordinator.isSuspended()
             && maid.isTamed()

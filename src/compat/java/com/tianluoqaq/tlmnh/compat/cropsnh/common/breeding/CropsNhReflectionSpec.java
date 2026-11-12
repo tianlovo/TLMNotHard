@@ -1,0 +1,103 @@
+package com.tianluoqaq.tlmnh.compat.cropsnh.common.breeding;
+
+/** CropsNH 2.0.140 真实类路径与反射成员签名常量 */
+public final class CropsNhReflectionSpec {
+
+    public static final String CLS_ITEM_LIST = "com.gtnewhorizon.cropsnh.api.CropsNHItemList";
+    public static final String CLS_ITEM_CONTAINER = "gregtech.api.interfaces.IItemContainer";
+    public static final String CLS_CROP_CARD = "com.gtnewhorizon.cropsnh.api.ICropCard";
+    public static final String CLS_CROP_STICK_TILE = "com.gtnewhorizon.cropsnh.api.ICropStickTile";
+    public static final String CLS_SEED_DATA = "com.gtnewhorizon.cropsnh.api.ISeedData";
+    public static final String CLS_SEED_STATS = "com.gtnewhorizon.cropsnh.api.ISeedStats";
+    public static final String CLS_SEED_STATS_IMPL = "com.gtnewhorizon.cropsnh.farming.SeedStats";
+    public static final String CLS_CROP_REGISTRY_IFC = "com.gtnewhorizon.cropsnh.api.ICropRegistry";
+    public static final String CLS_CROP_REGISTRY = "com.gtnewhorizon.cropsnh.farming.registries.CropRegistry";
+    public static final String CLS_MUTATION_REGISTRY_IFC = "com.gtnewhorizon.cropsnh.api.IMutationRegistry";
+    public static final String CLS_MUTATION_REGISTRY = "com.gtnewhorizon.cropsnh.farming.registries.MutationRegistry";
+    public static final String CLS_CROP_MUTATION = "com.gtnewhorizon.cropsnh.api.ICropMutation";
+    public static final String CLS_MUTATION_POOL = "com.gtnewhorizon.cropsnh.api.IMutationPool";
+    public static final String CLS_SOIL_REGISTRY_IFC = "com.gtnewhorizon.cropsnh.api.ISoilRegistry";
+    public static final String CLS_SOIL_REGISTRY = "com.gtnewhorizon.cropsnh.farming.registries.SoilRegistry";
+    public static final String CLS_SOIL_LIST = "com.gtnewhorizon.cropsnh.api.ISoilList";
+    public static final String CLS_GROWTH_REQ = "com.gtnewhorizon.cropsnh.api.IGrowthRequirement";
+    public static final String CLS_WORLD_GROWTH_REQ = "com.gtnewhorizon.cropsnh.api.IWorldGrowthRequirement";
+    public static final String CLS_SUB_SOIL_REQ = "com.gtnewhorizon.cropsnh.farming.requirements.SubSoilRequirement";
+    public static final String CLS_MACHINE_GROWTH_REQ = "com.gtnewhorizon.cropsnh.farming.requirements.growth.MachineOnlyGrowthRequirement";
+    public static final String CLS_MIGRATED_GROWTH_REQ = "com.gtnewhorizon.cropsnh.farming.requirements.growth.MigratedCropGrowthRequirement";
+    public static final String CLS_MACHINE_BREED_REQ = "com.gtnewhorizon.cropsnh.farming.requirements.breeding.MachineOnlyBreedingRequirement";
+    public static final String CLS_CROPS_UTILS = "com.gtnewhorizon.cropsnh.utility.CropsNHUtils";
+    public static final String CLS_CROPS_BLOCKS = "com.gtnewhorizon.cropsnh.init.CropsNHBlocks";
+    public static final String CLS_ITEM_CROP_STICKS = "com.gtnewhorizon.cropsnh.items.blocks.ItemCropSticks";
+    public static final String CLS_ITEM_SPADE_NH = "com.gtnewhorizon.cropsnh.items.tools.ItemSpadeNH";
+    public static final String CLS_HARVEST_DROP_MOD = "com.gtnewhorizon.cropsnh.api.IHarvestDropModifier";
+    public static final String CLS_LEFT_CLICK_HANDLER = "com.gtnewhorizon.cropsnh.api.ICropLeftClickHandler";
+    public static final String CLS_PLANTING_RESULT = "com.gtnewhorizon.cropsnh.api.SeedPlantingResult";
+    public static final String CLS_CROP_MIGRATOR = "com.gtnewhorizon.cropsnh.crops.CropMigrator";
+    public static final String CLS_APACHE_PAIR = "org.apache.commons.lang3.tuple.Pair";
+
+    public static final String FLD_INSTANCE = "instance";
+    public static final String FLD_CROP_STICKS_ENUM = "cropSticks";
+    public static final String FLD_BLOCK_CROP_STICKS = "blockCropSticks";
+    public static final String FLD_DEFAULT_ANALYZED = "DEFAULT_ANALYZED";
+    public static final String FLD_TILLABLE_BLOCKS = "TILLABLE_BLOCKS";
+    public static final String ENUM_SUCCESS = "SUCCESS";
+
+    public static final String MTD_ITEM_GET = "get";
+    public static final String MTD_GET_ALL_CROPS = "getAllInRegistrationOrder";
+    public static final String MTD_IS_ALT_SEED = "isAlternateSeed";
+    public static final String MTD_GET_SEED_DATA = "getSeedData";
+    public static final String MTD_GET_CROP = "getCrop";
+    public static final String MTD_GET_STATS = "getStats";
+    public static final String MTD_GET_GROWTH = "getGrowth";
+    public static final String MTD_GET_GAIN = "getGain";
+    public static final String MTD_GET_RESISTANCE = "getResistance";
+    public static final String MTD_IS_ANALYZED = "isAnalyzed";
+    public static final String MTD_GET_ID = "getId";
+    public static final String MTD_GET_UNLOCALIZED_NAME = "getUnlocalizedName";
+    public static final String MTD_GET_UNLOCALISED_NAME = "getUnlocalisedName";
+    public static final String MTD_HIDE_FROM_NEI = "hideFromNEI";
+    public static final String MTD_GET_SOIL_TYPES = "getSoilTypes";
+    public static final String MTD_GET_GROWTH_REQS = "getGrowthRequirements";
+    public static final String MTD_GET_CROSSING_THRESHOLD = "getCrossingThreshold";
+    public static final String MTD_GET_BREEDING_THRESHOLD = "getBreedingThreshold";
+    public static final String MTD_GET_SEED_ITEM = "getSeedItem";
+    public static final String MTD_ONLY_PREVENTS_HARVEST = "onlyPreventsHarvest";
+    public static final String MTD_GET_DET_MUTATIONS_FOR_CROP = "getDeterministicMutationsForCrop";
+    public static final String MTD_GET_MUTATION_POOLS = "getMutationPools";
+    public static final String MTD_GET_PARENTS = "getParents";
+    public static final String MTD_GET_REQUIREMENTS = "getRequirements";
+    public static final String MTD_GET_MEMBERS = "getMembers";
+    public static final String MTD_IS_REGISTERED = "isRegistered";
+    public static final String MTD_SOIL_TOOLTIP = "getUnlocalizedItemTooltip";
+    public static final String MTD_CAN_GROW_SUBSOIL = "canGrow";
+    public static final String MTD_IS_VALID_SUBSOIL = "isValidSubSoil";
+    public static final String MTD_GET_DESC = "getDescription";
+    public static final String MTD_HAS_CROP = "hasCrop";
+    public static final String MTD_HAS_WEED = "hasWeed";
+    public static final String MTD_IS_SICK = "isSick";
+    public static final String MTD_IS_CROSS_CROP = "isCrossCrop";
+    public static final String MTD_SET_CROSS_CROP = "setCrossCrop";
+    public static final String MTD_CAN_UPGRADE = "canUpgrade";
+    public static final String MTD_IS_MATURE = "isMature";
+    public static final String MTD_CAN_HARVEST = "canHarvest";
+    public static final String MTD_ARE_REQS_MET = "areGrowthRequirementsMet";
+    public static final String MTD_GET_SEED = "getSeed";
+    public static final String MTD_TRY_PLANT_SEED = "tryPlantSeed";
+    public static final String MTD_PLAY_PLANT_SOUND = "playPlantingSound";
+    public static final String MTD_PLAY_CROSS_SOUND = "playCrossCropSound";
+    public static final String MTD_PLAY_HARVEST_SOUND = "playHarvestSound";
+    public static final String MTD_PLAY_REMOVAL_SOUND = "playCropRemovalSound";
+    public static final String MTD_UPDATE_STATE = "updateState";
+    public static final String MTD_HARVEST = "harvest";
+    public static final String MTD_SET_GROWTH_PROGRESS = "setGrowthProgress";
+    public static final String MTD_GET_SEED_DROP = "getSeedDrop";
+    public static final String MTD_CLEAR = "clear";
+    public static final String MTD_GET_BREAK_ITEMS = "getBreakItems";
+    public static final String MTD_ON_GROWTH_TICK = "onGrowthTick";
+    public static final String MTD_CURE_DISEASE = "cureDisease";
+    public static final String MTD_MODIFY_CROP_DROPS = "modifyCropDrops";
+    public static final String MTD_ON_LEFT_CLICK = "onLeftClick";
+    public static final String MTD_PAIR_LEFT = "getLeft";
+
+    private CropsNhReflectionSpec() {}
+}

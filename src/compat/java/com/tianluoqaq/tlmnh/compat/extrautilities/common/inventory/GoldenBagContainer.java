@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.compat.extrautilities.common.inventory;
 
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -14,7 +16,7 @@ import com.tianluoqaq.tlmnh.compat.extrautilities.ExtraUtilitiesCompat;
 
 import cpw.mods.fml.relauncher.Side;
 
-/** 黄金收纳袋（Golden Bag of Holding）适配：按根标签 items_0..items_53 直读写 54 格存储 */
+/** 黄金收纳袋（Golden Bag of Holding）适配：按根标签 items_0..items_53 直读写 54 格存储与取用 */
 public final class GoldenBagContainer {
 
     private static volatile Class<?> itemGoldenBagClass;
@@ -43,10 +45,20 @@ public final class GoldenBagContainer {
         return insertNbt(containerStack, input, simulate);
     }
 
+    public static ItemStack extract(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (maxCount <= 0 || filter == null || !isSupported(containerStack)) return null;
+        return extractNbt(containerStack, filter, scorer, maxCount, simulate);
+    }
+
     public static boolean forEachStored(ItemStack containerStack, Consumer<ItemStack> visitor) {
         if (!isSupported(containerStack)) return false;
         forEachStoredNbt(containerStack, visitor);
         return true;
+    }
+
+    public static boolean forEachExtractable(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        return forEachStored(containerStack, visitor);
     }
 
     public static ItemStack insertNbt(ItemStack containerStack, ItemStack input, boolean simulate) {
@@ -68,6 +80,20 @@ public final class GoldenBagContainer {
             writeSlots(root, slots);
         }
         return result.remaining;
+    }
+
+    public static ItemStack extractNbt(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (containerStack == null || containerStack.getTagCompound() == null || filter == null || maxCount <= 0) {
+            return null;
+        }
+        ItemStack[] slots = readSlots(containerStack.getTagCompound());
+        BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper
+            .extractFromArray(slots, GoldenBagTuning.SLOT_COUNT, filter, scorer, maxCount, simulate);
+        if (!simulate && result.changed) {
+            writeSlots(containerStack.getTagCompound(), slots);
+        }
+        return result.extracted;
     }
 
     public static void forEachStoredNbt(ItemStack containerStack, Consumer<ItemStack> visitor) {

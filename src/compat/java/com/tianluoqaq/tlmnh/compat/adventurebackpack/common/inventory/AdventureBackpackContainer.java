@@ -3,6 +3,8 @@ package com.tianluoqaq.tlmnh.compat.adventurebackpack.common.inventory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -20,7 +22,7 @@ import cpw.mods.fml.relauncher.Side;
 
 /**
  * 冒险者背包内部容器适配：
- * 规避空 stackTagCompound 调 markDirty 的空指针，并严格限制在 0..47 普通存储格内合并写入
+ * 规避空 stackTagCompound 调 markDirty 的空指针，并严格限制在 0..47 普通存储格内合并写入与取用
  */
 public final class AdventureBackpackContainer {
 
@@ -66,8 +68,40 @@ public final class AdventureBackpackContainer {
         }
     }
 
+    public static ItemStack extract(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (maxCount <= 0 || filter == null || !isSupported(containerStack)) return null;
+        if (containerStack.getTagCompound() == null) return null;
+        Api api = api();
+        if (api == null) return null;
+        try {
+            ItemStack target = simulate ? containerStack.copy() : containerStack;
+            IInventory inv = (IInventory) api.inventoryCtor.newInstance(target);
+            BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper.extractFromInventory(
+                inv,
+                AdventureBackpackTuning.STORAGE_SLOT_COUNT,
+                filter,
+                scorer,
+                maxCount,
+                simulate);
+            if (!simulate && result.changed) {
+                inv.markDirty();
+            }
+            return result.extracted;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            IntegrationGuard.report(Side.SERVER, AdventureBackpackInventoryIds.FEATURE, failure);
+            return null;
+        }
+    }
+
     public static boolean forEachStored(ItemStack containerStack, Consumer<ItemStack> visitor) {
         if (!isSupported(containerStack)) return false;
+        forEachStoredNbt(containerStack, visitor);
+        return true;
+    }
+
+    public static boolean forEachExtractable(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        if (!isSupported(containerStack) || api() == null) return false;
         forEachStoredNbt(containerStack, visitor);
         return true;
     }
@@ -92,6 +126,20 @@ public final class AdventureBackpackContainer {
             writeStorageSlots(root, slots);
         }
         return result.remaining;
+    }
+
+    public static ItemStack extractNbt(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (containerStack == null || containerStack.getTagCompound() == null || filter == null || maxCount <= 0) {
+            return null;
+        }
+        ItemStack[] slots = readStorageSlots(containerStack.getTagCompound());
+        BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper
+            .extractFromArray(slots, AdventureBackpackTuning.STORAGE_SLOT_COUNT, filter, scorer, maxCount, simulate);
+        if (!simulate && result.changed) {
+            writeStorageSlots(containerStack.getTagCompound(), slots);
+        }
+        return result.extracted;
     }
 
     public static void forEachStoredNbt(ItemStack containerStack, Consumer<ItemStack> visitor) {

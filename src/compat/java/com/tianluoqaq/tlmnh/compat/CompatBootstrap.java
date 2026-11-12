@@ -33,18 +33,25 @@ import com.tianluoqaq.tlmnh.compat.applecore.common.food.AppleCoreNutrition;
 import com.tianluoqaq.tlmnh.compat.battlegear2.Battlegear2Compat;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldAccess;
 import com.tianluoqaq.tlmnh.compat.battlegear2.common.shield.BattlegearShieldIds;
+import com.tianluoqaq.tlmnh.compat.cropsnh.common.breeding.CropsNhBreedingCompat;
 import com.tianluoqaq.tlmnh.compat.endlessids.common.storage.EndlessIdsSectionData;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.block.EtFuturumBlocks;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.EtFuturumEntities;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.entity.MaidVehiclePlatform;
+import com.tianluoqaq.tlmnh.compat.etfuturum.common.fall.EtFuturumBoatRescueCompat;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.item.EtFuturumItems;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.physics.NativeLiquidPhysics;
 import com.tianluoqaq.tlmnh.compat.etfuturum.common.sound.EtFuturumSounds;
+import com.tianluoqaq.tlmnh.compat.extrautilities.common.item.HealingAxeCompat;
 import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.physics.NativeArrowGravity;
+import com.tianluoqaq.tlmnh.compat.galacticraftcore.common.space.GalacticraftSpaceSurvivalCompat;
 import com.tianluoqaq.tlmnh.compat.gregtech.GregTechCompat;
 import com.tianluoqaq.tlmnh.compat.gregtech.common.combat.GregTechWeaponAdapter;
 import com.tianluoqaq.tlmnh.compat.gregtech.common.food.GregTechFoodAccess;
+import com.tianluoqaq.tlmnh.compat.gregtech.common.hazard.GregTechHotItemHazardCompat;
+import com.tianluoqaq.tlmnh.compat.gregtech.common.maintenance.GregTechMaintenanceHatchCompat;
 import com.tianluoqaq.tlmnh.compat.hodgepodge.common.storage.HodgepodgeWorldDataBarrier;
+import com.tianluoqaq.tlmnh.compat.hungeroverhaul.common.hunger.HungerOverhaulPolicyCompat;
 import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.MaidDoorAccess;
 import com.tianluoqaq.tlmnh.compat.malisisdoors.common.block.NativeDoorState;
 import com.tianluoqaq.tlmnh.compat.malisisdoors.common.combat.MalisisCombatGeometry;
@@ -64,7 +71,16 @@ public final class CompatBootstrap implements CompatRegistrar {
             .worldContent(new WorldContentImpl())
             .nutrition(new NutritionProviderImpl())
             .lifecycleStorage(new LifecycleStorageImpl())
-            .backpacks(new BackpackCompatDispatcher());
+            .backpacks(new BackpackCompatDispatcher())
+            .maintenanceHatch(GregTechMaintenanceHatchCompat.INSTANCE)
+            .cropsNhBreeding(CropsNhBreedingCompat.INSTANCE)
+            .hungerPolicy(HungerOverhaulPolicyCompat.INSTANCE)
+            .healingAxe(HealingAxeCompat.INSTANCE)
+            .hotItemHazard(GregTechHotItemHazardCompat.INSTANCE)
+            .specialArmor(SpecialArmorCompatDispatcher.INSTANCE)
+            .flightEquipment(FlightCompatDispatcher.INSTANCE)
+            .spaceSurvival(GalacticraftSpaceSurvivalCompat.INSTANCE)
+            .fallRescueBoat(EtFuturumBoatRescueCompat.INSTANCE);
     }
 
     private static final class ShieldProviderImpl implements ShieldCompatProvider {

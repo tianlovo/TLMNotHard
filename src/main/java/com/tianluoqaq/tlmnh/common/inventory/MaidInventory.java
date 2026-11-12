@@ -202,6 +202,10 @@ public final class MaidInventory implements IInventory {
         checkSlot(slot);
         if (stack == null) return false;
         if (slot < MaidInventoryLayout.ARMOR_START) return true;
+        if (slot == MaidInventoryLayout.ARMOR_START + MaidInventoryLayout.ARMOR_CHEST_OFFSET
+            && CompatServices.flightEquipment()
+                .isWearableFlightBauble(stack))
+            return true;
         return stack.getItem()
             .isValidArmor(
                 stack,

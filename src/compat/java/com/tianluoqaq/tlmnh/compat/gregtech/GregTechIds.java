@@ -5,7 +5,7 @@ public final class GregTechIds {
 
     public static final String PACKAGE = "gregtech";
     public static final String REVIEWED_VERSION = "5.09.54.265";
-    public static final String CAPABILITY_SUMMARY = "元生成近战武器能力审查与元生成食物效果解析";
+    public static final String CAPABILITY_SUMMARY = "元生成近战武器能力审查、元生成食物效果解析与普通维护仓检修";
 
     private GregTechIds() {}
 }

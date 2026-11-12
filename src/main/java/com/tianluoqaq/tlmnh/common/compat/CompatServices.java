@@ -5,12 +5,21 @@ import java.util.ServiceLoader;
 
 import com.tianluoqaq.tlmnh.common.ai.spi.DoorCompatProvider;
 import com.tianluoqaq.tlmnh.common.ai.spi.WorldExtraContentProvider;
+import com.tianluoqaq.tlmnh.common.combat.spi.HealingAxeCompatProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.ShieldCompatProvider;
 import com.tianluoqaq.tlmnh.common.combat.spi.WeaponCompatProvider;
 import com.tianluoqaq.tlmnh.common.inventory.spi.BackpackContainerCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.armor.spi.SpecialArmorCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.fall.spi.FallRescueBoatCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.flight.spi.FlightEquipmentCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.hazard.spi.HotItemHazardCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.hunger.spi.HungerPolicyCompatProvider;
+import com.tianluoqaq.tlmnh.common.life.space.spi.SpaceSurvivalCompatProvider;
 import com.tianluoqaq.tlmnh.common.life.spi.NutritionCompatProvider;
 import com.tianluoqaq.tlmnh.common.lifecycle.spi.LifecycleStorageCompatProvider;
+import com.tianluoqaq.tlmnh.common.work.breeding.spi.CropsNhBreedingCompatProvider;
+import com.tianluoqaq.tlmnh.common.work.maintenance.spi.MaintenanceHatchCompatProvider;
 
 /**
  * 双端共享的第三方适配入口。
@@ -26,6 +35,15 @@ public final class CompatServices {
     private static NutritionCompatProvider nutrition = NutritionCompatProvider.NOOP;
     private static LifecycleStorageCompatProvider lifecycleStorage = LifecycleStorageCompatProvider.NOOP;
     private static BackpackContainerCompatProvider backpacks = BackpackContainerCompatProvider.NOOP;
+    private static MaintenanceHatchCompatProvider maintenanceHatch = MaintenanceHatchCompatProvider.NOOP;
+    private static CropsNhBreedingCompatProvider cropsNhBreeding = CropsNhBreedingCompatProvider.NOOP;
+    private static HungerPolicyCompatProvider hungerPolicy = HungerPolicyCompatProvider.NOOP;
+    private static HealingAxeCompatProvider healingAxe = HealingAxeCompatProvider.NOOP;
+    private static HotItemHazardCompatProvider hotItemHazard = HotItemHazardCompatProvider.NOOP;
+    private static SpecialArmorCompatProvider specialArmor = SpecialArmorCompatProvider.NOOP;
+    private static FlightEquipmentCompatProvider flightEquipment = FlightEquipmentCompatProvider.NOOP;
+    private static SpaceSurvivalCompatProvider spaceSurvival = SpaceSurvivalCompatProvider.NOOP;
+    private static FallRescueBoatCompatProvider fallRescueBoat = FallRescueBoatCompatProvider.NOOP;
     private static volatile boolean frozen;
     private static volatile int registeredCount;
 
@@ -89,7 +107,85 @@ public final class CompatServices {
         return backpacks;
     }
 
+    public static MaintenanceHatchCompatProvider maintenanceHatch() {
+        return maintenanceHatch;
+    }
+
+    public static CropsNhBreedingCompatProvider cropsNhBreeding() {
+        return cropsNhBreeding;
+    }
+
+    public static HungerPolicyCompatProvider hungerPolicy() {
+        return hungerPolicy;
+    }
+
+    public static HealingAxeCompatProvider healingAxe() {
+        return healingAxe;
+    }
+
+    public static HotItemHazardCompatProvider hotItemHazard() {
+        return hotItemHazard;
+    }
+
+    public static SpecialArmorCompatProvider specialArmor() {
+        return specialArmor;
+    }
+
+    public static FlightEquipmentCompatProvider flightEquipment() {
+        return flightEquipment;
+    }
+
+    public static SpaceSurvivalCompatProvider spaceSurvival() {
+        return spaceSurvival;
+    }
+
+    public static FallRescueBoatCompatProvider fallRescueBoat() {
+        return fallRescueBoat;
+    }
+
     public static final class Sink {
+
+        public Sink hungerPolicy(HungerPolicyCompatProvider provider) {
+            ensureMutable();
+            hungerPolicy = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink healingAxe(HealingAxeCompatProvider provider) {
+            ensureMutable();
+            healingAxe = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink hotItemHazard(HotItemHazardCompatProvider provider) {
+            ensureMutable();
+            hotItemHazard = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink specialArmor(SpecialArmorCompatProvider provider) {
+            ensureMutable();
+            specialArmor = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink flightEquipment(FlightEquipmentCompatProvider provider) {
+            ensureMutable();
+            flightEquipment = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink spaceSurvival(SpaceSurvivalCompatProvider provider) {
+            ensureMutable();
+            spaceSurvival = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink fallRescueBoat(FallRescueBoatCompatProvider provider) {
+            ensureMutable();
+            fallRescueBoat = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
 
         private Sink() {}
 
@@ -142,6 +238,18 @@ public final class CompatServices {
         public Sink backpacks(BackpackContainerCompatProvider provider) {
             ensureMutable();
             backpacks = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink maintenanceHatch(MaintenanceHatchCompatProvider provider) {
+            ensureMutable();
+            maintenanceHatch = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
+            return this;
+        }
+
+        public Sink cropsNhBreeding(CropsNhBreedingCompatProvider provider) {
+            ensureMutable();
+            cropsNhBreeding = Objects.requireNonNull(provider, CommonCompatIds.ID_PROVIDER);
             return this;
         }
     }

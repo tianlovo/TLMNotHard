@@ -874,6 +874,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     private boolean teleportToOwner(Owner value, BooleanSupplier authorized, boolean enhanced, boolean requireAir) {
         var player = owner(value).player;
+        if (maid.getFlightController()
+            .shouldFollowFlyingOwner(maid, player)) return false;
         navigationLease();
         teleportAttempts = FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
         var region = new MaidNativePathRegion(world);

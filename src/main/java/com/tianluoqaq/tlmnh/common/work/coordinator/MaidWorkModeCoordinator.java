@@ -28,10 +28,8 @@ import com.tianluoqaq.tlmnh.common.work.notify.MaidMissingConditionNotifier;
  */
 public final class MaidWorkModeCoordinator {
 
-    public static final MaidBehaviorId MAINTENANCE_MODULE_ID = MaidBehaviorId
-        .builtin(MaintenanceWorkIds.MODULE_PATH);
-    public static final MaidBehaviorId BREEDING_MODULE_ID = MaidBehaviorId
-        .builtin(BreedingWorkIds.MODULE_PATH);
+    public static final MaidBehaviorId MAINTENANCE_MODULE_ID = MaidBehaviorId.builtin(MaintenanceWorkIds.MODULE_PATH);
+    public static final MaidBehaviorId BREEDING_MODULE_ID = MaidBehaviorId.builtin(BreedingWorkIds.MODULE_PATH);
 
     private final MaintenanceHatchWorkController maintenance = new MaintenanceHatchWorkController();
     private final CropsNhBreedingWorkController breeding = new CropsNhBreedingWorkController();
@@ -75,7 +73,10 @@ public final class MaidWorkModeCoordinator {
     }
 
     public void offerEnhanced(EntityMaid maid, MaidIntentFrame frame) {
-        if (maid == null || frame == null || !maid.getTask().isWorkTask() || !isInWorkSchedule(maid)) {
+        if (maid == null || frame == null
+            || !maid.getTask()
+                .isWorkTask()
+            || !isInWorkSchedule(maid)) {
             syncTaskResetIfChanged(maid);
             return;
         }
@@ -103,7 +104,8 @@ public final class MaidWorkModeCoordinator {
     }
 
     public boolean tickStandalone(EntityMaid maid) {
-        if (maid == null || !maid.getTask().isWorkTask() || !isInWorkSchedule(maid)) {
+        if (maid == null || !maid.getTask()
+            .isWorkTask() || !isInWorkSchedule(maid)) {
             syncTaskResetIfChanged(maid);
             return false;
         }

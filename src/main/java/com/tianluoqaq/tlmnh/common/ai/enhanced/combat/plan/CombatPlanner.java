@@ -937,7 +937,7 @@ public final class CombatPlanner {
     }
 
     private static Candidate attack(CombatSnapshot snapshot, Target target, Weapon weapon) {
-        double distance = snapshot.self.position.distance(target.position), damage = physical(weapon);
+        double distance = snapshot.self.position.distance(target.position), damage = physical(weapon, target);
         int cooldown = remainingCooldown(snapshot);
         double delay = weapon.profile.bow()
             ? Math.max(
@@ -1032,7 +1032,7 @@ public final class CombatPlanner {
             || target.lastOwnHitAt != Long.MIN_VALUE && snapshot.tick >= target.lastOwnHitAt
                 && snapshot.tick - target.lastOwnHitAt < CombatPlanTuning.MIN_LAST_OWN_HIT_AT_THRESHOLD)
             return false;
-        double normal = physical(weapon),
+        double normal = physical(weapon, target),
             critical = weapon.profile.estimatedMeleePhysical * weapon.profile.criticalMultiplier
                 + weapon.profile.sharpness * CombatPlanTuning.COMBAT_PLANNER_JUMP_USEFUL_FACTOR;
         return Math.min(target.health, critical) - Math.min(target.health, normal) > Math.max(
@@ -1287,7 +1287,7 @@ public final class CombatPlanner {
                             CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
                     quota)) continue;
                 // 只估计有机会命中的收益，当前完整弹道仍由真实放箭入口重验
-                double amount = physical(candidate.weapon);
+                double amount = physical(candidate.weapon, candidate.target);
                 if (candidate.macro == Macro.JUMP_STRIKE && descending && !hit)
                     amount += candidate.weapon.profile.estimatedMeleePhysical
                         * (candidate.weapon.profile.criticalMultiplier - 1);
@@ -1519,7 +1519,10 @@ public final class CombatPlanner {
             : (int) Math.min(Integer.MAX_VALUE / CombatPlanTuning.COMBAT_PLANNER_MIN_FIRST_LIMIT, remaining);
     }
 
-    private static double physical(Weapon weapon) {
+    private static double physical(Weapon weapon, Target target) {
+        if (weapon.profile.family == MaidWeaponProfile.Family.HEALING_AXE)
+            return target != null && target.healingAxeDamageTarget ? weapon.profile.estimatedMeleePhysical
+                : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         return weapon.profile.bow()
             ? CombatPlanTuning.COMBAT_PLANNER_PHYSICAL_PARAM
                 + weapon.profile.power * CombatPlanTuning.COMBAT_PLANNER_PHYSICAL_FACTOR

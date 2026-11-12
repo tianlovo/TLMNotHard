@@ -161,11 +161,7 @@ public final class MaintenanceBellData {
         if (removed) {
             if (updated.isEmpty()) {
                 itemTag.removeTag(BellNbtKeys.ROOT_MAINTENANCE);
-                return new ToggleResult(
-                    ToggleOutcome.CLEARED_ALL,
-                    BellTuning.ZERO,
-                    BellTuning.ZERO,
-                    BellTuning.ZERO);
+                return new ToggleResult(ToggleOutcome.CLEARED_ALL, BellTuning.ZERO, BellTuning.ZERO, BellTuning.ZERO);
             }
             writeToRoot(itemTag, worldDimension, updated);
             int[] spans = computeSpans(updated);

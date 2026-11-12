@@ -66,6 +66,10 @@ public interface ClientDevelopmentHooks {
 
     default void heldGpuBeforeMaidBody(EntityMaid maid, BuiltinMaidModel model) {}
 
+    default void bellOverlayBeforeDraw() {}
+
+    default void bellOverlayAfterDraw() {}
+
     default boolean heldGpuIsCapturing(EntityMaid maid) {
         return false;
     }

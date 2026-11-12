@@ -14,9 +14,6 @@ import java.util.Locale;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
@@ -32,8 +29,12 @@ import com.tianluoqaq.tlmnh.client.gui.bauble.MaidBaubleGuiIds;
 import com.tianluoqaq.tlmnh.client.gui.bauble.MaidBaubleGuiLayout;
 import com.tianluoqaq.tlmnh.client.gui.config.MaidClientConfigGui;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidAtlasButton;
+import com.tianluoqaq.tlmnh.client.gui.work.MaidWorkGuiIds;
+import com.tianluoqaq.tlmnh.client.gui.work.MaidWorkGuiLayout;
+import com.tianluoqaq.tlmnh.client.gui.work.MaidWorkTaskMenu;
 import com.tianluoqaq.tlmnh.client.render.MaidGuiPreview;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.container.MaidContainerProtocol;
 import com.tianluoqaq.tlmnh.common.life.MaidLifeRules;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
@@ -49,8 +50,6 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     private static final ResourceLocation SIDE = texture("maid_gui_side");
     private static final ResourceLocation BUTTON = texture("maid_gui_button");
     private static final ResourceLocation TASK = texture("maid_gui_task");
-    private static final String[] TASK_KEYS = { "idle", "attack", "ranged_attack" };
-    private static final Item[] TASK_ICONS = { Items.feather, Items.diamond_sword, Items.bow };
     private static final int TASK_SWITCH = 100, TASK_CLOSE = 101, SCHEDULE = 102;
     private static final int SKIN = 103, INFO = 104, SOUND = 105, RIDE = 106, DOWNLOAD = 107;
     private static final int MAIN_TAB = 108, TASK_TAB = 109, CONFIG_TAB = 110, BOOK = 111, GLOBAL = 112, BAUBLE = 115;
@@ -95,7 +94,21 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         add(TASK_CLOSE, -19, 9, 13, 13, TASK, 127, 0, 14, 0, "close");
         add(113, -89, 9, 16, 13, TASK, 110, 0, 14, 0, "previous");
         add(114, -72, 9, 16, 13, TASK, 93, 0, 14, 0, "next");
-        for (int task = 0; task < 3; task++) add(task, -89, 23 + 19 * task, 83, 19, TASK, 93, 28, 20, 0, "");
+        int taskRow = 0;
+        for (var task : MaidWorkTaskMenu.tasks(false)) {
+            add(
+                MaidWorkTaskMenu.action(task),
+                MaidWorkGuiLayout.ROW_LEFT,
+                MaidWorkGuiLayout.ROW_TOP + MaidWorkGuiLayout.ROW_HEIGHT * taskRow++,
+                MaidWorkGuiLayout.ROW_WIDTH,
+                MaidWorkGuiLayout.ROW_HEIGHT,
+                TASK,
+                MaidWorkGuiLayout.ROW_TEXTURE_U,
+                MaidWorkGuiLayout.ROW_TEXTURE_V,
+                MaidWorkGuiLayout.ROW_HOVER_OFFSET,
+                0,
+                "");
+        }
         refreshButtons();
         initAdditionWidgets();
     }
@@ -128,12 +141,15 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
     }
 
     private void refreshButtons() {
+        var tasks = MaidWorkTaskMenu.tasks(maid.isUnifiedCombat());
         for (var raw : buttonList) {
             if (!(raw instanceof MaidAtlasButton button)) continue;
-            button.visible = button.id <= MaidContainerProtocol.ACTION_RANGED || button.id == TASK_CLOSE
-                || button.id == 113
-                || button.id == 114 ? taskListOpen : true;
-            if (maid.isUnifiedCombat() && button.id == MaidContainerProtocol.ACTION_RANGED) button.visible = false;
+            var task = MaidWorkTaskMenu.task(button.id);
+            button.visible = task == null || tasks.contains(task);
+            if (task != null || button.id == TASK_CLOSE || button.id == 113 || button.id == 114)
+                button.visible &= taskListOpen;
+            if (task != null && button.visible) button.yPosition = guiTop + MaidWorkGuiLayout.ROW_TOP
+                + MaidWorkGuiLayout.ROW_HEIGHT * tasks.indexOf(task);
             if (button.id == BAUBLE && (isConfigPage() || isTaskConfigPage())) button.visible = false;
             button.enabled = switch (button.id) {
                 case DOWNLOAD, BOOK, 113, 114 -> false;
@@ -223,6 +239,8 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
             case "idle" -> MaidContainerProtocol.ACTION_IDLE;
             case "attack" -> MaidContainerProtocol.ACTION_ATTACK;
             case "ranged" -> MaidContainerProtocol.ACTION_RANGED;
+            case MaidWorkGuiIds.ACTION_MAINTENANCE -> MaidContainerProtocol.ACTION_MAINTENANCE_HATCH;
+            case MaidWorkGuiIds.ACTION_BREEDING -> MaidContainerProtocol.ACTION_CROPSNH_BREEDING;
             case "schedule" -> SCHEDULE;
             case "home_toggle" -> MaidContainerProtocol.ACTION_HOME;
             case "pickup" -> MaidContainerProtocol.ACTION_PICKUP_ALL;
@@ -306,16 +324,19 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         lastMouseY = mouseY;
         super.drawScreen(mouseX, mouseY, partialTick);
         drawCenteredString(fontRendererObj, "1.7.10-" + Tags.VERSION, guiLeft + 40, guiTop - 4, 0xAAAAAA);
-        drawTask(
-            maid.getTask()
-                .ordinal(),
-            guiLeft + 6,
-            guiTop + 161,
-            guiLeft + 28,
-            guiTop + 165,
-            true);
-        if (taskListOpen) for (int task = 0; task < (maid.isUnifiedCombat() ? 2 : 3); task++)
-            drawTask(task, guiLeft - 87, guiTop + 25 + 19 * task, guiLeft - 66, guiTop + 29 + 19 * task, false);
+        drawTask(maid.getTask(), guiLeft + 6, guiTop + 161, guiLeft + 28, guiTop + 165, true);
+        if (taskListOpen) {
+            var tasks = MaidWorkTaskMenu.tasks(maid.isUnifiedCombat());
+            for (int row = 0; row < tasks.size(); row++) {
+                drawTask(
+                    tasks.get(row),
+                    guiLeft + MaidWorkGuiLayout.ICON_LEFT,
+                    guiTop + MaidWorkGuiLayout.ICON_TOP + MaidWorkGuiLayout.ROW_HEIGHT * row,
+                    guiLeft + MaidWorkGuiLayout.TITLE_LEFT,
+                    guiTop + MaidWorkGuiLayout.TITLE_TOP + MaidWorkGuiLayout.ROW_HEIGHT * row,
+                    false);
+            }
+        }
         drawEffectInfo();
         renderAddition(partialTick, mouseX, mouseY);
         for (var raw : buttonList) {
@@ -421,23 +442,27 @@ public abstract class AbstractMaidContainerGui<T extends AbstractMaidContainer> 
         return (active ? "§a█ " : "§8█ ") + time + " " + text("gui.touhou_little_maid.activity." + activity);
     }
 
-    private void drawTask(int task, int x, int y, int textX, int textY, boolean wrap) {
+    private void drawTask(MaidTask task, int x, int y, int textX, int textY, boolean wrap) {
         RenderHelper.enableGUIStandardItemLighting();
         itemRender
-            .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), new ItemStack(TASK_ICONS[task]), x, y);
+            .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), MaidWorkTaskMenu.icon(task), x, y);
         RenderHelper.disableStandardItemLighting();
-        String title = text(
-            maid.isUnifiedCombat() && task == MaidContainerProtocol.ACTION_ATTACK
-                ? "gui.tlmnh.task.touhou_little_maid:attack"
-                : "task.touhou_little_maid." + TASK_KEYS[task]);
-        if (wrap) fontRendererObj.drawSplitString(title, textX, textY, 42, 0x333333);
-        else fontRendererObj.drawString(title, textX, textY, 0x333333);
+        String title = text(MaidWorkTaskMenu.titleKey(task, maid.isUnifiedCombat()));
+        if (wrap) fontRendererObj
+            .drawSplitString(title, textX, textY, MaidWorkGuiLayout.MAIN_TITLE_WIDTH, MaidWorkGuiLayout.TEXT_COLOR);
+        else fontRendererObj.drawString(
+            fontRendererObj.trimStringToWidth(title, MaidWorkGuiLayout.TITLE_WIDTH),
+            textX,
+            textY,
+            MaidWorkGuiLayout.TEXT_COLOR);
     }
 
     private List<String> tooltip(MaidAtlasButton button) {
         if (button.id == BAUBLE)
             return Collections.singletonList(text(isBaublePage() ? MaidBaubleGuiIds.CLOSE : MaidBaubleGuiIds.OPEN));
-        if (button.id <= MaidContainerProtocol.ACTION_RANGED) return Collections.emptyList();
+        var task = MaidWorkTaskMenu.task(button.id);
+        if (task != null)
+            return Collections.singletonList(text(MaidWorkTaskMenu.titleKey(task, maid.isUnifiedCombat())));
         var lines = new ArrayList<String>();
         if (button.id == TASK_SWITCH || button.id == TASK_CLOSE || button.id == 113 || button.id == 114) {
             String taskKey = switch (button.id) {

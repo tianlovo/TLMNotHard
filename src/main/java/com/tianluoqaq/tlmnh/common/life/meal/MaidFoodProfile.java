@@ -26,6 +26,8 @@ import cpw.mods.fml.common.ObfuscationReflectionHelper;
 public final class MaidFoodProfile {
 
     public final float total;
+    public final int hunger;
+    public final float saturationModifier;
     public final int duration;
     private ItemStack container;
     private boolean milk;
@@ -33,6 +35,8 @@ public final class MaidFoodProfile {
     private final List<Effect> effects = new ArrayList<>();
 
     private MaidFoodProfile(ItemStack stack, int hunger, float saturation) {
+        this.hunger = hunger;
+        this.saturationModifier = saturation;
         total = hunger + hunger * saturation * MaidMealTuning.FOOD_PROFILE_TOTAL;
         duration = stack.getMaxItemUseDuration();
     }

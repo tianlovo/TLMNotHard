@@ -13,8 +13,10 @@ import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidMealConfig;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.protection.recovery.ProtectedItemCodec;
 
@@ -23,10 +25,11 @@ public final class MaidMealController {
 
     private final EntityMaid maid;
     private MaidItemUseState.Lease lease;
+    private MaidNestedMealExchange nestedExchange;
     private MaidFoodProfile profile;
     private ItemStack food, expected, displaced, displacedExpected;
     private int handSlot, sourceSlot = MaidMealTuning.UNSET_OR_NOT_FOUND, remaining, nextCheck;
-    private boolean breathing, modernMeal;
+    private boolean breathing, modernMeal, startEffectApplied, healingMeal;
 
     public MaidMealController(EntityMaid maid) {
         this.maid = maid;
@@ -51,6 +54,19 @@ public final class MaidMealController {
             if (--remaining <= 0) finish();
             return;
         }
+        if (maid.isTamed() && maid.getHungerState()
+            .isHungry()
+            && maid.getItemUseState()
+                .peek() == null
+            && !maid.getBrainCoordinator()
+                .getBreathController()
+                .isActive()) {
+            if (tryStartMeal(
+                false,
+                () -> maid.getHungerState()
+                    .isHungry()))
+                return;
+        }
         var policy = maid.getBrainCoordinator()
             .peekPolicyRuntime();
         // 现代组件由对应行为显式开始物品使用，此处只推进已持有的使用生命周期
@@ -63,8 +79,11 @@ public final class MaidMealController {
         nextCheck = MaidMealTuning.MEAL_CONTROLLER_NEXT_CHECK + maid.getRNG()
             .nextInt(MaidMealTuning.MEAL_CONTROLLER_NEXT_CHECK);
         boolean healing = maid.getMaxHealth() - maid.getHealth() >= MaidMealTuning.FOOD_PROFILE_TOTAL;
-        if (!healing && !maid.getFavorabilityManager()
-            .canAdd(Type.WORK_MEAL.getTypeName())) return;
+        if (!healing && !maid.getHungerState()
+            .isHungry()
+            && !maid.getFavorabilityManager()
+                .canAdd(Type.WORK_MEAL.getTypeName()))
+            return;
         for (int slot = MaidInventoryLayout.MAIN_HAND; slot <= MaidInventoryLayout.OFF_HAND; slot++)
             if (start(slot, healing)) return;
         for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++) if (start(slot, healing)) return;
@@ -119,11 +138,36 @@ public final class MaidMealController {
         if (!current.getAsBoolean()) return false;
         for (int slot = 0; slot < MaidInventoryLayout.BACKPACK_SIZE; slot++)
             if (startModernMeal(slot, healing, current)) return true;
+        if (current.getAsBoolean()) {
+            int unpacked = com.tianluoqaq.tlmnh.common.life.MaidSurvivalInventory
+                .unpackToFreeSlot(maid, stack -> mealProfile(stack, healing) != null);
+            if (unpacked >= 0) return startModernMeal(unpacked, healing, current);
+            var exchange = MaidNestedMealExchange.open(maid, stack -> mealProfile(stack, healing) != null);
+            if (exchange != null) {
+                nestedExchange = exchange;
+                if (startModernMeal(exchange.handSlot, healing, current)) return true;
+                exchange.restore(maid);
+                nestedExchange = null;
+            }
+        }
         return false;
     }
 
+    public boolean canEatMeal(ItemStack stack, boolean healing) {
+        return mealProfile(stack, healing) != null;
+    }
+
     private MaidFoodProfile mealProfile(ItemStack stack, boolean healing) {
-        return stack == null || MaidMealConfig.blocked(stack, healing) ? null : MaidFoodProfile.inspect(stack);
+        if (stack == null || MaidMealConfig.blocked(stack, healing) || !healing && isReservedPlantingInput(stack))
+            return null;
+        return MaidFoodProfile.inspect(stack);
+    }
+
+    private boolean isReservedPlantingInput(ItemStack stack) {
+        // 育种任务的真实种子与替代果实留作播种，紧急恢复另走 healing/breathing 分支
+        return stack != null && maid.getTask() == MaidTask.CROPSNH_BREEDING
+            && CompatServices.cropsNhBreeding()
+                .inspectSeedOrAlternate(stack) != null;
     }
 
     private boolean startModernMeal(int slot, boolean healing, BooleanSupplier current) {
@@ -151,7 +195,7 @@ public final class MaidMealController {
     private boolean start(int slot, boolean healing, boolean forBreathing, BooleanSupplier current) {
         var inventory = maid.getMaidInventory();
         var stack = inventory.getStackInSlot(slot);
-        if (stack == null || !forBreathing && MaidMealConfig.blocked(stack, healing)) return false;
+        if (stack == null || !forBreathing && !canEatMeal(stack, healing)) return false;
         var selected = forBreathing ? MaidFoodProfile.inspectBreathing(stack) : MaidFoodProfile.inspect(stack);
         if (selected == null || !current.getAsBoolean() || inventory.getStackInSlot(slot) != stack) return false;
         handSlot = slot;
@@ -169,7 +213,9 @@ public final class MaidMealController {
         expected = stack.copy();
         profile = selected;
         breathing = forBreathing;
+        healingMeal = healing;
         remaining = profile.duration;
+        startEffectApplied = false;
         lease = maid.getItemUseState()
             .tryAcquire(
                 this,
@@ -187,6 +233,8 @@ public final class MaidMealController {
     }
 
     private void applyStartEffect(MaidFoodProfile selected, boolean healing) {
+        if (startEffectApplied) return;
+        startEffectApplied = true;
         if (healing) {
             if (maid.getRNG()
                 .nextInt(MaidMealTuning.MEAL_CONTROLLER_NEXT_INT_FIRST_PARAM) < selected.total)
@@ -213,8 +261,10 @@ public final class MaidMealController {
     }
 
     private boolean valid() {
-        return permitted(breathing) && maid.getMaidInventory()
-            .getStackInSlot(handSlot) == food && ItemStack.areItemStacksEqual(food, expected);
+        return permitted(breathing) && (breathing || healingMeal || !isReservedPlantingInput(food))
+            && maid.getMaidInventory()
+                .getStackInSlot(handSlot) == food
+            && ItemStack.areItemStacksEqual(food, expected);
     }
 
     private void finish() {
@@ -224,7 +274,13 @@ public final class MaidMealController {
         }
         var inventory = maid.getMaidInventory();
         var completed = profile;
+        boolean nourishes = !breathing;
         food.stackSize--;
+        if (nourishes) {
+            maid.getHungerState()
+                .addStats(completed.hunger, completed.saturationModifier);
+            maid.syncHunger();
+        }
         expected.stackSize--;
         if (food.stackSize == 0) inventory.setInventorySlotContents(handSlot, null);
         cancel();
@@ -257,11 +313,17 @@ public final class MaidMealController {
                 inventory.setInventorySlotContents(handSlot, displaced);
             }
         }
+        if (nestedExchange != null) {
+            var exchange = nestedExchange;
+            nestedExchange = null;
+            exchange.restore(maid);
+        }
         sourceSlot = MaidMealTuning.UNSET_OR_NOT_FOUND;
         food = expected = displaced = displacedExpected = null;
         profile = null;
         remaining = MaidMealTuning.FOOD_PROFILE_INSPECT_SAFE_ZERO_BASE;
         breathing = false;
+        healingMeal = false;
         modernMeal = false;
         inventory.markDirty();
     }

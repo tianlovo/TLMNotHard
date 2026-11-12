@@ -19,6 +19,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Work;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
@@ -171,6 +172,8 @@ public final class EquipmentEpoch {
         if (stack == null || profile == null || !profile.supported()) return false;
         var item = stack.getItem();
         return switch (profile.family) {
+            case HEALING_AXE -> CompatServices.healingAxe()
+                .isHealingAxe(stack);
             case VANILLA_BOW -> item == Items.bow && item.getClass() == ItemBow.class;
             case VANILLA_SWORD -> item.getClass() == ItemSword.class
                 && (item == Items.wooden_sword || item == Items.stone_sword

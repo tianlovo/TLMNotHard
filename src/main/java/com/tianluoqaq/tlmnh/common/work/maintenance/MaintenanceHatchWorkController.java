@@ -51,7 +51,8 @@ public final class MaintenanceHatchWorkController {
 
     public boolean hasActiveBellDomain(EntityMaid maid) {
         MaintenanceBellData bell = findEquippedBellData(maid);
-        return bell != null && bell.isBound() && maid.worldObj != null
+        return bell != null && bell.isBound()
+            && maid.worldObj != null
             && bell.dimension() == maid.worldObj.provider.dimensionId;
     }
 
@@ -112,7 +113,8 @@ public final class MaintenanceHatchWorkController {
             }
         }
 
-        ItemStack offhand = maid.getMaidInventory().getStackInSlot(MaidInventoryLayout.OFF_HAND);
+        ItemStack offhand = maid.getMaidInventory()
+            .getStackInSlot(MaidInventoryLayout.OFF_HAND);
         if (provider == null || !provider.isValidMaintenanceWrench(offhand)) {
             missing.add(MissingConditionEntry.of(MissingConditionCode.MISSING_GT_WRENCH_OFFHAND));
         }
@@ -125,20 +127,14 @@ public final class MaintenanceHatchWorkController {
         double tz = currentTarget.z + MaintenanceWorkTuning.BLOCK_CENTER_OFFSET;
         double distSq = maid.getDistanceSq(tx, ty, tz);
         if (distSq <= MaintenanceWorkTuning.REPAIR_REACH_DIST_SQ) {
-            maid.getNavigator().clearPathEntity();
-            maid.getLookHelper().setLookPosition(
-                tx,
-                ty,
-                tz,
-                MaintenanceWorkTuning.LOOK_SPEED,
-                maid.getVerticalFaceSpeed());
+            maid.getNavigator()
+                .clearPathEntity();
+            maid.getLookHelper()
+                .setLookPosition(tx, ty, tz, MaintenanceWorkTuning.LOOK_SPEED, maid.getVerticalFaceSpeed());
             if (now >= repairCooldownUntil) {
                 maid.swingItem();
-                provider.performZeroSideEffectMaintenance(
-                    maid.worldObj,
-                    currentTarget.x,
-                    currentTarget.y,
-                    currentTarget.z);
+                provider
+                    .performZeroSideEffectMaintenance(maid.worldObj, currentTarget.x, currentTarget.y, currentTarget.z);
                 repairCooldownUntil = now + MaintenanceWorkTuning.REPAIR_COOLDOWN_TICKS;
                 currentTarget = null;
                 lastScanWorldTime = MaintenanceWorkTuning.UNSET_TIME;
@@ -182,9 +178,11 @@ public final class MaintenanceHatchWorkController {
     }
 
     private void requestStepwiseMove(EntityMaid maid, double targetX, double targetY, double targetZ, long now) {
-        if (now - lastNavWorldTime < MaintenanceWorkTuning.NAV_REFRESH_TICKS
-            && maid.getNavigator().getPath() != null
-            && !maid.getNavigator().getPath().isFinished()) {
+        if (now - lastNavWorldTime < MaintenanceWorkTuning.NAV_REFRESH_TICKS && maid.getNavigator()
+            .getPath() != null
+            && !maid.getNavigator()
+                .getPath()
+                .isFinished()) {
             return;
         }
         lastNavWorldTime = now;
@@ -224,10 +222,14 @@ public final class MaintenanceHatchWorkController {
     private static boolean isStandable(World world, int x, int y, int z) {
         if (y <= MaintenanceWorkTuning.ONE) return false;
         Block below = world.getBlock(x, y - MaintenanceWorkTuning.ONE, z);
-        if (below == null || !below.getMaterial().isSolid()) return false;
+        if (below == null || !below.getMaterial()
+            .isSolid()) return false;
         Block feet = world.getBlock(x, y, z);
         Block head = world.getBlock(x, y + MaintenanceWorkTuning.ONE, z);
-        return !feet.getMaterial().blocksMovement() && !head.getMaterial().blocksMovement();
+        return !feet.getMaterial()
+            .blocksMovement()
+            && !head.getMaterial()
+                .blocksMovement();
     }
 
     private static MaintenanceTarget selectBestTarget(EntityMaid maid, List<MaintenanceTarget> candidates) {
@@ -250,7 +252,9 @@ public final class MaintenanceHatchWorkController {
     public static ItemStack findEquippedBellStack(EntityMaid maid) {
         if (maid == null) return null;
         MaidBaubleInventory baubles = maid.getMaidBaubleInventory();
-        int unlocked = MaidBaubleLayout.unlockedSlots(maid.getFavorabilityManager().getLevel());
+        int unlocked = MaidBaubleLayout.unlockedSlots(
+            maid.getFavorabilityManager()
+                .getLevel());
         int limit = Math.min(unlocked, baubles.getSizeInventory());
         for (int i = 0; i < limit; i++) {
             ItemStack s = baubles.getStackInSlot(i);

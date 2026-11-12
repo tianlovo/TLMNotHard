@@ -625,6 +625,8 @@ public final class CombatObservation {
         tracked.width = entity.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH;
         tracked.height = entity.height;
         tracked.swinging = entity.isSwingInProgress;
+        tracked.healingAxeDamageTarget = entity instanceof net.minecraft.entity.EntityLiving && entity.isEntityUndead()
+            && !(entity instanceof net.minecraft.entity.monster.EntityZombie zombie && zombie.isVillager());
         ItemStack held = entity.getHeldItem();
         tracked.ranged = held != null && held.getItem() instanceof ItemBow;
         tracked.explosive = entity instanceof EntityCreeper;
@@ -776,7 +778,8 @@ public final class CombatObservation {
                     target.ranged,
                     target.explosive,
                     target.attackingOwner,
-                    CombatSnapshot.DamageSource.GENERIC_PRIOR));
+                    CombatSnapshot.DamageSource.GENERIC_PRIOR,
+                    target.healingAxeDamageTarget));
         }
         List<Projectile> pureArrows = new ArrayList<>();
         for (ProjectileTrack arrow : arrows.values())
@@ -1420,7 +1423,7 @@ public final class CombatObservation {
         long observedAt = Long.MIN_VALUE;
         float health;
         double width, height;
-        boolean visible, swinging, ranged, explosive, attackingOwner;
+        boolean visible, swinging, ranged, explosive, attackingOwner, healingAxeDamageTarget;
 
         Tracked(EntityLivingBase entity) {
             this.entity = entity;

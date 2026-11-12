@@ -13,6 +13,7 @@ public final class MaidWeaponProfile {
         UNKNOWN,
         VANILLA_SWORD,
         VANILLA_BOW,
+        HEALING_AXE,
         GREGTECH_KNIFE,
         GREGTECH_BUTCHERY_KNIFE
     }

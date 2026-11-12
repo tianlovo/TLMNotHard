@@ -35,7 +35,9 @@ public final class MaidMissingConditionNotifier {
             if (i > 0) {
                 detail.appendSibling(new ChatComponentTranslation(MissingConditionIds.ITEM_SEPARATOR));
             }
-            detail.appendSibling(missing.get(i).toChatComponent());
+            detail.appendSibling(
+                missing.get(i)
+                    .toChatComponent());
         }
         IChatComponent message = new ChatComponentTranslation(
             MissingConditionIds.CHAT_TEMPLATE,
@@ -110,7 +112,8 @@ public final class MaidMissingConditionNotifier {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < entries.size(); i++) {
             if (i > 0) sb.append(MissingConditionIds.SIG_ENTRY_SEP);
-            entries.get(i).appendSignature(sb);
+            entries.get(i)
+                .appendSignature(sb);
         }
         return sb.toString();
     }
@@ -119,7 +122,8 @@ public final class MaidMissingConditionNotifier {
         if (maid == null) return "";
         if (maid.hasCustomNameTag()) {
             String custom = maid.getCustomNameTag();
-            if (custom != null && !custom.trim().isEmpty()) {
+            if (custom != null && !custom.trim()
+                .isEmpty()) {
                 return custom;
             }
         }

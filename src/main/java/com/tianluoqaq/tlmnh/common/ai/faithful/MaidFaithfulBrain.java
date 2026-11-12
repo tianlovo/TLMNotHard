@@ -198,7 +198,9 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                 .getWorkModeCoordinator()
                 .shouldSuppressOwnerFollowAndHome(maid);
             if (moveState.getStatus() == FollowMoveState.Status.STOPPED) move.tryStart(actor, moveState, time);
-            if (!bellWork && !followRunning && actor.isWalkTargetRegistered() && follow.checkExtraStartConditions(actor)) {
+            if (!bellWork && !followRunning
+                && actor.isWalkTargetRegistered()
+                && follow.checkExtraStartConditions(actor)) {
                 followRunning = true;
                 actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT); // 默认Behavior 60 +
                                                                                  // nextInt(1)，本任务canStillUse=false
@@ -252,7 +254,7 @@ public final class MaidFaithfulBrain implements MaidPolicyRuntime.FaithfulAction
                                 .getWorkModeCoordinator()
                                 .tickStandalone(maid);
                             if (!actor.isCurrent()) return;
-                    }
+                        }
                 } else {
                     actor.nextWorldInt(FaithfulAiTuning.NEXT_WORLD_INT_SINGLE_UNIT);
                     clearHurt.start(activities);

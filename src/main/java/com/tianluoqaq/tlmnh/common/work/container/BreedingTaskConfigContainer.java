@@ -37,7 +37,8 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
         this.session = session;
         this.viewer = inventory.player;
         this.configAccessor = configAccessor;
-        this.openedTaskRevision = maid.getCombatTaskState().revision();
+        this.openedTaskRevision = maid.getCombatTaskState()
+            .revision();
         BreedingTaskConfigData live = configAccessor.apply(maid);
         this.baseline = live.copy();
         this.edited.copyFrom(live);
@@ -70,8 +71,10 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
     public boolean serverEditable() {
         return !submitted && canModifyWith(viewer)
             && maid.getTask() == MaidTask.CROPSNH_BREEDING
-            && maid.getCombatTaskState().revision() == openedTaskRevision
-            && configAccessor.apply(maid).equals(baseline);
+            && maid.getCombatTaskState()
+                .revision() == openedTaskRevision
+            && configAccessor.apply(maid)
+                .equals(baseline);
     }
 
     public void acceptSnapshot(MaidBreedingConfigPayload payload) {
@@ -90,8 +93,7 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
     @Override
     public void detectAndSendChanges() {
         super.detectAndSendChanges();
-        if (maid.worldObj.isRemote
-            || snapshotTicks++ % BreedingContainerProtocol.SNAPSHOT_SYNC_INTERVAL_TICKS != 0) {
+        if (maid.worldObj.isRemote || snapshotTicks++ % BreedingContainerProtocol.SNAPSHOT_SYNC_INTERVAL_TICKS != 0) {
             return;
         }
         for (Object listener : crafters) {
@@ -107,7 +109,8 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
         if (!maid.worldObj.isRemote && player == viewer && player instanceof EntityPlayerMP serverPlayer) {
             closedUntil = maid.worldObj.getTotalWorldTime() + BreedingContainerProtocol.CLOSE_GRACE_TICKS;
             MaidBreedingConfigNetwork.closed(this, serverPlayer);
-            maid.getBrainCoordinator().refreshModernBrain();
+            maid.getBrainCoordinator()
+                .refreshModernBrain();
         }
     }
 
@@ -118,9 +121,11 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
         boolean accepted = super.enchantItem(player, action);
-        if (accepted && (action >= MaidContainerProtocol.ACTION_IDLE && action <= MaidContainerProtocol.ACTION_RANGED
-            || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
-            || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING) && player.openContainer == this) {
+        if (accepted
+            && (action >= MaidContainerProtocol.ACTION_IDLE && action <= MaidContainerProtocol.ACTION_RANGED
+                || action == MaidContainerProtocol.ACTION_MAINTENANCE_HATCH
+                || action == MaidContainerProtocol.ACTION_CROPSNH_BREEDING)
+            && player.openContainer == this) {
             openTaskConfiguration(player);
         }
         return accepted;
@@ -132,16 +137,21 @@ public final class BreedingTaskConfigContainer extends AbstractMaidContainer {
             || payload == null
             || !payload.matchesIdentity(this)
             || maid.getTask() != MaidTask.CROPSNH_BREEDING
-            || maid.getCombatTaskState().revision() != openedTaskRevision
+            || maid.getCombatTaskState()
+                .revision() != openedTaskRevision
             || !canModifyWith(player)
             || player.inventory.getItemStack() != null
             || player.openContainer != this && expired()
-            || !configAccessor.apply(maid).equals(baseline)) {
+            || !configAccessor.apply(maid)
+                .equals(baseline)) {
             return false;
         }
         submitted = true;
-        configAccessor.apply(maid).copyFrom(payload.config());
-        maid.getBrainCoordinator().refreshModernBrain();
+        BreedingTaskConfigData live = configAccessor.apply(maid);
+        live.copyFrom(payload.config());
+        live.markPersistent();
+        maid.getBrainCoordinator()
+            .refreshModernBrain();
         return true;
     }
 }

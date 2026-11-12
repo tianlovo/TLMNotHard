@@ -1,6 +1,7 @@
 package com.tianluoqaq.tlmnh.client.compat.spi;
 
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -18,6 +19,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 public interface ClientItemRenderCompat {
 
     ClientItemRenderCompat NOOP = new ClientItemRenderCompat() {};
+
+    default ItemStack playerOffhandStack(EntityPlayer player) {
+        return null;
+    }
 
     default ResourceLocation resolveTombstoneTexture(World world) {
         return null;

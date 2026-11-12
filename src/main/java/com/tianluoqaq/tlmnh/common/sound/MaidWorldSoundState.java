@@ -41,7 +41,7 @@ public final class MaidWorldSoundState {
     public String ambient() {
         if (cancelled()) return null;
         return switch (maid.getTask()) {
-            case IDLE -> SoundUtil
+            case IDLE, MAINTENANCE_HATCH, CROPSNH_BREEDING -> SoundUtil
                 .environmentSound(maid, SoundUtil.name(MaidSoundIds.ID_MODE_IDLE), MaidSoundTuning.HALF_FACTOR_F);
             case ATTACK -> SoundUtil
                 .attackSound(maid, SoundUtil.name(MaidSoundIds.ID_MODE_ATTACK), MaidSoundTuning.HALF_FACTOR_F);

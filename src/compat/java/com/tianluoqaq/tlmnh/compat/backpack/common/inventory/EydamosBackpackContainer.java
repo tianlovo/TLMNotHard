@@ -3,6 +3,8 @@ package com.tianluoqaq.tlmnh.compat.backpack.common.inventory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
@@ -100,6 +102,36 @@ public final class EydamosBackpackContainer {
         }
     }
 
+    public static ItemStack extract(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (maxCount <= 0 || filter == null || !isSupported(containerStack) || !hasInitializedUid(containerStack)) {
+            return null;
+        }
+        Api api = api();
+        if (api == null) return null;
+        try {
+            ItemStack target = simulate ? containerStack.copy() : containerStack;
+            Object save = api.saveCtor.newInstance(target);
+            String uid = (String) api.getUuid.invoke(save);
+            if (uid != null && !uid.isEmpty() && (Boolean) api.isOpenedByOther.invoke(null, uid, null)) {
+                return null;
+            }
+            IInventory inv = (IInventory) api.inventoryCtor.newInstance(target.getDisplayName(), "");
+            api.readFromNbt.invoke(inv, save);
+            BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper
+                .extractFromInventory(inv, inv.getSizeInventory(), filter, scorer, maxCount, simulate);
+            if (!simulate && result.changed) {
+                inv.markDirty();
+                api.writeToNbt.invoke(inv, save);
+                api.saveMethod.invoke(save);
+            }
+            return result.extracted;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            IntegrationGuard.report(Side.SERVER, EydamosBackpackIds.FEATURE, failure);
+            return null;
+        }
+    }
+
     public static boolean forEachStored(ItemStack containerStack, Consumer<ItemStack> visitor) {
         if (!isSupported(containerStack)) return false;
         if (!hasInitializedUid(containerStack)) return true;
@@ -107,6 +139,33 @@ public final class EydamosBackpackContainer {
         if (api == null) return false;
         try {
             Object save = api.saveCtor.newInstance(containerStack);
+            IInventory inv = (IInventory) api.inventoryCtor.newInstance(containerStack.getDisplayName(), "");
+            api.readFromNbt.invoke(inv, save);
+            int size = inv.getSizeInventory();
+            for (int i = 0; i < size; i++) {
+                ItemStack stored = inv.getStackInSlot(i);
+                if (stored != null && stored.stackSize > 0 && visitor != null) {
+                    visitor.accept(stored.copy());
+                }
+            }
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            IntegrationGuard.report(Side.SERVER, EydamosBackpackIds.FEATURE, failure);
+            return false;
+        }
+    }
+
+    public static boolean forEachExtractable(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        if (!isSupported(containerStack)) return false;
+        if (!hasInitializedUid(containerStack)) return true;
+        Api api = api();
+        if (api == null) return false;
+        try {
+            Object save = api.saveCtor.newInstance(containerStack);
+            String uid = (String) api.getUuid.invoke(save);
+            if (uid != null && !uid.isEmpty() && (Boolean) api.isOpenedByOther.invoke(null, uid, null)) {
+                return false;
+            }
             IInventory inv = (IInventory) api.inventoryCtor.newInstance(containerStack.getDisplayName(), "");
             api.readFromNbt.invoke(inv, save);
             int size = inv.getSizeInventory();

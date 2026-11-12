@@ -253,11 +253,10 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             decisions++;
             var home = maid.getHomeArea();
             boolean sleeping = selectedKind == Kind.SLEEP && actor.isSleeping();
-            if (home.enabled() && !home.sameDimension()
-                || maid.getTask() != MaidTask.IDLE && !maid.getTask()
-                    .isCombatTask()
-                    && !maid.getTask()
-                        .isWorkTask()) {
+            if (home.enabled() && !home.sameDimension() || maid.getTask() != MaidTask.IDLE && !maid.getTask()
+                .isCombatTask()
+                && !maid.getTask()
+                    .isWorkTask()) {
                 stopAllActiveSessions(TransitionReason.POSTURE_CHANGED, runtime, token);
                 return;
             }
@@ -422,14 +421,14 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
                 maid.getBrainCoordinator()
                     .getWorkModeCoordinator()
                     .reset();
-        } else {
-            var extSlot = externalById.get(moduleId);
-            if (extSlot != null) {
-                BooleanSupplier liveGuard = runtime != null && token != null ? () -> isSessionLive(runtime, token)
-                    : () -> false;
-                extSlot.onDeselected(reason, liveGuard);
+            } else {
+                var extSlot = externalById.get(moduleId);
+                if (extSlot != null) {
+                    BooleanSupplier liveGuard = runtime != null && token != null ? () -> isSessionLive(runtime, token)
+                        : () -> false;
+                    extSlot.onDeselected(reason, liveGuard);
+                }
             }
-        }
     }
 
     private void stopAllActiveSessions(TransitionReason reason, MaidPolicyRuntime runtime, Token token) {

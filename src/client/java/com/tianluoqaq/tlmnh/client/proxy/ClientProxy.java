@@ -35,6 +35,7 @@ import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
 import com.tianluoqaq.tlmnh.client.gui.overlay.MaidInteractionTipsOverlay;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidAttackDisplay;
 import com.tianluoqaq.tlmnh.client.gui.widget.MaidEffectDisplay;
+import com.tianluoqaq.tlmnh.client.gui.work.BreedingTaskConfigGui;
 import com.tianluoqaq.tlmnh.client.life.bed.MaidBedModelResources;
 import com.tianluoqaq.tlmnh.client.life.cabinet.MaidCabinetModelResources;
 import com.tianluoqaq.tlmnh.client.lifecycle.TombstoneModelResources;
@@ -45,6 +46,7 @@ import com.tianluoqaq.tlmnh.client.render.MaidRenderer;
 import com.tianluoqaq.tlmnh.client.render.attachment.MaidBannerModelResources;
 import com.tianluoqaq.tlmnh.client.render.model.BuiltinMaidModels;
 import com.tianluoqaq.tlmnh.client.render.model.MaidSwimRenderPose;
+import com.tianluoqaq.tlmnh.client.render.work.BellAreaOverlayRenderer;
 import com.tianluoqaq.tlmnh.client.sound.MaidWorldSoundPlayer;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaid;
 import com.tianluoqaq.tlmnh.common.inventory.container.ContainerMaidModels;
@@ -56,6 +58,9 @@ import com.tianluoqaq.tlmnh.common.lifecycle.MaidShrineTile;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidTombstoneEntity;
 import com.tianluoqaq.tlmnh.common.network.MaidAttackSnapshot;
 import com.tianluoqaq.tlmnh.common.proxy.CommonProxy;
+import com.tianluoqaq.tlmnh.common.work.bell.MaidBellPreviewNetwork;
+import com.tianluoqaq.tlmnh.common.work.container.BreedingTaskConfigContainer;
+import com.tianluoqaq.tlmnh.common.work.container.MaidBreedingConfigNetwork;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
@@ -91,6 +96,14 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new MaidSoundFreqEvent());
         MaidClientPreferences.load();
         MaidInteractionTipsOverlay.register();
+        BellAreaOverlayRenderer.register();
+        MaidBellPreviewNetwork.bindClientPreviewSink(BellAreaOverlayRenderer::acceptPreviewSnapshot);
+        MaidBreedingConfigNetwork.bindClientSnapshotSink(payload -> {
+            var minecraft = Minecraft.getMinecraft();
+            if (minecraft.thePlayer != null
+                && minecraft.thePlayer.openContainer instanceof BreedingTaskConfigContainer menu)
+                menu.acceptSnapshot(payload);
+        });
         var manager = Minecraft.getMinecraft()
             .getResourceManager();
         var models = new BuiltinMaidModels(
@@ -139,6 +152,7 @@ public final class ClientProxy extends CommonProxy {
         if (container instanceof MaidConfigContainer config) return new MaidConfigContainerGui(config);
         if (container instanceof TaskConfigContainer task)
             return task.attackPage() ? new AttackTaskConfigGui(task) : new DefaultMaidTaskConfigGui(task);
+        if (container instanceof BreedingTaskConfigContainer breeding) return new BreedingTaskConfigGui(breeding);
         if (container instanceof ContainerMaid maidContainer) return new GuiMaid(maidContainer);
         if (container instanceof ContainerMaidNaming namingContainer) return new GuiMaidNaming(namingContainer);
         if (container instanceof ContainerMaidModels modelContainer)

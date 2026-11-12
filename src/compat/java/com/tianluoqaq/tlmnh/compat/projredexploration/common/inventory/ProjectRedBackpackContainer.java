@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.compat.projredexploration.common.inventory;
 
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -15,7 +17,7 @@ import com.tianluoqaq.tlmnh.compat.projredexploration.ProjRedExplorationCompat;
 
 import cpw.mods.fml.relauncher.Side;
 
-/** ProjectRed 探索背包适配：按 baginv -> itemsCount(27) + items(index int) 协议直读写 */
+/** ProjectRed 探索背包适配：按 baginv -> itemsCount(27) + items(index int) 协议直读写与取用 */
 public final class ProjectRedBackpackContainer {
 
     private static volatile Class<?> itemBackpackClass;
@@ -44,10 +46,20 @@ public final class ProjectRedBackpackContainer {
         return insertNbt(containerStack, input, simulate);
     }
 
+    public static ItemStack extract(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (maxCount <= 0 || filter == null || !isSupported(containerStack)) return null;
+        return extractNbt(containerStack, filter, scorer, maxCount, simulate);
+    }
+
     public static boolean forEachStored(ItemStack containerStack, Consumer<ItemStack> visitor) {
         if (!isSupported(containerStack)) return false;
         forEachStoredNbt(containerStack, visitor);
         return true;
+    }
+
+    public static boolean forEachExtractable(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        return forEachStored(containerStack, visitor);
     }
 
     public static ItemStack insertNbt(ItemStack containerStack, ItemStack input, boolean simulate) {
@@ -69,6 +81,20 @@ public final class ProjectRedBackpackContainer {
             writeSlots(root, slots);
         }
         return result.remaining;
+    }
+
+    public static ItemStack extractNbt(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (containerStack == null || containerStack.getTagCompound() == null || filter == null || maxCount <= 0) {
+            return null;
+        }
+        ItemStack[] slots = readSlots(containerStack.getTagCompound());
+        BackpackSlotMergeHelper.ExtractResult result = BackpackSlotMergeHelper
+            .extractFromArray(slots, ProjectRedBackpackTuning.SLOT_COUNT, filter, scorer, maxCount, simulate);
+        if (!simulate && result.changed) {
+            writeSlots(containerStack.getTagCompound(), slots);
+        }
+        return result.extracted;
     }
 
     public static void forEachStoredNbt(ItemStack containerStack, Consumer<ItemStack> visitor) {

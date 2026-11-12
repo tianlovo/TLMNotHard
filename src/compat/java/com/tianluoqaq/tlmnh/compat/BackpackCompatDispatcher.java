@@ -1,6 +1,8 @@
 package com.tianluoqaq.tlmnh.compat;
 
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import net.minecraft.item.ItemStack;
 
@@ -65,5 +67,50 @@ public final class BackpackCompatDispatcher implements BackpackContainerCompatPr
             return ProjectRedBackpackContainer.forEachStored(containerStack, visitor);
         }
         return false;
+    }
+
+    @Override
+    public boolean forEachExtractableStack(ItemStack containerStack, Consumer<ItemStack> visitor) {
+        if (containerStack == null || containerStack.getItem() == null) return false;
+        if (EydamosBackpackContainer.isSupported(containerStack)) {
+            return EydamosBackpackContainer.forEachExtractable(containerStack, visitor);
+        }
+        if (AdventureBackpackContainer.isSupported(containerStack)) {
+            return AdventureBackpackContainer.forEachExtractable(containerStack, visitor);
+        }
+        if (ForestryBackpackContainer.isSupported(containerStack)) {
+            return ForestryBackpackContainer.forEachExtractable(containerStack, visitor);
+        }
+        if (GoldenBagContainer.isSupported(containerStack)) {
+            return GoldenBagContainer.forEachExtractable(containerStack, visitor);
+        }
+        if (ProjectRedBackpackContainer.isSupported(containerStack)) {
+            return ProjectRedBackpackContainer.forEachExtractable(containerStack, visitor);
+        }
+        return false;
+    }
+
+    @Override
+    public ItemStack extractFromBackpack(ItemStack containerStack, Predicate<ItemStack> filter,
+        ToIntFunction<ItemStack> scorer, int maxCount, boolean simulate) {
+        if (containerStack == null || containerStack.getItem() == null || filter == null || maxCount <= 0) {
+            return null;
+        }
+        if (EydamosBackpackContainer.isSupported(containerStack)) {
+            return EydamosBackpackContainer.extract(containerStack, filter, scorer, maxCount, simulate);
+        }
+        if (AdventureBackpackContainer.isSupported(containerStack)) {
+            return AdventureBackpackContainer.extract(containerStack, filter, scorer, maxCount, simulate);
+        }
+        if (ForestryBackpackContainer.isSupported(containerStack)) {
+            return ForestryBackpackContainer.extract(containerStack, filter, scorer, maxCount, simulate);
+        }
+        if (GoldenBagContainer.isSupported(containerStack)) {
+            return GoldenBagContainer.extract(containerStack, filter, scorer, maxCount, simulate);
+        }
+        if (ProjectRedBackpackContainer.isSupported(containerStack)) {
+            return ProjectRedBackpackContainer.extract(containerStack, filter, scorer, maxCount, simulate);
+        }
+        return null;
     }
 }

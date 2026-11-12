@@ -10,13 +10,18 @@ import com.tianluoqaq.tlmnh.compat.applecore.AppleCoreCompat;
 import com.tianluoqaq.tlmnh.compat.backhand.BackhandCompat;
 import com.tianluoqaq.tlmnh.compat.backpack.BackpackCompat;
 import com.tianluoqaq.tlmnh.compat.battlegear2.Battlegear2Compat;
+import com.tianluoqaq.tlmnh.compat.cropsnh.CropsNhCompat;
 import com.tianluoqaq.tlmnh.compat.endlessids.EndlessIdsCompat;
 import com.tianluoqaq.tlmnh.compat.etfuturum.EtFuturumCompat;
 import com.tianluoqaq.tlmnh.compat.extrautilities.ExtraUtilitiesCompat;
 import com.tianluoqaq.tlmnh.compat.forestry.ForestryCompat;
 import com.tianluoqaq.tlmnh.compat.galacticraftcore.GalacticraftCoreCompat;
+import com.tianluoqaq.tlmnh.compat.galaxyspace.GalaxySpaceCompat;
+import com.tianluoqaq.tlmnh.compat.gravisuite.GraviSuiteCompat;
 import com.tianluoqaq.tlmnh.compat.gregtech.GregTechCompat;
 import com.tianluoqaq.tlmnh.compat.hodgepodge.HodgepodgeCompat;
+import com.tianluoqaq.tlmnh.compat.hungeroverhaul.HungerOverhaulCompat;
+import com.tianluoqaq.tlmnh.compat.ic2.Ic2Compat;
 import com.tianluoqaq.tlmnh.compat.lwjgl3ify.Lwjgl3ifyCompat;
 import com.tianluoqaq.tlmnh.compat.malisisdoors.MalisisDoorsCompat;
 import com.tianluoqaq.tlmnh.compat.projredexploration.ProjRedExplorationCompat;
@@ -37,6 +42,7 @@ public final class CompatModules {
             BackhandCompat.INSTANCE,
             BackpackCompat.INSTANCE,
             Battlegear2Compat.INSTANCE,
+            CropsNhCompat.INSTANCE,
             EndlessIdsCompat.INSTANCE,
             EtFuturumCompat.INSTANCE,
             ExtraUtilitiesCompat.INSTANCE,
@@ -51,6 +57,10 @@ public final class CompatModules {
             TinkersDefenseCompat.INSTANCE,
             TwilightForestCompat.INSTANCE,
             WitcheryCompat.INSTANCE,
+            HungerOverhaulCompat.INSTANCE,
+            Ic2Compat.INSTANCE,
+            GraviSuiteCompat.INSTANCE,
+            GalaxySpaceCompat.INSTANCE,
             YsmuCompat.INSTANCE));
 
     private CompatModules() {}

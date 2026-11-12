@@ -1,12 +1,12 @@
 package com.tianluoqaq.tlmnh.common.work.container;
 
-import cpw.mods.fml.common.network.ByteBufUtils;
-import io.netty.buffer.ByteBuf;
-
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingConfigIds;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData.StatLogic;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData.TargetMode;
+
+import cpw.mods.fml.common.network.ByteBufUtils;
+import io.netty.buffer.ByteBuf;
 
 /** 育种配置容器一次性会话的网络快照与提交载荷 */
 public final class MaidBreedingConfigPayload {
@@ -30,7 +30,8 @@ public final class MaidBreedingConfigPayload {
         boolean editable) {
         return new MaidBreedingConfigPayload(
             menu.windowId,
-            menu.getMaid().getEntityId(),
+            menu.getMaid()
+                .getEntityId(),
             menu.session(),
             editable,
             config);
@@ -38,7 +39,8 @@ public final class MaidBreedingConfigPayload {
 
     public boolean matchesIdentity(BreedingTaskConfigContainer menu) {
         return menu != null && menu.windowId == windowId
-            && menu.getMaid().getEntityId() == entityId
+            && menu.getMaid()
+                .getEntityId() == entityId
             && menu.session() == session;
     }
 

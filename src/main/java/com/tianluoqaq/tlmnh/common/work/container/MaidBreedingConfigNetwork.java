@@ -68,9 +68,7 @@ public final class MaidBreedingConfigNetwork {
 
     public static void snapshot(BreedingTaskConfigContainer menu, EntityPlayerMP player, BreedingTaskConfigData live) {
         if (channel == null || player.openContainer != menu || !menu.canInteractWith(player)) return;
-        channel.sendTo(
-            new SnapshotMessage(MaidBreedingConfigPayload.from(menu, live, menu.serverEditable())),
-            player);
+        channel.sendTo(new SnapshotMessage(MaidBreedingConfigPayload.from(menu, live, menu.serverEditable())), player);
     }
 
     public static boolean navigates(int action) {
@@ -91,8 +89,7 @@ public final class MaidBreedingConfigNetwork {
             && payload.matchesIdentity(current) ? current : CLOSED.get(player.playerNetServerHandler);
         int action = message.nextAction();
         boolean accepted = menu != null
-            && (action == BreedingContainerProtocol.NO_NEXT_ACTION
-                || navigates(action) && player.openContainer == menu)
+            && (action == BreedingContainerProtocol.NO_NEXT_ACTION || navigates(action) && player.openContainer == menu)
             && menu.submit(player, payload);
         if (accepted && action != BreedingContainerProtocol.NO_NEXT_ACTION) {
             menu.enchantItem(player, action);
@@ -118,7 +115,9 @@ public final class MaidBreedingConfigNetwork {
             if (++processed >= BreedingContainerProtocol.MAX_PROCESSED_PER_TICK) break;
         }
         CLOSED.entrySet()
-            .removeIf(entry -> !entry.getKey().netManager.isChannelOpen() || entry.getValue().expired());
+            .removeIf(
+                entry -> !entry.getKey().netManager.isChannelOpen() || entry.getValue()
+                    .expired());
     }
 
     @SubscribeEvent

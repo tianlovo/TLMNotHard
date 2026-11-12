@@ -29,6 +29,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
+import net.minecraftforge.common.ISpecialArmor;
 import net.minecraftforge.common.util.Constants;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
@@ -62,6 +63,7 @@ import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidCombatWeaponView;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.entity.MaidCombatTaskState;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidEntityTuning;
@@ -78,7 +80,13 @@ import com.tianluoqaq.tlmnh.common.inventory.MaidInventoryLayout;
 import com.tianluoqaq.tlmnh.common.inventory.MaidPickupService;
 import com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleInventory;
 import com.tianluoqaq.tlmnh.common.life.MaidHomeArea;
+import com.tianluoqaq.tlmnh.common.life.MaidSurvivalController;
+import com.tianluoqaq.tlmnh.common.life.fall.MaidFallRescueController;
+import com.tianluoqaq.tlmnh.common.life.flight.MaidFlightController;
+import com.tianluoqaq.tlmnh.common.life.hazard.MaidHotItemHazardController;
+import com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerState;
 import com.tianluoqaq.tlmnh.common.life.meal.MaidMealController;
+import com.tianluoqaq.tlmnh.common.life.space.MaidSpaceSurvivalController;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidCaptureService;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidDeathService;
 import com.tianluoqaq.tlmnh.common.lifecycle.world.MaidDimensionTravel;
@@ -141,6 +149,12 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     private final MaidHomeArea home = new MaidHomeArea(this);
     private final MaidItemUseState itemUses = new MaidItemUseState(this::syncItemUsePose);
     private final MaidMealController meals = new MaidMealController(this);
+    private final MaidHungerState hungerState = new MaidHungerState();
+    private final MaidHotItemHazardController hotItemHazard = new MaidHotItemHazardController();
+    private final MaidFlightController flightController = new MaidFlightController();
+    private final MaidSpaceSurvivalController spaceSurvival = new MaidSpaceSurvivalController();
+    private final MaidFallRescueController fallRescue = new MaidFallRescueController();
+    private final MaidSurvivalController survival = new MaidSurvivalController(this);
     private final MaidShieldController shield = new MaidShieldController(this, itemUses);
     private final MaidSnowballAnimation snowballAnimation = new MaidSnowballAnimation();
     private final MaidCombatMemory modernCombatMemory = new MaidCombatMemory();
@@ -265,6 +279,8 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         if (!worldObj.isRemote && itemUses != null)
             itemUses.advanceUse((int) getEntityAttribute(MaidCombatAttributes.USE_ITEM_SPEED).getAttributeValue());
         if (aquatic != null) behaviorProtection.run(aquaticBeforeLiving);
+        if (!worldObj.isRemote && flightController != null)
+            flightController.refreshCapability(this, CompatServices.flightEquipment());
         super.onLivingUpdate();
         if (aquatic != null) behaviorProtection.run(aquaticAfterLiving);
         if (!worldObj.isRemote) {
@@ -272,6 +288,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             behaviorProtection.run(brainAfterLiving);
             shield.tickAfterLivingUpdate();
             meals.tick();
+            survival.tick();
             pickup.tick();
             syncOffhand();
             syncBackpackShowItem();
@@ -324,6 +341,11 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
 
     @Override
     public void moveEntityWithHeading(float strafe, float forward) {
+        if (flightController != null && !worldObj.isRemote
+            && flightController.travel(this, strafe, forward, CompatServices.flightEquipment())) return;
+        double startX = posX, startY = posY, startZ = posZ;
+        boolean autonomous = strafe != 0 || forward != 0;
+
         if (hasPose(MaidPose.SLEEPING) && usesModernCoreNavigation()) {
             // 原睡眠逐tick清运动；旧move/jump helper在现代Brain之后仍可能重新投递移动
             clearBehaviorInputs();
@@ -331,8 +353,14 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             super.moveEntityWithHeading(0, 0);
             return;
         }
-        if (brain != null && brain.travelLegacyBreathWater()) return;
-        if (aquatic != null && aquatic.travelWater(strafe, forward)) return;
+        if (brain != null && brain.travelLegacyBreathWater()) {
+            if (survival != null) survival.recordTravel(startX, startY, startZ, autonomous);
+            return;
+        }
+        if (aquatic != null && aquatic.travelWater(strafe, forward)) {
+            if (survival != null) survival.recordTravel(startX, startY, startZ, autonomous);
+            return;
+        }
         if (brain != null && brain.applyCombatMovement()) {
             strafe = moveStrafing * .98F;
             forward = moveForward * .98F;
@@ -340,6 +368,8 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
             moveStrafing = moveForward = 0;
         }
         super.moveEntityWithHeading(strafe, forward);
+        if (survival != null) survival.recordTravel(startX, startY, startZ, autonomous);
+
     }
 
     @Override
@@ -426,6 +456,8 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     protected void damageEntity(DamageSource source, float amount) {
         float before = getHealth();
         super.damageEntity(source, amount);
+        if (hungerState != null && worldObj != null && !worldObj.isRemote && getHealth() < before)
+            hungerState.addExhaustion(source.getHungerDamage());
         // 目标版没有LivingDamageEvent，在原生护甲/吸收处理完成后响应实际扣血
         if (worldObj != null && !worldObj.isRemote && chatBubbleManager != null && getHealth() < before)
             RandomEmoji.addHurtChatText(this);
@@ -888,11 +920,65 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     }
 
     public int getHunger() {
-        return dataWatcher.getWatchableObjectInt(DATA_HUNGER);
+        return !worldObj.isRemote && hungerState != null ? hungerState.getFood()
+            : dataWatcher.getWatchableObjectInt(DATA_HUNGER);
     }
 
     public void setHunger(int value) {
-        dataWatcher.updateObject(DATA_HUNGER, Math.max(0, value));
+        if (hungerState != null && !worldObj.isRemote) hungerState.setFood(value);
+        syncHunger();
+    }
+
+    public void syncHunger() {
+        if (worldObj.isRemote || hungerState == null) return;
+        int food = hungerState.getFood();
+        dataWatcher.updateObject(DATA_HUNGER, food);
+        var attribute = getEntityAttribute(MaidCombatAttributes.MAID_HUNGER);
+        if (attribute != null && attribute.getBaseValue() != food) attribute.setBaseValue(food);
+    }
+
+    public MaidHungerState getHungerState() {
+        return hungerState;
+    }
+
+    public MaidHotItemHazardController getHotItemHazard() {
+        return hotItemHazard;
+    }
+
+    public MaidFlightController getFlightController() {
+        return flightController;
+    }
+
+    public MaidSpaceSurvivalController getSpaceSurvival() {
+        return spaceSurvival;
+    }
+
+    public MaidFallRescueController getFallRescue() {
+        return fallRescue;
+    }
+
+    @Override
+    protected void jump() {
+        super.jump();
+        if (!worldObj.isRemote && survival != null) survival.recordJump();
+    }
+
+    @Override
+    protected float applyArmorCalculations(DamageSource source, float damage) {
+        ItemStack[] armor = new ItemStack[4];
+        boolean special = false;
+        for (int slot = 0; slot < armor.length; slot++) {
+            armor[slot] = getEquipmentInSlot(slot + 1);
+            special |= armor[slot] != null && armor[slot].getItem() instanceof ISpecialArmor;
+        }
+        if (!special) return super.applyArmorCalculations(source, damage);
+        float remaining = ISpecialArmor.ArmorProperties.ApplyArmor(this, armor, source, damage);
+        for (int slot = 0; slot < armor.length; slot++) {
+            if (armor[slot] != null && armor[slot].stackSize <= 0) armor[slot] = null;
+            if (getEquipmentInSlot(slot + 1) != armor[slot]) setCurrentItemOrArmor(slot + 1, armor[slot]);
+        }
+        equipmentEpoch.invalidate();
+        return remaining;
     }
 
     public FavorabilityManager getFavorabilityManager() {
@@ -1075,6 +1161,10 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
         tag.setString("MaidScheduleMode", getSchedule().name());
         tag.setInteger(EXPERIENCE_TAG, getExperience());
         tag.setInteger("MaidHunger", getHunger());
+        hungerState.writeToNBT(tag);
+        hotItemHazard.writeToNBT(tag);
+        spaceSurvival.writeToNBT(tag);
+        fallRescue.writeToNBT(tag);
         tag.setInteger("MaidFavorability", getFavorability());
         tag.setBoolean("StruckByLightning", isStruckByLightning());
         favorabilityManager.addAdditionalSaveData(tag);
@@ -1175,7 +1265,11 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
                 setSchedule(MaidSchedule.DAY);
             }
             setExperience(tag.getInteger(EXPERIENCE_TAG));
-            setHunger(tag.getInteger("MaidHunger"));
+            hungerState.readFromNBT(tag);
+            hotItemHazard.readFromNBT(tag);
+            spaceSurvival.readFromNBT(tag);
+            fallRescue.readFromNBT(tag);
+            if (hungerState.isActivated() && !hungerState.isPaused()) syncHunger();
             setFavorability(tag.getInteger("MaidFavorability"));
             setStruckByLightning(tag.getBoolean("StruckByLightning"));
             favorabilityManager.readAdditionalSaveData(tag);
@@ -1210,6 +1304,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     /** 目标世界确认登记后才移除源女仆；取消或异常不能丢失原实体持有的完整物品 */
     @Override
     public void travelToDimension(int dimension) {
+        fallRescue.finishBeforeTransfer(this, CompatServices.fallRescueBoat());
         dimensionTravel.travel(dimension);
     }
 
@@ -1217,6 +1312,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     public void onDeath(DamageSource source) {
         if (!worldObj.isRemote && !dead && baubleInventory != null)
             baubleInventory.fireEvent((bauble, stack) -> bauble.onDeath(this, stack, source));
+        if (!worldObj.isRemote) fallRescue.finishBeforeTransfer(this, CompatServices.fallRescueBoat());
         super.onDeath(source);
         if (!worldObj.isRemote && dead) {
             favorabilityManager.apply(Type.DEATH);
@@ -1244,6 +1340,7 @@ public class EntityMaid extends EntityTameable implements IEntityAdditionalSpawn
     /** 驯服女仆交给死亡保管；野生女仆完整掉落，禁止原版随机毁损装备 */
     @Override
     protected void dropEquipment(boolean recentlyHit, int looting) {
+        fallRescue.finishBeforeTransfer(this, CompatServices.fallRescueBoat());
         meals.cancel();
         if (!worldObj.isRemote && dead) favorabilityManager.apply(Type.DEATH);
         if (MaidDeathService.preserve(this)) return;

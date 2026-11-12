@@ -15,6 +15,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidPickupEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 
 /** 上游接触拾取的 native 适配，世界实体和库存只在服务端交易 */
 public final class MaidPickupService {
@@ -61,8 +62,12 @@ public final class MaidPickupService {
         if (!valid(item)) return false;
         var input = item.getEntityItem();
         if (input == null || input.stackSize <= 0) return false;
-        var remaining = maid.getMaidInventory()
-            .insertAvailable(input, simulate);
+        boolean backpacksOnly = maid.getHotItemHazard()
+            .shouldBlockBareHotPickup(maid, input, CompatServices.hotItemHazard());
+        var remaining = backpacksOnly ? maid.getMaidInventory()
+            .insertIntoBackpacks(input, simulate)
+            : maid.getMaidInventory()
+                .insertAvailable(input, simulate);
         int count = input.stackSize
             - (remaining == null ? MaidInventoryLayout.SET_CURRENT_ITEM_OR_ARMOR_INITIAL_VALUE : remaining.stackSize);
         if (count <= 0) return false;

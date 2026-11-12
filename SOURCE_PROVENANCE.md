@@ -5,7 +5,7 @@
 来源继续绑定 TLM `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6`，209 尚在实现与集成，局部运行证据与未收口项见 PROGRESS，不代表整体通过。
 `entity/passive/EntityMaid.java` 增加生产任务投影、未知原始任务保留及实体级装备确认、攻击节拍和命中凭证接线，原包名与原许可保留。
 `inventory/container/task/TaskConfigContainer.java` 增加任务变更代次检查，防止规范化后的同名任务接受旧窗口修改。
-`client/gui/entity/maid/AbstractMaidContainerGui.java` 仅在生产统一模式显示空闲与战斗，保留旧任务序号及开发参照入口，使用自有语言键显示新任务名。
+`client/gui/entity/maid/AbstractMaidContainerGui.java` 在统一战斗模式显示空闲、战斗、维护仓和育种任务，非统一模式另设远程攻击入口。任务按钮使用独立动作编号和自有语言键。
 自有 `MaidAnimationState` 将统一战斗中的实际原版弓投影为旧远程动画输入，避免任务合并丢失模型任务动作。
 新增独立实现放在 `com.tianluoqaq.tlmnh`，GT 核心刀具适配按提供方与职责放在 `compat/gregtech/common/combat`。
 自有 `CombatTerrain` 仅处理已采集的纯几何快照与有界局部路线；
@@ -1758,4 +1758,12 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
 
 - `assets/touhou_little_maid/textures/items/maintenance_bell.png` 与 `breeding_bell.png` 基于固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `servant_bell.png` 按区分色相派生，沿用既有 TLM MIT 许可。
 - 上游移植类 `entity/passive/EntityMaid.java` 与 `inventory/container/task/TaskConfigContainer.java` 接入育种任务配置持久化及非战斗工作模式的界面会话跳转，原包名、MIT 许可头与既有存档键保持原样。
+- 上游移植类 `client/gui/entity/maid/AbstractMaidContainerGui.java` 按任务类型生成四行或五行任务菜单，显示提供方物品图标及其元数据。`client/gui/entity/maid/task/DefaultMaidTaskConfigGui.java` 增加维护仓工作条件说明。两份文件采用 TLM 原包名和 MIT 许可。
+- `src/client/java/com/tianluoqaq/tlmnh/client/gui/work/` 下的育种编辑器、任务菜单辅助类及 `client/render/work/` 下的铃铛范围渲染器为独立实现。育种配置通过服务端会话保存，佩戴铃铛预览通过所属主人可查询的范围快照更新。Backhand 副手只读桥接位于 `src/compatClient/java/com/tianluoqaq/tlmnh/compat/backhand/client/`，由客户端 SPI 装配。
 - 维护铃铛、育种铃铛、维护仓工作控制器、CropsNH 育种工作控制器、缺失条件通知器及三脑工作调度均位于 `com.tianluoqaq.tlmnh.common.work` 下，属于本工程独立实现；GregTech 维护仓与 CropsNH 提供方适配分别收口在 `src/compat/java/com/tianluoqaq/tlmnh/compat/{gregtech,cropsnh}/`。
+
+## 0.1.0 生存与装备适配
+
+- 上游移植类 `entity/passive/EntityMaid.java` 接入独立饥饿、飞行、热害、太空生存与落地自救控制器，并通过 Forge `ISpecialArmor` 执行真实护甲防御与能量消耗。保留原包名、MIT 许可头、既有存档键和旧死亡快照的迁移边界。
+- 上游移植类 `client/renderer/entity/chatbubble/implement/TextChatBubbleRenderer.java` 在客户端解析可翻译的气泡键，保留普通文字、字体和既有渲染布局。
+- `com.tianluoqaq.tlmnh.common.life` 下新增的生存状态、库存取用和控制器，以及治愈之斧的通用战斗桥接，属于本工程独立实现。外部机制依据当前整合包实际提供方的公开接口和字节码核对，在 `src/compat/java/com/tianluoqaq/tlmnh/compat/` 中按模组与职责实现；未复制或反编译嵌入提供方类。

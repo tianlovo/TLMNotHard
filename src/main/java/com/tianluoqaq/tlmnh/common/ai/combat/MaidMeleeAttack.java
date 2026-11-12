@@ -17,10 +17,14 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota.Wor
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.combat.CombatHitReceipt;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.MaidHealingAxeCombat;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponStrike;
+import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.entity.MaidPose;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
+import com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerTuning;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 
 import cpw.mods.fml.relauncher.Side;
@@ -165,6 +169,15 @@ public final class MaidMeleeAttack {
                 receipt.rejected();
                 return new Result(false, false, false);
             }
+            if (strike.profile().family == MaidWeaponProfile.Family.HEALING_AXE) {
+                nativeEntered = true;
+                boolean accepted = MaidHealingAxeCombat.execute(maid, target);
+                nativeEntered = false;
+                post = true;
+                if (accepted) receipt.accepted();
+                else receipt.rejected();
+                return new Result(true, accepted, false);
+            }
             double physical = strike.physicalDamage(
                 maid.getEntityAttribute(SharedMonsterAttributes.attackDamage)
                     .getAttributeValue(),
@@ -190,6 +203,8 @@ public final class MaidMeleeAttack {
             if (!accepted) receipt.rejected();
             else {
                 receipt.accepted();
+                maid.getHungerState()
+                    .addExhaustion(MaidHungerTuning.MELEE_HIT_EXHAUSTION);
                 if (receipt.stage() == CombatHitReceipt.Stage.ACCEPTED && !receipt.originalOwned(true))
                     receipt.hold(AiCombatIds.ID_ORIGINAL_STACK_CHANGED_DURING_NATIVE_DAMAGE);
                 if (receipt.stage() == CombatHitReceipt.Stage.ACCEPTED) {
@@ -275,6 +290,12 @@ public final class MaidMeleeAttack {
     }
 
     private static boolean hurtNative(EntityMaid maid, EntityLivingBase living, BooleanSupplier permitted) {
+        if (CompatServices.healingAxe()
+            .isHealingAxe(maid.getHeldItem())) {
+            if (!permitted.getAsBoolean()) return false;
+            MaidHealingAxeCombat.execute(maid, living);
+            return true;
+        }
         float damage = (float) maid.getEntityAttribute(SharedMonsterAttributes.attackDamage)
             .getAttributeValue();
         damage += EnchantmentHelper.getEnchantmentModifierLiving(maid, living);
@@ -283,6 +304,8 @@ public final class MaidMeleeAttack {
         var weapon = maid.getHeldItem();
         if (!permitted.getAsBoolean()) return false;
         if (!living.attackEntityFrom(DamageSource.causeMobDamage(maid), damage)) return false;
+        maid.getHungerState()
+            .addExhaustion(MaidHungerTuning.MELEE_HIT_EXHAUSTION);
         if (!permitted.getAsBoolean()) return true;
         maid.setLastAttacker(living);
         if (knockback > 0) {

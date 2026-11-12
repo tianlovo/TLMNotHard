@@ -11,6 +11,8 @@ import net.minecraft.util.StatCollector;
 import org.lwjgl.opengl.GL11;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.task.TaskConfigContainer;
+import com.tianluoqaq.tlmnh.client.gui.work.MaidWorkGuiIds;
+import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -38,7 +40,9 @@ public final class DefaultMaidTaskConfigGui extends MaidTaskConfigGui {
     @Override
     protected void renderAddition(float partialTick, int mouseX, int mouseY) {
         fontRendererObj.drawSplitString(
-            StatCollector.translateToLocal("gui.touhou_little_maid.default_task_config.title"),
+            StatCollector.translateToLocal(
+                maid.getTask() == MaidTask.MAINTENANCE_HATCH ? MaidWorkGuiIds.MAINTENANCE_DESCRIPTION
+                    : "gui.touhou_little_maid.default_task_config.title"),
             guiLeft + 88,
             guiTop + 38,
             160,

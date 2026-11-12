@@ -347,6 +347,7 @@ public final class CombatSnapshot {
         public final DamageSource damageSource;
         public final double halfWidth, height;
         public final boolean visible, swinging, ranged, explosive, attackingOwner;
+        public final boolean healingAxeDamageTarget;
 
         public Target(UUID id, int entityId, Vec position, Vec velocity, long observedAt, long lastOwnHitAt,
             float health, float estimatedDamage, double halfWidth, double height, boolean visible, boolean swinging,
@@ -373,6 +374,31 @@ public final class CombatSnapshot {
         public Target(UUID id, int entityId, Vec position, Vec velocity, long observedAt, long lastOwnHitAt,
             float health, float estimatedDamage, double halfWidth, double height, boolean visible, boolean swinging,
             boolean ranged, boolean explosive, boolean attackingOwner, DamageSource damageSource) {
+            this(
+                id,
+                entityId,
+                position,
+                velocity,
+                observedAt,
+                lastOwnHitAt,
+                health,
+                estimatedDamage,
+                halfWidth,
+                height,
+                visible,
+                swinging,
+                ranged,
+                explosive,
+                attackingOwner,
+                damageSource,
+                false);
+        }
+
+        public Target(UUID id, int entityId, Vec position, Vec velocity, long observedAt, long lastOwnHitAt,
+            float health, float estimatedDamage, double halfWidth, double height, boolean visible, boolean swinging,
+            boolean ranged, boolean explosive, boolean attackingOwner, DamageSource damageSource,
+            boolean healingAxeDamageTarget) {
+            this.healingAxeDamageTarget = healingAxeDamageTarget;
             this.damageSource = damageSource == null || !Double.isFinite(estimatedDamage) || estimatedDamage <= 0
                 ? DamageSource.UNKNOWN
                 : damageSource;
