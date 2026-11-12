@@ -20,13 +20,16 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.EnumConnectionState;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
+import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.MaidSchedule;
 import com.github.tartaricacid.touhoulittlemaid.entity.misc.MonsterType;
@@ -42,6 +45,7 @@ import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.budget.MaidWorldNavigationBudget;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
+import com.tianluoqaq.tlmnh.common.ai.navigation.MaidModernPath;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
 import com.tianluoqaq.tlmnh.common.ai.perception.budget.MaidWorldSensingBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
@@ -244,7 +248,14 @@ public final class ServerLoadProfileTests {
                 "scope",
                 "One isolated JVM, five internally serial activity families, complete F/N roots; memory owner is not real multiplayer or a formal independent replication");
             report.addProperty("cpuIsolationRequired", "No other game JVM, build, reference sampling or benchmark");
-            report.addProperty("activityReadOnlyObservationSchema", "finite-cake-read-only-v1");
+            report.addProperty("activityReadOnlyObservationSchema", "finite-cake-native-phase-v2");
+            report.addProperty("cakeFixtureSchema", "floor-embedded-cabinet-v2");
+            report.addProperty(
+                "cakeFixtureScope",
+                "Only CAKE changes: the owned iron floor cell becomes the finite cabinet, cake is one block lower; actor XYZ, horizontal distance2, open floor, search/movement/RNG and all windows remain. Cabinet removal restores that exact iron cell. F/N share geometry. Old elevated-cabinet CPU samples have different inputs.");
+            report.addProperty(
+                "cakePhaseScope",
+                "Read-only Forge LivingUpdate pre-AI/physics and HQA callback snapshots. No injected after-navigation/before-physics hook. Per-actor transitions are bounded, overflow is explicit; native lastStop.path retains the actually stopped route.");
             if (cakeDiagnostic) {
                 report.addProperty("diagnosticOnly", true);
                 report.addProperty(
@@ -388,6 +399,7 @@ public final class ServerLoadProfileTests {
                         .toString());
                 input.add("nativeInput", SleepAttributePortSnapshot.capture(maid));
                 input.add("nutrition", nutrition(maid));
+                if (activity() == Activity.CAKE) input.add("cakeInitialGeometry", duties.get(maid).initialCakeGeometry());
                 inputs.add(input);
             }
         }
@@ -417,8 +429,9 @@ public final class ServerLoadProfileTests {
                 var maid = actors.get(i);
                 int bx = cellX(i), bz = cellZ(i);
                 if (activity() == Activity.CAKE) {
-                    place(bx, y + 1, bz, MaidLifeContent.snackCabinet, 6);
-                    place(bx, y + 2, bz, Blocks.cake, 0);
+                    placeFloorCabinet(bx, bz);
+                    place(bx, y + 1, bz, Blocks.cake, 0);
+                    duties.get(maid).verifyCakeAdmission();
                 } else if (activity() == Activity.SLEEP) {
                     place(bx, y + 1, bz + 1, MaidLifeContent.maidBed, 2);
                     place(bx, y + 1, bz, MaidLifeContent.maidBed, 10);
@@ -486,6 +499,25 @@ public final class ServerLoadProfileTests {
                     && world.getBlockMetadata(bx, by, bz) == metadata,
                 "Native activity prop placement failed");
             props.add(new Prop(bx, by, bz, block, metadata));
+        }
+
+        void placeFloorCabinet(int bx, int bz) {
+            h.assertTrue(
+                bx >= x && bx < x + 80 && bz >= z && bz < z + 48
+                    && world.getBlock(bx, y, bz) == Blocks.iron_block
+                    && world.getBlockMetadata(bx, y, bz) == 0
+                    && world.getTileEntity(bx, y, bz) == null,
+                "Embedded cabinet requires the exact owned unmodified iron floor cell");
+            h.assertTrue(
+                world.setBlock(bx, y, bz, MaidLifeContent.snackCabinet, 6, 2)
+                    && world.getBlock(bx, y, bz) == MaidLifeContent.snackCabinet
+                    && world.getBlockMetadata(bx, y, bz) == 6,
+                "Native embedded cabinet placement failed");
+            props.add(new Prop(bx, y, bz, MaidLifeContent.snackCabinet, 6, true));
+        }
+
+        Point cakePoint(int rosterIndex) {
+            return new Point(cellX(rosterIndex), y + 1, cellZ(rosterIndex));
         }
 
         void tick() {
@@ -593,6 +625,14 @@ public final class ServerLoadProfileTests {
         boolean samePoint(Point left, Point right) {
             return left == right
                 || left != null && right != null && left.x == right.x && left.y == right.y && left.z == right.z;
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public void beforeLivingUpdate(LivingUpdateEvent event) {
+            if (closed || fairness || stage >= 40 || activity() != Activity.CAKE || age < WARMUP
+                || !(event.entityLiving instanceof EntityMaid maid)) return;
+            var duty = duties.get(maid);
+            if (duty != null) duty.observeCakePhase(0, "FORGE_LIVING_UPDATE_PRE_AI_PHYSICS");
         }
 
         @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -758,6 +798,11 @@ public final class ServerLoadProfileTests {
             final JsonObject selections = new JsonObject();
             final int rosterIndex;
             final JsonArray cakeWorkTransitions = new JsonArray();
+            final JsonArray cakePhaseTransitions = new JsonArray();
+            final String[] previousCakePhase = new String[2];
+            final PathEntity[] previousCakePath = new PathEntity[2];
+            JsonObject cakeAdmission;
+            int cakePhaseOverflow;
             Point previousWorkTarget;
             Object previousEdibleAction;
             boolean cakeWorkObserved, previousWalkPresent;
@@ -827,6 +872,7 @@ public final class ServerLoadProfileTests {
             }
 
             void observeCakeWork() {
+                observeCakePhase(1, "HQA_TICK_CALLBACK");
                 var view = actor(maid);
                 var work = view.peekWorkTarget();
                 var edible = view.peekEdibleAction();
@@ -873,7 +919,7 @@ public final class ServerLoadProfileTests {
                     "homeEnabled",
                     maid.getHomeArea()
                         .enabled());
-                var cake = new Point(cellX(rosterIndex), y + 2, cellZ(rosterIndex));
+                var cake = cakePoint(rosterIndex);
                 row.add("originalCakePosition", point(cake));
                 row.addProperty("originalCakeStillPresent", world.getBlock(cake.x, cake.y, cake.z) == Blocks.cake);
                 row.addProperty("originalCakeAir", world.isAirBlock(cake.x, cake.y, cake.z));
@@ -890,6 +936,8 @@ public final class ServerLoadProfileTests {
                 row.addProperty(
                     "distanceSqToOriginalCakeCenter",
                     maid.getDistanceSq(cake.x + .5, cake.y + .5, cake.z + .5));
+                row.add("feet", feet());
+                row.add("nativePath", pathState(maid.getNavigator().getPath(), cake));
                 var view = actor(maid);
                 var work = view.peekWorkTarget();
                 row.add("workTarget", point(work));
@@ -913,8 +961,147 @@ public final class ServerLoadProfileTests {
                         .noPath());
                 var stopped = navigator(maid).lastStop();
                 row.addProperty("lastNativeStopCause", stopped == null ? null : stopped.cause.name());
-                if (stopped != null) row.addProperty("lastNativeStopTotalTime", stopped.worldTick);
+                if (stopped != null) {
+                    row.addProperty("lastNativeStopTotalTime", stopped.worldTick);
+                    row.add("lastStoppedNativePath", pathState(stopped.path, cake));
+                }
                 return row;
+            }
+
+            JsonObject feet() {
+                var row = new JsonObject();
+                row.addProperty("x", maid.posX);
+                row.addProperty("y", maid.posY);
+                row.addProperty("z", maid.posZ);
+                row.addProperty("boundingBoxMinY", maid.boundingBox.minY);
+                row.addProperty("width", maid.width);
+                row.addProperty("height", maid.height);
+                row.addProperty("onGround", maid.onGround);
+                row.addProperty("motionX", maid.motionX);
+                row.addProperty("motionY", maid.motionY);
+                row.addProperty("motionZ", maid.motionZ);
+                return row;
+            }
+
+            JsonObject box(AxisAlignedBB value) {
+                var row = new JsonObject();
+                if (value != null) {
+                    row.addProperty("minX", value.minX);
+                    row.addProperty("minY", value.minY);
+                    row.addProperty("minZ", value.minZ);
+                    row.addProperty("maxX", value.maxX);
+                    row.addProperty("maxY", value.maxY);
+                    row.addProperty("maxZ", value.maxZ);
+                }
+                return row;
+            }
+
+            void verifyCakeAdmission() {
+                var cake = cakePoint(rosterIndex);
+                var cabinetBox = MaidLifeContent.snackCabinet.getCollisionBoundingBoxFromPool(
+                    world, cake.x, cake.y - 1, cake.z);
+                var cakeBox = Blocks.cake.getCollisionBoundingBoxFromPool(world, cake.x, cake.y, cake.z);
+                h.assertTrue(
+                    cabinetBox != null && cabinetBox.minX == cake.x && cabinetBox.maxX == cake.x + 1
+                        && cabinetBox.minY == y && cabinetBox.maxY == cake.y
+                        && cabinetBox.minZ == cake.z && cabinetBox.maxZ == cake.z + 1,
+                    "Embedded native cabinet must retain full-block floor support");
+                h.assertTrue(
+                    cakeBox != null && cakeBox.minY == cake.y && cakeBox.maxY == cake.y + 7.0 / 16.0,
+                    "Native finite cake collision must match its 7/16-block height: " + cakeBox);
+                cakeAdmission = new JsonObject();
+                cakeAdmission.addProperty("schema", "floor-embedded-cabinet-v2");
+                cakeAdmission.add("feet", feet());
+                cakeAdmission.add("cakePosition", point(cake));
+                cakeAdmission.add("nativeCabinetCollision", box(cabinetBox));
+                cakeAdmission.add("nativeCakeCollision", box(cakeBox));
+                cakeAdmission.addProperty(
+                    "actualAdmissionDistanceSq", maid.getDistanceSq(cake.x + .5, cake.y + .5, cake.z + .5));
+                cakeAdmission.addProperty("actualAdmissionWorkPresent", actor(maid).peekWorkTarget() != null);
+                cakeAdmission.addProperty("actualAdmissionWalkPresent", actor(maid).peekWalkTarget() != null);
+            }
+
+            JsonObject initialCakeGeometry() {
+                var cake = cakePoint(rosterIndex);
+                h.assertTrue(
+                    maid.width == .6F && maid.height == 1.5F
+                        && maid.posX == cake.x + .5 && maid.posZ == cake.z + 2.5 && maid.posY == cake.y
+                        && maid.getDistanceSq(cake.x + .5, cake.y + .5, cake.z + .5) == 4.25,
+                    "Cake birth must preserve original actor XYZ and horizontal travel outside use radius");
+                h.assertTrue(
+                    actor(maid).peekWorkTarget() == null && actor(maid).peekWalkTarget() == null,
+                    "Cake birth must not prefill work or walk memory");
+                var row = new JsonObject();
+                row.add("feet", feet());
+                row.add("futureCakePosition", point(cake));
+                row.addProperty("horizontalDistanceSq", 4);
+                row.addProperty("distanceSq", 4.25);
+                row.addProperty("workWalkEmpty", true);
+                return row;
+            }
+
+            JsonObject pathState(PathEntity path, Point cake) {
+                var row = new JsonObject();
+                row.addProperty("present", path != null);
+                if (path == null) return row;
+                row.addProperty("index", path.getCurrentPathIndex());
+                row.addProperty("length", path.getCurrentPathLength());
+                row.addProperty("finished", path.isFinished());
+                var end = path.getFinalPathPoint();
+                if (end != null) row.add("lastNode", point(new Point(end.xCoord, end.yCoord, end.zCoord)));
+                if (path.getCurrentPathIndex() < path.getCurrentPathLength()) {
+                    var node = path.getPathPointFromIndex(path.getCurrentPathIndex());
+                    row.add("currentNode", point(new Point(node.xCoord, node.yCoord, node.zCoord)));
+                }
+                if (path instanceof MaidModernPath modern) {
+                    row.addProperty("modern", true);
+                    row.addProperty("canReach", modern.canReach());
+                    row.add("requestedTarget", point(modern.requestedTarget));
+                    row.addProperty("visited", modern.result.visited);
+                    boolean requestedCake = samePoint(modern.requestedTarget, cake);
+                    row.addProperty("requestedOriginalCake", requestedCake);
+                    if (requestedCake && end != null) {
+                        double offset = (double) (maid.width + 1F) / 2;
+                        double tolerance = maid.width > .75F ? maid.width / 2F : .75F - maid.width / 2F;
+                        int horizontal = Math.abs(end.xCoord - cake.x) + Math.abs(end.zCoord - cake.z);
+                        boolean floorNode = end.yCoord == cake.y && horizontal <= 1;
+                        boolean cakeTopNode = end.yCoord == cake.y + 1 && horizontal == 0;
+                        row.addProperty("servicePlaneEndpointClass", floorNode ? "FLOOR_CARDINAL_OR_TARGET"
+                            : cakeTopNode ? "ABOVE_CAKE" : "UNPROVEN");
+                        if (floorNode || cakeTopNode) {
+                            double maxX = Math.abs(end.xCoord + offset - (cake.x + .5)) + tolerance;
+                            double maxZ = Math.abs(end.zCoord + offset - (cake.z + .5)) + tolerance;
+                            double maxY = floorNode ? .5 : 1.5;
+                            double bound = maxX * maxX + maxY * maxY + maxZ * maxZ;
+                            row.addProperty("arrivalDistanceSqUpperBound", bound);
+                            row.addProperty("arrivalWithinUseSphereProven", bound <= 4);
+                        }
+                    }
+                }
+                return row;
+            }
+
+            void observeCakePhase(int index, String phase) {
+                if (cakeAdmission == null || cakeBites(maid) > bitesBefore) return;
+                var view = actor(maid);
+                var work = view.peekWorkTarget();
+                var path = maid.getNavigator().getPath();
+                var stop = navigator(maid).lastStop();
+                String signature = (work == null ? "none" : work.x + "/" + work.y + "/" + work.z)
+                    + ":" + (view.peekWalkTarget() != null) + ":" + view.peekEdibleAction()
+                    + ":" + (path == null ? -1 : path.getCurrentPathIndex())
+                    + ":" + (stop == null ? -1 : stop.worldTick)
+                    + ":" + (work != null && maid.getDistanceSq(work.x + .5, work.y + .5, work.z + .5) <= 4);
+                if (signature.equals(previousCakePhase[index]) && path == previousCakePath[index]) return;
+                previousCakePhase[index] = signature;
+                previousCakePath[index] = path;
+                if (cakePhaseTransitions.size() >= 64) {
+                    cakePhaseOverflow++;
+                    return;
+                }
+                var row = cakeState();
+                row.addProperty("nativeObservationPhase", phase);
+                cakePhaseTransitions.add(row);
             }
 
             boolean triggered() {
@@ -947,6 +1134,9 @@ public final class ServerLoadProfileTests {
                 row.addProperty("z", maid.posZ);
                 row.add("selectionTicks", new com.google.gson.JsonParser().parse(selections.toString()));
                 if (activity() == Activity.CAKE) {
+                    row.add("cakeFixtureAdmission", cakeAdmission);
+                    row.add("cakeNativePhaseTransitions", cakePhaseTransitions);
+                    row.addProperty("cakeNativePhaseOverflow", cakePhaseOverflow);
                     row.add("cakeReadOnlyState", cakeState());
                     row.add(
                         "cakeWorkTransitions",
@@ -965,14 +1155,20 @@ public final class ServerLoadProfileTests {
             final Block block;
             final TileEntity tile;
             final NBTTagCompound original;
+            final boolean restoreIronFloor;
             boolean removed;
 
             Prop(int bx, int by, int bz, Block block, int metadata) {
+                this(bx, by, bz, block, metadata, false);
+            }
+
+            Prop(int bx, int by, int bz, Block block, int metadata, boolean restoreIronFloor) {
                 this.bx = bx;
                 this.by = by;
                 this.bz = bz;
                 this.block = block;
                 this.metadata = metadata;
+                this.restoreIronFloor = restoreIronFloor;
                 tile = world.getTileEntity(bx, by, bz);
                 original = tileNbt(tile);
             }
@@ -1005,9 +1201,13 @@ public final class ServerLoadProfileTests {
                     unknown = true;
                     continue;
                 }
+                Block restored = prop.restoreIronFloor ? Blocks.iron_block : Blocks.air;
                 h.assertTrue(
-                    world.setBlock(prop.bx, prop.by, prop.bz, Blocks.air, 0, 2)
-                        || world.isAirBlock(prop.bx, prop.by, prop.bz),
+                    (world.setBlock(prop.bx, prop.by, prop.bz, restored, 0, 2)
+                        || world.getBlock(prop.bx, prop.by, prop.bz) == restored)
+                        && world.getBlock(prop.bx, prop.by, prop.bz) == restored
+                        && world.getBlockMetadata(prop.bx, prop.by, prop.bz) == 0
+                        && world.getTileEntity(prop.bx, prop.by, prop.bz) == null,
                     "Native exact prop cleanup failed");
                 prop.removed = true;
             }
