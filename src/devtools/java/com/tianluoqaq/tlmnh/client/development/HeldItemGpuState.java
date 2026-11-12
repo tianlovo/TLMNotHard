@@ -1,10 +1,12 @@
 package com.tianluoqaq.tlmnh.client.development;
 
+import java.lang.reflect.Modifier;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -14,6 +16,8 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.compat.angelica.client.query.AngelicaRenderQueries;
 
 /** 复用GpuMatrixProbe已审计的FBO/PBO/attribute事务，不改旧实验的实现或结论 */
@@ -163,6 +167,33 @@ final class HeldItemGpuState {
             && Arrays.equals(textures, now.textures)
             && Arrays.equals(textureEnabled, now.textureEnabled)
             && Arrays.deepEquals(textureMatrices, now.textureMatrices);
+    }
+
+    JsonObject differencesCurrent() {
+        var result = new JsonObject();
+        var now = new HeldItemGpuState();
+        var gson = new Gson();
+        for (var field : HeldItemGpuState.class.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) || field.getName()
+                .equals("restoreFailures")
+                || field.getName()
+                    .equals("pushed")
+                || field.getName()
+                    .equals("clientPushed"))
+                continue;
+            try {
+                Object previous = field.get(this), current = field.get(now);
+                if (!Objects.deepEquals(previous, current)) {
+                    var values = new JsonObject();
+                    values.add("before", gson.toJsonTree(previous));
+                    values.add("after", gson.toJsonTree(current));
+                    result.add(field.getName(), values);
+                }
+            } catch (IllegalAccessException failure) {
+                throw new IllegalStateException("Own GPU state field is inaccessible", failure);
+            }
+        }
+        return result;
     }
 
     private static int[] integers(int name, int count) {

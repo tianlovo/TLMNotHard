@@ -127,6 +127,7 @@ public final class FollowMechanismGameTests {
         JsonObject ownerCall;
         int livingTicks, previousAge;
         boolean complete, closed;
+        boolean oldNaturalRegeneration;
         String failure;
 
         Session(GameTestHelper helper, String mechanism) {
@@ -149,6 +150,7 @@ public final class FollowMechanismGameTests {
             oldTime = level.getDayTime(); oldDifficulty = level.getDifficulty();
             oldDaylight = level.getGameRules().getBoolean(GameRules.RULE_DAYLIGHT);
             oldSpawning = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING);
+            oldNaturalRegeneration = level.getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION);
             var data = level.getServer().getWorldData().overworldData();
             oldRain = data.isRaining(); oldThunder = data.isThundering();
             oldRainTime = data.getRainTime(); oldThunderTime = data.getThunderTime(); oldClearTime = data.getClearWeatherTime();
@@ -165,6 +167,10 @@ public final class FollowMechanismGameTests {
         void setup() {
             helper.assertTrue(contract.get("contract").getAsString().equals(expectedContract), "Wrong follow contract");
             origin = helper.absolutePos(BlockPos.ZERO);
+            if (contract.has("nutritionInputMapping")) {
+                level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, level.getServer());
+                helper.assertTrue(!level.getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION), "Natural regeneration rule did not apply");
+            }
             level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
             level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
             level.setDayTime(contract.get("dayTime").getAsLong());
@@ -231,6 +237,7 @@ public final class FollowMechanismGameTests {
             inputs.addProperty("rawInitialNBT", raw.toString()); inputs.add("rawInitialNbtBinary", SleepAttributeSnapshot.binaryNbt(raw));
             inputs.addProperty("model", maid.getModelId()); inputs.addProperty("task", maid.getTask().getUid().toString());
             inputs.addProperty("schedule", maid.getSchedule().name()); inputs.addProperty("hunger", maid.getHunger());
+            inputs.addProperty("naturalRegeneration", level.getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION));
             inputs.addProperty("health", maid.getHealth()); inputs.addProperty("width", maid.getBbWidth()); inputs.addProperty("height", maid.getBbHeight());
             inputs.addProperty("pickup", maid.isPickup()); inputs.addProperty("sitting", maid.isInSittingPose());
             inputs.addProperty("homeEnabled", maid.isHomeModeEnable()); inputs.add("position", relative(maid.position()));
@@ -265,6 +272,8 @@ public final class FollowMechanismGameTests {
             f.addProperty("gameTime", level.getGameTime()); f.addProperty("dayTime", level.getDayTime());
             f.add("position", relative(maid.position())); f.add("motion", vector(maid.getDeltaMovement()));
             f.addProperty("health", maid.getHealth()); f.addProperty("sitting", maid.isInSittingPose());
+            f.addProperty("hunger", maid.getHunger());
+            f.addProperty("naturalRegeneration", level.getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION));
             f.add("ownerInput", ownerCall.deepCopy()); f.add("owner", ownerSnapshot(false));
             f.addProperty("walkTarget", maid.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET));
             var since = maid.getBrain().getMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
@@ -362,6 +371,8 @@ public final class FollowMechanismGameTests {
 
         void close() {
             if (closed) return; closed = true;
+            if (contract.has("nutritionInputMapping"))
+                level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(oldNaturalRegeneration, level.getServer());
             if (maid != null) maid.discard(); if (food != null) food.discard();
             if (owner != null) {
                 level.getServer().getPlayerList().remove(owner);

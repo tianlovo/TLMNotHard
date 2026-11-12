@@ -50,6 +50,11 @@ public final class ClientDevelopmentRequest {
         int warmupTicks = 0;
         String model = null, fault = "none";
         String action = null, view = null;
+        if (command == Command.BELL_PREVIEW) {
+            action = text(json, "action");
+            if (!Arrays.asList("start", "stop")
+                .contains(action)) throw new IllegalArgumentException("Unknown bell preview input action");
+        }
         if (command == Command.SCREENSHOT || command == Command.MODELS_UI_CAPTURE
             || command == Command.CABINET_UI_CAPTURE) {
             if (!json.has("name") || !json.get("name")
@@ -257,6 +262,21 @@ public final class ClientDevelopmentRequest {
                     "search",
                     "task_config",
                     "bauble",
+                    "maintenance",
+                    "breeding",
+                    "breeding_status",
+                    "breeding_mode",
+                    "breeding_view",
+                    "breeding_save",
+                    "breeding_search",
+                    "breeding_select",
+                    "breeding_previous",
+                    "breeding_next",
+                    "breeding_logic",
+                    "breeding_max31",
+                    "breeding_gain",
+                    "breeding_growth",
+                    "breeding_resistance",
                     "target_add",
                     "target_remove",
                     "target_previous",
@@ -280,7 +300,12 @@ public final class ClientDevelopmentRequest {
                 || action.equals("target_add")
                 || action.equals("target_remove")
                 || action.equals("target_previous")
-                || action.equals("target_next")) model = text(json, "model");
+                || action.equals("target_next")
+                || action.equals("breeding_search")
+                || action.equals("breeding_select")
+                || action.equals("breeding_gain")
+                || action.equals("breeding_growth")
+                || action.equals("breeding_resistance")) model = text(json, "model");
             if (action.equals("naming_text")) {
                 if (model.length() > 32 || model.chars()
                     .anyMatch(Character::isISOControl))
@@ -342,6 +367,7 @@ public final class ClientDevelopmentRequest {
 
     public enum Command {
         STATUS,
+        BELL_PREVIEW,
         CARE_INTERACT,
         WORLD_SOUND_PROBE,
         WORLD_SHADER_PROBE,

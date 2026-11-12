@@ -9,6 +9,7 @@ import net.minecraft.util.ResourceLocation;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonObject;
+import com.tianluoqaq.tlmnh.client.development.BellOverlayGpuProbe;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentControl;
 import com.tianluoqaq.tlmnh.client.development.GpuMatrixProbe;
 import com.tianluoqaq.tlmnh.client.development.HeadBindingProbe;
@@ -142,6 +143,16 @@ final class DevtoolsClientBootstrap {
         @Override
         public void heldGpuBeforeMaidBody(EntityMaid maid, BuiltinMaidModel model) {
             HeldItemGpuProbe.beforeMaidBody(maid, model);
+        }
+
+        @Override
+        public void bellOverlayBeforeDraw() {
+            BellOverlayGpuProbe.beforeDraw();
+        }
+
+        @Override
+        public void bellOverlayAfterDraw() {
+            BellOverlayGpuProbe.afterDraw();
         }
 
         @Override

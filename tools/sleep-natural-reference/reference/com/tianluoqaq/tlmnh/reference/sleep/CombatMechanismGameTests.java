@@ -81,7 +81,7 @@ public final class CombatMechanismGameTests {
         String queued = "";
 
         Session(GameTestHelper h, String scene) {
-            this(h, scene, "/tlmnh-combat-mechanisms/contract.json", "COMBAT_MECHANISMS_V2",
+            this(h, scene, "/tlmnh-combat-mechanisms/contract.json", "COMBAT_MECHANISMS_V3",
                 "combat-mechanism-original-v1", "combat-mechanism-original-");
         }
 

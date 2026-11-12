@@ -57,8 +57,8 @@
     "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
     "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
   },
-  "schema": "combat-mechanisms-contract-v2",
-  "contract": "COMBAT_MECHANISMS_V2",
+  "schema": "combat-mechanisms-contract-v3",
+  "contract": "COMBAT_MECHANISMS_V3",
   "repetitions": 1,
   "framesPerActor": 300,
   "warmupTicks": 20,
@@ -254,5 +254,11 @@
     "difficulty": "NORMAL"
   },
   "inputRevision": 2,
-  "inputRevisionReason": "Initialize the original SchedulePos through the native UI home entry and use max-health base/health1000 within both native ranges; prior frozen request2000 actualO1024/GTNH2000 and untriggered cases remain separate evidence"
+  "inputRevisionReason": "Initialize the original SchedulePos through the native UI home entry and use max-health base/health1000 within both native ranges; prior frozen request2000 actualO1024/GTNH2000 and untriggered cases remain separate evidence",
+  "nutritionInputMapping": {
+    "originalRawHunger": 0,
+    "portFood": 20,
+    "naturalRegeneration": false,
+    "scope": "Original hunger is inert. Port starts full. Both native worlds disable naturalRegeneration. Native exhaustion, food, saturation and health remain observed. No nutrition equivalence is claimed."
+  }
 }

@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.work.bell.MaintenanceBellData.ToggleOutcome;
 import com.tianluoqaq.tlmnh.common.work.breeding.BreedingPlotPlanner;
 import com.tianluoqaq.tlmnh.common.work.breeding.BreedingPlotPlanner.CellAssignment;
 import com.tianluoqaq.tlmnh.common.work.breeding.BreedingPlotPlanner.CellRole;
+import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingConfigNbtKeys;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData.StatLogic;
 import com.tianluoqaq.tlmnh.common.work.breeding.config.BreedingTaskConfigData.TargetMode;
@@ -36,8 +37,12 @@ public class WaveBCoreDomainTest {
         NBTTagCompound tag = new NBTTagCompound();
         assertEquals(ToggleOutcome.BOUND, MaintenanceBellData.toggleChunkOnRoot(tag, 0, 10, 20).outcome);
         assertEquals(ToggleOutcome.BOUND, MaintenanceBellData.toggleChunkOnRoot(tag, 0, 18, 28).outcome);
-        assertEquals(ToggleOutcome.REJECTED_SPAN_EXCEEDED, MaintenanceBellData.toggleChunkOnRoot(tag, 0, 19, 20).outcome);
-        assertEquals(ToggleOutcome.REJECTED_WRONG_DIMENSION, MaintenanceBellData.toggleChunkOnRoot(tag, -1, 12, 22).outcome);
+        assertEquals(
+            ToggleOutcome.REJECTED_SPAN_EXCEEDED,
+            MaintenanceBellData.toggleChunkOnRoot(tag, 0, 19, 20).outcome);
+        assertEquals(
+            ToggleOutcome.REJECTED_WRONG_DIMENSION,
+            MaintenanceBellData.toggleChunkOnRoot(tag, -1, 12, 22).outcome);
 
         // 填满到 16 个区块（全在 [10..18] x [20..28] 窗口内）
         int count = 2;
@@ -48,24 +53,34 @@ public class WaveBCoreDomainTest {
                 count++;
             }
         }
-        assertEquals(16, MaintenanceBellData.readFromRoot(tag).chunkCount());
+        assertEquals(
+            16,
+            MaintenanceBellData.readFromRoot(tag)
+                .chunkCount());
         assertEquals(ToggleOutcome.REJECTED_CHUNK_LIMIT, MaintenanceBellData.toggleChunkOnRoot(tag, 0, 15, 25).outcome);
 
         // 逐个解绑直到最后一块自动移除根标签
-        List<int[]> snapshot = MaintenanceBellData.readFromRoot(tag).chunks();
+        List<int[]> snapshot = MaintenanceBellData.readFromRoot(tag)
+            .chunks();
         for (int i = 0; i < snapshot.size() - 1; i++) {
             int[] pair = snapshot.get(i);
-            assertEquals(ToggleOutcome.UNBOUND, MaintenanceBellData.toggleChunkOnRoot(tag, 0, pair[0], pair[1]).outcome);
+            assertEquals(
+                ToggleOutcome.UNBOUND,
+                MaintenanceBellData.toggleChunkOnRoot(tag, 0, pair[0], pair[1]).outcome);
         }
         int[] last = snapshot.get(snapshot.size() - 1);
-        assertEquals(ToggleOutcome.CLEARED_ALL, MaintenanceBellData.toggleChunkOnRoot(tag, 0, last[0], last[1]).outcome);
+        assertEquals(
+            ToggleOutcome.CLEARED_ALL,
+            MaintenanceBellData.toggleChunkOnRoot(tag, 0, last[0], last[1]).outcome);
         assertFalse(tag.hasKey(BellNbtKeys.ROOT_MAINTENANCE));
     }
 
     @Test
     public void breedingBellDataRoundTripsAndClearsCleanly() {
         NBTTagCompound tag = new NBTTagCompound();
-        assertFalse(BreedingBellData.readFromRoot(tag).isBound());
+        assertFalse(
+            BreedingBellData.readFromRoot(tag)
+                .isBound());
         BreedingBellData.bindOnRoot(tag, 0, 100, 64, -200);
         BreedingBellData bound = BreedingBellData.readFromRoot(tag);
         assertTrue(bound.isBound());
@@ -78,7 +93,9 @@ public class WaveBCoreDomainTest {
         assertTrue(bound.matches(0, 100, 64, -200));
 
         BreedingBellData.clearOnRoot(tag);
-        assertFalse(BreedingBellData.readFromRoot(tag).isBound());
+        assertFalse(
+            BreedingBellData.readFromRoot(tag)
+                .isBound());
     }
 
     @Test
@@ -147,6 +164,31 @@ public class WaveBCoreDomainTest {
 
     @Test
     public void breedingConfigAndPlotPlannerCoverAndOrMax31AndTopologies() {
+        // 默认未配置女仆以及从旧版存档（无 TLMNHBreedingConfig 键）读入的女仆，写盘不得追加根键
+        BreedingTaskConfigData unconfigured = new BreedingTaskConfigData();
+        assertTrue(unconfigured.isDefault());
+        assertFalse(unconfigured.isPersistent());
+        NBTTagCompound legacyTag = new NBTTagCompound();
+        legacyTag.setString("CustomName", "LegacyMaid");
+        unconfigured.readFromEntityNbt(legacyTag);
+        NBTTagCompound roundTrippedLegacy = (NBTTagCompound) legacyTag.copy();
+        unconfigured.writeToEntityNbt(roundTrippedLegacy);
+        assertFalse(roundTrippedLegacy.hasKey(BreedingConfigNbtKeys.ROOT));
+        assertEquals(legacyTag, roundTrippedLegacy);
+
+        // 显式提交保存（markPersistent）即使字段仍是默认值也会写盘，且再次读回后继续保持 persistent
+        BreedingTaskConfigData explicitDefault = new BreedingTaskConfigData();
+        explicitDefault.markPersistent();
+        NBTTagCompound explicitTag = new NBTTagCompound();
+        explicitDefault.writeToEntityNbt(explicitTag);
+        assertTrue(explicitTag.hasKey(BreedingConfigNbtKeys.ROOT));
+        BreedingTaskConfigData reloadedDefault = new BreedingTaskConfigData();
+        reloadedDefault.readFromEntityNbt(explicitTag);
+        assertTrue(reloadedDefault.isPersistent());
+        NBTTagCompound rewrittenDefault = new NBTTagCompound();
+        reloadedDefault.writeToEntityNbt(rewrittenDefault);
+        assertTrue(rewrittenDefault.hasKey(BreedingConfigNbtKeys.ROOT));
+
         BreedingTaskConfigData cfg = new BreedingTaskConfigData();
         cfg.setTargetMode(TargetMode.CROP);
         cfg.setTargetId("cropsnh:carrot");
@@ -168,9 +210,11 @@ public class WaveBCoreDomainTest {
 
         NBTTagCompound entityTag = new NBTTagCompound();
         cfg.writeToEntityNbt(entityTag);
+        assertTrue(entityTag.hasKey(BreedingConfigNbtKeys.ROOT));
         BreedingTaskConfigData restored = new BreedingTaskConfigData();
         restored.readFromEntityNbt(entityTag);
         assertEquals(cfg, restored);
+        assertTrue(restored.isPersistent());
 
         // 拓扑 A（双亲杂交 -> 13 根作物架）与 拓扑 B（四亲杂交 -> 6 根作物架）
         List<CellAssignment> topoA = BreedingPlotPlanner
@@ -180,7 +224,9 @@ public class WaveBCoreDomainTest {
         List<CellAssignment> topoB = BreedingPlotPlanner
             .planCells(false, "cropsnh:quad", Arrays.asList("a", "b", "c", "d"));
         assertEquals(6, BreedingPlotPlanner.requiredTotalSticks(topoB));
-        long crossCountB = topoB.stream().filter(c -> c.role == CellRole.CROSS_DOUBLE).count();
+        long crossCountB = topoB.stream()
+            .filter(c -> c.role == CellRole.CROSS_DOUBLE)
+            .count();
         assertEquals(1L, crossCountB);
     }
 
@@ -191,17 +237,31 @@ public class WaveBCoreDomainTest {
         display.setString("Name", "My Maintenance Bell");
         maintTag.setTag("display", display.copy());
         MaintenanceBellData.toggleChunkOnRoot(maintTag, 0, 3, 4);
-        assertTrue(MaintenanceBellData.readFromRoot(maintTag).isBound());
+        assertTrue(
+            MaintenanceBellData.readFromRoot(maintTag)
+                .isBound());
         maintTag.removeTag(BellNbtKeys.ROOT_MAINTENANCE);
-        assertFalse(MaintenanceBellData.readFromRoot(maintTag).isBound());
-        assertEquals("My Maintenance Bell", maintTag.getCompoundTag("display").getString("Name"));
+        assertFalse(
+            MaintenanceBellData.readFromRoot(maintTag)
+                .isBound());
+        assertEquals(
+            "My Maintenance Bell",
+            maintTag.getCompoundTag("display")
+                .getString("Name"));
 
         NBTTagCompound breedTag = new NBTTagCompound();
         breedTag.setTag("display", display.copy());
         BreedingBellData.bindOnRoot(breedTag, 0, 10, 64, 20);
-        assertTrue(BreedingBellData.readFromRoot(breedTag).isBound());
+        assertTrue(
+            BreedingBellData.readFromRoot(breedTag)
+                .isBound());
         BreedingBellData.clearOnRoot(breedTag);
-        assertFalse(BreedingBellData.readFromRoot(breedTag).isBound());
-        assertEquals("My Maintenance Bell", breedTag.getCompoundTag("display").getString("Name"));
+        assertFalse(
+            BreedingBellData.readFromRoot(breedTag)
+                .isBound());
+        assertEquals(
+            "My Maintenance Bell",
+            breedTag.getCompoundTag("display")
+                .getString("Name"));
     }
 }

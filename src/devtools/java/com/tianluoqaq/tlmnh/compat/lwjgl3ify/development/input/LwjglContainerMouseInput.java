@@ -10,6 +10,7 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.inventory.Slot;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -40,6 +41,34 @@ public final class LwjglContainerMouseInput {
     private static final String MODULAR_UI_PROVIDER = "2.3.94-1.7.10:sha256:5fee68e74b5d20eb5b2e8a5de668c74a1975bd0f8a6f463ed2be98844803dfdc";
 
     private LwjglContainerMouseInput() {}
+
+    /** 专用夹具按实例配置持有真实潜行修饰键，释放事件仍由原生输入循环消费 */
+    public static AutoCloseable holdSneakModifier(Minecraft mc) {
+        int key = mc.gameSettings.keyBindSneak.getKeyCode();
+        require(
+            DevelopmentFlags.isDevCommandsEnabled() && mc.currentScreen == null
+                && mc.thePlayer != null
+                && (key == Keyboard.KEY_LSHIFT || key == Keyboard.KEY_LCONTROL),
+            "Connected development world with a native Left-Shift or Left-Control sneak binding required");
+        var api = new Api();
+        require(
+            !Keyboard.isKeyDown(key) && !mc.gameSettings.keyBindSneak.getIsKeyPressed() && api.sdlModState() == 0,
+            "Foreign modifier input retained");
+        try {
+            api.sneakModifier(key, true);
+        } catch (RuntimeException failure) {
+            api.forceClearModifierStateQuietly(key);
+            throw failure;
+        }
+        return () -> {
+            try {
+                api.sneakModifier(key, false);
+            } finally {
+                api.forceClearModifierStateQuietly(key);
+                KeyBinding.setKeyBindState(key, false);
+            }
+        };
+    }
 
     public static JsonObject click(Minecraft mc, GuiContainer gui, Slot slot, int button, int mode) {
         require(
@@ -716,6 +745,52 @@ public final class LwjglContainerMouseInput {
                 setModState.invoke(null, (short) 0);
             } catch (Exception ignored) {
                 // Emergency fallback inside catch of cleanup block.
+            }
+        }
+
+        void sneakModifier(int key, boolean down) {
+            if (key == Keyboard.KEY_LSHIFT) {
+                leftShift(down);
+                return;
+            }
+            try {
+                int scancode = (Integer) Class.forName("org.lwjglx.input.KeyCodes")
+                    .getMethod("lwjglToSdlScancode", int.class)
+                    .invoke(null, key);
+                var keycodes = Class.forName("org.lwjgl.sdl.SDLKeycode");
+                int keycode = keycodes.getField("SDLK_LCTRL")
+                    .getInt(null);
+                short mod = down ? (short) keycodes.getField("SDL_KMOD_LCTRL")
+                    .getInt(null) : (short) 0;
+                require(
+                    key == Keyboard.KEY_LCONTROL && scancode >= 0 && scancode < sdlKeyPressedArray.limit(),
+                    "Reviewed native Left-Control mapping required");
+                Object action = down ? actionPressed : actionReleased;
+                long timestamp = (Long) nanoTime.invoke(null);
+                long keyNamePtr = (Long) nGetKeyName.invoke(null, keycode);
+                setModState.invoke(null, mod);
+                sdlKeyPressedArray.put(scancode, (byte) (down ? 1 : 0));
+                Object event = keyEventCtor.newInstance(key, key, keycode, scancode, keycode, action, mod, keyNamePtr);
+                injectKeyEvent.invoke(null, event);
+                addSdlKeyEvent.invoke(null, keycode, scancode, action, (int) mod, 0, timestamp);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Native Left-Control transition failed", failure);
+            }
+        }
+
+        void forceClearModifierStateQuietly(int key) {
+            if (key == Keyboard.KEY_LSHIFT) {
+                forceClearLeftShiftStateQuietly();
+                return;
+            }
+            try {
+                int scancode = (Integer) Class.forName("org.lwjglx.input.KeyCodes")
+                    .getMethod("lwjglToSdlScancode", int.class)
+                    .invoke(null, key);
+                sdlKeyPressedArray.put(scancode, (byte) 0);
+                setModState.invoke(null, (short) 0);
+            } catch (Exception ignored) {
+                // 原生释放失败时的有限状态清理
             }
         }
 

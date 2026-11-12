@@ -41,7 +41,7 @@ public final class CombatBoundaryGameTests {
         int firstDryFrames, secondDryFrames;
 
         Session(GameTestHelper h, String scene) {
-            super(h, scene, "/tlmnh-combat-boundaries/contract.json", "COMBAT_BOUNDARIES_V1",
+            super(h, scene, "/tlmnh-combat-boundaries/contract.json", "COMBAT_BOUNDARIES_V2",
                 "combat-boundary-original-v1", "combat-boundary-original-");
             targetPlan = vector(new Vec3(17.5, 1, 4.5));
             reserve = scene.equals("finite") ? new ItemStack(Items.ARROW) : ItemStack.EMPTY;

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -21,13 +22,13 @@ ORIGINAL |= {"com.github.tartaricacid.touhoulittlemaid.entity." + s for s in (
     "task.TaskAttack", "task.TaskBowAttack", "ai.brain.task.MaidMeleeAttack", "ai.brain.task.MaidShootTargetTask")}
 PRODUCTION = [ROOT] + [PREFIX + s for s in (
     "common.ai.faithful.MaidFaithfulBrain", "common.ai.enhanced.EnhancedCoreBrain",
-    "common.ai.enhanced.EnhancedCombatController", "common.combat.MaidBowAttack", "common.combat.NativeArrowMedium",
-    "common.combat.ArrowPhysics", "common.combat.ArrowInterceptSolver", "common.combat.ObservedTargetMotion")]
+    "common.ai.enhanced.EnhancedCombatController", "common.combat.MaidBowAttack", "common.combat.ballistics.NativeArrowMedium",
+    "common.combat.ballistics.ArrowPhysics", "common.combat.ballistics.ArrowInterceptSolver", "common.combat.ballistics.ObservedTargetMotion")]
 OBSERVER = [PREFIX + "qa.NaturalRangedPairTests" + s for s in ("", "$Collector", "$Flight")]
 OBSERVER += [PREFIX + "qa.ModernCoreTests$Fixture", PREFIX + "qa.SleepAttributePortSnapshot"]
 COMBAT_OBSERVER = [PREFIX + "qa.CombatMechanismPortTests" + s for s in ("", "$Collector", "$MeleeCollector")]
 SPAWN = [PREFIX + "common.development." + s for s in ("DeterministicMaidSpawn", "IsolatedPlayerChannel")]
-SOURCE = [PREFIX + "common.combat." + s for s in ("MaidGravityFreeArrow", "SourceBowShot")]
+SOURCE = [PREFIX + "common.combat.ballistics." + s for s in ("MaidGravityFreeArrow", "SourceBowShot")]
 ROOT_CONTRACT = [PREFIX + s for s in ("common.ai.faithful.ModernFollowCoreActor",
                                    "common.ai.MaidBrainCoordinator", "common.ai.policy.MaidPolicyRuntime")]
 EXPECTED = {"faithfulMeleeDefense", "enhancedMeleeDefense", "faithfulSourceMotion", "faithfulNativeMotion",
@@ -88,6 +89,32 @@ def layout(rows):
     require(actual == expected, "actual initial enclosure differs")
 
 
+def nutrition_inputs(data, original):
+    initial = data["actualInputs"]
+    expected_hunger = 0 if original else 20
+    require(initial["hunger"] == expected_hunger and initial["naturalRegeneration"] is False,
+            "nutrition-isolated initial hunger/rule differs")
+    if not original:
+        require(data["environmentInitial"]["naturalRegeneration"] is False
+                and initial["nutrition"]["food"] == 20,
+                "port nutrition environment or full-food input differs")
+    for frame in data["frames"]:
+        require(frame["naturalRegeneration"] is False, "natural regeneration changed during observed frames")
+        if original:
+            require(frame["hunger"] == 0, "original inert hunger field changed")
+        else:
+            state = frame["nutrition"]
+            require(state["paused"] is False and 0 < state["food"] <= 20
+                    and state["regenTicks"] == state["starveTicks"] == 0,
+                    "port nutrition paused, natural-healed or entered starvation")
+            require(all(isinstance(state[key], (int, float)) and not isinstance(state[key], bool)
+                        and math.isfinite(state[key]) and state[key] >= 0 for key in ("saturation", "exhaustion")),
+                    "port nutrition telemetry is non-finite or negative")
+    return {"mapping": "original_inert_raw0_to_port_full_food20", "original_raw_hunger": 0,
+            "port_initial_food": 20, "naturalRegeneration": False,
+            "observed_frames": len(data["frames"]), "nutrition_equivalence_claimed": False}
+
+
 def inspect(data, scene, contract_hash, original, expected_schema=None, unified_tasks=False):
     mechanism = scene["id"]
     if expected_schema is None:
@@ -106,8 +133,9 @@ def inspect(data, scene, contract_hash, original, expected_schema=None, unified_
     require(initial["task"] == expected_task
             and initial["sitting"] is (mechanism != "melee") and initial["schedule"] == "ALL"
             and initial["position"] == [8.5, 1, 4.5] and initial["homeEnabled"] is True
-            and initial["restrictionRadius"] == 12 and initial["health"] == 20 and initial["hunger"] == 0,
+            and initial["restrictionRadius"] == 12 and initial["health"] == 20,
             "relevant initial root/command inputs differ")
+    nutrition = nutrition_inputs(data, original)
     if original:
         require(data["entityClass"] == ROOT and data["brainClass"] == "net.minecraft.world.entity.ai.Brain"
                 and data["ownCleanupComplete"] is True, "not the original full natural root")
@@ -182,7 +210,8 @@ def inspect(data, scene, contract_hash, original, expected_schema=None, unified_
                                       "source_range": "modern MAX_HEALTH 1..1024; setHealth clamps by getMaxHealth" if original
                                                       else "GTNH maxHealth upper bound Double.MAX_VALUE; actual value individually verified",
                                       "cross_engine_health_equivalence_claimed": False},
-              "source_behavior_success_inferred_from_collection": False}
+              "source_behavior_success_inferred_from_collection": False,
+              "nutrition_input_mapping": nutrition}
     if mechanism == "motion":
         result["segments"] = [{**segment,
             "actual_joins": sum(segment["start"] <= s["spawnFrame"] < segment["end"] for s in shots),
@@ -219,6 +248,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("original-captures", "original-build", "original-tool", "original-agent", "port-run", "candidate-jar", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--devtools-jar", type=Path,
+                        help="Separate devtools artifact; defaults to candidate for historical monolithic runs")
     parser.add_argument("--unified-tasks", action="store_true",
                         help="Verify Enhanced unified-task state and its retained ranged-command input")
     parser.add_argument("--allow-additional-port-tests", action="store_true")
@@ -257,7 +288,7 @@ def main():
             captured.setdefault("noninferiorityDelta", None)
             require(captured == contract, "port captured resource differs")
             for key, classes, jar in (("productionArtifact", PRODUCTION, args.candidate_jar), ("observerArtifact", OBSERVER, pilot),
-                                      ("combatObserverArtifact", COMBAT_OBSERVER, pilot), ("spawnInputArtifact", SPAWN, args.candidate_jar),
+                                      ("combatObserverArtifact", COMBAT_OBSERVER, pilot), ("spawnInputArtifact", SPAWN, args.devtools_jar or args.candidate_jar),
                                       ("sourceArrowArtifact", SOURCE, args.candidate_jar), ("combatRootArtifact", ROOT_CONTRACT, args.candidate_jar)):
                 artifact(port[key], jar, classes)
             row, attributes, conditions = inspect(port, scene, sha(raw), False, unified_tasks=args.unified_tasks)

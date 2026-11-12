@@ -102,6 +102,7 @@ public final class ClientDevelopmentControl {
         }
         TLMNotHard.LOG.info("TLMNH_CLIENT_CONTROL_READY directory=tlmnh-dev/control version={}", Tags.VERSION);
         MinecraftForge.EVENT_BUS.register(this);
+        BellOverlayGpuProbe.register();
     }
 
     @SubscribeEvent
@@ -179,7 +180,11 @@ public final class ClientDevelopmentControl {
                 && request.command != ClientDevelopmentRequest.Command.SHUTDOWN)
                 throw new IllegalStateException("Finish the active held GPU probe before another operation");
             switch (request.command) {
+                case BELL_PREVIEW:
+                    response.add("bellOverlay", BellOverlayGpuProbe.sneak(request.action.equals("start")));
+                    break;
                 case STATUS:
+                    response.add("bellOverlay", BellOverlayGpuProbe.observe());
                     response.add("ysmuMaidPassenger", MaidPassengerAlias.observation());
                     response.add("playerCarryArms", MaidPlayerCarryArms.observation());
                     response.add("loadedMaidRenderObservations", MaidRenderer.inspectLoadedForDevelopment());

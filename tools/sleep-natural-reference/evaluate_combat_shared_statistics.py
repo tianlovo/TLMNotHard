@@ -6,9 +6,173 @@ import json
 import math
 import random
 import struct
+import time
 from pathlib import Path
 
 from check import require, sha
+import gzip
+import os
+from datetime import datetime, timezone
+
+from nbt_binding import decode_named_nbt
+
+
+def _validate_locked_artifacts(locked):
+    if not isinstance(locked, dict):
+        raise ValueError("sealed schedule requires locked_artifacts")
+    for key in ("candidate_sha256", "devtools_sha256", "pilot_sha256", "contract_sha256"):
+        value = locked.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError(f"locked_artifacts requires lowercase SHA256 {key}")
+    upstream = locked.get("original_upstream_commit")
+    if not isinstance(upstream, str) or len(upstream) != 40 or any(c not in "0123456789abcdef" for c in upstream):
+        raise ValueError("locked_artifacts requires original_upstream_commit")
+
+
+def _schedule_digest(schedule):
+    payload = {key: value for key, value in schedule.items() if key != "seal_sha256"}
+    return sha(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+
+
+def seal_random_campaign_schedule(campaign_id, max_blocks=120, games_started_at_seal=0, locked_artifacts=None):
+    """在候选产物冻结后、任何区组启动前（games_started_at_seal == 0），由 os.urandom 独立抽取并封存随机种子表。"""
+    if not isinstance(campaign_id, str) or not campaign_id.strip():
+        raise ValueError("campaign_id must be a non-empty string")
+    if isinstance(max_blocks, bool) or not isinstance(max_blocks, int) or max_blocks < 1:
+        raise ValueError(f"max_blocks must be >= 1, got {max_blocks!r}")
+    if isinstance(games_started_at_seal, bool) or games_started_at_seal != 0:
+        raise ValueError(f"schedule must be sealed before any game starts (games_started_at_seal={games_started_at_seal!r})")
+    _validate_locked_artifacts(locked_artifacts)
+    rows = []
+    seen = set()
+    for idx in range(1, max_blocks + 1):
+        seed_val = 0
+        while seed_val == 0 or seed_val in seen:
+            seed_val = struct.unpack(">q", os.urandom(8))[0]
+        seen.add(seed_val)
+        rows.append({
+            "block_index": idx,
+            "block_id": f"B{idx:03d}",
+            "scheduled_seed": seed_val,
+            "execution_order": expected_pair_execution_order(idx),
+        })
+    schedule = {
+        "schema": "combat-shared-statistics-sealed-schedule-v4",
+        "contract": "COMBAT_SHARED_STATISTICS_V1",
+        "campaign_id": campaign_id,
+        "seed_generation_method": "os_urandom_int64_sealed_pre_campaign",
+        "games_started_at_seal": 0,
+        "sealed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "sealed_at_epoch_ns": time.time_ns(),
+        "locked_artifacts": dict(locked_artifacts),
+        "max_blocks": max_blocks,
+        "blocks": rows,
+    }
+    schedule["seal_sha256"] = _schedule_digest(schedule)
+    return schedule
+
+
+def parse_server_properties_seed(props_path):
+    """解析 server.properties 中的有符号 64 位整数 level-seed。"""
+    p = Path(props_path)
+    if not p.is_file():
+        raise CollectionIntegrityFault(f"missing server.properties: {p}")
+    found = None
+    for raw_line in p.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("level-seed="):
+            val_text = line.split("=", 1)[1].strip()
+            try:
+                found = int(val_text, 10)
+            except ValueError as exc:
+                raise CollectionIntegrityFault(f"non-integer level-seed in {p.name}: {val_text!r}") from exc
+    if found is None or not (-(1 << 63) <= found < (1 << 63)):
+        raise CollectionIntegrityFault(f"missing or out-of-range int64 level-seed in {p.name}: {found!r}")
+    return found
+
+
+def parse_level_dat_world_seed(level_dat_path, is_original_1201):
+    """使用 decode_named_nbt 解析 GZip 压缩 level.dat 中的真实世界种子。"""
+    p = Path(level_dat_path)
+    if not p.is_file():
+        raise CollectionIntegrityFault(f"missing level.dat: {p}")
+    try:
+        uncompressed = gzip.decompress(p.read_bytes())
+        _, root_tag = decode_named_nbt(uncompressed)
+    except Exception as exc:
+        raise CollectionIntegrityFault(f"invalid level.dat NBT in {p.name}: {exc}") from exc
+    if root_tag[0] != 10 or b"Data" not in root_tag[1]:
+        raise CollectionIntegrityFault(f"missing Data compound in {p.name}")
+    data_cmp = root_tag[1][b"Data"]
+    if data_cmp[0] != 10:
+        raise CollectionIntegrityFault(f"Data tag is not compound in {p.name}")
+    if is_original_1201:
+        wgs = data_cmp[1].get(b"WorldGenSettings")
+        if wgs is None or wgs[0] != 10 or b"seed" not in wgs[1]:
+            raise CollectionIntegrityFault(f"missing Data.WorldGenSettings.seed in {p.name}")
+        seed_tag = wgs[1][b"seed"]
+    else:
+        if b"RandomSeed" not in data_cmp[1]:
+            raise CollectionIntegrityFault(f"missing Data.RandomSeed in {p.name}")
+        seed_tag = data_cmp[1][b"RandomSeed"]
+    if seed_tag[0] != 4:
+        raise CollectionIntegrityFault(f"seed tag is not TAG_LONG in {p.name}: {seed_tag[0]}")
+    return int(seed_tag[1])
+
+
+def _verify_process_runs_and_order(block_id, block_spec, expected_order):
+    """核验双端鲜 JVM 进程启动/退出单调时序、无并发重叠、独立 PID 及奇偶 AB/BA 先后顺序。"""
+    orig_runs = block_spec.get("original_process_runs")
+    port_runs = block_spec.get("port_process_runs")
+    if not isinstance(orig_runs, list) or len(orig_runs) < 1 or not isinstance(port_runs, list) or len(port_runs) < 1:
+        raise ValueError(f"formal block {block_id} missing original_process_runs or port_process_runs")
+
+    def check_group(runs, label):
+        intervals = []
+        for idx, r in enumerate(runs):
+            if not isinstance(r, dict):
+                raise ValueError(f"invalid {label}[{idx}] in {block_id}")
+            pid = r.get("pid")
+            st = r.get("started_at_epoch_ns")
+            ft = r.get("finished_at_epoch_ns")
+            if (
+                isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0
+                or isinstance(st, bool) or not isinstance(st, int)
+                or isinstance(ft, bool) or not isinstance(ft, int)
+                or st <= 0 or ft <= st
+            ):
+                raise ValueError(f"invalid pid or timestamps in {block_id} {label}[{idx}]")
+            intervals.append((st, ft, pid))
+        intervals.sort(key=lambda x: x[0])
+        for i in range(len(intervals) - 1):
+            if intervals[i][1] > intervals[i + 1][0]:
+                raise ValueError(f"overlapping {label} JVM intervals in {block_id}")
+        return intervals
+
+    orig_iv = check_group(orig_runs, "original_process_runs")
+    port_iv = check_group(port_runs, "port_process_runs")
+    orig_pids = {x[2] for x in orig_iv}
+    port_pids = {x[2] for x in port_iv}
+    if orig_pids & port_pids:
+        raise ValueError(f"shared PID between original and port runs in {block_id}: {orig_pids & port_pids}")
+
+    if expected_order == "original_then_port":
+        if max(x[1] for x in orig_iv) > min(x[0] for x in port_iv):
+            raise ValueError(
+                f"process timestamps in {block_id} violate original_then_port: "
+                f"orig_end={max(x[1] for x in orig_iv)} > port_start={min(x[0] for x in port_iv)}"
+            )
+    elif expected_order == "port_then_original":
+        if max(x[1] for x in port_iv) > min(x[0] for x in orig_iv):
+            raise ValueError(
+                f"process timestamps in {block_id} violate port_then_original: "
+                f"port_end={max(x[1] for x in port_iv)} > orig_start={min(x[0] for x in orig_iv)}"
+            )
+    else:
+        raise ValueError(f"unsupported expected_order {expected_order!r}")
+
 
 MECHANISM_ARMS = {
     "melee": ("O", "F", "N"),
@@ -848,7 +1012,7 @@ def _verify_block_metric_supports(block_id, scene_data, contract):
             )
 
 
-def evaluate_completed_block(block_spec, contract, excluded_tokens, excluded_shas, preview_mode):
+def evaluate_completed_block(block_spec, contract, excluded_tokens, excluded_shas, preview_mode, formal_campaign=False):
     block_id = str(block_spec["block_id"])
     mech_cmp, bound_cmp, port_m_dir, port_b_dir, hit_cal = _verify_turbo_and_comparisons(
         block_spec, contract, excluded_tokens, excluded_shas, preview_mode
@@ -884,6 +1048,21 @@ def evaluate_completed_block(block_spec, contract, excluded_tokens, excluded_sha
                     )
                 hit_cal = hit_cal or cal
                 _verify_common_capture_integrity(raw_doc, scene, arm, c_sha, is_boundary, is_orig)
+                if formal_campaign:
+                    expected_seed = block_spec["scheduled_seed"]
+                    cap_seed = (
+                        raw_doc.get("actualInputs", {}).get("worldSeed")
+                        if is_orig
+                        else raw_doc.get("environment", {}).get("worldSeed")
+                    )
+                    if isinstance(cap_seed, bool) or not isinstance(cap_seed, int):
+                        raise CollectionIntegrityFault(
+                            f"missing integer capture worldSeed in {block_id} {scene}/{arm}: {cap_seed!r}"
+                        )
+                    if cap_seed != expected_seed:
+                        raise ValueError(
+                            f"capture worldSeed mismatch in {block_id} {scene}/{arm}: {cap_seed} != {expected_seed}"
+                        )
                 maid_id = raw_doc["maidUuid"] if is_orig else raw_doc["maidInitial"]["uuid"]
                 owner_id = raw_doc["actualInputs"]["owner"]["uuid"] if is_orig else raw_doc["ownerInitial"]["uuid"]
                 if digest in capture_shas or maid_id in actor_uuids or owner_id in owner_uuids:
@@ -903,6 +1082,30 @@ def evaluate_completed_block(block_spec, contract, excluded_tokens, excluded_sha
         )
     require(len(capture_shas) == 32 and len(actor_uuids) == 32 and len(owner_uuids) == 32, "incomplete 32-arm block")
     _verify_block_metric_supports(block_id, scene_data, contract)
+    if formal_campaign:
+        expected_seed = block_spec["scheduled_seed"]
+        expected_order = block_spec["execution_order"]
+        for prop_key in (
+            "original_mechanisms_server_properties",
+            "original_boundaries_server_properties",
+            "port_server_properties",
+        ):
+            if prop_key not in block_spec:
+                raise ValueError(f"formal block {block_id} missing {prop_key}")
+            prop_seed = parse_server_properties_seed(block_spec[prop_key])
+            if prop_seed != expected_seed:
+                raise ValueError(f"{prop_key} seed mismatch in {block_id}: {prop_seed} != {expected_seed}")
+        for dat_key, is_1201 in (
+            ("original_mechanisms_level_dat", True),
+            ("original_boundaries_level_dat", True),
+            ("port_level_dat", False),
+        ):
+            if dat_key not in block_spec:
+                raise ValueError(f"formal block {block_id} missing {dat_key}")
+            dat_seed = parse_level_dat_world_seed(block_spec[dat_key], is_original_1201=is_1201)
+            if dat_seed != expected_seed:
+                raise ValueError(f"{dat_key} NBT seed mismatch in {block_id}: {dat_seed} != {expected_seed}")
+        _verify_process_runs_and_order(block_id, block_spec, expected_order)
 
     artifacts = {
         "candidate_sha256": mech_cmp["candidate_sha256"],
@@ -1121,16 +1324,118 @@ def _build_aim_ablations_and_exclusions(valid_blocks):
     }
 
 
-def _verify_manifest_protocol(manifest, blocks_input):
-    formal_campaign = manifest.get("protocol_mode") == "formal_campaign"
-    enforce_seeds = formal_campaign or (manifest.get("enforce_seed_schedule") is True)
-    enforce_order = formal_campaign or (manifest.get("enforce_alternating_order") is True)
+def _load_and_verify_sealed_schedule(manifest):
+    sched_doc = manifest.get("sealed_schedule")
+    sched_path = manifest.get("sealed_schedule_path")
+    expected_sha = manifest.get("sealed_schedule_sha256")
+    if sched_path is not None:
+        p = Path(sched_path)
+        if not p.is_file():
+            raise ValueError(f"missing sealed_schedule_path: {p}")
+        raw = p.read_bytes()
+        actual_sha = sha(raw)
+        if not isinstance(expected_sha, str) or actual_sha != expected_sha:
+            raise ValueError(f"sealed_schedule_sha256 mismatch: {actual_sha} != {expected_sha!r}")
+        sched_doc = json.loads(raw)
+    if not isinstance(sched_doc, dict):
+        raise ValueError("formal_campaign requires sealed_schedule or (sealed_schedule_path + sealed_schedule_sha256)")
+    if sched_doc.get("seal_sha256") != _schedule_digest(sched_doc):
+        raise ValueError("sealed schedule content digest mismatch")
+    _validate_locked_artifacts(sched_doc.get("locked_artifacts"))
+    sealed_ns = sched_doc.get("sealed_at_epoch_ns")
+    if isinstance(sealed_ns, bool) or not isinstance(sealed_ns, int) or sealed_ns <= 0:
+        raise ValueError("sealed schedule requires sealed_at_epoch_ns")
+    if sched_doc.get("schema") != "combat-shared-statistics-sealed-schedule-v4":
+        raise ValueError(f"unsupported sealed schedule schema: {sched_doc.get('schema')!r}")
+    if sched_doc.get("seed_generation_method") != "os_urandom_int64_sealed_pre_campaign":
+        raise ValueError(f"unapproved seed_generation_method: {sched_doc.get('seed_generation_method')!r}")
+    if isinstance(sched_doc.get("games_started_at_seal"), bool) or sched_doc.get("games_started_at_seal") != 0:
+        raise ValueError("sealed_schedule must have games_started_at_seal == 0")
+    rows = sched_doc.get("blocks")
+    if not isinstance(rows, list) or len(rows) < 1:
+        raise ValueError("sealed_schedule.blocks must be a non-empty list")
+    by_idx = {}
+    seen = set()
+    for pos, r in enumerate(rows, 1):
+        idx = r.get("block_index")
+        sval = r.get("scheduled_seed")
+        ord_val = r.get("execution_order")
+        if isinstance(idx, bool) or not isinstance(idx, int) or idx != pos:
+            raise ValueError(f"non-contiguous sealed_schedule block_index at {pos}: {idx!r}")
+        if (isinstance(sval, bool) or not isinstance(sval, int) or sval == 0 or sval in seen
+                or not -(1 << 63) <= sval < (1 << 63)):
+            raise ValueError(f"invalid or duplicate sealed_schedule seed at block {pos}: {sval!r}")
+        if ord_val != expected_pair_execution_order(pos):
+            raise ValueError(f"invalid sealed_schedule execution_order at block {pos}: {ord_val!r}")
+        seen.add(sval)
+        by_idx[pos] = r
+    if type(sched_doc.get("max_blocks")) is not int or sched_doc["max_blocks"] != len(rows):
+        raise ValueError("sealed schedule max_blocks differs from row count")
+    return sched_doc, by_idx
+
+
+def _verify_sealed_runtime_bindings(entry, evaluated, locked, sealed_ns, previous_end):
+    bid = entry["block_id"]
+    for key in ("candidate_sha256", "pilot_sha256"):
+        if evaluated["artifacts"][key] != locked[key]:
+            raise ValueError(f"sealed artifact mismatch in {bid}: {key}")
+    observed_paths = {
+        Path(entry.get("port_mechanisms_run") or entry["port_run"]) / "observed.json",
+        Path(entry.get("port_boundaries_run") or entry["port_run"]) / "observed.json",
+    }
+    for path in observed_paths:
+        if not path.is_file():
+            raise ValueError(f"formal block {bid} requires observed artifact receipt")
+        observed = json.loads(path.read_bytes())
+        artifacts = observed.get("artifacts", [])
+        for modid, key in (("tlmnh", "candidate_sha256"), ("tlmnhdevtools", "devtools_sha256"),
+                           ("tlmnhqapilot", "pilot_sha256")):
+            matches = [row for row in artifacts if row.get("modid") == modid]
+            if len(matches) != 1 or matches[0].get("sha256") != locked[key]:
+                raise ValueError(f"sealed installed artifact mismatch in {bid}: {modid}")
+    runs = entry["original_process_runs"] + entry["port_process_runs"]
+    first_start = min(row["started_at_epoch_ns"] for row in runs)
+    last_end = max(row["finished_at_epoch_ns"] for row in runs)
+    if first_start <= sealed_ns:
+        raise ValueError(f"block {bid} started before schedule seal")
+    if previous_end is not None and first_start < previous_end:
+        raise ValueError(f"cross-block JVM intervals overlap or reorder at {bid}")
+    for key in ("original_mechanisms_server_properties", "original_boundaries_server_properties",
+                "port_server_properties", "original_mechanisms_level_dat", "original_boundaries_level_dat",
+                "port_level_dat"):
+        if entry.get(key + "_sha256") != sha(Path(entry[key]).read_bytes()):
+            raise ValueError(f"runtime file digest mismatch in {bid}: {key}")
+    return last_end
+
+
+def _verify_manifest_protocol(manifest, blocks_input, preview_mode=False):
+    mode = manifest.get("protocol_mode")
+    if not preview_mode:
+        if mode != "formal_campaign":
+            raise ValueError(
+                f"non-preview evaluation unconditionally requires protocol_mode == 'formal_campaign', got {mode!r}"
+            )
+    elif mode is not None and mode not in ("calibration_preview", "formal_campaign"):
+        raise ValueError(f"unknown preview protocol_mode: {mode!r}")
+
+    formal_campaign = mode == "formal_campaign"
     campaign_id = manifest.get("campaign_id")
-    if enforce_seeds and (not isinstance(campaign_id, str) or not campaign_id.strip()):
-        raise ValueError("formal_campaign or enforce_seed_schedule requires non-empty manifest campaign_id")
+    sealed_by_idx = None
+    if formal_campaign:
+        if not isinstance(campaign_id, str) or not campaign_id.strip():
+            raise ValueError("formal_campaign requires non-empty manifest campaign_id")
+        sealed_doc, sealed_by_idx = _load_and_verify_sealed_schedule(manifest)
+        if sealed_doc.get("campaign_id") != campaign_id:
+            raise ValueError(
+                f"manifest campaign_id {campaign_id!r} != sealed_schedule campaign_id {sealed_doc.get('campaign_id')!r}"
+            )
+        if len(blocks_input) > len(sealed_by_idx):
+            raise ValueError(
+                f"manifest has {len(blocks_input)} blocks exceeding sealed_schedule max_blocks {len(sealed_by_idx)}"
+            )
 
     any_block_index = any("block_index" in entry for entry in blocks_input)
-    if formal_campaign or enforce_seeds or enforce_order or any_block_index:
+    if formal_campaign or any_block_index:
         indices = []
         for entry in blocks_input:
             b_idx = entry.get("block_index")
@@ -1149,12 +1454,12 @@ def _verify_manifest_protocol(manifest, blocks_input):
     for pos, entry in enumerate(blocks_input, 1):
         b_idx = entry.get("block_index", pos)
         order = entry.get("execution_order")
-        if enforce_order and order is None:
+        if formal_campaign and order is None:
             raise ValueError(f"missing execution_order in block {entry.get('block_id')}")
         if order is not None:
             if order not in ALLOWED_EXECUTION_ORDERS:
                 raise ValueError(f"invalid execution_order {order!r} in block {entry.get('block_id')}")
-            if enforce_order and order != expected_pair_execution_order(b_idx):
+            if formal_campaign and order != expected_pair_execution_order(b_idx):
                 raise ValueError(
                     f"execution_order {order!r} in block {entry.get('block_id')} violates pre-fixed schedule "
                     f"{expected_pair_execution_order(b_idx)!r}"
@@ -1162,13 +1467,13 @@ def _verify_manifest_protocol(manifest, blocks_input):
             recorded_orders.append(order)
 
         sched_seed = entry.get("scheduled_seed")
-        if enforce_seeds and sched_seed is None:
+        if formal_campaign and sched_seed is None:
             raise ValueError(f"missing scheduled_seed in block {entry.get('block_id')}")
         if sched_seed is not None:
             if isinstance(sched_seed, bool) or not isinstance(sched_seed, int):
                 raise ValueError(f"non-integer scheduled_seed in block {entry.get('block_id')}")
-            if isinstance(campaign_id, str) and campaign_id.strip():
-                expected_seed = derive_scheduled_block_seed(campaign_id, b_idx)
+            if formal_campaign:
+                expected_seed = sealed_by_idx[b_idx]["scheduled_seed"]
                 if sched_seed != expected_seed:
                     raise ValueError(
                         f"scheduled_seed mismatch in block {entry.get('block_id')}: {sched_seed} != {expected_seed}"
@@ -1177,20 +1482,14 @@ def _verify_manifest_protocol(manifest, blocks_input):
                 raise ValueError(f"duplicate scheduled_seed across blocks in {entry.get('block_id')}")
             seen_seeds.add(sched_seed)
 
-        world_seed = entry.get("world_seed")
-        if world_seed is not None and sched_seed is None:
-            if isinstance(world_seed, bool) or not isinstance(world_seed, int):
-                raise ValueError(f"non-integer world_seed in block {entry.get('block_id')}")
-            if world_seed in seen_seeds:
-                raise ValueError(f"duplicate world_seed across blocks in {entry.get('block_id')}")
-            seen_seeds.add(world_seed)
-
     return {
         "campaign_id": campaign_id,
+        "protocol_mode": mode,
         "formal_campaign_protocol_enforced": formal_campaign,
-        "contiguous_block_indices_verified": bool(formal_campaign or enforce_seeds or enforce_order or any_block_index),
-        "seed_schedule_verified": enforce_seeds,
-        "alternating_pair_order_verified": enforce_order,
+        "contiguous_block_indices_verified": bool(formal_campaign or any_block_index),
+        "seed_schedule_verified": formal_campaign,
+        "alternating_pair_order_verified": formal_campaign,
+        "runtime_seed_and_order_bindings_verified": formal_campaign,
         "recorded_execution_orders": recorded_orders,
     }
 
@@ -1210,7 +1509,18 @@ def evaluate_manifest(manifest, contract_bytes, preview_mode=False):
         require(isinstance(bid, str) and bid and bid not in seen_block_ids, f"duplicate or invalid block_id: {bid}")
         seen_block_ids.add(bid)
 
-    protocol_receipt = _verify_manifest_protocol(manifest, blocks_input)
+    protocol_receipt = _verify_manifest_protocol(manifest, blocks_input, preview_mode=preview_mode)
+    locked = None
+    sealed_ns = None
+    if protocol_receipt["formal_campaign_protocol_enforced"]:
+        sealed, _ = _load_and_verify_sealed_schedule(manifest)
+        locked = sealed["locked_artifacts"]
+        sealed_ns = sealed["sealed_at_epoch_ns"]
+        if locked["contract_sha256"] != sha(contract_bytes):
+            raise ValueError("sealed contract_sha256 mismatch")
+        if locked["original_upstream_commit"] != contract.get("upstreamCommit"):
+            raise ValueError("sealed original_upstream_commit mismatch")
+        protocol_receipt["sealed_schedule_content_sha256"] = sealed["seal_sha256"]
     excluded_tokens = tuple(contract["calibrationExclusion"]["excludedDirectoryTokens"])
     excluded_shas = frozenset(contract["calibrationExclusion"]["excludedCaptureSha256"])
 
@@ -1222,6 +1532,7 @@ def evaluate_manifest(manifest, contract_bytes, preview_mode=False):
     global_owners = set()
     reference_artifacts = None
     any_calibration_touched = False
+    previous_process_end = None
 
     for entry in blocks_input:
         bid = entry["block_id"]
@@ -1235,7 +1546,11 @@ def evaluate_manifest(manifest, contract_bytes, preview_mode=False):
             continue
         require(declared_status == "completed", f"unknown block status {declared_status} in {bid}")
         try:
-            evaluated = evaluate_completed_block(entry, contract, excluded_tokens, excluded_shas, preview_mode)
+            evaluated = evaluate_completed_block(entry, contract, excluded_tokens, excluded_shas, preview_mode, formal_campaign=protocol_receipt['formal_campaign_protocol_enforced'])
+            if locked is not None:
+                previous_process_end = _verify_sealed_runtime_bindings(
+                    entry, evaluated, locked, sealed_ns, previous_process_end
+                )
         except CollectionIntegrityFault as fault:
             collection_faults.append({
                 "block_id": bid,
@@ -1265,6 +1580,9 @@ def evaluate_manifest(manifest, contract_bytes, preview_mode=False):
 
     attempted_count = len(blocks_input)
     completed_count = len(completed_blocks)
+    runtime_bindings_verified = locked is not None and completed_count == attempted_count and not collection_faults
+    protocol_receipt["runtime_seed_and_order_bindings_verified"] = runtime_bindings_verified
+    protocol_receipt["sealed_artifact_bindings_verified"] = runtime_bindings_verified
     valid_blocks = [b for b in completed_blocks if not b["behavioral_violations"]]
     valid_count = len(valid_blocks)
 
@@ -1384,7 +1702,13 @@ def evaluate_manifest(manifest, contract_bytes, preview_mode=False):
 
         if contract_frozen:
             verdict = would_decide
-            stat_admitted = verdict == "PASSED_NONINFERIORITY"
+            stat_admitted = (
+                verdict == "PASSED_NONINFERIORITY"
+                and protocol_receipt["formal_campaign_protocol_enforced"] is True
+                and protocol_receipt["seed_schedule_verified"] is True
+                and protocol_receipt["alternating_pair_order_verified"] is True
+                and protocol_receipt["runtime_seed_and_order_bindings_verified"] is True
+            )
         else:
             verdict = (
                 would_decide
@@ -1451,6 +1775,18 @@ def main():
         help="Inspect historical calibration captures strictly without statistical admission",
     )
     parser.add_argument(
+        "--seal-random-schedule",
+        type=str,
+        default=None,
+        help="Seal pre-campaign os.urandom seed and AB/BA schedule for the given campaign_id (games_started_at_seal=0)",
+    )
+    parser.add_argument(
+        "--locked-artifacts-json",
+        type=str,
+        default=None,
+        help="Required when sealing: JSON with candidate/devtools/pilot/contract SHA256 and original_upstream_commit",
+    )
+    parser.add_argument(
         "--emit-campaign-schedule",
         type=str,
         default=None,
@@ -1463,6 +1799,20 @@ def main():
         help="Maximum blocks when generating --emit-campaign-schedule (default: 120)",
     )
     args = parser.parse_args()
+    if args.seal_random_schedule is not None:
+        locked = json.loads(args.locked_artifacts_json) if args.locked_artifacts_json else {}
+        sched = seal_random_campaign_schedule(
+            args.seal_random_schedule, max_blocks=args.max_blocks, locked_artifacts=locked
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(sched, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({
+            "schema": sched["schema"],
+            "campaign_id": sched["campaign_id"],
+            "max_blocks": sched["max_blocks"],
+            "schedule_sha256": sha(args.output.read_bytes()),
+        }, ensure_ascii=False))
+        return
     if args.emit_campaign_schedule is not None:
         sched = build_campaign_schedule(args.emit_campaign_schedule, max_blocks=args.max_blocks)
         args.output.parent.mkdir(parents=True, exist_ok=True)

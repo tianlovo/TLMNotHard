@@ -279,6 +279,7 @@ public final class NaturalRangedPairTests {
             report.add(
                 "spawnInputArtifact",
                 DevelopmentArtifactIdentity.capture(DeterministicMaidSpawn.class, IsolatedPlayerChannel.class));
+            prepareNutritionInput();
             var initial = new NBTTagCompound();
             f.maid.writeToNBT(initial);
             initial = (NBTTagCompound) initial.copy();
@@ -314,6 +315,15 @@ public final class NaturalRangedPairTests {
                     .getName());
             environment.addProperty("dimension", h.getWorld().provider.dimensionId);
             environment.addProperty("difficulty", h.getWorld().difficultySetting.name());
+            environment.addProperty(
+                "worldSeed",
+                h.getWorld()
+                    .getSeed());
+            environment.addProperty(
+                "naturalRegeneration",
+                h.getWorld()
+                    .getGameRules()
+                    .getGameRuleBooleanValue("naturalRegeneration"));
             environment.addProperty(
                 "dayTime",
                 h.getWorld()
@@ -513,6 +523,20 @@ public final class NaturalRangedPairTests {
             ally.motionX = ally.motionY = ally.motionZ = 0;
         }
 
+        void prepareNutritionInput() {}
+
+        JsonObject nutrition() {
+            var state = f.maid.getHungerState();
+            var row = new JsonObject();
+            row.addProperty("food", state.getFood());
+            row.addProperty("saturation", state.getSaturation());
+            row.addProperty("exhaustion", state.getExhaustion());
+            row.addProperty("regenTicks", state.getRegenTicks());
+            row.addProperty("starveTicks", state.getStarveTicks());
+            row.addProperty("paused", state.isPaused());
+            return row;
+        }
+
         void observe() {
             var brain = f.maid.getBrainCoordinator();
             h.assertTrue(
@@ -531,6 +555,12 @@ public final class NaturalRangedPairTests {
             livingTicks = 0;
             h.assertTrue(bow == actor().rangedBow(), "Observed release actuator was replaced");
             var row = new JsonObject();
+            row.add("nutrition", nutrition());
+            row.addProperty(
+                "naturalRegeneration",
+                h.getWorld()
+                    .getGameRules()
+                    .getGameRuleBooleanValue("naturalRegeneration"));
             row.addProperty("frame", frame);
             row.addProperty("age", age);
             row.addProperty("livingTicks", 1);

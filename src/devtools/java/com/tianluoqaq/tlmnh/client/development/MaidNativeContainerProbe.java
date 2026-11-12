@@ -10,8 +10,7 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings;
 
-import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.BaubleContainerScreen;
-import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.EmptyBackpackContainerScreen;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -94,7 +93,8 @@ public final class MaidNativeContainerProbe {
                 } else if (action.equals("container_button")) {
                     int button = integers(spec, 1)[0];
                     require(
-                        button >= MaidContainerProtocol.ACTION_IDLE && button <= MaidContainerProtocol.ACTION_BAUBLE,
+                        button >= MaidContainerProtocol.ACTION_IDLE
+                            && button <= MaidContainerProtocol.ACTION_CROPSNH_BREEDING,
                         "Declared native maid container action required");
                     mc.playerController.sendEnchantPacket(container.windowId, button);
                     lastButton = new ButtonInput(mc, container, button);
@@ -143,7 +143,7 @@ public final class MaidNativeContainerProbe {
             || !(player.openContainer instanceof ContainerMaid container)
             || !(mc.currentScreen instanceof GuiContainer screen)
             || screen.inventorySlots != container
-            || !(screen instanceof EmptyBackpackContainerScreen || screen instanceof BaubleContainerScreen)
+            || !(screen instanceof AbstractMaidContainerGui<?>)
             || !container.canInteractWith(player)
             || !tracked(mc, container.getMaid())
             || !container.getMaid()

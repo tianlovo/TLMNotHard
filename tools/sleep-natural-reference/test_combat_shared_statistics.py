@@ -1,9 +1,13 @@
 """共有战斗语义多区组统计评估器单元测试。"""
 
+import gzip
+import hashlib
 import json
 import math
 import random
+import struct
 import tempfile
+import time
 import unittest
 import uuid
 from pathlib import Path
@@ -14,6 +18,7 @@ from evaluate_combat_shared_statistics import (
     MECHANISM_ARMS,
     SCENE_FRAMES,
     build_campaign_schedule,
+    seal_random_campaign_schedule,
     clopper_pearson_zero_event_ucb,
     derive_scheduled_block_seed,
     evaluate_manifest,
@@ -29,6 +34,21 @@ from evaluate_combat_shared_statistics import (
 )
 
 CONTRACT_PATH = Path(__file__).with_name("combat-shared-statistics-contract.json")
+SYNTHETIC_START_NS = time.time_ns() + 3600_000_000_000
+
+
+def _digest(value):
+    return hashlib.sha256(value.encode("utf-8") if isinstance(value, str) else value).hexdigest()
+
+
+def _locked_artifacts(contract_bytes=None):
+    return {
+        "candidate_sha256": _digest("cand_v1"),
+        "devtools_sha256": _digest("devtools_v1"),
+        "pilot_sha256": _digest("pilot_v1"),
+        "contract_sha256": _digest(contract_bytes or _frozen_contract_bytes()),
+        "original_upstream_commit": json.loads(CONTRACT_PATH.read_bytes())["upstreamCommit"],
+    }
 
 
 def _frozen_contract_bytes(mutate_fn=None):
@@ -245,14 +265,16 @@ def _build_capture(scene, arm, block_tag, contract_sha, is_boundary, overrides=N
         "frames": frames,
         "damageEvents": damage_events,
     }
+    world_seed = overrides.get("world_seed", 202611110001)
     if is_orig:
         doc["mechanism"] = scene
         doc["maidUuid"] = maid_id
-        doc["actualInputs"] = {"owner": {"uuid": owner_id}}
+        doc["actualInputs"] = {"owner": {"uuid": owner_id}, "worldSeed": world_seed}
         doc["alliedPetHealthChange"] = 0.0
         doc["ownerHealthChange"] = 1.0 if scene == "melee" else 0.0
     else:
         doc["scene"] = scene
+        doc["environment"] = {"difficulty": "HARD", "worldSeed": world_seed}
         doc["maidInitial"] = {"uuid": maid_id}
         doc["ownerInitial"] = {"uuid": owner_id, "health": 20.0}
 
@@ -292,6 +314,91 @@ def _build_capture(scene, arm, block_tag, contract_sha, is_boundary, overrides=N
     if "mutate_doc" in overrides:
         overrides["mutate_doc"](doc)
     return doc
+
+
+
+
+def _encode_str(s):
+    b = s.encode("utf-8")
+    return struct.pack(">H", len(b)) + b
+
+
+def _make_level_dat_bytes(seed_int, is_original_1201):
+    if is_original_1201:
+        wgs = b"\x04" + _encode_str("seed") + struct.pack(">q", seed_int) + b"\x00"
+        data_body = b"\x0a" + _encode_str("WorldGenSettings") + wgs + b"\x00"
+    else:
+        data_body = b"\x04" + _encode_str("RandomSeed") + struct.pack(">q", seed_int) + b"\x00"
+    nbt = b"\x0a" + _encode_str("") + b"\x0a" + _encode_str("Data") + data_body + b"\x00"
+    return gzip.compress(nbt)
+
+
+def _formal_manifest(blocks, campaign_id="camp-v4-test", max_blocks=None, contract_bytes=None):
+    mb = max(max_blocks or len(blocks), len(blocks))
+    sealed = seal_random_campaign_schedule(campaign_id, max_blocks=mb, locked_artifacts=_locked_artifacts(contract_bytes))
+    out_blocks = []
+    for idx, raw_blk in enumerate(blocks, 1):
+        blk = dict(raw_blk)
+        srow = sealed["blocks"][idx - 1]
+        blk["block_index"] = idx
+        blk["scheduled_seed"] = srow["scheduled_seed"]
+        blk["execution_order"] = srow["execution_order"]
+        if blk.get("status", "completed") == "completed":
+            _rebind_block_seed_and_order(blk, srow["scheduled_seed"], srow["execution_order"], idx)
+        out_blocks.append(blk)
+    return {
+        "protocol_mode": "formal_campaign",
+        "campaign_id": campaign_id,
+        "sealed_schedule": sealed,
+        "blocks": out_blocks,
+    }
+
+
+def _rebind_block_seed_and_order(blk, seed_val, order_val, idx):
+    bdir = Path(blk["port_run"]).parent
+    for cpath in Path(blk["original_mechanisms_captures"]).glob("*.json"):
+        d = json.loads(cpath.read_text(encoding="utf-8"))
+        d.setdefault("actualInputs", {})["worldSeed"] = seed_val
+        cpath.write_text(json.dumps(d), encoding="utf-8")
+    for cpath in Path(blk["original_boundaries_captures"]).glob("*.json"):
+        d = json.loads(cpath.read_text(encoding="utf-8"))
+        d.setdefault("actualInputs", {})["worldSeed"] = seed_val
+        cpath.write_text(json.dumps(d), encoding="utf-8")
+    for cpath in Path(blk["port_run"]).glob("combat-*.json"):
+        d = json.loads(cpath.read_text(encoding="utf-8"))
+        d.setdefault("environment", {})["worldSeed"] = seed_val
+        cpath.write_text(json.dumps(d), encoding="utf-8")
+    for key in ("original_mechanisms_server_properties", "original_boundaries_server_properties", "port_server_properties"):
+        p = bdir / f"{key}.properties"
+        p.write_text(f"level-name=block_{idx}\nlevel-seed={seed_val}\n", encoding="utf-8")
+        blk[key] = str(p)
+        blk[key + "_sha256"] = _digest(p.read_bytes())
+    for key, is_1201 in (
+        ("original_mechanisms_level_dat", True),
+        ("original_boundaries_level_dat", True),
+        ("port_level_dat", False),
+    ):
+        p = bdir / f"{key}.dat"
+        p.write_bytes(_make_level_dat_bytes(seed_val, is_1201))
+        blk[key] = str(p)
+        blk[key + "_sha256"] = _digest(p.read_bytes())
+    base_ns = SYNTHETIC_START_NS + idx * 100_000_000_000
+    if order_val == "original_then_port":
+        blk["original_process_runs"] = [
+            {"pid": idx * 10 + 1, "started_at_epoch_ns": base_ns + 1000, "finished_at_epoch_ns": base_ns + 2000},
+            {"pid": idx * 10 + 2, "started_at_epoch_ns": base_ns + 2100, "finished_at_epoch_ns": base_ns + 3000},
+        ]
+        blk["port_process_runs"] = [
+            {"pid": idx * 10 + 3, "started_at_epoch_ns": base_ns + 3500, "finished_at_epoch_ns": base_ns + 5000},
+        ]
+    else:
+        blk["port_process_runs"] = [
+            {"pid": idx * 10 + 3, "started_at_epoch_ns": base_ns + 1000, "finished_at_epoch_ns": base_ns + 2500},
+        ]
+        blk["original_process_runs"] = [
+            {"pid": idx * 10 + 1, "started_at_epoch_ns": base_ns + 3000, "finished_at_epoch_ns": base_ns + 4000},
+            {"pid": idx * 10 + 2, "started_at_epoch_ns": base_ns + 4100, "finished_at_epoch_ns": base_ns + 5000},
+        ]
 
 
 def _write_synthetic_block(root_dir, block_id, contract, candidate_sha="cand_v1", turbo=1, scene_overrides=None):
@@ -334,6 +441,11 @@ def _write_synthetic_block(root_dir, block_id, contract, candidate_sha="cand_v1"
             "process_exit": 0,
             "supervisorTimeout": False,
             "status": {"status": "passed", "configuration": {"turbo": turbo}},
+            "artifacts": [
+                {"modid": "tlmnh", "sha256": _digest(candidate_sha)},
+                {"modid": "tlmnhdevtools", "sha256": _digest("devtools_v1")},
+                {"modid": "tlmnhqapilot", "sha256": _digest("pilot_v1")},
+            ],
         }),
         encoding="utf-8",
     )
@@ -345,8 +457,8 @@ def _write_synthetic_block(root_dir, block_id, contract, candidate_sha="cand_v1"
             "contract_sha256": m_sha,
             "observation_integrity_passed": True,
             "hqa_batch": {"status": "passed"},
-            "candidate_sha256": candidate_sha,
-            "pilot_sha256": "pilot_v1",
+            "candidate_sha256": _digest(candidate_sha),
+            "pilot_sha256": _digest("pilot_v1"),
             "original_runtime_build_sha256": "orig_m_build_v1",
             "analysis_inputs_sha256": {"compare": "a1"},
         }),
@@ -358,8 +470,8 @@ def _write_synthetic_block(root_dir, block_id, contract, candidate_sha="cand_v1"
             "contract_sha256": b_sha,
             "observation_integrity_passed": True,
             "hqa_batch": {"status": "passed"},
-            "candidate_sha256": candidate_sha,
-            "pilot_sha256": "pilot_v1",
+            "candidate_sha256": _digest(candidate_sha),
+            "pilot_sha256": _digest("pilot_v1"),
             "original_runtime_build_sha256": "orig_b_build_v1",
             "analysis_inputs_sha256": {"compare": "b1"},
         }),
@@ -405,10 +517,13 @@ class CombatSharedStatisticsTests(unittest.TestCase):
         self.contract_bytes = CONTRACT_PATH.read_bytes()
         self.contract = json.loads(self.contract_bytes)
         self.frozen_bytes = _frozen_contract_bytes()
+        unfrozen = dict(self.contract)
+        unfrozen["contractStatus"] = "PROPOSED_PENDING_REVIEW"
+        self.unfrozen_bytes = json.dumps(unfrozen, ensure_ascii=False).encode("utf-8")
 
-    def test_contract_v3_supports_deltas_schedule_and_exclusions(self):
-        self.assertEqual(self.contract["version"], 3)
-        self.assertEqual(self.contract["contractStatus"], "PROPOSED_PENDING_REVIEW")
+    def test_contract_v4_supports_deltas_schedule_and_exclusions(self):
+        self.assertEqual(self.contract["version"], 4)
+        self.assertEqual(self.contract["contractStatus"], "FROZEN")
         self.assertFalse(self.contract["inferenceMethod"]["quantizationVarianceFloorUsed"])
         self.assertEqual(self.contract["sequentialSchedule"]["maxScheduledBlocks"], 120)
         looks = [(r["blocks"], r["canGrantPass"]) for r in self.contract["sequentialSchedule"]["scheduledLooks"]]
@@ -489,7 +604,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 self.contract,
                 scene_overrides={("melee", "N"): {"stage1_melee": 45}, ("melee", "F"): {"stage1_melee": 10}},
             )
-            rep = evaluate_manifest({"blocks": [bad_blk]}, self.frozen_bytes)
+            rep = evaluate_manifest(_formal_manifest([bad_blk]), self.frozen_bytes)
             self.assertEqual(rep["verdict"], "BLOCKED_BY_COLLECTION_OR_INTEGRITY_FAULT")
             self.assertFalse(rep["statistical_admission"])
             self.assertEqual(rep["block_accounting"]["collection_or_integrity_fault_blocks"], 1)
@@ -539,10 +654,9 @@ class CombatSharedStatisticsTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp:
                 cal_dir = Path(tmp) / token
                 blk = _write_synthetic_block(cal_dir, "C001", self.contract)
-                manifest = {"blocks": [blk]}
                 with self.assertRaisesRegex(ValueError, "calibration sample excluded"):
-                    evaluate_manifest(manifest, self.contract_bytes, preview_mode=False)
-                preview = evaluate_manifest(manifest, self.contract_bytes, preview_mode=True)
+                    evaluate_manifest(_formal_manifest([blk], contract_bytes=self.contract_bytes), self.contract_bytes, preview_mode=False)
+                preview = evaluate_manifest({"blocks": [blk]}, self.contract_bytes, preview_mode=True)
                 self.assertEqual(preview["verdict"], "CALIBRATION_PREVIEW_ONLY_NOT_ADMITTED")
                 self.assertFalse(preview["statistical_admission"])
                 self.assertTrue(preview["calibration_sample_touched"])
@@ -563,7 +677,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             blocks = [_write_synthetic_block(root, f"C{i:03d}", self.contract) for i in range(1, 7)]
-            report = evaluate_manifest({"blocks": blocks}, self.frozen_bytes, preview_mode=False)
+            report = evaluate_manifest(_formal_manifest(blocks), self.frozen_bytes, preview_mode=False)
             self.assertEqual(report["verdict"], "INCONCLUSIVE_EXTEND")
             self.assertFalse(report["statistical_admission"])
             self.assertFalse(report["algorithmic_degradation_or_violation_inferred"])
@@ -603,7 +717,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 )
                 for i in range(1, 4)
             ]
-            report = evaluate_manifest({"blocks": blocks}, self.contract_bytes)
+            report = evaluate_manifest(_formal_manifest(blocks, contract_bytes=self.contract_bytes), self.contract_bytes)
             melee_metric = next(
                 m for m in report["paired_efficacy_metrics"] if m["id"] == "shared_melee_stage1_accepted_hits"
             )
@@ -621,7 +735,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 self.contract,
                 scene_overrides={("melee", "N"): {"mutate_doc": corrupt_melee}},
             )
-            bad_report = evaluate_manifest({"blocks": [bad_blk]}, self.frozen_bytes)
+            bad_report = evaluate_manifest(_formal_manifest([bad_blk]), self.frozen_bytes)
             self.assertEqual(bad_report["verdict"], "BLOCKED_BY_COLLECTION_OR_INTEGRITY_FAULT")
             self.assertFalse(bad_report["algorithmic_degradation_or_violation_inferred"])
             self.assertEqual(bad_report["block_accounting"]["attempted_blocks"], 1)
@@ -632,12 +746,14 @@ class CombatSharedStatisticsTests(unittest.TestCase):
             root = Path(tmp)
             valid_five = [_write_synthetic_block(root, f"C{i:03d}", self.contract) for i in range(1, 6)]
             fault_six = {"block_id": "C006", "status": "collection_fault", "fault_reason": "JVM startup channel error"}
-            rep_fault = evaluate_manifest({"blocks": valid_five + [fault_six]}, self.frozen_bytes)
+            rep_fault = evaluate_manifest(_formal_manifest(valid_five + [fault_six]), self.frozen_bytes)
             self.assertEqual(rep_fault["verdict"], "BLOCKED_BY_COLLECTION_OR_INTEGRITY_FAULT")
             self.assertFalse(rep_fault["algorithmic_degradation_or_violation_inferred"])
             self.assertFalse(rep_fault["statistical_admission"])
             self.assertEqual(rep_fault["block_accounting"]["attempted_blocks"], 6)
             self.assertEqual(rep_fault["block_accounting"]["completed_valid_blocks"], 5)
+            self.assertFalse(rep_fault["protocol_verification"]["runtime_seed_and_order_bindings_verified"])
+            self.assertFalse(rep_fault["protocol_verification"]["sealed_artifact_bindings_verified"])
 
         with tempfile.TemporaryDirectory() as tmp2:
             root2 = Path(tmp2)
@@ -646,7 +762,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 root2, "C001", self.contract, scene_overrides={("safety", "N"): {"extra_shots": wall_shot}}
             )
             fault_blk = {"block_id": "C002", "status": "collection_fault", "fault_reason": "timeout"}
-            rep_both = evaluate_manifest({"blocks": [viol_blk, fault_blk]}, self.frozen_bytes)
+            rep_both = evaluate_manifest(_formal_manifest([viol_blk, fault_blk]), self.frozen_bytes)
             self.assertEqual(rep_both["verdict"], "FAILED_BEHAVIORAL_HARD_GATE")
             self.assertTrue(rep_both["algorithmic_degradation_or_violation_inferred"])
             self.assertEqual(rep_both["block_accounting"]["attempted_blocks"], 2)
@@ -654,45 +770,50 @@ class CombatSharedStatisticsTests(unittest.TestCase):
     def test_cross_block_independence_turbo_and_artifact_drift_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            b1 = _write_synthetic_block(root, "C001", self.contract)
-            b2_reused_orig = dict(_write_synthetic_block(root, "C002", self.contract))
-            b2_reused_orig["original_mechanisms_captures"] = b1["original_mechanisms_captures"]
+            shared_maid = _new_uid("reused-maid-across-blocks")
+            b1 = _write_synthetic_block(
+                root, "C001", self.contract, scene_overrides={("melee", "N"): {"maid_uuid": shared_maid}}
+            )
+            b2_reused_actor = _write_synthetic_block(
+                root, "C002", self.contract, scene_overrides={("melee", "N"): {"maid_uuid": shared_maid}}
+            )
             with self.assertRaisesRegex(ValueError, "reuse"):
-                evaluate_manifest({"blocks": [b1, b2_reused_orig]}, self.frozen_bytes)
+                evaluate_manifest(_formal_manifest([b1, b2_reused_actor]), self.frozen_bytes)
 
             b3_drift = _write_synthetic_block(root, "C003", self.contract, candidate_sha="cand_v2")
-            with self.assertRaisesRegex(ValueError, "drift"):
-                evaluate_manifest({"blocks": [b1, b3_drift]}, self.frozen_bytes)
+            with self.assertRaisesRegex(ValueError, "artifact mismatch"):
+                evaluate_manifest(_formal_manifest([b1, b3_drift]), self.frozen_bytes)
 
             b4_turbo = _write_synthetic_block(root, "C004", self.contract, turbo=20)
             with self.assertRaisesRegex(ValueError, "turbo"):
-                evaluate_manifest({"blocks": [b4_turbo]}, self.frozen_bytes)
+                evaluate_manifest(_formal_manifest([b4_turbo]), self.frozen_bytes)
 
     def test_sequential_schedule_pass_futility_cap_and_non_skippable_incomplete_blocks(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             sup_ovr = _strong_superiority_overrides()
-            sched = build_campaign_schedule("camp-v3-unit", max_blocks=7)
+            sched = seal_random_campaign_schedule("camp-v4-unit", max_blocks=7, locked_artifacts=_locked_artifacts())
             blocks = []
             for row in sched["blocks"][:6]:
                 blk = _write_synthetic_block(root, row["block_id"], self.contract, scene_overrides=sup_ovr)
                 blk["block_index"] = row["block_index"]
                 blk["scheduled_seed"] = row["scheduled_seed"]
                 blk["execution_order"] = row["execution_order"]
+                _rebind_block_seed_and_order(blk, row["scheduled_seed"], row["execution_order"], row["block_index"])
                 blocks.append(blk)
 
             # 未冻结合同即使 6 区组全部满足 K_NI >= 20，仍只能输出预览态，不授予统计准入
-            unfrozen_rep = evaluate_manifest(
-                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": blocks},
-                self.contract_bytes,
-            )
+            unfrozen_manifest = _formal_manifest(blocks, contract_bytes=self.unfrozen_bytes)
+            unfrozen_rep = evaluate_manifest(unfrozen_manifest, self.unfrozen_bytes)
             self.assertEqual(unfrozen_rep["verdict"], "PROPOSED_CONTRACT_UNFROZEN_PREVIEW")
             self.assertEqual(unfrozen_rep["sequential_decision_if_contract_frozen"], "PASSED_NONINFERIORITY")
             self.assertFalse(unfrozen_rep["statistical_admission"])
+            for row, blk in zip(sched["blocks"], blocks):
+                _rebind_block_seed_and_order(blk, row["scheduled_seed"], row["execution_order"], row["block_index"])
 
             # B=3 为故障检出查看点（canGrantPass=False），不允许直接授予 PASSED_NONINFERIORITY
             b3_rep = evaluate_manifest(
-                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": blocks[:3]},
+                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": blocks[:3]},
                 self.frozen_bytes,
             )
             self.assertEqual(b3_rep["verdict"], "INCONCLUSIVE_EXTEND")
@@ -700,7 +821,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
 
             # B=5 不在预声明查看点上，输出 EXTEND_TO_NEXT_SCHEDULED_LOOK
             b5_rep = evaluate_manifest(
-                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": blocks[:5]},
+                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": blocks[:5]},
                 self.frozen_bytes,
             )
             self.assertEqual(b5_rep["verdict"], "EXTEND_TO_NEXT_SCHEDULED_LOOK")
@@ -708,7 +829,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
 
             # B=6 正式查看点上 17 项全部 K_NI >= 20，授予 PASSED_NONINFERIORITY
             b6_rep = evaluate_manifest(
-                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": blocks},
+                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": blocks},
                 self.frozen_bytes,
             )
             self.assertEqual(b6_rep["verdict"], "PASSED_NONINFERIORITY")
@@ -719,7 +840,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
             skipped = [blocks[0]] + blocks[2:6]
             with self.assertRaisesRegex(ValueError, "non-contiguous"):
                 evaluate_manifest(
-                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": skipped},
+                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": skipped},
                     self.frozen_bytes,
                 )
 
@@ -728,14 +849,14 @@ class CombatSharedStatisticsTests(unittest.TestCase):
             tampered_order[1]["execution_order"] = "original_then_port"
             with self.assertRaisesRegex(ValueError, "execution_order"):
                 evaluate_manifest(
-                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": tampered_order},
+                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": tampered_order},
                     self.frozen_bytes,
                 )
             tampered_seed = [dict(b) for b in blocks[:3]]
             tampered_seed[2]["scheduled_seed"] = derive_scheduled_block_seed("other-campaign", 3)
             with self.assertRaisesRegex(ValueError, "scheduled_seed mismatch"):
                 evaluate_manifest(
-                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": tampered_seed},
+                    {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": tampered_seed},
                     self.frozen_bytes,
                 )
 
@@ -750,15 +871,17 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                     "status": "incomplete",
                     "fault_reason": "interrupted block 6",
                 },
-                dict(
-                    _write_synthetic_block(root, "B007", self.contract, scene_overrides=sup_ovr),
-                    block_index=7,
-                    scheduled_seed=row7["scheduled_seed"],
-                    execution_order=row7["execution_order"],
+                (lambda b7: (_rebind_block_seed_and_order(b7, row7["scheduled_seed"], row7["execution_order"], 7), b7)[1])(
+                    dict(
+                        _write_synthetic_block(root, "B007", self.contract, scene_overrides=sup_ovr),
+                        block_index=7,
+                        scheduled_seed=row7["scheduled_seed"],
+                        execution_order=row7["execution_order"],
+                    )
                 ),
             ]
             rep_comp = evaluate_manifest(
-                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v3-unit", "blocks": compensated_attempt},
+                {"protocol_mode": "formal_campaign", "campaign_id": "camp-v4-unit", "sealed_schedule": sched, "blocks": compensated_attempt},
                 self.frozen_bytes,
             )
             self.assertEqual(rep_comp["verdict"], "BLOCKED_BY_COLLECTION_OR_INTEGRITY_FAULT")
@@ -777,7 +900,7 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 })
             )
             tie_blocks = [_write_synthetic_block(root, f"T{i:03d}", self.contract) for i in range(1, 7)]
-            cap_rep = evaluate_manifest({"blocks": tie_blocks}, cap6_contract)
+            cap_rep = evaluate_manifest(_formal_manifest(tie_blocks, contract_bytes=cap6_contract), cap6_contract)
             self.assertEqual(cap_rep["verdict"], "INCONCLUSIVE_AT_MAX_BLOCKS")
             self.assertFalse(cap_rep["statistical_admission"])
 
@@ -793,10 +916,111 @@ class CombatSharedStatisticsTests(unittest.TestCase):
                 )
                 for i in range(1, 11)
             ]
-            fail_rep = evaluate_manifest({"blocks": reg_blocks}, self.frozen_bytes)
+            fail_rep = evaluate_manifest(_formal_manifest(reg_blocks), self.frozen_bytes)
             self.assertEqual(fail_rep["verdict"], "FAILED_NONINFERIORITY")
             self.assertTrue(fail_rep["algorithmic_degradation_or_violation_inferred"])
             self.assertFalse(fail_rep["statistical_admission"])
+
+
+
+    def test_v4_seal_binds_artifacts_time_and_retained_runtime_files(self):
+        with self.assertRaisesRegex(ValueError, "locked_artifacts"):
+            seal_random_campaign_schedule("no-artifacts")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            blocks = [_write_synthetic_block(root, f"S{i:03d}", self.contract) for i in range(1, 3)]
+            manifest = _formal_manifest(blocks)
+            blocks = manifest["blocks"]
+
+            changed = json.loads(json.dumps(manifest))
+            changed["sealed_schedule"]["blocks"][0]["scheduled_seed"] ^= 1
+            with self.assertRaisesRegex(ValueError, "content digest"):
+                evaluate_manifest(changed, self.frozen_bytes)
+
+            def reseal(schedule):
+                payload = {k: v for k, v in schedule.items() if k != "seal_sha256"}
+                schedule["seal_sha256"] = _digest(json.dumps(
+                    payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+
+            for field in ("candidate_sha256", "devtools_sha256", "pilot_sha256", "contract_sha256"):
+                with self.subTest(field=field):
+                    changed = json.loads(json.dumps(manifest))
+                    changed["sealed_schedule"]["locked_artifacts"][field] = _digest("another-frozen-input")
+                    reseal(changed["sealed_schedule"])
+                    with self.assertRaisesRegex(ValueError, "mismatch"):
+                        evaluate_manifest(changed, self.frozen_bytes)
+
+            changed = json.loads(json.dumps(manifest))
+            changed["sealed_schedule"]["sealed_at_epoch_ns"] = blocks[0]["original_process_runs"][0]["started_at_epoch_ns"]
+            reseal(changed["sealed_schedule"])
+            with self.assertRaisesRegex(ValueError, "before schedule seal"):
+                evaluate_manifest(changed, self.frozen_bytes)
+
+            changed = json.loads(json.dumps(manifest))
+            first_start = blocks[0]["original_process_runs"][0]["started_at_epoch_ns"]
+            next_start = changed["blocks"][1]["port_process_runs"][0]["started_at_epoch_ns"]
+            for run in changed["blocks"][1]["original_process_runs"] + changed["blocks"][1]["port_process_runs"]:
+                run["started_at_epoch_ns"] -= next_start - first_start
+                run["finished_at_epoch_ns"] -= next_start - first_start
+            with self.assertRaisesRegex(ValueError, "cross-block JVM intervals"):
+                evaluate_manifest(changed, self.frozen_bytes)
+
+            props = Path(blocks[0]["port_server_properties"])
+            props.write_text(props.read_text(encoding="utf-8") + "# changed retained input\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "runtime file digest"):
+                evaluate_manifest(manifest, self.frozen_bytes)
+
+    def test_v4_non_preview_rejects_missing_or_unknown_protocol_and_enforces_world_seed_and_process_bindings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sup_ovr = _strong_superiority_overrides()
+            raw_blocks = [_write_synthetic_block(root, f"V{i:03d}", self.contract, scene_overrides=sup_ovr) for i in range(1, 7)]
+
+            # 1) 省略 protocol_mode 或传入未知 protocol_mode 在非预览模式下必须无条件拒绝（封死 #182.1 绕过漏洞）
+            with self.assertRaisesRegex(ValueError, "protocol_mode"):
+                evaluate_manifest({"blocks": raw_blocks}, self.frozen_bytes, preview_mode=False)
+            with self.assertRaisesRegex(ValueError, "protocol_mode"):
+                evaluate_manifest({"protocol_mode": "informal", "blocks": raw_blocks}, self.frozen_bytes, preview_mode=False)
+
+            # 2) games_started_at_seal != 0 严禁封存种子计划（封死 #182.3 事后补封漏洞）
+            with self.assertRaisesRegex(ValueError, "games_started_at_seal"):
+                seal_random_campaign_schedule("bad-seal", max_blocks=6, games_started_at_seal=1)
+
+            # 3) 校验 capture 内 worldSeed、server.properties、level.dat NBT 与进程时序交叉绑定（落实 #182.2）
+            valid_manifest = _formal_manifest(raw_blocks, campaign_id="camp-v4-bind", max_blocks=6)
+            ok_rep = evaluate_manifest(valid_manifest, self.frozen_bytes, preview_mode=False)
+            self.assertEqual(ok_rep["verdict"], "PASSED_NONINFERIORITY")
+            self.assertTrue(ok_rep["statistical_admission"])
+            self.assertTrue(ok_rep["protocol_verification"]["runtime_seed_and_order_bindings_verified"])
+
+            # 篡改移植端某份 capture 的 environment.worldSeed -> 拒绝
+            port_cap = Path(valid_manifest["blocks"][0]["port_run"]) / "combat-mechanism-motion-N.json"
+            orig_cap_bytes = port_cap.read_bytes()
+            bad_cap_doc = json.loads(orig_cap_bytes)
+            bad_cap_doc["environment"]["worldSeed"] += 1
+            port_cap.write_text(json.dumps(bad_cap_doc), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "capture worldSeed mismatch"):
+                evaluate_manifest(valid_manifest, self.frozen_bytes, preview_mode=False)
+            port_cap.write_bytes(orig_cap_bytes)
+
+            # 篡改 level.dat 中的二进制 NBT 种子 -> 拒绝
+            port_dat = Path(valid_manifest["blocks"][1]["port_level_dat"])
+            orig_dat_bytes = port_dat.read_bytes()
+            port_dat.write_bytes(_make_level_dat_bytes(valid_manifest["blocks"][1]["scheduled_seed"] ^ 0x55, False))
+            with self.assertRaisesRegex(ValueError, "NBT seed mismatch"):
+                evaluate_manifest(valid_manifest, self.frozen_bytes, preview_mode=False)
+            port_dat.write_bytes(orig_dat_bytes)
+
+            # 篡改第 2 块（偶数块应为 port_then_original）的进程启动时间戳为先原版后移植 -> 拒绝
+            bad_time_manifest = json.loads(json.dumps(valid_manifest))
+            bad_time_manifest["blocks"][1]["original_process_runs"] = [
+                {"pid": 901, "started_at_epoch_ns": 100, "finished_at_epoch_ns": 200}
+            ]
+            bad_time_manifest["blocks"][1]["port_process_runs"] = [
+                {"pid": 902, "started_at_epoch_ns": 300, "finished_at_epoch_ns": 400}
+            ]
+            with self.assertRaisesRegex(ValueError, "port_then_original"):
+                evaluate_manifest(bad_time_manifest, self.frozen_bytes, preview_mode=False)
 
 
 if __name__ == "__main__":

@@ -322,6 +322,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("original-captures", "original-build", "original-tool", "original-agent", "port-run", "candidate-jar", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--devtools-jar", type=Path,
+                        help="Separate devtools artifact; defaults to candidate for historical monolithic runs")
     parser.add_argument("--unified-tasks", action="store_true",
                         help="Verify Enhanced unified-task state and its retained ranged-command input")
     parser.add_argument("--allow-additional-port-tests", action="store_true")
@@ -366,7 +368,7 @@ def main():
             for key, classes, jar in (
                 ("productionArtifact", PRODUCTION, args.candidate_jar), ("observerArtifact", OBSERVER, pilot),
                 ("combatObserverArtifact", COMBAT_OBSERVER, pilot), ("boundaryObserverArtifact", BOUNDARY_OBSERVER, pilot),
-                ("spawnInputArtifact", SPAWN, args.candidate_jar), ("sourceArrowArtifact", SOURCE, args.candidate_jar),
+                ("spawnInputArtifact", SPAWN, args.devtools_jar or args.candidate_jar), ("sourceArrowArtifact", SOURCE, args.candidate_jar),
                 ("combatRootArtifact", ROOT_CONTRACT, args.candidate_jar),
             ):
                 artifact(port[key], jar, classes)

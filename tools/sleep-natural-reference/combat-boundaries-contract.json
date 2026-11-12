@@ -57,8 +57,8 @@
     "unmappedPolicy": "Keep complete raw entity/attribute NBT and all actual attribute names; unknown or one-sided mappings remain NOT_PROVEN",
     "scope": "Five source-backed actual initial attribute inputs only; not full NBT, environment, RNG, physics or complete B10 equivalence"
   },
-  "schema": "combat-boundaries-contract-v1",
-  "contract": "COMBAT_BOUNDARIES_V1",
+  "schema": "combat-boundaries-contract-v3",
+  "contract": "COMBAT_BOUNDARIES_V2",
   "repetitions": 1,
   "framesPerActor": 360,
   "warmupTicks": 20,
@@ -208,5 +208,11 @@
     "dryWaitCompletedFrames": 40,
     "fullStackSnapshotRequired": true
   },
-  "independentSamples": 1
+  "independentSamples": 1,
+  "nutritionInputMapping": {
+    "originalRawHunger": 0,
+    "portFood": 20,
+    "naturalRegeneration": false,
+    "scope": "Original hunger is inert. Port starts full. Both native worlds disable naturalRegeneration. Native exhaustion, food, saturation and health remain observed. No nutrition equivalence is claimed."
+  }
 }

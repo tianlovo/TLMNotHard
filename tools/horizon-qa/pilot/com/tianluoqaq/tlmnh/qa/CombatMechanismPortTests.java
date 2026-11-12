@@ -105,6 +105,8 @@ public final class CombatMechanismPortTests {
 
     static class Collector extends NaturalRangedPairTests.Collector {
 
+        private static final java.util.Map<net.minecraft.world.World, int[]> NUTRITION_RULES = new java.util.HashMap<>();
+
         JsonObject contract;
         ItemStack brokenBow;
         long beforeBreak = -1, replacementShots = -1;
@@ -131,7 +133,35 @@ public final class CombatMechanismPortTests {
         }
 
         @Override
+        void prepareNutritionInput() {
+            f.maid.setHunger(20);
+            h.assertTrue(
+                f.maid.getHunger() == 20 && !f.maid.getHungerState()
+                    .isPaused(),
+                "Full-food input did not apply");
+        }
+
+        @Override
         void setup() throws Exception {
+            var worldForNutrition = h.getWorld();
+            var rules = worldForNutrition.getGameRules();
+            var lease = NUTRITION_RULES.get(worldForNutrition);
+            if (lease == null) {
+                lease = new int[] { 0, rules.getGameRuleBooleanValue("naturalRegeneration") ? 1 : 0 };
+                NUTRITION_RULES.put(worldForNutrition, lease);
+            }
+            lease[0]++;
+            h.afterTest(() -> {
+                var active = NUTRITION_RULES.get(worldForNutrition);
+                if (--active[0] == 0) {
+                    rules.setOrCreateGameRule("naturalRegeneration", Boolean.toString(active[1] != 0));
+                    NUTRITION_RULES.remove(worldForNutrition);
+                }
+            });
+            rules.setOrCreateGameRule("naturalRegeneration", "false");
+            h.assertTrue(
+                !rules.getGameRuleBooleanValue("naturalRegeneration"),
+                "Natural regeneration rule did not apply");
             super.setup();
             var world = h.getWorld();
             String daylight = world.getGameRules()
@@ -217,7 +247,7 @@ public final class CombatMechanismPortTests {
         }
 
         String expectedContract() {
-            return "COMBAT_MECHANISMS_V2";
+            return "COMBAT_MECHANISMS_V3";
         }
 
         String captureSchema() {
@@ -255,6 +285,12 @@ public final class CombatMechanismPortTests {
                 f.maid.getSchedule()
                     .name());
             row.addProperty("hunger", f.maid.getHunger());
+            row.addProperty(
+                "naturalRegeneration",
+                h.getWorld()
+                    .getGameRules()
+                    .getGameRuleBooleanValue("naturalRegeneration"));
+            row.add("nutrition", nutrition());
             row.addProperty("health", f.maid.getHealth());
             row.addProperty("sitting", f.maid.isSitting());
             row.addProperty(
@@ -456,6 +492,12 @@ public final class CombatMechanismPortTests {
             age = f.maid.ticksExisted;
             livingTicks = 0;
             var row = new JsonObject();
+            row.add("nutrition", nutrition());
+            row.addProperty(
+                "naturalRegeneration",
+                h.getWorld()
+                    .getGameRules()
+                    .getGameRuleBooleanValue("naturalRegeneration"));
             row.addProperty("frame", frame);
             row.addProperty("age", age);
             row.addProperty("livingTicks", 1);

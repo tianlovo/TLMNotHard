@@ -27,11 +27,13 @@ import com.google.common.io.ByteStreams;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.tianluoqaq.tlmnh.client.development.work.BreedingConfigUiProbe;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaid;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidModels;
 import com.tianluoqaq.tlmnh.client.gui.GuiMaidNaming;
 import com.tianluoqaq.tlmnh.client.gui.config.MaidClientConfigGui;
 import com.tianluoqaq.tlmnh.client.gui.config.MaidClientPreferences;
+import com.tianluoqaq.tlmnh.client.gui.work.BreedingTaskConfigGui;
 import com.tianluoqaq.tlmnh.client.render.attachment.MaidBackItemRenderer;
 import com.tianluoqaq.tlmnh.client.render.attachment.MaidHeadItemRenderer;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldItems;
@@ -45,6 +47,7 @@ import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 import com.tianluoqaq.tlmnh.common.protection.ExternalFeature;
 import com.tianluoqaq.tlmnh.common.protection.IntegrationGuard;
 import com.tianluoqaq.tlmnh.common.sound.BuiltinSoundCatalog;
+import com.tianluoqaq.tlmnh.common.work.container.BreedingTaskConfigContainer;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -69,7 +72,8 @@ public final class MaidModelUiProbe {
         requireWindow();
         var minecraft = Minecraft.getMinecraft();
         boolean requested = false, network = false;
-        if (action.equals("target_close") && minecraft.thePlayer.openContainer instanceof TaskConfigContainer) {
+        if (action.equals("target_close") && (minecraft.thePlayer.openContainer instanceof TaskConfigContainer
+            || minecraft.thePlayer.openContainer instanceof BreedingTaskConfigContainer)) {
             var before = snapshot();
             minecraft.thePlayer.closeScreen();
             before.addProperty("actionRequested", true);
@@ -187,69 +191,73 @@ public final class MaidModelUiProbe {
                 if (minecraft.currentScreen instanceof MaidConfigContainerGui config && action.startsWith("config_")) {
                     requested = config.requestFrequency(action);
                     network = requested;
-                } else if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
-                    if (action.equals("pointer")) {
-                        // native lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
-                        Mouse.setCursorPosition(0, 0);
-                        requested = true;
-                    } else {
-                        requested = original.requestAction(action);
-                        network = requested && !action.equals("tasks") && !action.equals("global");
-                    }
-                } else if (minecraft.currentScreen instanceof GuiMaid main) {
-                    if (action.equals("open")) {
-                        requested = main.openModelSelector();
-                        network = requested;
-                    } else if (action.equals("home")) requested = main.openHomeSettings();
-                    else {
-                        int button = switch (action) {
-                            case "home_toggle" -> MaidContainerProtocol.ACTION_HOME;
-                            case "home_work" -> MaidContainerProtocol.ACTION_HOME_WORK;
-                            case "home_idle" -> MaidContainerProtocol.ACTION_HOME_IDLE;
-                            case "home_rest" -> MaidContainerProtocol.ACTION_HOME_REST;
-                            case "home_reset" -> MaidContainerProtocol.ACTION_HOME_RESET;
-                            default -> throw new IllegalArgumentException(
-                                "Action does not apply to the main maid screen");
-                        };
-                        requested = main.requestHomeAction(button);
-                        network = requested;
-                    }
-                } else if (minecraft.currentScreen instanceof GuiMaidModels selector) {
-                    switch (action) {
-                        case "select":
-                            for (int index : selector.getVisibleModelIndices()) {
-                                if (BuiltinModelCatalog.choices()
-                                    .get(index)
-                                    .getId()
-                                    .equals(model)) {
-                                    requested = selector.selectVisibleModel(index);
-                                    network = requested;
-                                    break;
-                                }
-                            }
-                            break;
-                        case "back":
-                            requested = selector.returnToMaid();
+                } else if (minecraft.currentScreen instanceof BreedingTaskConfigGui breeding
+                    && action.startsWith("breeding_")) {
+                        requested = BreedingConfigUiProbe.perform(breeding, action, model);
+                        network = requested && action.equals("breeding_save");
+                    } else if (minecraft.currentScreen instanceof AbstractMaidContainerGui<?>original) {
+                        if (action.equals("pointer")) {
+                            // native lwjgl3ify 的 SDL Warp 接口采用左上原点，按实际帧坐标复核
+                            Mouse.setCursorPosition(0, 0);
+                            requested = true;
+                        } else {
+                            requested = original.requestAction(action);
+                            network = requested && !action.equals("tasks") && !action.equals("global");
+                        }
+                    } else if (minecraft.currentScreen instanceof GuiMaid main) {
+                        if (action.equals("open")) {
+                            requested = main.openModelSelector();
                             network = requested;
-                            break;
-                        case "next":
-                            requested = selector.changePage(1);
-                            break;
-                        case "previous":
-                            requested = selector.changePage(-1);
-                            break;
-                        case "winefox":
-                            selector.setWinefoxOnly(true);
-                            requested = true;
-                            break;
-                        case "all":
-                            selector.setWinefoxOnly(false);
-                            requested = true;
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Action does not apply to this model screen");
-                    }
-                } else throw new IllegalStateException("Open the maid model selector for this action");
+                        } else if (action.equals("home")) requested = main.openHomeSettings();
+                        else {
+                            int button = switch (action) {
+                                case "home_toggle" -> MaidContainerProtocol.ACTION_HOME;
+                                case "home_work" -> MaidContainerProtocol.ACTION_HOME_WORK;
+                                case "home_idle" -> MaidContainerProtocol.ACTION_HOME_IDLE;
+                                case "home_rest" -> MaidContainerProtocol.ACTION_HOME_REST;
+                                case "home_reset" -> MaidContainerProtocol.ACTION_HOME_RESET;
+                                default -> throw new IllegalArgumentException(
+                                    "Action does not apply to the main maid screen");
+                            };
+                            requested = main.requestHomeAction(button);
+                            network = requested;
+                        }
+                    } else if (minecraft.currentScreen instanceof GuiMaidModels selector) {
+                        switch (action) {
+                            case "select":
+                                for (int index : selector.getVisibleModelIndices()) {
+                                    if (BuiltinModelCatalog.choices()
+                                        .get(index)
+                                        .getId()
+                                        .equals(model)) {
+                                        requested = selector.selectVisibleModel(index);
+                                        network = requested;
+                                        break;
+                                    }
+                                }
+                                break;
+                            case "back":
+                                requested = selector.returnToMaid();
+                                network = requested;
+                                break;
+                            case "next":
+                                requested = selector.changePage(1);
+                                break;
+                            case "previous":
+                                requested = selector.changePage(-1);
+                                break;
+                            case "winefox":
+                                selector.setWinefoxOnly(true);
+                                requested = true;
+                                break;
+                            case "all":
+                                selector.setWinefoxOnly(false);
+                                requested = true;
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Action does not apply to this model screen");
+                        }
+                    } else throw new IllegalStateException("Open the maid model selector for this action");
         }
         var response = snapshot();
         response.addProperty("action", action);
@@ -421,6 +429,9 @@ public final class MaidModelUiProbe {
             response.addProperty("drawnChatBubbles", ChatBubbleRenderer.drawnCount(maid));
             response.addProperty("backItemNativeCalls", MaidBackItemRenderer.drawnCount(maid));
             response.addProperty("taskListOpen", original.isTaskListOpen());
+            if (original instanceof BreedingTaskConfigGui breeding
+                && minecraft.thePlayer.openContainer instanceof BreedingTaskConfigContainer menu)
+                response.add("breedingEditor", BreedingConfigUiProbe.observe(breeding, menu));
             response.addProperty(
                 "maidSoundFrequency",
                 maid.getConfigManager()

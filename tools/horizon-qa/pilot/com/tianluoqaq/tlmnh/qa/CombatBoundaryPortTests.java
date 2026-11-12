@@ -118,7 +118,7 @@ public final class CombatBoundaryPortTests {
 
         @Override
         String expectedContract() {
-            return "COMBAT_BOUNDARIES_V1";
+            return "COMBAT_BOUNDARIES_V2";
         }
 
         @Override

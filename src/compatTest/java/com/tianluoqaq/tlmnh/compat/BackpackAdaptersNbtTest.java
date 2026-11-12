@@ -8,7 +8,7 @@ import net.minecraft.nbt.NBTTagCompound;
 
 import org.junit.Test;
 
-/** 纯合并逻辑的快速回归，注册物品的四个存档协议场景由 HorizonQA 执行 */
+/** 纯合并与按条件取用逻辑的快速回归，注册物品的存档协议场景由 HorizonQA 执行 */
 public class BackpackAdaptersNbtTest {
 
     @Test
@@ -46,5 +46,61 @@ public class BackpackAdaptersNbtTest {
         assertNotNull(full.remaining);
         assertEquals(10, full.remaining.stackSize);
         assertFalse(full.changed);
+    }
+
+    @Test
+    public void extractSelectsHighestScoreOrMergesMatchingStacksWithoutSimulateMutation() {
+        var seedItem = new Item();
+        var weak = new ItemStack(seedItem, 2);
+        var weakTag = new NBTTagCompound();
+        weakTag.setInteger("score", 3);
+        weak.setTagCompound(weakTag);
+
+        var strong = new ItemStack(seedItem, 1);
+        var strongTag = new NBTTagCompound();
+        strongTag.setInteger("score", 31);
+        strong.setTagCompound(strongTag);
+
+        var slots = new ItemStack[] { weak, strong };
+        var preview = BackpackSlotMergeHelper.extractFromArray(
+            slots,
+            2,
+            s -> s.getItem() == seedItem,
+            s -> s.getTagCompound()
+                .getInteger("score"),
+            1,
+            true);
+        assertNotNull(preview.extracted);
+        assertEquals(
+            31,
+            preview.extracted.getTagCompound()
+                .getInteger("score"));
+        assertSame(strong, slots[1]);
+        assertEquals(1, slots[1].stackSize);
+
+        var taken = BackpackSlotMergeHelper.extractFromArray(
+            slots,
+            2,
+            s -> s.getItem() == seedItem,
+            s -> s.getTagCompound()
+                .getInteger("score"),
+            1,
+            false);
+        assertNotNull(taken.extracted);
+        assertEquals(
+            31,
+            taken.extracted.getTagCompound()
+                .getInteger("score"));
+        assertNull(slots[1]);
+        assertEquals(2, slots[0].stackSize);
+
+        var stickItem = new Item();
+        var splitSlots = new ItemStack[] { new ItemStack(stickItem, 1), new ItemStack(stickItem, 1) };
+        var mergedSticks = BackpackSlotMergeHelper
+            .extractFromArray(splitSlots, 2, s -> s.getItem() == stickItem, null, 2, false);
+        assertNotNull(mergedSticks.extracted);
+        assertEquals(2, mergedSticks.extracted.stackSize);
+        assertNull(splitSlots[0]);
+        assertNull(splitSlots[1]);
     }
 }

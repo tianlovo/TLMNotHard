@@ -63,6 +63,7 @@ import com.tianluoqaq.tlmnh.common.development.visual.MaidBannerVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.visual.MaidCarryVisualFixture;
 import com.tianluoqaq.tlmnh.common.development.visual.MaidVisualFixtureState;
 import com.tianluoqaq.tlmnh.common.development.visual.TombstoneVisualFixture;
+import com.tianluoqaq.tlmnh.common.development.work.MaidWorkUiFixture;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleProbe;
 import com.tianluoqaq.tlmnh.common.lifecycle.MaidLifecycleRestartProbe;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
@@ -213,6 +214,7 @@ public final class DevelopmentCommand extends CommandBase {
         register(map, "lab-naming-fixture", playerArg(MaidNamingInteractionFixture::run));
         register(map, "lab-care-fixture", playerArg(MaidCareInteractionFixture::run));
         register(map, "lab-inventory-fixture", playerArg(MaidInventoryUiFixture::run));
+        register(map, "lab-work-fixture", playerArg(MaidWorkUiFixture::run));
         register(map, "lab-visual-hunger", DevelopmentCommand::handleLabVisualHunger);
         register(map, "lab-open-original-gui", playerOnly(AnimationLab::openOriginalGui));
         register(map, "lab-open-gui", playerOnly(AnimationLab::openOwnerGui));

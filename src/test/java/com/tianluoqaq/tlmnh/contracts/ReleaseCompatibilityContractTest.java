@@ -160,6 +160,17 @@ public class ReleaseCompatibilityContractTest {
                 for (var delegate : writer.getAsJsonArray("delegates")) expected.add(delegate.getAsString());
                 if (owner.name.equals("com/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid")) {
                     expected.add(
+                        "com.tianluoqaq.tlmnh.common.life.hunger.MaidHungerState#writeToNBT(" + TAG_ARGUMENT + ")V");
+                    expected.add(
+                        "com.tianluoqaq.tlmnh.common.life.hazard.MaidHotItemHazardController#writeToNBT(" + TAG_ARGUMENT
+                            + ")V");
+                    expected.add(
+                        "com.tianluoqaq.tlmnh.common.life.space.MaidSpaceSurvivalController#writeToNBT(" + TAG_ARGUMENT
+                            + ")V");
+                    expected.add(
+                        "com.tianluoqaq.tlmnh.common.life.fall.MaidFallRescueController#writeToNBT(" + TAG_ARGUMENT
+                            + ")V");
+                    expected.add(
                         "com.tianluoqaq.tlmnh.common.inventory.bauble.MaidBaubleInventory#write(" + TAG_ARGUMENT
                             + ")V");
                     expected.add(

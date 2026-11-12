@@ -1,14 +1,14 @@
 {
   "schema": "combat-shared-statistics-contract-v1",
   "contract": "COMBAT_SHARED_STATISTICS_V1",
-  "contractStatus": "PROPOSED_PENDING_REVIEW",
-  "version": 3,
+  "contractStatus": "FROZEN",
+  "version": 4,
   "upstreamCommit": "8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6",
   "boundContracts": {
     "mechanisms": {
       "file": "combat-mechanisms-contract.json",
-      "contract": "COMBAT_MECHANISMS_V2",
-      "sha256": "bd657e2a2230f92323ffb1270199b25ccc57e270589da5967501903625deb4f5",
+      "contract": "COMBAT_MECHANISMS_V3",
+      "sha256": "59a525ba7d4ae85f96eac16b832848962d8752c33c65151c8fade3f9723c2760",
       "comparisonSchema": "combat-mechanisms-comparison-unified-v1",
       "mechanisms": [
         "melee",
@@ -21,8 +21,8 @@
     },
     "boundaries": {
       "file": "combat-boundaries-contract.json",
-      "contract": "COMBAT_BOUNDARIES_V1",
-      "sha256": "d4f5c34801cdbbeba3577bb5de63caad7869208f8cfdb69d5246caf083c937a6",
+      "contract": "COMBAT_BOUNDARIES_V2",
+      "sha256": "bde6ef129f4f37c7825f12c13ab32ffc6aa8108f8a4e51d2903c1b5c9640cb68",
       "comparisonSchema": "combat-boundaries-comparison-unified-v1",
       "mechanisms": [
         "stationary",
@@ -44,15 +44,31 @@
     "crossBlockArtifactDriftAllowed": false
   },
   "samplingAndOrderProtocol": {
-    "seedDerivationFormula": "signed_int64_be(SHA256('COMBAT_SHARED_STATISTICS_V1:' + campaign_id + ':block:' + str(block_index))[0:8])",
+    "protocolModeRequiredWhenNotPreview": "formal_campaign",
+    "seedGenerationMethod": "pre_campaign_os_urandom_int64_nonzero_unique_sealed_at_games_started_zero",
+    "seedScheduleSealBinding": "sealed_schedule_json_sha256_and_candidate_artifact_digests_locked_before_block_1",
+    "worldSeedCrossVerification": [
+      "manifest.blocks[i].scheduled_seed == sealed_schedule.blocks[i].scheduled_seed",
+      "original_and_port_server_properties.level_seed == scheduled_seed",
+      "original_level_dat_Data_WorldGenSettings_seed == scheduled_seed",
+      "port_level_dat_Data_RandomSeed == scheduled_seed",
+      "all_7_original_captures_actualInputs_worldSeed == scheduled_seed",
+      "all_25_port_captures_environment_worldSeed == scheduled_seed"
+    ],
+    "randomizationPopulationAndScope": {
+      "worldSeedScope": "Controls 64-bit world RandomSeed / WorldGenSettings.seed across fresh-JVM server launches",
+      "withinJvmFreshEntropy": "Sensor.RANDOM, MaidModernPerception.RANDOM, Entity.rand, and arrow spread retain native fresh-JVM randomness (randomSourcesReset=false)",
+      "fixedDesignCovariates": "21x11x9 arena geometry, deterministic target waypoint script, and weapon/ammo initial loadouts are fixed experimental covariates"
+    },
     "blockIndexRule": "strictly_contiguous_one_based_1_to_B_with_zero_skipped_reordered_or_replaced_blocks",
     "pairExecutionOrderSchedule": "deterministic_alternating_AB_BA_odd_blocks_original_then_port_even_blocks_port_then_original",
+    "processOrderVerification": "non_overlapping_wall_clock_started_at_epoch_ns_and_finished_at_epoch_ns_with_distinct_pids_matching_expected_AB_BA_order",
     "allowedExecutionOrders": [
       "original_then_port",
       "port_then_original"
     ],
     "incompleteOrFaultyBlockRule": "all_attempted_blocks_must_remain_in_manifest; any_incomplete_or_integrity_fault_block_keeps_completed_valid_blocks_less_than_attempted_blocks_and_permanently_blocks_PASSED_NONINFERIORITY",
-    "conditionalMeanProtocolRequirement": "Fresh-JVM process isolation alone does not establish conditional-mean invariance; formal campaigns must pre-commit campaign_id, deterministic per-block seed schedule, alternating original/port pair execution order, exclusive turbo=1 runtime conditions, and full retention of all attempted blocks"
+    "conditionalMeanProtocolRequirement": "Formal non-preview evaluation unconditionally requires protocol_mode='formal_campaign', pre-sealed os.urandom seed schedule (games_started_at_seal==0), verified server.properties/level.dat/capture worldSeed bindings, verified non-overlapping AB/BA process timestamps, exclusive turbo=1 runtime conditions, and full retention of all attempted blocks"
   },
   "calibrationExclusion": {
     "admitCalibrationSamples": false,
@@ -716,5 +732,6 @@
     ],
     "blockBootstrapResamples": 10000,
     "blockBootstrapSeed": 20261111
-  }
+  },
+  "inputRevision": "nutrition-isolated-v1"
 }

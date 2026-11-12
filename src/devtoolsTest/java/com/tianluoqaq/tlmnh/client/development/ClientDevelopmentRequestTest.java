@@ -2,7 +2,9 @@ package com.tianluoqaq.tlmnh.client.development;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Modifier;
 import java.util.Locale;
 
 import org.junit.Test;
@@ -10,9 +12,28 @@ import org.junit.Test;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tianluoqaq.tlmnh.client.development.ClientDevelopmentRequest.Command;
+import com.tianluoqaq.tlmnh.common.development.work.MaidWorkUiFixture;
 import com.tianluoqaq.tlmnh.common.model.BuiltinModelCatalog;
 
 public class ClientDevelopmentRequestTest {
+
+    @Test
+    public void nativeWorkEventSubscribersArePublicForForgeAsmDispatch() {
+        assertTrue(Modifier.isPublic(BellOverlayGpuProbe.class.getModifiers()));
+        assertTrue(Modifier.isPublic(MaidWorkUiFixture.class.getModifiers()));
+    }
+
+    @Test
+    public void bellPreviewAcceptsOnlyExplicitStartAndStop() {
+        var request = new JsonObject();
+        request.addProperty("command", "bell_preview");
+        for (String action : new String[] { "start", "stop" }) {
+            request.addProperty("action", action);
+            assertEquals(action, ClientDevelopmentRequest.parse(request).action);
+        }
+        request.addProperty("action", "toggle");
+        assertThrows(IllegalArgumentException.class, () -> ClientDevelopmentRequest.parse(request));
+    }
 
     @Test
     public void nativeCareUsesCanonicalTrackedIdentityAndOnlyNativeActions() {
@@ -292,8 +313,17 @@ public class ClientDevelopmentRequestTest {
     public void modelUiProbeActionsAndExplicitCaptureRemainRestricted() {
         for (String action : new String[] { "status", "open", "back", "next", "previous", "winefox", "all", "home",
             "home_toggle", "home_work", "home_idle", "home_rest", "home_reset", "tasks", "idle", "attack", "ranged",
-            "pointer", "schedule", "pickup", "cache", "sound", "sound_apply", "bauble" })
+            "pointer", "schedule", "pickup", "cache", "sound", "sound_apply", "bauble", "maintenance", "breeding",
+            "breeding_status", "breeding_mode", "breeding_view", "breeding_save", "breeding_previous", "breeding_next",
+            "breeding_logic", "breeding_max31" })
             assertEquals(action, parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}").action);
+        for (String action : new String[] { "breeding_search", "breeding_select", "breeding_gain", "breeding_growth",
+            "breeding_resistance" }) {
+            assertEquals("1", parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\",\"model\":\"1\"}").model);
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> parse("{\"command\":\"models_ui\",\"action\":\"" + action + "\"}"));
+        }
         assertEquals("winefox", parse("{\"command\":\"models_ui\",\"action\":\"search\",\"model\":\"winefox\"}").model);
         assertEquals("geckolib", parse("{\"command\":\"models_ui\",\"action\":\"pack\",\"model\":\"geckolib\"}").model);
         assertEquals(
