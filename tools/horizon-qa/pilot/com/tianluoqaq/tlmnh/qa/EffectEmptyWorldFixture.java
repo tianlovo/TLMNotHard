@@ -123,6 +123,7 @@ public final class EffectEmptyWorldFixture {
     private boolean readinessSignatureCompared, readinessSignatureMatched;
 
     private final boolean quiescenceEnabled;
+    private JsonObject inputDerivationProof;
     private HodgePopulationProbe.Observation quiescenceObservation;
     private Object[] quiescenceLoadedChunks;
     private JsonObject dim0QuiescenceProof;
@@ -392,6 +393,23 @@ public final class EffectEmptyWorldFixture {
     }
 
     private void verifyInputs() throws Exception {
+        if (declaration.has("inputDerivation") || System.getProperty(InputDerivationProtocol.PROPERTY) != null) {
+            meteredClosure(() -> inputDerivationProof = InputDerivationProtocol.verify(
+                root, output, declaration, new InputDerivationProtocol.Access() {
+                    public JsonObject certify(Class<?> type) throws Exception {
+                        return certifySource(type, null);
+                    }
+
+                    public Path checked(Path path) throws Exception {
+                        return checkedPath(path);
+                    }
+
+                    public void observed(JsonObject value) {
+                        record("inputDerivationObservation", value);
+                    }
+                }));
+            record("inputDerivationProof", inputDerivationProof);
+        }
         JsonObject files = declaration.getAsJsonObject("files");
         for (Map.Entry<String, com.google.gson.JsonElement> input : files.entrySet()) {
             Path path = checkedPath(root.resolve(input.getKey()));
@@ -399,6 +417,9 @@ public final class EffectEmptyWorldFixture {
             String expected = input.getValue()
                 .getAsString();
             String actual = sha(path);
+            if (inputDerivationProof != null
+                && input.getKey().equals("config/AppliedEnergistics2/CustomRecipes.cfg"))
+                expected = text(inputDerivationProof, "aeAfterSha256");
             if (input.getKey()
                 .equals("server.properties")) {
                 record(
@@ -2414,6 +2435,7 @@ public final class EffectEmptyWorldFixture {
         row.addProperty("mode", mode);
         row.add("quiescenceIdentity", quiescenceEnabled ? PopulationQuiescenceContract.identity() : null);
         row.add("quiescence", quiescenceEnabled ? quiescenceSnapshot(hookCost) : null);
+        if (inputDerivationProof != null) row.add("inputDerivation", copy(inputDerivationProof));
         row.addProperty("phase", phase);
         row.addProperty("failure", failure);
         row.addProperty("runFinished", runFinished);
