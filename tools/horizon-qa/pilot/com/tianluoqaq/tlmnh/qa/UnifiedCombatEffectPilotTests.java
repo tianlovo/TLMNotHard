@@ -662,6 +662,8 @@ public final class UnifiedCombatEffectPilotTests {
         long healDiagnosticCpuNanos, healDiagnosticWallNanos;
         boolean closed, retained;
         RuntimeException cleanupFailure;
+        OwnedSoulProtocol ownedSoul;
+        long ownedSoulObserverCpuNanos, ownedSoulObserverWallNanos, ownedSoulObserverCalls;
 
         Trial(Runner r, String spec, boolean inputCanary, boolean waitCanary, int methodCase) {
             this.r = r;
@@ -677,6 +679,7 @@ public final class UnifiedCombatEffectPilotTests {
                 : inputCanary ? "input-canary"
                     : waitCanary ? "wait-canary" : trialPrefix() + "-g" + terrain + "-" + parts[1] + "-r" + repetition;
             expectedMaidIdentity = IdentityInputs.maid(name);
+            openOwnedSoul();
             initialFaultCount = IntegrationGuard.faults(Side.SERVER)
                 .size();
             report.addProperty("schema", "unified-combat-effect-run-v1");
@@ -697,6 +700,40 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty(
                 "ownerControlScope",
                 "One public onUpdateEntity per FML START, no C03, no fake player, no manual vertical integration");
+        }
+
+        void openOwnedSoul() {
+            if (r.emptyWorld == null || r.emptyWorld.ownedSoulBinding() == null) return;
+            meterOwnedSoul(() -> ownedSoul = new OwnedSoulProtocol(r.emptyWorld.ownedSoulBinding(),
+                new OwnedSoulProtocol.Host() {
+                    public EntityPlayerMP owner() { return owner; }
+                    public WorldServer world() { return r.world; }
+                    public MinecraftServer server() { return r.server; }
+                    public Thread thread() { return r.ownerThread; }
+                    public boolean active() { return !closed && activeAt != Long.MAX_VALUE; }
+                    public boolean owned(Entity entity) { return owned.contains(entity); }
+                    public void adopt(Entity entity) {
+                        require(!owned.contains(entity), "Duplicate exact Soul adoption");
+                        owned.add(entity);
+                    }
+                    public void harvestOwner() { ledger(owner, false); }
+                    public int frame() { return Trial.this.frame(); }
+                }));
+        }
+
+        void meterOwnedSoul(Runnable action) {
+            r.emptyWorld.meterObservedProtocol(() -> {
+                long wall = System.nanoTime(), cpu = r.clock.getCurrentThreadCpuTime();
+                ownedSoulObserverCalls++;
+                try {
+                    action.run();
+                } finally {
+                    long after = r.clock.getCurrentThreadCpuTime();
+                    require(cpu >= 0 && after >= cpu, "Soul observer CPU clock invalidated");
+                    ownedSoulObserverCpuNanos += after - cpu;
+                    ownedSoulObserverWallNanos += System.nanoTime() - wall;
+                }
+            });
         }
 
         boolean ownsObserved(Entity entity) {
@@ -873,6 +910,7 @@ public final class UnifiedCombatEffectPilotTests {
             long afterObserve = r.clock.getCurrentThreadCpuTime();
             require(beforeObserve >= 0 && afterObserve >= beforeObserve, "QA observer CPU clock invalidated");
             observerCpu += afterObserve - beforeObserve;
+            if (ownedSoul != null) meterOwnedSoul(ownedSoul::observe);
             activeFrames++;
             if (waitCanary && activeFrames == 80) {
                 recordWaitCanaryChecks();
@@ -1477,6 +1515,11 @@ public final class UnifiedCombatEffectPilotTests {
                 row.addProperty("estimateIsExactHealthAfter", false);
                 events.add(row);
             }
+            if (ownedSoul != null && actor == owner && (death || ownedSoul.awaitingPostLedger())) meterOwnedSoul(() -> {
+                JsonObject observation = ledgerObservation(harvest);
+                ownedSoul.ledger(harvest, observation, death);
+                ownedSoul.postLedger(observation);
+            });
         }
 
         boolean completeHarvest(NativeCombatLedgerReader.Harvest harvest) {
@@ -1715,6 +1758,13 @@ public final class UnifiedCombatEffectPilotTests {
             report.add("actualArrowIdentities", arrowIds);
             report.add("publicMaidIdentityReadbacks", identityReadbacks);
             report.add("passiveIdentitySidecars", identitySidecars);
+            if (ownedSoul != null) {
+                meterOwnedSoul(() -> report.add("ownedSoulProtocol", ownedSoul.snapshot()));
+                report.addProperty("ownedSoulObserverCalls", ownedSoulObserverCalls);
+                report.addProperty("ownedSoulObserverCpuNanos", ownedSoulObserverCpuNanos);
+                report.addProperty("ownedSoulObserverWallNanos", ownedSoulObserverWallNanos);
+                report.addProperty("ownedSoulCostScope", "Fixture metered closure and continuous active window; existing END observer field unchanged");
+            }
             report.add("passiveHealRequests", healRequests);
             report.addProperty("passiveHealRequestsSeen", healRequestsSeen);
             report.addProperty("passiveHealRequestsTruncated", healRequestsTruncated);
@@ -1801,6 +1851,14 @@ public final class UnifiedCombatEffectPilotTests {
                 for (int x = 0; x <= 20; x++)
                     for (int y = 0; y <= 10; y++) for (int z = 0; z <= 8; z++) r.h.setBlock(x, y, z, Blocks.air);
             });
+            if (ownedSoul != null) cleanup(() -> meterOwnedSoul(() -> {
+                ownedSoul.observe();
+                JsonObject finalSoul = ownedSoul.snapshot();
+                finalSoul.addProperty("cleanupSucceeded", cleanupFailure == null);
+                finalSoul.addProperty("observerCpuNanos", ownedSoulObserverCpuNanos);
+                finalSoul.addProperty("observerWallNanos", ownedSoulObserverWallNanos);
+                r.write(name + "-owned-soul-final", finalSoul);
+            }));
             if (cleanupFailure != null) throw cleanupFailure;
         }
 
@@ -1834,6 +1892,23 @@ public final class UnifiedCombatEffectPilotTests {
                 IntegrationGuard.throwIfFatal(failure);
                 r.asynchronousFailure = failure;
             }
+        }
+
+        @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
+        public void beginOwnedDeath(LivingDeathEvent event) {
+            guarded(() -> {
+                Trial t = r.trial;
+                if (t != null && t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.begin(event));
+            });
+        }
+
+        @SubscribeEvent(priority = EventPriority.HIGHEST)
+        public void settleOwnedSoul(TickEvent.ServerTickEvent event) {
+            if (event.phase != TickEvent.Phase.END) return;
+            guarded(() -> {
+                Trial t = r.trial;
+                if (t != null && t.ownedSoul != null) t.meterOwnedSoul(t.ownedSoul::settle);
+            });
         }
 
         @SubscribeEvent
@@ -1923,7 +1998,9 @@ public final class UnifiedCombatEffectPilotTests {
         public void spawn(EntityJoinWorldEvent event) {
             guarded(() -> {
                 Trial t = r.trial;
-                if (t == null || t.closed || event.world != r.world || event.isCanceled()) return;
+                if (t == null || t.closed || event.world != r.world) return;
+                if (t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.join(event));
+                if (event.isCanceled()) return;
                 if (event.entity instanceof EntityArrow arrow
                     && (arrow.shootingEntity == t.maid || arrow.shootingEntity == t.enemy)) {
                     require(t.arrows.size() < 128, "Effect projectile records exceeded");
@@ -2048,11 +2125,15 @@ public final class UnifiedCombatEffectPilotTests {
         public void death(LivingDeathEvent event) {
             guarded(() -> {
                 Trial t = r.trial;
-                if (!watch(t, event.entityLiving)) return;
+                if (!watch(t, event.entityLiving)) {
+                    if (t != null && t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.end(event));
+                    return;
+                }
                 t.ledger(event.entityLiving, true);
                 var row = t.event("native-death", event.entityLiving, event.source);
                 row.addProperty("cancelled", event.isCanceled());
                 t.events.add(row);
+                if (t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.end(event));
             });
         }
 

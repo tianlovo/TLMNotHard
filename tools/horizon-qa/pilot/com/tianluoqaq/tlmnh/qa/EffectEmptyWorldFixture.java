@@ -124,6 +124,7 @@ public final class EffectEmptyWorldFixture {
 
     private final boolean quiescenceEnabled;
     private JsonObject inputDerivationProof;
+    private OwnedSoulProtocol.Binding ownedSoulBinding;
     private HodgePopulationProbe.Observation quiescenceObservation;
     private Object[] quiescenceLoadedChunks;
     private JsonObject dim0QuiescenceProof;
@@ -393,6 +394,23 @@ public final class EffectEmptyWorldFixture {
     }
 
     private void verifyInputs() throws Exception {
+        if (declaration.has("ownedSoulProtocol") || System.getProperty(OwnedSoulProtocol.PROPERTY) != null) {
+            meteredClosure(() -> ownedSoulBinding = OwnedSoulProtocol.verify(
+                root, output, declaration, new InputDerivationProtocol.Access() {
+                    public JsonObject certify(Class<?> type) throws Exception {
+                        return certifySource(type, null);
+                    }
+
+                    public Path checked(Path path) throws Exception {
+                        return checkedPath(path);
+                    }
+
+                    public void observed(JsonObject value) {
+                        record("ownedSoulProtocolObservation", value);
+                    }
+                }));
+            record("ownedSoulProtocolBinding", ownedSoulBinding.proof);
+        }
         if (declaration.has("inputDerivation") || System.getProperty(InputDerivationProtocol.PROPERTY) != null) {
             meteredClosure(() -> inputDerivationProof = InputDerivationProtocol.verify(
                 root, output, declaration, new InputDerivationProtocol.Access() {
@@ -2436,6 +2454,7 @@ public final class EffectEmptyWorldFixture {
         row.add("quiescenceIdentity", quiescenceEnabled ? PopulationQuiescenceContract.identity() : null);
         row.add("quiescence", quiescenceEnabled ? quiescenceSnapshot(hookCost) : null);
         if (inputDerivationProof != null) row.add("inputDerivation", copy(inputDerivationProof));
+        if (ownedSoulBinding != null) row.add("ownedSoulProtocol", copy(ownedSoulBinding.proof));
         row.addProperty("phase", phase);
         row.addProperty("failure", failure);
         row.addProperty("runFinished", runFinished);
@@ -2922,6 +2941,14 @@ public final class EffectEmptyWorldFixture {
             worldSetExact = false;
             throw new IllegalStateException("World identity closure refused", problem);
         }
+    }
+
+    OwnedSoulProtocol.Binding ownedSoulBinding() {
+        return ownedSoulBinding;
+    }
+
+    void meterObservedProtocol(Runnable action) {
+        meteredClosure(action::run);
     }
 
     private void meteredClosure(Observed action) {
