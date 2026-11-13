@@ -125,6 +125,7 @@ public final class EffectEmptyWorldFixture {
     private final boolean quiescenceEnabled;
     private JsonObject inputDerivationProof;
     private OwnedSoulProtocol.Binding ownedSoulBinding;
+    private DeathProductsIdentity deathProductsBinding;
     private HodgePopulationProbe.Observation quiescenceObservation;
     private Object[] quiescenceLoadedChunks;
     private JsonObject dim0QuiescenceProof;
@@ -394,6 +395,23 @@ public final class EffectEmptyWorldFixture {
     }
 
     private void verifyInputs() throws Exception {
+        if (declaration.has("deathProducts") || System.getProperty(DeathProductsBootstrap.PROPERTY) != null) {
+            meteredClosure(() -> deathProductsBinding = DeathProductsIdentity.verify(
+                root, output, declaration, new InputDerivationProtocol.Access() {
+                    public JsonObject certify(Class<?> type) throws Exception {
+                        return certifySource(type, null);
+                    }
+
+                    public Path checked(Path path) throws Exception {
+                        return checkedPath(path);
+                    }
+
+                    public void observed(JsonObject value) {
+                        record("deathProductsObservation", value);
+                    }
+                }));
+            record("deathProductsBinding", deathProductsBinding.proof);
+        }
         if (declaration.has("ownedSoulProtocol") || System.getProperty(OwnedSoulProtocol.PROPERTY) != null) {
             meteredClosure(() -> ownedSoulBinding = OwnedSoulProtocol.verify(
                 root, output, declaration, new InputDerivationProtocol.Access() {
@@ -671,6 +689,8 @@ public final class EffectEmptyWorldFixture {
     }
 
     private void verifyPriorCanaries() throws Exception {
+        if (FormalMethodAuthority.requested()) record("formalAuthorityVerified",
+            FormalMethodAuthority.proof(declaration, output.getParent()));
         JsonArray priors = declaration.getAsJsonArray("priorCanaries");
         require(priors.size() == (mode.equals("N") ? 0 : mode.equals("P") ? 1 : 2), "Missing cold-start prerequisites");
         for (int i = 0; i < priors.size(); i++) {
@@ -979,7 +999,7 @@ public final class EffectEmptyWorldFixture {
         require(
             receipt.equals(
                 checkedPath(
-                    output.getParent()
+                    FormalMethodAuthority.priorSuite(declaration, output.getParent())
                         .resolve(text(result, "mode"))
                         .resolve("accepted.json"))),
             "Prior canary is outside this fresh N/P/R chain");
@@ -2455,6 +2475,7 @@ public final class EffectEmptyWorldFixture {
         row.add("quiescence", quiescenceEnabled ? quiescenceSnapshot(hookCost) : null);
         if (inputDerivationProof != null) row.add("inputDerivation", copy(inputDerivationProof));
         if (ownedSoulBinding != null) row.add("ownedSoulProtocol", copy(ownedSoulBinding.proof));
+        if (deathProductsBinding != null) row.add("deathProducts", copy(deathProductsBinding.proof));
         row.addProperty("phase", phase);
         row.addProperty("failure", failure);
         row.addProperty("runFinished", runFinished);
@@ -2941,6 +2962,10 @@ public final class EffectEmptyWorldFixture {
             worldSetExact = false;
             throw new IllegalStateException("World identity closure refused", problem);
         }
+    }
+
+    DeathProductsIdentity deathProductsBinding() {
+        return deathProductsBinding;
     }
 
     OwnedSoulProtocol.Binding ownedSoulBinding() {

@@ -337,6 +337,8 @@ public final class UnifiedCombatEffectPilotTests {
         }
 
         void start() throws Exception {
+            if (Boolean.getBoolean("tlmnh.qaPaidWearNativeControls"))
+                write("paid-wear-native-controls", PaidWearNativeControls.run(world));
             server.setCanSpawnAnimals(true);
             MaidAcquisitionConfig.giveInitialSlab = false;
             MaidHomeConfig.workRange = 12;
@@ -663,6 +665,7 @@ public final class UnifiedCombatEffectPilotTests {
         boolean closed, retained;
         RuntimeException cleanupFailure;
         OwnedSoulProtocol ownedSoul;
+        DeathProductsProtocol deathProducts;
         long ownedSoulObserverCpuNanos, ownedSoulObserverWallNanos, ownedSoulObserverCalls;
 
         Trial(Runner r, String spec, boolean inputCanary, boolean waitCanary, int methodCase) {
@@ -680,6 +683,7 @@ public final class UnifiedCombatEffectPilotTests {
                     : waitCanary ? "wait-canary" : trialPrefix() + "-g" + terrain + "-" + parts[1] + "-r" + repetition;
             expectedMaidIdentity = IdentityInputs.maid(name);
             openOwnedSoul();
+            openDeathProducts();
             initialFaultCount = IntegrationGuard.faults(Side.SERVER)
                 .size();
             report.addProperty("schema", "unified-combat-effect-run-v1");
@@ -700,6 +704,33 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty(
                 "ownerControlScope",
                 "One public onUpdateEntity per FML START, no C03, no fake player, no manual vertical integration");
+        }
+
+        void openDeathProducts() {
+            if (r.emptyWorld == null || r.emptyWorld.deathProductsBinding() == null) return;
+            r.emptyWorld.meterObservedProtocol(() -> deathProducts =
+                new DeathProductsProtocol(r.emptyWorld.deathProductsBinding(), new DeathProductsProtocol.Host() {
+                    public WorldServer world() { return r.world; }
+                    public MinecraftServer server() { return r.server; }
+                    public Thread thread() { return r.ownerThread; }
+                    public java.lang.management.ThreadMXBean clock() { return r.clock; }
+                    public boolean active() { return !closed && activeAt != Long.MAX_VALUE; }
+                    public boolean completeWindow() { return activeFrames == ACTIVE_TICKS; }
+                    public String role(EntityLivingBase actor) {
+                        if (actor == owner) return "owner";
+                        if (actor == maid) return "maid";
+                        if (actor == enemy) return "target";
+                        return null;
+                    }
+                    public boolean owned(Entity entity) { return owned.contains(entity); }
+                    public void adopt(Entity entity) {
+                        require(!owned.contains(entity), "Duplicate exact death-product adoption");
+                        owned.add(entity);
+                    }
+                    public void harvest(EntityLivingBase actor) { ledger(actor, false); }
+                    public void meter(Runnable action) { r.emptyWorld.meterObservedProtocol(action); }
+                    public int frame() { return Trial.this.frame(); }
+                }));
         }
 
         void openOwnedSoul() {
@@ -911,6 +942,7 @@ public final class UnifiedCombatEffectPilotTests {
             require(beforeObserve >= 0 && afterObserve >= beforeObserve, "QA observer CPU clock invalidated");
             observerCpu += afterObserve - beforeObserve;
             if (ownedSoul != null) meterOwnedSoul(ownedSoul::observe);
+            if (deathProducts != null) deathProducts.observeState();
             activeFrames++;
             if (waitCanary && activeFrames == 80) {
                 recordWaitCanaryChecks();
@@ -1146,6 +1178,10 @@ public final class UnifiedCombatEffectPilotTests {
             }
             for (EntityLivingBase actor : new EntityLivingBase[] { maid, owner, enemy })
                 ledgers.put(actor, NativeCombatLedgerReader.watch(actor));
+            if (FormalMethodAuthority.requested() && methodCase == 0 && !inputCanary && !waitCanary) {
+                paidWear = PaidWearLedger.begin(this::frame, this::paidPhysicalItems,
+                    FormalMethodAuthority.artifacts(), java.util.Collections.singletonMap("maid", paidPhysicalItems()));
+            }
             lastHeld = maid.getHeldItem();
             activeAt = r.world.getTotalWorldTime() + 1;
             arrowInput.activate(activeAt);
@@ -1289,9 +1325,12 @@ public final class UnifiedCombatEffectPilotTests {
             weaponWear = 0;
             shieldWear = 0;
             var inventory = new JsonArray();
+            var paidMaidItems = paidWear == null ? null : new java.util.ArrayList<ItemStack>();
+            var paidGraveItems = paidWear == null ? null : new java.util.ArrayList<ItemStack>();
             for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) {
                 var stack = maid.getMaidInventory()
                     .getStackInSlot(slot);
+                if (paidWear != null) paidMaidItems.add(stack);
                 inventory.add(new com.google.gson.JsonPrimitive(item(stack)));
                 resources(stack);
             }
@@ -1301,6 +1340,7 @@ public final class UnifiedCombatEffectPilotTests {
                 var stored = death.getTagList("TombstoneItems", 10);
                 for (int i = 0; i < stored.tagCount(); i++) {
                     var stack = ProtectedItemCodec.decode(stored.getCompoundTagAt(i));
+                    if (paidWear != null) paidGraveItems.add(stack);
                     graveInventory.add(new com.google.gson.JsonPrimitive(item(stack)));
                     resources(stack);
                 }
@@ -1322,6 +1362,12 @@ public final class UnifiedCombatEffectPilotTests {
             row.add("target", state(enemy));
             row.add("inventory", inventory);
             row.add("graveInventory", graveInventory);
+            if (paidWear != null) {
+                var paidLocations = new java.util.LinkedHashMap<String, java.util.List<ItemStack>>();
+                paidLocations.put("maid", paidMaidItems);
+                paidLocations.put("grave", paidGraveItems);
+                paidWear.checkpoint(frame, paidLocations);
+            }
             row.addProperty("noGoalProgressTicks", noProgress);
             row.addProperty(
                 "cadenceRemaining",
@@ -1460,6 +1506,15 @@ public final class UnifiedCombatEffectPilotTests {
             frames.add(row);
         }
 
+        private PaidWearLedger paidWear;
+
+        private java.util.List<ItemStack> paidPhysicalItems() {
+            var result = new java.util.ArrayList<ItemStack>();
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++)
+                result.add(maid.getMaidInventory().getStackInSlot(slot));
+            return result;
+        }
+
         void resources(ItemStack stack) {
             if (stack == null) return;
             if (stack.getItem() == Items.arrow) arrowsRemaining += stack.stackSize;
@@ -1515,6 +1570,7 @@ public final class UnifiedCombatEffectPilotTests {
                 row.addProperty("estimateIsExactHealthAfter", false);
                 events.add(row);
             }
+            if (deathProducts != null) deathProducts.ledger(actor, harvest, ledgerObservation(harvest), death);
             if (ownedSoul != null && actor == owner && (death || ownedSoul.awaitingPostLedger())) meterOwnedSoul(() -> {
                 JsonObject observation = ledgerObservation(harvest);
                 ownedSoul.ledger(harvest, observation, death);
@@ -1655,6 +1711,7 @@ public final class UnifiedCombatEffectPilotTests {
 
         void finish() {
             if (arrowInput != null) arrowInput.assertComplete();
+            if (paidWear != null) report.add("paidWear", paidWear.finish(ACTIVE_TICKS));
             probe.close();
             report.addProperty("activeFrames", activeFrames);
             report.addProperty("firstSelectedWeapon", firstSelectedWeapon);
@@ -1752,6 +1809,7 @@ public final class UnifiedCombatEffectPilotTests {
 
         void retain(String suffix) {
             if (retained) return;
+            if (paidWear != null && !report.has("paidWear")) report.add("paidWear", paidWear.snapshot());
             report.add("frames", frames);
             report.add("events", events);
             report.add("inventorySnapshots", items);
@@ -1765,6 +1823,8 @@ public final class UnifiedCombatEffectPilotTests {
                 report.addProperty("ownedSoulObserverWallNanos", ownedSoulObserverWallNanos);
                 report.addProperty("ownedSoulCostScope", "Fixture metered closure and continuous active window; existing END observer field unchanged");
             }
+            if (deathProducts != null) r.emptyWorld.meterObservedProtocol(
+                () -> report.add("deathProducts", deathProducts.snapshot()));
             report.add("passiveHealRequests", healRequests);
             report.addProperty("passiveHealRequestsSeen", healRequestsSeen);
             report.addProperty("passiveHealRequestsTruncated", healRequestsTruncated);
@@ -1800,8 +1860,10 @@ public final class UnifiedCombatEffectPilotTests {
 
         void close() {
             if (closed) return;
+            if (deathProducts != null) deathProducts.stopCapture();
             closed = true;
             cleanup(() -> { if (arrowInput != null) arrowInput.close(); });
+            cleanup(() -> { if (paidWear != null) paidWear.abort(); });
             cleanup(
                 () -> {
                     if (maid != null) maid.getBrainCoordinator()
@@ -1859,6 +1921,11 @@ public final class UnifiedCombatEffectPilotTests {
                 finalSoul.addProperty("observerWallNanos", ownedSoulObserverWallNanos);
                 r.write(name + "-owned-soul-final", finalSoul);
             }));
+            if (deathProducts != null) cleanup(() -> {
+                deathProducts.finishCleanup(cleanupFailure == null);
+                r.emptyWorld.meterObservedProtocol(() -> r.write(
+                    name + "-death-products-final", deathProducts.snapshot()));
+            });
             if (cleanupFailure != null) throw cleanupFailure;
         }
 
@@ -1898,6 +1965,7 @@ public final class UnifiedCombatEffectPilotTests {
         public void beginOwnedDeath(LivingDeathEvent event) {
             guarded(() -> {
                 Trial t = r.trial;
+                if (t != null && t.deathProducts != null) t.deathProducts.beginDeath(event);
                 if (t != null && t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.begin(event));
             });
         }
@@ -1907,6 +1975,7 @@ public final class UnifiedCombatEffectPilotTests {
             if (event.phase != TickEvent.Phase.END) return;
             guarded(() -> {
                 Trial t = r.trial;
+                if (t != null && t.deathProducts != null) t.deathProducts.settle();
                 if (t != null && t.ownedSoul != null) t.meterOwnedSoul(t.ownedSoul::settle);
             });
         }
@@ -1999,6 +2068,7 @@ public final class UnifiedCombatEffectPilotTests {
             guarded(() -> {
                 Trial t = r.trial;
                 if (t == null || t.closed || event.world != r.world) return;
+                if (t.deathProducts != null) t.deathProducts.join(event);
                 if (t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.join(event));
                 if (event.isCanceled()) return;
                 if (event.entity instanceof EntityArrow arrow
@@ -2126,6 +2196,7 @@ public final class UnifiedCombatEffectPilotTests {
             guarded(() -> {
                 Trial t = r.trial;
                 if (!watch(t, event.entityLiving)) {
+                    if (t != null && t.deathProducts != null) t.deathProducts.endDeath(event);
                     if (t != null && t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.end(event));
                     return;
                 }
@@ -2133,6 +2204,7 @@ public final class UnifiedCombatEffectPilotTests {
                 var row = t.event("native-death", event.entityLiving, event.source);
                 row.addProperty("cancelled", event.isCanceled());
                 t.events.add(row);
+                if (t.deathProducts != null) t.deathProducts.endDeath(event);
                 if (t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.end(event));
             });
         }

@@ -113,8 +113,8 @@ final class InputDerivationProtocol {
         JsonObject proof = new JsonObject();
         proof.addProperty("schema", "tlmnh-native-input-derivation-proof-v1");
         proof.addProperty("revision", REVISION);
-        proof.addProperty("contractSha256", CONTRACT);
-        proof.addProperty("decisionSha256", DECISION);
+        proof.addProperty("contractSha256", contractIdentity());
+        proof.addProperty("decisionSha256", decisionIdentity());
         proof.addProperty("mode", text(declaration, "mode"));
         proof.add("activeMods", rows);
         proof.addProperty("aeDigest", expectedDigest);
@@ -133,16 +133,25 @@ final class InputDerivationProtocol {
         return proof;
     }
 
+    private static String contractIdentity() {
+        return FormalMethodAuthority.requested() ? FormalMethodAuthority.INPUT_CONTRACT : CONTRACT;
+    }
+
+    private static String decisionIdentity() {
+        return FormalMethodAuthority.requested() ? FormalMethodAuthority.DECISION : DECISION;
+    }
+
     private static JsonObject documents(JsonObject declaration, Path suite, Access access) throws Exception {
+        if (FormalMethodAuthority.requested()) FormalMethodAuthority.verifyMethod(declaration);
         JsonObject binding = declaration.getAsJsonObject("inputDerivation");
-        require(REVISION.equals(text(binding, "revision")) && CONTRACT.equals(text(binding, "contractSha256"))
-            && DECISION.equals(text(binding, "decisionSha256")), "Input derivation binding differs");
+        require(REVISION.equals(text(binding, "revision")) && contractIdentity().equals(text(binding, "contractSha256"))
+            && decisionIdentity().equals(text(binding, "decisionSha256")), "Input derivation binding differs");
         Path folder = access.checked(suite.resolve("input-derivation-inputs"));
         Path contractFile = access.checked(Paths.get(text(binding, "contractPath")));
         Path decisionFile = access.checked(Paths.get(text(binding, "decisionPath")));
         require(contractFile.equals(folder.resolve("contract.json")) && decisionFile.equals(folder.resolve("decision.json"))
-            && CONTRACT.equals(hash(Files.readAllBytes(contractFile)))
-            && DECISION.equals(hash(Files.readAllBytes(decisionFile))), "Input derivation documents changed");
+            && contractIdentity().equals(hash(Files.readAllBytes(contractFile)))
+            && decisionIdentity().equals(hash(Files.readAllBytes(decisionFile))), "Input derivation documents changed");
         JsonObject contract = read(contractFile);
         require(text(contract, "originalBaselineSha256").equals(text(declaration, "sourceBaselineReceiptSha256"))
             && text(contract, "tlmTransformSha256").equals(hash(Files.readAllBytes(access.checked(folder.resolve("tlm-transform.json"))))),
@@ -222,13 +231,14 @@ final class InputDerivationProtocol {
     }
 
     private static void verifyPriors(JsonObject declaration, Path suite, JsonObject contract, Access access) throws Exception {
+        Path priorSuite = FormalMethodAuthority.priorSuite(declaration, suite);
         for (JsonElement item : declaration.getAsJsonArray("priorCanaries")) {
             JsonObject prior = item.getAsJsonObject();
-            Path folder = access.checked(suite.resolve(text(prior, "mode")));
+            Path folder = access.checked(priorSuite.resolve(text(prior, "mode")));
             JsonObject accepted = read(access.checked(folder.resolve("accepted.json")));
             Path manifest = access.checked(folder.resolve("launch-manifest.json"));
             JsonObject priorDeclaration = read(manifest);
-            documents(priorDeclaration, suite, access);
+            documents(priorDeclaration, priorSuite, access);
             Path finalFile = access.checked(folder.resolve("empty-world-final.json"));
             Path receiptFile = access.checked(folder.resolve("input-derivation-receipt.json"));
             JsonObject receipt = read(receiptFile), observation = read(finalFile);
@@ -240,8 +250,8 @@ final class InputDerivationProtocol {
                 && text(accepted, "finalObservationSha256").equals(hash(Files.readAllBytes(finalFile)))
                 && text(accepted, "manifestSha256").equals(hash(Files.readAllBytes(manifest)))
                 && text(prior, "manifestSha256").equals(hash(Files.readAllBytes(manifest)))
-                && text(receipt, "contractSha256").equals(CONTRACT)
-                && text(receipt, "decisionSha256").equals(DECISION)
+                && text(receipt, "contractSha256").equals(contractIdentity())
+                && text(receipt, "decisionSha256").equals(decisionIdentity())
                 && receipt.get("passed").getAsBoolean()
                 && receipt.get("proof").equals(observation.get("inputDerivation")), "Prior input derivation receipt differs");
             for (String key : new String[] { "driverSha256", "sourceBaselineReceiptSha256", "sourceInventorySha256" })
@@ -251,8 +261,8 @@ final class InputDerivationProtocol {
                     .equals(text(declaration.getAsJsonObject("files"), text(declaration.getAsJsonObject("artifacts"), role))),
                 "Prior input derivation candidate identity differs");
             JsonObject proof = observation.getAsJsonObject("inputDerivation");
-            require(text(proof, "revision").equals(REVISION) && text(proof, "contractSha256").equals(CONTRACT)
-                && text(proof, "decisionSha256").equals(DECISION) && text(proof, "mode").equals(text(prior, "mode")),
+            require(text(proof, "revision").equals(REVISION) && text(proof, "contractSha256").equals(contractIdentity())
+                && text(proof, "decisionSha256").equals(decisionIdentity()) && text(proof, "mode").equals(text(prior, "mode")),
                 "Prior input derivation proof identity differs");
             require(proof.get("exporterThreadsBefore").getAsInt() == 0
                 && proof.get("exporterThreadsAfter").getAsInt() == 0
