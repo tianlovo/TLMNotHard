@@ -126,6 +126,7 @@ public final class EffectEmptyWorldFixture {
     private JsonObject inputDerivationProof;
     private OwnedSoulProtocol.Binding ownedSoulBinding;
     private DeathProductsIdentity deathProductsBinding;
+    private JsonObject paidWearProviderSources;
     private HodgePopulationProbe.Observation quiescenceObservation;
     private Object[] quiescenceLoadedChunks;
     private JsonObject dim0QuiescenceProof;
@@ -395,6 +396,10 @@ public final class EffectEmptyWorldFixture {
     }
 
     private void verifyInputs() throws Exception {
+        if (FormalMethodAuthority.requested()) {
+            meteredClosure(() -> paidWearProviderSources = PaidWearProviderIdentity.preworld(this));
+            record("paidWearProviderSources", paidWearProviderSources);
+        }
         if (declaration.has("deathProducts") || System.getProperty(DeathProductsBootstrap.PROPERTY) != null) {
             meteredClosure(() -> deathProductsBinding = DeathProductsIdentity.verify(
                 root, output, declaration, new InputDerivationProtocol.Access() {
@@ -2476,6 +2481,7 @@ public final class EffectEmptyWorldFixture {
         if (inputDerivationProof != null) row.add("inputDerivation", copy(inputDerivationProof));
         if (ownedSoulBinding != null) row.add("ownedSoulProtocol", copy(ownedSoulBinding.proof));
         if (deathProductsBinding != null) row.add("deathProducts", copy(deathProductsBinding.proof));
+        if (paidWearProviderSources != null) row.add("paidWearProviderSources", copy(paidWearProviderSources));
         row.addProperty("phase", phase);
         row.addProperty("failure", failure);
         row.addProperty("runFinished", runFinished);
@@ -2970,6 +2976,15 @@ public final class EffectEmptyWorldFixture {
 
     OwnedSoulProtocol.Binding ownedSoulBinding() {
         return ownedSoulBinding;
+    }
+
+    JsonObject certifyPaidWearProvider(Class<?> type) throws Exception {
+        JsonObject actual = certifySource(type, null);
+        Path path = checkedPath(Paths.get(text(actual, "codeSource")));
+        JsonObject result = new JsonObject();
+        result.add("actualSource", actual);
+        result.addProperty("relativeArtifact", root.relativize(path).toString().replace('\\', '/'));
+        return result;
     }
 
     void meterObservedProtocol(Runnable action) {

@@ -22,7 +22,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tianluoqaq.tlmnh.common.development.DevelopmentArtifactIdentity;
 
 /** 三种精确物品的被动扣减账本，所有回调进入原观察闭包 */
 public final class PaidWearLedger {
@@ -470,7 +469,7 @@ public final class PaidWearLedger {
         JsonObject old = SOURCES.get(type);
         if (old != null) return old;
         try {
-            JsonObject captured = DevelopmentArtifactIdentity.capture(type);
+            JsonObject captured = PaidWearProviderIdentity.capture(type);
             SOURCES.put(type, captured);
             return captured;
         } catch (Exception failure) {

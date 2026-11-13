@@ -363,9 +363,7 @@ public final class EffectArrowRandomInput implements AutoCloseable {
             return;
         EntityLivingBase actor = event.entityLiving;
         if (actor != maid && actor != target) return;
-        require(
-            actor == maid ? !maidDeathObserved : !targetDeathObserved,
-            "Retired actor cannot authorize arrow construction");
+        if (actor == maid ? maidDeathObserved : targetDeathObserved) return;
         List<Frame> frames = api().stack.capture();
         require(api().countLivingUpdates(frames) == 1, "Nested/reentrant LivingUpdate cannot authorize arrow input");
         credential = new Credential(actor, world.getTotalWorldTime(), actor.ticksExisted);

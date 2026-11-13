@@ -121,8 +121,8 @@ public final class FormalMethodAuthority {
             JsonObject method = declaration.getAsJsonObject("formalMethod");
             if (!text(method, "purpose").equals("block")) return;
             JsonObject expected = bound(method.getAsJsonObject("paidWearProviders"));
-            require(text(expected, "schema").equals("tlmnh-paid-wear-provider-baseline-v2")
-                && expected.get("nativeStackSource").equals(stackSource) && expected.get("nativeItemSource").equals(itemSource) && expected.get("observerApiSources").equals(observerApis),
+            require(text(expected, "schema").equals("tlmnh-paid-wear-provider-baseline-v3")
+                && expected.get("nativeStackSource").equals(stackSource.get("portable")) && expected.get("nativeItemSource").equals(itemSource.get("portable")) && expected.get("observerApiSources").equals(portableSources(observerApis)),
                 "Native durability base provider source changed");
             for (Map.Entry<String, JsonElement> role : roles.entrySet()) {
                 JsonObject actual = role.getValue().getAsJsonObject();
@@ -130,12 +130,19 @@ public final class FormalMethodAuthority {
                 require(actual.get("registry").equals(saved.get("registry"))
                     && actual.get("providerClass").equals(saved.get("providerClass"))
                     && actual.getAsJsonObject("initial").get("maxDamage").equals(saved.get("maxDamage"))
-                    && actual.get("providerSource").equals(saved.get("providerSource")),
+                    && actual.getAsJsonObject("providerSource").get("portable").equals(saved.get("providerSource")),
                     "Native item registration or paid-wear provider changed");
             }
         } catch (Exception problem) {
             throw new IllegalStateException("Native paid-wear provider freeze mismatch", problem);
         }
+    }
+
+    private static JsonObject portableSources(JsonObject sources) {
+        JsonObject portable = new JsonObject();
+        for (Map.Entry<String, JsonElement> entry : sources.entrySet())
+            portable.add(entry.getKey(), entry.getValue().getAsJsonObject().get("portable"));
+        return portable;
     }
 
     private static JsonObject bound(JsonObject binding) throws Exception {
