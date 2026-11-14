@@ -17,6 +17,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Tar
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
@@ -3372,6 +3373,7 @@ public final class CombatTacticsChecks {
         try {
             reobsBodyIsNotCombatAndHasAnActualMovement();
             reobsNoFreshHiddenFactsOrRenewedExpiry();
+            reobsFullRecoversAfterOrdinaryCellDrift();
             reobsRiskAndNecessaryComparisonRejectUnsafe();
             reobsUnknownWorldAndDoorCannotBecomeOrdinary();
             reobsNativeFactsAndExpectedDoorContextStaySeparate();
@@ -3452,6 +3454,75 @@ public final class CombatTacticsChecks {
             "Hidden100 was renewed by body refresh");
         var copy = new CombatPlanner().decide(reobsScene(), CombatWorkQuota.isolated(100, true));
         check(copy.destination.distance(plan.destination) < .0001, "Equal last-seen pure input changed the proposal");
+    }
+
+    private static void reobsFullRecoversAfterOrdinaryCellDrift() {
+        var scene = reobsScene();
+        var planner = new CombatPlanner();
+        var first = planner.decide(scene, CombatWorkQuota.isolated(100, true));
+        check(
+            reobserving(first) && first.noDoorSegment.ordinaryAdjacent(),
+            "Offset witness lacks an initial body route");
+        var drift = new Vec(.5, 0, 1.017065552731626);
+        check(
+            !new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementSegment(
+                first.movementNode,
+                drift,
+                100).ordinaryAdjacent(),
+            "Offset witness did not make the retained next node diagonal");
+        check(
+            !reobserving(
+                planner.decide(
+                    reobsFrame(scene, drift, 101, 20, null, true, false),
+                    CombatWorkQuota.isolated(101, false))),
+            "LIGHT fabricated a new route after the actual foot left its proved ordinary cells");
+        check(
+            !reobserving(
+                planner
+                    .decide(reobsFrame(scene, drift, 102, 20, null, false, true), CombatWorkQuota.isolated(102, true))),
+            "Offset recovery bypassed missing current body authority");
+        var q = CombatWorkQuota.isolated(103, true);
+        var recovered = planner.decide(reobsFrame(scene, drift, 103, 20, null, true, true), q);
+        check(
+            reobserving(recovered) && recovered.noDoorSegment != null
+                && recovered.noDoorSegment.ordinaryAdjacent()
+                && !recovered.movementNode.same(first.movementNode),
+            "Fresh FULL did not rebuild the stranded ordinary body route from the actual foot");
+        check(
+            recovered.stageId == first.stageId && recovered.route.provedAt == 103
+                && !recovered.normalProgressAdmitted
+                && recovered.expectedDamage == 0
+                && scene.targets.get(0).observedAt == 100
+                && q.used(Work.ADVANCE) <= 240
+                && recovered.trace.terrainVisited <= 49,
+            "Offset recovery reset hidden identity/age, granted attack, or escaped the single bounded graph");
+        var obsolete = new com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact(
+            first.movementNode,
+            com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact.Outcome.ARRIVED,
+            104,
+            7,
+            0,
+            first.movementNode.foot,
+            true,
+            true,
+            true);
+        check(
+            obsolete.completed(first.movementNode, 104) && !obsolete.completed(recovered.movementNode, 104),
+            "Old native arrival borrowed the rebuilt route's node identity");
+        var continued = planner
+            .decide(reobsFrame(scene, drift, 104, 20, obsolete, true, false), CombatWorkQuota.isolated(104, false));
+        check(
+            reobserving(continued) && continued.movementNode.same(recovered.movementNode),
+            "Obsolete arrival advanced or replaced the rebuilt ordinary node");
+        var noBudget = new CombatPlanner();
+        noBudget.decide(scene, CombatWorkQuota.isolated(100, true));
+        var exhausted = CombatWorkQuota.isolated(103, true);
+        check(exhausted.spend(Work.CANDIDATE, 12), "Offset budget witness setup failed");
+        check(
+            !reobserving(noBudget.decide(reobsFrame(scene, drift, 103, 20, null, true, true), exhausted)),
+            "Rebuilt route bypassed the required current comparison budget");
+        System.out
+            .println("REOBS offset FULL rebuilt cardinal route; LIGHT/body/budget/obsolete-arrival guards retained");
     }
 
     private static void reobsRiskAndNecessaryComparisonRejectUnsafe() {
