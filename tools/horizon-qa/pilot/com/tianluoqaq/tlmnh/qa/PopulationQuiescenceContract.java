@@ -213,7 +213,26 @@ public final class PopulationQuiescenceContract {
 
     public static void verifyQaJar(Path file) throws Exception {
         try (JarFile jar = new JarFile(file.toFile())) {
-            JsonObject expected = pinned().getAsJsonObject("qaManifest");
+            JsonObject expected = parse(
+                pinned().getAsJsonObject("qaManifest")
+                    .toString());
+            String sheddingRequest = System.getProperty("tlmnh.qaBotaniaShedding");
+            if (sheddingRequest != null) {
+                require("botania-native-shedding-v1".equals(sheddingRequest), "Unknown Botania manifest request");
+                require(
+                    "mixins.tlmnhqa.population-quiescence.json".equals(text(expected, "MixinConfigs")),
+                    "Original quiescence manifest policy changed");
+                expected.addProperty(
+                    "MixinConfigs",
+                    "mixins.tlmnhqa.population-quiescence.json,mixins.tlmnhqa.botania-shedding.json");
+                java.util.jar.JarEntry shedding = jar.getJarEntry("mixins.tlmnhqa.botania-shedding.json");
+                require(shedding != null, "Botania manifest supplement config absent");
+                try (java.io.InputStream input = jar.getInputStream(shedding)) {
+                    require(
+                        "ca57d7c91aa185081796db73550c6e52648c6da28395168dd5b9cf688b00a167".equals(bytesSha(input)),
+                        "Botania manifest supplement config differs");
+                }
+            }
             for (Map.Entry<String, JsonElement> e : expected.entrySet()) require(
                 e.getValue()
                     .getAsString()
