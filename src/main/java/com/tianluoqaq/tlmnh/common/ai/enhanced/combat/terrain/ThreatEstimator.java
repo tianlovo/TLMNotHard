@@ -149,6 +149,12 @@ public final class ThreatEstimator {
                 double exposure = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP
                     - CombatTerrain.protection(snapshot, to, target, predicted, quota);
                 contact = Math.max(contact, CombatTerrainTuning.COMBAT_TERRAIN_DOMAIN_FACTOR_5 * exposure);
+                if (risk != null && ownerInFireLane(snapshot, target, predicted, to, uncertainty)) {
+                    risk.owner(target);
+                    risk.ownerReceived += target.estimatedDamage * CombatTerrainTuning.COMBAT_TERRAIN_DOMAIN_FACTOR_5
+                        * CombatBudgetTuning.STEP
+                        / CombatTerrainTuning.COMBAT_TERRAIN_DOMAIN_PARAM;
+                }
             }
             if (target.explosive && distance < CombatTerrainTuning.MIN_DISTANCE_THRESHOLD_2 + uncertainty)
                 contact = Math.max(contact, CombatTerrainTuning.COMBAT_MOVEMENT_DOMAIN_PARAM);
@@ -242,6 +248,25 @@ public final class ThreatEstimator {
         }
         // 仅用于策略收益估计，实际格挡角、破盾与消耗始终由现有盾牌规则处理
         return shield ? damage * CombatTerrainTuning.THREAT_ESTIMATOR_DOMAIN_FACTOR_3 : damage;
+    }
+
+    /** 保守保留主人处于潜在射线上的风险，不推断精确出手时刻或垂直命中 */
+    private static boolean ownerInFireLane(CombatSnapshot snapshot, Target target, Vec origin, Vec aim,
+        double uncertainty) {
+        Vec owner = snapshot.self.ownerPosition;
+        if (owner == null) return false;
+        if (target.attackingOwner) return true;
+        double dx = aim.x - origin.x, dz = aim.z - origin.z;
+        double lengthSquared = dx * dx + dz * dz;
+        if (!Double.isFinite(lengthSquared) || Math.sqrt(lengthSquared) < CombatTerrainTuning.MIN_LENGTH_THRESHOLD)
+            return true;
+        double ownerX = owner.x - origin.x, ownerZ = owner.z - origin.z;
+        if (!Double.isFinite(ownerX + ownerZ + uncertainty)) return true;
+        double projection = (ownerX * dx + ownerZ * dz) / lengthSquared;
+        if (projection <= 0) return false;
+        double lateralX = ownerX - projection * dx, lateralZ = ownerZ - projection * dz;
+        double radius = snapshot.self.ownerHalfWidth + projection * (snapshot.self.halfWidth + uncertainty);
+        return lateralX * lateralX + lateralZ * lateralZ <= radius * radius;
     }
 
     public static Vec enemyPosition(Target target, Vec self, int elapsed, int hypothesis) {

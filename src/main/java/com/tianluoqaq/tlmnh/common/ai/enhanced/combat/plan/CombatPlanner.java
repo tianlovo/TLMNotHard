@@ -1068,7 +1068,12 @@ public final class CombatPlanner {
             candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             return;
         }
-        candidate.risk = fallbackRisk(snapshot, next, candidate.macro == Macro.SHIELD, quota, occlusion, null);
+        var reserve = new ThreatEstimator.Risk();
+        candidate.risk = fallbackRisk(snapshot, next, candidate.macro == Macro.SHIELD, quota, occlusion, reserve);
+        candidate.singleSelf = reserve.selfSingle;
+        candidate.ownerRisk = reserve.ownerReceived;
+        candidate.singleOwner = reserve.ownerSingle;
+        candidate.riskKnown = reserve.known;
         if (!Double.isFinite(candidate.risk)) {
             candidate.utility = CombatPlanTuning.COMBAT_PLANNER_UTILITY;
             candidate.riskKnown = false;
@@ -1092,7 +1097,8 @@ public final class CombatPlanner {
                         CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)),
                 quota))
             progress = CombatPlanTuning.COMBAT_PLANNER_PROGRESS;
-        candidate.utility = progress - CombatPlanTuning.SELF_WEIGHT * candidate.risk / snapshot.self.health;
+        candidate.utility = progress - CombatPlanTuning.SELF_WEIGHT * candidate.risk / snapshot.self.health
+            - CombatPlanTuning.OWNER_WEIGHT * candidate.ownerRisk / snapshot.self.ownerHealth;
         if (candidate.macro == Macro.SHIELD) candidate.utility += CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_2;
         if (candidate.weapon != null && candidate.weapon.slot >= 0)
             candidate.utility -= CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR;
@@ -1358,9 +1364,13 @@ public final class CombatPlanner {
                 continuity += snapshot.self.drawTicks / CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_9;
             double utility = CombatPlanTuning.PROGRESS_WEIGHT * progress
                 - CombatPlanTuning.SELF_WEIGHT * received / snapshot.self.health
-                - CombatPlanTuning.OWNER_WEIGHT * Math.max(
-                    CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
-                    ownerRisk - dealt * CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR) / snapshot.self.ownerHealth
+                - CombatPlanTuning.OWNER_WEIGHT
+                    * Math.max(
+                        reserve.ownerReceived,
+                        Math.max(
+                            CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE,
+                            ownerRisk - dealt * CombatPlanTuning.COMBAT_PLANNER_ATTACK_FACTOR))
+                    / snapshot.self.ownerHealth
                 - CombatPlanTuning.RESOURCE_WEIGHT * resource
                 - CombatPlanTuning.CONTINUITY_WEIGHT * continuity
                 - terminal;
