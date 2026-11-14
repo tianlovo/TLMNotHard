@@ -12,8 +12,10 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Dam
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Projectile;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Target;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
+import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
 /** 纯快照回归，分别覆盖潜在射线、LIGHT/FULL主人风险计分和UNKNOWN边界 */
 public final class OwnerSafetyRiskChecks {
@@ -23,13 +25,141 @@ public final class OwnerSafetyRiskChecks {
     public static void main(String[] args) {
         String selected = args.length == 0 ? "all" : args[0];
         check(
-            Arrays.asList("all", "lane", "light", "full")
+            Arrays.asList("all", "lane", "light", "full", "pressure")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
         if (selected.equals("all") || selected.equals("light")) projectileOwnerScoring(false);
         if (selected.equals("all") || selected.equals("full")) projectileOwnerScoring(true);
+        if (selected.equals("all") || selected.equals("pressure")) ownerRangedPressure();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
+    }
+
+    private static void ownerRangedPressure() {
+        for (boolean full : new boolean[] { false, true }) {
+            CombatPlan protectedOwner = new CombatPlanner().decide(
+                pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR),
+                CombatWorkQuota.isolated(100, full));
+            check(
+                protectedOwner.weaponSlot == 0 && protectedOwner.family == MaidWeaponProfile.Family.VANILLA_SWORD
+                    && (protectedOwner.macro == CombatPlan.Macro.APPROACH
+                        || protectedOwner.macro == CombatPlan.Macro.PREPARE_WEAPON
+                        || protectedOwner.macro == CombatPlan.Macro.HOLD_ATTACK
+                        || protectedOwner.macro == CombatPlan.Macro.JUMP_STRIKE),
+                "Visible owner attacker did not receive safe melee pressure");
+        }
+        for (CombatSnapshot boundary : Arrays.asList(
+            pressureSnapshot(false, true, false, 20, .2, DamageSource.GENERIC_PRIOR),
+            pressureSnapshot(true, false, false, 20, .2, DamageSource.GENERIC_PRIOR),
+            pressureSnapshot(true, true, true, 20, .2, DamageSource.GENERIC_PRIOR),
+            pressureSnapshot(true, true, false, 20, .1, DamageSource.GENERIC_PRIOR),
+            pressureSnapshot(true, true, false, 1, .2, DamageSource.GENERIC_PRIOR),
+            pressureSnapshot(true, true, false, 20, .2, DamageSource.UNKNOWN))) {
+            CombatPlan plan = new CombatPlanner().decide(boundary, CombatWorkQuota.isolated(100, false));
+            check(plan.weaponSlot != 0, "Owner pressure bypassed its observed, reachable or survivable boundary");
+        }
+    }
+
+    private static CombatSnapshot pressureSnapshot(boolean ownerPresent, boolean attackingOwner, boolean stationary,
+        float health, double speed, DamageSource source) {
+        var self = new CombatSnapshot.Self(
+            new Vec(0, 0, 0),
+            new Vec(0, 0, 0),
+            ownerPresent ? new Vec(-3, 0, 0) : null,
+            health,
+            20,
+            .3,
+            1.35,
+            2.8,
+            speed,
+            true,
+            false,
+            stationary,
+            false,
+            true,
+            true,
+            false,
+            20,
+            0,
+            0,
+            32,
+            false,
+            false);
+        var target = new Target(
+            ENEMY,
+            702,
+            new Vec(10, 0, 0),
+            new Vec(0, 0, 0),
+            100,
+            Long.MIN_VALUE,
+            40,
+            4,
+            .3,
+            1.8,
+            true,
+            false,
+            true,
+            false,
+            attackingOwner,
+            source);
+        var sword = new MaidWeaponProfile(
+            MaidWeaponProfile.Kind.MELEE,
+            MaidWeaponProfile.Family.VANILLA_SWORD,
+            "",
+            "",
+            0,
+            1.5F,
+            6,
+            1,
+            100,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            false,
+            false);
+        var bow = new MaidWeaponProfile(
+            MaidWeaponProfile.Kind.BOW,
+            MaidWeaponProfile.Family.VANILLA_BOW,
+            "",
+            "",
+            0,
+            1,
+            0,
+            1,
+            100,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            false,
+            false);
+        byte[] cells = new byte[9 * 6 * 9];
+        for (int y = 0; y < 2; y++) for (int z = 0; z < 9; z++)
+            for (int x = 0; x < 9; x++) cells[(y * 9 + z) * 9 + x] = CombatTerrainTuning.SOLID;
+        var geometry = new CombatSnapshot.Geometry(-4, -2, -4, 9, 6, 9, 100, true, cells);
+        return new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            self,
+            Arrays.asList(target),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Arrays.asList(new Weapon(-1, "bow", bow), new Weapon(0, "sword", sword)),
+            geometry,
+            ENEMY,
+            true);
     }
 
     private static void laneGeometryAndUnknown() {
