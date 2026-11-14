@@ -656,6 +656,7 @@ public final class UnifiedCombatEffectPilotTests {
         int plannerProjectileFrames, queueWaitFrames;
         long maximumQueueAge;
         final JsonArray passiveTacticsObservations = new JsonArray();
+        final JsonArray combatProgressDiagnostics = new JsonArray();
         ItemStack lastHeld;
         String firstSelectedWeapon = "NONE";
         final UUID expectedMaidIdentity;
@@ -693,6 +694,7 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty("arm", arm.name());
             report.addProperty("repetition", repetition);
             report.addProperty("statisticalAdmission", false);
+            if (TACTICS != null) report.add("combatProgressDiagnostics", combatProgressDiagnostics);
             report.addProperty("methodCanaryCase", methodCase);
             report.addProperty(
                 "expectedFault",
@@ -1406,6 +1408,7 @@ public final class UnifiedCombatEffectPilotTests {
             var snapshot = core.combat()
                 .lastSnapshot();
             if (TACTICS != null) {
+                combatProgressDiagnostics.add(CombatProgressDiagnostics.capture(core.combat(), snapshot, frame));
                 var projectiles = new JsonArray();
                 if (snapshot != null) for (var projectile : snapshot.projectiles) {
                     var threat = new JsonObject();

@@ -63,6 +63,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
+import com.tianluoqaq.tlmnh.common.ai.policy.MaidIntentFrame;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
@@ -1166,6 +1167,8 @@ public final class EffectArrowRandomInput implements AutoCloseable {
                 livingUpdate);
             Class<?> combatResult = MaidPolicyRuntime.TickResult.class;
             maidBody = Arrays.asList(
+                key(MaidIntentFrame.class, "lambda$offerTyped$0", void.class, java.util.function.Consumer.class, Object.class),
+                key(MaidIntentFrame.Intent.class, "execute", void.class),
                 key(EnhancedCoreBrain.class, "tick", void.class, MaidPolicyContext.Token.class),
                 key(
                     MaidPolicyRuntime.class,
