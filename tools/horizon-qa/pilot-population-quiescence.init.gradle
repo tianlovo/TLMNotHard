@@ -17,6 +17,14 @@ gradle.projectsEvaluated {
         resources.srcDir(new File(tool, 'resources'))
         compileClasspath += project.sourceSets.main.output + project.sourceSets.devtools.output + project.sourceSets.devtools.compileClasspath + project.files(devJar)
     }
+    def lateApiPath = System.getenv('TLMNH_HQA_UNIMIXINS_JAR')
+    if (!lateApiPath) throw new GradleException('TLMNH_HQA_UNIMIXINS_JAR must point to the pinned UniMixins 0.3.1 JAR')
+    def lateApiJar = new File(lateApiPath)
+    def lateApiDigest = java.security.MessageDigest.getInstance('SHA-256').digest(lateApiJar.bytes).encodeHex().toString()
+    if (lateApiDigest != 'ad0ea4f92daf7bf7ec5c10e16258425e47929126954aea5d80df69ce26cd7318')
+        throw new GradleException('Exact public late-mixin API artifact differs')
+    sources.compileClasspath += project.files(lateApiJar)
+
     // Concrete GT machine fixtures need their actual target-platform API hierarchy at QA compile time.
     for (coordinate in [
         'com.github.GTNewHorizons:GTNHLib:0.11.54:dev',
@@ -106,6 +114,10 @@ gradle.projectsEvaluated {
                 }
                 if (archive.manifest?.mainAttributes?.getValue('FMLCorePlugin') != null)
                     throw new GradleException('Unexpected QA core plugin')
+                if (archive.getJarEntry('mixins.tlmnhqa.botania-shedding-provider.json') == null)
+                    throw new GradleException('QA Botania late provider config absent')
+                if (archive.getJarEntry('com/tianluoqaq/tlmnh/compat/botania/development/shedding/BotaniaSheddingLateLoader.class') == null)
+                    throw new GradleException('QA public late loader absent')
                 if (archive.getJarEntry('mixins.tlmnhqa.botania-shedding.json') == null)
                     throw new GradleException('QA Botania shedding config absent')
                 if (archive.getJarEntry('mixins.tlmnhqa.population-quiescence.json') == null)

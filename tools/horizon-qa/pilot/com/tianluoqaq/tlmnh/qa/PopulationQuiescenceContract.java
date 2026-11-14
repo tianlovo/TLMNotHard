@@ -232,6 +232,24 @@ public final class PopulationQuiescenceContract {
                         "ca57d7c91aa185081796db73550c6e52648c6da28395168dd5b9cf688b00a167".equals(bytesSha(input)),
                         "Botania manifest supplement config differs");
                 }
+                java.util.jar.JarEntry late = jar.getJarEntry("mixins.tlmnhqa.botania-shedding-provider.json");
+                require(late != null, "Botania late config absent");
+                try (java.io.InputStream input = jar.getInputStream(late)) {
+                    require(
+                        "7225e178c048c9889864b84d9375ed64a19d0b6ee14eb50999fc7fbd25aeb8f1".equals(bytesSha(input)),
+                        "Botania late config differs");
+                }
+                String botania = "com/tianluoqaq/tlmnh/compat/botania/development/shedding/";
+                for (String entry : new String[] { "BotaniaSheddingLateLoader.class", "BotaniaSheddingLatePlugin.class",
+                    "BotaniaProviderResource.class", "BotaniaProviderResource$Selection.class" }) {
+                    require(jar.getJarEntry(botania + entry) != null, "Botania late helper absent: " + entry);
+                    try (java.io.DataInputStream type = new java.io.DataInputStream(
+                        jar.getInputStream(jar.getJarEntry(botania + entry)))) {
+                        require(type.readInt() == 0xcafebabe, "Botania helper class header differs");
+                        type.readUnsignedShort();
+                        require(type.readUnsignedShort() == 52, "Botania helper is not Java8");
+                    }
+                }
             }
             for (Map.Entry<String, JsonElement> e : expected.entrySet()) require(
                 e.getValue()

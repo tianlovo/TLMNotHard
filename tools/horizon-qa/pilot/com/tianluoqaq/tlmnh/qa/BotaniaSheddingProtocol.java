@@ -71,7 +71,25 @@ public final class BotaniaSheddingProtocol {
 
     public static Object begin(Object provider, LivingUpdateEvent event) {
         BotaniaSheddingProtocol p = current;
-        if (p == null || p.stopped) return null;
+        if (p == null || p.stopped) {
+            // The first real handler call also authenticates in N/P, before delegating to the original.
+            // This grants no actor scope or ownership and uses the existing fixture observation meter.
+            try {
+                if (!BotaniaSheddingBootstrap.isProvider(provider.getClass())) {
+                    EffectEmptyWorldFixture.current()
+                        .meterObservedProtocol(() -> {
+                            try {
+                                BotaniaSheddingBootstrap.authenticate(provider.getClass());
+                            } catch (Throwable problem) {
+                                BotaniaSheddingBootstrap.observationFailed(problem);
+                            }
+                        });
+                }
+            } catch (Throwable problem) {
+                BotaniaSheddingBootstrap.observationFailed(problem);
+            }
+            return null;
+        }
         Scope[] result = { null };
         p.observe(() -> {
             BotaniaSheddingBootstrap.authenticate(provider.getClass());
@@ -313,6 +331,7 @@ public final class BotaniaSheddingProtocol {
         for (Scope s : witnessed.values()) if (s.committed) committed++;
         result.addProperty("committedProducts", committed);
         result.addProperty("revision", BotaniaSheddingBootstrap.REVISION);
+        result.add("providerSelection", BotaniaSheddingBootstrap.selection());
         result.addProperty("providerJarSha256", BotaniaSheddingBootstrap.JAR_SHA);
         result.addProperty("providerClassSha256", BotaniaSheddingBootstrap.CLASS_SHA);
         result.add("receipts", receipts);

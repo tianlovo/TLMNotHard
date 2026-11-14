@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.tianluoqaq.tlmnh.compat.botania.development.shedding.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "plugin": "com.tianluoqaq.tlmnh.compat.botania.development.shedding.BotaniaSheddingLatePlugin",
+  "mixins": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
