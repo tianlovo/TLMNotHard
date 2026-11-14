@@ -591,8 +591,10 @@ public final class CombatPlanner {
             || remainingCooldown(snapshot) >= CombatBudgetTuning.HORIZON) return false;
         double movement = snapshot.self.stationary ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
             : Math.max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, snapshot.self.movementPerTick);
-        return snapshot.self.position.distance(target.position)
-            <= snapshot.self.reach + movement * CombatBudgetTuning.HORIZON;
+        double damage = physical(candidate.weapon, target);
+        return Double.isFinite(damage) && damage > CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+            && snapshot.self.position.distance(target.position)
+                <= snapshot.self.reach + movement * CombatBudgetTuning.HORIZON;
     }
 
     private boolean betterAttack(CombatSnapshot snapshot, Candidate candidate, Candidate other) {
