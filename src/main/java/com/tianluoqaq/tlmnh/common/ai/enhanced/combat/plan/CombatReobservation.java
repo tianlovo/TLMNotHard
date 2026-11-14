@@ -148,6 +148,13 @@ final class CombatReobservation {
             return null;
         }
         if (q.full) {
+            // 暂停后的惯性位移可能使旧首段跨成对角格，只能由FULL从实际足点重新建图
+            if (route != null && route.passiveExit == null
+                && cursor < route.nodes.size()
+                && !new CombatMovementSegment(node(s), s.self.position, s.tick).ordinaryAdjacent()) {
+                route = proof = null;
+                comparison = null;
+            }
             if (route != null && route.passiveExit != null) {
                 passiveExitProof = null;
                 comparison = null;
