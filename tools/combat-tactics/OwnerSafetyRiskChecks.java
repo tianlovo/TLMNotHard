@@ -25,7 +25,7 @@ public final class OwnerSafetyRiskChecks {
     public static void main(String[] args) {
         String selected = args.length == 0 ? "all" : args[0];
         check(
-            Arrays.asList("all", "lane", "light", "full", "pressure", "healing")
+            Arrays.asList("all", "lane", "light", "full", "pressure", "healing", "lane-pressure")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -33,6 +33,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("full")) projectileOwnerScoring(true);
         if (selected.equals("all") || selected.equals("pressure")) ownerRangedPressure();
         if (selected.equals("all") || selected.equals("healing")) healingAxePressure();
+        if (selected.equals("all") || selected.equals("lane-pressure")) ownerFireLanePressure();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -123,12 +124,60 @@ public final class OwnerSafetyRiskChecks {
         }
     }
 
+    private static void ownerFireLanePressure() {
+        for (boolean full : new boolean[] { false, true }) {
+            for (boolean complete : new boolean[] { false, true }) {
+                CombatSnapshot base = pressureSnapshot(
+                    new Vec(-3, 0, 0),
+                    false,
+                    false,
+                    20,
+                    .2,
+                    DamageSource.GENERIC_PRIOR);
+                CombatSnapshot snapshot = new CombatSnapshot(
+                    base.tick,
+                    base.entityEpoch,
+                    base.observationEpoch,
+                    base.equipmentEpoch,
+                    base.selfId,
+                    base.self,
+                    base.targets,
+                    base.projectiles,
+                    base.friends,
+                    base.weapons,
+                    base.geometry,
+                    base.selectedTarget,
+                    complete);
+                CombatPlan plan = new CombatPlanner().decide(snapshot, CombatWorkQuota.isolated(100, full));
+                check(
+                    plan.weaponSlot == 0 && plan.family == MaidWeaponProfile.Family.VANILLA_SWORD,
+                    "Visible ranged fire lane did not protect the owner before the first injury");
+                check(
+                    plan.macro == CombatPlan.Macro.APPROACH || plan.macro == CombatPlan.Macro.PREPARE_WEAPON
+                        || plan.macro == CombatPlan.Macro.HOLD_ATTACK
+                        || plan.macro == CombatPlan.Macro.JUMP_STRIKE,
+                    "Fire-lane protection admitted a defense-only action as pressure");
+            }
+        }
+    }
+
     private static CombatSnapshot pressureSnapshot(boolean ownerPresent, boolean attackingOwner, boolean stationary,
+        float health, double speed, DamageSource source) {
+        return pressureSnapshot(
+            ownerPresent ? new Vec(-3, 0, attackingOwner ? 0 : 3) : null,
+            attackingOwner,
+            stationary,
+            health,
+            speed,
+            source);
+    }
+
+    private static CombatSnapshot pressureSnapshot(Vec ownerPosition, boolean attackingOwner, boolean stationary,
         float health, double speed, DamageSource source) {
         var self = new CombatSnapshot.Self(
             new Vec(0, 0, 0),
             new Vec(0, 0, 0),
-            ownerPresent ? new Vec(-3, 0, 0) : null,
+            ownerPosition,
             health,
             20,
             .3,
