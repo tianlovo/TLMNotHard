@@ -37,6 +37,7 @@ public final class CombatPlanner {
     private static boolean traceEnabled;
     private int terrainVisited, terrainWork, alignmentWork, entryWork;
     private boolean intentEligible, comparisonReady, normalProgressAdmitted;
+    private boolean ownerPressureWindow;
     private long nextStage;
     private Stage stage;
     private CombatReobservation reobservation;
@@ -133,6 +134,9 @@ public final class CombatPlanner {
     public CombatPlan decide(CombatSnapshot snapshot, CombatWorkQuota quota) {
         terrainVisited = terrainWork = alignmentWork = entryWork = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         normalProgressAdmitted = false;
+        ownerPressureWindow = snapshot.self.ownerPosition != null && !snapshot.self.recentlyHurt
+            && !snapshot.self.drawing
+            && !hasFreshProjectile(snapshot);
         synchronizeStage(snapshot);
         Target selected = snapshot.target(snapshot.selectedTarget);
         if (reobservation != null) reobservationRetryAt = Math.max(reobservationRetryAt, reobservation.retryAt);
@@ -182,7 +186,7 @@ public final class CombatPlanner {
                 completeForecast &= candidate.evaluated && Double.isFinite(candidate.utility);
             } else fallback(snapshot, candidate, quota, occlusion);
             if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
-            if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
+            if (Double.isFinite(candidate.utility) && (best == null || better(snapshot, candidate, best)))
                 best = candidate;
         }
         var immediate = new ThreatEstimator.Risk();
@@ -232,7 +236,7 @@ public final class CombatPlanner {
                 if (!candidate.task() || stage != null && candidate.stage != stage
                     || candidate.utility <= CombatPlanTuning.MIN_UTILITY_THRESHOLD
                     || normalProgressAdmitted && !survivable(snapshot, candidate)) continue;
-                if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
+                if (Double.isFinite(candidate.utility) && (best == null || better(snapshot, candidate, best)))
                     best = candidate;
                 if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
             }
@@ -245,7 +249,7 @@ public final class CombatPlanner {
             best = current = null;
             for (Candidate candidate : candidates) {
                 if (candidate.commits()) continue;
-                if (Double.isFinite(candidate.utility) && (best == null || candidate.utility > best.utility))
+                if (Double.isFinite(candidate.utility) && (best == null || better(snapshot, candidate, best)))
                     best = candidate;
                 if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
             }
@@ -278,6 +282,7 @@ public final class CombatPlanner {
             }
         }
         if (current != null && best != null
+            && !preferOwnerPressure(snapshot, best, current)
             && current.utility > CombatPlanTuning.MIN_UTILITY_THRESHOLD
             && snapshot.tick >= heldSince
             && snapshot.tick - heldSince < CombatPlanTuning.MIN_HELD_SINCE_THRESHOLD
@@ -346,13 +351,21 @@ public final class CombatPlanner {
             for (Target other : snapshot.targets) {
                 if (!quota.spend(Work.FALLBACK) || !other.fresh(snapshot.tick)) break;
                 Candidate candidate = attack(snapshot, other, weapon);
-                if (best == null || candidate.staticValue > best.staticValue) best = candidate;
+                if (best == null || betterAttack(snapshot, candidate, best)) best = candidate;
             }
             if (best != null) attacks.add(best);
         }
         attacks.sort(
             Comparator.comparingDouble((Candidate value) -> -value.staticValue)
                 .thenComparingInt(value -> value.weapon.slot));
+        Candidate pressure = null;
+        for (Candidate candidate : attacks) if (ownerPressureAttack(snapshot, candidate)
+            && (pressure == null || candidate.staticValue > pressure.staticValue)) pressure = candidate;
+        // 只把一个护主压制候选前移，保留原静态最优武器作为备选
+        if (pressure != null && attacks.get(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE) != pressure) {
+            attacks.remove(pressure);
+            attacks.add(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, pressure);
+        }
         Candidate strongest = attacks.isEmpty() ? null : attacks.get(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE);
         CombatTerrain.Choices terrain = strongest == null ? new CombatTerrain.Choices()
             : CombatTerrain.find(snapshot, strongest.target, quota);
@@ -561,6 +574,54 @@ public final class CombatPlanner {
             && Double.isFinite(candidate.risk + candidate.singleSelf + candidate.ownerRisk + candidate.singleOwner)
             && candidate.risk + candidate.singleSelf < snapshot.self.health
             && candidate.ownerRisk + candidate.singleOwner < snapshot.self.ownerHealth;
+    }
+
+    /** 射手已明确攻击主人时，优先在原有有限距离内压制；不推测其冷却或未来随机出手 */
+    private boolean ownerPressureAttack(CombatSnapshot snapshot, Candidate candidate) {
+        Target target = candidate.target;
+        if (!ownerPressureWindow || target == null
+            || candidate.weapon == null
+            || !candidate.weapon.profile.melee()
+            || !target.visible
+            || !target.fresh(snapshot.tick)
+            || !target.attackingOwner
+            || !target.ranged
+            || target.explosive
+            || target.damageSource == CombatSnapshot.DamageSource.UNKNOWN
+            || remainingCooldown(snapshot) >= CombatBudgetTuning.HORIZON) return false;
+        double movement = snapshot.self.stationary ? CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE
+            : Math.max(CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE, snapshot.self.movementPerTick);
+        return snapshot.self.position.distance(target.position)
+            <= snapshot.self.reach + movement * CombatBudgetTuning.HORIZON;
+    }
+
+    private boolean betterAttack(CombatSnapshot snapshot, Candidate candidate, Candidate other) {
+        boolean pressure = ownerPressureAttack(snapshot, candidate),
+            previousPressure = ownerPressureAttack(snapshot, other);
+        return pressure != previousPressure ? pressure : candidate.staticValue > other.staticValue;
+    }
+
+    private boolean safeOwnerPressure(CombatSnapshot snapshot, Candidate candidate) {
+        return ownerPressureAttack(snapshot, candidate) && candidate.strategy != Strategy.PURE_DEFENSE
+            && (candidate.macro == Macro.APPROACH || candidate.macro == Macro.HOLD_ATTACK
+                || candidate.macro == Macro.PREPARE_WEAPON
+                || candidate.macro == Macro.JUMP_STRIKE)
+            && candidate.riskKnown
+            && Double.isFinite(candidate.risk + candidate.singleSelf + candidate.ownerRisk + candidate.singleOwner)
+            && candidate.risk + candidate.singleSelf < snapshot.self.health
+            && candidate.ownerRisk + candidate.singleOwner < snapshot.self.ownerHealth;
+    }
+
+    private boolean preferOwnerPressure(CombatSnapshot snapshot, Candidate candidate, Candidate other) {
+        return safeOwnerPressure(snapshot, candidate) && !safeOwnerPressure(snapshot, other)
+            && candidate.ownerRisk <= other.ownerRisk
+            && candidate.singleOwner <= other.singleOwner;
+    }
+
+    private boolean better(CombatSnapshot snapshot, Candidate candidate, Candidate other) {
+        if (preferOwnerPressure(snapshot, candidate, other)) return true;
+        if (preferOwnerPressure(snapshot, other, candidate)) return false;
+        return candidate.utility > other.utility;
     }
 
     private void synchronizeStage(CombatSnapshot snapshot) {
