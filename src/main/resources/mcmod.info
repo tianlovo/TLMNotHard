@@ -4,7 +4,7 @@
     {
       "modid": "${modId}",
       "name": "${modName}",
-      "description": "车万女仆 GTNH 移植版，公开 Beta 测试版本 / TLM port for GTNH, public beta",
+      "description": "车万女仆 GTNH 移植版 / TLM port for GTNH",
       "version": "${modVersion}",
       "mcversion": "${minecraftVersion}",
       "url": "https://github.com/tianlovo/TLMNotHard",
