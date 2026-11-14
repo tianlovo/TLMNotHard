@@ -68,6 +68,7 @@ import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 import com.mojang.authlib.GameProfile;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCoreBrain;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorldBudget;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidBrainProfile;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
@@ -710,47 +711,106 @@ public final class UnifiedCombatEffectPilotTests {
 
         void openDeathProducts() {
             if (r.emptyWorld == null || r.emptyWorld.deathProductsBinding() == null) return;
-            r.emptyWorld.meterObservedProtocol(() -> deathProducts =
-                new DeathProductsProtocol(r.emptyWorld.deathProductsBinding(), new DeathProductsProtocol.Host() {
-                    public WorldServer world() { return r.world; }
-                    public MinecraftServer server() { return r.server; }
-                    public Thread thread() { return r.ownerThread; }
-                    public java.lang.management.ThreadMXBean clock() { return r.clock; }
-                    public boolean active() { return !closed && activeAt != Long.MAX_VALUE; }
-                    public boolean completeWindow() { return activeFrames == ACTIVE_TICKS; }
-                    public String role(EntityLivingBase actor) {
-                        if (actor == owner) return "owner";
-                        if (actor == maid) return "maid";
-                        if (actor == enemy) return "target";
-                        return null;
-                    }
-                    public boolean owned(Entity entity) { return owned.contains(entity); }
-                    public void adopt(Entity entity) {
-                        require(!owned.contains(entity), "Duplicate exact death-product adoption");
-                        owned.add(entity);
-                    }
-                    public void harvest(EntityLivingBase actor) { ledger(actor, false); }
-                    public void meter(Runnable action) { r.emptyWorld.meterObservedProtocol(action); }
-                    public int frame() { return Trial.this.frame(); }
-                }));
+            r.emptyWorld.meterObservedProtocol(
+                () -> deathProducts = new DeathProductsProtocol(
+                    r.emptyWorld.deathProductsBinding(),
+                    new DeathProductsProtocol.Host() {
+
+                        public WorldServer world() {
+                            return r.world;
+                        }
+
+                        public MinecraftServer server() {
+                            return r.server;
+                        }
+
+                        public Thread thread() {
+                            return r.ownerThread;
+                        }
+
+                        public java.lang.management.ThreadMXBean clock() {
+                            return r.clock;
+                        }
+
+                        public boolean active() {
+                            return !closed && activeAt != Long.MAX_VALUE;
+                        }
+
+                        public boolean completeWindow() {
+                            return activeFrames == ACTIVE_TICKS;
+                        }
+
+                        public String role(EntityLivingBase actor) {
+                            if (actor == owner) return "owner";
+                            if (actor == maid) return "maid";
+                            if (actor == enemy) return "target";
+                            return null;
+                        }
+
+                        public boolean owned(Entity entity) {
+                            return owned.contains(entity);
+                        }
+
+                        public void adopt(Entity entity) {
+                            require(!owned.contains(entity), "Duplicate exact death-product adoption");
+                            owned.add(entity);
+                        }
+
+                        public void harvest(EntityLivingBase actor) {
+                            ledger(actor, false);
+                        }
+
+                        public void meter(Runnable action) {
+                            r.emptyWorld.meterObservedProtocol(action);
+                        }
+
+                        public int frame() {
+                            return Trial.this.frame();
+                        }
+                    }));
         }
 
         void openOwnedSoul() {
             if (r.emptyWorld == null || r.emptyWorld.ownedSoulBinding() == null) return;
-            meterOwnedSoul(() -> ownedSoul = new OwnedSoulProtocol(r.emptyWorld.ownedSoulBinding(),
-                new OwnedSoulProtocol.Host() {
-                    public EntityPlayerMP owner() { return owner; }
-                    public WorldServer world() { return r.world; }
-                    public MinecraftServer server() { return r.server; }
-                    public Thread thread() { return r.ownerThread; }
-                    public boolean active() { return !closed && activeAt != Long.MAX_VALUE; }
-                    public boolean owned(Entity entity) { return owned.contains(entity); }
+            meterOwnedSoul(
+                () -> ownedSoul = new OwnedSoulProtocol(r.emptyWorld.ownedSoulBinding(), new OwnedSoulProtocol.Host() {
+
+                    public EntityPlayerMP owner() {
+                        return owner;
+                    }
+
+                    public WorldServer world() {
+                        return r.world;
+                    }
+
+                    public MinecraftServer server() {
+                        return r.server;
+                    }
+
+                    public Thread thread() {
+                        return r.ownerThread;
+                    }
+
+                    public boolean active() {
+                        return !closed && activeAt != Long.MAX_VALUE;
+                    }
+
+                    public boolean owned(Entity entity) {
+                        return owned.contains(entity);
+                    }
+
                     public void adopt(Entity entity) {
                         require(!owned.contains(entity), "Duplicate exact Soul adoption");
                         owned.add(entity);
                     }
-                    public void harvestOwner() { ledger(owner, false); }
-                    public int frame() { return Trial.this.frame(); }
+
+                    public void harvestOwner() {
+                        ledger(owner, false);
+                    }
+
+                    public int frame() {
+                        return Trial.this.frame();
+                    }
                 }));
         }
 
@@ -1181,8 +1241,11 @@ public final class UnifiedCombatEffectPilotTests {
             for (EntityLivingBase actor : new EntityLivingBase[] { maid, owner, enemy })
                 ledgers.put(actor, NativeCombatLedgerReader.watch(actor));
             if (FormalMethodAuthority.requested() && methodCase == 0 && !inputCanary && !waitCanary) {
-                paidWear = PaidWearLedger.begin(this::frame, this::paidPhysicalItems,
-                    FormalMethodAuthority.artifacts(), java.util.Collections.singletonMap("maid", paidPhysicalItems()));
+                paidWear = PaidWearLedger.begin(
+                    this::frame,
+                    this::paidPhysicalItems,
+                    FormalMethodAuthority.artifacts(),
+                    java.util.Collections.singletonMap("maid", paidPhysicalItems()));
             }
             lastHeld = maid.getHeldItem();
             activeAt = r.world.getTotalWorldTime() + 1;
@@ -1420,6 +1483,20 @@ public final class UnifiedCombatEffectPilotTests {
                 row.add("actualPlannerProjectiles", projectiles);
                 var passive = new JsonObject();
                 passive.addProperty("frame", frame);
+                boolean ownedRangedUse = core.actor()
+                    .ownsRangedUse();
+                passive.addProperty("ownedRangedUse", ownedRangedUse);
+                if (ownedRangedUse) passive.addProperty(
+                    "rangedUsedTicks",
+                    core.actor()
+                        .rangedUsedTicks());
+                if (plan != null) {
+                    var releaseWork = new JsonArray();
+                    for (var work : new CombatWorkQuota.Work[] { CombatWorkQuota.Work.FINAL_CHECK,
+                        CombatWorkQuota.Work.RAY, CombatWorkQuota.Work.BALLISTIC })
+                        releaseWork.add(new com.google.gson.JsonPrimitive(plan.quota.remaining(work)));
+                    passive.add("releaseWorkRemainingFinalRayBallistic", releaseWork);
+                }
                 var nativeIds = new JsonArray();
                 if (snapshot != null) for (var projectile : snapshot.projectiles) nativeIds
                     .add(new com.google.gson.JsonPrimitive(projectile.id == null ? "" : projectile.id.toString()));
@@ -1503,6 +1580,16 @@ public final class UnifiedCombatEffectPilotTests {
                     "critical",
                     arrows.get(i)
                         .getIsCritical());
+                if (TACTICS != null && arrows.get(i)
+                    .getClass() == EntityArrow.class) {
+                    var nativeState = new NBTTagCompound();
+                    arrows.get(i)
+                        .writeEntityToNBT(nativeState);
+                    require(
+                        nativeState.hasKey("inGround", net.minecraftforge.common.util.Constants.NBT.TAG_BYTE),
+                        "Exact native arrow omitted its public embedded-state byte");
+                    flight.addProperty("nativeInGround", nativeState.getBoolean("inGround"));
+                }
                 paths.add(flight);
             }
             row.add("arrows", paths);
@@ -1513,8 +1600,9 @@ public final class UnifiedCombatEffectPilotTests {
 
         private java.util.List<ItemStack> paidPhysicalItems() {
             var result = new java.util.ArrayList<ItemStack>();
-            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++)
-                result.add(maid.getMaidInventory().getStackInSlot(slot));
+            for (int slot = 0; slot < MaidInventoryLayout.TOTAL_SIZE; slot++) result.add(
+                maid.getMaidInventory()
+                    .getStackInSlot(slot));
             return result;
         }
 
@@ -1824,10 +1912,12 @@ public final class UnifiedCombatEffectPilotTests {
                 report.addProperty("ownedSoulObserverCalls", ownedSoulObserverCalls);
                 report.addProperty("ownedSoulObserverCpuNanos", ownedSoulObserverCpuNanos);
                 report.addProperty("ownedSoulObserverWallNanos", ownedSoulObserverWallNanos);
-                report.addProperty("ownedSoulCostScope", "Fixture metered closure and continuous active window; existing END observer field unchanged");
+                report.addProperty(
+                    "ownedSoulCostScope",
+                    "Fixture metered closure and continuous active window; existing END observer field unchanged");
             }
-            if (deathProducts != null) r.emptyWorld.meterObservedProtocol(
-                () -> report.add("deathProducts", deathProducts.snapshot()));
+            if (deathProducts != null)
+                r.emptyWorld.meterObservedProtocol(() -> report.add("deathProducts", deathProducts.snapshot()));
             report.add("passiveHealRequests", healRequests);
             report.addProperty("passiveHealRequestsSeen", healRequestsSeen);
             report.addProperty("passiveHealRequestsTruncated", healRequestsTruncated);
@@ -1926,8 +2016,8 @@ public final class UnifiedCombatEffectPilotTests {
             }));
             if (deathProducts != null) cleanup(() -> {
                 deathProducts.finishCleanup(cleanupFailure == null);
-                r.emptyWorld.meterObservedProtocol(() -> r.write(
-                    name + "-death-products-final", deathProducts.snapshot()));
+                r.emptyWorld
+                    .meterObservedProtocol(() -> r.write(name + "-death-products-final", deathProducts.snapshot()));
             });
             if (cleanupFailure != null) throw cleanupFailure;
         }
