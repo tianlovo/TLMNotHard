@@ -25,13 +25,14 @@ public final class OwnerSafetyRiskChecks {
     public static void main(String[] args) {
         String selected = args.length == 0 ? "all" : args[0];
         check(
-            Arrays.asList("all", "lane", "light", "full", "pressure")
+            Arrays.asList("all", "lane", "light", "full", "pressure", "healing")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
         if (selected.equals("all") || selected.equals("light")) projectileOwnerScoring(false);
         if (selected.equals("all") || selected.equals("full")) projectileOwnerScoring(true);
         if (selected.equals("all") || selected.equals("pressure")) ownerRangedPressure();
+        if (selected.equals("all") || selected.equals("healing")) healingAxePressure();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -57,6 +58,68 @@ public final class OwnerSafetyRiskChecks {
             pressureSnapshot(true, true, false, 20, .2, DamageSource.UNKNOWN))) {
             CombatPlan plan = new CombatPlanner().decide(boundary, CombatWorkQuota.isolated(100, false));
             check(plan.weaponSlot != 0, "Owner pressure bypassed its observed, reachable or survivable boundary");
+        }
+    }
+
+    private static void healingAxePressure() {
+        CombatSnapshot base = pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        var axe = new MaidWeaponProfile(
+            MaidWeaponProfile.Kind.MELEE,
+            MaidWeaponProfile.Family.HEALING_AXE,
+            "",
+            "",
+            0,
+            1,
+            6,
+            0,
+            -1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            false,
+            false);
+        for (boolean vulnerable : new boolean[] { false, true }) {
+            var t = base.targets.get(0);
+            var target = new Target(
+                t.id,
+                t.entityId,
+                t.position,
+                t.velocity,
+                t.observedAt,
+                t.lastOwnHitAt,
+                t.health,
+                t.estimatedDamage,
+                t.halfWidth,
+                t.height,
+                t.visible,
+                t.swinging,
+                t.ranged,
+                t.explosive,
+                t.attackingOwner,
+                t.damageSource,
+                vulnerable);
+            var snapshot = new CombatSnapshot(
+                base.tick,
+                1,
+                1,
+                1,
+                SELF,
+                base.self,
+                Arrays.asList(target),
+                base.projectiles,
+                base.friends,
+                Arrays.asList(base.weapon(-1), new Weapon(0, "healing_axe", axe)),
+                base.geometry,
+                ENEMY,
+                true);
+            CombatPlan plan = new CombatPlanner().decide(snapshot, CombatWorkQuota.isolated(100, false));
+            check(vulnerable || plan.weaponSlot != 0, "Owner pressure selected a weapon that cannot damage its target");
+            check(!vulnerable || plan.weaponSlot == 0, "Healing axe lost pressure against its supported damage target");
         }
     }
 
