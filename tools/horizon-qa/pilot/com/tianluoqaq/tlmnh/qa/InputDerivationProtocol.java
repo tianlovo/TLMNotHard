@@ -33,8 +33,8 @@ final class InputDerivationProtocol {
     static final String DECISION = "ec891745b1a3bd6ca7efba5c9d83c50a17cb6ca347454d7d9865e58b6a0c1716";
     static final String PROPERTY = "tlmnh.qaInputDerivation";
     static final String PHYSICAL_REVISION = "same-default-provider-new-production-artifact-v1";
-    static final String PHYSICAL_CONTRACT = "bca6c65eaa307a30b30ec03b553ea503399e1920b61971264cc1ea4bed816767";
-    static final String PHYSICAL_DECISION = "c803d3621399252c38cf6d1e6faacdf18a3304d5373543414e416e20e23e6d0b";
+    static final String PHYSICAL_CONTRACT = "d8fb59f4883058f4b43bbe423daf4d9314505656b2c542b2bedc6be593aab9b5";
+    static final String PHYSICAL_DECISION = "bf30c977d4889af4fbb06fffee036516f55f6eef01a2924bc84a42b09479c500";
 
     interface Access {
 
