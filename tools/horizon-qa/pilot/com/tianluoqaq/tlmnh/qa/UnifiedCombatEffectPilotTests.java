@@ -41,6 +41,7 @@ import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.util.CombatTracker;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.EnumDifficulty;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings.GameType;
 import net.minecraftforge.common.MinecraftForge;
@@ -668,6 +669,7 @@ public final class UnifiedCombatEffectPilotTests {
         RuntimeException cleanupFailure;
         OwnedSoulProtocol ownedSoul;
         DeathProductsProtocol deathProducts;
+        BotaniaSheddingProtocol botaniaShedding;
         long ownedSoulObserverCpuNanos, ownedSoulObserverWallNanos, ownedSoulObserverCalls;
 
         Trial(Runner r, String spec, boolean inputCanary, boolean waitCanary, int methodCase) {
@@ -686,6 +688,7 @@ public final class UnifiedCombatEffectPilotTests {
             expectedMaidIdentity = IdentityInputs.maid(name);
             openOwnedSoul();
             openDeathProducts();
+            openBotaniaShedding();
             initialFaultCount = IntegrationGuard.faults(Side.SERVER)
                 .size();
             report.addProperty("schema", "unified-combat-effect-run-v1");
@@ -707,6 +710,49 @@ public final class UnifiedCombatEffectPilotTests {
             report.addProperty(
                 "ownerControlScope",
                 "One public onUpdateEntity per FML START, no C03, no fake player, no manual vertical integration");
+        }
+
+        void openBotaniaShedding() {
+            if (!com.tianluoqaq.tlmnh.compat.botania.development.shedding.BotaniaSheddingBootstrap.requested()) return;
+            require(r.emptyWorld != null, "Botania observer requires exclusive empty-world fixture");
+            r.emptyWorld.meterObservedProtocol(
+                () -> botaniaShedding = new BotaniaSheddingProtocol(new BotaniaSheddingProtocol.Host() {
+
+                    public World world() {
+                        return r.world;
+                    }
+
+                    public Thread thread() {
+                        return r.ownerThread;
+                    }
+
+                    public boolean active() {
+                        return !closed && activeAt != Long.MAX_VALUE;
+                    }
+
+                    public boolean actor(Entity entity) {
+                        return (entity == owner && entity.getClass() == EntityPlayerMP.class)
+                            || (entity == maid && entity.getClass() == EntityMaid.class)
+                            || (entity == enemy && entity.getClass() == EntitySkeleton.class);
+                    }
+
+                    public boolean owned(Entity entity) {
+                        return owned.contains(entity);
+                    }
+
+                    public void adopt(Entity entity) {
+                        require(!owned.contains(entity), "Duplicate exact Botania adoption");
+                        owned.add(entity);
+                    }
+
+                    public void meter(Runnable action) {
+                        r.emptyWorld.meterObservedProtocol(action);
+                    }
+
+                    public int frame() {
+                        return Trial.this.frame();
+                    }
+                }));
         }
 
         void openDeathProducts() {
@@ -1005,6 +1051,7 @@ public final class UnifiedCombatEffectPilotTests {
             observerCpu += afterObserve - beforeObserve;
             if (ownedSoul != null) meterOwnedSoul(ownedSoul::observe);
             if (deathProducts != null) deathProducts.observeState();
+            if (botaniaShedding != null) r.emptyWorld.meterObservedProtocol(botaniaShedding::assertHealthy);
             activeFrames++;
             if (waitCanary && activeFrames == 80) {
                 recordWaitCanaryChecks();
@@ -1802,6 +1849,8 @@ public final class UnifiedCombatEffectPilotTests {
 
         void finish() {
             if (arrowInput != null) arrowInput.assertComplete();
+            if (botaniaShedding != null)
+                r.emptyWorld.meterObservedProtocol(() -> report.add("botaniaShedding", botaniaShedding.snapshot()));
             if (paidWear != null) report.add("paidWear", paidWear.finish(ACTIVE_TICKS));
             probe.close();
             report.addProperty("activeFrames", activeFrames);
@@ -1955,6 +2004,12 @@ public final class UnifiedCombatEffectPilotTests {
             if (closed) return;
             if (deathProducts != null) deathProducts.stopCapture();
             closed = true;
+            cleanup(() -> {
+                if (botaniaShedding != null) r.emptyWorld.meterObservedProtocol(() -> {
+                    r.write(name + "-botania-shedding-final", botaniaShedding.diagnostics());
+                    botaniaShedding.close();
+                });
+            });
             cleanup(() -> { if (arrowInput != null) arrowInput.close(); });
             cleanup(() -> { if (paidWear != null) paidWear.abort(); });
             cleanup(
@@ -2163,7 +2218,10 @@ public final class UnifiedCombatEffectPilotTests {
                 if (t == null || t.closed || event.world != r.world) return;
                 if (t.deathProducts != null) t.deathProducts.join(event);
                 if (t.ownedSoul != null) t.meterOwnedSoul(() -> t.ownedSoul.join(event));
-                if (event.isCanceled()) return;
+                if (event.isCanceled()) {
+                    if (t.botaniaShedding != null && event.entity instanceof EntityItem) t.botaniaShedding.join(event);
+                    return;
+                }
                 if (event.entity instanceof EntityArrow arrow
                     && (arrow.shootingEntity == t.maid || arrow.shootingEntity == t.enemy)) {
                     require(t.arrows.size() < 128, "Effect projectile records exceeded");
@@ -2187,9 +2245,13 @@ public final class UnifiedCombatEffectPilotTests {
                     row.addProperty("hasOwnedLivingDropsWitness", source != null);
                     if (source != null) row.addProperty("sourceActor", t.role(source));
                     t.events.add(row);
+                    boolean sheddingWitness = t.botaniaShedding != null && t.botaniaShedding.join(event);
+                    row.addProperty("hasProvisionalNativeBotaniaWitness", sheddingWitness);
                     require(
-                        source != null,
+                        source != null || sheddingWitness,
                         "Unknown item in exclusive effect world; retained and not adopted for cleanup");
+                    require(source == null || !sheddingWitness, "Ambiguous death/shedding provenance");
+                    if (sheddingWitness) return;
                     require(!t.owned.contains(drop), "Owned drop joined more than once");
                     t.owned.add(drop);
                 }

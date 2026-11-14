@@ -81,7 +81,7 @@ gradle.projectsEvaluated {
             manifest.attributes.remove('MixinConfigs')
             manifest.attributes('TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
                 'ForceLoadAsMod': 'true', 'FMLCorePluginContainsFMLMod': 'true',
-                'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json')
+                'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json,mixins.tlmnhqa.botania-shedding.json')
         }
     }
     def base = project.tasks.named('reobfJar').get()
@@ -99,13 +99,15 @@ gradle.projectsEvaluated {
             new java.util.jar.JarFile(archiveFile.get().asFile).withCloseable { archive ->
                 def expected = ['TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
                     'ForceLoadAsMod': 'true', 'FMLCorePluginContainsFMLMod': 'true',
-                    'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json']
+                    'MixinConfigs': 'mixins.tlmnhqa.population-quiescence.json,mixins.tlmnhqa.botania-shedding.json']
                 expected.each { key, value ->
                     if (archive.manifest?.mainAttributes?.getValue(key) != value)
                         throw new GradleException('QA quiescence exact manifest differs: ' + key)
                 }
                 if (archive.manifest?.mainAttributes?.getValue('FMLCorePlugin') != null)
                     throw new GradleException('Unexpected QA core plugin')
+                if (archive.getJarEntry('mixins.tlmnhqa.botania-shedding.json') == null)
+                    throw new GradleException('QA Botania shedding config absent')
                 if (archive.getJarEntry('mixins.tlmnhqa.population-quiescence.json') == null)
                     throw new GradleException('QA quiescence config absent')
             }
