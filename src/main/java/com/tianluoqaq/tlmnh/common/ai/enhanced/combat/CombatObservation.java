@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.EntityCreeper;
 import net.minecraft.entity.monster.IMob;
@@ -632,7 +633,10 @@ public final class CombatObservation {
         tracked.ranged = held != null && held.getItem() instanceof ItemBow;
         tracked.explosive = entity instanceof EntityCreeper;
         EntityLivingBase owner = maid.getOwner();
-        tracked.attackingOwner = owner != null && (owner.getAITarget() == entity || owner.getLastAttacker() == entity);
+        tracked.attackingOwner = owner != null
+            && (entity instanceof EntityLiving living && living.getAttackTarget() == owner
+                || owner.getAITarget() == entity
+                || owner.getLastAttacker() == entity);
         return SampleResult.OBSERVED;
     }
 

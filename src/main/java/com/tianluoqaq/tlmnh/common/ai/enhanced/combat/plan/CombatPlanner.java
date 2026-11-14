@@ -576,7 +576,7 @@ public final class CombatPlanner {
             && candidate.ownerRisk + candidate.singleOwner < snapshot.self.ownerHealth;
     }
 
-    /** 射手已明确攻击主人时，优先在原有有限距离内压制；不推测其冷却或未来随机出手 */
+    /** 可见射手明确攻击主人或其射线暴露主人时，在原有有限距离内压制 */
     private boolean ownerPressureAttack(CombatSnapshot snapshot, Candidate candidate) {
         Target target = candidate.target;
         if (!ownerPressureWindow || target == null
@@ -584,7 +584,7 @@ public final class CombatPlanner {
             || !candidate.weapon.profile.melee()
             || !target.visible
             || !target.fresh(snapshot.tick)
-            || !target.attackingOwner
+            || !ThreatEstimator.ownerInRangedFireLane(snapshot, target)
             || !target.ranged
             || target.explosive
             || target.damageSource == CombatSnapshot.DamageSource.UNKNOWN

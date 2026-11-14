@@ -250,6 +250,22 @@ public final class ThreatEstimator {
         return shield ? damage * CombatTerrainTuning.THREAT_ESTIMATOR_DOMAIN_FACTOR_3 : damage;
     }
 
+    /** 当前射手对女仆的潜在射线也可能暴露其后的主人，不等受伤后才提供该事实 */
+    public static boolean ownerInRangedFireLane(CombatSnapshot snapshot, Target target) {
+        return target != null && target.visible
+            && target.fresh(snapshot.tick)
+            && target.ranged
+            && !target.explosive
+            && target.damageSource != CombatSnapshot.DamageSource.UNKNOWN
+            && ownerInFireLane(
+                snapshot,
+                target,
+                target.position,
+                snapshot.self.position,
+                CombatTerrainTuning.COMBAT_SPACE_EXPAND_FIRST_FACTOR
+                    + CombatBudgetTuning.STEP * CombatTerrainTuning.COMBAT_TERRAIN_DOMAIN_FACTOR_4);
+    }
+
     /** 保守保留主人处于潜在射线上的风险，不推断精确出手时刻或垂直命中 */
     private static boolean ownerInFireLane(CombatSnapshot snapshot, Target target, Vec origin, Vec aim,
         double uncertainty) {
