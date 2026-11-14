@@ -198,11 +198,30 @@ public final class UnifiedCombatEffectPilotTests {
         begin(h);
     }
 
+    @GameTest(
+        template = "modern_core_cell",
+        timeoutTicks = EffectSaveBoundary.TIMEOUT,
+        batch = "excluded_focused_native_serial")
+    public static void excludedFocusedNativeCase(GameTestHelper h) throws Exception {
+        require(TACTICS != null, "Explicit original excluded tactics block required");
+        require(
+            "original-excluded-focused-v1".equals(System.getProperty("tlmnh.qaFocusedExcludedCase")),
+            "Explicit excluded focused request required");
+        begin(h, true);
+    }
+
     private static void begin(GameTestHelper h) throws Exception {
+        require(
+            System.getProperty("tlmnh.qaFocusedExcludedCase") == null,
+            "Focused request requires its dedicated selector");
+        begin(h, false);
+    }
+
+    private static void begin(GameTestHelper h, boolean focused) throws Exception {
         var methodCost = new EffectSaveBoundary.MethodCost();
         Runner runner;
         try {
-            runner = new Runner(h, methodCost);
+            runner = new Runner(h, methodCost, focused);
         } catch (Exception | Error failure) {
             methodCost.close();
             throw failure;
@@ -243,6 +262,7 @@ public final class UnifiedCombatEffectPilotTests {
             "0:A:1", "1:A:1", "1:C:1", "1:B:1" };
         final String[] specs = TACTICS == null ? originalSpecs : TACTICS.specs;
         final Path output;
+        final boolean focused;
         final int x, y, z;
         final int oldWorkRange = MaidHomeConfig.workRange, oldNonHomeRange = MaidHomeConfig.nonHomeRange;
         final boolean animals, gift, rain, thunder;
@@ -258,8 +278,24 @@ public final class UnifiedCombatEffectPilotTests {
         boolean previousCleanupSucceeded = true, activeRingRefused;
         JsonObject headingA;
 
-        Runner(GameTestHelper h, EffectSaveBoundary.MethodCost methodCost) throws Exception {
+        Runner(GameTestHelper h, EffectSaveBoundary.MethodCost methodCost, boolean focused) throws Exception {
             this.h = h;
+            this.focused = focused;
+            if (focused) {
+                require(
+                    TACTICS != null && !Boolean.getBoolean("tlmnh.qaPaidWearNativeControls")
+                        && !FormalMethodAuthority.requested(),
+                    "Focused input cannot claim formal/method controls");
+                String selected = SEED == 7677103373473613573L ? "0:C:0"
+                    : SEED == 8651560673352724762L ? "1:C:0" : SEED == 1603383104086350354L ? "1:A:1" : "";
+                require(!selected.isEmpty(), "Focused seed is outside the three original excluded inputs");
+                int matches = 0;
+                for (int i = 0; i < specs.length; i++) if (selected.equals(specs[i])) {
+                    next = i;
+                    matches++;
+                }
+                require(matches == 1, "Focused case absent/ambiguous in original block");
+            }
             world = h.getWorld();
             var origin = h.absolute(0, 0, 0);
             x = origin.x();
@@ -403,11 +439,11 @@ public final class UnifiedCombatEffectPilotTests {
             }
             if (trial == null) {
                 if (!boundarySealed) {
-                    if (emptyWorld != null && next > -6) emptyWorld.emptyAgain();
+                    if (emptyWorld != null && next > -6 && (!focused || completed.size() > 0)) emptyWorld.emptyAgain();
                     saveWindow.returnedToBoundary();
                     boundarySealed = true;
                 }
-                if (next == 0) for (String canary : new String[] { "methodHeadingCanaryDetected",
+                if (!focused && next == 0) for (String canary : new String[] { "methodHeadingCanaryDetected",
                     "methodOwnershipCanaryDetected", "methodEmptyRingCanaryDetected", "initialNbtCanaryDetected",
                     "nativeLedgerUnexpectedClearCanaryDetected", "wait80CanaryDetected" })
                     require(
@@ -423,6 +459,21 @@ public final class UnifiedCombatEffectPilotTests {
                     "Exclusive whole-world read-only empty boundary failed");
                 if (activeRingRefused && readOnlyBoundary.get("sequenceBefore")
                     .getAsLong() > 0) summary.addProperty("methodEmptyRingCanaryDetected", true);
+                if (focused && completed.size() == 1) {
+                    saveWindow.finalBoundary(readOnlyBoundary);
+                    emptyBoundaries.add(readOnlyBoundary);
+                    summary.addProperty("schema", "tlmnh-excluded-focused-native-v1");
+                    summary.addProperty("calibrationAccepted", false);
+                    summary.addProperty("statisticalAdmission", false);
+                    summary.addProperty("completed", true);
+                    summary.addProperty("focusedRuns", 1);
+                    summary.add("runs", completed);
+                    if (emptyWorld != null) summary.add("emptyWorldFinalSeal", emptyWorld.snapshot());
+                    summary.add("saveBoundaryProtocol", saveWindow.snapshot());
+                    write("excluded-focused-summary", summary);
+                    finished = true;
+                    return;
+                }
                 if (next >= specs.length) {
                     saveWindow.finalBoundary(readOnlyBoundary);
                     emptyBoundaries.add(readOnlyBoundary);
@@ -475,6 +526,33 @@ public final class UnifiedCombatEffectPilotTests {
             }
             if (!trial.tick()) return;
             trial.finish();
+            if (focused) {
+                require(trial.activeFrames == ACTIVE_TICKS, "Focused case lacks its original 400 frames");
+                if (trial.arm == Arm.REACTIVE) {
+                    JsonObject shedding = trial.report.getAsJsonObject("botaniaShedding");
+                    require(
+                        shedding != null && shedding.get("witnessedProducts")
+                            .getAsInt() > 0
+                            && shedding.get("witnessedProducts")
+                                .getAsInt()
+                                == shedding.get("committedProducts")
+                                    .getAsInt(),
+                        "NOT_EXERCISED: focused case needs actual natural witnessed/committed shedding");
+                    boolean bridgePositive = false;
+                    for (com.google.gson.JsonElement raw : shedding.getAsJsonArray("receipts"))
+                        bridgePositive |= raw.getAsJsonObject()
+                            .get("nativeJoinBridgeVerified")
+                            .getAsBoolean();
+                    require(bridgePositive, "Focused natural join lacks its exact authenticated bridge");
+                } else {
+                    require(
+                        trial.ownerLost == 0 && trial.ownerDiedAt < 0
+                            && trial.maidDiedAt < 0
+                            && trial.enemy != null
+                            && trial.enemy.getHealth() <= 0,
+                        "Focused production input lacks owner safety/target resolution");
+                }
+            }
             if (trial.inputCanary) {
                 summary.addProperty("initialNbtCanaryDetected", true);
                 summary.addProperty("nativeLedgerUnexpectedClearCanaryDetected", true);

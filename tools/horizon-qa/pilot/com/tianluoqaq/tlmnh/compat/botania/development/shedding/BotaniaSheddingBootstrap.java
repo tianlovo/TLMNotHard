@@ -129,6 +129,12 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
 
     public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) {
         check(shouldApplyMixin(target, mixin) && !entityApplied, "Foreign/duplicate early Entity application");
+        try {
+            BotaniaSheddingBridge.register(node);
+        } catch (Exception problem) {
+            fail("EARLY_ENTITY_BRIDGE", problem);
+            throw new IllegalStateException("Botania native bridge binding failed", problem);
+        }
         entityApplied = true;
         applied(target, mixin);
     }

@@ -15,6 +15,7 @@ import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tianluoqaq.tlmnh.compat.botania.development.shedding.BotaniaSheddingBootstrap;
+import com.tianluoqaq.tlmnh.compat.botania.development.shedding.BotaniaSheddingBridge;
 
 /** Observes the native synchronous call only. A join witness grants no cleanup authority. */
 public final class BotaniaSheddingProtocol {
@@ -266,6 +267,7 @@ public final class BotaniaSheddingProtocol {
                     .toString() : "");
             row.addProperty("frame", s.frame);
             row.addProperty("normalHandlerReturn", true);
+            row.addProperty("nativeJoinBridgeVerified", s.joinBridgeVerified);
             p.receipts.add(row);
         });
     }
@@ -279,12 +281,14 @@ public final class BotaniaSheddingProtocol {
             if (!(event.entity instanceof EntityItem item)) return;
             check(!witnessed.containsKey(item), "Repeated shedding join");
             if (s == null || !s.eligible || s.product != item) return;
-            caller(
+            s.joinBridgeVerified = caller(
                 "shedding$spawn",
                 "(Lnet/minecraft/world/World;Lnet/minecraft/entity/Entity;Lcom/llamalad7/mixinextras/injector/wrapoperation/Operation;)Z",
+                true,
                 true);
             check(
-                failure.get() == null && !event.isCanceled()
+                failure.get() == null && s.joinBridgeVerified
+                    && !event.isCanceled()
                     && event.world == host.world()
                     && item.worldObj == event.world
                     && host.active()
@@ -334,6 +338,15 @@ public final class BotaniaSheddingProtocol {
         result.add("providerSelection", BotaniaSheddingBootstrap.selection());
         result.addProperty("providerJarSha256", BotaniaSheddingBootstrap.JAR_SHA);
         result.addProperty("providerClassSha256", BotaniaSheddingBootstrap.CLASS_SHA);
+        JsonArray failureTrace = new JsonArray();
+        Throwable firstFailure = failure.get();
+        if (firstFailure != null) {
+            StackTraceElement[] trace = firstFailure.getStackTrace();
+            for (int i = 0; i < trace.length && i < 64; i++)
+                failureTrace.add(new com.google.gson.JsonPrimitive(trace[i].toString()));
+        }
+        result.add("stickyFailureStack", failureTrace);
+        result.add("nativeBridgeBinding", BotaniaSheddingBridge.selection());
         result.add("receipts", receipts);
         return result;
     }
@@ -345,25 +358,49 @@ public final class BotaniaSheddingProtocol {
     }
 
     private void caller(String hook, String descriptor, boolean nativeSpawn) {
-        boolean first = true, found = false, handler = false, drop = false;
+        caller(hook, descriptor, nativeSpawn, false);
+    }
+
+    private boolean caller(String hook, String descriptor, boolean nativeSpawn, boolean joining) {
+        boolean first = true, found = false, handler = false, drop = false, bridge = false;
         for (EffectArrowRandomInput.Frame frame : stack.capture()) {
             boolean provider = BotaniaSheddingBootstrap.isProvider(frame.type);
             if (!provider && frame.type != Entity.class) continue;
+            if (first && joining
+                && !bridge
+                && frame.type == Entity.class
+                && BotaniaSheddingBridge.isBridge(frame.method, frame.descriptor)) {
+                bridge = true;
+                continue;
+            }
             if (first) {
                 check(
                     (nativeSpawn ? frame.type == Entity.class : provider)
                         && (frame.method.equals(hook) || frame.method.endsWith("$" + hook))
-                        && frame.descriptor.equals(descriptor),
-                    "Forged shedding hook call chain");
+                        && frame.descriptor.equals(descriptor)
+                        && (!nativeSpawn || BotaniaSheddingBridge.isWrapper(frame.method, frame.descriptor))
+                        && (!joining || bridge),
+                    "Forged shedding hook call chain phase=" + hook
+                        + (joining ? "/join" : "/wrapper")
+                        + " first="
+                        + frame.type.getName()
+                        + "."
+                        + frame.method
+                        + frame.descriptor);
                 first = false;
                 found = true;
             }
-            if (provider && (frame.method.equals("shedding$handler") || frame.method.endsWith("$shedding$handler")))
+            if (provider && (frame.method.equals("shedding$handler") || frame.method.endsWith("$shedding$handler"))
+                && frame.descriptor.equals(
+                    "(Lnet/minecraftforge/event/entity/living/LivingEvent$LivingUpdateEvent;Lcom/llamalad7/mixinextras/injector/wrapoperation/Operation;)V"))
                 handler = true;
-            if (provider && (frame.method.equals("shedding$drop") || frame.method.endsWith("$shedding$drop")))
+            if (provider && (frame.method.equals("shedding$drop") || frame.method.endsWith("$shedding$drop"))
+                && frame.descriptor.equals(
+                    "(Lnet/minecraft/entity/Entity;Lnet/minecraft/item/ItemStack;FLcom/llamalad7/mixinextras/injector/wrapoperation/Operation;)Lnet/minecraft/entity/item/EntityItem;"))
                 drop = true;
         }
-        check(found && handler && (!nativeSpawn || drop), "Incomplete synchronous native shedding chain");
+        check(found && handler && (!nativeSpawn || drop), "Incomplete synchronous native shedding chain phase=" + hook);
+        return bridge;
     }
 
     private static void check(boolean good, String message) {
@@ -374,7 +411,7 @@ public final class BotaniaSheddingProtocol {
 
         final BotaniaSheddingProtocol session;
         final EntityLivingBase actor;
-        boolean eligible, dropStarted, joined, spawnReturned, dropReturned, committed;
+        boolean eligible, dropStarted, joined, spawnReturned, dropReturned, committed, joinBridgeVerified;
         ItemStack input, snapshot;
         EntityItem product;
         int frame;
