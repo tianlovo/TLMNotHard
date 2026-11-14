@@ -6,6 +6,7 @@ public final class BallisticsIds {
     public static final String GUARD = "arrow_medium";
     public static final String ID_POSITION = "position";
     public static final String ID_VELOCITY = "velocity";
+    public static final String NBT_IN_GROUND = "inGround";
 
     private BallisticsIds() {}
 }

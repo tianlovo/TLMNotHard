@@ -45,6 +45,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Wea
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSpace;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.ballistics.NativeArrowState;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
@@ -658,6 +659,11 @@ public final class CombatObservation {
             || arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ
                 < EnhancedCombatTuning.MIN_MOTION_Z_THRESHOLD)
             return SampleResult.HIDDEN;
+        // 原生嵌入箭保留入射速度；只在真实LOS后读取其公开状态，不续签旧飞行轨迹
+        if (NativeArrowState.embedded(arrow)) {
+            if (already != null) already.position = null;
+            return SampleResult.HIDDEN;
+        }
         UUID id = arrow.getUniqueID();
         ProjectileTrack tracked = arrows.get(id);
         if (tracked == null) {

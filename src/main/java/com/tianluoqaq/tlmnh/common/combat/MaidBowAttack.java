@@ -112,6 +112,13 @@ public final class MaidBowAttack {
         return arrowSlot() >= 0;
     }
 
+    /** 只检查原释放费用是否可付；实际生成前仍逐项收费和重验 */
+    public static boolean hasReleaseBudget(CombatWorkQuota quota) {
+        return quota.remaining(CombatWorkQuota.Work.FINAL_CHECK) >= MaidCombatTuning.BOW_ATTACK_SPEND_SECOND_PARAM
+            && quota.remaining(CombatWorkQuota.Work.RAY) >= MaidCombatTuning.EQUIPMENT_EPOCH_EQUIPMENT_PARAM
+            && quota.remaining(CombatWorkQuota.Work.BALLISTIC) > 0;
+    }
+
     public void observe(EntityLivingBase target, boolean visible, long tick) {
         this.tick = tick;
         if (!visible || target == null) {

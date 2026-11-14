@@ -26,6 +26,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedRideController
 import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.ai.faithful.combat.MaidCombatActor;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point;
+import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatFeedback;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
@@ -245,6 +246,8 @@ public final class MaidUnifiedCombatActionRunner {
         if (actor.ownsRangedUse()) {
             if (actor.rangedUsedTicks() < MaidCombatTuning.DRAW_TICKS || !maid.getCombatCadence()
                 .ready()) return Result.RUNNING;
+            // 观测可能已用尽本tick的弹道额度，保留已拉满的弓等原额度恢复
+            if (!MaidBowAttack.hasReleaseBudget(quota)) return Result.WAIT_BUDGET;
             actor.stopOwnedRangedUse();
             if (!authorized()) return Result.STALE;
             return actor.fireRangedAttackForPolicy(
