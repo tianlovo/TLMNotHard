@@ -40,7 +40,7 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
     public static final String PREFIX = "com.tianluoqaq.tlmnh.compat.botania.development.shedding.mixin.";
     public static final String UPDATE = "(Lnet/minecraftforge/event/entity/living/LivingEvent$LivingUpdateEvent;)V";
     private static final String DROP = "(Lnet/minecraft/item/ItemStack;F)Lnet/minecraft/entity/item/EntityItem;";
-    private static boolean earlyRequested, lateSelected, handlerApplied, entityApplied, mappingVerified;
+    private static boolean earlyRequested, lateSelected, handlerApplied, entityApplied, entityMerged, mappingVerified;
     private static Class<?> authenticated;
     private static URLClassLoader selectedLoader;
     private static BotaniaProviderResource.Selection selected;
@@ -62,6 +62,7 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
             BotaniaProviderResource.requireRuntimeInputs();
             check(!earlyRequested, "Duplicate early Botania config request");
             earlyRequested = true;
+            BotaniaSheddingFinalExtension.install();
             System.out.println("TLMNH_QA_BOTANIA_BOOTSTRAP_EARLY " + BOOTSTRAP_REVISION);
         } catch (Exception problem) {
             fail("EARLY_REQUEST", problem);
@@ -128,15 +129,21 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
     }
 
     public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) {
-        check(shouldApplyMixin(target, mixin) && !entityApplied, "Foreign/duplicate early Entity application");
-        try {
-            BotaniaSheddingBridge.register(node);
-        } catch (Exception problem) {
-            fail("EARLY_ENTITY_BRIDGE", problem);
-            throw new IllegalStateException("Botania native bridge binding failed", problem);
-        }
+        check(shouldApplyMixin(target, mixin) && !entityMerged, "Foreign/duplicate early Entity merge");
+        entityMerged = true;
+        BotaniaSheddingFinalExtension.merged(node);
+    }
+
+    static void entityFinalApplied() {
+        check(
+            entityMerged && !entityApplied && BotaniaSheddingFinalExtension.verified(),
+            "Final Entity observer incomplete");
         entityApplied = true;
-        applied(target, mixin);
+        applied("net.minecraft.entity.Entity", PREFIX + "NativeSheddingSpawnMixin");
+    }
+
+    static void finalEntityFailed(Throwable problem) {
+        fail("FINAL_ENTITY_POST_INJECTION", problem);
     }
 
     public static synchronized void providerPreApply(String target, ClassNode node, String mixin) {
@@ -284,7 +291,7 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
         return expectedDeclaredJar("mods/Botania-1.13.42-GTNH.jar", JAR_SHA);
     }
 
-    private static Path expectedDeclaredJar(String relative, String expectedSha) throws Exception {
+    static Path expectedDeclaredJar(String relative, String expectedSha) throws Exception {
         String manifestPath = System.getProperty("tlmnh.qaEffectEmptyWorldManifest");
         check(manifestPath != null, "LATE_LAUNCH_MANIFEST_PROPERTY_MISSING");
         byte[] bytes = Files.readAllBytes(Paths.get(manifestPath));
@@ -313,6 +320,7 @@ public final class BotaniaSheddingBootstrap implements IMixinConfigPlugin {
                 && lateSelected
                 && handlerApplied
                 && entityApplied
+                && BotaniaSheddingFinalExtension.verified()
                 && selected != null
                 && mappingVerified
                 && failure == null

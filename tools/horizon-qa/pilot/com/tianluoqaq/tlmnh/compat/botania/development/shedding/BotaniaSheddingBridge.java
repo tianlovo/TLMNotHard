@@ -21,7 +21,7 @@ import com.google.gson.JsonObject;
 /** Binds the operation bridge from its actual native-drop call site after injection. */
 public final class BotaniaSheddingBridge {
 
-    public static final String REVISION = "entity-native-shedding-bridge-v1";
+    public static final String REVISION = "entity-native-shedding-bridge-v2";
     private static final String ENTITY = "net/minecraft/entity/Entity";
     private static final String WORLD = "net/minecraft/world/World";
     private static final String MIXIN = BotaniaSheddingBootstrap.PREFIX + "NativeSheddingSpawnMixin";
@@ -211,7 +211,7 @@ public final class BotaniaSheddingBridge {
     public JsonObject diagnostics() {
         JsonObject result = new JsonObject();
         result.addProperty("revision", REVISION);
-        result.addProperty("observationPhase", "ENTITY_POST_APPLY");
+        result.addProperty("observationPhase", "MIXIN_EXTENSIONS_POST_APPLY");
         result.addProperty("bridge", bridgeName);
         result.addProperty("bridgeDescriptor", BRIDGE);
         result.addProperty("wrapper", wrapperName);
