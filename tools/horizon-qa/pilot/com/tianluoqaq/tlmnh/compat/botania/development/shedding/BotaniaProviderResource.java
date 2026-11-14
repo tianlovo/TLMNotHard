@@ -162,4 +162,46 @@ public final class BotaniaProviderResource {
             this.rawBytes = rawBytes.clone();
         }
     }
+
+    public static final String MOBS_JAR_SHA = "852935f5d9e1de9d5f447446f35b8dab6867855d1df902854f6056fd9d94a29d";
+    public static final String MOBS_TRANSFORMER_ENTRY = "com/kuba6000/mobsinfo/asm/RandomComparisonTransformer.class";
+    public static final String MOBS_TRANSFORMER_SHA = "1d8fac7aa43c12c489b384ccfde99fcfe3712659fd7a1eb6b78d7552013284c1";
+    public static final String MOBS_HELPER_ENTRY = "com/kuba6000/mobsinfo/api/RandomComparison.class";
+    public static final String MOBS_HELPER_SHA = "301e4d0305bf16f7774c8d55630794f917e27910aa7ca3da84fe24d9919a6cf2";
+
+    /** Resource authentication defines neither optional provider class. */
+    public static void verifyMobsInfo(URLClassLoader loader, Path expectedJar) throws Exception {
+        Path canonical = expectedJar.toRealPath();
+        check(MOBS_JAR_SHA.equals(hash(Files.readAllBytes(canonical))), "MOBSINFO_JAR_HASH_MISMATCH");
+        verifyMobsEntry(
+            loader.findResource(MOBS_TRANSFORMER_ENTRY),
+            canonical,
+            MOBS_TRANSFORMER_ENTRY,
+            MOBS_TRANSFORMER_SHA);
+        verifyMobsEntry(loader.findResource(MOBS_HELPER_ENTRY), canonical, MOBS_HELPER_ENTRY, MOBS_HELPER_SHA);
+    }
+
+    private static void verifyMobsEntry(URL resource, Path expectedJar, String entryName, String expectedSha)
+        throws Exception {
+        check(resource != null && "jar".equals(resource.getProtocol()), "MOBSINFO_RESOURCE_MISSING_OR_NOT_JAR");
+        JarURLConnection connection = (JarURLConnection) resource.openConnection();
+        connection.setUseCaches(false);
+        try (java.util.jar.JarFile jar = connection.getJarFile()) {
+            check(sourceFile(connection.getJarFileURL()).equals(expectedJar), "MOBSINFO_RESOURCE_SOURCE_MISMATCH");
+            JarEntry entry = connection.getJarEntry();
+            check(
+                entry != null && entryName.equals(connection.getEntryName())
+                    && entryName.equals(
+                        (String) JarEntry.class.getMethod("getRealName")
+                            .invoke(entry)),
+                "MOBSINFO_PHYSICAL_ENTRY_MISMATCH");
+            try (InputStream input = connection.getInputStream()) {
+                check(expectedSha.equals(hash(read(input))), "MOBSINFO_RESOURCE_HASH_MISMATCH");
+            }
+            try (ZipFile physical = new ZipFile(expectedJar.toFile());
+                InputStream input = physical.getInputStream(physical.getEntry(entryName))) {
+                check(expectedSha.equals(hash(read(input))), "MOBSINFO_PHYSICAL_CLASS_HASH_MISMATCH");
+            }
+        }
+    }
 }
