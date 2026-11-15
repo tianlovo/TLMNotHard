@@ -13,6 +13,7 @@ import net.minecraft.entity.ai.EntityMoveHelper;
 import net.minecraft.util.MathHelper;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatMovementFacing;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatQueuedMove;
 import com.tianluoqaq.tlmnh.common.ai.navigation.MaidPathNavigator;
 import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidMovementAngles;
@@ -33,6 +34,8 @@ public final class MaidMoveControl extends EntityMoveHelper {
     private Operation operation = Operation.WAIT;
     private long combatSlotRevision;
     private CombatQueuedMove combatOwnedCommand;
+    private final CombatMovementFacing combatFacing = new CombatMovementFacing();
+    private boolean combatFacingStrafeApplied;
 
     public MaidMoveControl(EntityMaid maid) {
         super(maid);
@@ -51,6 +54,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
 
     @Override
     public void setMoveTo(double x, double y, double z, double speed) {
+        clearCombatFacing();
         combatSlotRevision++;
         combatOwnedCommand = null;
         this.x = x;
@@ -61,12 +65,39 @@ public final class MaidMoveControl extends EntityMoveHelper {
     }
 
     public void strafe(float forwards, float right) {
+        clearCombatFacing();
         combatSlotRevision++;
         combatOwnedCommand = null;
         operation = Operation.STRAFE;
         this.forwards = forwards;
         this.right = right;
         speed = .25;
+    }
+
+    /** 只接已有ordinary setter的精确序号，水路、jump及辅助移动租约不取得此资格 */
+    public boolean faceOwnedMove(CombatQueuedMove command, long expectedRevision, float admittedYaw) {
+        return combatFacing.request(
+            command,
+            expectedRevision,
+            combatSlotRevision,
+            combatOwnedCommand == null && operation == Operation.MOVE_TO && combatGroundCommandAvailable(),
+            admittedYaw);
+    }
+
+    public boolean cancelOwnedFacing(CombatQueuedMove expected) {
+        return combatFacing.cancel(expected);
+    }
+
+    private void clearCombatFacing() {
+        combatFacing.clear();
+        clearCombatFacingStrafe();
+    }
+
+    private void clearCombatFacingStrafe() {
+        if (combatFacingStrafeApplied) {
+            maid.moveStrafing = 0;
+            combatFacingStrafeApplied = false;
+        }
     }
 
     /** 纯来源序号，普通调用的operation/返回和物理保持 */
@@ -91,6 +122,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
 
     public boolean setOwnedMoveTo(CombatQueuedMove command, double x, double y, double z, double speed) {
         if (command == null || !combatGroundCommandAvailable() || !command.current()) return false;
+        clearCombatFacing();
         this.x = x;
         this.y = y;
         this.z = z;
@@ -116,6 +148,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
     }
 
     private void clearCombatInput() {
+        clearCombatFacing();
         combatOwnedCommand = null;
         combatSlotRevision++;
         operation = Operation.WAIT;
@@ -131,6 +164,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
 
     @Override
     public void onUpdateMoveHelper() {
+        clearCombatFacingStrafe();
         // 必须先于水路与operation分支，不能让已撤销的输入被水路复用
         var command = combatOwnedCommand;
         if (command != null && (!combatGroundCommandAvailable() || !command.consume())) {
@@ -138,6 +172,10 @@ public final class MaidMoveControl extends EntityMoveHelper {
             command.rejected();
             return;
         }
+        boolean keepCombatFacing = combatFacing.consume(
+            combatSlotRevision,
+            combatOwnedCommand == null && operation == Operation.MOVE_TO && combatGroundCommandAvailable(),
+            maid.rotationYaw);
         // 已消费标签保留至下一次setter/撤销，防止保留坐标在下tick水路被无标签复用
         // 原型低氧路线有独立 travel 执行器，不能在水面附近重新驱动旧导航目标
         if (maid.getBrainCoordinator()
@@ -179,10 +217,25 @@ public final class MaidMoveControl extends EntityMoveHelper {
                 maid.setMoveForward(0);
                 return;
             }
-            turn((180F / (float) Math.PI) * (float) MaidMovementAngles.atan2(dz, dx) - 90);
-            maid.setAIMoveSpeed(
-                (float) (speed * maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
-                    .getAttributeValue()));
+            float movementYaw = (180F / (float) Math.PI) * (float) MaidMovementAngles.atan2(dz, dx) - 90;
+            if (!keepCombatFacing) turn(movementYaw);
+            float movement = (float) (speed * maid.getEntityAttribute(SharedMonsterAttributes.movementSpeed)
+                .getAttributeValue());
+            float radiansPerDegree = (float) Math.PI / 180;
+            var facingInput = keepCombatFacing ? CombatMovementFacing.resolve(
+                movement,
+                MathHelper.sin(movementYaw * radiansPerDegree),
+                MathHelper.cos(movementYaw * radiansPerDegree),
+                MathHelper.sin(maid.rotationYaw * radiansPerDegree),
+                MathHelper.cos(maid.rotationYaw * radiansPerDegree)) : null;
+            if (keepCombatFacing && facingInput == null) turn(movementYaw);
+            maid.setAIMoveSpeed(movement);
+            float forwardBeforeProjection = maid.moveForward, strafeBeforeProjection = maid.moveStrafing;
+            if (facingInput != null) {
+                maid.moveForward = facingInput.forward;
+                maid.moveStrafing = facingInput.strafe;
+                combatFacingStrafeApplied = true;
+            }
             int bx = MathHelper.floor_double(maid.posX), by = MathHelper.floor_double(maid.posY),
                 bz = MathHelper.floor_double(maid.posZ);
             var block = maid.worldObj.getBlock(bx, by, bz);
@@ -192,6 +245,13 @@ public final class MaidMoveControl extends EntityMoveHelper {
                 || block.isLadder(maid.worldObj, bx, by, bz, maid);
             if (maid.stepHeight < dy && dx * dx + dz * dz < Math.max(1, maid.width)
                 || box != null && maid.posY < box.maxY && !forbidden) {
+                if (facingInput != null) {
+                    // 原MOVE_TO要求跳跃时撤回投影，保留其真实速度、既有侧向输入与原跳跃朝向
+                    turn(movementYaw);
+                    maid.moveForward = forwardBeforeProjection;
+                    maid.moveStrafing = strafeBeforeProjection;
+                    combatFacingStrafeApplied = false;
+                }
                 maid.getJumpHelper()
                     .setJumping();
                 operation = Operation.JUMPING;

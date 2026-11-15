@@ -36,7 +36,8 @@ public final class OwnerSafetyRiskChecks {
                     "lane-pressure",
                     "projectile-pressure",
                     "service-pressure",
-                    "self-safety")
+                    "self-safety",
+                    "melee-hold")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -48,6 +49,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("projectile-pressure")) ownerPressureSeparatesProjectileHits();
         if (selected.equals("all") || selected.equals("service-pressure")) ownerPressureSurvivesServiceGap();
         if (selected.equals("all") || selected.equals("self-safety")) selfProjectileDefenseSuspendsBow();
+        if (selected.equals("all") || selected.equals("melee-hold")) reachedMeleeDoesNotRetainApproach();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -208,6 +210,48 @@ public final class OwnerSafetyRiskChecks {
                 .decide(pressureProjectiles(base, Arrays.asList(unknown)), CombatWorkQuota.isolated(100, full));
             check(refused.weaponSlot != 0, "Unknown arrow acquired safe owner pressure admission");
         }
+    }
+
+    /** 普通接近达到当前真实近战距离后重算持位，不能继续消费旧推进 */
+    private static void reachedMeleeDoesNotRetainApproach() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            for (double distance : new double[] { 2.5, 2.8 }) {
+                var planner = new CombatPlanner();
+                CombatPlan approaching = planner.decide(meleeHoldFrame(100, 3.5, 100),
+                    CombatWorkQuota.isolated(100, false));
+                check(approaching.macro == CombatPlan.Macro.APPROACH && approaching.stageId == 0,
+                    "Melee-hold fixture failed to establish a real ordinary approach");
+                CombatPlan reached = planner.decide(meleeHoldFrame(101, distance, 101),
+                    CombatWorkQuota.isolated(101, false));
+                check(reached.trace.candidates.stream().noneMatch(candidate ->
+                    candidate.macro == CombatPlan.Macro.APPROACH && candidate.strategy == CombatPlan.Strategy.REACTION),
+                    "Old melee approach continued after current target entered actual reach");
+                check(reached.macro == CombatPlan.Macro.HOLD_ATTACK && reached.stageId == 0,
+                    "Reached ordinary melee failed to hold its current native attack position");
+            }
+            for (CombatSnapshot boundary : Arrays.asList(meleeHoldFrame(101, 3.2, 101),
+                meleeHoldFrame(101, 2.5, 100))) {
+                var planner = new CombatPlanner();
+                planner.decide(meleeHoldFrame(100, 3.5, 100), CombatWorkQuota.isolated(100, false));
+                CombatPlan retained = planner.decide(boundary, CombatWorkQuota.isolated(101, false));
+                check(retained.trace.candidates.stream().anyMatch(candidate ->
+                    candidate.macro == CombatPlan.Macro.APPROACH && candidate.strategy == CombatPlan.Strategy.REACTION),
+                    "Outside-reach or non-current target fabricated melee arrival");
+            }
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static CombatSnapshot meleeHoldFrame(long tick, double distance, long targetObservedAt) {
+        CombatSnapshot base = pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        var target = new Target(ENEMY, 702, new Vec(distance, 0, 0), new Vec(0, 0, 0), targetObservedAt,
+            Long.MIN_VALUE, 40, 4, .3, 1.8, true, false, true, false, true, DamageSource.GENERIC_PRIOR);
+        return new CombatSnapshot(tick, 1, 1, 1, SELF, base.self, Arrays.asList(target),
+            Collections.emptyList(), base.friends, Arrays.asList(new Weapon(-1, "sword", base.weapon(0).profile)),
+            base.geometry, ENEMY, false);
     }
 
     /** 原即时扫掠确认自身来箭后，移动防御不再虚计射击，且不占用自有MAIN弓 */

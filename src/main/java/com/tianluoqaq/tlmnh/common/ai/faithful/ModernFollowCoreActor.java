@@ -130,6 +130,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private PathEntity combatInstalledPath;
     private RestrictedCombatMove restrictedCombatMove;
     private PathEntity ordinaryCombatDispatchRaw;
+    private CombatQueuedMove combatFacingCommand;
     private long ordinaryCombatDispatchRevision = FaithfulAiTuning.UNSET_OR_NOT_FOUND;
     private long combatDiagnosticTickOverride = Long.MIN_VALUE;
     private long combatMovementLeaseGeneration;
@@ -614,6 +615,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void eraseWalkTarget() {
         guard();
+        cancelCombatFacing();
         if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_WALK_CANCELLED);
         walk = null;
     }
@@ -745,6 +747,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             requested.raw,
             actual);
         if (actual == requested.raw || actual == ownedPath) {
+            if (actual != ownedPath) cancelCombatFacing();
             ownedPath = actual;
             navigationView = actual == null ? null : new ModernPath((MaidModernPath) actual, null);
         }
@@ -782,6 +785,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void stopNavigation() {
         navigationLease();
+        cancelCombatFacing();
         // 先持原raw身份撤销queued move，再清导航字段；ARRIVED/失败回执由原调用顺序保留
         if (restrictedCombatMove != null)
             stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_NAVIGATION_STOPPED_REPROOF_REQUIRE);
@@ -2121,6 +2125,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void clearCombatMovement() {
+        cancelCombatFacing();
         if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_CANCELLED);
         combatMovementLeaseGeneration++;
         combatNode = null;
@@ -3040,6 +3045,71 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         return unifiedCombat.lastJumpDiagnostic();
     }
 
+    /** NAV先于Brain下发MOVE_TO，绑定该次ordinary setter，后置消费保持原LOOK准入的身体朝向 */
+    public boolean faceCurrentCombatMovement() {
+        guard();
+        cancelCombatFacing();
+        if (!(maid.getMoveHelper() instanceof MaidMoveControl control) || restrictedCombatMove != null) return false;
+        final PathEntity raw = ordinaryCombatDispatchRaw;
+        final long revision = ordinaryCombatDispatchRevision;
+        if (raw == null || raw != ownedPath
+            || raw != navigation.getPath()
+            || raw.isFinished()
+            || !navigation.isBrainTargetOwner(this)
+            || walk == null) return false;
+        final EntityLivingBase target = maid.getModernCombatMemory()
+            .target();
+        if (target == null || target.isDead || !target.isEntityAlive()) return false;
+        final Token ownerToken = token;
+        final MaidPolicyRuntime ownerRuntime = runtime;
+        final Object behaviors = behaviorIdentity;
+        final WalkTarget submittedWalk = walk;
+        final long submittedAt = worldTick, epoch = unifiedCombatEpoch, observation = unifiedCombatObservation.epoch(),
+            generation = combatMovementLeaseGeneration;
+        final int atEntityTick = entityTick, index = raw.getCurrentPathIndex(), length = raw.getCurrentPathLength();
+        final double x = maid.posX, y = maid.boundingBox.minY, z = maid.posZ;
+        final float width = maid.width, height = maid.height, admittedYaw = maid.rotationYaw;
+        var command = new CombatQueuedMove(
+            () -> isCurrent() && token == ownerToken
+                && runtime == ownerRuntime
+                && behaviorIdentity == behaviors
+                && worldTick == submittedAt
+                && entityTick == atEntityTick
+                && unifiedCombatEpoch == epoch
+                && unifiedCombatObservation.epoch() == observation
+                && combatMovementLeaseGeneration == generation
+                && walk == submittedWalk
+                && restrictedCombatMove == null
+                && ordinaryCombatDispatchRaw == raw
+                && ordinaryCombatDispatchRevision == revision
+                && ownedPath == raw
+                && navigation.getPath() == raw
+                && navigation.isBrainTargetOwner(this)
+                && raw.getCurrentPathIndex() == index
+                && raw.getCurrentPathLength() == length
+                && !raw.isFinished()
+                && maid.posX == x
+                && maid.boundingBox.minY == y
+                && maid.posZ == z
+                && maid.width == width
+                && maid.height == height
+                && maid.getModernCombatMemory()
+                    .target() == target
+                && !target.isDead
+                && target.isEntityAlive(),
+            rejected -> { if (combatFacingCommand == rejected) combatFacingCommand = null; });
+        if (!control.faceOwnedMove(command, revision, admittedYaw)) return false;
+        combatFacingCommand = command;
+        return true;
+    }
+
+    private void cancelCombatFacing() {
+        CombatQueuedMove expected = combatFacingCommand;
+        combatFacingCommand = null;
+        if (expected != null && maid.getMoveHelper() instanceof MaidMoveControl control)
+            control.cancelOwnedFacing(expected);
+    }
+
     /** 真实身体朝向与 LOOK 输入受转向角速度限制，防御机动严格遵守物理角限制 */
     public void lookAtCombatPoint(CombatSnapshot.Vec point) {
         guard();
@@ -3054,6 +3124,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void brakeForCombatJump() {
         guard();
+        cancelCombatFacing();
         walk = null;
         if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
         ownedPath = null;

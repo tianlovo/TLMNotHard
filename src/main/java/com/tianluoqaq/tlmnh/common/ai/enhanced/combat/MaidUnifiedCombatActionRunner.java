@@ -185,7 +185,11 @@ public final class MaidUnifiedCombatActionRunner {
         var view = actor.combatTargetView(target);
         actor.lookAtAttackTarget(view);
         // 沿用计划中的同一来箭裁决，保持原被动盾入口自行取得租约
-        if (plan.interruptRangedUse) return Result.RUNNING;
+        if (plan.interruptRangedUse) {
+            // 只绑定当前已下发的普通MOVE_TO，后置helper保留原Actor已准入的身体朝向
+            actor.faceCurrentCombatMovement();
+            return Result.RUNNING;
+        }
         if (profile.bow()) return bow(target, view, plan, quota, profile);
         actor.stopOwnedRangedUse();
         if ((jumpRequested || jumpPreparing) && (jumpWeapon != maid.getHeldItem() || !target.getUniqueID()

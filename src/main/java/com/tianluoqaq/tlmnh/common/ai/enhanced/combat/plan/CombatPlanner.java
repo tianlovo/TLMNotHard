@@ -571,15 +571,20 @@ public final class CombatPlanner {
             && (heldPlan.macro != Macro.JUMP_STRIKE || !snapshot.self.grounded
                 || remainingCooldown(snapshot) <= CombatPlanTuning.JUMP_PREPARATION_TICKS)) {
             Candidate held = heldPlan.macro == Macro.HOLD_ATTACK || heldPlan.macro == Macro.PREPARE_WEAPON
-                ? attack(snapshot, target, current)
-                : new Candidate(
-                    heldPlan.macro,
-                    target,
-                    current,
-                    heldPlan.macro == Macro.COVER_EDGE ? heldPlan.destination
-                        : destination(snapshot, target, heldPlan.macro),
-                    CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR,
-                    heldPlan.strategy);
+                || heldPlan.macro == Macro.APPROACH && heldPlan.strategy == Strategy.REACTION
+                    && current.profile.melee()
+                    && target.visible
+                    && target.observedAt == snapshot.tick
+                    && snapshot.self.position.distance(target.position) <= snapshot.self.reach
+                        ? attack(snapshot, target, current)
+                        : new Candidate(
+                            heldPlan.macro,
+                            target,
+                            current,
+                            heldPlan.macro == Macro.COVER_EDGE ? heldPlan.destination
+                                : destination(snapshot, target, heldPlan.macro),
+                            CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR,
+                            heldPlan.strategy);
             if (heldPlan == routeProposal && (repropose || !quota.full && intentEligible)) {
                 Vec step = continuationStep(snapshot, quota);
                 if (step != null && quota.full) {
