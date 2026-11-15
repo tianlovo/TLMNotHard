@@ -25,7 +25,17 @@ public final class OwnerSafetyRiskChecks {
     public static void main(String[] args) {
         String selected = args.length == 0 ? "all" : args[0];
         check(
-            Arrays.asList("all", "lane", "light", "full", "pressure", "healing", "lane-pressure", "projectile-pressure")
+            Arrays
+                .asList(
+                    "all",
+                    "lane",
+                    "light",
+                    "full",
+                    "pressure",
+                    "healing",
+                    "lane-pressure",
+                    "projectile-pressure",
+                    "service-pressure")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -35,6 +45,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("healing")) healingAxePressure();
         if (selected.equals("all") || selected.equals("lane-pressure")) ownerFireLanePressure();
         if (selected.equals("all") || selected.equals("projectile-pressure")) ownerPressureSeparatesProjectileHits();
+        if (selected.equals("all") || selected.equals("service-pressure")) ownerPressureSurvivesServiceGap();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -212,6 +223,142 @@ public final class OwnerSafetyRiskChecks {
             base.geometry,
             base.selectedTarget,
             base.complete);
+    }
+
+    private static void ownerPressureSurvivesServiceGap() {
+        var base = pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        byte[] cells = new byte[9 * 6 * 9];
+        for (int y = 0; y < 2; y++) for (int z = 0; z < 9; z++)
+            for (int x = 0; x < 9; x++) cells[(y * 9 + z) * 9 + x] = CombatTerrainTuning.SOLID;
+        var geometry = new CombatSnapshot.Geometry(-4, -2, -4, 9, 6, 9, 100, true, cells);
+        var sword = new Weapon(-1, "service-sword", base.weapon(0).profile);
+        var prepared = new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            base.self,
+            base.targets,
+            Collections.emptyList(),
+            base.friends,
+            Arrays.asList(sword),
+            geometry,
+            ENEMY,
+            true);
+        var planner = new CombatPlanner();
+        CombatPlan task = planner.decide(prepared, CombatWorkQuota.isolated(100, true));
+        check(
+            task.strategy == CombatPlan.Strategy.TASK && task.macro == CombatPlan.Macro.APPROACH
+                && task.stageId > 0
+                && task.normalProgressAdmitted,
+            "Service-pressure fixture did not admit a real task");
+        var gap = new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            base.self,
+            base.targets,
+            Collections.emptyList(),
+            base.friends,
+            Arrays.asList(sword),
+            geometry,
+            ENEMY,
+            false);
+        CombatPlan reaction = planner.decide(gap, CombatWorkQuota.isolated(100, false));
+        check(
+            reaction.macro == CombatPlan.Macro.APPROACH && reaction.strategy == CombatPlan.Strategy.REACTION,
+            "Owner pressure disappeared while its ordinary task waited for complete coverage");
+        check(
+            !reaction.simulated && !reaction.normalProgressAdmitted
+                && reaction.stageId == task.stageId
+                && reaction.stagePhase == task.stagePhase
+                && reaction.route == null
+                && reaction.movementNode == null,
+            "Ordinary service reaction advanced or borrowed the task authority");
+        byte[] unknownCells = new byte[cells.length];
+        Arrays.fill(unknownCells, CombatTerrainTuning.UNKNOWN);
+        var unknownGeometry = new CombatSnapshot.Geometry(-4, -2, -4, 9, 6, 9, 100, false, unknownCells);
+        var unknownGap = new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            base.self,
+            base.targets,
+            Collections.emptyList(),
+            base.friends,
+            Arrays.asList(sword),
+            unknownGeometry,
+            ENEMY,
+            false);
+        CombatPlan unknown = planner.decide(unknownGap, CombatWorkQuota.isolated(100, false));
+        check(
+            unknown.macro != CombatPlan.Macro.APPROACH && !unknown.normalProgressAdmitted,
+            "Service reaction treated unknown body/floor as a proven node");
+        var staleGeometry = new CombatSnapshot.Geometry(-4, -2, -4, 9, 6, 9, 0, true, cells);
+        var staleGap = new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            base.self,
+            base.targets,
+            Collections.emptyList(),
+            base.friends,
+            Arrays.asList(sword),
+            staleGeometry,
+            ENEMY,
+            false);
+        CombatPlan stale = planner.decide(staleGap, CombatWorkQuota.isolated(100, false));
+        check(
+            stale.macro != CombatPlan.Macro.APPROACH && !stale.normalProgressAdmitted,
+            "Service reaction reused stale body/floor geometry");
+        var profile = sword.profile;
+        var exhausted = new MaidWeaponProfile(
+            profile.kind,
+            profile.family,
+            profile.reason,
+            profile.dependency,
+            profile.physicalBonus,
+            profile.criticalMultiplier,
+            profile.estimatedMeleePhysical,
+            profile.durabilityCost,
+            0,
+            profile.hurtResistanceMultiplier,
+            profile.sharpness,
+            profile.smite,
+            profile.baneOfArthropods,
+            profile.knockback,
+            profile.fireAspect,
+            profile.power,
+            profile.punch,
+            profile.infinity,
+            profile.flame);
+        // 背包中仍有阶段同指纹的可用能力，使阶段身份保留；当前手中档案已不可支付耐久
+        var unavailableGap = new CombatSnapshot(
+            100,
+            1,
+            1,
+            1,
+            SELF,
+            base.self,
+            base.targets,
+            Collections.emptyList(),
+            base.friends,
+            Arrays.asList(new Weapon(-1, sword.fingerprint, exhausted), new Weapon(0, sword.fingerprint, profile)),
+            geometry,
+            ENEMY,
+            false);
+        CombatPlan unavailable = planner.decide(unavailableGap, CombatWorkQuota.isolated(100, false));
+        check(
+            unavailable.stageId == task.stageId && unavailable.macro != CombatPlan.Macro.APPROACH
+                && !unavailable.normalProgressAdmitted,
+            "Service reaction admitted an unusable current weapon under the same stage identity");
     }
 
     private static CombatSnapshot pressureSnapshot(boolean ownerPresent, boolean attackingOwner, boolean stationary,

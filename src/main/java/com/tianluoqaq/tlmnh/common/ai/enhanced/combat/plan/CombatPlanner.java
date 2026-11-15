@@ -380,6 +380,10 @@ public final class CombatPlanner {
                     stage.reason = CombatPlanIds.KEY_CURRENT_CANDIDATE_NOT_ADMITTED;
                 }
             }
+            if (committed == null) {
+                Candidate reaction = ownerPressureServiceReaction(snapshot, target, current);
+                if (reaction != null) comparisonReady &= add(result, reaction, quota);
+            }
         } else addLegacyCurrent(result, snapshot, target, current, quota);
         // 一续持、至多两纯防御、一任务、一组合优先占位；其余名额仍由原候选使用
         int defenses = 0;
@@ -511,6 +515,29 @@ public final class CombatPlanner {
         for (Candidate candidate : result) if (candidate.route == null && candidate.strategy == Strategy.REACTION)
             candidate.escapeProved = currentEscape;
         return result;
+    }
+
+    /** 服务等待只补当前普通节点的反应候选，完整任务资格仍由原阶段重证 */
+    private Candidate ownerPressureServiceReaction(CombatSnapshot snapshot, Target target, Weapon current) {
+        if (stage.state != StageState.WAIT_SERVICE || !snapshot.self.grounded
+            || !snapshot.friendsComplete
+            || target == null
+            || target.observedAt != snapshot.tick
+            || stage.strategy != Strategy.TASK
+            || stage.firstMacro != Macro.APPROACH
+            || stage.entry != null
+            || stage.alignment != null
+            || stage.connector != null
+            || stage.route.conditionalDoor
+            || !stage.matches(snapshot, target)
+            || !usable(snapshot, current)
+            || current.slot != CombatPlanTuning.UNSET_OR_NOT_FOUND
+            || !stage.weapon.equals(current.fingerprint)
+            || current.profile.family != stage.family) return null;
+        Candidate reaction = attack(snapshot, target, current);
+        if (reaction.macro != Macro.APPROACH || !ownerPressureAttack(snapshot, reaction)) return null;
+        reaction.destination = stage.route.next(stage.cursor);
+        return reaction;
     }
 
     private void addLegacyCurrent(List<Candidate> result, CombatSnapshot snapshot, Target target, Weapon current,
