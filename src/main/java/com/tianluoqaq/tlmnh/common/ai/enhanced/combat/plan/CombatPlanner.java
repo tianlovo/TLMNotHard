@@ -135,8 +135,7 @@ public final class CombatPlanner {
         terrainVisited = terrainWork = alignmentWork = entryWork = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         normalProgressAdmitted = false;
         ownerPressureWindow = snapshot.self.ownerPosition != null && !snapshot.self.recentlyHurt
-            && !snapshot.self.drawing
-            && !hasFreshProjectile(snapshot);
+            && !snapshot.self.drawing;
         synchronizeStage(snapshot);
         Target selected = snapshot.target(snapshot.selectedTarget);
         if (reobservation != null) reobservationRetryAt = Math.max(reobservationRetryAt, reobservation.retryAt);
@@ -616,6 +615,7 @@ public final class CombatPlanner {
 
     private boolean preferOwnerPressure(CombatSnapshot snapshot, Candidate candidate, Candidate other) {
         return safeOwnerPressure(snapshot, candidate) && !safeOwnerPressure(snapshot, other)
+            && candidate.projectileRisk <= other.projectileRisk
             && candidate.ownerRisk <= other.ownerRisk
             && candidate.singleOwner <= other.singleOwner;
     }
@@ -1134,6 +1134,7 @@ public final class CombatPlanner {
         var reserve = new ThreatEstimator.Risk();
         candidate.risk = fallbackRisk(snapshot, next, candidate.macro == Macro.SHIELD, quota, occlusion, reserve);
         candidate.singleSelf = reserve.selfSingle;
+        candidate.projectileRisk = reserve.selfProjectileReceived;
         candidate.ownerRisk = reserve.ownerReceived;
         candidate.singleOwner = reserve.ownerSingle;
         candidate.riskKnown = reserve.known;
@@ -1443,6 +1444,7 @@ public final class CombatPlanner {
             worst = Math.min(worst, utility);
             risk = Math.max(risk, received);
             candidate.singleSelf = Math.max(candidate.singleSelf, reserve.selfSingle);
+            candidate.projectileRisk = Math.max(candidate.projectileRisk, reserve.selfProjectileReceived);
             candidate.singleOwner = Math.max(candidate.singleOwner, reserve.ownerSingle);
             candidate.ownerRisk = Math.max(candidate.ownerRisk, reserve.ownerReceived);
             candidate.riskKnown &= reserve.known;
@@ -1810,7 +1812,7 @@ public final class CombatPlanner {
         final double staticValue;
         double utility, damage, risk;
         boolean evaluated, continuing, retained, escapeProved, riskKnown;
-        double singleSelf, singleOwner, ownerRisk;
+        double singleSelf, singleOwner, ownerRisk, projectileRisk;
         Stage stage;
         Alignment alignment;
         ConditionalEntry entry;

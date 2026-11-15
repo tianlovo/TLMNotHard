@@ -18,7 +18,7 @@ public final class ThreatEstimator {
     /** 同一已付费威胁循环中的单次估值余量。generic 不等同于伤害上界 */
     public static final class Risk {
 
-        public double selfSingle, ownerSingle, ownerReceived, hiddenSingle;
+        public double selfSingle, ownerSingle, ownerReceived, hiddenSingle, selfProjectileReceived;
         public final boolean observedOnly;
         private CombatSnapshot projectileSnapshot;
         private int projectileHypothesis;
@@ -237,6 +237,9 @@ public final class ThreatEstimator {
                     damage += projectile.estimatedDamage;
                     if (risk != null) {
                         risk.selfProjectileHits[index] = true;
+                        risk.selfProjectileReceived += shield
+                            ? projectile.estimatedDamage * CombatTerrainTuning.THREAT_ESTIMATOR_DOMAIN_FACTOR_3
+                            : projectile.estimatedDamage;
                         risk.self(projectile.damageSource, projectile.estimatedDamage);
                         if (elapsed <= CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM) risk.acute = true;
                     }

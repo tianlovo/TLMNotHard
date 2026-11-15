@@ -29,6 +29,8 @@ import com.tianluoqaq.tlmnh.common.ai.navigation.model.MaidNavigationActor.Point
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatFeedback;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 import com.tianluoqaq.tlmnh.common.entity.MaidTask;
 import com.tianluoqaq.tlmnh.common.inventory.MaidEquipmentTransfer;
@@ -267,7 +269,11 @@ public final class MaidUnifiedCombatActionRunner {
             .ready()) return Result.RUNNING;
         var use = maid.getItemUseState()
             .peek();
-        if (use != null && !actor.shieldBehaviorRunning()) return Result.REJECTED;
+        // 真实副手盾持续使用不占普通主手近战，保留原盾租约与格挡生命周期
+        if (use != null && !(use.getHand() == Hand.OFF && use.getKind() == Kind.SHIELD
+            && maid.getShieldController()
+                .isBlocking()))
+            return Result.REJECTED;
         long before = actor.meleeNativeAccepted();
         actor.swingMainHand();
         actor.hurtTarget(view, () -> authorized() && targetIdentity(target));
