@@ -190,7 +190,11 @@ public final class MaidUnifiedCombatActionRunner {
             actor.faceCurrentCombatMovement();
             return Result.RUNNING;
         }
-        if (profile.bow()) return bow(target, view, plan, quota, profile);
+        if (profile.bow()) {
+            Result result = bow(target, view, plan, quota, profile);
+            if (result == Result.RUNNING) faceBlockingShieldMovement();
+            return result;
+        }
         actor.stopOwnedRangedUse();
         if ((jumpRequested || jumpPreparing) && (jumpWeapon != maid.getHeldItem() || !target.getUniqueID()
             .equals(jumpTarget)
@@ -201,8 +205,12 @@ public final class MaidUnifiedCombatActionRunner {
         if (plan.macro == Macro.JUMP_STRIKE || (jumpRequested || jumpPreparing) && plan.macro == Macro.HOLD_ATTACK)
             return jump(target, view, plan, quota);
         if (actor.withinMeleeRange(view)) {
-            if (!isMovement(plan.macro)) {
-                // 地面近战持位立即排空旧推进输入，原 motion、外力与空中动作继续按原生物理处理
+            if (plan.macro == Macro.APPROACH) {
+                // 近战已经到位，撤销本 Actor 下发的移动输入
+                if (maid.onGround) actor.holdCombatPosition();
+                else actor.eraseWalkTarget();
+            } else if (!isMovement(plan.macro)) {
+                // 原地面近战持位保留既有刹车，原 motion、外力与空中动作继续按原生物理处理
                 if (maid.onGround) actor.brakeForCombatJump();
                 else actor.eraseWalkTarget();
             }
@@ -212,7 +220,19 @@ public final class MaidUnifiedCombatActionRunner {
             if (!quota.spend(Work.PATH)) return Result.WAIT_BUDGET;
             actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
         }
+        faceBlockingShieldMovement();
         return Result.RUNNING;
+    }
+
+    private void faceBlockingShieldMovement() {
+        var use = maid.getItemUseState()
+            .peek();
+        // 副手盾格挡期间沿用当前移动命令的身体朝向资格
+        if (use != null && use.getHand() == Hand.OFF
+            && use.getKind() == Kind.SHIELD
+            && maid.getShieldController()
+                .isBlocking())
+            actor.faceCurrentCombatMovement();
     }
 
     /** 换装事件保留已真实离地的跳劈惯性；防御、取消与身份失效按原分支处理 */
@@ -251,9 +271,10 @@ public final class MaidUnifiedCombatActionRunner {
             .observe(target, true, maid.worldObj.getTotalWorldTime());
         if (!isMovement(plan.macro)) {
             if (EnhancedRideController.stationary(maid)
-                || actor.distanceToTarget(view) <= EnhancedCombatDerivedTuning.BOW_STAND_DISTANCE)
-                actor.eraseWalkTarget();
-            else if (quota.spend(Work.PATH)) actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
+                || actor.distanceToTarget(view) <= EnhancedCombatDerivedTuning.BOW_STAND_DISTANCE) {
+                if (maid.onGround) actor.holdCombatPosition();
+                else actor.eraseWalkTarget();
+            } else if (quota.spend(Work.PATH)) actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
             else return Result.WAIT_BUDGET;
         }
         if (actor.ownsRangedUse()) {

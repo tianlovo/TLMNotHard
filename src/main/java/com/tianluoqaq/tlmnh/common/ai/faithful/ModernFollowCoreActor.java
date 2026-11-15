@@ -3122,6 +3122,16 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             FaithfulAiTuning.MIN_I_THRESHOLD);
     }
 
+    /** 站立攻击时撤销本 Actor 下发的移动输入 */
+    public void holdCombatPosition() {
+        guard();
+        cancelOrdinaryCombatDispatch();
+        eraseWalkTarget();
+        if (navigation.isBrainTargetOwner(this) && MaidPathOwnership.owns(navigation.getPath(), ownedPath))
+            navigation.clearPathEntity();
+        ownedPath = null;
+    }
+
     public void brakeForCombatJump() {
         guard();
         cancelCombatFacing();

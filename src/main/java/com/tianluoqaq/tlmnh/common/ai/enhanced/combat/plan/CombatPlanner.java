@@ -1038,7 +1038,7 @@ public final class CombatPlanner {
         return weapon != null && weapon.profile.supported()
             && (weapon.profile.remainingDurability < 0
                 || weapon.profile.remainingDurability >= weapon.profile.durabilityCost)
-            && (!weapon.profile.bow() || snapshot.self.ammunition > 0);
+            && (!weapon.profile.bow() || snapshot.self.ammunition > 0 && !snapshot.self.rangedUseBlocked);
     }
 
     private static Candidate attack(CombatSnapshot snapshot, Target target, Weapon weapon) {
@@ -1188,6 +1188,8 @@ public final class CombatPlanner {
         // 观测/几何缺口下只允许当前可见攻击、合法举盾或已知安全移动；不按静态高输出贴脸换血
         double progress = candidate.target != null && candidate.target.visible ? candidate.staticValue
             : CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_3;
+        if (snapshot.self.rangedUseBlocked && candidate.weapon != null && candidate.weapon.profile.bow())
+            progress = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         if (candidate.weapon != null && candidate.weapon.profile.bow()
             && !ThreatEstimator.friendlyLine(
                 snapshot,
@@ -1358,6 +1360,7 @@ public final class CombatPlanner {
                     || !candidate.target.visible
                     || candidate.macro == Macro.SHIELD
                     || candidate.interruptRangedUse
+                    || snapshot.self.rangedUseBlocked && candidate.weapon.profile.bow()
                     || candidate.macro == Macro.RETREAT
                         && (candidate.strategy != Strategy.DEFENSIVE_RETURN || candidate.route == null
                             || snapshot.self.movementPerTick * (elapsed - swap) <= candidate.route.defenseDistance)

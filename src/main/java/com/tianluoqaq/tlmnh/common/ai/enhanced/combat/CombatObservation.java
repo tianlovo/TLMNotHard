@@ -46,6 +46,8 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Wea
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSpace;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.NativeArrowState;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
@@ -727,6 +729,12 @@ public final class CombatObservation {
             .remainingTicks();
         if (!maid.getCombatCadence()
             .formatSupported() || !cadenceReady && cadenceRemaining == 0) cadenceRemaining = Long.MAX_VALUE;
+        var currentUse = maid.getItemUseState()
+            .peek();
+        boolean rangedUseBlocked = currentUse != null && currentUse.getHand() == Hand.OFF
+            && currentUse.getKind() == Kind.SHIELD
+            && maid.getShieldController()
+                .isBlocking();
         CombatSnapshot.Self self = new CombatSnapshot.Self(
             position(maid),
             new Vec(maid.motionX, maid.motionY, maid.motionZ),
@@ -761,7 +769,8 @@ public final class CombatObservation {
             maid.hurtTime > 0,
             owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_2
                 : owner.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
-            owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_3 : owner.height);
+            owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_3 : owner.height,
+            rangedUseBlocked);
         List<Target> pureTargets = new ArrayList<>();
         for (Tracked target : targets.values()) {
             if (target.position == null || tick - target.observedAt > CombatTerrainTuning.HIDDEN_TTL) continue;
