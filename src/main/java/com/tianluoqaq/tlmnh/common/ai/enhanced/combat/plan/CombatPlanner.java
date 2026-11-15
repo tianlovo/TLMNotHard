@@ -105,9 +105,10 @@ public final class CombatPlanner {
         public final Vec destination;
         public final CombatTerrain.Route route;
         public final double utility, damage, risk;
-        public final boolean evaluated, continuing, retained;
+        public final boolean evaluated, continuing, retained, interruptRangedUse;
 
         private CandidateTrace(Candidate source) {
+            interruptRangedUse = source.interruptRangedUse;
             macro = source.macro;
             strategy = source.strategy;
             progressFeasible = source.task();
@@ -177,17 +178,7 @@ public final class CombatPlanner {
         ThreatEstimator.ProjectileOcclusion occlusion = ThreatEstimator.occlusion(snapshot, quota);
         Candidate best = null, current = null;
         boolean completeForecast = full;
-        for (Candidate candidate : candidates) {
-            if (full && candidate.route != null && candidate.route.escape != null && !candidate.commits())
-                candidate.escapeProved = CombatTerrain.reverseEscape(snapshot, candidate.route, quota);
-            if (full) {
-                forecast(snapshot, candidate, quota, occlusion);
-                completeForecast &= candidate.evaluated && Double.isFinite(candidate.utility);
-            } else fallback(snapshot, candidate, quota, occlusion);
-            if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
-            if (Double.isFinite(candidate.utility) && (best == null || better(snapshot, candidate, best)))
-                best = candidate;
-        }
+        // 复用原即时扫掠，先确定真实自身来箭危险，再评估暂停拉弓的防御动作
         var immediate = new ThreatEstimator.Risk();
         double immediateRisk = full ? ThreatEstimator.damage(
             snapshot,
@@ -199,10 +190,29 @@ public final class CombatPlanner {
             quota,
             occlusion,
             immediate) : fallbackRisk(snapshot, snapshot.self.position, false, quota, occlusion, immediate);
+        boolean immediateComplete = Double.isFinite(immediateRisk) && immediate.known;
+        boolean selfProjectileDanger = immediateComplete && immediate.selfProjectileReceived > 0;
+        for (Candidate candidate : candidates) {
+            candidate.interruptRangedUse = selfProjectileDanger && candidate.weapon != null
+                && candidate.weapon.slot == CombatPlanTuning.UNSET_OR_NOT_FOUND
+                && candidate.weapon.profile.bow()
+                && !candidate.commits()
+                && (candidate.macro == Macro.RETREAT || candidate.macro == Macro.STRAFE_LEFT
+                    || candidate.macro == Macro.STRAFE_RIGHT
+                    || candidate.macro == Macro.COVER_EDGE);
+            if (full && candidate.route != null && candidate.route.escape != null && !candidate.commits())
+                candidate.escapeProved = CombatTerrain.reverseEscape(snapshot, candidate.route, quota);
+            if (full) {
+                forecast(snapshot, candidate, quota, occlusion);
+                completeForecast &= candidate.evaluated && Double.isFinite(candidate.utility);
+            } else fallback(snapshot, candidate, quota, occlusion);
+            if (Double.isFinite(candidate.utility) && same(candidate, previous)) current = candidate;
+            if (Double.isFinite(candidate.utility) && (best == null || better(snapshot, candidate, best)))
+                best = candidate;
+        }
         boolean acute = snapshot.self.recentlyHurt || immediate.acute
             || !full && hasFreshProjectile(snapshot)
                 && immediateRisk >= snapshot.self.health * CombatPlanTuning.COMBAT_PLANNER_DECIDE_FACTOR;
-        boolean immediateComplete = Double.isFinite(immediateRisk) && immediate.known;
         if (!immediateComplete || full && (!completeForecast || !comparisonReady)) intentEligible = false;
         if (acute && stage != null) stage = null;
         boolean comparable = full && completeForecast && comparisonReady && !acute && immediateComplete;
@@ -1342,6 +1352,7 @@ public final class CombatPlanner {
                 if (candidate.target == null || candidate.weapon == null
                     || !candidate.target.visible
                     || candidate.macro == Macro.SHIELD
+                    || candidate.interruptRangedUse
                     || candidate.macro == Macro.RETREAT
                         && (candidate.strategy != Strategy.DEFENSIVE_RETURN || candidate.route == null
                             || snapshot.self.movementPerTick * (elapsed - swap) <= candidate.route.defenseDistance)
@@ -1450,8 +1461,9 @@ public final class CombatPlanner {
             double continuity = candidate.weapon != null && candidate.weapon.slot >= 0
                 ? CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_8
                 : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
-            if (snapshot.self.drawing
-                && (candidate.weapon == null || !candidate.weapon.profile.bow() || candidate.macro == Macro.SHIELD))
+            if (snapshot.self.drawing && (candidate.weapon == null || !candidate.weapon.profile.bow()
+                || candidate.macro == Macro.SHIELD
+                || candidate.interruptRangedUse))
                 continuity += snapshot.self.drawTicks / CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_9;
             double utility = CombatPlanTuning.PROGRESS_WEIGHT * progress
                 - CombatPlanTuning.SELF_WEIGHT * received / snapshot.self.health
@@ -1592,7 +1604,9 @@ public final class CombatPlanner {
             null,
             null,
             alignmentProof,
-            entryProof);
+            entryProof,
+            null,
+            candidate.interruptRangedUse);
         if (simulated) {
             if (candidate.route == null) clearRouteProposal();
             else {
@@ -1838,7 +1852,7 @@ public final class CombatPlanner {
         CombatTerrain.Route route;
         final double staticValue;
         double utility, damage, risk;
-        boolean evaluated, continuing, retained, escapeProved, riskKnown;
+        boolean evaluated, continuing, retained, escapeProved, riskKnown, interruptRangedUse;
         double singleSelf, singleOwner, ownerRisk, projectileRisk;
         Stage stage;
         Alignment alignment;

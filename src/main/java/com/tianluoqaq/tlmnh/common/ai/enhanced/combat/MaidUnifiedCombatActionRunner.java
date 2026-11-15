@@ -156,6 +156,7 @@ public final class MaidUnifiedCombatActionRunner {
             .visible(target.getUniqueID());
         if (plan.face != null) actor.lookAtCombatPoint(plan.face);
         if (plan.macro == Macro.SHIELD) return defend(target, quota, visible);
+        if (plan.interruptRangedUse) actor.stopOwnedRangedUse();
         if (plan.macro == Macro.RETREAT || plan.macro == Macro.STRAFE_LEFT || plan.macro == Macro.STRAFE_RIGHT)
             jumpRequested = jumpPreparing = false;
         if (actor.shieldBehaviorRunning()) actor.stopUsingShield();
@@ -183,6 +184,8 @@ public final class MaidUnifiedCombatActionRunner {
         if (!targets.canAttack(maid, target) || !targetAllowed(target)) return Result.REJECTED;
         var view = actor.combatTargetView(target);
         actor.lookAtAttackTarget(view);
+        // 沿用计划中的同一来箭裁决，保持原被动盾入口自行取得租约
+        if (plan.interruptRangedUse) return Result.RUNNING;
         if (profile.bow()) return bow(target, view, plan, quota, profile);
         actor.stopOwnedRangedUse();
         if ((jumpRequested || jumpPreparing) && (jumpWeapon != maid.getHeldItem() || !target.getUniqueID()
@@ -194,7 +197,11 @@ public final class MaidUnifiedCombatActionRunner {
         if (plan.macro == Macro.JUMP_STRIKE || (jumpRequested || jumpPreparing) && plan.macro == Macro.HOLD_ATTACK)
             return jump(target, view, plan, quota);
         if (actor.withinMeleeRange(view)) {
-            if (!isMovement(plan.macro)) actor.eraseWalkTarget();
+            if (!isMovement(plan.macro)) {
+                // 地面近战持位立即排空旧推进输入，原 motion、外力与空中动作继续按原生物理处理
+                if (maid.onGround) actor.brakeForCombatJump();
+                else actor.eraseWalkTarget();
+            }
             return melee(target, view);
         }
         if (!isMovement(plan.macro) && !EnhancedRideController.stationary(maid)) {

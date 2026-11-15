@@ -44,6 +44,8 @@ public final class CombatPlan {
     public final Vec boundary;
     public final CombatMovementFact.Node movementNode;
     public final boolean normalProgressAdmitted, necessaryComparisonComplete;
+    /** 已有即时扫掠确认自身来箭危险，当前防御移动暂停自有主手弓占用 */
+    public final boolean interruptRangedUse;
 
     public enum RiskScope {
         COMPLETE_COMBAT,
@@ -343,6 +345,51 @@ public final class CombatPlan {
         long firstNativeAcceptanceAt, long stageRetryAt, String stageReason, CombatObservedRisk observedRisk,
         CombatMovementSegment noDoorSegment, CombatAlignmentProof alignmentProof,
         CombatConditionalEntryProof conditionalEntryProof, CombatPassiveDoorExitProof passiveDoorExitProof) {
+        this(
+            decisionId,
+            snapshot,
+            target,
+            weapon,
+            macro,
+            destination,
+            face,
+            reason,
+            utility,
+            expectedDamage,
+            expectedRisk,
+            simulated,
+            quota,
+            route,
+            trace,
+            strategy,
+            state,
+            stageId,
+            stagePhase,
+            boundary,
+            movementNode,
+            admitted,
+            comparisonComplete,
+            firstNativeAcceptanceAt,
+            stageRetryAt,
+            stageReason,
+            observedRisk,
+            noDoorSegment,
+            alignmentProof,
+            conditionalEntryProof,
+            passiveDoorExitProof,
+            false);
+    }
+
+    CombatPlan(long decisionId, CombatSnapshot snapshot, CombatSnapshot.Target target, CombatSnapshot.Weapon weapon,
+        Macro macro, Vec destination, Vec face, String reason, double utility, double expectedDamage,
+        double expectedRisk, boolean simulated, CombatWorkQuota quota, CombatTerrain.Route route,
+        CombatPlanner.Trace trace, Strategy strategy, StageState state, long stageId, int stagePhase, Vec boundary,
+        CombatMovementFact.Node movementNode, boolean admitted, boolean comparisonComplete,
+        long firstNativeAcceptanceAt, long stageRetryAt, String stageReason, CombatObservedRisk observedRisk,
+        CombatMovementSegment noDoorSegment, CombatAlignmentProof alignmentProof,
+        CombatConditionalEntryProof conditionalEntryProof, CombatPassiveDoorExitProof passiveDoorExitProof,
+        boolean interruptRangedUse) {
+        this.interruptRangedUse = interruptRangedUse;
         this.passiveDoorExitProof = passiveDoorExitProof;
         this.conditionalEntryProof = conditionalEntryProof;
         this.alignmentProof = alignmentProof;

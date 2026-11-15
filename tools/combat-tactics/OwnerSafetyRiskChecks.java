@@ -35,7 +35,8 @@ public final class OwnerSafetyRiskChecks {
                     "healing",
                     "lane-pressure",
                     "projectile-pressure",
-                    "service-pressure")
+                    "service-pressure",
+                    "self-safety")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -46,6 +47,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("lane-pressure")) ownerFireLanePressure();
         if (selected.equals("all") || selected.equals("projectile-pressure")) ownerPressureSeparatesProjectileHits();
         if (selected.equals("all") || selected.equals("service-pressure")) ownerPressureSurvivesServiceGap();
+        if (selected.equals("all") || selected.equals("self-safety")) selfProjectileDefenseSuspendsBow();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -206,6 +208,96 @@ public final class OwnerSafetyRiskChecks {
                 .decide(pressureProjectiles(base, Arrays.asList(unknown)), CombatWorkQuota.isolated(100, full));
             check(refused.weaponSlot != 0, "Unknown arrow acquired safe owner pressure admission");
         }
+    }
+
+    /** 原即时扫掠确认自身来箭后，移动防御不再虚计射击，且不占用自有MAIN弓 */
+    private static void selfProjectileDefenseSuspendsBow() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            for (boolean full : new boolean[] { true, false }) {
+                Projectile incoming = new Projectile(new UUID(0, 720), new Vec(2.5, .7, 0),
+                    new Vec(-1.5, 0, 0), 100, 0, .99, .3, 6);
+                var quota = CombatWorkQuota.isolated(100, full);
+                CombatPlan defense = new CombatPlanner().decide(selfSafetyFrame(Arrays.asList(incoming), null), quota);
+                check(defense.trace != null && defense.trace.full == full, "Wrong self-safety scoring path");
+                int evaluatedMoves = 0, evaluatedLaterals = 0, taskReturns = 0;
+                for (var candidate : defense.trace.candidates) {
+                    if (candidate.weaponSlot != -1 || candidate.family != MaidWeaponProfile.Family.VANILLA_BOW
+                        || !defensiveMovement(candidate.macro) || !candidate.evaluated && full
+                        || candidate.utility <= -100) continue;
+                    if (commits(candidate.strategy)) {
+                        if (full && candidate.strategy == CombatPlan.Strategy.DEFENSIVE_RETURN && candidate.damage > 0)
+                            taskReturns++;
+                        continue;
+                    }
+                    evaluatedMoves++;
+                    if (candidate.macro == CombatPlan.Macro.STRAFE_LEFT
+                        || candidate.macro == CombatPlan.Macro.STRAFE_RIGHT) evaluatedLaterals++;
+                    // 先核旧API的行为，再读取新增只读标志。旧实际类须在此命中行为断言
+                    check(candidate.damage == 0,
+                        "Self-arrow defense still credited shots while its owned bow must yield");
+                }
+                check(evaluatedMoves > 0 && evaluatedLaterals > 0,
+                    "Self-safety fixture had no legal evaluated lateral bow movement");
+                for (var candidate : defense.trace.candidates) {
+                    if (candidate.weaponSlot != -1 || candidate.family != MaidWeaponProfile.Family.VANILLA_BOW
+                        || !defensiveMovement(candidate.macro) || full && !candidate.evaluated
+                        || candidate.utility <= -100) continue;
+                    if (commits(candidate.strategy))
+                        check(!rangedInterrupted(candidate), "Task defense borrowed reaction interruption authority");
+                    else check(rangedInterrupted(candidate), "Self-arrow defense lost its shared ranged-use decision");
+                }
+                if (full) check(taskReturns > 0, "Legitimate defensive-return bow payoff disappeared");
+                check(quota.used(CombatWorkQuota.Work.COLLISION) <= (full ? 40000 : 2400),
+                    "Self-safety expanded its original collision quota");
+                check(quota.used(CombatWorkQuota.Work.ADVANCE) <= CombatBudgetTuning.MAX_ADVANCES,
+                    "Self-safety expanded its original forecast quota");
+            }
+            // 已知但不扫过自身的箭、仅主人遇险、过期箭均不得凭存在本身暂停拉弓
+            for (List<Projectile> arrows : Arrays.asList(Collections.<Projectile>emptyList(),
+                Arrays.asList(new Projectile(new UUID(0, 721), new Vec(2.5, .7, 3),
+                    new Vec(-1.5, 0, 0), 100, 0, .99, .3, 6)),
+                Arrays.asList(new Projectile(new UUID(0, 722), new Vec(2.5, .7, 0),
+                    new Vec(-1.5, 0, 0), 90, 0, .99, .3, 6)))) {
+                var plan = new CombatPlanner().decide(selfSafetyFrame(arrows, new Vec(0, 0, 3)),
+                    CombatWorkQuota.isolated(100, true));
+                boolean bowMoveStillScores = false;
+                for (var candidate : plan.trace.candidates) {
+                    check(!rangedInterrupted(candidate), "Non-self or stale arrow suppressed owned ranged use");
+                    bowMoveStillScores |= candidate.family == MaidWeaponProfile.Family.VANILLA_BOW
+                        && defensiveMovement(candidate.macro) && candidate.damage > 0;
+                }
+                check(bowMoveStillScores, "Untouched lateral bow benefit disappeared without a self-arrow threat");
+            }
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static boolean rangedInterrupted(Object value) {
+        try {
+            return value.getClass().getField("interruptRangedUse").getBoolean(value);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("Ranged-use decision metadata unavailable after behavior check", failure);
+        }
+    }
+
+    private static boolean commits(CombatPlan.Strategy strategy) {
+        return strategy == CombatPlan.Strategy.TASK || strategy == CombatPlan.Strategy.DEFENSIVE_RETURN;
+    }
+
+    private static boolean defensiveMovement(CombatPlan.Macro macro) {
+        return macro == CombatPlan.Macro.RETREAT || macro == CombatPlan.Macro.STRAFE_LEFT
+            || macro == CombatPlan.Macro.STRAFE_RIGHT || macro == CombatPlan.Macro.COVER_EDGE;
+    }
+
+    private static CombatSnapshot selfSafetyFrame(List<Projectile> arrows, Vec ownerPosition) {
+        CombatSnapshot base = pressureSnapshot(ownerPosition, false, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        var target = new Target(ENEMY, 702, new Vec(3.5, 0, 0), new Vec(0, 0, 0), 100, Long.MIN_VALUE,
+            40, 4, .3, 1.8, true, false, true, false, false, DamageSource.GENERIC_PRIOR);
+        return new CombatSnapshot(100, 1, 1, 1, SELF, base.self, Arrays.asList(target), arrows,
+            base.friends, Arrays.asList(base.weapon(-1)), base.geometry, ENEMY, true);
     }
 
     private static CombatSnapshot pressureProjectiles(CombatSnapshot base, List<Projectile> projectiles) {
