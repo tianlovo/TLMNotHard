@@ -37,7 +37,8 @@ public final class OwnerSafetyRiskChecks {
                     "projectile-pressure",
                     "service-pressure",
                     "self-safety",
-                    "melee-hold")
+                    "melee-hold",
+                    "shield-use")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -50,6 +51,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("service-pressure")) ownerPressureSurvivesServiceGap();
         if (selected.equals("all") || selected.equals("self-safety")) selfProjectileDefenseSuspendsBow();
         if (selected.equals("all") || selected.equals("melee-hold")) reachedMeleeDoesNotRetainApproach();
+        if (selected.equals("all") || selected.equals("shield-use")) shieldUseDoesNotCreditUnavailableBow();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -317,6 +319,68 @@ public final class OwnerSafetyRiskChecks {
         } finally {
             CombatPlanner.setTraceEnabled(previous);
         }
+    }
+
+    /** 只观察当前占用，不预测盾将在何时释放，也不撤销真实盾租约 */
+    private static void shieldUseDoesNotCreditUnavailableBow() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            for (boolean full : new boolean[] { false, true }) {
+                for (boolean onlyBow : new boolean[] { false, true }) {
+                    var planner = new CombatPlanner();
+                    // 先形成可保留的弓意图，再观察同一身份的真实使用资源占用
+                    planner.decide(shieldUseFrame(100, false, onlyBow), CombatWorkQuota.isolated(100, full));
+                    CombatPlan blocked = planner.decide(shieldUseFrame(101, true, onlyBow),
+                        CombatWorkQuota.isolated(101, full));
+                    for (var candidate : blocked.trace.candidates) {
+                        if (candidate.family != MaidWeaponProfile.Family.VANILLA_BOW) continue;
+                        check(candidate.damage == 0,
+                            "Actual shield use still credited unavailable bow attacks");
+                        if (!full && candidate.macro == CombatPlan.Macro.HOLD_ATTACK)
+                            check(candidate.utility <= 0,
+                                "Light fallback still credited unavailable bow progress");
+                    }
+                    check(blocked.family != MaidWeaponProfile.Family.VANILLA_BOW
+                        || blocked.macro != CombatPlan.Macro.HOLD_ATTACK,
+                        "Actual shield use still selected unavailable bow hold");
+                    CombatPlan free = new CombatPlanner().decide(shieldUseFrame(101, false, true),
+                        CombatWorkQuota.isolated(101, full));
+                    check(free.family == MaidWeaponProfile.Family.VANILLA_BOW
+                        && (full ? free.macro == CombatPlan.Macro.RETREAT
+                            && free.strategy == CombatPlan.Strategy.DEFENSIVE_RETURN
+                            && free.expectedDamage > 0
+                            : free.macro == CombatPlan.Macro.HOLD_ATTACK
+                                && free.strategy == CombatPlan.Strategy.REACTION),
+                        "Free main-hand bow lost its ordinary ranged attack");
+                    if (full) check(free.trace.candidates.stream().anyMatch(candidate ->
+                        candidate.family == MaidWeaponProfile.Family.VANILLA_BOW && candidate.damage > 0),
+                        "Unblocked bow lost its real forecast payoff");
+                    CombatPlan released = planner.decide(shieldUseFrame(102, false, true),
+                        CombatWorkQuota.isolated(102, full));
+                    check(released.family == MaidWeaponProfile.Family.VANILLA_BOW,
+                        "Released shield resource kept a stale bow exclusion");
+                }
+            }
+            check(!pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR).self.rangedUseBlocked,
+                "Old snapshot constructor no longer defaults to unblocked ranged use");
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static CombatSnapshot shieldUseFrame(long tick, boolean blocked, boolean onlyBow) {
+        CombatSnapshot base = pressureSnapshot(false, false, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        var old = base.self;
+        var self = new CombatSnapshot.Self(old.position, old.velocity, old.ownerPosition, old.health, old.ownerHealth,
+            old.halfWidth, old.height, old.reach, old.movementPerTick, old.grounded, old.jumpAllowed, old.stationary,
+            false, old.equipped, old.cadenceReady, false, old.attackDelay, old.cadenceRemainingTicks, 0,
+            old.ammunition, old.preferBow, old.preferencePending, old.recentlyHurt,
+            old.ownerHalfWidth, old.ownerHeight, blocked);
+        var target = new Target(ENEMY, 702, new Vec(3.5, 0, 0), new Vec(0, 0, 0), tick, Long.MIN_VALUE,
+            40, 4, .3, 1.8, true, false, true, false, false, DamageSource.GENERIC_PRIOR);
+        return new CombatSnapshot(tick, 1, 1, 1, SELF, self, Arrays.asList(target), Collections.emptyList(),
+            base.friends, onlyBow ? Arrays.asList(base.weapon(-1)) : base.weapons, base.geometry, ENEMY, true);
     }
 
     private static boolean rangedInterrupted(Object value) {
