@@ -25,7 +25,7 @@ public final class OwnerSafetyRiskChecks {
     public static void main(String[] args) {
         String selected = args.length == 0 ? "all" : args[0];
         check(
-            Arrays.asList("all", "lane", "light", "full", "pressure", "healing", "lane-pressure")
+            Arrays.asList("all", "lane", "light", "full", "pressure", "healing", "lane-pressure", "projectile-pressure")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -34,6 +34,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("pressure")) ownerRangedPressure();
         if (selected.equals("all") || selected.equals("healing")) healingAxePressure();
         if (selected.equals("all") || selected.equals("lane-pressure")) ownerFireLanePressure();
+        if (selected.equals("all") || selected.equals("projectile-pressure")) ownerPressureSeparatesProjectileHits();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -159,6 +160,58 @@ public final class OwnerSafetyRiskChecks {
                     "Fire-lane protection admitted a defense-only action as pressure");
             }
         }
+    }
+
+    private static void ownerPressureSeparatesProjectileHits() {
+        CombatSnapshot base = pressureSnapshot(true, true, false, 20, .2, DamageSource.GENERIC_PRIOR);
+        Projectile harmless = new Projectile(new UUID(0, 704), new Vec(-3, 3, -3), new Vec(0, 0, 0), 100, 0, 1, .1, 6);
+        for (boolean full : new boolean[] { false, true }) {
+            CombatSnapshot clear = pressureProjectiles(base, Arrays.asList(harmless));
+            CombatPlan pressure = new CombatPlanner().decide(clear, CombatWorkQuota.isolated(100, full));
+            check(pressure.weaponSlot == 0, "Non-intersecting fresh arrow disabled safe owner pressure");
+            Projectile lethal = new Projectile(
+                new UUID(0, 705),
+                new Vec(0, .7, 0),
+                new Vec(0, 0, 0),
+                100,
+                0,
+                1,
+                .1,
+                100);
+            CombatPlan danger = new CombatPlanner()
+                .decide(pressureProjectiles(base, Arrays.asList(lethal)), CombatWorkQuota.isolated(100, full));
+            check(danger.weaponSlot != 0, "Owner pressure bypassed an actual lethal arrow body hit");
+            Projectile unknown = new Projectile(
+                new UUID(0, 706),
+                new Vec(-3, 3, -3),
+                new Vec(0, 0, 0),
+                100,
+                0,
+                1,
+                .1,
+                6,
+                DamageSource.UNKNOWN);
+            CombatPlan refused = new CombatPlanner()
+                .decide(pressureProjectiles(base, Arrays.asList(unknown)), CombatWorkQuota.isolated(100, full));
+            check(refused.weaponSlot != 0, "Unknown arrow acquired safe owner pressure admission");
+        }
+    }
+
+    private static CombatSnapshot pressureProjectiles(CombatSnapshot base, List<Projectile> projectiles) {
+        return new CombatSnapshot(
+            base.tick,
+            base.entityEpoch,
+            base.observationEpoch,
+            base.equipmentEpoch,
+            base.selfId,
+            base.self,
+            base.targets,
+            projectiles,
+            base.friends,
+            base.weapons,
+            base.geometry,
+            base.selectedTarget,
+            base.complete);
     }
 
     private static CombatSnapshot pressureSnapshot(boolean ownerPresent, boolean attackingOwner, boolean stationary,

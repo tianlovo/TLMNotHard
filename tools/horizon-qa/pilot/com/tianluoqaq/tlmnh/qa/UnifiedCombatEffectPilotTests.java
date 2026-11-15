@@ -1596,7 +1596,14 @@ public final class UnifiedCombatEffectPilotTests {
             var snapshot = core.combat()
                 .lastSnapshot();
             if (TACTICS != null) {
-                combatProgressDiagnostics.add(CombatProgressDiagnostics.capture(core.combat(), snapshot, frame));
+                combatProgressDiagnostics.add(
+                    CombatProgressDiagnostics.capture(
+                        core.combat(),
+                        snapshot,
+                        frame,
+                        maid.getItemUseState()
+                            .peek(),
+                        maid.getShieldController()));
                 var projectiles = new JsonArray();
                 if (snapshot != null) for (var projectile : snapshot.projectiles) {
                     var threat = new JsonObject();
