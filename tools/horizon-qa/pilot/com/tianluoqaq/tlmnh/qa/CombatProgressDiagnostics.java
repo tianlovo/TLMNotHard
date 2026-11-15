@@ -2,14 +2,18 @@ package com.tianluoqaq.tlmnh.qa;
 
 import java.lang.reflect.Field;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.ai.control.MaidMoveControl;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
+import com.tianluoqaq.tlmnh.common.ai.faithful.ModernFollowCoreActor;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 
@@ -17,6 +21,11 @@ import com.tianluoqaq.tlmnh.common.combat.shield.MaidShieldController;
 final class CombatProgressDiagnostics {
 
     private static final Field PLANNER = field(EnhancedCombatController.class, "planner");
+    private static final Field ACTOR = field(EnhancedCombatController.class, "actor");
+    private static final Field MAID = field(EnhancedCombatController.class, "maid");
+    private static final Field PLAN_INTERRUPT = optionalField(CombatPlan.class, "interruptRangedUse");
+    private static final Field FACING_COMMAND = optionalField(ModernFollowCoreActor.class, "combatFacingCommand");
+    private static final Field FACING_APPLIED = optionalField(MaidMoveControl.class, "combatFacingStrafeApplied");
     private static final Field REOBSERVATION = field(CombatPlanner.class, "reobservation");
     private static final Field OWNER_PRESSURE = field(CombatPlanner.class, "ownerPressureWindow");
     private static final Field SHIELD_LEASE = field(MaidShieldController.class, "lease");
@@ -101,6 +110,18 @@ final class CombatProgressDiagnostics {
             result.add("movementFact", row);
         }
         try {
+            // 既有控制资格和投影结果位于原observer计量范围
+            var facing = new JsonObject();
+            facing.addProperty("interruptRangedUse",
+                plan == null || PLAN_INTERRUPT == null ? null : PLAN_INTERRUPT.getBoolean(plan));
+            Object actor = ACTOR.get(controller);
+            facing.addProperty("commandReferencePresent",
+                actor == null || FACING_COMMAND == null ? null : FACING_COMMAND.get(actor) != null);
+            var maid = (EntityMaid) MAID.get(controller);
+            Object helper = maid.getMoveHelper();
+            facing.addProperty("strafeApplied",
+                FACING_APPLIED == null || !(helper instanceof MaidMoveControl) ? null : FACING_APPLIED.getBoolean(helper));
+            result.add("movementFacingReadback", facing);
             Object planner = PLANNER.get(controller);
             result.addProperty("ownerPressureWindow", OWNER_PRESSURE.getBoolean(planner));
             var useRow = new JsonObject();
@@ -155,6 +176,16 @@ final class CombatProgressDiagnostics {
 
     private static Double finite(double value) {
         return Double.isFinite(value) ? value : null;
+    }
+
+    private static Field optionalField(Class<?> owner, String name) {
+        try {
+            Field result = owner.getDeclaredField(name);
+            result.setAccessible(true);
+            return result;
+        } catch (NoSuchFieldException missing) {
+            return null;
+        }
     }
 
     private static Field field(Class<?> owner, String name) {
