@@ -40,7 +40,8 @@ public final class OwnerSafetyRiskChecks {
                     "melee-hold",
                     "shield-use",
                     "hold-yield",
-                    "equipment-use")
+                    "equipment-use",
+                    "shield-start")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -56,6 +57,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("shield-use")) shieldUseDoesNotCreditUnavailableBow();
         if (selected.equals("all") || selected.equals("hold-yield")) ownedBowHoldYieldsKnownSelfArrow();
         if (selected.equals("all") || selected.equals("equipment-use")) equipmentUseDoesNotCreditUnavailableTransfer();
+        if (selected.equals("all") || selected.equals("shield-start")) shieldStartRequiresReleasableUse();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -433,6 +435,69 @@ public final class OwnerSafetyRiskChecks {
         return new CombatSnapshot(base.tick, base.entityEpoch, base.observationEpoch, base.equipmentEpoch,
             base.selfId, self, base.targets, base.projectiles, base.friends, weapons, base.geometry,
             base.selectedTarget, base.complete);
+    }
+
+    private static void shieldStartRequiresReleasableUse() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            for (boolean full : new boolean[] { false, true }) {
+                for (boolean passive : new boolean[] { true, false }) {
+                    var occupied = new CombatPlanner().decide(shieldStartFrame(101, true, passive, true),
+                        CombatWorkQuota.isolated(101, full));
+                    check(!hasShieldCandidate(occupied) && occupied.macro != CombatPlan.Macro.SHIELD,
+                        "Occupied use admitted an unstartable active shield");
+                    var planner = new CombatPlanner();
+                    CombatPlan active = planner.decide(shieldStartFrame(101, false, true, true),
+                        CombatWorkQuota.isolated(101, full));
+                    check(active.macro == CombatPlan.Macro.SHIELD,
+                        "Shield continuation fixture did not select its legal owned ACTIVE use");
+                    var successor = planner.decide(shieldStartFrame(102, true, passive, true),
+                        CombatWorkQuota.isolated(102, full));
+                    check(!hasShieldCandidate(successor) && successor.macro != CombatPlan.Macro.SHIELD,
+                        "Retained shield bypassed the occupied-use start gate");
+                    var released = planner.decide(shieldStartFrame(103, false, true, true),
+                        CombatWorkQuota.isolated(103, full));
+                    check(hasShieldCandidate(released), "Released resource lost its legal ACTIVE shield capability");
+                }
+                var ownedBow = new CombatPlanner().decide(shieldStartFrame(101, false, false, true),
+                    CombatWorkQuota.isolated(101, full));
+                check(hasShieldCandidate(ownedBow), "Owned MAIN bow lost its stoppable shield start");
+                var unavailable = new CombatPlanner().decide(shieldStartFrame(101, false, false, false),
+                    CombatWorkQuota.isolated(101, full));
+                check(!hasShieldCandidate(unavailable), "Unavailable shield acquired a start candidate");
+                var expired = new CombatPlanner();
+                var previousActive = expired.decide(shieldStartFrame(101, false, true, true),
+                    CombatWorkQuota.isolated(101, full));
+                check(previousActive.macro == CombatPlan.Macro.SHIELD,
+                    "Unavailable continuation fixture did not establish its legal ACTIVE shield");
+                var noLongerAvailable = expired.decide(shieldStartFrame(102, false, true, false),
+                    CombatWorkQuota.isolated(102, full));
+                check(!hasShieldCandidate(noLongerAvailable), "Retained shield bypassed current shield availability");
+            }
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static boolean hasShieldCandidate(CombatPlan plan) {
+        if (plan.trace == null) return false;
+        for (var candidate : plan.trace.candidates) if (candidate.macro == CombatPlan.Macro.SHIELD) return true;
+        return false;
+    }
+
+    private static CombatSnapshot shieldStartFrame(long tick, boolean transferBlocked, boolean rangedBlocked,
+        boolean shieldAvailable) {
+        var base = shieldUseFrame(tick, rangedBlocked, true);
+        var old = base.self;
+        var self = new CombatSnapshot.Self(old.position, old.velocity, old.ownerPosition, old.health, old.ownerHealth,
+            old.halfWidth, old.height, old.reach, old.movementPerTick, old.grounded, old.jumpAllowed, true,
+            shieldAvailable, old.equipped, old.cadenceReady, !rangedBlocked && !transferBlocked, old.attackDelay,
+            old.cadenceRemainingTicks, old.drawTicks, old.ammunition, old.preferBow, old.preferencePending,
+            old.recentlyHurt, old.ownerHalfWidth, old.ownerHeight, rangedBlocked, transferBlocked);
+        return new CombatSnapshot(tick, base.entityEpoch, base.observationEpoch, base.equipmentEpoch, base.selfId,
+            self, base.targets, base.projectiles, base.friends, base.weapons, base.geometry, base.selectedTarget,
+            base.complete);
     }
 
     private static void ownedBowHoldYieldsKnownSelfArrow() {
