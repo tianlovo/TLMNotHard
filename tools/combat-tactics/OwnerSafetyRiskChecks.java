@@ -38,7 +38,8 @@ public final class OwnerSafetyRiskChecks {
                     "service-pressure",
                     "self-safety",
                     "melee-hold",
-                    "shield-use")
+                    "shield-use",
+                    "hold-yield")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -52,6 +53,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("self-safety")) selfProjectileDefenseSuspendsBow();
         if (selected.equals("all") || selected.equals("melee-hold")) reachedMeleeDoesNotRetainApproach();
         if (selected.equals("all") || selected.equals("shield-use")) shieldUseDoesNotCreditUnavailableBow();
+        if (selected.equals("all") || selected.equals("hold-yield")) ownedBowHoldYieldsKnownSelfArrow();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -381,6 +383,59 @@ public final class OwnerSafetyRiskChecks {
             40, 4, .3, 1.8, true, false, true, false, false, DamageSource.GENERIC_PRIOR);
         return new CombatSnapshot(tick, 1, 1, 1, SELF, self, Arrays.asList(target), Collections.emptyList(),
             base.friends, onlyBow ? Arrays.asList(base.weapon(-1)) : base.weapons, base.geometry, ENEMY, true);
+    }
+
+    private static void ownedBowHoldYieldsKnownSelfArrow() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            var incoming = new Projectile(new UUID(0, 731), new Vec(2.5, .7, 0),
+                new Vec(-1.5, 0, 0), 100, 0, .99, .3, 6);
+            for (boolean full : new boolean[] { false, true }) {
+                CombatPlan danger = new CombatPlanner().decide(holdYieldFrame(Arrays.asList(incoming), true, true),
+                    CombatWorkQuota.isolated(100, full));
+                boolean observed = false;
+                for (var candidate : danger.trace.candidates) {
+                    if (candidate.macro != CombatPlan.Macro.HOLD_ATTACK
+                        || candidate.strategy != CombatPlan.Strategy.REACTION
+                        || candidate.family != MaidWeaponProfile.Family.VANILLA_BOW) continue;
+                    observed = true;
+                    check(candidate.interruptRangedUse, "Owned bow HOLD did not yield to known self projectile");
+                    check(candidate.damage == 0, "Yielded HOLD still credited a shot");
+                }
+                check(observed, "Hold-yield fixture lacked a real ordinary bow HOLD candidate");
+                // 不持有持续使用资源或当前武器不是弓，不取得本次HOLD中断资格
+                for (CombatSnapshot frame : Arrays.asList(holdYieldFrame(Arrays.asList(incoming), false, true),
+                    holdYieldFrame(Arrays.asList(incoming), false, false),
+                    holdYieldFrame(Collections.emptyList(), true, true),
+                    holdYieldFrame(Arrays.asList(new Projectile(new UUID(0, 732), new Vec(2.5, .7, 0),
+                        new Vec(-1.5, 0, 0), 90, 0, .99, .3, 6)), true, true),
+                    holdYieldFrame(Arrays.asList(new Projectile(new UUID(0, 733), new Vec(2.5, .7, 3),
+                        new Vec(-1.5, 0, 0), 100, 0, .99, .3, 6)), true, true))) {
+                    CombatPlan safe = new CombatPlanner().decide(frame, CombatWorkQuota.isolated(100, full));
+                    for (var candidate : safe.trace.candidates)
+                        if (candidate.macro == CombatPlan.Macro.HOLD_ATTACK || commits(candidate.strategy))
+                            check(!candidate.interruptRangedUse, "HOLD yield crossed own-use, self-risk or stage boundary");
+                }
+            }
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static CombatSnapshot holdYieldFrame(List<Projectile> arrows, boolean ownBow, boolean heldBow) {
+        CombatSnapshot base = selfSafetyFrame(arrows, null);
+        var old = base.self;
+        var self = new CombatSnapshot.Self(old.position, old.velocity, old.ownerPosition, old.health, old.ownerHealth,
+            old.halfWidth, old.height, old.reach, old.movementPerTick, old.grounded, old.jumpAllowed, old.stationary,
+            old.shieldAvailable, old.equipped, old.cadenceReady, ownBow, old.attackDelay, old.cadenceRemainingTicks,
+            ownBow ? 10 : 0, old.ammunition, old.preferBow, old.preferencePending, old.recentlyHurt,
+            old.ownerHalfWidth, old.ownerHeight, false);
+        var profile = heldBow ? base.weapon(-1).profile
+            : pressureSnapshot(false, false, false, 20, .2, DamageSource.GENERIC_PRIOR).weapon(0).profile;
+        return new CombatSnapshot(base.tick, base.entityEpoch, base.observationEpoch, base.equipmentEpoch,
+            base.selfId, self, base.targets, arrows, base.friends,
+            Arrays.asList(new Weapon(-1, heldBow ? "bow" : "sword", profile)), base.geometry, base.selectedTarget, true);
     }
 
     private static boolean rangedInterrupted(Object value) {
