@@ -40,6 +40,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.MaidPathFindingBF
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskAttack;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskBowAttack;
 import com.tianluoqaq.tlmnh.api.event.MaidAttackTargetEvent;
+import com.tianluoqaq.tlmnh.common.ai.MaidAiTuning;
 import com.tianluoqaq.tlmnh.common.ai.MaidBrainLifecycle;
 import com.tianluoqaq.tlmnh.common.ai.combat.MaidMeleeAttack;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.CombatNavigationObserver;
@@ -57,6 +58,8 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementFact
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatMovementSegment;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatPassiveDoorExitProof;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSpace;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedNavigationController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedRideController;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.locomotion.EnhancedRouteObstacleActor;
@@ -98,6 +101,7 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
@@ -129,6 +133,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private CombatMovementFact combatMovementFact;
     private PathEntity combatInstalledPath;
     private RestrictedCombatMove restrictedCombatMove;
+    private SupportedAirWalk supportedAirWalk;
     private PathEntity ordinaryCombatDispatchRaw;
     private CombatQueuedMove combatFacingCommand;
     private long ordinaryCombatDispatchRevision = FaithfulAiTuning.UNSET_OR_NOT_FOUND;
@@ -616,6 +621,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public void eraseWalkTarget() {
         guard();
         cancelCombatFacing();
+        stopSupportedAirWalk();
         if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_WALK_CANCELLED);
         walk = null;
     }
@@ -668,9 +674,20 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             .isEnhanced())
             throw new IllegalStateException(FaithfulAiDiagnostics.MSG_ENHANCED_QUERY_REQUIRES_ITS_ACTUAL);
         var result = MaidPathCreation.Result.NOT_NAVIGABLE;
-        if (!navigation.canUpdatePath()) return new MaidPathCreation(result, null);
+        boolean supportedAir = supportedAirPathCurrent(new Point(target.x, target.y, target.z));
+        if (!navigation.canUpdatePath() && !supportedAir) return new MaidPathCreation(result, null);
         long before = navigation.budgetDeferrals();
-        var path = createPath(target, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
+        Path path;
+        if (supportedAir) {
+            navigationLease();
+            var created = navigation.createSupportedAirBrainPath(
+                this,
+                new Point(target.x, target.y, target.z),
+                FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
+            guard();
+            lastCreated = created == null ? null : new ModernPath(created.path, created);
+            path = lastCreated;
+        } else path = createPath(target, FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE);
         result = path != null ? MaidPathCreation.Result.FOUND
             : navigation.budgetDeferrals() > before ? MaidPathCreation.Result.WAITING_BUDGET
                 : MaidPathCreation.Result.UNREACHABLE;
@@ -727,6 +744,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     public boolean moveTo(Path value, double speed) {
         navigationLease();
         var requested = path(value);
+        if (supportedAirWalk != null && !supportedAirWalk.current()) {
+            stopSupportedAirWalk();
+            return false;
+        }
         if (requested.created == null)
             throw new IllegalStateException(FaithfulAiDiagnostics.MSG_PATH_WAS_NOT_CREATED_FOR);
         if (restrictedCombatMove != null && !restrictedCombatMove.accepts(requested.raw, worldTick)) {
@@ -782,12 +803,17 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 result = false;
             }
         }
+        if (supportedAirWalk != null) {
+            if (!result || actual == null || actual != ownedPath) stopSupportedAirWalk();
+            else supportedAirWalk.raw = actual;
+        }
         navigationLease();
         return result;
     }
 
     public void stopNavigation() {
         navigationLease();
+        stopSupportedAirWalk();
         if (maid.onGround) cancelOrdinaryCombatDispatch();
         cancelCombatFacing();
         // 先持原raw身份撤销queued move，再清导航字段；ARRIVED/失败回执由原调用顺序保留
@@ -810,6 +836,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     }
 
     public void cancelOwnedResources(boolean clearCombatObservation) {
+        stopSupportedAirWalk();
         unifiedCombat.cancel();
         if (clearCombatObservation) unifiedCombatObservation.clear();
         unifiedCombatEpoch++;
@@ -1443,6 +1470,74 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         setPositionWalkAndLook(pos, speed, closeDistance);
     }
 
+    public CombatSpace.Result setSupportedAirCombatWalk(CombatPlan plan, Point point, double footY, float speed,
+        CombatWorkQuota quota) {
+        guard();
+        if (plan == null || point == null
+            || !unifiedCombat.supportedAirApproachCurrent(
+                plan,
+                point.x + MaidAiTuning.CENTER_OFFSET_D,
+                footY,
+                point.z + MaidAiTuning.CENTER_OFFSET_D)) {
+            stopSupportedAirWalk();
+            return CombatSpace.Result.UNKNOWN;
+        }
+        var air = supportedAirWalk;
+        boolean reuse = air != null && walk == air
+            && air.pos.x == point.x
+            && air.pos.y == point.y
+            && air.pos.z == point.z
+            && air.footY == footY
+            && air.speed == speed
+            && air.plan.targetId.equals(plan.targetId)
+            && air.plan.targetEntityId == plan.targetEntityId
+            && air.plan.entityEpoch == plan.entityEpoch
+            && air.plan.observationEpoch == plan.observationEpoch
+            && air.plan.equipmentEpoch == plan.equipmentEpoch;
+        if (!reuse) {
+            holdCombatPosition();
+            clearCombatMovement();
+            air = new SupportedAirWalk(plan, point, footY, speed);
+            supportedAirWalk = air;
+            walk = air;
+        } else air.plan = plan;
+        var proof = air
+            .prove(point.x + MaidAiTuning.CENTER_OFFSET_D, footY, point.z + MaidAiTuning.CENTER_OFFSET_D, quota);
+        if (proof != CombatSpace.Result.SAFE) {
+            stopSupportedAirWalk();
+            return proof;
+        }
+        look = point;
+        return CombatSpace.Result.SAFE;
+    }
+
+    @Override
+    public boolean supportedAirPathCurrent(Point target) {
+        var air = supportedAirWalk;
+        return air != null && target != null
+            && target.x == air.pos.x
+            && target.y == air.pos.y
+            && target.z == air.pos.z
+            && air.proofCurrent()
+            && air.current();
+    }
+
+    private void stopSupportedAirWalk() {
+        var air = supportedAirWalk;
+        if (air == null) return;
+        supportedAirWalk = null;
+        if (maid.getMoveHelper() instanceof MaidMoveControl control) control.cancelOwnedCommand(air.command);
+        if (air.raw != null && ownedPath == air.raw
+            && navigation.getPath() == air.raw
+            && navigation.isBrainTargetOwner(this)) {
+            navigation.clearPathEntity();
+            ownedPath = null;
+            navigationView = null;
+        }
+        if (pathMemory != null && pathMemory.raw == air.raw) pathMemory = null;
+        if (walk == air) walk = null;
+    }
+
     public void setPositionWalkAndLook(Point pos, float speed, int closeDistance) {
         guard();
         clearCombatMovement();
@@ -2004,6 +2099,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void updateAlignmentAdmission(CombatPlan plan) {
         guard();
+        if (supportedAirWalk != null && !plan.airborneApproach) stopSupportedAirWalk();
         if (restrictedCombatMove != null && restrictedCombatMove.alignment != null
             && (plan.alignmentProof == null || plan.movementNode == null
                 || !plan.movementNode.same(restrictedCombatMove.segment.node)))
@@ -2045,6 +2141,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
     private void setCombatNodeWalk(CombatMovementFact.Node node, float speed, CombatMovementSegment segment,
         CombatAlignmentProof alignment, CombatConditionalEntryProof entry, CombatPassiveDoorExitProof passiveExit) {
         guard();
+        stopSupportedAirWalk();
         if (node == null || !node.current(worldTick)
             || node.entityEpoch != unifiedCombatEpoch
             || node.observationEpoch != unifiedCombatObservation.epoch()
@@ -2132,6 +2229,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void clearCombatMovement() {
         cancelCombatFacing();
+        stopSupportedAirWalk();
         if (restrictedCombatMove != null) stopRestrictedCombatMove(FaithfulAiIds.KEY_REOBSERVATION_CANCELLED);
         combatMovementLeaseGeneration++;
         combatNode = null;
@@ -2282,6 +2380,17 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     @Override
     public boolean beforeNativeNavigation(PathEntity actual) {
+        var air = supportedAirWalk;
+        if (air != null) {
+            if (air.raw != actual || actual != ownedPath) {
+                stopSupportedAirWalk();
+                return true;
+            }
+            if (!air.current()) {
+                stopSupportedAirWalk();
+                return false;
+            }
+        }
         RestrictedCombatMove lease = restrictedCombatMove;
         if (lease == null) return true;
         long now = world.getTotalWorldTime();
@@ -2340,6 +2449,8 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     @Override
     public MaidCombatMoveDispatch nativeMoveDispatch(PathEntity raw, double x, double y, double z, double speed) {
+        var air = supportedAirWalk;
+        if (air != null) return air.dispatch(raw, x, y, z, speed);
         var lease = restrictedCombatMove;
         if (lease == null || !lease.ownedWaypoint()) return MaidCombatMoveDispatch.DEFAULT;
         long now = world.getTotalWorldTime();
@@ -2420,12 +2531,18 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     @Override
     public void ownedMoveDispatchRejected(PathEntity raw) {
+        if (supportedAirWalk != null) stopSupportedAirWalk();
         if (restrictedCombatMove != null && restrictedCombatMove.ownedWaypoint())
             stopRestrictedCombatMove(FaithfulAiIds.KEY_ALIGNMENT_HELPER_OPERATION_UNAVAILABLE);
     }
 
     @Override
     public void ownedMoveDispatched(PathEntity raw, CombatQueuedMove command, long slotRevision) {
+        if (supportedAirWalk != null) {
+            if (supportedAirWalk.raw != raw || supportedAirWalk.command != command || raw != ownedPath)
+                stopSupportedAirWalk();
+            return;
+        }
         var lease = restrictedCombatMove;
         if (lease == null || !lease.ownedWaypoint()
             || lease.raw != raw
@@ -3143,6 +3260,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void brakeForCombatJump() {
         guard();
+        stopSupportedAirWalk();
         cancelCombatFacing();
         walk = null;
         if (MaidPathOwnership.owns(navigation.getPath(), ownedPath)) navigation.clearPathEntity();
@@ -4028,6 +4146,137 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
         public boolean isUnderWater() {
             guard();
             return player.isInsideOfMaterial(Material.water);
+        }
+    }
+
+    private final class SupportedAirWalk implements WalkTarget {
+
+        private CombatPlan plan;
+        private final Point pos;
+        private final double footY;
+        private final float speed;
+        private PathEntity raw;
+        private CombatQueuedMove command;
+        private long proofAt = Long.MIN_VALUE;
+        private int proofEntityTick;
+        private double proofX, proofY, proofZ;
+        private float proofWidth, proofHeight;
+
+        private SupportedAirWalk(CombatPlan plan, Point pos, double footY, float speed) {
+            this.plan = plan;
+            this.pos = pos;
+            this.footY = footY;
+            this.speed = speed;
+        }
+
+        private boolean current() {
+            return supportedAirWalk == this && walk == this
+                && isCurrent()
+                && navigation.isBrainTargetOwner(ModernFollowCoreActor.this)
+                && maid.getNavigator() == navigation
+                && unifiedCombat.supportedAirApproachCurrent(
+                    plan,
+                    pos.x + MaidAiTuning.CENTER_OFFSET_D,
+                    footY,
+                    pos.z + MaidAiTuning.CENTER_OFFSET_D);
+        }
+
+        private boolean proofCurrent() {
+            return proofAt == world.getTotalWorldTime() && proofEntityTick == maid.ticksExisted
+                && proofX == maid.posX
+                && proofY == maid.boundingBox.minY
+                && proofZ == maid.posZ
+                && proofWidth == maid.width
+                && proofHeight == maid.height;
+        }
+
+        private CombatSpace.Result prove(double x, double y, double z, CombatWorkQuota quota) {
+            proofAt = Long.MIN_VALUE;
+            if (!current() || quota.tick != world.getTotalWorldTime()
+                || !Double.isFinite(footY)
+                || Math.abs(y - footY) > CombatTerrainTuning.EPSILON
+                || y >= maid.boundingBox.minY
+                || maid.boundingBox.minY - y > maid.getMaxSafePointTries()
+                || !unifiedCombat.supportedAirApproachCurrent(plan, x, y, z)) return CombatSpace.Result.UNKNOWN;
+            if (!quota.spend(CombatWorkQuota.Work.BLOCK)) return CombatSpace.Result.BUDGET;
+            if (maid.isOnLadder()) return CombatSpace.Result.BLOCKED;
+            var start = CombatSpace.safeStandingPoint(maid, maid.posX, footY, maid.posZ, quota);
+            if (start != CombatSpace.Result.SAFE) return start;
+            var finish = CombatSpace.safeStandingPoint(maid, x, y, z, quota);
+            if (finish != CombatSpace.Result.SAFE) return finish;
+            double half = maid.width * MaidCombatTuning.HALF_FACTOR_D;
+            var swept = AxisAlignedBB.getBoundingBox(
+                Math.min(maid.posX, x) - half + CombatTerrainTuning.EPSILON,
+                y + CombatTerrainTuning.EPSILON,
+                Math.min(maid.posZ, z) - half + CombatTerrainTuning.EPSILON,
+                Math.max(maid.posX, x) + half - CombatTerrainTuning.EPSILON,
+                maid.boundingBox.minY + maid.height - CombatTerrainTuning.EPSILON,
+                Math.max(maid.posZ, z) + half - CombatTerrainTuning.EPSILON);
+            var clear = CombatSpace.boundedClear(maid, swept, quota);
+            if (clear != CombatSpace.Result.SAFE || !current())
+                return clear == CombatSpace.Result.SAFE ? CombatSpace.Result.UNKNOWN : clear;
+            proofAt = world.getTotalWorldTime();
+            proofEntityTick = maid.ticksExisted;
+            proofX = maid.posX;
+            proofY = maid.boundingBox.minY;
+            proofZ = maid.posZ;
+            proofWidth = maid.width;
+            proofHeight = maid.height;
+            return CombatSpace.Result.SAFE;
+        }
+
+        private MaidCombatMoveDispatch dispatch(PathEntity path, double x, double y, double z, double requestedSpeed) {
+            var quota = CombatWorldBudget.heartbeat(world, maid.getUniqueID(), world.getTotalWorldTime(), false);
+            if (path != raw || raw != ownedPath
+                || navigation.getPath() != raw
+                || raw.isFinished()
+                || requestedSpeed != speed
+                || prove(x, y, z, quota) != CombatSpace.Result.SAFE) {
+                stopSupportedAirWalk();
+                return MaidCombatMoveDispatch.REJECT;
+            }
+            final int index = raw.getCurrentPathIndex(), length = raw.getCurrentPathLength();
+            final var admittedPlan = plan;
+            final var target = maid.getModernCombatMemory()
+                .target();
+            final double targetX = target.posX, targetY = target.boundingBox.minY, targetZ = target.posZ;
+            command = new CombatQueuedMove(
+                () -> plan == admittedPlan && current()
+                    && proofCurrent()
+                    && unifiedCombat.supportedAirApproachCurrent(plan, x, y, z)
+                    && raw == path
+                    && raw == ownedPath
+                    && navigation.getPath() == raw
+                    && !raw.isFinished()
+                    && raw.getCurrentPathIndex() == index
+                    && raw.getCurrentPathLength() == length
+                    && maid.getModernCombatMemory()
+                        .target() == target
+                    && target.posX == targetX
+                    && target.boundingBox.minY == targetY
+                    && target.posZ == targetZ,
+                rejected -> { if (supportedAirWalk == this && command == rejected) stopSupportedAirWalk(); });
+            return MaidCombatMoveDispatch.supportedAir(command);
+        }
+
+        public BlockPos currentBlockPosition() {
+            guard();
+            return new BlockPos(pos.x, pos.y, pos.z);
+        }
+
+        public float getSpeedModifier() {
+            guard();
+            return speed;
+        }
+
+        public int getCloseEnoughDistance() {
+            guard();
+            return FaithfulAiTuning.COMBAT_NAVIGATION_OUTCOME_INITIAL_VALUE;
+        }
+
+        public boolean isEntityTrackerSpectator() {
+            guard();
+            return false;
         }
     }
 

@@ -1769,3 +1769,7 @@ YSM 验证覆盖现有玩家模型片段的实际命中与画面，原生 Biped 
 - 上游移植类 `entity/passive/EntityMaid.java` 接入独立饥饿、飞行、热害、太空生存与落地自救控制器，并通过 Forge `ISpecialArmor` 执行真实护甲防御与能量消耗。保留原包名、MIT 许可头、既有存档键和旧死亡快照的迁移边界。
 - 上游移植类 `client/renderer/entity/chatbubble/implement/TextChatBubbleRenderer.java` 在客户端解析可翻译的气泡键，保留普通文字、字体和既有渲染布局。
 - `com.tianluoqaq.tlmnh.common.life` 下新增的生存状态、库存取用和控制器，以及治愈之斧的通用战斗桥接，属于本工程独立实现。外部机制依据当前整合包实际提供方的公开接口和字节码核对，在 `src/compat/java/com/tianluoqaq/tlmnh/compat/` 中按模组与职责实现；未复制或反编译嵌入提供方类。
+
+## 0.1.0 受支撑地面目的地的空中近战反应
+
+- 固定上游 `8a3ac5e9eacf0c6d63adf8832949f3ce81484fe6` 的 `entity/ai/control/MaidMoveControl.java` 保留原包名与 MIT 许可头，新增独立的受支撑空中命令入口。该入口消费 Actor 在同一 tick 按原预算复核的普通近战反应许可，并复用现有单次命令与精确撤销机制。原普通移动、地面自有命令、跳跃和水路继续沿各自入口。

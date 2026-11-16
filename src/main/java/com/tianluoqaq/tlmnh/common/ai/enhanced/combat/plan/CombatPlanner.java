@@ -21,6 +21,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Tar
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
@@ -496,8 +497,9 @@ public final class CombatPlanner {
         for (int i = 0; i < Math.min(CombatPlanTuning.COMBAT_PLANNER_MIN_FIRST_PARAM, attacks.size()); i++) {
             Candidate attack = attacks.get(i);
             // 服务等待不能以普通轻量重选倒退已提交的任务；可在当前点攻击仍走原链
-            if (stage != null && attack.macro == Macro.APPROACH) continue;
             CombatTerrain.Route route = terrainRoute(terrain, attack.macro);
+            if (stage != null && attack.macro == Macro.APPROACH
+                && (route != null || !airborneApproachEligible(snapshot, attack))) continue;
             if (route != null) attack.route(route);
             add(result, attack, quota);
             if (jump == null && jumpUseful(snapshot, attack)) jump = attack;
@@ -533,9 +535,42 @@ public final class CombatPlanner {
             candidate -> candidate.weapon != null && candidate.weapon.slot >= 0
                 && candidate.macro != Macro.SHIELD
                 && candidate.macro != Macro.WAIT);
-        for (Candidate candidate : result) if (candidate.route == null && candidate.strategy == Strategy.REACTION)
+        for (Candidate candidate : result) if (candidate.route == null && candidate.strategy == Strategy.REACTION) {
             candidate.escapeProved = currentEscape;
+            if (airborneApproachEligible(snapshot, candidate)) {
+                Vec supported = CombatTerrain.airborneApproachPoint(snapshot, candidate.destination, quota);
+                if (supported != null && supported.y < snapshot.self.position.y - CombatTerrainTuning.EPSILON_2) {
+                    candidate.destination = supported;
+                    candidate.airborneApproach = true;
+                }
+            }
+        }
         return result;
+    }
+
+    private boolean airborneApproachEligible(CombatSnapshot snapshot, Candidate candidate) {
+        if (candidate.macro != Macro.APPROACH || candidate.strategy != Strategy.REACTION
+            || candidate.route != null
+            || candidate.weapon == null
+            || candidate.weapon.slot >= 0
+            || !candidate.weapon.profile.melee()
+            || !usable(snapshot, candidate.weapon)
+            || snapshot.self.grounded
+            || !snapshot.self.recentlyHurt
+            || snapshot.self.stationary
+            || !snapshot.friendsComplete
+            || candidate.target == null
+            || !candidate.target.visible
+            || candidate.target.observedAt != snapshot.tick
+            || Math.abs(candidate.destination.y - snapshot.self.position.y) > CombatTerrainTuning.EPSILON_2)
+            return false;
+        return stage == null || stage.state != StageState.NATIVE_FAILURE && stage.entry == null
+            && stage.alignment == null
+            && stage.connector == null
+            && !stage.route.conditionalDoor
+            && stage.matches(snapshot, candidate.target)
+            && stage.weapon.equals(candidate.weapon.fingerprint)
+            && stage.family == candidate.weapon.profile.family;
     }
 
     /** 服务等待只补当前普通节点的反应候选，完整任务资格仍由原阶段重证 */
@@ -1663,7 +1698,8 @@ public final class CombatPlanner {
             alignmentProof,
             entryProof,
             null,
-            candidate.interruptRangedUse);
+            candidate.interruptRangedUse,
+            candidate.airborneApproach);
         if (simulated) {
             if (candidate.route == null) clearRouteProposal();
             else {
@@ -1901,6 +1937,7 @@ public final class CombatPlanner {
 
     private static final class Candidate {
 
+        boolean airborneApproach;
         final Macro macro;
         final Strategy strategy;
         final Target target;

@@ -34,6 +34,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
     private Operation operation = Operation.WAIT;
     private long combatSlotRevision;
     private CombatQueuedMove combatOwnedCommand;
+    private boolean supportedAirCommand;
     private final CombatMovementFacing combatFacing = new CombatMovementFacing();
     private boolean combatFacingStrafeApplied;
 
@@ -57,6 +58,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         clearCombatFacing();
         combatSlotRevision++;
         combatOwnedCommand = null;
+        supportedAirCommand = false;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -68,6 +70,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
         clearCombatFacing();
         combatSlotRevision++;
         combatOwnedCommand = null;
+        supportedAirCommand = false;
         operation = Operation.STRAFE;
         this.forwards = forwards;
         this.right = right;
@@ -120,8 +123,35 @@ public final class MaidMoveControl extends EntityMoveHelper {
                 .wantToSwim();
     }
 
+    private boolean supportedAirCommandAvailable() {
+        return !maid.onGround && !maid.isInWater()
+            && maid.ridingEntity == null
+            && operation != Operation.STRAFE
+            && operation != Operation.JUMPING
+            && !maid.getBrainCoordinator()
+                .hasLegacyBreathSwimming()
+            && !maid.getAquaticController()
+                .getManager()
+                .wantToSwim();
+    }
+
+    public boolean setSupportedAirMoveTo(CombatQueuedMove command, double x, double y, double z, double speed) {
+        if (command == null || !supportedAirCommandAvailable() || !command.current()) return false;
+        clearCombatFacing();
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.speed = speed;
+        operation = Operation.MOVE_TO;
+        combatSlotRevision++;
+        combatOwnedCommand = command;
+        supportedAirCommand = true;
+        return true;
+    }
+
     public boolean setOwnedMoveTo(CombatQueuedMove command, double x, double y, double z, double speed) {
         if (command == null || !combatGroundCommandAvailable() || !command.current()) return false;
+        supportedAirCommand = false;
         clearCombatFacing();
         this.x = x;
         this.y = y;
@@ -150,6 +180,7 @@ public final class MaidMoveControl extends EntityMoveHelper {
     private void clearCombatInput() {
         clearCombatFacing();
         combatOwnedCommand = null;
+        supportedAirCommand = false;
         combatSlotRevision++;
         operation = Operation.WAIT;
         x = maid.posX;
@@ -167,7 +198,8 @@ public final class MaidMoveControl extends EntityMoveHelper {
         clearCombatFacingStrafe();
         // 必须先于水路与operation分支，不能让已撤销的输入被水路复用
         var command = combatOwnedCommand;
-        if (command != null && (!combatGroundCommandAvailable() || !command.consume())) {
+        if (command != null && (!(supportedAirCommand ? supportedAirCommandAvailable() : combatGroundCommandAvailable())
+            || !command.consume())) {
             cancelOwnedCommand(command);
             command.rejected();
             return;

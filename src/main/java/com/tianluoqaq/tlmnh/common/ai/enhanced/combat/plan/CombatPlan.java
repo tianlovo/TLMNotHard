@@ -18,6 +18,8 @@ import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 /** 只提交首段意图，实际许可、物品及弹道由actor在世界边界重新检查 */
 public final class CombatPlan {
 
+    public final boolean airborneApproach;
+
     public enum Strategy {
         REACTION,
         PURE_DEFENSE,
@@ -389,7 +391,53 @@ public final class CombatPlan {
         CombatMovementSegment noDoorSegment, CombatAlignmentProof alignmentProof,
         CombatConditionalEntryProof conditionalEntryProof, CombatPassiveDoorExitProof passiveDoorExitProof,
         boolean interruptRangedUse) {
+        this(
+            decisionId,
+            snapshot,
+            target,
+            weapon,
+            macro,
+            destination,
+            face,
+            reason,
+            utility,
+            expectedDamage,
+            expectedRisk,
+            simulated,
+            quota,
+            route,
+            trace,
+            strategy,
+            state,
+            stageId,
+            stagePhase,
+            boundary,
+            movementNode,
+            admitted,
+            comparisonComplete,
+            firstNativeAcceptanceAt,
+            stageRetryAt,
+            stageReason,
+            observedRisk,
+            noDoorSegment,
+            alignmentProof,
+            conditionalEntryProof,
+            passiveDoorExitProof,
+            interruptRangedUse,
+            false);
+    }
+
+    CombatPlan(long decisionId, CombatSnapshot snapshot, CombatSnapshot.Target target, CombatSnapshot.Weapon weapon,
+        Macro macro, Vec destination, Vec face, String reason, double utility, double expectedDamage,
+        double expectedRisk, boolean simulated, CombatWorkQuota quota, CombatTerrain.Route route,
+        CombatPlanner.Trace trace, Strategy strategy, StageState state, long stageId, int stagePhase, Vec boundary,
+        CombatMovementFact.Node movementNode, boolean admitted, boolean comparisonComplete,
+        long firstNativeAcceptanceAt, long stageRetryAt, String stageReason, CombatObservedRisk observedRisk,
+        CombatMovementSegment noDoorSegment, CombatAlignmentProof alignmentProof,
+        CombatConditionalEntryProof conditionalEntryProof, CombatPassiveDoorExitProof passiveDoorExitProof,
+        boolean interruptRangedUse, boolean airborneApproach) {
         this.interruptRangedUse = interruptRangedUse;
+        this.airborneApproach = airborneApproach;
         this.passiveDoorExitProof = passiveDoorExitProof;
         this.conditionalEntryProof = conditionalEntryProof;
         this.alignmentProof = alignmentProof;

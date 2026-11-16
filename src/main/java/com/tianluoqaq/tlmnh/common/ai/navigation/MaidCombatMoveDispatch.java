@@ -10,7 +10,8 @@ public final class MaidCombatMoveDispatch {
     public enum Kind {
         DEFAULT,
         REJECT,
-        OWNED
+        OWNED,
+        SUPPORTED_AIR
     }
 
     public static final MaidCombatMoveDispatch DEFAULT = new MaidCombatMoveDispatch(Kind.DEFAULT, null);
@@ -21,6 +22,10 @@ public final class MaidCombatMoveDispatch {
     private MaidCombatMoveDispatch(Kind kind, CombatQueuedMove command) {
         this.kind = kind;
         this.command = command;
+    }
+
+    public static MaidCombatMoveDispatch supportedAir(CombatQueuedMove command) {
+        return new MaidCombatMoveDispatch(Kind.SUPPORTED_AIR, Objects.requireNonNull(command));
     }
 
     public static MaidCombatMoveDispatch owned(CombatQueuedMove command) {

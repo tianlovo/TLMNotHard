@@ -60,6 +60,10 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
 
         Point currentPosition();
 
+        default boolean supportedAirPathCurrent(Point target) {
+            return false;
+        }
+
         /** 原生follow/moveHelper写入前的窄战斗租约检查，默认路径不改变 */
         default boolean beforeNativeNavigation(PathEntity path) {
             return true;
@@ -199,6 +203,16 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     public BrainPath createBrainPath(Object owner, int x, int y, int z, int accuracy) {
         requireBrainOwner(owner);
         var path = active.brainQuery(new Point(x, y, z), accuracy);
+        return path == null ? null : new BrainPath(this, owner, path);
+    }
+
+    /** 当前 combat Actor 显式证明的受支撑 AIR 请求，普通入口保持原可导航条件 */
+    public BrainPath createSupportedAirBrainPath(Object owner, Point target, int accuracy) {
+        requireBrainOwner(owner);
+        if (!brainTarget.supportedAirPathCurrent(target) || active.water) return null;
+        var normalized = normalize(active, target, region());
+        if (normalized.x != target.x || normalized.y != target.y || normalized.z != target.z) return null;
+        var path = active.brainQuery(Collections.singleton(normalized), accuracy, true);
         return path == null ? null : new BrainPath(this, owner, path);
     }
 
@@ -463,6 +477,12 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     .setMoveTo(target.xCoord, y, target.zCoord, active.speed);
                 if (brainTarget != null && maid.getMoveHelper() instanceof MaidMoveControl control)
                     brainTarget.ordinaryMoveDispatched(raw, control.combatSlotRevision());
+            } else if (dispatch.kind == MaidCombatMoveDispatch.Kind.SUPPORTED_AIR) {
+                if (maid.getMoveHelper() instanceof MaidMoveControl control
+                    && control.setSupportedAirMoveTo(dispatch.command, target.xCoord, y, target.zCoord, active.speed)) {
+                    if (brainTarget != null)
+                        brainTarget.ownedMoveDispatched(raw, dispatch.command, control.combatSlotRevision());
+                } else if (brainTarget != null) brainTarget.ownedMoveDispatchRejected(raw);
             } else if (dispatch.kind == MaidCombatMoveDispatch.Kind.OWNED) {
                 if (maid.getMoveHelper() instanceof MaidMoveControl control
                     && control.setOwnedMoveTo(dispatch.command, target.xCoord, y, target.zCoord, active.speed)) {
@@ -600,7 +620,19 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         }
 
         MaidModernPath brainQuery(Collection<Point> targets, int accuracy) {
-            if (targets.isEmpty() || maid.posY < region().minY() || !canUpdate()) return null;
+            return brainQuery(targets, accuracy, false);
+        }
+
+        MaidModernPath brainQuery(Collection<Point> targets, int accuracy, boolean supportedAir) {
+            if (targets.isEmpty() || maid.posY < region().minY()) return null;
+            if (supportedAir) {
+                if (water || targets.size() != MaidNavigationTuning.QUERY_SINGLE_UNIT
+                    || !brainCurrent()
+                    || !brainTarget.supportedAirPathCurrent(
+                        targets.iterator()
+                            .next()))
+                    return null;
+            } else if (!canUpdate()) return null;
             if (path instanceof MaidModernPath modern && !path.isFinished()
                 && targetPos != null
                 && targets.contains(targetPos)) return modern;

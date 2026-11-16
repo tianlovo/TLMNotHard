@@ -1132,6 +1132,16 @@ public final class CombatTerrain {
         return route(last, protection, line, snapshot.geometry.observedAt, meter);
     }
 
+    /** 外力腾空的普通反应仍请求已知支撑落点，沿原额度检查完整身体扫掠 */
+    public static Vec airborneApproachPoint(CombatSnapshot snapshot, Vec requested, CombatWorkQuota quota) {
+        if (requested == null || snapshot.geometry == null
+            || !snapshot.geometry.fresh(snapshot.tick)
+            || !snapshot.friendsComplete) return null;
+        Meter meter = new Meter(quota, CombatTerrainTuning.MAX_WORK);
+        Vec point = standing(snapshot, requested.x, requested.z, Math.floor(snapshot.self.position.y), meter);
+        return point != null && clear(snapshot, snapshot.self.position, point, false, meter) ? point : null;
+    }
+
     /** 只复核既有路线的下一个已知段；不搜索、不跨关闭门、不续期原证明 */
     public static boolean safeStep(CombatSnapshot snapshot, Vec from, Vec to, CombatWorkQuota quota) {
         if (from == null || to == null

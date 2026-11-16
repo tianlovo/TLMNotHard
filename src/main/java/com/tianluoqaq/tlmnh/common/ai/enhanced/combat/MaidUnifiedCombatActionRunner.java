@@ -161,7 +161,8 @@ public final class MaidUnifiedCombatActionRunner {
         if (plan.macro == Macro.RETREAT || plan.macro == Macro.STRAFE_LEFT || plan.macro == Macro.STRAFE_RIGHT)
             jumpRequested = jumpPreparing = false;
         if (actor.shieldBehaviorRunning()) actor.stopUsingShield();
-        if (isMovement(plan.macro)) {
+        boolean continueOwnedJump = plan.airborneApproach && (jumpRequested || jumpPreparing);
+        if (isMovement(plan.macro) && !continueOwnedJump) {
             Result movement = move(plan, routeDestination(plan), quota);
             if (movement != Result.RUNNING) return movement;
         }
@@ -204,7 +205,8 @@ public final class MaidUnifiedCombatActionRunner {
                 .generation()))
             jumpRequested = jumpPreparing = false;
         // LIGHT 不发起新跳但可延续既有起跳；HOLD 在上升期保留既有跳劈的下降命中窗口
-        if (plan.macro == Macro.JUMP_STRIKE || (jumpRequested || jumpPreparing) && plan.macro == Macro.HOLD_ATTACK)
+        if (plan.macro == Macro.JUMP_STRIKE
+            || (jumpRequested || jumpPreparing) && (plan.macro == Macro.HOLD_ATTACK || plan.airborneApproach))
             return jump(target, view, plan, quota);
         if (actor.withinMeleeRange(view)) {
             if (plan.macro == Macro.APPROACH) {
@@ -529,11 +531,64 @@ public final class MaidUnifiedCombatActionRunner {
             } else if (plan.strategy == CombatPlan.Strategy.REOBSERVE) actor
                 .setReobservationNodeWalk(plan.movementNode, plan.noDoorSegment, EnhancedCombatTuning.APPROACH_SPEED);
             else actor.setCombatNodeWalk(plan.movementNode, EnhancedCombatTuning.APPROACH_SPEED);
+        } else if (plan != null && plan.airborneApproach) {
+            var proof = actor.setSupportedAirCombatWalk(
+                plan,
+                approvedPoint,
+                destination.y,
+                EnhancedCombatTuning.APPROACH_SPEED,
+                quota);
+            if (proof == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
+            if (proof != CombatSpace.Result.SAFE) return Result.REJECTED;
         } else actor.setPositionWalkAndLook(
             approvedPoint,
             EnhancedCombatTuning.APPROACH_SPEED,
             EnhancedCombatTuning.COMBAT_OBSERVATION_OBSERVE_ZERO_BASE);
         return Result.RUNNING;
+    }
+
+    /** 本 Actor 当前普通近战反应的 AIR 请求资格，不推进任务或启动跳跃 */
+    public boolean supportedAirApproachCurrent(CombatPlan plan, double x, double y, double z) {
+        if (!authorized() || plan == null
+            || !plan.airborneApproach
+            || plan.macro != Macro.APPROACH
+            || plan.strategy != CombatPlan.Strategy.REACTION
+            || plan.movementNode != null
+            || plan.route != null
+            || plan.weaponSlot >= 0
+            || jumpRequested
+            || jumpPreparing
+            || maid.onGround
+            || maid.hurtTime <= 0
+            || maid.isInWater()
+            || EnhancedRideController.stationary(maid)
+            || maid.ridingEntity != null) return false;
+        long now = maid.worldObj.getTotalWorldTime();
+        if (plan.observedAt != now || now > plan.expiresAt
+            || plan.entityEpoch != actor.unifiedCombatEpoch()
+            || plan.observationEpoch != actor.combatObservation()
+                .epoch()
+            || plan.equipmentEpoch != maid.getEquipmentEpoch()
+                .generation()
+            || !targetArea(x, y, z)) return false;
+        var target = maid.getModernCombatMemory()
+            .target();
+        if (target == null || target.getEntityId() != plan.targetEntityId
+            || !target.getUniqueID()
+                .equals(plan.targetId)
+            || !targetIdentity(target)
+            || !actor.combatObservation()
+                .visible(plan.targetId)
+            || actor.combatObservation()
+                .observedAt(plan.targetId) != now
+            || !targetAllowed(target)
+            || !targets.canAttack(maid, target)) return false;
+        var profile = maid.getCombatWeaponProfile();
+        return profile.supported() && profile.melee()
+            && profile.family == plan.family
+            && (profile.remainingDurability < 0 || profile.remainingDurability >= profile.durabilityCost)
+            && CombatObservation.fingerprint(maid.getHeldItem())
+                .equals(plan.weaponFingerprint);
     }
 
     private boolean authorized() {
