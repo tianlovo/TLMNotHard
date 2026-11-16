@@ -113,7 +113,7 @@ public final class MaidUnifiedCombatActionRunner {
         actor.updateAlignmentAdmission(plan);
         if (plan.macro == Macro.WAIT) {
             actor.stopOwnedRangedUse();
-            actor.eraseWalkTarget();
+            holdGroundPosition();
             return Result.RUNNING;
         }
         int slot = plan.weaponSlot < 0 ? MaidInventoryLayout.MAIN_HAND : plan.weaponSlot;
@@ -136,9 +136,13 @@ public final class MaidUnifiedCombatActionRunner {
         }
         Result airborneContinuation = continueAirborneJumpBeforeEquipment(plan, target, quota);
         if (airborneContinuation != null) return airborneContinuation;
+        boolean visible = actor.combatObservation()
+            .visible(target.getUniqueID());
+        if (plan.face != null && (plan.weaponSlot < 0 || visible)) actor.lookAtCombatPoint(plan.face);
         if (plan.weaponSlot >= 0) {
             jumpRequested = jumpPreparing = false;
             stopUse();
+            holdGroundPosition();
             if (!authorized()) return Result.STALE;
             var before = MaidEquipmentTransfer.capture(maid);
             if (before == null) return Result.REJECTED;
@@ -152,9 +156,6 @@ public final class MaidUnifiedCombatActionRunner {
             return result == MaidEquipmentTransfer.Result.FAILED ? Result.HELD : Result.REJECTED;
         }
         var profile = maid.getCombatWeaponProfile();
-        boolean visible = actor.combatObservation()
-            .visible(target.getUniqueID());
-        if (plan.face != null) actor.lookAtCombatPoint(plan.face);
         if (plan.macro == Macro.SHIELD) return defend(target, quota, visible);
         if (plan.interruptRangedUse) actor.stopOwnedRangedUse();
         if (plan.macro == Macro.RETREAT || plan.macro == Macro.STRAFE_LEFT || plan.macro == Macro.STRAFE_RIGHT)
@@ -186,13 +187,14 @@ public final class MaidUnifiedCombatActionRunner {
         actor.lookAtAttackTarget(view);
         // 沿用计划中的同一来箭裁决，保持原被动盾入口自行取得租约
         if (plan.interruptRangedUse) {
-            // 只绑定当前已下发的普通MOVE_TO，后置helper保留原Actor已准入的身体朝向
-            actor.faceCurrentCombatMovement();
+            // 原地避险停止自有移动输入，移动避险保持身体朝向
+            if (plan.macro == Macro.HOLD_ATTACK) holdGroundPosition();
+            else actor.faceCurrentCombatMovement();
             return Result.RUNNING;
         }
         if (profile.bow()) {
             Result result = bow(target, view, plan, quota, profile);
-            if (result == Result.RUNNING) faceBlockingShieldMovement();
+            if (result == Result.RUNNING) actor.faceCurrentCombatMovement();
             return result;
         }
         actor.stopOwnedRangedUse();
@@ -220,19 +222,13 @@ public final class MaidUnifiedCombatActionRunner {
             if (!quota.spend(Work.PATH)) return Result.WAIT_BUDGET;
             actor.walkToAttackTarget(view, EnhancedCombatTuning.APPROACH_SPEED);
         }
-        faceBlockingShieldMovement();
+        actor.faceCurrentCombatMovement();
         return Result.RUNNING;
     }
 
-    private void faceBlockingShieldMovement() {
-        var use = maid.getItemUseState()
-            .peek();
-        // 副手盾格挡期间沿用当前移动命令的身体朝向资格
-        if (use != null && use.getHand() == Hand.OFF
-            && use.getKind() == Kind.SHIELD
-            && maid.getShieldController()
-                .isBlocking())
-            actor.faceCurrentCombatMovement();
+    private void holdGroundPosition() {
+        if (maid.onGround) actor.holdCombatPosition();
+        else actor.eraseWalkTarget();
     }
 
     /** 换装事件保留已真实离地的跳劈惯性；防御、取消与身份失效按原分支处理 */
@@ -436,7 +432,7 @@ public final class MaidUnifiedCombatActionRunner {
 
     private Result defend(EntityLivingBase target, CombatWorkQuota quota, boolean visible) {
         actor.stopOwnedRangedUse();
-        actor.eraseWalkTarget();
+        holdGroundPosition();
         if (!visible || !quota.spend(Work.RAY)
             || !maid.getEntitySenses()
                 .canSee(target))

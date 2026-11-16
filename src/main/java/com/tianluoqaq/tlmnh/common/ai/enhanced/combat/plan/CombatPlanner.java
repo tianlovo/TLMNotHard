@@ -199,7 +199,9 @@ public final class CombatPlanner {
                 && !candidate.commits()
                 && (candidate.macro == Macro.RETREAT || candidate.macro == Macro.STRAFE_LEFT
                     || candidate.macro == Macro.STRAFE_RIGHT
-                    || candidate.macro == Macro.COVER_EDGE);
+                    || candidate.macro == Macro.COVER_EDGE
+                    || candidate.macro == Macro.HOLD_ATTACK && candidate.strategy == Strategy.REACTION
+                        && snapshot.self.drawing);
             if (full && candidate.route != null && candidate.route.escape != null && !candidate.commits())
                 candidate.escapeProved = CombatTerrain.reverseEscape(snapshot, candidate.route, quota);
             if (full) {
@@ -391,7 +393,7 @@ public final class CombatPlanner {
                 }
             }
             if (committed == null) {
-                Candidate reaction = ownerPressureServiceReaction(snapshot, target, current);
+                Candidate reaction = stageServiceReaction(snapshot, target, current);
                 if (reaction != null) comparisonReady &= add(result, reaction, quota);
             }
         } else addLegacyCurrent(result, snapshot, target, current, quota);
@@ -528,13 +530,16 @@ public final class CombatPlanner {
     }
 
     /** 服务等待只补当前普通节点的反应候选，完整任务资格仍由原阶段重证 */
-    private Candidate ownerPressureServiceReaction(CombatSnapshot snapshot, Target target, Weapon current) {
+    private Candidate stageServiceReaction(CombatSnapshot snapshot, Target target, Weapon current) {
+        boolean returningMelee = stage.strategy == Strategy.DEFENSIVE_RETURN && stage.cursor > stage.route.defenseNode
+            && current != null
+            && current.profile.melee();
         if (stage.state != StageState.WAIT_SERVICE || !snapshot.self.grounded
             || !snapshot.friendsComplete
             || target == null
+            || !target.visible
             || target.observedAt != snapshot.tick
-            || stage.strategy != Strategy.TASK
-            || stage.firstMacro != Macro.APPROACH
+            || !returningMelee && (stage.strategy != Strategy.TASK || stage.firstMacro != Macro.APPROACH)
             || stage.entry != null
             || stage.alignment != null
             || stage.connector != null
@@ -545,7 +550,8 @@ public final class CombatPlanner {
             || !stage.weapon.equals(current.fingerprint)
             || current.profile.family != stage.family) return null;
         Candidate reaction = attack(snapshot, target, current);
-        if (reaction.macro != Macro.APPROACH || !ownerPressureAttack(snapshot, reaction)) return null;
+        if (reaction.macro != Macro.APPROACH || !returningMelee && !ownerPressureAttack(snapshot, reaction))
+            return null;
         reaction.destination = stage.route.next(stage.cursor);
         return reaction;
     }
@@ -1188,8 +1194,8 @@ public final class CombatPlanner {
         // 观测/几何缺口下只允许当前可见攻击、合法举盾或已知安全移动；不按静态高输出贴脸换血
         double progress = candidate.target != null && candidate.target.visible ? candidate.staticValue
             : CombatPlanTuning.COMBAT_PLANNER_DOMAIN_FACTOR_3;
-        if (snapshot.self.rangedUseBlocked && candidate.weapon != null && candidate.weapon.profile.bow())
-            progress = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
+        if ((snapshot.self.rangedUseBlocked || candidate.interruptRangedUse) && candidate.weapon != null
+            && candidate.weapon.profile.bow()) progress = CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
         if (candidate.weapon != null && candidate.weapon.profile.bow()
             && !ThreatEstimator.friendlyLine(
                 snapshot,
