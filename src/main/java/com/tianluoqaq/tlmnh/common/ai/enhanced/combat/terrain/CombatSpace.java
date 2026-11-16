@@ -172,6 +172,11 @@ public final class CombatSpace {
 
     public static Result safeStandingPoint(EntityMaid maid, double x, double y, double z, CombatWorkQuota quota,
         Diagnostic diagnostic) {
+        return safeStandingPoint(maid, x, y, z, quota, diagnostic, null);
+    }
+
+    private static Result safeStandingPoint(EntityMaid maid, double x, double y, double z, CombatWorkQuota quota,
+        Diagnostic diagnostic, BlockReader shared) {
         if (diagnostic != null) diagnostic.reset(quota.tick);
         if (!finite(x, y, z)) return recorded(diagnostic, Result.UNKNOWN, CombatTerrainIds.ID_INVALID_POINT);
         double half = maid.width * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR;
@@ -182,9 +187,9 @@ public final class CombatSpace {
             x + half - CombatTerrainTuning.EPSILON,
             y + maid.height - CombatTerrainTuning.COMBAT_SPACE_DOMAIN_FACTOR,
             z + half - CombatTerrainTuning.EPSILON);
-        Result clear = boundedClear(maid, body, quota, diagnostic);
+        Result clear = boundedClear(maid, body, quota, diagnostic, shared);
         if (clear != Result.SAFE) return clear;
-        return standingSupport(maid, x, y, z, quota, diagnostic);
+        return standingSupport(maid, x, y, z, quota, diagnostic, shared);
     }
 
     /** 仅本次跳跃复核复用已覆盖当前身体的头顶扫掠；不跨调用或tick保存许可 */
@@ -231,10 +236,15 @@ public final class CombatSpace {
 
     private static Result standingSupport(EntityMaid maid, double x, double y, double z, CombatWorkQuota quota,
         Diagnostic diagnostic) {
+        return standingSupport(maid, x, y, z, quota, diagnostic, null);
+    }
+
+    private static Result standingSupport(EntityMaid maid, double x, double y, double z, CombatWorkQuota quota,
+        Diagnostic diagnostic, BlockReader shared) {
         double half = maid.width * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR;
         int minX = floor(x - half), maxX = floor(x + half), minZ = floor(z - half), maxZ = floor(z + half);
         int top = floor(y - CombatTerrainTuning.EPSILON);
-        BlockReader reader = reader(maid, minX, top - 1, minZ, maxX, top, maxZ, quota);
+        BlockReader reader = shared == null ? reader(maid, minX, top - 1, minZ, maxX, top, maxZ, quota) : shared;
         if (reader.result != Result.SAFE)
             return recorded(diagnostic, reader.result, CombatTerrainIds.ID_SUPPORT_READER);
         for (int dx = CombatTerrainTuning.FOOTPRINT_CORNER_MIN_DIRECTION; dx
@@ -292,6 +302,11 @@ public final class CombatSpace {
 
     public static Result boundedClear(EntityMaid maid, AxisAlignedBB box, CombatWorkQuota quota,
         Diagnostic diagnostic) {
+        return boundedClear(maid, box, quota, diagnostic, null);
+    }
+
+    private static Result boundedClear(EntityMaid maid, AxisAlignedBB box, CombatWorkQuota quota, Diagnostic diagnostic,
+        BlockReader shared) {
         if (diagnostic != null) diagnostic.reset(quota.tick);
         Class<?> collisionOwner = MAID_COLLISION.get(maid.getClass());
         if (diagnostic != null) diagnostic.maidOwner = typeName(collisionOwner);
@@ -309,7 +324,7 @@ public final class CombatSpace {
             || maxY - minY > CombatTerrainTuning.MAX_MIN_X_THRESHOLD
             || maxZ - minZ > CombatTerrainTuning.MAX_MIN_X_THRESHOLD)
             return recorded(diagnostic, Result.UNKNOWN, CombatTerrainIds.ID_BLOCK_BOUNDS_LIMIT);
-        BlockReader reader = reader(maid, minX, minY, minZ, maxX, maxY, maxZ, quota);
+        BlockReader reader = shared == null ? reader(maid, minX, minY, minZ, maxX, maxY, maxZ, quota) : shared;
         if (reader.result != Result.SAFE) return recorded(diagnostic, reader.result, CombatTerrainIds.ID_CLEAR_READER);
         for (int y = minY; y <= maxY; y++) for (int z = minZ; z <= maxZ; z++) for (int x = minX; x <= maxX; x++) {
             BlockShapes shapes = reader.block(x, y, z, box);
@@ -328,6 +343,53 @@ public final class CombatSpace {
             }
         }
         return entitiesClear(maid, box, quota, diagnostic);
+    }
+
+    /** 仅一次同步 AIR live 证明共用 loaded 预检；方块、形状、实体和原额度检查仍逐次执行 */
+    public static Result supportedAirClear(EntityMaid maid, double footY, double x, double y, double z,
+        CombatWorkQuota quota) {
+        if (!Double.isFinite(footY) || !finite(x, y, z) || MAID_COLLISION.get(maid.getClass()) != Entity.class)
+            return Result.UNKNOWN;
+        double half = maid.width * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR;
+        AxisAlignedBB sweep = AxisAlignedBB.getBoundingBox(
+            Math.min(maid.posX, x) - half + CombatTerrainTuning.EPSILON,
+            y + CombatTerrainTuning.EPSILON,
+            Math.min(maid.posZ, z) - half + CombatTerrainTuning.EPSILON,
+            Math.max(maid.posX, x) + half - CombatTerrainTuning.EPSILON,
+            maid.boundingBox.minY + maid.height - CombatTerrainTuning.EPSILON,
+            Math.max(maid.posZ, z) + half - CombatTerrainTuning.EPSILON);
+        if (!valid(sweep)) return Result.UNKNOWN;
+        // 两端保留各自精确脚底。支撑 top-1 也覆盖原 body 的下界，扫掠下界另行合并
+        int startTop = floor(footY - CombatTerrainTuning.EPSILON), endTop = floor(y - CombatTerrainTuning.EPSILON);
+        int minY = Math.min(Math.min(startTop - 1, endTop - 1), floor(sweep.minY) - 1);
+        int maxY = Math.max(
+            Math.max(startTop, endTop),
+            Math.max(
+                Math.max(
+                    floor(
+                        footY + maid.height
+                            - CombatTerrainTuning.COMBAT_SPACE_DOMAIN_FACTOR
+                            - CombatTerrainTuning.EPSILON),
+                    floor(
+                        y + maid.height
+                            - CombatTerrainTuning.COMBAT_SPACE_DOMAIN_FACTOR
+                            - CombatTerrainTuning.EPSILON)),
+                floor(sweep.maxY - CombatTerrainTuning.EPSILON)));
+        // 支撑角点用未内缩的 footprint，包含两端 body/support 和原 sweep 的全部查询格
+        BlockReader shared = reader(
+            maid,
+            floor(Math.min(maid.posX, x) - half),
+            minY,
+            floor(Math.min(maid.posZ, z) - half),
+            floor(Math.max(maid.posX, x) + half),
+            maxY,
+            floor(Math.max(maid.posZ, z) + half),
+            quota);
+        if (shared.result != Result.SAFE) return shared.result;
+        Result start = safeStandingPoint(maid, maid.posX, footY, maid.posZ, quota, null, shared);
+        if (start != Result.SAFE) return start;
+        Result finish = safeStandingPoint(maid, x, y, z, quota, null, shared);
+        return finish == Result.SAFE ? boundedClear(maid, sweep, quota, null, shared) : finish;
     }
 
     /** 一次已加载区块预检可供整个小范围复用，避免每个方块重复查询区块 */

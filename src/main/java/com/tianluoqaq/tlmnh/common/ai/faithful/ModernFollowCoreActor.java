@@ -101,7 +101,6 @@ import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyContext.Token;
 import com.tianluoqaq.tlmnh.common.ai.policy.MaidPolicyRuntime;
 import com.tianluoqaq.tlmnh.common.combat.MaidBowAttack;
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
-import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState;
 import com.tianluoqaq.tlmnh.common.compat.CompatServices;
 import com.tianluoqaq.tlmnh.common.config.MaidTemptationConfig;
@@ -1520,6 +1519,20 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             && target.z == air.pos.z
             && air.proofCurrent()
             && air.current();
+    }
+
+    /** 仅当前 AIR 许可的已安装自有路径；普通导航仍由原生前置更新消费 */
+    public void dispatchSupportedAirMovement() {
+        guard();
+        var air = supportedAirWalk;
+        if (air == null) return;
+        if (air.raw == null || air.raw != ownedPath
+            || navigation.getPath() != air.raw
+            || !air.current()
+            || !air.proofCurrent()
+            || !navigation.dispatchSupportedAirBrainPath(this, air.raw, air.pos)) {
+            if (supportedAirWalk == air) stopSupportedAirWalk();
+        }
     }
 
     private void stopSupportedAirWalk() {
@@ -4200,19 +4213,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 || !unifiedCombat.supportedAirApproachCurrent(plan, x, y, z)) return CombatSpace.Result.UNKNOWN;
             if (!quota.spend(CombatWorkQuota.Work.BLOCK)) return CombatSpace.Result.BUDGET;
             if (maid.isOnLadder()) return CombatSpace.Result.BLOCKED;
-            var start = CombatSpace.safeStandingPoint(maid, maid.posX, footY, maid.posZ, quota);
-            if (start != CombatSpace.Result.SAFE) return start;
-            var finish = CombatSpace.safeStandingPoint(maid, x, y, z, quota);
-            if (finish != CombatSpace.Result.SAFE) return finish;
-            double half = maid.width * MaidCombatTuning.HALF_FACTOR_D;
-            var swept = AxisAlignedBB.getBoundingBox(
-                Math.min(maid.posX, x) - half + CombatTerrainTuning.EPSILON,
-                y + CombatTerrainTuning.EPSILON,
-                Math.min(maid.posZ, z) - half + CombatTerrainTuning.EPSILON,
-                Math.max(maid.posX, x) + half - CombatTerrainTuning.EPSILON,
-                maid.boundingBox.minY + maid.height - CombatTerrainTuning.EPSILON,
-                Math.max(maid.posZ, z) + half - CombatTerrainTuning.EPSILON);
-            var clear = CombatSpace.boundedClear(maid, swept, quota);
+            var clear = CombatSpace.supportedAirClear(maid, footY, x, y, z, quota);
             if (clear != CombatSpace.Result.SAFE || !current())
                 return clear == CombatSpace.Result.SAFE ? CombatSpace.Result.UNKNOWN : clear;
             proofAt = world.getTotalWorldTime();

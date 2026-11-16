@@ -223,6 +223,40 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
         return path == null ? null : new BrainPath(this, owner, path);
     }
 
+    private PathEntity supportedAirDispatchPath;
+    private World supportedAirDispatchWorld;
+    private long supportedAirDispatchAt = Long.MIN_VALUE;
+    private int supportedAirDispatchEntityTick = Integer.MIN_VALUE;
+
+    private boolean supportedAirDispatchedThisTick(PathEntity path) {
+        return path == supportedAirDispatchPath && supportedAirDispatchAttemptedThisTick();
+    }
+
+    private boolean supportedAirDispatchAttemptedThisTick() {
+        return supportedAirDispatchWorld == maid.worldObj && supportedAirDispatchAt == maid.worldObj.getTotalWorldTime()
+            && supportedAirDispatchEntityTick == maid.ticksExisted;
+    }
+
+    /** afterNativeNavigation 的 Brain 刚安装完本帧路径；不重复原导航 tick/follow/超时记账 */
+    public boolean dispatchSupportedAirBrainPath(Object owner, PathEntity expected, Point target) {
+        requireBrainOwner(owner);
+        if (active.path != expected || !(expected instanceof MaidModernPath modern)
+            || expected.isFinished()
+            || supportedAirDispatchAttemptedThisTick()
+            || active.water
+            || maid.onGround
+            || !brainTarget.supportedAirPathCurrent(target)
+            || !brainTarget.beforeNativeNavigation(expected)) return false;
+        if (active.path != expected || brainOwner != owner || !brainCurrent()) return false;
+        // 在任何推进和 setter 之前消费本帧出站机会，拒绝后的重入也不能重复推进
+        supportedAirDispatchPath = expected;
+        supportedAirDispatchWorld = maid.worldObj;
+        supportedAirDispatchAt = maid.worldObj.getTotalWorldTime();
+        supportedAirDispatchEntityTick = maid.ticksExisted;
+        advanceAirWaypoint(modern);
+        return dispatchNativeWaypoint(true);
+    }
+
     public boolean installBrainPath(Object owner, BrainPath created, double speed) {
         requireBrainOwner(owner);
         if (created == null) return active.install(null, speed, false);
@@ -451,19 +485,26 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
     public void onUpdateNavigation() {
         active.tick++;
         if (active.path == null || active.path.isFinished()) return;
+        if (supportedAirDispatchedThisTick(active.path)) return;
         if (brainTarget != null && !brainTarget.beforeNativeNavigation(active.path)) return;
         if (!(active.path instanceof MaidModernPath modern)) {
             super.onUpdateNavigation();
             return;
         }
         if (canUpdatePath()) active.follow(modern);
-        else {
-            var position = active.position();
-            var next = modern.getPosition(maid);
-            if (position.yCoord > next.yCoord && !maid.onGround
-                && floor(position.xCoord) == floor(next.xCoord)
-                && floor(position.zCoord) == floor(next.zCoord)) modern.incrementPathIndex();
-        }
+        else advanceAirWaypoint(modern);
+        dispatchNativeWaypoint(false);
+    }
+
+    private void advanceAirWaypoint(MaidModernPath modern) {
+        var position = active.position();
+        var next = modern.getPosition(maid);
+        if (position.yCoord > next.yCoord && !maid.onGround
+            && floor(position.xCoord) == floor(next.xCoord)
+            && floor(position.zCoord) == floor(next.zCoord)) modern.incrementPathIndex();
+    }
+
+    private boolean dispatchNativeWaypoint(boolean supportedAirOnly) {
         if (!noPath()) {
             var target = getPath().getPosition(maid);
             double y = active.water
@@ -472,6 +513,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
             var raw = getPath();
             var dispatch = brainTarget == null ? MaidCombatMoveDispatch.DEFAULT
                 : brainTarget.nativeMoveDispatch(raw, target.xCoord, y, target.zCoord, active.speed);
+            if (supportedAirOnly && dispatch.kind != MaidCombatMoveDispatch.Kind.SUPPORTED_AIR) return false;
             if (dispatch.kind == MaidCombatMoveDispatch.Kind.DEFAULT) {
                 maid.getMoveHelper()
                     .setMoveTo(target.xCoord, y, target.zCoord, active.speed);
@@ -482,6 +524,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                     && control.setSupportedAirMoveTo(dispatch.command, target.xCoord, y, target.zCoord, active.speed)) {
                     if (brainTarget != null)
                         brainTarget.ownedMoveDispatched(raw, dispatch.command, control.combatSlotRevision());
+                    return true;
                 } else if (brainTarget != null) brainTarget.ownedMoveDispatchRejected(raw);
             } else if (dispatch.kind == MaidCombatMoveDispatch.Kind.OWNED) {
                 if (maid.getMoveHelper() instanceof MaidMoveControl control
@@ -491,6 +534,7 @@ public final class MaidPathNavigator extends PathNavigate implements MaidNavigat
                 } else if (brainTarget != null) brainTarget.ownedMoveDispatchRejected(raw);
             }
         }
+        return false;
     }
 
     @Override

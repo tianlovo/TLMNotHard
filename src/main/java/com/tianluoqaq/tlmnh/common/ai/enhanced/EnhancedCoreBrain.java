@@ -349,7 +349,11 @@ public final class EnhancedCoreBrain implements MaidPolicyRuntime.EnhancedAction
             if (actor.hasLookTarget()) actor.lookAtCurrentTargetIfPresent();
             boolean builtInWork = MaidWorkModeCoordinator.MAINTENANCE_MODULE_ID.equals(activeModuleId)
                 || MaidWorkModeCoordinator.BREEDING_MODULE_ID.equals(activeModuleId);
-            if (!builtInWork) navigation.tick();
+            if (!builtInWork) {
+                navigation.tick();
+                // 本帧新建的 AIR 路径须在后置 move-helper 消费前出站，不能跨 tick 延长许可
+                if (actor.isCurrent()) actor.dispatchSupportedAirMovement();
+            }
             if (actor.isCurrent()) climb.tick();
             if (actor.isCurrent()) doors.trigger(actor);
             if (actor.isCurrent()) buoyancy.tick();
