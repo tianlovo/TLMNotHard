@@ -39,7 +39,8 @@ public final class OwnerSafetyRiskChecks {
                     "self-safety",
                     "melee-hold",
                     "shield-use",
-                    "hold-yield")
+                    "hold-yield",
+                    "equipment-use")
                 .contains(selected),
             "Unknown check selector");
         if (selected.equals("all") || selected.equals("lane")) laneGeometryAndUnknown();
@@ -54,6 +55,7 @@ public final class OwnerSafetyRiskChecks {
         if (selected.equals("all") || selected.equals("melee-hold")) reachedMeleeDoesNotRetainApproach();
         if (selected.equals("all") || selected.equals("shield-use")) shieldUseDoesNotCreditUnavailableBow();
         if (selected.equals("all") || selected.equals("hold-yield")) ownedBowHoldYieldsKnownSelfArrow();
+        if (selected.equals("all") || selected.equals("equipment-use")) equipmentUseDoesNotCreditUnavailableTransfer();
         System.out.println("OwnerSafetyRiskChecks: " + selected + " passed; no native game");
     }
 
@@ -383,6 +385,54 @@ public final class OwnerSafetyRiskChecks {
             40, 4, .3, 1.8, true, false, true, false, false, DamageSource.GENERIC_PRIOR);
         return new CombatSnapshot(tick, 1, 1, 1, SELF, self, Arrays.asList(target), Collections.emptyList(),
             base.friends, onlyBow ? Arrays.asList(base.weapon(-1)) : base.weapons, base.geometry, ENEMY, true);
+    }
+
+    private static void equipmentUseDoesNotCreditUnavailableTransfer() {
+        boolean previous = CombatPlanner.traceEnabled();
+        CombatPlanner.setTraceEnabled(true);
+        try {
+            for (boolean full : new boolean[] { false, true }) {
+                var blocked = new CombatPlanner().decide(equipmentUseFrame(true, false),
+                    CombatWorkQuota.isolated(101, full));
+                for (var candidate : blocked.trace.candidates)
+                    check(candidate.weaponSlot < 0 || candidate.macro == CombatPlan.Macro.SHIELD
+                        || candidate.macro == CombatPlan.Macro.WAIT,
+                        "Blocked equipment transfer remained a weapon candidate");
+                check(blocked.macro != CombatPlan.Macro.PREPARE_WEAPON,
+                    "Blocked equipment transfer selected an unavailable exchange");
+                var released = new CombatPlanner().decide(equipmentUseFrame(false, false),
+                    CombatWorkQuota.isolated(101, full));
+                boolean backpackAdmitted = false;
+                for (var candidate : released.trace.candidates) backpackAdmitted |= candidate.weaponSlot >= 0;
+                check(backpackAdmitted, "Released equipment transfer lost its original backpack capability");
+                var current = new CombatPlanner().decide(equipmentUseFrame(true, true),
+                    CombatWorkQuota.isolated(101, full));
+                boolean currentMeleeAdmitted = false;
+                for (var candidate : current.trace.candidates)
+                    currentMeleeAdmitted |= candidate.weaponSlot < 0 && candidate.family == MaidWeaponProfile.Family.VANILLA_SWORD
+                        && candidate.macro != CombatPlan.Macro.WAIT && candidate.macro != CombatPlan.Macro.SHIELD;
+                check(currentMeleeAdmitted, "Foreign item use disabled the existing main-hand melee capability");
+                check(!shieldUseFrame(101, false, false).self.equipmentTransferBlocked,
+                    "Legacy snapshot constructor no longer defaults to available transfer");
+            }
+        } finally {
+            CombatPlanner.setTraceEnabled(previous);
+        }
+    }
+
+    private static CombatSnapshot equipmentUseFrame(boolean blocked, boolean currentMelee) {
+        var base = shieldUseFrame(101, true, false);
+        var old = base.self;
+        var self = new CombatSnapshot.Self(old.position, old.velocity, old.ownerPosition, old.health, old.ownerHealth,
+            old.halfWidth, old.height, old.reach, old.movementPerTick, old.grounded, old.jumpAllowed, old.stationary,
+            old.shieldAvailable, old.equipped, old.cadenceReady, old.drawing, old.attackDelay, old.cadenceRemainingTicks,
+            old.drawTicks, old.ammunition, old.preferBow, old.preferencePending, old.recentlyHurt,
+            old.ownerHalfWidth, old.ownerHeight, old.rangedUseBlocked, blocked);
+        var weapons = currentMelee ? Arrays.asList(new Weapon(-1, "current-sword", base.weapon(0).profile),
+            new Weapon(0, "backpack-bow", base.weapon(-1).profile)) : base.weapons;
+        return new CombatSnapshot(base.tick, base.entityEpoch, base.observationEpoch, base.equipmentEpoch,
+            base.selfId, self, base.targets, base.projectiles, base.friends, weapons, base.geometry,
+            base.selectedTarget, base.complete);
     }
 
     private static void ownedBowHoldYieldsKnownSelfArrow() {
