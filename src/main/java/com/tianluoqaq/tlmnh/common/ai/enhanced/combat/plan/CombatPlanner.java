@@ -22,6 +22,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Vec
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot.Weapon;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrain;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.ThreatEstimator;
+import com.tianluoqaq.tlmnh.common.combat.MaidCombatTuning;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponProfile;
 
 /** 有限动作组合的纯预演；不构造实体、不查询物品、不调用世界或随机源 */
@@ -403,7 +404,7 @@ public final class CombatPlanner {
         } else addLegacyCurrent(result, snapshot, target, current, quota);
         // 一续持、至多两纯防御、一任务、一组合优先占位；其余名额仍由原候选使用
         int defenses = 0;
-        if (snapshot.self.shieldAvailable) {
+        if (snapshot.self.shieldAvailable && !snapshot.self.equipmentTransferBlocked) {
             comparisonReady &= add(
                 result,
                 new Candidate(
@@ -557,9 +558,12 @@ public final class CombatPlanner {
             || current.slot != CombatPlanTuning.UNSET_OR_NOT_FOUND
             || !stage.weapon.equals(current.fingerprint)
             || current.profile.family != stage.family) return null;
+        boolean installedMeleeTask = stage.strategy == Strategy.TASK && stage.firstMacro == Macro.APPROACH
+            && current.profile.melee()
+            && stage.firstAcceptedAt != Long.MIN_VALUE;
         Candidate reaction = attack(snapshot, target, current);
-        if (reaction.macro != Macro.APPROACH || !returningMelee && !ownerPressureAttack(snapshot, reaction))
-            return null;
+        if (reaction.macro != Macro.APPROACH
+            || !returningMelee && !installedMeleeTask && !ownerPressureAttack(snapshot, reaction)) return null;
         reaction.destination = stage.route.next(stage.cursor);
         return reaction;
     }
@@ -582,6 +586,8 @@ public final class CombatPlanner {
             && target != null
             && current != null
             && (usable(snapshot, current) || heldPlan.macro == Macro.SHIELD || heldPlan.macro == Macro.RETREAT)
+            && (heldPlan.macro != Macro.SHIELD
+                || snapshot.self.shieldAvailable && !snapshot.self.equipmentTransferBlocked)
             && (heldPlan.macro != Macro.JUMP_STRIKE || !snapshot.self.grounded
                 || remainingCooldown(snapshot) <= CombatPlanTuning.JUMP_PREPARATION_TICKS)) {
             Candidate held = heldPlan.macro == Macro.HOLD_ATTACK || heldPlan.macro == Macro.PREPARE_WEAPON
@@ -1302,6 +1308,34 @@ public final class CombatPlanner {
                     CombatPlanTuning.COMBAT_PLANNER_FOLLOWED_NODE,
                     CombatPlanTuning.COMBAT_PLANNER_MAX_SECOND_PARAM
                         - (swap == 0 ? snapshot.self.drawTicks : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE)));
+            if (snapshot.self.drawing && candidate.weapon != null
+                && candidate.weapon.slot < 0
+                && candidate.weapon.profile.bow()
+                && candidate.strategy == Strategy.DEFENSIVE_RETURN
+                && candidate.target != null
+                && candidate.route != null
+                && candidate.route.defenseNode > 0
+                && candidate.route.defenseNode < candidate.route.nodes.size()
+                && candidate.route.firstBlockedAim != null
+                && candidate.route.firstBlockedNode > 0
+                && candidate.route.firstBlockedNode <= candidate.route.defenseNode
+                && candidate.route.defenseReturnDistance > 0
+                && Double.isFinite(snapshot.self.movementPerTick)
+                && snapshot.self.movementPerTick > 0
+                && candidate.route.firstBlockedAim.currentSight(
+                    snapshot,
+                    candidate.target,
+                    candidate.route.nodes.get(candidate.route.firstBlockedNode)) == CombatTerrain.Sight.BLOCKED) {
+                double interruptionTicks = candidate.route.firstBlockedDistance / snapshot.self.movementPerTick;
+                if (interruptionTicks <= nextAttack) {
+                    double returnTicks = (candidate.route.defenseDistance + candidate.route.defenseReturnDistance)
+                        / snapshot.self.movementPerTick;
+                    nextAttack = !Double.isFinite(returnTicks)
+                        || returnTicks + MaidCombatTuning.DRAW_TICKS > CombatBudgetTuning.HORIZON
+                            ? CombatBudgetTuning.HORIZON + 1
+                            : Math.max(nextAttack, (int) Math.ceil(returnTicks) + MaidCombatTuning.DRAW_TICKS);
+                }
+            }
             int jumpAt = snapshot.self.grounded ? nextAttack : CombatPlanTuning.COMBAT_PLAN_DEFAULT_ZERO_BASE;
             boolean jumpPending = candidate.macro == Macro.JUMP_STRIKE && snapshot.self.grounded;
             boolean airborne = candidate.macro == Macro.JUMP_STRIKE && !snapshot.self.grounded;

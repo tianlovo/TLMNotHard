@@ -3,6 +3,8 @@ package com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatBudgetTuning;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatWorkQuota;
@@ -30,6 +32,62 @@ public final class CombatTerrain {
         BUDGET
     }
 
+    /** 原付费目标射线的值证明，只有同一几何、目标位置和观察会话才能复用 */
+    public static final class AimObservation {
+
+        public final Sight sight;
+        public final Vec point;
+        private final Geometry geometry;
+        private final Target target;
+        private final UUID selfId;
+        private final long entityEpoch, observationEpoch;
+        private final double selfHeight;
+
+        private AimObservation(CombatSnapshot snapshot, Vec point, Target target, Sight sight) {
+            this.sight = sight;
+            this.point = point;
+            this.geometry = snapshot.geometry;
+            this.target = target;
+            this.selfId = snapshot.selfId;
+            this.entityEpoch = snapshot.entityEpoch;
+            this.observationEpoch = snapshot.observationEpoch;
+            this.selfHeight = snapshot.self.height;
+        }
+
+        public Sight currentSight(CombatSnapshot snapshot, Target current, Vec checkedPoint) {
+            if (current == null || target == null
+                || selfId == null
+                || target.id == null
+                || current.id == null
+                || !current.visible
+                || current.observedAt != snapshot.tick
+                || !Objects.equals(selfId, snapshot.selfId)
+                || !Objects.equals(target.id, current.id)
+                || target.entityId != current.entityId
+                || entityEpoch != snapshot.entityEpoch
+                || observationEpoch != snapshot.observationEpoch
+                || !samePoint(point, checkedPoint)
+                || !samePoint(target.position, current.position)
+                || target.height != current.height
+                || selfHeight != snapshot.self.height
+                || geometry == null
+                || geometry != snapshot.geometry
+                || !geometry.complete
+                || !geometry.fresh(snapshot.tick)
+                || snapshot.tick < target.observedAt
+                || snapshot.tick - target.observedAt > CombatBudgetTuning.OBSERVATION_TTL) return Sight.UNKNOWN;
+            // 与原aimClear相同，当前足点的真实可见观测优先于旧预测射线
+            if (sight == Sight.BLOCKED
+                && point.distance(snapshot.self.position) < CombatTerrainTuning.COMBAT_TERRAIN_AIM_CLEAR_FACTOR)
+                return Sight.CLEAR;
+            return sight;
+        }
+
+        private static boolean samePoint(Vec a, Vec b) {
+            return a != null && b != null && a.x == b.x && a.y == b.y && a.z == b.z;
+        }
+    }
+
     private CombatTerrain() {}
 
     public static final class Route {
@@ -42,6 +100,11 @@ public final class CombatTerrain {
         public final double defenseDistance;
         public final boolean firingLine, conditionalDoor;
         public final CombatPassiveDoorExitProof.Source passiveExit;
+        public final double defenseReturnDistance;
+        private final List<AimObservation> nodeAimObservations;
+        public final AimObservation firstBlockedAim;
+        public final int firstBlockedNode;
+        public final double firstBlockedDistance;
 
         private Route(List<Vec> points, List<Vec> nodes, Vec entrance, Vec escape, Vec peek, double stopBeforeDoor,
             double protection, boolean firingLine, long provedAt) {
@@ -77,6 +140,30 @@ public final class CombatTerrain {
         private Route(List<Vec> points, List<Vec> nodes, Vec entrance, Vec escape, Vec peek, double stopBeforeDoor,
             double protection, boolean firingLine, long provedAt, int defenseNode,
             CombatPassiveDoorExitProof.Source passiveExit) {
+            this(
+                points,
+                nodes,
+                entrance,
+                escape,
+                peek,
+                stopBeforeDoor,
+                protection,
+                firingLine,
+                provedAt,
+                defenseNode,
+                passiveExit,
+                CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                Collections.emptyList());
+        }
+
+        private Route(List<Vec> points, List<Vec> nodes, Vec entrance, Vec escape, Vec peek, double stopBeforeDoor,
+            double protection, boolean firingLine, long provedAt, int defenseNode,
+            CombatPassiveDoorExitProof.Source passiveExit, double defenseReturnDistance,
+            List<AimObservation> nodeAimObservations) {
+            this.defenseReturnDistance = defenseReturnDistance;
+            this.nodeAimObservations = nodeAimObservations.size() == nodes.size()
+                ? Collections.unmodifiableList(new ArrayList<>(nodeAimObservations))
+                : Collections.emptyList();
             this.passiveExit = passiveExit;
             this.defenseNode = defenseNode;
             this.points = Collections.unmodifiableList(new ArrayList<>(points));
@@ -94,10 +181,29 @@ public final class CombatTerrain {
             for (int i = 1; i < points.size(); i++) total += points.get(i - 1)
                 .distance(points.get(i));
             length = total;
-            double prefix = 0;
-            if (defenseNode > 0) for (int i = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP; i <= defenseNode
-                && i < nodes.size(); i++) prefix += nodeDistance(nodes.get(i - 1), nodes.get(i));
-            defenseDistance = prefix;
+            double prefix = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                defensePrefix = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+                blockedPrefix = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE;
+            int blockedNode = CombatTerrainTuning.UNSET_OR_NOT_FOUND;
+            AimObservation blocked = null;
+            for (int i = CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_UNIT_STEP; i < nodes.size(); i++) {
+                prefix += nodeDistance(nodes.get(i - 1), nodes.get(i));
+                if (i <= defenseNode) defensePrefix = prefix;
+                AimObservation observation = nodeAimAt(i);
+                if (blocked == null && observation != null && observation.sight == Sight.BLOCKED) {
+                    blocked = observation;
+                    blockedNode = i;
+                    blockedPrefix = prefix;
+                }
+            }
+            defenseDistance = defensePrefix;
+            firstBlockedAim = blocked;
+            firstBlockedNode = blockedNode;
+            firstBlockedDistance = blockedPrefix;
+        }
+
+        private AimObservation nodeAimAt(int index) {
+            return index >= 0 && index < nodeAimObservations.size() ? nodeAimObservations.get(index) : null;
         }
 
         public double currentLength() {
@@ -307,8 +413,9 @@ public final class CombatTerrain {
             if (!meter.pay()) break;
             double distance = node.point.distance(target.position), progress = initialDistance - distance;
             double protection = protection(snapshot, node.point, target, meter);
-            boolean line = aimClear(snapshot, node.point, target, meter)
-                && friendly(snapshot, node.point, target, meter);
+            Sight targetSight = aimSight(snapshot, node.point, target, meter);
+            node.aimObservation = new AimObservation(snapshot, node.point, target, targetSight);
+            boolean line = targetSight == Sight.CLEAR && friendly(snapshot, node.point, target, meter);
             node.peek = line ? node.point : null;
             if (protection > initialProtection + CombatTerrainTuning.COMBAT_TERRAIN_DOMAIN_FACTOR_2 && node.exit != null
                 && node.parent != null) {
@@ -829,7 +936,9 @@ public final class CombatTerrain {
             || !snapshot.geometry.complete
             || !snapshot.geometry.fresh(snapshot.tick)) return null;
         List<Vec> nodes = new ArrayList<>();
+        List<AimObservation> nodeAims = new ArrayList<>();
         nodes.add(snapshot.self.position);
+        nodeAims.add(null);
         Meter meter = new Meter(quota, CombatTerrainTuning.MAX_WORK);
         if (!support(snapshot, snapshot.self.position, snapshot.self.position.y, snapshot.self.position.y, meter)
             || !clear(snapshot, snapshot.self.position, snapshot.self.position, false, meter)) return null;
@@ -847,6 +956,7 @@ public final class CombatTerrain {
             if (door) stop = Math.min(stop, length);
             length += nodeDistance(a, b);
             nodes.add(b);
+            nodeAims.add(original.nodeAimAt(i));
         }
         Route renewed = fromNodes(
             nodes,
@@ -866,7 +976,10 @@ public final class CombatTerrain {
                 renewed.protection,
                 renewed.firingLine,
                 renewed.provedAt,
-                renewed.defenseNode);
+                renewed.defenseNode,
+                null,
+                original.defenseReturnDistance,
+                nodeAims);
     }
 
     /** 返程逐连接重新证明并收费；门后的尚未发生路径不进入退路证明 */
@@ -890,10 +1003,20 @@ public final class CombatTerrain {
             || defense.conditionalDoor
             || defense.nodes.size() < CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM
             || !reverseEscape(snapshot, defense, quota)) return null;
-        List<Vec> nodes = new ArrayList<>(defense.nodes);
-        for (int i = defense.nodes.size() - CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM; i >= 0; i--)
+        List<Vec> nodes = new ArrayList<>();
+        List<AimObservation> nodeAims = new ArrayList<>();
+        for (int i = 0; i < defense.nodes.size(); i++) {
             nodes.add(defense.nodes.get(i));
-        for (int i = 1; i < task.nodes.size(); i++) nodes.add(task.nodes.get(i));
+            nodeAims.add(defense.nodeAimAt(i));
+        }
+        for (int i = defense.nodes.size() - CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM; i >= 0; i--) {
+            nodes.add(defense.nodes.get(i));
+            nodeAims.add(defense.nodeAimAt(i));
+        }
+        for (int i = 1; i < task.nodes.size(); i++) {
+            nodes.add(task.nodes.get(i));
+            nodeAims.add(task.nodeAimAt(i));
+        }
         double returned = defense.length * CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM;
         Route joined = fromNodes(
             nodes,
@@ -912,7 +1035,10 @@ public final class CombatTerrain {
             joined.protection,
             joined.firingLine,
             joined.provedAt,
-            joined.defenseNode);
+            joined.defenseNode,
+            null,
+            defense.length,
+            nodeAims);
     }
 
     private static double nodeDistance(Vec a, Vec b) {
@@ -1106,8 +1232,14 @@ public final class CombatTerrain {
     }
 
     private static boolean aimClear(CombatSnapshot snapshot, Vec point, Target target, Meter meter) {
-        if (!target.visible || target.observedAt != snapshot.tick || !meter.pay()) return false;
-        if (point.distance(snapshot.self.position) < CombatTerrainTuning.COMBAT_TERRAIN_AIM_CLEAR_FACTOR) return true; // 当帧已取得的真实LOS
+        return aimSight(snapshot, point, target, meter) == Sight.CLEAR;
+    }
+
+    private static Sight aimSight(CombatSnapshot snapshot, Vec point, Target target, Meter meter) {
+        if (!target.visible || target.observedAt != snapshot.tick) return Sight.UNKNOWN;
+        if (!meter.pay()) return Sight.BUDGET;
+        if (point.distance(snapshot.self.position) < CombatTerrainTuning.COMBAT_TERRAIN_AIM_CLEAR_FACTOR)
+            return Sight.CLEAR; // 当帧已取得的真实LOS
         return trace(
             snapshot.geometry,
             point.add(
@@ -1120,7 +1252,7 @@ public final class CombatTerrain {
                     CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
                     target.height * CombatTerrainTuning.COMBAT_CONDITIONAL_ABS_FIRST_FACTOR,
                     CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE)),
-            meter) == Sight.CLEAR;
+            meter);
     }
 
     private static boolean friendly(CombatSnapshot snapshot, Vec point, Target target, Meter meter) {
@@ -1281,9 +1413,11 @@ public final class CombatTerrain {
         }
         List<Vec> points = new ArrayList<>();
         List<Vec> navigation = new ArrayList<>();
+        List<AimObservation> nodeAims = new ArrayList<>();
         Vec previous = reverse.get(reverse.size() - 1).point;
         points.add(previous);
         navigation.add(previous);
+        nodeAims.add(reverse.get(reverse.size() - 1).aimObservation);
         double length = 0, door = Double.POSITIVE_INFINITY;
         for (int i = reverse.size() - CombatTerrainTuning.COMBAT_CONDITIONAL_FROM_PARAM; i >= 0; i--) {
             Node n = reverse.get(i);
@@ -1302,6 +1436,7 @@ public final class CombatTerrain {
             }
             previous = n.point;
             navigation.add(n.point);
+            nodeAims.add(n.aimObservation);
         }
         return new Route(
             points,
@@ -1314,7 +1449,9 @@ public final class CombatTerrain {
             line,
             provedAt,
             CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
-            node.passiveExit);
+            node.passiveExit,
+            CombatTerrainTuning.COMBAT_MOVEMENT_DEFAULT_ZERO_BASE,
+            nodeAims);
     }
 
     private static Sight trace(Geometry g, Vec from, Vec to, Meter meter) {
@@ -1403,6 +1540,7 @@ public final class CombatTerrain {
 
         final Vec point;
         final Node parent;
+        AimObservation aimObservation;
         final boolean door;
         CombatPassiveDoorExitProof.Source passiveExit;
         Vec entrance, exit, peek;
