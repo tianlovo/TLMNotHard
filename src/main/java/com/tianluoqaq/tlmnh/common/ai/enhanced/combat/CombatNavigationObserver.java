@@ -13,6 +13,11 @@ public interface CombatNavigationObserver {
         return false;
     }
 
+    /** 只读当前节点已有的真实安装绑定，允许合法 partial 路径继续推进 */
+    default boolean combatInstalledPathCurrent(WalkTarget target, Path path) {
+        return false;
+    }
+
     boolean combatNodeArrived(WalkTarget target, Path path);
 
     void combatNavigationOutcome(WalkTarget target, Path path, Outcome outcome, long retryAt);

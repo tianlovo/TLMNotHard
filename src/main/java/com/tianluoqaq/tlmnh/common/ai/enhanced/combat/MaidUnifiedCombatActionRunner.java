@@ -481,6 +481,17 @@ public final class MaidUnifiedCombatActionRunner {
             && now >= routeApprovedAt
             && now - routeApprovedAt <= EnhancedCombatTuning.COMBAT_OBSERVATION_COLLECT_URGENT_PARAM;
         if (!quota.spend(Work.PATH)) return Result.WAIT_BUDGET;
+        if (plan != null && plan.airborneApproach && plan.movementNode == null) {
+            // AIR 证明已包含同一目的地的身体与支撑检查，成功后才提交本次位置缓存
+            var proof = actor
+                .setSupportedAirCombatWalk(plan, point, destination.y, EnhancedCombatTuning.APPROACH_SPEED, quota);
+            if (proof == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
+            if (proof != CombatSpace.Result.SAFE) return Result.REJECTED;
+            approvedPoint = point;
+            approvedFootY = destination.y;
+            routeApprovedAt = now;
+            return Result.RUNNING;
+        }
         if (!continuing) {
             var checked = CombatSpace.safeStandingPoint(
                 maid,
@@ -531,15 +542,6 @@ public final class MaidUnifiedCombatActionRunner {
             } else if (plan.strategy == CombatPlan.Strategy.REOBSERVE) actor
                 .setReobservationNodeWalk(plan.movementNode, plan.noDoorSegment, EnhancedCombatTuning.APPROACH_SPEED);
             else actor.setCombatNodeWalk(plan.movementNode, EnhancedCombatTuning.APPROACH_SPEED);
-        } else if (plan != null && plan.airborneApproach) {
-            var proof = actor.setSupportedAirCombatWalk(
-                plan,
-                approvedPoint,
-                destination.y,
-                EnhancedCombatTuning.APPROACH_SPEED,
-                quota);
-            if (proof == CombatSpace.Result.BUDGET) return Result.WAIT_BUDGET;
-            if (proof != CombatSpace.Result.SAFE) return Result.REJECTED;
         } else actor.setPositionWalkAndLook(
             approvedPoint,
             EnhancedCombatTuning.APPROACH_SPEED,

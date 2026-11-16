@@ -2275,6 +2275,17 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
                 .getEntityId();
     }
 
+    @Override
+    public boolean combatInstalledPathCurrent(WalkTarget target, Path path) {
+        guard();
+        return isCombatNode(target) && path != null
+            && combatInstalledPath != null
+            && combatPathIdentity > 0
+            && path.getIdentity() == combatInstalledPath
+            && ownedPath == combatInstalledPath
+            && navigation.getPath() == combatInstalledPath;
+    }
+
     private boolean combatTailMatches() {
         if (combatInstalledPath == null || combatInstalledPath != ownedPath
             || combatPathIdentity <= 0

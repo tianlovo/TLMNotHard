@@ -87,8 +87,10 @@ public final class EnhancedNavigationController {
             return outcome = Outcome.ARRIVED;
         }
         var installed = combat == null ? actor.navigationPath() : combatPath;
+        // 战斗节点只续用当前节点已有的安装绑定，普通目标沿原距离容差处理
         boolean changed = plannedTarget == null
-            || position.distanceSquared(plannedTarget) > EnhancedLocomotionTuning.REPLAN_DISTANCE_SQUARED;
+            || position.distanceSquared(plannedTarget) > EnhancedLocomotionTuning.REPLAN_DISTANCE_SQUARED
+            || combat != null && !combat.combatInstalledPathCurrent(target, installed);
         var current = actor.blockPosition();
         if (supplied != null && suppliedTick == now && position.distanceSquared(suppliedTarget) == 0)
             return applyCreation(supplied, target, position, current, now);
