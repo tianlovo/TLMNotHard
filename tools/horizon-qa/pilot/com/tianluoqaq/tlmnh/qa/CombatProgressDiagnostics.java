@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.EnhancedCombatController;
+import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.budget.CombatQueuedMove;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlan;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.plan.CombatPlanner;
 import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatSnapshot;
@@ -26,6 +27,11 @@ final class CombatProgressDiagnostics {
     private static final Field PLAN_INTERRUPT = optionalField(CombatPlan.class, "interruptRangedUse");
     private static final Field FACING_COMMAND = optionalField(ModernFollowCoreActor.class, "combatFacingCommand");
     private static final Field FACING_APPLIED = optionalField(MaidMoveControl.class, "combatFacingStrafeApplied");
+    private static final Field PLAN_AIR_APPROACH = optionalField(CombatPlan.class, "airborneApproach");
+    private static final Field ACTOR_AIR_WALK = optionalField(ModernFollowCoreActor.class, "supportedAirWalk");
+    private static final Field HELPER_AIR_COMMAND = optionalField(MaidMoveControl.class, "supportedAirCommand");
+    private static final Field HELPER_OWNED_COMMAND = field(MaidMoveControl.class, "combatOwnedCommand");
+    private static final Field COMMAND_CONSUMED = field(CombatQueuedMove.class, "consumed");
     private static final Field REOBSERVATION = field(CombatPlanner.class, "reobservation");
     private static final Field OWNER_PRESSURE = field(CombatPlanner.class, "ownerPressureWindow");
     private static final Field SHIELD_LEASE = field(MaidShieldController.class, "lease");
@@ -122,6 +128,21 @@ final class CombatProgressDiagnostics {
             facing.addProperty("strafeApplied",
                 FACING_APPLIED == null || !(helper instanceof MaidMoveControl) ? null : FACING_APPLIED.getBoolean(helper));
             result.add("movementFacingReadback", facing);
+            // 读取功能状态，命令资格与消费继续由原生执行链处理
+            var air = new JsonObject();
+            air.addProperty("fieldsAvailable",
+                PLAN_AIR_APPROACH != null && ACTOR_AIR_WALK != null && HELPER_AIR_COMMAND != null);
+            air.addProperty("airborneApproach",
+                plan == null || PLAN_AIR_APPROACH == null ? null : PLAN_AIR_APPROACH.getBoolean(plan));
+            air.addProperty("supportedAirWalkPresent",
+                actor == null || ACTOR_AIR_WALK == null ? null : ACTOR_AIR_WALK.get(actor) != null);
+            boolean maidHelper = helper instanceof MaidMoveControl;
+            air.addProperty("supportedAirCommand",
+                !maidHelper || HELPER_AIR_COMMAND == null ? null : HELPER_AIR_COMMAND.getBoolean(helper));
+            Object command = maidHelper ? HELPER_OWNED_COMMAND.get(helper) : null;
+            air.addProperty("ownedCommandPresent", command != null);
+            air.addProperty("ownedCommandConsumed", command == null ? null : COMMAND_CONSUMED.getBoolean(command));
+            result.add("supportedAirApproachReadback", air);
             Object planner = PLANNER.get(controller);
             result.addProperty("ownerPressureWindow", OWNER_PRESSURE.getBoolean(planner));
             var useRow = new JsonObject();
