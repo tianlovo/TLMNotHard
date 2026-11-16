@@ -747,7 +747,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             requested.raw,
             actual);
         if (actual == requested.raw || actual == ownedPath) {
-            if (actual != ownedPath) cancelCombatFacing();
+            if (actual != ownedPath) {
+                if (maid.onGround) cancelOrdinaryCombatDispatch();
+                cancelCombatFacing();
+            }
             ownedPath = actual;
             navigationView = actual == null ? null : new ModernPath((MaidModernPath) actual, null);
         }
@@ -785,6 +788,7 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
 
     public void stopNavigation() {
         navigationLease();
+        if (maid.onGround) cancelOrdinaryCombatDispatch();
         cancelCombatFacing();
         // 先持原raw身份撤销queued move，再清导航字段；ARRIVED/失败回执由原调用顺序保留
         if (restrictedCombatMove != null)
@@ -1959,7 +1963,9 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             EnhancedRideController.stationary(maid),
             preferences.preferredTask() == MaidTask.RANGED_ATTACK,
             preferences.preferencePending(),
-            combatMovementFact);
+            combatMovementFact,
+            rangedUseLease,
+            shieldOwner);
     }
 
     public CombatPlan.Result tryApplyCombatPlan(CombatPlan plan) {
@@ -3056,7 +3062,10 @@ public final class ModernFollowCoreActor implements FollowOwnerActor, FollowMove
             || raw != navigation.getPath()
             || raw.isFinished()
             || !navigation.isBrainTargetOwner(this)
-            || walk == null) return false;
+            || walk == null) {
+            if (maid.onGround) cancelOrdinaryCombatDispatch();
+            return false;
+        }
         final EntityLivingBase target = maid.getModernCombatMemory()
             .target();
         if (target == null || target.isDead || !target.isEntityAlive()) return false;

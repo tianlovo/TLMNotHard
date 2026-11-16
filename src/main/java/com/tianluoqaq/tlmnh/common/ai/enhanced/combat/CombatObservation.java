@@ -48,6 +48,7 @@ import com.tianluoqaq.tlmnh.common.ai.enhanced.combat.terrain.CombatTerrainTunin
 import com.tianluoqaq.tlmnh.common.combat.MaidCombatAttributes;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Hand;
 import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Kind;
+import com.tianluoqaq.tlmnh.common.combat.MaidItemUseState.Lease;
 import com.tianluoqaq.tlmnh.common.combat.ballistics.NativeArrowState;
 import com.tianluoqaq.tlmnh.common.combat.spi.ProjectilePhysicsProvider;
 import com.tianluoqaq.tlmnh.common.combat.weapon.MaidWeaponCatalog;
@@ -716,6 +717,29 @@ public final class CombatObservation {
         long equipmentEpoch, boolean equipped, boolean cadenceReady, boolean shieldAvailable, boolean drawing,
         int drawTicks, boolean stationary, boolean preferBow, boolean preferencePending,
         CombatMovementFact movementFact) {
+        return capture(
+            maid,
+            selected,
+            quota,
+            entityEpoch,
+            equipmentEpoch,
+            equipped,
+            cadenceReady,
+            shieldAvailable,
+            drawing,
+            drawTicks,
+            stationary,
+            preferBow,
+            preferencePending,
+            movementFact,
+            null,
+            null);
+    }
+
+    public CombatSnapshot capture(EntityMaid maid, EntityLivingBase selected, CombatWorkQuota quota, long entityEpoch,
+        long equipmentEpoch, boolean equipped, boolean cadenceReady, boolean shieldAvailable, boolean drawing,
+        int drawTicks, boolean stationary, boolean preferBow, boolean preferencePending,
+        CombatMovementFact movementFact, Lease ownedRangedUse, Object ownedShieldTask) {
         observe(maid, quota);
         Tracked chosen = selected == null ? null : targets.get(selected.getUniqueID());
         if (selected != null && (chosen == null || chosen.observedAt != tick)) sampleLiving(maid, selected, quota);
@@ -735,6 +759,12 @@ public final class CombatObservation {
             && currentUse.getKind() == Kind.SHIELD
             && maid.getShieldController()
                 .isBlocking();
+        // isBlocking 沿原入口校验使用状态后，再以当前裸租约引用核换装占用
+        currentUse = maid.getItemUseState()
+            .peek();
+        boolean equipmentTransferBlocked = currentUse != null && currentUse != ownedRangedUse
+            && !maid.getShieldController()
+                .activeUseOwnedBy(ownedShieldTask, currentUse);
         CombatSnapshot.Self self = new CombatSnapshot.Self(
             position(maid),
             new Vec(maid.motionX, maid.motionY, maid.motionZ),
@@ -770,7 +800,8 @@ public final class CombatObservation {
             owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_2
                 : owner.width * EnhancedCombatTuning.COMBAT_OBSERVATION_WIDTH,
             owner == null ? EnhancedCombatTuning.COMBAT_OBSERVATION_DOMAIN_FACTOR_3 : owner.height,
-            rangedUseBlocked);
+            rangedUseBlocked,
+            equipmentTransferBlocked);
         List<Target> pureTargets = new ArrayList<>();
         for (Tracked target : targets.values()) {
             if (target.position == null || tick - target.observedAt > CombatTerrainTuning.HIDDEN_TTL) continue;

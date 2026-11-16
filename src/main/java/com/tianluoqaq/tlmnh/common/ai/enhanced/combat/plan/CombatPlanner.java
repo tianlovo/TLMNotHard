@@ -140,6 +140,10 @@ public final class CombatPlanner {
         synchronizeStage(snapshot);
         Target selected = snapshot.target(snapshot.selectedTarget);
         if (reobservation != null) reobservationRetryAt = Math.max(reobservationRetryAt, reobservation.retryAt);
+        if (reobservation != null && reobservation.recoveredVisibility(snapshot, selected)
+            && stage != null
+            && stage.id == reobservation.parentId
+            && stage.state == StageState.WAIT_SERVICE) stage = null;
         if (reobservation != null && !reobservation.matches(snapshot, selected)) {
             if (selected == null || !Objects.equals(reobservation.target, selected.id)
                 || reobservation.targetEntityId != selected.entityId
@@ -524,6 +528,10 @@ public final class CombatPlanner {
         // 隐藏时普通接近不再借反应分支绕开复视政策，原合法防御仍保留
         if (target != null && !target.visible) result
             .removeIf(candidate -> candidate.strategy != Strategy.PURE_DEFENSE || candidate.macro == Macro.SHIELD);
+        if (snapshot.self.equipmentTransferBlocked) result.removeIf(
+            candidate -> candidate.weapon != null && candidate.weapon.slot >= 0
+                && candidate.macro != Macro.SHIELD
+                && candidate.macro != Macro.WAIT);
         for (Candidate candidate : result) if (candidate.route == null && candidate.strategy == Strategy.REACTION)
             candidate.escapeProved = currentEscape;
         return result;
@@ -1044,6 +1052,7 @@ public final class CombatPlanner {
         return weapon != null && weapon.profile.supported()
             && (weapon.profile.remainingDurability < 0
                 || weapon.profile.remainingDurability >= weapon.profile.durabilityCost)
+            && (weapon.slot < 0 || !snapshot.self.equipmentTransferBlocked)
             && (!weapon.profile.bow() || snapshot.self.ammunition > 0 && !snapshot.self.rangedUseBlocked);
     }
 

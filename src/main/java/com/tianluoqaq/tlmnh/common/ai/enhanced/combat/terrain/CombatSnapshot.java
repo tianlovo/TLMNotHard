@@ -236,6 +236,7 @@ public final class CombatSnapshot {
         public final boolean grounded, jumpAllowed, stationary, shieldAvailable, equipped, cadenceReady, drawing;
         /** 副手盾正在占用持续使用资源，主手弓暂时无法拉弓 */
         public final boolean rangedUseBlocked;
+        public final boolean equipmentTransferBlocked;
         public final int attackDelay, drawTicks, ammunition;
         public final long cadenceRemainingTicks;
         public final boolean preferBow, preferencePending;
@@ -346,6 +347,43 @@ public final class CombatSnapshot {
             int attackDelay, long cadenceRemainingTicks, int drawTicks, int ammunition, boolean preferBow,
             boolean preferencePending, boolean recentlyHurt, double ownerHalfWidth, double ownerHeight,
             boolean rangedUseBlocked) {
+            this(
+                position,
+                velocity,
+                ownerPosition,
+                health,
+                ownerHealth,
+                halfWidth,
+                height,
+                reach,
+                movementPerTick,
+                grounded,
+                jumpAllowed,
+                stationary,
+                shieldAvailable,
+                equipped,
+                cadenceReady,
+                drawing,
+                attackDelay,
+                cadenceRemainingTicks,
+                drawTicks,
+                ammunition,
+                preferBow,
+                preferencePending,
+                recentlyHurt,
+                ownerHalfWidth,
+                ownerHeight,
+                rangedUseBlocked,
+                false);
+        }
+
+        public Self(Vec position, Vec velocity, Vec ownerPosition, float health, float ownerHealth, double halfWidth,
+            double height, double reach, double movementPerTick, boolean grounded, boolean jumpAllowed,
+            boolean stationary, boolean shieldAvailable, boolean equipped, boolean cadenceReady, boolean drawing,
+            int attackDelay, long cadenceRemainingTicks, int drawTicks, int ammunition, boolean preferBow,
+            boolean preferencePending, boolean recentlyHurt, double ownerHalfWidth, double ownerHeight,
+            boolean rangedUseBlocked, boolean equipmentTransferBlocked) {
+            this.equipmentTransferBlocked = equipmentTransferBlocked;
             this.rangedUseBlocked = rangedUseBlocked;
             this.ownerHalfWidth = ownerHalfWidth;
             this.ownerHeight = ownerHeight;

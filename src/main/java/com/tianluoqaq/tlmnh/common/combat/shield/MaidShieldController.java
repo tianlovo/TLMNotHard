@@ -229,6 +229,11 @@ public final class MaidShieldController {
         return activeTaskRunning && owner != null && activeTaskOwner == owner;
     }
 
+    /** 仅核当前租约是否能由该主动任务释放，不校验或推进使用状态 */
+    public boolean activeUseOwnedBy(Object owner, Lease current) {
+        return current != null && activeTaskOwnedBy(owner) && current == activeLease;
+    }
+
     public long activeTaskDeadline() {
         return activeEndTime;
     }

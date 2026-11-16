@@ -45,6 +45,24 @@ final class CombatReobservation {
         lastSeen = selected.position;
     }
 
+    boolean recoveredVisibility(CombatSnapshot s, Target t) {
+        if (t == null || !t.visible
+            || t.observedAt != s.tick
+            || !Objects.equals(self, s.selfId)
+            || !Objects.equals(target, t.id)
+            || targetEntityId != t.entityId
+            || entityEpoch != s.entityEpoch
+            || observationEpoch != s.observationEpoch) return false;
+        if (firstAccepted != Long.MIN_VALUE) return true;
+        var current = node(s);
+        var fact = s.movementFact;
+        return current != null && fact != null
+            && fact.belongs(current, s.tick)
+            && (fact.outcome == CombatMovementFact.Outcome.INSTALLED && fact.pathIdentity > 0 && fact.inArea
+                || (route.passiveExit == null ? fact.completed(current, s.tick)
+                    : fact.passiveExited(current, s.tick, passiveSerial)));
+    }
+
     boolean matches(CombatSnapshot s, Target t) {
         return t != null && !t.visible
             && t.fresh(s.tick)
